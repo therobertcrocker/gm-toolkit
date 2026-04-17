@@ -1,0 +1,25 @@
+# Binaries
+gm-toolkit
+*.exe
+
+# Build output
+/bin/
+
+# Campaign data (user-specific, not versioned)
+campaign/
+
+# Reference materials (copyrighted)
+reference/
+
+# Go
+*.test
+*.out
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
