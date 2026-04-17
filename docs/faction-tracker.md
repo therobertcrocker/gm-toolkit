@@ -106,24 +106,36 @@ A record of key decisions made during development, and the reasoning behind them
 |---|----------|-----------|
 | 1 | Go as the implementation language | Familiar to primary developer; compiles to a single binary; strong stdlib |
 | 2 | CLI-first architecture | Keeps UI and business logic cleanly separated; frontend can be added later |
-| 3 | TOML for all data files | Human-readable and hand-editable; dominant config format in the Go ecosystem; unambiguous with named sections |
-| 4 | JSON lines for history log | Easy to append programmatically; easy to parse; rendered into human-readable narrative by a separate function |
-| 5 | No database | Data volume is small; access patterns are simple; a database would be overkill |
-| 6 | Actions as first-class concepts | Enables source-agnostic processing; same interface for GM input and future AI decision-making |
-| 7 | Review Mode and Turn Mode as separate flows | Clean separation of read-only browsing from stateful turn execution |
-| 8 | Turn pause/resume support | A turn is always completed in one sitting but can be saved mid-execution and resumed later |
+| 3 | TOML for static data, JSON lines for history | TOML is human-readable and hand-editable; JSON lines is easy to append programmatically and render into narrative |
+| 4 | No database | Data volume is small; access patterns are simple; a database would be overkill |
+| 5 | Actions as first-class logic, not data | Actions have complex conditional logic that can't live in TOML; metadata could be data but resolution belongs in code |
+| 6 | Review Mode and Turn Mode as separate flows | Clean separation of read-only browsing from stateful turn execution |
+| 7 | Turn pause/resume support | A turn is always completed in one sitting but can be saved mid-execution and resumed later |
+| 8 | Domain types in `internal/faction/domain` | Separates pure data types from logic; clean import path |
+| 9 | Modular static data loader via `DataLoader` interface | Each data type owns its own loader file; adding new types requires one new file and one line in the orchestrator |
+| 10 | `StaticData` passed explicitly, not as a global | Idiomatic Go; avoids hidden dependencies; easier to test |
+| 11 | Dice notation parsed at load time, stored as `DiceRoll` struct | Keeps TOML human-friendly; structured data makes AI and resolution engine cleaner |
+| 12 | `FacCreds` renamed to `Coin` | Campaign-specific flavor; cleaner terminology for this tool |
+| 13 | Conventional commits + semantic versioning | Consistent history; clear versioning baseline at v0.1.0 |
+| 14 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
 
 ---
 
 ## Progress
 
-### In Progress
-- Project structure and package layout
-
 ### Completed
-- Project scaffolding (go.mod, main.go, internal/faction, cmd/faction)
-- Discovery and design documentation
+- Project scaffolding (`go.mod`, `main.go`, `cmd/faction`, `internal/faction`)
+- Living design document and decisions log
+- Domain types: `AssetDefinition`, `Asset`, `Faction`, `Tag`, `Goal`
+- Modular static data loader with `DataLoader` interface
+- Git setup: conventional commits, semver, `.gitignore`
+
+### In Progress
+- Taking stock; preparing to branch
 
 ### Up Next
-- Package structure finalization
-- Data model design
+- State file (load/save campaign state)
+- Core engine (turn processing, action resolution)
+- History/event log
+- CLI / UI layer
+- Tests
