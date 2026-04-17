@@ -1,0 +1,31 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
+{
+  "name": "gm-toolkit",
+  "image": "mcr.microsoft.com/devcontainers/go:2-1.26-trixie",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/jungaretti/features/make:1": {}
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "streetsidesoftware.code-spell-checker",
+        "github.copilot",
+        "github.copilot-chat"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "golang.go"
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/postcreate.sh"
+}
