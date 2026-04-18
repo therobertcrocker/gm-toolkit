@@ -41,6 +41,7 @@ type AttackProfile struct {
 }
 
 type AssetDefinition struct {
+	ID          string
 	Name        string
 	Category    FactionStat
 	MinRating   int
@@ -55,12 +56,13 @@ type AssetDefinition struct {
 }
 
 type Asset struct {
-	ID         string
-	Definition *AssetDefinition
-	OwnerID    string
-	Location   string
-	CurrentHP  int
-	Stealthy   bool
-	Ready      bool
-	Maintained bool
+	ID           string
+	DefinitionID string           // references AssetDefinition.ID, used for serialization
+	Definition   *AssetDefinition `toml:"-"` // populated at runtime, not serialized
+	OwnerID      string
+	Location     string
+	CurrentHP    int
+	Stealthy     bool
+	Ready        bool
+	Maintained   bool
 }

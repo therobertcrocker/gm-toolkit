@@ -1,0 +1,67 @@
+# Faction Goals
+
+[goals.MilitaryConquest]
+id = "G-001"
+name = "Military Conquest"
+description = "Destroy a number of Force assets of rival factions equal to your faction's Force rating."
+difficulty = "half_assets_destroyed"
+
+[goals.CommercialExpansion]
+id = "G-002"
+name = "Commercial Expansion"
+description = "Destroy a number of Wealth assets of rival factions equal to your faction's Wealth rating."
+difficulty = "half_assets_destroyed"
+
+[goals.IntelligenceCoup]
+id = "G-003"
+name = "Intelligence Coup"
+description = "Destroy a number of Cunning assets of rival factions equal to your faction's Cunning rating."
+difficulty = "half_assets_destroyed"
+
+[goals.PlanetarySeizure]
+id = "G-004"
+name = "Planetary Seizure"
+description = "Take control of a planet, becoming the legitimate planetary government. If no opposing faction resists, counts as difficulty low."
+difficulty = "half_avg_ruling_faction"
+
+[goals.ExpandInfluence]
+id = "G-005"
+name = "Expand Influence"
+description = "Plant a Base of Influence on a new planet. Difficulty increases by one if the attempt is contested by a rival faction."
+difficulty = "low_plus_contested"
+
+[goals.BloodTheEnemy]
+id = "G-006"
+name = "Blood the Enemy"
+description = "Inflict a number of hit points of damage on enemy faction assets or bases equal to your faction's total Force, Cunning, and Wealth ratings."
+difficulty = "moderate"
+
+[goals.PeaceableKingdom]
+id = "G-007"
+name = "Peaceable Kingdom"
+description = "Do not take an Attack action for four consecutive turns."
+difficulty = "low"
+
+[goals.DestroyTheFoe]
+id = "G-008"
+name = "Destroy the Foe"
+description = "Destroy a rival faction entirely."
+difficulty = "one_plus_avg_target"
+
+[goals.InsideEnemyTerritory]
+id = "G-009"
+name = "Inside Enemy Territory"
+description = "Have a number of stealthed assets on worlds with other planetary governments equal to your Cunning score. Units already stealthed when this goal is adopted do not count."
+difficulty = "moderate"
+
+[goals.InvincibleValor]
+id = "G-010"
+name = "Invincible Valor"
+description = "Destroy a Force asset with a minimum purchase rating higher than your faction's Force rating."
+difficulty = "moderate"
+
+[goals.WealthOfWorlds]
+id = "G-011"
+name = "Wealth of Worlds"
+description = "Spend FacCreds equal to four times your faction's Wealth rating on bribes and influence. The faction's Wealth rating must increase before this goal can be selected again."
+difficulty = "moderate"

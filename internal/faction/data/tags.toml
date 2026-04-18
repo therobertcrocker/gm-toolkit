@@ -1,0 +1,121 @@
+# Faction Tags
+
+[tags.Colonists]
+id = "T-001"
+name = "Colonists"
+description = "This faction is a fresh colony on an otherwise largely untouched planet."
+effect = "Has all benefits of Planetary Government for its homeworld. Homeworld treated as at least tech level 4. Colonies under 100,000 citizens cannot build Spaceship-type assets."
+
+[tags.DeepRooted]
+id = "T-002"
+name = "Deep Rooted"
+description = "This faction has been part of a world's life for time out of mind."
+effect = "Roll one additional d10 when defending against attacks on assets on their homeworld. Lost if the faction ever changes homeworlds."
+
+[tags.EugenicsCult]
+id = "T-003"
+name = "Eugenics Cult"
+description = "The forbidden maltech secrets of advanced human genetic manipulation are known to this faction."
+effect = "Can purchase the Gengineered Slaves asset (Force 1, 6HP, 2 cost, TL4, Attack Force vs Force 1d6, Counter 1d4). Once per turn, roll an extra d10 on an attack or defense by a Gengineered Slaves asset."
+
+[tags.ExchangeConsulate]
+id = "T-004"
+name = "Exchange Consulate"
+description = "This faction is led through or has close ties with the Exchange Consulate."
+effect = "When completing a Peaceable Kingdom goal, roll 1d6; on 4+ gain a bonus XP. Once per turn, roll an extra d10 when defending against a Wealth attack."
+
+[tags.Fanatical]
+id = "T-005"
+name = "Fanatical"
+description = "The members of this faction just don't know when to quit."
+effect = "Always rerolls any dice that come up as 1. Always loses ties during attacks."
+
+[tags.Imperialists]
+id = "T-006"
+name = "Imperialists"
+description = "This faction nurses wild dreams of controlling the sector."
+effect = "May roll an extra d10 for attacks made as part of a Seize Planet action."
+
+[tags.Machiavellian]
+id = "T-007"
+name = "Machiavellian"
+description = "This faction's meat and drink is intrigue."
+effect = "Once per turn, roll an additional d10 when making a Cunning attack."
+
+[tags.MercenaryGroup]
+id = "T-008"
+name = "Mercenary Group"
+description = "The faction sells its services to the highest bidder and is an extremely mobile organization."
+effect = "All faction assets gain a special ability: as an action, the asset may move itself to any world within one hex."
+
+[tags.PerimeterAgency]
+id = "T-009"
+name = "Perimeter Agency"
+description = "This faction is or is closely tied to an Agency of the enigmatic Perimeter organization."
+effect = "Once per turn, roll an additional d10 when attacking an asset that requires tech level 5. Roll an extra die when making a test to detect Stealthed assets."
+
+[tags.Pirates]
+id = "T-010"
+name = "Pirates"
+description = "This faction is a scourge of the spacelanes."
+effect = "Any movement of an asset onto a world that has a Base of Influence for this faction costs one extra FacCred, paid to this faction."
+
+[tags.PlanetaryGovernment]
+id = "T-011"
+name = "Planetary Government"
+description = "This faction is the legitimate government of a planet."
+effect = "The faction's permission is required to buy or import assets marked as needing government permission. Can be held once per planet controlled."
+
+[tags.Plutocratic]
+id = "T-012"
+name = "Plutocratic"
+description = "This faction prizes wealth above all else."
+effect = "Once per turn, roll an additional d10 when making a Wealth attack."
+
+[tags.PreceptorArchive]
+id = "T-013"
+name = "Preceptor Archive"
+description = "This faction is or has close ties to a Preceptor Archive."
+effect = "Purchasing an asset requiring tech level 4+ costs one fewer FacCred. May take the special action Teach Planetary Population (2 FacCreds, roll 1d12; on 12 the world's tech level permanently becomes 4 for this faction)."
+
+[tags.PsychicAcademy]
+id = "T-014"
+name = "Psychic Academy"
+description = "This faction can actually train their own psychics."
+effect = "Can provide psionic mentor training. Once per turn, force a rival faction to reroll any one d10, whether or not they are involved in the roll."
+
+[tags.Savage]
+id = "T-015"
+name = "Savage"
+description = "This faction is accustomed to surviving without the benefits of advanced technology."
+effect = "Once per turn, roll an extra die when defending with an asset that requires tech level 0 to purchase."
+
+[tags.Scavengers]
+id = "T-016"
+name = "Scavengers"
+description = "This faction knows how to find worth amid seemingly useless trash."
+effect = "Whenever the faction destroys an asset or has one of their assets destroyed, gain 1 FacCred."
+
+[tags.Secretive]
+id = "T-017"
+name = "Secretive"
+description = "This faction is marked by elaborate protocols of secrecy and misdirection."
+effect = "All assets purchased by this faction automatically begin Stealthed."
+
+[tags.TechnicalExpertise]
+id = "T-018"
+name = "Technical Expertise"
+description = "The faction is staffed by large numbers of expert engineers and scientists."
+effect = "Treats all planets with a Base of Influence as at least tech level 4. Can build Starship-type assets on any world with at least ten thousand occupants."
+
+[tags.Theocratic]
+id = "T-019"
+name = "Theocratic"
+description = "The faction is fueled by fierce certainty that God is with them."
+effect = "Once per turn, roll an extra d10 when defending against a Cunning attack."
+
+[tags.Warlike]
+id = "T-020"
+name = "Warlike"
+description = "This faction just really loves killing things."
+effect = "Once per turn, roll an additional d10 when making a Force attack."

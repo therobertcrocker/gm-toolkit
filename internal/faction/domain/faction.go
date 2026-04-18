@@ -1,15 +1,17 @@
 package domain
 
 type Tag struct {
+	ID          string
 	Name        string
 	Description string
 	Effect      string
 }
 
 type Goal struct {
+	ID          string
 	Name        string
 	Description string
-	Difficulty  int
+	Difficulty  string // named label: "low", "moderate", or a formula e.g. "half_assets_destroyed"
 }
 
 type Faction struct {
