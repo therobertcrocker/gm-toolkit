@@ -57,8 +57,7 @@ type AssetDefinition struct {
 
 type Asset struct {
 	ID           string
-	DefinitionID string           // references AssetDefinition.ID, used for serialization
-	Definition   *AssetDefinition `toml:"-"` // populated at runtime, not serialized
+	DefinitionID string // references AssetDefinition.ID, used for serialization
 	OwnerID      string
 	Location     string
 	CurrentHP    int

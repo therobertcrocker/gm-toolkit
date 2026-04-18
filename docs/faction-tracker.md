@@ -124,6 +124,7 @@ A record of key decisions made during development, and the reasoning behind them
 | 15 | Campaign scoped by `CampaignID`; state path is `campaigns/<id>/faction_state.toml` | Keeps multiple campaigns isolated; hooks up cleanly when a campaign manager is built later |
 | 16 | Conventional commits + semantic versioning | Consistent history; clear versioning baseline at v0.1.0 |
 | 17 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
+| 18 | Assets no longer store AssetDefinitions, only DefinitionID | Avoids circular references and serialization issues; when we need the definition, we can look it up from the Rulebook using the ID; simplifies the data model |
 
 ---
 
