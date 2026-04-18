@@ -1,0 +1,343 @@
+# Wealth Assets
+
+[assets.Franchise]
+id = "W1-001"
+name = "Franchise"
+category = "Wealth"
+min_rating = 1
+hp = 4
+cost = 4
+tech_level = 0
+type = "Logistics Facility"
+flags = ["S"]
+counter = "1d6"
+description = "Shops and chain establishments tied to the faction's commercial network. Each turn, the Franchise provides 1 FacCred to its owning faction."
+
+[assets.Harvesters]
+id = "W1-002"
+name = "Harvesters"
+category = "Wealth"
+min_rating = 1
+hp = 2
+cost = 2
+tech_level = 3
+type = "Military Unit"
+flags = ["P"]
+counter = ""
+description = "Agricultural or mining workers whose extraction equipment doubles as improvised weaponry when their operations are threatened."
+
+[assets.Harvesters.attack]
+attacker_stat = "Wealth"
+defender_stat = "Force"
+damage = "1d3"
+
+[assets.LocalInvestments]
+id = "W1-003"
+name = "Local Investments"
+category = "Wealth"
+min_rating = 1
+hp = 2
+cost = 1
+tech_level = 0
+type = "Logistics Facility"
+flags = []
+counter = "1d4"
+description = "Minor shareholdings and small business interests spread throughout a local economy. Each turn, Local Investments provide 1 FacCred to its owning faction."
+
+[assets.FreighterContract]
+id = "W2-001"
+name = "Freighter Contract"
+category = "Wealth"
+min_rating = 2
+hp = 4
+cost = 2
+tech_level = 4
+type = "Starship"
+flags = ["A"]
+counter = "1d6"
+description = "A long-term contract with a commercial shipping company for priority cargo and personnel transport. As an action, this asset may transport any one non-Starship asset to any world within one hex at no cost."
+
+[assets.Lawyers]
+id = "W2-002"
+name = "Lawyers"
+category = "Wealth"
+min_rating = 2
+hp = 4
+cost = 4
+tech_level = 0
+type = "Special Forces"
+flags = ["S"]
+counter = ""
+description = "Retained legal counsel skilled in obstructing rival faction dealings. When a rival faction attempts to take a governmental or commercial action that targets this faction, the Lawyers may make an immediate Wealth vs. Wealth test; if successful, the action is nullified until next turn."
+
+[assets.UnionToughs]
+id = "W2-003"
+name = "Union Toughs"
+category = "Wealth"
+min_rating = 2
+hp = 6
+cost = 4
+tech_level = 0
+type = "Military Unit"
+flags = []
+counter = "1d4"
+description = "Organized labor enforcers with the muscle to back up economic pressure. Willing to take direct action against rivals who threaten the faction's commercial interests."
+
+[assets.UnionToughs.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "1d4"
+
+[assets.Surveyors]
+id = "W2-004"
+name = "Surveyors"
+category = "Wealth"
+min_rating = 2
+hp = 2
+cost = 2
+tech_level = 3
+type = "Special Forces"
+flags = []
+counter = ""
+description = "Skilled prospectors and commercial intelligence operatives. Surveyors can assess a planet's economic potential and identify rival assets. Once per turn as an action, they may reveal one Stealthed non-Special Forces asset on the planet."
+
+[assets.PostechIndustry]
+id = "W3-001"
+name = "Postech Industry"
+category = "Wealth"
+min_rating = 3
+hp = 5
+cost = 6
+tech_level = 4
+type = "Logistics Facility"
+flags = []
+counter = "1d6"
+description = "Advanced manufacturing facilities using postech equipment. Each turn, Postech Industry provides 1 FacCred. Additionally, the faction may purchase Wealth assets on this planet that require up to tech level 4 at the normal price."
+
+[assets.Laboratory]
+id = "W3-002"
+name = "Laboratory"
+category = "Wealth"
+min_rating = 3
+hp = 4
+cost = 5
+tech_level = 4
+type = "Facility"
+flags = []
+counter = ""
+description = "Cutting-edge research facilities employed to develop commercial and military applications. A Laboratory allows the faction to purchase Cunning assets on this planet at half the normal FacCred cost."
+
+[assets.Mercenaries]
+id = "W3-003"
+name = "Mercenaries"
+category = "Wealth"
+min_rating = 3
+hp = 6
+cost = 6
+tech_level = 4
+type = "Military Unit"
+flags = ["P"]
+counter = "1d6"
+description = "Professional soldiers hired with faction funds. More reliable than local irregulars, mercenaries are equipped with quality postech gear and contracted for extended operations."
+
+[assets.Mercenaries.attack]
+attacker_stat = "Wealth"
+defender_stat = "Force"
+damage = "2d4"
+
+[assets.ShippingCombine]
+id = "W4-001"
+name = "Shipping Combine"
+category = "Wealth"
+min_rating = 4
+hp = 8
+cost = 10
+tech_level = 4
+type = "Starship"
+flags = ["A"]
+counter = "1d8"
+description = "A fleet of commercial freighters and bulk transports contracted to the faction. As an action, any two assets on this planet may be moved to worlds within two hexes at a cost of 1 FacCred per asset moved."
+
+[assets.Monopoly]
+id = "W4-002"
+name = "Monopoly"
+category = "Wealth"
+min_rating = 4
+hp = 6
+cost = 8
+tech_level = 0
+type = "Tactic"
+flags = ["S"]
+counter = ""
+description = "Total commercial dominance over a critical local resource or service. On a successful Wealth vs. Wealth attack, the targeted faction must spend 1 additional FacCred whenever it uses an asset ability on this planet until the start of the attacker's next turn."
+
+[assets.MedicalCenter]
+id = "W4-003"
+name = "Medical Center"
+category = "Wealth"
+min_rating = 4
+hp = 4
+cost = 5
+tech_level = 4
+type = "Facility"
+flags = []
+counter = ""
+description = "Fully-equipped medical facilities that can restore damaged assets to fighting strength. Once per turn as a free action, this asset may restore up to 4 HP to any one asset on the same planet."
+
+[assets.Bank]
+id = "W4-004"
+name = "Bank"
+category = "Wealth"
+min_rating = 4
+hp = 8
+cost = 12
+tech_level = 0
+type = "Logistics Facility"
+flags = ["S"]
+counter = "1d8"
+description = "A financial institution under faction control, generating reliable income through lending and investment. Each turn, the Bank provides 2 FacCreds to its owning faction."
+
+[assets.Marketers]
+id = "W5-001"
+name = "Marketers"
+category = "Wealth"
+min_rating = 5
+hp = 6
+cost = 12
+tech_level = 0
+type = "Special Forces"
+flags = ["A"]
+counter = ""
+description = "Commercial intelligence operatives skilled in undermining rival economic interests. As an action, Marketers may move to any world within one hex. On a successful Wealth vs. Wealth attack, the target faction loses 1d4 FacCreds."
+
+[assets.PretechResearchers]
+id = "W5-002"
+name = "Pretech Researchers"
+category = "Wealth"
+min_rating = 5
+hp = 4
+cost = 12
+tech_level = 5
+type = "Facility"
+flags = []
+counter = ""
+description = "Teams of scientists with access to pretech equipment and recovered Mandate-era knowledge. The faction may purchase any Wealth asset on this planet regardless of tech level requirement, at the normal price."
+
+[assets.BlockadeRunners]
+id = "W5-003"
+name = "Blockade Runners"
+category = "Wealth"
+min_rating = 5
+hp = 4
+cost = 12
+tech_level = 4
+type = "Starship"
+flags = ["A"]
+counter = ""
+description = "Fast, lightly armed commercial vessels with hidden cargo bays and corrupted port authorities in their pocket. As an action, this asset may move to any world within two hexes ignoring any Transit Lockdown effects. On a successful Wealth vs. Wealth attack, they steal 1d4 FacCreds from the target faction."
+
+[assets.BlockadeRunners.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "2d6"
+
+[assets.VentureCapital]
+id = "W6-001"
+name = "Venture Capital"
+category = "Wealth"
+min_rating = 6
+hp = 8
+cost = 16
+tech_level = 0
+type = "Tactic"
+flags = []
+counter = "2d6"
+description = "Aggressive financial instruments wielded to destabilize rival economic holdings. Each turn, Venture Capital provides 1 FacCred. On a successful Wealth vs. Wealth attack, the target faction's Logistics Facility assets on the planet cannot use their income abilities until the start of the attacker's next turn."
+
+[assets.VentureCapital.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "2d8"
+
+[assets.RandDDepartment]
+id = "W6-002"
+name = "R&D Department"
+category = "Wealth"
+min_rating = 6
+hp = 8
+cost = 18
+tech_level = 5
+type = "Facility"
+flags = []
+counter = ""
+description = "Cutting-edge research division operating at the frontier of known science. The faction may purchase any asset on this planet at half the normal FacCred cost, regardless of tech level requirement."
+
+[assets.CommoditiesBroker]
+id = "W6-003"
+name = "Commodities Broker"
+category = "Wealth"
+min_rating = 6
+hp = 4
+cost = 14
+tech_level = 0
+type = "Special Forces"
+flags = ["S"]
+counter = ""
+description = "A master of market manipulation, able to flood or starve a local economy at will. When this asset successfully defends against an attack, the attacking faction loses 1d4 FacCreds in addition to any other results."
+
+[assets.PretechManufactory]
+id = "W7-001"
+name = "Pretech Manufactory"
+category = "Wealth"
+min_rating = 7
+hp = 12
+cost = 25
+tech_level = 5
+type = "Logistics Facility"
+flags = []
+counter = "2d8"
+description = "A fully operational Mandate-era manufacturing complex producing pretech goods at scale. Each turn, the Pretech Manufactory provides 2 FacCreds. The faction may also purchase any asset on this planet at half the normal FacCred cost."
+
+[assets.HostileTakeover]
+id = "W7-002"
+name = "Hostile Takeover"
+category = "Wealth"
+min_rating = 7
+hp = 8
+cost = 20
+tech_level = 0
+type = "Tactic"
+flags = ["S"]
+counter = ""
+description = "A coordinated financial and legal assault on a rival faction's holdings. On a successful Wealth vs. Wealth attack, the Hostile Takeover asset is lost but the targeted asset switches sides to join the attacker's faction, even if the faction does not otherwise meet its tech level or rating requirements."
+
+[assets.TransitWeb]
+id = "W7-003"
+name = "Transit Web"
+category = "Wealth"
+min_rating = 7
+hp = 15
+cost = 20
+tech_level = 4
+type = "Logistics Facility"
+flags = ["A"]
+counter = ""
+description = "A network of commercial shipping lanes, bribed port authorities, and exclusive transit contracts spanning an entire region. As an action, any number of assets on this planet may be moved to any worlds within three hexes at a cost of 1 FacCred per asset moved."
+
+[assets.ScavengerFleet]
+id = "W8-001"
+name = "Scavenger Fleet"
+category = "Wealth"
+min_rating = 8
+hp = 20
+cost = 30
+tech_level = 4
+type = "Starship"
+flags = ["A", "S"]
+counter = "2d6"
+description = "A vast armada of salvage vessels, decommissioned warships, and armed merchantmen bound together by faction wealth. Capital Fleets cost an additional 2 FacCreds of maintenance each turn. As an action, the fleet may move to any world within three hexes. When it destroys an enemy asset, the faction gains FacCreds equal to half that asset's cost."
+
+[assets.ScavengerFleet.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "2d8+4"

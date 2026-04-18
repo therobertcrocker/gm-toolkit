@@ -1,5 +1,7 @@
 # Faction Tracker — Living Design Document
 
+claude --resume 82a03a92-6f9d-4ad3-87df-1507f59cdd64
+
 ## Overview
 
 The Faction Tracker is an interactive CLI tool for tabletop RPG game masters running campaigns using the Stars Without Number (SWN) faction rules. It automates the mechanical bookkeeping of faction turns — tracking stats, assets, FacCreds, HP, goals, and turn history — so the GM can focus on narrative and decision-making rather than arithmetic.
