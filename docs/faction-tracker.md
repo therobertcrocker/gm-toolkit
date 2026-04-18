@@ -76,16 +76,17 @@ The action system's source-agnostic design means the AI and the GM use the same 
 
 | File | Format | Purpose |
 |------|--------|---------|
-| `data/assets.toml` | TOML | Static asset definitions (hand-edited) |
-| `data/tags.toml` | TOML | Static tag definitions (hand-edited) |
-| `data/*.toml` | TOML | Other static data as needed |
-| `campaign/state.toml` | TOML | Current faction state, in-progress turn |
-| `campaign/history.jsonl` | JSON lines | Append-only event and turn log |
+| `internal/faction/data/*_assets.toml` | TOML | Static asset definitions per category (Force, Cunning, Wealth) |
+| `internal/faction/data/tags.toml` | TOML | Static tag definitions |
+| `internal/faction/data/goals.toml` | TOML | Static goal definitions |
+| `campaigns/<campaignID>/faction_state.toml` | TOML | Current faction state, in-progress turn |
+| `campaigns/<campaignID>/history.jsonl` | JSON lines | Append-only event and turn log (planned) |
 
-- Static data is read-only at runtime; GMs edit it directly to customize their campaign
-- State is read on load and written on save/pause
+- Static data is read-only at runtime; GMs edit TOML files directly to customize
+- The loader globs `*_assets.toml` — new asset category files are auto-discovered
+- State is campaign-scoped by ID; multiple campaigns can coexist
 - History is append-only; never mutated after writing
-- A render function transforms history into a human-readable narrative
+- A render function transforms history into a human-readable narrative (planned)
 
 ---
 
@@ -114,30 +115,41 @@ A record of key decisions made during development, and the reasoning behind them
 | 6 | Review Mode and Turn Mode as separate flows | Clean separation of read-only browsing from stateful turn execution |
 | 7 | Turn pause/resume support | A turn is always completed in one sitting but can be saved mid-execution and resumed later |
 | 8 | Domain types in `internal/faction/domain` | Separates pure data types from logic; clean import path |
-| 9 | Modular static data loader via `DataLoader` interface | Each data type owns its own loader file; adding new types requires one new file and one line in the orchestrator |
-| 10 | `StaticData` passed explicitly, not as a global | Idiomatic Go; avoids hidden dependencies; easier to test |
+| 9 | `Rulebook` as single static data object, no `DataLoader` interface | Interface was premature abstraction; loader is internal plumbing, not a public contract |
+| 10 | `Rulebook` passed explicitly, not as a global | Idiomatic Go; avoids hidden dependencies; easier to test |
 | 11 | Dice notation parsed at load time, stored as `DiceRoll` struct | Keeps TOML human-friendly; structured data makes AI and resolution engine cleaner |
-| 12 | `FacCreds` renamed to `Coin` | Campaign-specific flavor; cleaner terminology for this tool |
-| 13 | Conventional commits + semantic versioning | Consistent history; clear versioning baseline at v0.1.0 |
-| 14 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
+| 12 | Assets split by category into `*_assets.toml` files, merged at load time | Easier to hand-edit; loader globs automatically so new files need no code changes |
+| 13 | Special-effect-only attacks (no dice damage) have attack section omitted | Engine handles these by asset ID; description captures the mechanic; avoids inventing a parallel data structure before the engine is designed |
+| 14 | `Asset.Definition *AssetDefinition` tagged `toml:"-"` | Runtime link to static data; excluded from serialization; resolved at engine startup |
+| 15 | Campaign scoped by `CampaignID`; state path is `campaigns/<id>/faction_state.toml` | Keeps multiple campaigns isolated; hooks up cleanly when a campaign manager is built later |
+| 16 | Conventional commits + semantic versioning | Consistent history; clear versioning baseline at v0.1.0 |
+| 17 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
 
 ---
 
 ## Progress
 
 ### Completed
-- Project scaffolding (`go.mod`, `main.go`, `cmd/faction`, `internal/faction`)
+- Project scaffolding (`go.mod`, `main.go`, Cobra CLI entrypoint)
 - Living design document and decisions log
-- Domain types: `AssetDefinition`, `Asset`, `Faction`, `Tag`, `Goal`
-- Modular static data loader with `DataLoader` interface
-- Git setup: conventional commits, semver, `.gitignore`
+- Domain types: `AssetDefinition`, `Asset`, `Faction`, `Tag`, `Goal`, `DiceRoll`
+- Static data files: all Force, Cunning, and Wealth assets (ratings 1–8), 20 tags, 11 goals
+- `Rulebook` loader: globs `*_assets.toml`, parses dice notation, converts to domain types; smoke-tested
+- State package: campaign-scoped `faction_state.toml` load/save with auto-dir creation
+- Faction commands: `faction delete` (with confirmation dialog), `--campaign` flag wired throughout
+- Faction create wizard: name, homeworld, scale, primary/secondary stat assignment, HP calculation, confirmation
 
 ### In Progress
-- Taking stock; preparing to branch
+- `faction create` wizard — partially complete; remaining steps:
+  - Tag selection: present loaded tags, allow GM to pick 1–3 per SWN rules
+  - Goal selection: present loaded goals with difficulty labels, GM picks one starting goal
+  - Starting assets: each faction begins with a Base of Influence on their homeworld plus any assets granted by tags; GM selects additional starting assets up to what their ratings permit
+  - Starting FacCreds: set initial balance (Wealth rating by default per SWN)
+  - Wire `Rulebook` into the command layer so tag/goal/asset options are populated from static data
+  - Move `calcMaxHP` and `hpValueForRating` out of the command layer and into `internal/faction/domain`
 
 ### Up Next
-- State file (load/save campaign state)
-- Core engine (turn processing, action resolution)
+- `faction list` command (currently a stub)
+- Core engine (turn processing, action resolution, income, maintenance)
 - History/event log
-- CLI / UI layer
-- Tests
+- Tests beyond loader smoke test
