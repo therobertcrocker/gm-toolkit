@@ -114,9 +114,12 @@ func runCreateFactionWizard() (*domain.Faction, error) {
 		tertiary:  tertiaryRating,
 	}
 
+	// Select starting assets
+
 	faction := &domain.Faction{
 		ID:        slugify(name),
 		Name:      name,
+		Scale:     domain.ScaleFromString(scale),
 		Homeworld: homeworld,
 		Force:     ratings["Force"],
 		Cunning:   ratings["Cunning"],

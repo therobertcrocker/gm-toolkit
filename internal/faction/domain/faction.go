@@ -1,5 +1,13 @@
 package domain
 
+type factionScale string
+
+const (
+	ScaleMinor   factionScale = "minor"
+	ScaleMajor   factionScale = "major"
+	ScaleHegemon factionScale = "hegemon"
+)
+
 type Tag struct {
 	ID          string
 	Name        string
@@ -17,6 +25,7 @@ type Goal struct {
 type Faction struct {
 	ID        string
 	Name      string
+	Scale     factionScale
 	Force     int
 	Cunning   int
 	Wealth    int
@@ -28,4 +37,17 @@ type Faction struct {
 	Tags      []*Tag
 	Goal      *Goal
 	Assets    []*Asset
+}
+
+func ScaleFromString(s string) factionScale {
+	switch s {
+	case "minor":
+		return ScaleMinor
+	case "major":
+		return ScaleMajor
+	case "hegemon":
+		return ScaleHegemon
+	default:
+		return "BAD_SCALE"
+	}
 }
