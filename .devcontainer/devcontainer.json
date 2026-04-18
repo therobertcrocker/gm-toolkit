@@ -7,9 +7,6 @@
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/jungaretti/features/make:1": {}
   },
-  "mounts": [
-    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached"
-  ],
   "customizations": {
     "vscode": {
       "extensions": [
