@@ -1,5 +1,6 @@
 # Binaries
 gm-toolkit
+faction-manager
 *.exe
 
 # Build output
@@ -7,6 +8,7 @@ gm-toolkit
 
 # Campaign data (user-specific, not versioned)
 campaign/
+campaigns/
 
 # Reference materials (copyrighted)
 reference/
