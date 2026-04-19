@@ -1,10 +1,9 @@
 # Binaries
 gm-toolkit
-cmd/faction-manager/faction-manager
 *.exe
 
 # Build output
-/bin/
+bin/
 
 # Campaign data (user-specific, not versioned)
 campaign/
