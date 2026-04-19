@@ -1,6 +1,6 @@
 # Binaries
 gm-toolkit
-faction-manager
+cmd/faction-manager/faction-manager
 *.exe
 
 # Build output
@@ -21,6 +21,7 @@ reference/
 .vscode/
 *.swp
 *.swo
+notes.txt
 
 # OS
 .DS_Store

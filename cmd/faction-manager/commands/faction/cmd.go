@@ -1,0 +1,79 @@
+package faction
+
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/spf13/cobra"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+)
+
+func NewCmd(rb *loader.Rulebook) *cobra.Command {
+	var campaignID string
+
+	cmd := &cobra.Command{
+		Use:   "faction",
+		Short: "Manage factions",
+	}
+
+	cmd.PersistentFlags().StringVar(&campaignID, "campaign", "", "campaign ID (required)")
+	cmd.MarkPersistentFlagRequired("campaign")
+
+	cmd.AddCommand(newCreateCmd(rb, &campaignID))
+	cmd.AddCommand(newListCmd())
+	cmd.AddCommand(newDeleteCmd(&campaignID))
+
+	return cmd
+}
+
+func newCreateCmd(rb *loader.Rulebook, campaignID *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "create",
+		Short: "Create a new faction",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			faction, err := runCreateFactionWizard(rb)
+			if err != nil {
+				return err
+			}
+
+			statePath := filepath.Join(".", "campaigns", *campaignID, "faction_state.toml")
+
+			s, err := state.Load(statePath)
+			if err != nil {
+				return fmt.Errorf("loading state: %w", err)
+			}
+
+			s.CampaignID = *campaignID
+			s.Factions = append(s.Factions, faction)
+
+			if err := state.Save(statePath, s); err != nil {
+				return fmt.Errorf("saving state: %w", err)
+			}
+
+			fmt.Printf("\nFaction %q created successfully.\n", faction.Name)
+			return nil
+		},
+	}
+}
+
+func newListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all factions",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println("List factions - not yet implemented")
+			return nil
+		},
+	}
+}
+
+func newDeleteCmd(campaignID *string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a faction",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runDeleteFactionWizard(*campaignID)
+		},
+	}
+}
