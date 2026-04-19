@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -102,4 +103,14 @@ func TestLoad(t *testing.T) {
 			t.Errorf("difficulty: got %q, want %q", goal.Difficulty, "half_assets_destroyed")
 		}
 	})
+}
+
+func TestLoadDuplicateAssetID(t *testing.T) {
+	_, err := Load("testdata/duplicate_ids")
+	if err == nil {
+		t.Fatal("expected error for duplicate asset ID, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate asset ID") {
+		t.Errorf("error message %q does not mention duplicate asset ID", err.Error())
+	}
 }

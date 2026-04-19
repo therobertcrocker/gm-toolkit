@@ -136,6 +136,16 @@ A record of key decisions made during development, grouped by feature branch.
 | 22 | Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain` | Game logic belongs in the domain layer, not the command layer |
 | 23 | `FACTION_DATA_DIR` environment variable controls data path at runtime | Dev/distribution separation; data files stay in source tree during development; binary resolves path at runtime via env var, falls back to path relative to executable |
 
+### chore/internal-code-review
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 24 | `FactionScale` exported; `ScaleFromString` removed | `huh.NewSelect[domain.FactionScale]()` uses constants directly — no string conversion needed; eliminates a class of invalid-value bugs |
+| 25 | `HPValueForRating` converted from map to switch | Avoids a heap allocation on every call; switch is clearer and idiomatic for a fixed value table |
+| 26 | TOML tags added to `Faction`, `Asset`, `Tag`, `Goal` | Documents the serialization contract explicitly; snake_case keys are conventional TOML; tags are load-bearing for `FactionState` round-trips |
+| 27 | Duplicate asset ID detection added to loader | Silent overwrites when merging `*_assets.toml` files would lose data with no error; loader now returns an error on collision |
+| 28 | Commands currently own state mutation and path resolution | Noted as design debt: `newCreateCmd` appends directly to state and computes the state path — both should move into the engine as it grows |
+
 ---
 
 ## Progress
@@ -152,14 +162,17 @@ A record of key decisions made during development, grouped by feature branch.
 - `faction create` wizard: name, homeworld, scale, stat assignment, starting assets, tag selection, planetary government prompt, goal selection, confirmation
 - Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain`
 - `FACTION_DATA_DIR` environment variable for runtime data path resolution
+- Internal code review: `FactionScale` exported, `ScaleFromString` removed, `HPValueForRating` switched to switch statement
+- TOML tags added to all serialized domain types (`Faction`, `Asset`, `Tag`, `Goal`)
+- Tests: `FactionState` TOML round-trip, `parseDice` table-driven, duplicate asset ID detection
 
 ### Deferred
 - Starting Coin: set initial balance (Wealth rating by default); deferred until Coin tracking is designed
 - Tag-granted assets: some tags grant bonus starting assets; deferred until engine action resolution is designed
+- Command layer does state mutation directly (`s.Factions = append(...)`) and resolves the state file path — both should move into the engine as `engine.CreateFaction(campaignID, faction)` once the engine has more substance. Commands should be thin: collect input, call engine, report result.
 
 ### Up Next
 - `faction list` command (currently a stub)
 - Core engine: turn processing, income calculation, maintenance, action resolution
 - History/event log (append-only JSONL)
 - Narrative summary renderer
-- Tests beyond loader smoke test
