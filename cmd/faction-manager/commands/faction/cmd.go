@@ -21,7 +21,7 @@ func NewCmd(rb *loader.Rulebook) *cobra.Command {
 	cmd.MarkPersistentFlagRequired("campaign")
 
 	cmd.AddCommand(newCreateCmd(rb, &campaignID))
-	cmd.AddCommand(newListCmd())
+	cmd.AddCommand(newListCmd(&campaignID))
 	cmd.AddCommand(newDeleteCmd(&campaignID))
 
 	return cmd
@@ -57,12 +57,28 @@ func newCreateCmd(rb *loader.Rulebook, campaignID *string) *cobra.Command {
 	}
 }
 
-func newListCmd() *cobra.Command {
+func newListCmd(campaignID *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List all factions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("List factions - not yet implemented")
+			statePath := filepath.Join(".", "campaigns", *campaignID, "faction_state.toml")
+			s, err := state.Load(statePath)
+			if err != nil {
+				return fmt.Errorf("loading state: %w", err)
+			}
+			if len(s.Factions) == 0 {
+				fmt.Println("No factions found.")
+				return nil
+			}
+			for _, f := range s.Factions {
+				goalName := "(none)"
+				if f.Goal != nil {
+					goalName = f.Goal.Name
+				}
+				fmt.Printf("%-30s [ %s ]  HP: %d/%d  Goal: %s\n",
+					f.Name, f.Scale, f.CurrentHP, f.MaxHP, goalName)
+			}
 			return nil
 		},
 	}
