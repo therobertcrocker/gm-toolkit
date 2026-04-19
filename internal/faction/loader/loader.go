@@ -90,6 +90,9 @@ func loadAssets(dataDir string) (map[string]*domain.AssetDefinition, error) {
 			if err != nil {
 				return nil, fmt.Errorf("asset %q in %s: %w", record.ID, path, err)
 			}
+			if _, exists := result[def.ID]; exists {
+				return nil, fmt.Errorf("duplicate asset ID %q in %s", def.ID, path)
+			}
 			result[def.ID] = def
 		}
 	}

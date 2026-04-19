@@ -1,73 +1,60 @@
 package domain
 
-type factionScale string
+type FactionScale string
 
 const (
-	ScaleMinor   factionScale = "minor"
-	ScaleMajor   factionScale = "major"
-	ScaleHegemon factionScale = "hegemon"
+	ScaleMinor   FactionScale = "minor"
+	ScaleMajor   FactionScale = "major"
+	ScaleHegemon FactionScale = "hegemon"
 )
 
 type Tag struct {
-	ID          string
-	Name        string
-	Description string
-	Effect      string
+	ID          string `toml:"id"`
+	Name        string `toml:"name"`
+	Description string `toml:"description"`
+	Effect      string `toml:"effect"`
 }
 
 type Goal struct {
-	ID          string
-	Name        string
-	Description string
-	Difficulty  string // named label: "low", "moderate", or a formula e.g. "half_assets_destroyed"
+	ID          string `toml:"id"`
+	Name        string `toml:"name"`
+	Description string `toml:"description"`
+	Difficulty  string `toml:"difficulty"`
 }
 
 type Faction struct {
-	ID        string
-	Name      string
-	Scale     factionScale
-	Force     int
-	Cunning   int
-	Wealth    int
-	CurrentHP int
-	MaxHP     int
-	Coin      int
-	XP        int
-	Homeworld string
-	Tags      []*Tag
-	Goal      *Goal
-	Assets    []*Asset
+	ID        string       `toml:"id"`
+	Name      string       `toml:"name"`
+	Scale     FactionScale `toml:"scale"`
+	Force     int          `toml:"force"`
+	Cunning   int          `toml:"cunning"`
+	Wealth    int          `toml:"wealth"`
+	CurrentHP int          `toml:"current_hp"`
+	MaxHP     int          `toml:"max_hp"`
+	Coin      int          `toml:"coin"`
+	XP        int          `toml:"xp"`
+	Homeworld string       `toml:"homeworld"`
+	Tags      []*Tag       `toml:"tags"`
+	Goal      *Goal        `toml:"goal"`
+	Assets    []*Asset     `toml:"assets"`
 }
 
-func ScaleFromString(s string) factionScale {
+func RatingsFromScale(s FactionScale) (primary, secondary, tertiary int) {
 	switch s {
-	case "minor":
-		return ScaleMinor
-	case "major":
-		return ScaleMajor
-	case "hegemon":
-		return ScaleHegemon
-	default:
-		return "BAD_SCALE"
-	}
-}
-
-func RatingsFromScale(s string) (primary, secondary, tertiary int) {
-	switch s {
-	case "major":
+	case ScaleMajor:
 		return 6, 5, 3
-	case "hegemon":
+	case ScaleHegemon:
 		return 8, 7, 5
 	default: // minor
 		return 4, 3, 1
 	}
 }
 
-func AssetCountsFromScale(s string) (primary, other int) {
+func AssetCountsFromScale(s FactionScale) (primary, other int) {
 	switch s {
-	case "major":
+	case ScaleMajor:
 		return 2, 2
-	case "hegemon":
+	case ScaleHegemon:
 		return 4, 4
 	default: // minor
 		return 1, 1
@@ -79,9 +66,24 @@ func CalcMaxHP(f *Faction) int {
 }
 
 func HPValueForRating(rating int) int {
-	values := map[int]int{1: 1, 2: 2, 3: 4, 4: 6, 5: 9, 6: 12, 7: 16, 8: 20}
-	if v, ok := values[rating]; ok {
-		return v
+	switch rating {
+	case 1:
+		return 1
+	case 2:
+		return 2
+	case 3:
+		return 4
+	case 4:
+		return 6
+	case 5:
+		return 9
+	case 6:
+		return 12
+	case 7:
+		return 16
+	case 8:
+		return 20
+	default:
+		return 0
 	}
-	return 0
 }

@@ -1,0 +1,12 @@
+[assets.Alpha]
+id = "F1-001"
+name = "Alpha"
+category = "Force"
+min_rating = 1
+hp = 3
+cost = 2
+tech_level = 0
+type = "Military Unit"
+flags = []
+counter = ""
+description = "First asset."

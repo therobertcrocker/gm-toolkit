@@ -8,7 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-func SelectStartingAssets(factionID, homeworld, primary string, otherStats []string, ratings map[string]int, scale string, assets map[string]*domain.AssetDefinition) ([]*domain.Asset, error) {
+func SelectStartingAssets(factionID, homeworld, primary string, otherStats []string, ratings map[string]int, scale domain.FactionScale, assets map[string]*domain.AssetDefinition) ([]*domain.Asset, error) {
 	primaryCount, otherCount := domain.AssetCountsFromScale(scale)
 	var selected []*domain.Asset
 	assetIndex := 0

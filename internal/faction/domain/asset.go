@@ -56,12 +56,12 @@ type AssetDefinition struct {
 }
 
 type Asset struct {
-	ID           string
-	DefinitionID string // references AssetDefinition.ID, used for serialization
-	OwnerID      string
-	Location     string
-	CurrentHP    int
-	Stealthy     bool
-	Ready        bool
-	Maintained   bool
+	ID           string `toml:"id"`
+	DefinitionID string `toml:"definition_id"`
+	OwnerID      string `toml:"owner_id"`
+	Location     string `toml:"location"`
+	CurrentHP    int    `toml:"current_hp"`
+	Stealthy     bool   `toml:"stealthy"`
+	Ready        bool   `toml:"ready"`
+	Maintained   bool   `toml:"maintained"`
 }

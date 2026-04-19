@@ -1,0 +1,12 @@
+[assets.Beta]
+id = "F1-001"
+name = "Beta"
+category = "Force"
+min_rating = 1
+hp = 2
+cost = 1
+tech_level = 0
+type = "Military Unit"
+flags = []
+counter = ""
+description = "Duplicate of F1-001."

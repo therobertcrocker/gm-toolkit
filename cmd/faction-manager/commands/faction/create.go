@@ -14,7 +14,7 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	var (
 		name      string
 		homeworld string
-		scale     string
+		scale     domain.FactionScale
 		primary   string
 		secondary string
 		confirmed bool
@@ -41,13 +41,13 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 					return nil
 				}).
 				Value(&homeworld),
-			huh.NewSelect[string]().
+			huh.NewSelect[domain.FactionScale]().
 				Title("Scale").
 				Description("Determines starting attribute ratings").
 				Options(
-					huh.NewOption("Minor  (primary 4 / secondary 3 / tertiary 1)", "minor"),
-					huh.NewOption("Major  (primary 6 / secondary 5 / tertiary 3)", "major"),
-					huh.NewOption("Hegemon  (primary 8 / secondary 7 / tertiary 5)", "hegemon"),
+					huh.NewOption("Minor  (primary 4 / secondary 3 / tertiary 1)", domain.ScaleMinor),
+					huh.NewOption("Major  (primary 6 / secondary 5 / tertiary 3)", domain.ScaleMajor),
+					huh.NewOption("Hegemon  (primary 8 / secondary 7 / tertiary 5)", domain.ScaleHegemon),
 				).
 				Value(&scale),
 		),
@@ -112,7 +112,7 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	faction := &domain.Faction{
 		ID:        slugify(name),
 		Name:      name,
-		Scale:     domain.ScaleFromString(scale),
+		Scale:     scale,
 		Homeworld: homeworld,
 		Force:     ratings["Force"],
 		Cunning:   ratings["Cunning"],
