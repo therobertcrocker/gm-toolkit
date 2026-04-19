@@ -146,6 +146,13 @@ A record of key decisions made during development, grouped by feature branch.
 | 27 | Duplicate asset ID detection added to loader | Silent overwrites when merging `*_assets.toml` files would lose data with no error; loader now returns an error on collision |
 | 28 | Commands currently own state mutation and path resolution | Noted as design debt: `newCreateCmd` appends directly to state and computes the state path — both should move into the engine as it grows |
 
+### feature/faction-list
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 29 | `faction list` shows one summary line per faction (name, scale, HP, goal) | Quick orientation for the GM; richer per-faction detail belongs in Review Mode |
+| 30 | Binary run from `cmd/faction-manager/`; `campaigns/` is a sibling of `bin/` | Keeps data out of the binary directory; clean separation between executable and campaign files |
+
 ---
 
 ## Progress
@@ -165,6 +172,7 @@ A record of key decisions made during development, grouped by feature branch.
 - Internal code review: `FactionScale` exported, `ScaleFromString` removed, `HPValueForRating` switched to switch statement
 - TOML tags added to all serialized domain types (`Faction`, `Asset`, `Tag`, `Goal`)
 - Tests: `FactionState` TOML round-trip, `parseDice` table-driven, duplicate asset ID detection
+- `faction list` command: summary line per faction (name, scale, HP, current goal)
 
 ### Deferred
 - Starting Coin: set initial balance (Wealth rating by default); deferred until Coin tracking is designed
@@ -172,7 +180,6 @@ A record of key decisions made during development, grouped by feature branch.
 - Command layer does state mutation directly (`s.Factions = append(...)`) and resolves the state file path — both should move into the engine as `engine.CreateFaction(campaignID, faction)` once the engine has more substance. Commands should be thin: collect input, call engine, report result.
 
 ### Up Next
-- `faction list` command (currently a stub)
 - Core engine: turn processing, income calculation, maintenance, action resolution
 - History/event log (append-only JSONL)
 - Narrative summary renderer
