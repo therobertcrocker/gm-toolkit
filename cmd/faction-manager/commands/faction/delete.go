@@ -1,4 +1,4 @@
-package commands
+package faction
 
 import (
 	"fmt"
@@ -28,7 +28,6 @@ func runDeleteFactionWizard(campaignID string) error {
 	}
 
 	var targetID string
-
 	if err := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
@@ -57,7 +56,6 @@ func runDeleteFactionWizard(campaignID string) error {
 	)
 
 	var confirmed bool
-
 	if err := huh.NewForm(
 		huh.NewGroup(
 			huh.NewConfirm().

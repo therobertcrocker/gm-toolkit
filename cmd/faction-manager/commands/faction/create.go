@@ -1,21 +1,16 @@
-package commands
+package faction
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/commands/faction/wizard"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 )
 
-type factionScale string
-
-const (
-	scaleMajor   factionScale = "major"
-	scaleHegemon factionScale = "hegemon"
-)
-
-func runCreateFactionWizard() (*domain.Faction, error) {
+func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	var (
 		name      string
 		homeworld string
@@ -107,14 +102,12 @@ func runCreateFactionWizard() (*domain.Faction, error) {
 	}
 
 	// Calculate ratings
-	primaryRating, secondaryRating, tertiaryRating := ratingsFromScale(factionScale(scale))
+	primaryRating, secondaryRating, tertiaryRating := domain.RatingsFromScale(scale)
 	ratings := map[string]int{
 		primary:   primaryRating,
 		secondary: secondaryRating,
 		tertiary:  tertiaryRating,
 	}
-
-	// Select starting assets
 
 	faction := &domain.Faction{
 		ID:        slugify(name),
@@ -125,15 +118,57 @@ func runCreateFactionWizard() (*domain.Faction, error) {
 		Cunning:   ratings["Cunning"],
 		Wealth:    ratings["Wealth"],
 	}
-	faction.MaxHP = calcMaxHP(faction)
+	faction.MaxHP = domain.CalcMaxHP(faction)
 	faction.CurrentHP = faction.MaxHP
 
-	// Step 4: Confirmation
+	// Step 4: Starting asset selection
+	otherStats := []string{}
+	for _, stat := range []string{"Force", "Cunning", "Wealth"} {
+		if stat != primary {
+			otherStats = append(otherStats, stat)
+		}
+	}
+
+	assets, err := wizard.SelectStartingAssets(faction.ID, homeworld, primary, otherStats, ratings, scale, rb.Assets)
+	if err != nil {
+		return nil, err
+	}
+	faction.Assets = assets
+
+	fmt.Printf("\nA Base of Influence has been placed on %s at maximum HP (%d).\n", homeworld, faction.MaxHP)
+
+	// Step 5: Tag selection
+	tags, err := wizard.SelectTags(rb.Tags)
+	if err != nil {
+		return nil, err
+	}
+	faction.Tags = tags
+
+	// Step 6: Goal selection
+	goal, err := wizard.SelectGoal(rb.Goals)
+	if err != nil {
+		return nil, err
+	}
+	faction.Goal = goal
+
+	// Step 7: Confirmation
+	assetNames := make([]string, len(assets))
+	for i, asset := range assets {
+		def := rb.Assets[asset.DefinitionID]
+		assetNames[i] = fmt.Sprintf("  • %s (%s)", def.Name, def.Category)
+	}
+	tagNames := make([]string, len(tags))
+	for i, t := range tags {
+		tagNames[i] = fmt.Sprintf("  • %s", t.Name)
+	}
 	summary := fmt.Sprintf(
-		"Name: %s\nHomeworld: %s\nForce: %d  Cunning: %d  Wealth: %d\nMax HP: %d",
+		"Name: %s\nHomeworld: %s\nForce: %d  Cunning: %d  Wealth: %d\nMax HP: %d\n\nTags:\n%s\n\nGoal: %s\n\nStarting Assets:\n%s",
 		faction.Name, faction.Homeworld,
 		faction.Force, faction.Cunning, faction.Wealth,
 		faction.MaxHP,
+		strings.Join(tagNames, "\n"),
+		faction.Goal.Name,
+		strings.Join(assetNames, "\n"),
 	)
 
 	if err := huh.NewForm(
@@ -154,31 +189,6 @@ func runCreateFactionWizard() (*domain.Faction, error) {
 	return faction, nil
 }
 
-func ratingsFromScale(scale factionScale) (primary, secondary, tertiary int) {
-	switch scale {
-	case scaleMajor:
-		return 6, 5, 3
-	case scaleHegemon:
-		return 8, 7, 5
-	default: // minor
-		return 4, 3, 1
-	}
-}
-
-func calcMaxHP(f *domain.Faction) int {
-	return 4 + hpValueForRating(f.Force) + hpValueForRating(f.Cunning) + hpValueForRating(f.Wealth)
-}
-
-// hpValueForRating returns the HP contribution for a given rating per SWN rules.
-func hpValueForRating(rating int) int {
-	values := map[int]int{1: 1, 2: 2, 3: 4, 4: 6, 5: 9, 6: 12, 7: 16, 8: 20}
-	if v, ok := values[rating]; ok {
-		return v
-	}
-	return 0
-}
-
-// slugify creates a simple ID from a faction name.
 func slugify(name string) string {
 	return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
 }

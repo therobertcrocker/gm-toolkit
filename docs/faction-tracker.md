@@ -1,12 +1,10 @@
 # Faction Tracker — Living Design Document
 
-claude --resume 82a03a92-6f9d-4ad3-87df-1507f59cdd64
-
 ## Overview
 
-The Faction Tracker is an interactive CLI tool for tabletop RPG game masters running campaigns using the Stars Without Number (SWN) faction rules. It automates the mechanical bookkeeping of faction turns — tracking stats, assets, FacCreds, HP, goals, and turn history — so the GM can focus on narrative and decision-making rather than arithmetic.
+The Faction Tracker is an interactive CLI tool for tabletop RPG game masters. It automates the mechanical bookkeeping of faction turns — tracking stats, assets, Coin, HP, goals, and turn history — so the GM can focus on narrative and decision-making rather than arithmetic.
 
-The asset and flavor data is specific to the GM's campaign; the underlying mechanics follow the SWN ruleset.
+The mechanics are inspired by the Stars Without Number faction rules, adapted into the GM's own system. Asset and flavor data is fully customizable per campaign.
 
 ---
 
@@ -26,7 +24,7 @@ The asset and flavor data is specific to the GM's campaign; the underlying mecha
 
 ### Review Mode (read-only)
 The GM can browse the current state of the campaign without making any changes:
-- View faction summaries (stats, HP, FacCreds, current goal)
+- View faction summaries (stats, HP, Coin, current goal)
 - View asset lists by faction or by world
 - Browse past turn history and event logs
 - Generate a human-readable narrative of past turns
@@ -53,7 +51,7 @@ These are the first-class concepts in the system. Each action encapsulates its o
 - **Expand Influence** — establish a new Base of Influence on a planet
 - **Refit Asset** — convert an asset to a different asset of the same type
 - **Repair Asset/Faction** — heal HP damage to an asset or the faction itself
-- **Sell Asset** — liquidate an asset for half its FacCred cost
+- **Sell Asset** — liquidate an asset for half its Coin cost
 - **Seize Planet** — attempt to become the ruling government of a world
 - **Use Asset Ability** — trigger the special abilities of one or more assets
 
@@ -103,7 +101,9 @@ The action system's source-agnostic design means the AI and the GM use the same 
 
 ## Decisions Log
 
-A record of key decisions made during development, and the reasoning behind them.
+A record of key decisions made during development, grouped by feature branch.
+
+### Scaffolding & Foundation
 
 | # | Decision | Rationale |
 |---|----------|-----------|
@@ -126,6 +126,16 @@ A record of key decisions made during development, and the reasoning behind them
 | 17 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
 | 18 | Assets no longer store AssetDefinitions, only DefinitionID | Avoids circular references and serialization issues; when we need the definition, we can look it up from the Rulebook using the ID; simplifies the data model |
 
+### feature/faction-create-wizard
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 19 | `App` struct owns the engine; commands wired in `Execute()` | Explicit dependency injection; no globals; engine initialized once before command tree is built |
+| 20 | Command packages split into `faction/`, `review/`, `turn/` subdirectories | Readability and scalability; each mode has its own package with clear boundaries |
+| 21 | Wizard sub-steps live in `faction/wizard/` package; receive only the data they need | Keeps create wizard orchestration clean; decouples wizard steps from the full Rulebook |
+| 22 | Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain` | Game logic belongs in the domain layer, not the command layer |
+| 23 | `FACTION_DATA_DIR` environment variable controls data path at runtime | Dev/distribution separation; data files stay in source tree during development; binary resolves path at runtime via env var, falls back to path relative to executable |
+
 ---
 
 ## Progress
@@ -138,19 +148,18 @@ A record of key decisions made during development, and the reasoning behind them
 - `Rulebook` loader: globs `*_assets.toml`, parses dice notation, converts to domain types; smoke-tested
 - State package: campaign-scoped `faction_state.toml` load/save with auto-dir creation
 - Faction commands: `faction delete` (with confirmation dialog), `--campaign` flag wired throughout
-- Faction create wizard: name, homeworld, scale, primary/secondary stat assignment, HP calculation, confirmation
+- `App` struct with engine initialization; command packages split into `faction/`, `review/`, `turn/`
+- `faction create` wizard: name, homeworld, scale, stat assignment, starting assets, tag selection, planetary government prompt, goal selection, confirmation
+- Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain`
+- `FACTION_DATA_DIR` environment variable for runtime data path resolution
 
-### In Progress
-- `faction create` wizard — partially complete; remaining steps:
-  - Tag selection: present loaded tags, allow GM to pick 1–3 per SWN rules
-  - Goal selection: present loaded goals with difficulty labels, GM picks one starting goal
-  - Starting assets: each faction begins with a Base of Influence on their homeworld plus any assets granted by tags; GM selects additional starting assets up to what their ratings permit
-  - Starting FacCreds: set initial balance (Wealth rating by default per SWN)
-  - Wire `Rulebook` into the command layer so tag/goal/asset options are populated from static data
-  - Move `calcMaxHP` and `hpValueForRating` out of the command layer and into `internal/faction/domain`
+### Deferred
+- Starting Coin: set initial balance (Wealth rating by default); deferred until Coin tracking is designed
+- Tag-granted assets: some tags grant bonus starting assets; deferred until engine action resolution is designed
 
 ### Up Next
 - `faction list` command (currently a stub)
-- Core engine (turn processing, action resolution, income, maintenance)
-- History/event log
+- Core engine: turn processing, income calculation, maintenance, action resolution
+- History/event log (append-only JSONL)
+- Narrative summary renderer
 - Tests beyond loader smoke test
