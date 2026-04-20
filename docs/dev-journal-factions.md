@@ -1,4 +1,4 @@
-# Faction Tracker — Living Design Document
+# Dev Journal: Faction Tracker
 
 ## Overview
 
@@ -38,6 +38,13 @@ The GM executes a new faction turn:
 - State is updated after each action; history is recorded
 - A turn can be paused mid-execution and resumed later
 - At turn end, a narrative summary is generated
+
+### Edit Mode (direct state manipulation)
+The GM makes freeform changes to faction state outside of mechanical rules — for campaign setup, world-building, or corrections:
+- Edit faction details (name, homeworld, scale, stats, HP, Coin, goal, tags)
+- Add, remove, or modify assets directly
+- No mechanical validation; changes are applied as entered
+- Follows the same form-based wizard pattern as faction create
 
 ---
 
