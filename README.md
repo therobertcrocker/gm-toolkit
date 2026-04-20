@@ -11,14 +11,14 @@ A modular collection of tools for tabletop RPG game masters, built in Go.
 - [ ] Faction Tracker — track factions, their relationships, and agendas
 
 ## Project Structure
-\```
+```
 gm-toolkit/
 ├── cmd/              # CLI entry points
 │   └── faction/      # Faction tracker CLI
 ├── internal/         # Core logic (not importable externally)
 │   └── faction/      # Faction tracker models and logic
 └── main.go
-\```
+```
 
 ## Development
 This project uses a VSCode Dev Container. To get started:
