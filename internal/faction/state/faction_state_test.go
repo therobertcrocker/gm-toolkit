@@ -134,6 +134,73 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	}
 }
 
+func TestTurnStateRoundTrip(t *testing.T) {
+	original := &FactionState{
+		CampaignID: "test-campaign",
+		TurnNumber: 2,
+		CurrentTurn: &domain.TurnState{
+			InProgress:         true,
+			TurnNumber:         2,
+			FactionOrder:       []string{"faction-b", "faction-a"},
+			CurrentIndex:       1,
+			BookkeepingApplied: true,
+		},
+	}
+
+	path := filepath.Join(t.TempDir(), "faction_state.toml")
+
+	if err := Save(path, original); err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if loaded.CurrentTurn == nil {
+		t.Fatal("CurrentTurn: got nil, want non-nil")
+	}
+	ct := loaded.CurrentTurn
+	want := original.CurrentTurn
+	if ct.InProgress != want.InProgress {
+		t.Errorf("InProgress: got %v, want %v", ct.InProgress, want.InProgress)
+	}
+	if ct.TurnNumber != want.TurnNumber {
+		t.Errorf("TurnNumber: got %d, want %d", ct.TurnNumber, want.TurnNumber)
+	}
+	if ct.CurrentIndex != want.CurrentIndex {
+		t.Errorf("CurrentIndex: got %d, want %d", ct.CurrentIndex, want.CurrentIndex)
+	}
+	if ct.BookkeepingApplied != want.BookkeepingApplied {
+		t.Errorf("BookkeepingApplied: got %v, want %v", ct.BookkeepingApplied, want.BookkeepingApplied)
+	}
+	if len(ct.FactionOrder) != len(want.FactionOrder) {
+		t.Fatalf("FactionOrder length: got %d, want %d", len(ct.FactionOrder), len(want.FactionOrder))
+	}
+	for i := range want.FactionOrder {
+		if ct.FactionOrder[i] != want.FactionOrder[i] {
+			t.Errorf("FactionOrder[%d]: got %q, want %q", i, ct.FactionOrder[i], want.FactionOrder[i])
+		}
+	}
+}
+
+func TestTurnStateOmittedWhenNil(t *testing.T) {
+	s := &FactionState{CampaignID: "test", TurnNumber: 1}
+	path := filepath.Join(t.TempDir(), "faction_state.toml")
+
+	if err := Save(path, s); err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if loaded.CurrentTurn != nil {
+		t.Errorf("CurrentTurn: got non-nil, want nil when no turn in progress")
+	}
+}
+
 func TestLoadMissingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nonexistent.toml")
 	s, err := Load(path)

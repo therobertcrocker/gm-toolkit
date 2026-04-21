@@ -7,3 +7,4 @@
 5. Always follow the user's decisions exactly. When the user specifies order, structure, or behavior, implement it precisely — do not substitute my own judgement.
 6. Maintain semantic versioning. After every branch merge, assess whether the work warrants a patch (bug fix), minor (new feature), or major (breaking change) bump and tag accordingly. Current version: v0.2.1.
 7. Use conventional commits. Commit messages must follow the format `type: description` (e.g. `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Keep the description concise and in the imperative mood.
+8. Always consult the relevant `docs/` files before discussing or implementing any feature. Key files: `dev-journal-factions.md`, `discovery/turn-engine-discovery.md`, `discovery/action-resolution-discovery.md`, `discovery/goal-engine-discovery.md`, `tracking/turn-engine-journal.md`, `swn-faction-mechanics.md`.

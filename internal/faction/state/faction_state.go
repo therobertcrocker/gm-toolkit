@@ -10,9 +10,10 @@ import (
 )
 
 type FactionState struct {
-	CampaignID string            `toml:"campaign_id"`
-	TurnNumber int               `toml:"turn_number"`
-	Factions   []*domain.Faction `toml:"factions"`
+	CampaignID  string              `toml:"campaign_id"`
+	TurnNumber  int                 `toml:"turn_number"`
+	Factions    []*domain.Faction   `toml:"factions"`
+	CurrentTurn *domain.TurnState   `toml:"current_turn,omitempty"`
 }
 
 // Load reads campaign state from path. Returns an empty State if the file does not exist.
