@@ -24,25 +24,25 @@ func newTurnEngine() *TurnEngine {
 }
 
 // InProgress reports whether a turn is currently active.
-func (t *TurnEngine) InProgress(s *state.FactionState) bool {
-	return s.CurrentTurn != nil && s.CurrentTurn.InProgress
+func (t *TurnEngine) InProgress(factionState *state.FactionState) bool {
+	return factionState.CurrentTurn != nil && factionState.CurrentTurn.InProgress
 }
 
 // Start initializes a new turn by rolling faction order. Returns ErrTurnInProgress
 // if a turn is already active.
-func (t *TurnEngine) Start(s *state.FactionState) error {
-	if t.InProgress(s) {
+func (t *TurnEngine) Start(factionState *state.FactionState) error {
+	if t.InProgress(factionState) {
 		return ErrTurnInProgress
 	}
-	if len(s.Factions) == 0 {
+	if len(factionState.Factions) == 0 {
 		return ErrNoFactions
 	}
 
-	s.TurnNumber++
-	s.CurrentTurn = &domain.TurnState{
+	factionState.TurnNumber++
+	factionState.CurrentTurn = &domain.TurnState{
 		InProgress:   true,
-		TurnNumber:   s.TurnNumber,
-		FactionOrder: buildFactionOrder(s.Factions),
+		TurnNumber:   factionState.TurnNumber,
+		FactionOrder: buildFactionOrder(factionState.Factions),
 		CurrentIndex: 0,
 		Phase:        domain.PhaseBookkeeping,
 	}
@@ -50,12 +50,12 @@ func (t *TurnEngine) Start(s *state.FactionState) error {
 }
 
 // CurrentFaction returns the faction whose turn it currently is.
-func (t *TurnEngine) CurrentFaction(s *state.FactionState) (*domain.Faction, error) {
-	if !t.InProgress(s) {
+func (t *TurnEngine) CurrentFaction(factionState *state.FactionState) (*domain.Faction, error) {
+	if !t.InProgress(factionState) {
 		return nil, ErrNoTurnActive
 	}
-	id := s.CurrentTurn.FactionOrder[s.CurrentTurn.CurrentIndex]
-	for _, f := range s.Factions {
+	id := factionState.CurrentTurn.FactionOrder[factionState.CurrentTurn.CurrentIndex]
+	for _, f := range factionState.Factions {
 		if f.ID == id {
 			return f, nil
 		}
@@ -65,38 +65,38 @@ func (t *TurnEngine) CurrentFaction(s *state.FactionState) (*domain.Faction, err
 
 // ApplyBookkeeping calculates and applies income and maintenance for the current
 // faction. Safe to call on resume — skips silently if already applied this step.
-func (t *TurnEngine) ApplyBookkeeping(s *state.FactionState) error {
-	if !t.InProgress(s) {
+func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) error {
+	if !t.InProgress(factionState) {
 		return ErrNoTurnActive
 	}
-	if s.CurrentTurn.Phase != domain.PhaseBookkeeping {
+	if factionState.CurrentTurn.Phase != domain.PhaseBookkeeping {
 		return nil
 	}
 
-	f, err := t.CurrentFaction(s)
+	f, err := t.CurrentFaction(factionState)
 	if err != nil {
 		return err
 	}
 
 	f.Coin += calcIncome(f)
 	applyMaintenance(f)
-	s.CurrentTurn.Phase = domain.PhaseAction
+	factionState.CurrentTurn.Phase = domain.PhaseAction
 	return nil
 }
 
 // Advance marks the current faction's turn complete and moves to the next.
 // Returns true when all factions have acted. The caller is responsible for
 // triggering the Mutation and History engines before clearing turn state.
-func (t *TurnEngine) Advance(s *state.FactionState) (bool, error) {
-	if !t.InProgress(s) {
+func (t *TurnEngine) Advance(factionState *state.FactionState) (bool, error) {
+	if !t.InProgress(factionState) {
 		return false, ErrNoTurnActive
 	}
 
-	s.CurrentTurn.CurrentIndex++
-	s.CurrentTurn.Phase = domain.PhaseBookkeeping
+	factionState.CurrentTurn.CurrentIndex++
+	factionState.CurrentTurn.Phase = domain.PhaseBookkeeping
 
-	if s.CurrentTurn.CurrentIndex >= len(s.CurrentTurn.FactionOrder) {
-		s.CurrentTurn = nil
+	if factionState.CurrentTurn.CurrentIndex >= len(factionState.CurrentTurn.FactionOrder) {
+		factionState.CurrentTurn = nil
 		return true, nil
 	}
 	return false, nil
@@ -105,8 +105,8 @@ func (t *TurnEngine) Advance(s *state.FactionState) (bool, error) {
 // Abandon clears the in-progress turn. Bookkeeping changes already staged in
 // TurnState are discarded along with it — faction Coin and asset state revert
 // to whatever was last persisted to disk.
-func (t *TurnEngine) Abandon(s *state.FactionState) {
-	s.CurrentTurn = nil
+func (t *TurnEngine) Abandon(factionState *state.FactionState) {
+	factionState.CurrentTurn = nil
 }
 
 // calcIncome returns Coin earned this turn: floor(Wealth/2) + floor((Force+Cunning)/4).
@@ -119,17 +119,17 @@ func calcIncome(f *domain.Faction) int {
 //
 // Note: structured maintenance costs per asset definition are not yet modelled —
 // maintenanceCost returns 0 for all assets until that data is added to AssetDefinition.
-func applyMaintenance(f *domain.Faction) {
-	surviving := make([]*domain.Asset, 0, len(f.Assets))
-	for _, a := range f.Assets {
+func applyMaintenance(faction *domain.Faction) {
+	surviving := make([]*domain.Asset, 0, len(faction.Assets))
+	for _, a := range faction.Assets {
 		cost := maintenanceCost(a)
 		if cost == 0 {
 			a.Maintained = true
 			surviving = append(surviving, a)
 			continue
 		}
-		if f.Coin >= cost {
-			f.Coin -= cost
+		if faction.Coin >= cost {
+			faction.Coin -= cost
 			a.Maintained = true
 			surviving = append(surviving, a)
 		} else {
@@ -141,7 +141,7 @@ func applyMaintenance(f *domain.Faction) {
 			surviving = append(surviving, a)
 		}
 	}
-	f.Assets = surviving
+	faction.Assets = surviving
 }
 
 // maintenanceCost returns the per-turn Coin cost for an asset. Returns 0 until
