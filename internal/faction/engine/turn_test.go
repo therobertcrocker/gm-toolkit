@@ -71,8 +71,8 @@ func TestStart_InitializesTurnState(t *testing.T) {
 	if s.CurrentTurn.CurrentIndex != 0 {
 		t.Errorf("CurrentTurn.CurrentIndex: got %d, want 0", s.CurrentTurn.CurrentIndex)
 	}
-	if s.CurrentTurn.BookkeepingApplied {
-		t.Error("CurrentTurn.BookkeepingApplied: got true, want false")
+	if s.CurrentTurn.Phase != domain.PhaseBookkeeping {
+		t.Errorf("CurrentTurn.Phase: got %v, want PhaseBookkeeping", s.CurrentTurn.Phase)
 	}
 	if len(s.CurrentTurn.FactionOrder) != 3 {
 		t.Errorf("FactionOrder length: got %d, want 3", len(s.CurrentTurn.FactionOrder))
@@ -238,8 +238,8 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 	_ = te.Start(s)
 	_ = te.ApplyBookkeeping(s)
 
-	if !s.CurrentTurn.BookkeepingApplied {
-		t.Error("BookkeepingApplied: got false, want true after ApplyBookkeeping()")
+	if s.CurrentTurn.Phase != domain.PhaseAction {
+		t.Errorf("Phase: got %v, want PhaseAction after ApplyBookkeeping()", s.CurrentTurn.Phase)
 	}
 }
 
@@ -268,8 +268,8 @@ func TestAdvance_MovesToNextFaction(t *testing.T) {
 	if s.CurrentTurn.CurrentIndex != 1 {
 		t.Errorf("CurrentIndex: got %d, want 1", s.CurrentTurn.CurrentIndex)
 	}
-	if s.CurrentTurn.BookkeepingApplied {
-		t.Error("BookkeepingApplied: got true, want false after Advance()")
+	if s.CurrentTurn.Phase != domain.PhaseBookkeeping {
+		t.Errorf("Phase: got %v, want PhaseBookkeeping after Advance()", s.CurrentTurn.Phase)
 	}
 }
 
