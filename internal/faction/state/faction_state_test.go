@@ -139,11 +139,11 @@ func TestTurnStateRoundTrip(t *testing.T) {
 		CampaignID: "test-campaign",
 		TurnNumber: 2,
 		CurrentTurn: &domain.TurnState{
-			InProgress:         true,
-			TurnNumber:         2,
-			FactionOrder:       []string{"faction-b", "faction-a"},
-			CurrentIndex:       1,
-			BookkeepingApplied: true,
+			InProgress:   true,
+			TurnNumber:   2,
+			FactionOrder: []string{"faction-b", "faction-a"},
+			CurrentIndex: 1,
+			Phase:        domain.PhaseAction,
 		},
 	}
 
@@ -172,8 +172,8 @@ func TestTurnStateRoundTrip(t *testing.T) {
 	if ct.CurrentIndex != want.CurrentIndex {
 		t.Errorf("CurrentIndex: got %d, want %d", ct.CurrentIndex, want.CurrentIndex)
 	}
-	if ct.BookkeepingApplied != want.BookkeepingApplied {
-		t.Errorf("BookkeepingApplied: got %v, want %v", ct.BookkeepingApplied, want.BookkeepingApplied)
+	if ct.Phase != want.Phase {
+		t.Errorf("Phase: got %v, want %v", ct.Phase, want.Phase)
 	}
 	if len(ct.FactionOrder) != len(want.FactionOrder) {
 		t.Fatalf("FactionOrder length: got %d, want %d", len(ct.FactionOrder), len(want.FactionOrder))

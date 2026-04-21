@@ -233,8 +233,9 @@ A record of key decisions made during development, grouped by feature branch.
 | 34 | `ApplyBookkeeping` is idempotent via `BookkeepingApplied` flag | Ensures income and maintenance are never double-applied if a paused turn is resumed after bookkeeping was already run |
 | 35 | `Advance` returning `true` is the seam for Mutation and History engines | Turn completion is a single, clean signal point; future engines plug in here without touching `TurnEngine` |
 | 36 | `maintenanceCost` returns 0 until `AssetDefinition` carries structured cost data | Maintenance costs exist in asset description text only; deferred until the field is modelled and resolved via Rulebook |
-| 37 | Mid-turn TOML saves and end-of-turn atomic commit are intentionally separate writes | Mid-turn saves preserve pause/resume state only; Mutation and History engines own the final atomic write |
+| 37 | Mutation and History writes commit together at the end of each faction's turn | Keeps state and history always in sync; pause/resume is correct because each faction's commit lands before the next faction's bookkeeping runs — deferring to round end would require re-playing all prior factions on resume |
 | 38 | `Asset.Maintained` doubles as the consecutive-miss tracker for the two-turn loss rule | First missed payment sets `Maintained = false`; second consecutive miss destroys the asset — no extra field needed |
+| 39 | `TurnPhase` is an int/iota enum replacing `BookkeepingApplied bool` | Three phases needed (Bookkeeping, Action, Complete) for correct pause/resume across action resolution; a bool cannot represent the Action phase |
 
 **Notable alternatives rejected:**
 
@@ -242,4 +243,4 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #31 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows |
 | #33 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
-| #37 | Defer all writes to turn end | Pause/resume requires mid-turn state persistence; a single end-of-turn write cannot support this |
+| #37 | Defer all writes to end of full round | If interrupted mid-round, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |

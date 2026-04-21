@@ -40,11 +40,11 @@ func (t *TurnEngine) Start(s *state.FactionState) error {
 
 	s.TurnNumber++
 	s.CurrentTurn = &domain.TurnState{
-		InProgress:         true,
-		TurnNumber:         s.TurnNumber,
-		FactionOrder:       buildFactionOrder(s.Factions),
-		CurrentIndex:       0,
-		BookkeepingApplied: false,
+		InProgress:   true,
+		TurnNumber:   s.TurnNumber,
+		FactionOrder: buildFactionOrder(s.Factions),
+		CurrentIndex: 0,
+		Phase:        domain.PhaseBookkeeping,
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func (t *TurnEngine) ApplyBookkeeping(s *state.FactionState) error {
 	if !t.InProgress(s) {
 		return ErrNoTurnActive
 	}
-	if s.CurrentTurn.BookkeepingApplied {
+	if s.CurrentTurn.Phase != domain.PhaseBookkeeping {
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func (t *TurnEngine) ApplyBookkeeping(s *state.FactionState) error {
 
 	f.Coin += calcIncome(f)
 	applyMaintenance(f)
-	s.CurrentTurn.BookkeepingApplied = true
+	s.CurrentTurn.Phase = domain.PhaseAction
 	return nil
 }
 
@@ -93,7 +93,7 @@ func (t *TurnEngine) Advance(s *state.FactionState) (bool, error) {
 	}
 
 	s.CurrentTurn.CurrentIndex++
-	s.CurrentTurn.BookkeepingApplied = false
+	s.CurrentTurn.Phase = domain.PhaseBookkeeping
 
 	if s.CurrentTurn.CurrentIndex >= len(s.CurrentTurn.FactionOrder) {
 		s.CurrentTurn = nil
@@ -102,7 +102,9 @@ func (t *TurnEngine) Advance(s *state.FactionState) (bool, error) {
 	return false, nil
 }
 
-// Abandon clears the in-progress turn without committing any changes.
+// Abandon clears the in-progress turn. Bookkeeping changes already staged in
+// TurnState are discarded along with it — faction Coin and asset state revert
+// to whatever was last persisted to disk.
 func (t *TurnEngine) Abandon(s *state.FactionState) {
 	s.CurrentTurn = nil
 }
@@ -118,7 +120,7 @@ func calcIncome(f *domain.Faction) int {
 // Note: structured maintenance costs per asset definition are not yet modelled —
 // maintenanceCost returns 0 for all assets until that data is added to AssetDefinition.
 func applyMaintenance(f *domain.Faction) {
-	surviving := f.Assets[:0]
+	surviving := make([]*domain.Asset, 0, len(f.Assets))
 	for _, a := range f.Assets {
 		cost := maintenanceCost(a)
 		if cost == 0 {

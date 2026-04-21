@@ -54,11 +54,12 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | 11 | `Engine` restructured as core orchestrator composing sub-engines (`TurnEngine`, with `ActionEngine`, `GoalEngine`, `TagEngine` as future fields) | Maps to discovery doc design; keeps sub-engines focused and testable; dependencies explicit |
 | 12 | `TurnEngine` holds no back-reference to `Engine` | No dependency needed now; if Rulebook access is required later, pass `*loader.Rulebook` directly |
 | 13 | Faction order is a rotation, not a shuffle | Rules specify "roll a die, proceed in order" — a starting index rotation satisfies this |
-| 14 | `ApplyBookkeeping` is idempotent via `BookkeepingApplied` flag | Prevents double-apply of income/maintenance when a paused turn is resumed |
+| 14 | `ApplyBookkeeping` is idempotent via `TurnPhase` guard | Skips silently if phase is not `PhaseBookkeeping`; prevents double-apply on resume |
 | 15 | `Advance` returning `true` is the seam for Mutation and History engines | Single clean signal for turn completion; future engines plug in here |
 | 16 | `maintenanceCost` returns 0 until `AssetDefinition` carries structured cost data | Maintenance costs are in description text only; deferred until modelled and Rulebook-resolved |
-| 17 | Mid-turn TOML saves and end-of-turn atomic commit are intentionally separate writes | Mid-turn saves preserve pause/resume state only; the Mutation and History engines own the final atomic write (state + JSONL) at turn end — mixing the two would risk partial history records |
+| 17 | Mutation and History writes commit together at the end of each faction's turn | Keeps state and history always in sync; pause/resume is correct because each faction's commit lands before the next faction's bookkeeping runs |
 | 18 | `Asset.Maintained` doubles as the consecutive-miss tracker for the two-turn loss rule | First missed payment sets `Maintained = false`; second consecutive miss (already false when we try to pay) destroys the asset — no extra field needed |
+| 19 | `TurnPhase` is an int/iota enum replacing `BookkeepingApplied bool` | Three phases needed (Bookkeeping, Action, Complete) for correct pause/resume across action resolution; a bool cannot represent the Action phase |
 
 **Notable alternatives rejected:**
 
@@ -66,7 +67,7 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 |------------|-------------|--------------|
 | #11 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows; composition keeps them explicit and testable in isolation |
 | #13 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
-| #17 | Defer all writes to turn end | Pause/resume requires mid-turn state persistence; a single end-of-turn write cannot support this |
+| #17 | Defer all writes to end of full round | If interrupted mid-round, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
 
 <br/>
 <br/>
