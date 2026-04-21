@@ -2,7 +2,7 @@
 
 A breakdown of the resolution logic for each of the 9 faction actions.
 
----
+
 
 ## Sell Asset
 
@@ -24,7 +24,8 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 ### Notes
 - Bases of Influence are excluded at the validation step; by resolution time the asset is guaranteed to be sellable
 
----
+<br/>
+
 
 ## Repair Asset
 
@@ -49,7 +50,7 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - Escalating cost resets per asset — a second asset starts back at 1 Coin for its first heal
 - Validation ensures faction has at least 1 Coin and at least one damaged asset
 
----
+<br/>
 
 ## Repair Faction
 
@@ -70,7 +71,8 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - Cannot be accelerated by spending more Coin
 - Validation ensures faction HP is below max before offering this action
 
----
+<br/>
+
 
 ## Buy Asset
 
@@ -97,7 +99,7 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - Only one asset may be purchased per turn
 - Validation ensures at least one purchasable asset exists and faction has sufficient Coin before offering this action
 
----
+<br/>
 
 ## Refit Asset
 
@@ -126,7 +128,7 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - If the new asset is cheaper or equal in cost, no Coin changes hands
 - Validation ensures at least one valid refit target exists before offering this action
 
----
+<br/>
 
 ## Expand Influence
 
@@ -165,7 +167,7 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - The homeworld Base cannot be shrunk; HP can otherwise be reduced without refund
 - Validation ensures faction has at least one asset on the target world and sufficient Coin
 
----
+<br/>
 
 ## Use Asset Ability
 
@@ -191,7 +193,7 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - Tests are not attacks — no damage or counterattack triggers
 - All targets must be in the same stellar system unless the ability specifies otherwise
 
----
+<br/>
 
 ## Attack
 
@@ -227,5 +229,3 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 - A defending asset can defend multiple times in one turn; an attacking asset can only attack once
 - Only known (non-stealthed) assets can be targeted; stealth is lost if an asset attacks or defends
 - Stealth loss on defend should be applied before damage resolution so state is consistent
-
----

@@ -2,7 +2,8 @@
 
 A breakdown of the features and sub-tasks required to build the faction turn engine.
 
----
+<br/>
+
 
 ## 1. Turn Scaffolding
 
@@ -16,7 +17,7 @@ The infrastructure for ordering, stepping through, pausing, and resuming a facti
 4. **Resume detection** — on startup, detect if an in-progress turn exists and offer to resume or abandon it
 5. **Step controller** — the logic that advances from one faction to the next and knows when the turn is complete
 
----
+<br/>
 
 ## 2. Per-Faction Bookkeeping
 
@@ -30,7 +31,7 @@ Automatic calculations that occur at the start of each faction's turn, before an
 4. **Unpaid asset tracking** — mark assets as unusable if maintenance cannot be paid
 5. **Asset loss** — destroy assets that have been unpaid for two consecutive turns
 
----
+<br/>
 
 ## 3. Action Selection
 
@@ -55,7 +56,7 @@ Determines which of the 9 actions are available to the current faction and prese
 | **Seize Planet** | Faction has at least one unstealthed asset on a world with a rival government; no seize already in progress on a different world |
 | **Use Asset Ability** | Faction has at least one asset with the `A` flag that is usable (not unmaintained) |
 
----
+<br/>
 
 ## 4. Action Resolution
 
@@ -83,7 +84,7 @@ When an AI agent eventually drives faction decisions, **Inputs** is replaced by 
 
 > Full breakdown of each action in [action-resolution-discovery.md](action-resolution-discovery.md).
 
----
+<br/>
 
 ## 5. State Mutation
 
@@ -110,7 +111,7 @@ Actions do not mutate state directly. Each action's Output method produces a **m
 - After all mutations are applied, state is persisted to disk in a single write
 - This makes actions fully testable — given inputs, assert the mutation list; no state required
 
----
+<br/>
 
 ## 6. Event Recording
 
@@ -146,7 +147,7 @@ Append-only JSONL (`campaigns/<id>/history.jsonl`). One JSON object per turn. Ne
 - Recording everything is intentional — more data is better; the renderer filters what to surface
 - Pub/sub may be appropriate here in the future if multiple consumers need to react to turn events (narrative renderer, AI observer, etc.)
 
----
+<br/>
 
 ## 7. Goal Engine
 
@@ -154,12 +155,10 @@ The Goal Engine is a first-class part of the turn engine. It manages multi-turn 
 
 > Full breakdown in [goal-engine-discovery.md](goal-engine-discovery.md).
 
----
+<br/>
 
 ## 8. Tag Engine
 
 The Tag Engine evaluates tag relevance in the context of a roll or action and applies the +1d10 keep highest modifier when applicable. It is a shared utility called from within the action engine — not owned by any single action. Tags surface in Attack rolls, faction tests, and potentially other actions as the engine grows.
 
 > Discovery doc to be written when Tag Engine scope is better understood.
-
----

@@ -4,7 +4,6 @@ The Goal Engine manages multi-turn faction objectives. It tracks progress toward
 
 When an AI agent is driving faction decisions, the Goal Engine will be the primary influence on which actions the agent considers — playing toward the active goal or in-character based on faction personality and tags.
 
----
 
 ## Responsibilities
 
@@ -14,13 +13,13 @@ When an AI agent is driving faction decisions, the Goal Engine will be the prima
 - Detect and resolve goal completion, awarding XP
 - Influence (but not fully own) action selection for AI-driven factions
 
----
+<br/>
+<br/>
 
-## Multi-Turn Processes
+# Multi-Turn Processes
 
 These were initially considered actions but are better modeled as goal-engine-managed stateful processes, since they span multiple turns and lock faction behavior.
 
----
 
 ### Change Homeworld
 
@@ -48,7 +47,7 @@ These were initially considered actions but are better modeled as goal-engine-ma
 - Faction is completely skipped during action selection while move is in progress
 - Validation ensures destination world has an existing Base of Influence
 
----
+<br/>
 
 ### Seize Planet
 
@@ -68,5 +67,3 @@ Seize Planet is a campaign objective, not a single action. The faction's availab
 - **Depends on Attack resolution** — combat phase delegates to Attack action logic
 - Goal Engine tracks current phase, target world, and occupation turn counter
 - If the faction loses all unstealthed assets on the world during occupation, the seize fails
-
----
