@@ -133,6 +133,15 @@ A record of key decisions made during development, grouped by feature branch.
 | 17 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
 | 18 | Assets no longer store AssetDefinitions, only DefinitionID | Avoids circular references and serialization issues; when we need the definition, we can look it up from the Rulebook using the ID; simplifies the data model |
 
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #2 | TUI or web app as primary interface | Couples UI to domain logic; CLI-first keeps them separable |
+| #3 | SQLite for state storage | Data is hand-editable TOML; a database adds complexity without benefit at this data volume |
+| #4 | Single monolithic state file for all campaigns | Campaign scoping isolates data; prevents one broken campaign from affecting others |
+| #9 | `DataLoader` interface for the Rulebook | Interface was premature abstraction; loader is internal plumbing, not a public contract |
+
 ### feature/faction-create-wizard
 
 | # | Decision | Rationale |
@@ -160,6 +169,27 @@ A record of key decisions made during development, grouped by feature branch.
 | 29 | `faction list` shows one summary line per faction (name, scale, HP, goal) | Quick orientation for the GM; richer per-faction detail belongs in Review Mode |
 | 30 | Binary run from `cmd/faction-manager/`; `campaigns/` is a sibling of `bin/` | Keeps data out of the binary directory; clean separation between executable and campaign files |
 
+### feature/turn-engine-scaffolding
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 31 | `Engine` restructured as core orchestrator composing sub-engines | Maps directly to the discovery doc design; keeps each sub-engine focused and testable; dependencies stay explicit |
+| 32 | `TurnEngine` is a plain struct with no back-reference to `Engine` | No dependency needed now; if Rulebook access is required later, pass `*loader.Rulebook` directly rather than the whole engine |
+| 33 | Faction order is a rotation, not a shuffle | Rules specify "roll a die no smaller than the number of factions; proceed in order" — a starting index rotation satisfies this without inventing a shuffle |
+| 34 | `ApplyBookkeeping` is idempotent via `BookkeepingApplied` flag | Ensures income and maintenance are never double-applied if a paused turn is resumed after bookkeeping was already run |
+| 35 | `Advance` returning `true` is the seam for Mutation and History engines | Turn completion is a single, clean signal point; future engines plug in here without touching `TurnEngine` |
+| 36 | `maintenanceCost` returns 0 until `AssetDefinition` carries structured cost data | Maintenance costs exist in asset description text only; deferred until the field is modelled and resolved via Rulebook |
+| 37 | Mid-turn TOML saves and end-of-turn atomic commit are intentionally separate writes | Mid-turn saves preserve pause/resume state only; Mutation and History engines own the final atomic write |
+| 38 | `Asset.Maintained` doubles as the consecutive-miss tracker for the two-turn loss rule | First missed payment sets `Maintained = false`; second consecutive miss destroys the asset — no extra field needed |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #31 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows |
+| #33 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
+| #37 | Defer all writes to turn end | Pause/resume requires mid-turn state persistence; a single end-of-turn write cannot support this |
+
 ---
 
 ## Progress
@@ -180,13 +210,33 @@ A record of key decisions made during development, grouped by feature branch.
 - TOML tags added to all serialized domain types (`Faction`, `Asset`, `Tag`, `Goal`)
 - Tests: `FactionState` TOML round-trip, `parseDice` table-driven, duplicate asset ID detection
 - `faction list` command: summary line per faction (name, scale, HP, current goal)
+- Turn engine scaffolding: `TurnState` domain type, `TurnEngine` sub-engine, core `Engine` restructured as orchestrator; covers faction ordering, turn state tracking, mid-turn persistence, resume-safe bookkeeping, and step control
 
 ### Deferred
 - Starting Coin: set initial balance (Wealth rating by default); deferred until Coin tracking is designed
 - Tag-granted assets: some tags grant bonus starting assets; deferred until engine action resolution is designed
 - Command layer does state mutation directly (`s.Factions = append(...)`) and resolves the state file path — both should move into the engine as `engine.CreateFaction(campaignID, faction)` once the engine has more substance. Commands should be thin: collect input, call engine, report result.
+- Maintenance costs per asset: `maintenanceCost` returns 0 until structured cost data is added to `AssetDefinition` and resolved via Rulebook
 
 ### Up Next
-- Core engine: turn processing, income calculation, maintenance, action resolution
+- `turn` command wired to `TurnEngine` (new branch)
+- Action Selection (validate and present available actions per faction state)
+- Action Resolution (common interface: Inputs, Validate, Resolve, Output)
+- Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
 - History/event log (append-only JSONL)
 - Narrative summary renderer
+
+---
+
+## Open Questions
+
+Design questions that are unresolved and will need answers before the relevant feature can be built.
+
+| # | Question | Relevant Feature |
+|---|----------|-----------------|
+| 1 | Starting Coin for new factions — no explicit SWN rule; what is the right default (Wealth rating, fixed amount, GM prompt)? | `faction create`, Edit Mode |
+| 2 | How does Edit Mode integrate into the Cobra command tree — sub-commands under a top-level `edit` command, or per-entity sub-commands (e.g. `faction edit`)? | Edit Mode |
+| 3 | What does the narrative summary renderer output look like — plain text, markdown, something else? | Narrative renderer |
+| 4 | How does the turn command surface resume detection — prompt at startup, or a dedicated sub-command? | `turn` command |
+| 5 | How does the turn command handle an action-locked faction — skip automatically with a message, or present it as a distinct "no action" step? | Goal Engine / `turn` command |
+| 6 | When AI decision-making is added, how does the GM designate which factions are AI-driven vs. manually controlled? | AI decision-making |

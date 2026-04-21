@@ -10,8 +10,8 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 1 | Turn Scaffolding | Not started | |
-| 2 | Per-Faction Bookkeeping | Not started | |
+| 1 | Turn Scaffolding | Complete | |
+| 2 | Per-Faction Bookkeeping | In progress | Income and maintenance skeleton done; maintenance costs deferred until AssetDefinition carries structured cost data |
 | 3 | Action Selection | Not started | |
 | 4 | Action Resolution | Not started | Depends on Tag Engine, Ability Engine |
 | 5 | State Mutation | Not started | |
@@ -22,6 +22,8 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 ---
 
 ## Decisions Log
+
+### Discovery & Planning
 
 | # | Decision | Rationale |
 |---|----------|-----------|
@@ -36,4 +38,43 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | 9 | Pub/sub deferred for state mutation; may revisit for event recording | State mutation has one consumer (state writer) — pub/sub is overkill; event recording may eventually fan out to narrative renderer and AI observer |
 | 10 | Edit Mode added as a third top-level mode | GMs need to manipulate faction state directly for campaign setup without mechanical validation |
 
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #2 | Full event sourcing instead of mutation list | Overkill for this data volume and access pattern; mutation list is sufficient |
+| #5 | Actions as TOML-driven data | Resolution logic is too conditional to live in data; code is the right home |
+
+### feature/turn-engine-scaffolding
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 11 | `Engine` restructured as core orchestrator composing sub-engines (`TurnEngine`, with `ActionEngine`, `GoalEngine`, `TagEngine` as future fields) | Maps to discovery doc design; keeps sub-engines focused and testable; dependencies explicit |
+| 12 | `TurnEngine` holds no back-reference to `Engine` | No dependency needed now; if Rulebook access is required later, pass `*loader.Rulebook` directly |
+| 13 | Faction order is a rotation, not a shuffle | Rules specify "roll a die, proceed in order" — a starting index rotation satisfies this |
+| 14 | `ApplyBookkeeping` is idempotent via `BookkeepingApplied` flag | Prevents double-apply of income/maintenance when a paused turn is resumed |
+| 15 | `Advance` returning `true` is the seam for Mutation and History engines | Single clean signal for turn completion; future engines plug in here |
+| 16 | `maintenanceCost` returns 0 until `AssetDefinition` carries structured cost data | Maintenance costs are in description text only; deferred until modelled and Rulebook-resolved |
+| 17 | Mid-turn TOML saves and end-of-turn atomic commit are intentionally separate writes | Mid-turn saves preserve pause/resume state only; the Mutation and History engines own the final atomic write (state + JSONL) at turn end — mixing the two would risk partial history records |
+| 18 | `Asset.Maintained` doubles as the consecutive-miss tracker for the two-turn loss rule | First missed payment sets `Maintained = false`; second consecutive miss (already false when we try to pay) destroys the asset — no extra field needed |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #11 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows; composition keeps them explicit and testable in isolation |
+| #13 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
+| #17 | Defer all writes to turn end | Pause/resume requires mid-turn state persistence; a single end-of-turn write cannot support this |
+
 ---
+
+## Open Questions
+
+Design questions that are unresolved and will need answers before the relevant feature can be built.
+
+| # | Question | Relevant Feature |
+|---|----------|-----------------|
+| 1 | How does the turn command surface resume detection — prompt to resume or abandon at startup, or a dedicated sub-command? | `turn` command |
+| 2 | How does the turn command handle an action-locked faction (mid-move, mid-seize) — skip automatically with a message, or present it as a distinct "no action" step? | Goal Engine / `turn` command |
+| 3 | What is the interaction model for the turn command — a single interactive wizard stepping through all factions, or discrete sub-commands per step? | `turn` command |
+| 4 | How does the Goal Engine communicate lock state back to the turn flow — method call, return value, or flag on `TurnState`? | Goal Engine |
