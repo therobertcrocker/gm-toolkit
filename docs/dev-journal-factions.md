@@ -107,6 +107,59 @@ The action system's source-agnostic design means the AI and the GM use the same 
 <br/>
 <br/>
 
+# Open Questions
+
+Design questions that are unresolved and will need answers before the relevant feature can be built.
+
+| # | Question | Relevant Feature |
+|---|----------|-----------------|
+| 1 | Starting Coin for new factions — no explicit SWN rule; what is the right default (Wealth rating, fixed amount, GM prompt)? | `faction create`, Edit Mode |
+| 2 | How does Edit Mode integrate into the Cobra command tree — sub-commands under a top-level `edit` command, or per-entity sub-commands (e.g. `faction edit`)? | Edit Mode |
+| 3 | What does the narrative summary renderer output look like — plain text, markdown, something else? | Narrative renderer |
+| 4 | How does the turn command surface resume detection — prompt at startup, or a dedicated sub-command? | `turn` command |
+| 5 | How does the turn command handle an action-locked faction — skip automatically with a message, or present it as a distinct "no action" step? | Goal Engine / `turn` command |
+| 6 | When AI decision-making is added, how does the GM designate which factions are AI-driven vs. manually controlled? | AI decision-making |
+
+<br/>
+<br/>
+
+# Progress
+
+### Up Next
+- `turn` command wired to `TurnEngine` (new branch)
+- Action Selection (validate and present available actions per faction state)
+- Action Resolution (common interface: Inputs, Validate, Resolve, Output)
+- Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
+- History/event log (append-only JSONL)
+- Narrative summary renderer
+
+### Deferred
+- Starting Coin: set initial balance (Wealth rating by default); deferred until Coin tracking is designed
+- Tag-granted assets: some tags grant bonus starting assets; deferred until engine action resolution is designed
+- Command layer does state mutation directly (`s.Factions = append(...)`) and resolves the state file path — both should move into the engine as `engine.CreateFaction(campaignID, faction)` once the engine has more substance. Commands should be thin: collect input, call engine, report result.
+- Maintenance costs per asset: `maintenanceCost` returns 0 until structured cost data is added to `AssetDefinition` and resolved via Rulebook
+
+### Completed
+- Project scaffolding (`go.mod`, `main.go`, Cobra CLI entrypoint)
+- Living design document and decisions log
+- Domain types: `AssetDefinition`, `Asset`, `Faction`, `Tag`, `Goal`, `DiceRoll`
+- Static data files: all Force, Cunning, and Wealth assets (ratings 1–8), 20 tags, 11 goals
+- `Rulebook` loader: globs `*_assets.toml`, parses dice notation, converts to domain types; smoke-tested
+- State package: campaign-scoped `faction_state.toml` load/save with auto-dir creation
+- Faction commands: `faction delete` (with confirmation dialog), `--campaign` flag wired throughout
+- `App` struct with engine initialization; command packages split into `faction/`, `review/`, `turn/`
+- `faction create` wizard: name, homeworld, scale, stat assignment, starting assets, tag selection, planetary government prompt, goal selection, confirmation
+- Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain`
+- `FACTION_DATA_DIR` environment variable for runtime data path resolution
+- Internal code review: `FactionScale` exported, `ScaleFromString` removed, `HPValueForRating` switched to switch statement
+- TOML tags added to all serialized domain types (`Faction`, `Asset`, `Tag`, `Goal`)
+- Tests: `FactionState` TOML round-trip, `parseDice` table-driven, duplicate asset ID detection
+- `faction list` command: summary line per faction (name, scale, HP, current goal)
+- Turn engine scaffolding: `TurnState` domain type, `TurnEngine` sub-engine, core `Engine` restructured as orchestrator; covers faction ordering, turn state tracking, mid-turn persistence, resume-safe bookkeeping, and step control
+
+<br/>
+<br/>
+
 # Decisions Log
 
 A record of key decisions made during development, grouped by feature branch.
@@ -190,56 +243,3 @@ A record of key decisions made during development, grouped by feature branch.
 | #31 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows |
 | #33 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
 | #37 | Defer all writes to turn end | Pause/resume requires mid-turn state persistence; a single end-of-turn write cannot support this |
-
-
-<br/>
-<br/>
-
-# Progress
-
-### Completed
-- Project scaffolding (`go.mod`, `main.go`, Cobra CLI entrypoint)
-- Living design document and decisions log
-- Domain types: `AssetDefinition`, `Asset`, `Faction`, `Tag`, `Goal`, `DiceRoll`
-- Static data files: all Force, Cunning, and Wealth assets (ratings 1–8), 20 tags, 11 goals
-- `Rulebook` loader: globs `*_assets.toml`, parses dice notation, converts to domain types; smoke-tested
-- State package: campaign-scoped `faction_state.toml` load/save with auto-dir creation
-- Faction commands: `faction delete` (with confirmation dialog), `--campaign` flag wired throughout
-- `App` struct with engine initialization; command packages split into `faction/`, `review/`, `turn/`
-- `faction create` wizard: name, homeworld, scale, stat assignment, starting assets, tag selection, planetary government prompt, goal selection, confirmation
-- Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain`
-- `FACTION_DATA_DIR` environment variable for runtime data path resolution
-- Internal code review: `FactionScale` exported, `ScaleFromString` removed, `HPValueForRating` switched to switch statement
-- TOML tags added to all serialized domain types (`Faction`, `Asset`, `Tag`, `Goal`)
-- Tests: `FactionState` TOML round-trip, `parseDice` table-driven, duplicate asset ID detection
-- `faction list` command: summary line per faction (name, scale, HP, current goal)
-- Turn engine scaffolding: `TurnState` domain type, `TurnEngine` sub-engine, core `Engine` restructured as orchestrator; covers faction ordering, turn state tracking, mid-turn persistence, resume-safe bookkeeping, and step control
-
-### Deferred
-- Starting Coin: set initial balance (Wealth rating by default); deferred until Coin tracking is designed
-- Tag-granted assets: some tags grant bonus starting assets; deferred until engine action resolution is designed
-- Command layer does state mutation directly (`s.Factions = append(...)`) and resolves the state file path — both should move into the engine as `engine.CreateFaction(campaignID, faction)` once the engine has more substance. Commands should be thin: collect input, call engine, report result.
-- Maintenance costs per asset: `maintenanceCost` returns 0 until structured cost data is added to `AssetDefinition` and resolved via Rulebook
-
-### Up Next
-- `turn` command wired to `TurnEngine` (new branch)
-- Action Selection (validate and present available actions per faction state)
-- Action Resolution (common interface: Inputs, Validate, Resolve, Output)
-- Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
-- History/event log (append-only JSONL)
-- Narrative summary renderer
-
-<br/>
-
-# Open Questions
-
-Design questions that are unresolved and will need answers before the relevant feature can be built.
-
-| # | Question | Relevant Feature |
-|---|----------|-----------------|
-| 1 | Starting Coin for new factions — no explicit SWN rule; what is the right default (Wealth rating, fixed amount, GM prompt)? | `faction create`, Edit Mode |
-| 2 | How does Edit Mode integrate into the Cobra command tree — sub-commands under a top-level `edit` command, or per-entity sub-commands (e.g. `faction edit`)? | Edit Mode |
-| 3 | What does the narrative summary renderer output look like — plain text, markdown, something else? | Narrative renderer |
-| 4 | How does the turn command surface resume detection — prompt at startup, or a dedicated sub-command? | `turn` command |
-| 5 | How does the turn command handle an action-locked faction — skip automatically with a message, or present it as a distinct "no action" step? | Goal Engine / `turn` command |
-| 6 | When AI decision-making is added, how does the GM designate which factions are AI-driven vs. manually controlled? | AI decision-making |

@@ -20,9 +20,9 @@ A reference for writing and maintaining dev journals and tracking journals consi
 1. Overview
 2. Core Behaviors / Feature Summary
 3. Domain-specific content (Modes, Actions, Architecture, etc.)
-4. Decisions Log
-5. Progress
-6. Open Questions
+4. Open Questions
+5. Progress (subsections in order: Up Next, Deferred, Completed)
+6. Decisions Log
 
 ### Tracking Journal
 1. Feature tracker table
