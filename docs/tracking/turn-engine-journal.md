@@ -4,7 +4,8 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 
 > Discovery docs: [turn-engine-discovery.md](../discovery/turn-engine-discovery.md) | [action-resolution-discovery.md](../discovery/action-resolution-discovery.md) | [goal-engine-discovery.md](../discovery/goal-engine-discovery.md)
 
----
+
+<br/>
 
 ## Features
 
@@ -19,9 +20,10 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | 7 | Goal Engine | Not started | Depends on Action Resolution |
 | 8 | Tag Engine | Not started | Scope TBD; discovery doc pending |
 
----
+<br/>
+<br/>
 
-## Decisions Log
+# Decisions Log
 
 ### Discovery & Planning
 
@@ -66,9 +68,10 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | #13 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
 | #17 | Defer all writes to turn end | Pause/resume requires mid-turn state persistence; a single end-of-turn write cannot support this |
 
----
+<br/>
+<br/>
 
-## Open Questions
+# Open Questions
 
 Design questions that are unresolved and will need answers before the relevant feature can be built.
 
