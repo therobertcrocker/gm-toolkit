@@ -10,7 +10,7 @@ import (
 func TestFactionStateRoundTrip(t *testing.T) {
 	original := &FactionState{
 		CampaignID: "test-campaign",
-		TurnNumber: 3,
+		CycleNumber: 3,
 		Factions: []*domain.Faction{
 			{
 				ID:        "iron-collective",
@@ -63,8 +63,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	if loaded.CampaignID != original.CampaignID {
 		t.Errorf("CampaignID: got %q, want %q", loaded.CampaignID, original.CampaignID)
 	}
-	if loaded.TurnNumber != original.TurnNumber {
-		t.Errorf("TurnNumber: got %d, want %d", loaded.TurnNumber, original.TurnNumber)
+	if loaded.CycleNumber != original.CycleNumber {
+		t.Errorf("CycleNumber: got %d, want %d", loaded.CycleNumber, original.CycleNumber)
 	}
 	if len(loaded.Factions) != 1 {
 		t.Fatalf("Factions: got %d, want 1", len(loaded.Factions))
@@ -137,10 +137,10 @@ func TestFactionStateRoundTrip(t *testing.T) {
 func TestTurnStateRoundTrip(t *testing.T) {
 	original := &FactionState{
 		CampaignID: "test-campaign",
-		TurnNumber: 2,
+		CycleNumber: 2,
 		CurrentTurn: &domain.TurnState{
 			InProgress:   true,
-			TurnNumber:   2,
+			CycleNumber:   2,
 			FactionOrder: []string{"faction-b", "faction-a"},
 			CurrentIndex: 1,
 			Phase:        domain.PhaseAction,
@@ -166,8 +166,8 @@ func TestTurnStateRoundTrip(t *testing.T) {
 	if ct.InProgress != want.InProgress {
 		t.Errorf("InProgress: got %v, want %v", ct.InProgress, want.InProgress)
 	}
-	if ct.TurnNumber != want.TurnNumber {
-		t.Errorf("TurnNumber: got %d, want %d", ct.TurnNumber, want.TurnNumber)
+	if ct.CycleNumber != want.CycleNumber {
+		t.Errorf("CycleNumber: got %d, want %d", ct.CycleNumber, want.CycleNumber)
 	}
 	if ct.CurrentIndex != want.CurrentIndex {
 		t.Errorf("CurrentIndex: got %d, want %d", ct.CurrentIndex, want.CurrentIndex)
@@ -186,7 +186,7 @@ func TestTurnStateRoundTrip(t *testing.T) {
 }
 
 func TestTurnStateOmittedWhenNil(t *testing.T) {
-	s := &FactionState{CampaignID: "test", TurnNumber: 1}
+	s := &FactionState{CampaignID: "test", CycleNumber: 1}
 	path := filepath.Join(t.TempDir(), "faction_state.toml")
 
 	if err := Save(path, s); err != nil {

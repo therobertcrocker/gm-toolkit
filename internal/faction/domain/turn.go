@@ -13,7 +13,7 @@ const (
 // a paused turn survives a restart. A nil value means no turn is in progress.
 type TurnState struct {
 	InProgress   bool      `toml:"in_progress"`
-	TurnNumber   int       `toml:"turn_number"`
+	CycleNumber  int       `toml:"cycle_number"`
 	FactionOrder []string  `toml:"faction_order"`
 	CurrentIndex int       `toml:"current_index"`
 	Phase        TurnPhase `toml:"phase"`

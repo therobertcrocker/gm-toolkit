@@ -24,7 +24,7 @@ func newTestState(factionIDs ...string) *state.FactionState {
 }
 
 func newTurn() *TurnEngine {
-	return &TurnEngine{}
+	return newTurnEngine(newMutationEngine())
 }
 
 // --- InProgress ---
@@ -56,8 +56,8 @@ func TestStart_InitializesTurnState(t *testing.T) {
 		t.Fatalf("Start() error: %v", err)
 	}
 
-	if s.TurnNumber != 1 {
-		t.Errorf("TurnNumber: got %d, want 1", s.TurnNumber)
+	if s.CycleNumber != 1 {
+		t.Errorf("CycleNumber: got %d, want 1", s.CycleNumber)
 	}
 	if s.CurrentTurn == nil {
 		t.Fatal("CurrentTurn: got nil, want non-nil")
@@ -65,8 +65,8 @@ func TestStart_InitializesTurnState(t *testing.T) {
 	if !s.CurrentTurn.InProgress {
 		t.Error("CurrentTurn.InProgress: got false, want true")
 	}
-	if s.CurrentTurn.TurnNumber != 1 {
-		t.Errorf("CurrentTurn.TurnNumber: got %d, want 1", s.CurrentTurn.TurnNumber)
+	if s.CurrentTurn.CycleNumber != 1 {
+		t.Errorf("CurrentTurn.CycleNumber: got %d, want 1", s.CurrentTurn.CycleNumber)
 	}
 	if s.CurrentTurn.CurrentIndex != 0 {
 		t.Errorf("CurrentTurn.CurrentIndex: got %d, want 0", s.CurrentTurn.CurrentIndex)
@@ -96,14 +96,14 @@ func TestStart_ErrorIfNoFactions(t *testing.T) {
 	}
 }
 
-func TestStart_IncrementsTurnNumber(t *testing.T) {
+func TestStart_IncrementsCycleNumber(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
-	s.TurnNumber = 4
+	s.CycleNumber = 4
 
 	_ = te.Start(s)
-	if s.TurnNumber != 5 {
-		t.Errorf("TurnNumber: got %d, want 5", s.TurnNumber)
+	if s.CycleNumber != 5 {
+		t.Errorf("CycleNumber: got %d, want 5", s.CycleNumber)
 	}
 }
 
@@ -210,7 +210,7 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 				},
 			}
 			_ = te.Start(s)
-			if err := te.ApplyBookkeeping(s); err != nil {
+			if _, err := te.ApplyBookkeeping(s); err != nil {
 				t.Fatalf("ApplyBookkeeping() error: %v", err)
 			}
 			if s.Factions[0].Coin != tt.wantIncome {
@@ -224,8 +224,8 @@ func TestApplyBookkeeping_NoDoubleApply(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a") // Force=4, Cunning=3, Wealth=6 → income=4
 	_ = te.Start(s)
-	_ = te.ApplyBookkeeping(s)
-	_ = te.ApplyBookkeeping(s) // second call should be a no-op
+	_, _ = te.ApplyBookkeeping(s)
+	_, _ = te.ApplyBookkeeping(s) // second call should be a no-op
 
 	if s.Factions[0].Coin != 4 {
 		t.Errorf("Coin after double apply: got %d, want 4", s.Factions[0].Coin)
@@ -236,7 +236,7 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
 	_ = te.Start(s)
-	_ = te.ApplyBookkeeping(s)
+	_, _ = te.ApplyBookkeeping(s)
 
 	if s.CurrentTurn.Phase != domain.PhaseAction {
 		t.Errorf("Phase: got %v, want PhaseAction after ApplyBookkeeping()", s.CurrentTurn.Phase)
@@ -246,7 +246,7 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 func TestApplyBookkeeping_ErrorIfNoTurn(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
-	if err := te.ApplyBookkeeping(s); err != ErrNoTurnActive {
+	if _, err := te.ApplyBookkeeping(s); err != ErrNoTurnActive {
 		t.Errorf("ApplyBookkeeping() error = %v, want ErrNoTurnActive", err)
 	}
 }

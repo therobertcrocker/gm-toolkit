@@ -11,7 +11,7 @@ import (
 
 type FactionState struct {
 	CampaignID  string              `toml:"campaign_id"`
-	TurnNumber  int                 `toml:"turn_number"`
+	CycleNumber int                 `toml:"cycle_number"`
 	Factions    []*domain.Faction   `toml:"factions"`
 	CurrentTurn *domain.TurnState   `toml:"current_turn,omitempty"`
 }
