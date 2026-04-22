@@ -116,9 +116,7 @@ Design questions that are unresolved and will need answers before the relevant f
 | 1 | Starting Coin for new factions — no explicit SWN rule; what is the right default (Wealth rating, fixed amount, GM prompt)? | `faction create`, Edit Mode |
 | 2 | How does Edit Mode integrate into the Cobra command tree — sub-commands under a top-level `edit` command, or per-entity sub-commands (e.g. `faction edit`)? | Edit Mode |
 | 3 | What does the narrative summary renderer output look like — plain text, markdown, something else? | Narrative renderer |
-| 4 | How does the turn command surface resume detection — prompt at startup, or a dedicated sub-command? | `turn` command |
-| 5 | How does the turn command handle an action-locked faction — skip automatically with a message, or present it as a distinct "no action" step? | Goal Engine / `turn` command |
-| 6 | When AI decision-making is added, how does the GM designate which factions are AI-driven vs. manually controlled? | AI decision-making |
+| 4 | When AI decision-making is added, how does the GM designate which factions are AI-driven vs. manually controlled? | AI decision-making |
 
 <br/>
 <br/>
@@ -126,11 +124,10 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- `turn` command wired to `TurnEngine` (new branch)
 - Action Selection (validate and present available actions per faction state)
 - Action Resolution (common interface: Inputs, Validate, Resolve, Output)
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
-- History/event log (append-only JSONL)
+- History/event log (append-only JSONL); wire into `MutationEngine.Apply`
 - Narrative summary renderer
 
 ### Deferred
@@ -156,6 +153,9 @@ Design questions that are unresolved and will need answers before the relevant f
 - Tests: `FactionState` TOML round-trip, `parseDice` table-driven, duplicate asset ID detection
 - `faction list` command: summary line per faction (name, scale, HP, current goal)
 - Turn engine scaffolding: `TurnState` domain type, `TurnEngine` sub-engine, core `Engine` restructured as orchestrator; covers faction ordering, turn state tracking, mid-turn persistence, resume-safe bookkeeping, and step control
+- `turn` command: fully interactive wizard with resume/abandon detection, per-faction bookkeeping→action placeholder→commit loop, and Cycle summary; ANSI terminal styling
+- `MutationEngine` scaffolding: `Mutation` interface (`Type`/`Describe`), `CoinDelta`/`AssetRemoved`/`AssetMaintainedFlag` concrete types, `Apply` wired into bookkeeping
+- `godotenv` + `config.go` env var management; `FACTION_DATA_DIR` via `.env`; pre-merge code review practice established
 
 <br/>
 <br/>
@@ -233,7 +233,7 @@ A record of key decisions made during development, grouped by feature branch.
 | 34 | `ApplyBookkeeping` is idempotent via `BookkeepingApplied` flag | Ensures income and maintenance are never double-applied if a paused turn is resumed after bookkeeping was already run |
 | 35 | `Advance` returning `true` is the seam for Mutation and History engines | Turn completion is a single, clean signal point; future engines plug in here without touching `TurnEngine` |
 | 36 | `maintenanceCost` returns 0 until `AssetDefinition` carries structured cost data | Maintenance costs exist in asset description text only; deferred until the field is modelled and resolved via Rulebook |
-| 37 | Mutation and History writes commit together at the end of each faction's turn | Keeps state and history always in sync; pause/resume is correct because each faction's commit lands before the next faction's bookkeeping runs — deferring to round end would require re-playing all prior factions on resume |
+| 37 | Mutation and History writes commit together at the end of each faction's turn | Keeps state and history always in sync; pause/resume is correct because each faction's commit lands before the next faction's bookkeeping runs — deferring to Cycle end would require re-playing all prior factions on resume |
 | 38 | `Asset.Maintained` doubles as the consecutive-miss tracker for the two-turn loss rule | First missed payment sets `Maintained = false`; second consecutive miss destroys the asset — no extra field needed |
 | 39 | `TurnPhase` is an int/iota enum replacing `BookkeepingApplied bool` | Three phases needed (Bookkeeping, Action, Complete) for correct pause/resume across action resolution; a bool cannot represent the Action phase |
 
@@ -243,4 +243,22 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #31 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows |
 | #33 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
-| #37 | Defer all writes to end of full round | If interrupted mid-round, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
+| #37 | Defer all writes to end of full Cycle | If interrupted mid-Cycle, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
+
+### feature/turn-command
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 40 | `Mutation` interface defined in `domain` with `Type()` and `Describe()` | `Type()` is the stable history serialization discriminator; `Describe()` is the narrative renderer contract; domain owns the contract, engine owns the logic |
+| 41 | `MutationEngine` is the sole writer to campaign state; `BookkeepingResult.Mutations` bridges calculation to application | Centralizes all state writes; bookkeeping logic stays pure and testable; history recording slots in via `Apply` without touching `TurnEngine` |
+| 42 | `applyMaintenance` receives a pointer-to-slice and a `startCoin` (simulated post-income balance) | Income is prepended by the caller before maintenance runs so the running balance is correct; pointer-to-slice avoids a messy return tuple |
+| 43 | `godotenv` + `config.go` for environment variable management | Dev path lives in `.env`, never hardcoded; `LoadConfig()` is the single point of failure with a helpful error; follows the project's existing env-var pattern |
+| 44 | ANSI escape codes for turn wizard terminal styling; `lipgloss` deferred to TUI layer | `lipgloss` is a layout library for Bubbletea TUI components, not sequential CLI output; ANSI codes are sufficient and add no dependency |
+| 45 | Pre-merge senior engineer code review added as a standard practice | Catches stale comments, misleading docs, missing tests, and alignment issues before they land on `main`; cost is low, benefit is high |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #41 | Apply mutations inline inside `applyMaintenance` | Would scatter state writes across bookkeeping logic; breaks the "MutationEngine is sole writer" invariant |
+| #44 | Use `lipgloss` for terminal styling | Designed for TUI layout components (panels, borders, grids); wrong abstraction for sequential text output |

@@ -1,9 +1,6 @@
 package engine
 
 import (
-	"os"
-	"path/filepath"
-
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 )
 
@@ -12,32 +9,19 @@ import (
 type Engine struct {
 	Rulebook *loader.Rulebook
 	Turn     *TurnEngine
+	Mutation *MutationEngine
 	// Action *ActionEngine — future
 	// Goal   *GoalEngine   — future
 	// Tag    *TagEngine     — future
 }
 
-func New() (*Engine, error) {
-	dataDir, err := resolveDataDir()
-	if err != nil {
-		return nil, err
-	}
+func New(dataDir string) (*Engine, error) {
 	rb, err := loader.Load(dataDir)
 	if err != nil {
 		return nil, err
 	}
 	e := &Engine{Rulebook: rb}
-	e.Turn = newTurnEngine()
+	e.Mutation = newMutationEngine()
+	e.Turn = newTurnEngine(e.Mutation)
 	return e, nil
-}
-
-func resolveDataDir() (string, error) {
-	if dir := os.Getenv("FACTION_DATA_DIR"); dir != "" {
-		return dir, nil
-	}
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(filepath.Dir(exe), "data"), nil
 }

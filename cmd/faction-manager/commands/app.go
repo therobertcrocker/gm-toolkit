@@ -9,15 +9,16 @@ import (
 )
 
 type App struct {
-	Engine *engine.Engine
+	Engine      *engine.Engine
+	dataDir     string
 }
 
-func NewApp() *App {
-	return &App{}
+func NewApp(dataDir string) *App {
+	return &App{dataDir: dataDir}
 }
 
 func (a *App) Execute() error {
-	e, err := engine.New()
+	e, err := engine.New(a.dataDir)
 	if err != nil {
 		return fmt.Errorf("initializing engine: %w", err)
 	}

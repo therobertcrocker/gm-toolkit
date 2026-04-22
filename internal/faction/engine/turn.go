@@ -14,13 +14,33 @@ var (
 	ErrNoFactions     = errors.New("no factions in campaign")
 )
 
-// TurnEngine manages turn lifecycle: ordering, bookkeeping, step control,
-// and pause/resume. It is the seam where the future Mutation and History
-// engines will plug in at turn completion.
-type TurnEngine struct{}
+// BookkeepingResult captures what happened during a faction's bookkeeping phase.
+// Carries enough detail to serve display, state mutation, and history recording.
+type BookkeepingResult struct {
+	IncomeGained       int               // total Coin added
+	WealthIncome       int               // floor(Wealth/2) component
+	StatIncome         int               // floor((Force+Cunning)/4) component
+	AssetsLost         []AssetRef        // destroyed due to second consecutive missed payment
+	AssetsUnmaintained []AssetRef        // newly unmaintained due to first missed payment
+	Mutations          []domain.Mutation // ordered list of state changes applied by MutationEngine.Apply
+}
 
-func newTurnEngine() *TurnEngine {
-	return &TurnEngine{}
+// AssetRef identifies an asset affected during bookkeeping.
+type AssetRef struct {
+	ID           string // for mutation: find asset in state
+	DefinitionID string // for history: resolve name via Rulebook
+	Location     string // for history: where the asset was
+}
+
+// TurnEngine manages turn lifecycle: ordering, bookkeeping, step control,
+// and pause/resume. It is the seam where the Mutation and History engines
+// plug in at turn completion.
+type TurnEngine struct {
+	mutation *MutationEngine
+}
+
+func newTurnEngine(me *MutationEngine) *TurnEngine {
+	return &TurnEngine{mutation: me}
 }
 
 // InProgress reports whether a turn is currently active.
@@ -38,10 +58,10 @@ func (t *TurnEngine) Start(factionState *state.FactionState) error {
 		return ErrNoFactions
 	}
 
-	factionState.TurnNumber++
+	factionState.CycleNumber++
 	factionState.CurrentTurn = &domain.TurnState{
 		InProgress:   true,
-		TurnNumber:   factionState.TurnNumber,
+		CycleNumber:   factionState.CycleNumber,
 		FactionOrder: buildFactionOrder(factionState.Factions),
 		CurrentIndex: 0,
 		Phase:        domain.PhaseBookkeeping,
@@ -64,24 +84,37 @@ func (t *TurnEngine) CurrentFaction(factionState *state.FactionState) (*domain.F
 }
 
 // ApplyBookkeeping calculates and applies income and maintenance for the current
-// faction. Safe to call on resume — skips silently if already applied this step.
-func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) error {
+// faction. Returns a BookkeepingResult for display, mutation, and history.
+// Safe to call on resume — returns a zero result and nil error if already applied.
+func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (BookkeepingResult, error) {
 	if !t.InProgress(factionState) {
-		return ErrNoTurnActive
+		return BookkeepingResult{}, ErrNoTurnActive
 	}
 	if factionState.CurrentTurn.Phase != domain.PhaseBookkeeping {
-		return nil
+		return BookkeepingResult{}, nil
 	}
 
 	f, err := t.CurrentFaction(factionState)
 	if err != nil {
-		return err
+		return BookkeepingResult{}, err
 	}
 
-	f.Coin += calcIncome(f)
-	applyMaintenance(f)
+	wealthIncome := f.Wealth / 2
+	statIncome := (f.Force + f.Cunning) / 4
+	total := wealthIncome + statIncome
+
+	var mutations []domain.Mutation
+	mutations = append(mutations, domain.CoinDelta{FactionID: f.ID, Delta: total})
+
+	result := applyMaintenance(f, f.Coin+total, &mutations)
+	result.IncomeGained = total
+	result.WealthIncome = wealthIncome
+	result.StatIncome = statIncome
+	result.Mutations = mutations
+
+	t.mutation.Apply(factionState, mutations)
 	factionState.CurrentTurn.Phase = domain.PhaseAction
-	return nil
+	return result, nil
 }
 
 // Advance marks the current faction's turn complete and moves to the next.
@@ -102,46 +135,48 @@ func (t *TurnEngine) Advance(factionState *state.FactionState) (bool, error) {
 	return false, nil
 }
 
-// Abandon clears the in-progress turn. Bookkeeping changes already staged in
-// TurnState are discarded along with it — faction Coin and asset state revert
-// to whatever was last persisted to disk.
+// Abandon clears the in-progress turn. Mutations already applied to FactionState
+// during this cycle remain — only the TurnState cursor is cleared.
 func (t *TurnEngine) Abandon(factionState *state.FactionState) {
 	factionState.CurrentTurn = nil
 }
 
-// calcIncome returns Coin earned this turn: floor(Wealth/2) + floor((Force+Cunning)/4).
-func calcIncome(f *domain.Faction) int {
-	return f.Wealth/2 + (f.Force+f.Cunning)/4
-}
-
-// applyMaintenance deducts per-asset maintenance costs. Assets that cannot be
-// paid are marked unmaintained; assets already unmaintained are destroyed.
+// applyMaintenance evaluates per-asset maintenance costs against startCoin (the
+// simulated post-income balance: f.Coin + income total), appends the resulting
+// mutations to the provided slice, and returns display-level asset events.
+// Income fields are filled by the caller.
 //
 // Note: structured maintenance costs per asset definition are not yet modelled —
 // maintenanceCost returns 0 for all assets until that data is added to AssetDefinition.
-func applyMaintenance(faction *domain.Faction) {
-	surviving := make([]*domain.Asset, 0, len(faction.Assets))
-	for _, a := range faction.Assets {
+func applyMaintenance(f *domain.Faction, startCoin int, mutations *[]domain.Mutation) BookkeepingResult {
+	var result BookkeepingResult
+	runningCoin := startCoin
+
+	for _, a := range f.Assets {
 		cost := maintenanceCost(a)
 		if cost == 0 {
-			a.Maintained = true
-			surviving = append(surviving, a)
+			if !a.Maintained {
+				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true})
+			}
 			continue
 		}
-		if faction.Coin >= cost {
-			faction.Coin -= cost
-			a.Maintained = true
-			surviving = append(surviving, a)
-		} else {
+		ref := AssetRef{ID: a.ID, DefinitionID: a.DefinitionID, Location: a.Location}
+		if runningCoin >= cost {
+			runningCoin -= cost
+			*mutations = append(*mutations, domain.CoinDelta{FactionID: f.ID, Delta: -cost})
 			if !a.Maintained {
-				// second consecutive missed payment — asset is lost
-				continue
+				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true})
 			}
-			a.Maintained = false
-			surviving = append(surviving, a)
+		} else if !a.Maintained {
+			// second consecutive missed payment — asset is lost
+			result.AssetsLost = append(result.AssetsLost, ref)
+			*mutations = append(*mutations, domain.AssetRemoved{FactionID: f.ID, AssetID: a.ID})
+		} else {
+			result.AssetsUnmaintained = append(result.AssetsUnmaintained, ref)
+			*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: false})
 		}
 	}
-	faction.Assets = surviving
+	return result
 }
 
 // maintenanceCost returns the per-turn Coin cost for an asset. Returns 0 until

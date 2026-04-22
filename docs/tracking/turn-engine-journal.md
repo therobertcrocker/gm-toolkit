@@ -15,7 +15,7 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | 2 | Per-Faction Bookkeeping | In progress | Income and maintenance skeleton done; maintenance costs deferred until AssetDefinition carries structured cost data |
 | 3 | Action Selection | Not started | |
 | 4 | Action Resolution | Not started | Depends on Tag Engine, Ability Engine |
-| 5 | State Mutation | Not started | |
+| 5 | State Mutation | In progress | MutationEngine scaffolded; Apply wired into bookkeeping; history recording deferred |
 | 6 | Event Recording | Not started | |
 | 7 | Goal Engine | Not started | Depends on Action Resolution |
 | 8 | Tag Engine | Not started | Scope TBD; discovery doc pending |
@@ -67,7 +67,20 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 |------------|-------------|--------------|
 | #11 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows; composition keeps them explicit and testable in isolation |
 | #13 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
-| #17 | Defer all writes to end of full round | If interrupted mid-round, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
+| #17 | Defer all writes to end of full Cycle | If interrupted mid-Cycle, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
+
+### feature/turn-command
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 20 | Resume detection prompts at startup if an in-progress turn exists | Natural entry point; GM doesn't need a separate sub-command to resume normal flow |
+| 21 | Action-locked factions are presented to the GM for confirmation before skipping | Keeps the GM informed; avoids silent skips that could be confusing mid-campaign |
+| 22 | `turn` command is a fully interactive wizard stepping through all factions in sequence | One continuous flow per turn; consistent with the `faction create` wizard pattern |
+| 23 | `Mutation` interface defined in `domain` with `Type()` and `Describe()` | `Type()` gives a stable discriminator for history serialization; `Describe()` is the narrative renderer contract; domain owns the contract, engine owns the logic |
+| 24 | `MutationEngine` is the sole writer to campaign state; `BookkeepingResult.Mutations` bridges calculation to application | Centralizes all state writes; makes bookkeeping logic testable without side effects; slots naturally into history recording when that engine is built |
+| 25 | `applyMaintenance` receives a pointer-to-slice and a `startCoin` (post-income balance) | Income mutation is prepended by the caller before maintenance runs, so the simulated running balance is correct; pointer-to-slice avoids a messy return tuple |
+| 26 | `godotenv` + `config.go` for environment variable management | Separates runtime config from the binary; dev path lives in `.env`, never hardcoded; `LoadConfig()` is the single point of failure with a clear error message |
+| 27 | ANSI escape codes for terminal styling in the turn wizard; `lipgloss` deferred to TUI layer | `lipgloss` is a layout library designed for Bubbletea TUI components, not sequential CLI text output; ANSI codes are sufficient and add no dependency |
 
 <br/>
 <br/>
@@ -78,7 +91,4 @@ Design questions that are unresolved and will need answers before the relevant f
 
 | # | Question | Relevant Feature |
 |---|----------|-----------------|
-| 1 | How does the turn command surface resume detection — prompt to resume or abandon at startup, or a dedicated sub-command? | `turn` command |
-| 2 | How does the turn command handle an action-locked faction (mid-move, mid-seize) — skip automatically with a message, or present it as a distinct "no action" step? | Goal Engine / `turn` command |
-| 3 | What is the interaction model for the turn command — a single interactive wizard stepping through all factions, or discrete sub-commands per step? | `turn` command |
-| 4 | How does the Goal Engine communicate lock state back to the turn flow — method call, return value, or flag on `TurnState`? | Goal Engine |
+| 1 | How does the Goal Engine communicate lock state back to the turn flow — method call, return value, or flag on `TurnState`? | Goal Engine |
