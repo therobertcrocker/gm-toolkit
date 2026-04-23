@@ -77,7 +77,7 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, p paths.P
 			return err
 		}
 
-		event, err := buildEventRecord(factionState, faction, append(result.Mutations, actionMutations...))
+		event, err := buildEventRecord(factionState, faction, append(result.RecordedMutations, actionMutations...))
 		if err != nil {
 			return fmt.Errorf("building event record: %w", err)
 		}

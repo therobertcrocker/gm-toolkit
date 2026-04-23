@@ -22,7 +22,7 @@ type BookkeepingResult struct {
 	StatIncome         int               // floor((Force+Cunning)/4) component
 	AssetsLost         []AssetRef        // destroyed due to second consecutive missed payment
 	AssetsUnmaintained []AssetRef        // newly unmaintained due to first missed payment
-	Mutations          []domain.Mutation // ordered list of state changes applied by MutationEngine.Apply
+	RecordedMutations  []domain.Mutation // mutations already applied; carried for history recording only
 }
 
 // AssetRef identifies an asset affected during bookkeeping.
@@ -110,7 +110,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 	result.IncomeGained = total
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
-	result.Mutations = mutations
+	result.RecordedMutations = mutations
 
 	t.mutation.Apply(factionState, mutations)
 	factionState.CurrentTurn.Phase = domain.PhaseAction
