@@ -117,6 +117,13 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | #36 | Per-Cycle event record (original discovery doc design) | State commits per-faction for pause/resume correctness; deferring history to Cycle end would create a sync gap on interrupted Cycles |
 | #38 | `engine.Action` directly as huh option value | huh's option matching behaved unexpectedly with interface values; integer indices are unambiguous |
 
+### chore/code-review-2
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 39 | `BookkeepingResult.Mutations` renamed to `RecordedMutations` | Mutations are already applied inside `ApplyBookkeeping`; the field is carried for history recording only — the old name implied the caller should apply them |
+| 40 | Concrete actions moved to `engine/actions` sub-package | `ActionEngine` holds only the interface and factory registry and never references concrete types; `engine/actions` imports `engine` for the contract with no circular import; establishes the correct home before the action list grows |
+
 <br/>
 <br/>
 

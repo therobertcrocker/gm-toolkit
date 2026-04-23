@@ -160,6 +160,7 @@ Design questions that are unresolved and will need answers before the relevant f
 - Turn wizard action phase: replaces placeholder with real action selection, `No Action` option, mutation application
 - Engine package reorganized: files renamed to `*_engine.go` convention; `engine.go` → `core.go`
 - History Engine: `EventRecord`/`MutationRecord` domain types; `HistoryEngine` appends one per-faction JSONL record per cycle; turn wizard accumulates bookkeeping and action mutations and records them together; skip-turn prompt and press-Enter pause added to turn wizard
+- Code review (`chore/code-review-2`): `cmd/faction-manager/paths` package with `paths.New(campaignID)` as canonical campaign path resolver; `domain.FactionStat` typed throughout faction creation wizard; `BookkeepingResult.RecordedMutations` renamed to make already-applied status explicit; `FactionStat` moved to `faction.go`; concrete actions moved to `engine/actions` sub-package
 
 <br/>
 <br/>
@@ -254,7 +255,7 @@ A record of key decisions made during development, grouped by feature branch.
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 40 | `Mutation` interface defined in `domain` with `Type()` and `Describe()` | `Type()` is the stable history serialization discriminator; `Describe()` is the narrative renderer contract; domain owns the contract, engine owns the logic |
-| 41 | `MutationEngine` is the sole writer to campaign state; `BookkeepingResult.Mutations` bridges calculation to application | Centralizes all state writes; bookkeeping logic stays pure and testable; history recording slots in via `Apply` without touching `TurnEngine` |
+| 41 | `MutationEngine` is the sole writer to campaign state; `BookkeepingResult.RecordedMutations` bridges calculation to history recording | Centralizes all state writes; bookkeeping logic stays pure and testable; mutations are applied inside `ApplyBookkeeping` and returned under `RecordedMutations` for history recording only |
 | 42 | `applyMaintenance` receives a pointer-to-slice and a `startCoin` (simulated post-income balance) | Income is prepended by the caller before maintenance runs so the running balance is correct; pointer-to-slice avoids a messy return tuple |
 | 43 | `godotenv` + `config.go` for environment variable management | Dev path lives in `.env`, never hardcoded; `LoadConfig()` is the single point of failure with a helpful error; follows the project's existing env-var pattern |
 | 44 | ANSI escape codes for turn wizard terminal styling; `lipgloss` deferred to TUI layer | `lipgloss` is a layout library for Bubbletea TUI components, not sequential CLI output; ANSI codes are sufficient and add no dependency |
@@ -304,3 +305,13 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #56 | Per-Cycle event record (original discovery doc design) | State commits per-faction for pause/resume correctness; deferring history to Cycle end would create a sync gap on interrupted Cycles |
 | #58 | `engine.Action` directly as huh option value | huh's option matching behaved unexpectedly with interface values; integer indices are unambiguous |
+
+### chore/code-review-2
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 59 | `cmd/faction-manager/paths` package with `paths.New(campaignID)` as canonical campaign path resolver | Three command files each had an inline `filepath.Join` for the same paths; single source of truth eliminates the inline history path derivation in the wizard and makes future path changes a one-line edit |
+| 60 | `domain.FactionStat` typed throughout faction creation wizard | Removes untyped string literals and comparisons from `create.go` and `select_assets.go`; compiler enforces valid values; consistent with how `loader` converts TOML strings to typed constants at the boundary |
+| 61 | `BookkeepingResult.Mutations` renamed to `RecordedMutations` | Mutations are already applied inside `ApplyBookkeeping`; the old name implied the caller should apply them, creating a double-apply risk; `RecordedMutations` makes the recording-only purpose explicit |
+| 62 | `FactionStat` moved from `asset.go` to `faction.go` | Used across faction creation, loader, and asset definitions — it is a domain-wide type, not an asset-specific concern |
+| 63 | Concrete actions moved to `engine/actions` sub-package | `ActionEngine` holds only the `Action` interface and factory registry and never references concrete types; `engine/actions` imports `engine` for the interface contract with no circular import; all future actions have a clear, consistent home before the list grows |
