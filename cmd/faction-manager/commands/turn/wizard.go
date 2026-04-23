@@ -1,8 +1,12 @@
 package turn
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -28,6 +32,8 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 		return nil // GM abandoned
 	}
 
+	historyPath := filepath.Join(filepath.Dir(statePath), "history.jsonl")
+
 	for {
 		faction, err := e.Turn.CurrentFaction(factionState)
 		if err != nil {
@@ -36,6 +42,24 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 
 		printFactionHeader(faction)
 
+		skipped, err := promptSkipTurn(faction)
+		if err != nil {
+			return err
+		}
+		if skipped {
+			done, err := e.Turn.Advance(factionState)
+			if err != nil {
+				return err
+			}
+			if err := state.Save(statePath, factionState); err != nil {
+				return fmt.Errorf("saving state: %w", err)
+			}
+			if done {
+				break
+			}
+			continue
+		}
+
 		// TODO: goal selection if faction.Goal == nil (bookkeeping sub-task 1)
 
 		result, err := e.Turn.ApplyBookkeeping(factionState)
@@ -43,8 +67,10 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 			return err
 		}
 		printBookkeepingResult(result)
+		pressEnterToContinue()
 
-		if err := runActionPhase(e, faction, factionState); err != nil {
+		actionMutations, err := runActionPhase(e, faction, factionState)
+		if err != nil {
 			return err
 		}
 
@@ -52,8 +78,17 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 		if err != nil {
 			return err
 		}
+
+		event, err := buildEventRecord(factionState, faction, append(result.Mutations, actionMutations...))
+		if err != nil {
+			return fmt.Errorf("building event record: %w", err)
+		}
+
 		if err := state.Save(statePath, factionState); err != nil {
 			return fmt.Errorf("saving state: %w", err)
+		}
+		if err := e.History.Record(historyPath, event); err != nil {
+			return fmt.Errorf("recording history: %w", err)
 		}
 
 		if done {
@@ -66,42 +101,64 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 }
 
 // runActionPhase presents available actions to the GM, collects a selection,
-// and applies the resulting mutations to faction state.
-func runActionPhase(e *engine.Engine, faction *domain.Faction, factionState *state.FactionState) error {
+// applies the resulting mutations, and returns them for history recording.
+// Index-based selection is used so that huh compares plain integers rather
+// than interface values, which avoids edge cases in equality checks.
+func runActionPhase(e *engine.Engine, faction *domain.Faction, factionState *state.FactionState) ([]domain.Mutation, error) {
 	available := e.Action.AvailableActions(faction, factionState, e.Rulebook)
 	if len(available) == 0 {
 		fmt.Println("  No actions available.")
-		return nil
+		return nil, nil
 	}
 
-	options := make([]huh.Option[engine.Action], 0, len(available)+1)
-	for _, action := range available {
-		options = append(options, huh.NewOption(action.Name(), action))
+	// Available actions occupy indices 0..n-1; -1 is the No Action sentinel.
+	options := make([]huh.Option[int], 0, len(available)+1)
+	for i, action := range available {
+		options = append(options, huh.NewOption(action.Name(), i))
 	}
-	options = append(options, huh.NewOption[engine.Action]("No Action", nil))
+	options = append(options, huh.NewOption("No Action", -1))
 
-	var selected engine.Action
+	selectedIdx := 0
 	if err := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[engine.Action]().
+			huh.NewSelect[int]().
 				Title("Select an action").
 				Options(options...).
-				Value(&selected),
+				Value(&selectedIdx),
 		),
 	).Run(); err != nil {
-		return fmt.Errorf("action selection cancelled: %w", err)
+		return nil, fmt.Errorf("action selection cancelled: %w", err)
 	}
 
-	if selected == nil {
-		return nil
+	if selectedIdx == -1 {
+		return nil, nil
 	}
 
-	mutations, err := e.Action.Run(selected, faction, factionState, e.Rulebook)
+	mutations, err := e.Action.Run(available[selectedIdx], faction, factionState, e.Rulebook)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	e.Mutation.Apply(factionState, mutations)
-	return nil
+	return mutations, nil
+}
+
+// buildEventRecord constructs an EventRecord for a faction's completed turn,
+// converting all mutations to their serializable record form.
+func buildEventRecord(factionState *state.FactionState, faction *domain.Faction, mutations []domain.Mutation) (domain.EventRecord, error) {
+	records := make([]domain.MutationRecord, 0, len(mutations))
+	for _, mutation := range mutations {
+		record, err := domain.NewMutationRecord(mutation)
+		if err != nil {
+			return domain.EventRecord{}, fmt.Errorf("building mutation record: %w", err)
+		}
+		records = append(records, record)
+	}
+	return domain.EventRecord{
+		Cycle:     factionState.CycleNumber,
+		FactionID: faction.ID,
+		Timestamp: time.Now().UTC(),
+		Mutations: records,
+	}, nil
 }
 
 // resumeOrStart handles resume detection at Cycle entry. If a Cycle is already
@@ -160,6 +217,27 @@ func factionName(factionState *state.FactionState, id string) string {
 		}
 	}
 	return id
+}
+
+func promptSkipTurn(faction *domain.Faction) (bool, error) {
+	var skip bool
+	if err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title(fmt.Sprintf("Skip %s's turn?", faction.Name)).
+				Affirmative("Skip").
+				Negative("Take turn").
+				Value(&skip),
+		),
+	).Run(); err != nil {
+		return false, fmt.Errorf("prompt cancelled: %w", err)
+	}
+	return skip, nil
+}
+
+func pressEnterToContinue() {
+	fmt.Print("  Press Enter to continue...")
+	_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 }
 
 func printFactionHeader(faction *domain.Faction) {

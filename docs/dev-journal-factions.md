@@ -127,7 +127,6 @@ Design questions that are unresolved and will need answers before the relevant f
 - Remaining action implementations (Repair Asset/Faction, Buy Asset, Refit Asset, Expand Influence, Attack)
 - Action Selection validation rules wired per action
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
-- History/event log (append-only JSONL); wire into `MutationEngine.Apply`
 - Narrative summary renderer
 
 ### Deferred
@@ -154,12 +153,13 @@ Design questions that are unresolved and will need answers before the relevant f
 - `faction list` command: summary line per faction (name, scale, HP, current goal)
 - Turn engine scaffolding: `TurnState` domain type, `TurnEngine` sub-engine, core `Engine` restructured as orchestrator; covers faction ordering, turn state tracking, mid-turn persistence, resume-safe bookkeeping, and step control
 - `turn` command: fully interactive wizard with resume/abandon detection, per-faction bookkeeping→action placeholder→commit loop, and Cycle summary; ANSI terminal styling
-- `MutationEngine` scaffolding: `Mutation` interface (`Type`/`Describe`), `CoinDelta`/`AssetRemoved`/`AssetMaintainedFlag` concrete types, `Apply` wired into bookkeeping
+- `MutationEngine` scaffolding: `Mutation` interface (`Type` only; `Describe` removed), `CoinDelta`/`AssetRemoved`/`AssetMaintainedFlag` concrete types with json tags, `Apply` wired into bookkeeping
 - `godotenv` + `config.go` env var management; `FACTION_DATA_DIR` via `.env`; pre-merge code review practice established
 - Action Engine foundation: `Action` interface (Validate, Inputs, Resolve, Output), `ActionEngine` with factory-based registration, `InputCollector` interface for swappable GM/AI input collection, `GMCollector` in `cmd/forms` using huh prompts
 - `SellAsset` action: first concrete action implementation; full Validate→Inputs→Resolve→Output cycle; mutations wired into `MutationEngine.Apply`
 - Turn wizard action phase: replaces placeholder with real action selection, `No Action` option, mutation application
 - Engine package reorganized: files renamed to `*_engine.go` convention; `engine.go` → `core.go`
+- History Engine: `EventRecord`/`MutationRecord` domain types; `HistoryEngine` appends one per-faction JSONL record per cycle; turn wizard accumulates bookkeeping and action mutations and records them together; skip-turn prompt and press-Enter pause added to turn wizard
 
 <br/>
 <br/>
@@ -287,3 +287,20 @@ A record of key decisions made during development, grouped by feature branch.
 | #49 | Register action instances directly | Single instance shared across all factions; leftover state from a prior faction's Inputs would persist if resolution failed mid-way |
 | #50 | `huh` calls directly inside action `Inputs` methods | Couples engine to a UI library; AI agent would require a different concrete action type rather than a different collector |
 | #53 | Pass individual sub-engines to turn command | Started with TurnEngine only; grew to TurnEngine + ActionEngine + MutationEngine + Rulebook — at that point the full engine is the right boundary |
+
+### feature/history-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 54 | `Describe()` removed from `Mutation` interface | Description is a renderer concern; prose on the mutation type locks the renderer to pre-baked strings and mixes display logic into the domain |
+| 55 | `MutationRecord` stores a `json.RawMessage` payload alongside the type discriminator | Preserves full structured mutation data for querying; avoids custom marshalers; sidesteps interface serialisation issues |
+| 56 | History records at per-faction granularity, not per-Cycle | Consistent with per-faction state commits; a per-Cycle record would require buffering history until Cycle end while state already commits per-faction, creating a sync gap on interrupted Cycles |
+| 57 | `HistoryEngine` is a separate engine, not folded into `MutationEngine.Apply` | Single responsibility; history engine can grow independently without touching the mutation path |
+| 58 | Index-based `huh.Select` for action selection | Interface equality is unreliable in huh's option matching; integer indices are unambiguous |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #56 | Per-Cycle event record (original discovery doc design) | State commits per-faction for pause/resume correctness; deferring history to Cycle end would create a sync gap on interrupted Cycles |
+| #58 | `engine.Action` directly as huh option value | huh's option matching behaved unexpectedly with interface values; integer indices are unambiguous |

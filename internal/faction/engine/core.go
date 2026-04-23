@@ -11,6 +11,7 @@ type Engine struct {
 	Turn     *TurnEngine
 	Mutation *MutationEngine
 	Action   *ActionEngine
+	History  *HistoryEngine
 	// Goal *GoalEngine — future
 	// Tag  *TagEngine  — future
 }
@@ -24,5 +25,6 @@ func New(dataDir string) (*Engine, error) {
 	e.Mutation = newMutationEngine()
 	e.Turn = newTurnEngine(e.Mutation)
 	e.Action = newActionEngine()
+	e.History = newHistoryEngine()
 	return e, nil
 }

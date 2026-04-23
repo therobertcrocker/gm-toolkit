@@ -1,51 +1,33 @@
 package domain
 
-import "fmt"
-
-// Mutation represents a discrete state change. All mutations carry a stable
-// type identifier for history serialization and a human-readable description
-// for the narrative renderer.
+// Mutation represents a discrete state change produced by an action or
+// bookkeeping phase. Type returns a stable string discriminator used for
+// history serialization.
 type Mutation interface {
 	Type() string
-	Describe() string
 }
 
 // CoinDelta adjusts a faction's Coin balance by Delta (positive or negative).
 type CoinDelta struct {
-	FactionID string
-	Delta     int
+	FactionID string `json:"faction_id"`
+	Delta     int    `json:"delta"`
 }
 
-func (m CoinDelta) Type() string { return "coin_delta" }
-func (m CoinDelta) Describe() string {
-	if m.Delta >= 0 {
-		return fmt.Sprintf("faction %s gained %d Coin", m.FactionID, m.Delta)
-	}
-	return fmt.Sprintf("faction %s lost %d Coin", m.FactionID, -m.Delta)
-}
+func (mutation CoinDelta) Type() string { return "coin_delta" }
 
 // AssetRemoved removes an asset from a faction's roster.
 type AssetRemoved struct {
-	FactionID string
-	AssetID   string
+	FactionID string `json:"faction_id"`
+	AssetID   string `json:"asset_id"`
 }
 
-func (m AssetRemoved) Type() string    { return "asset_removed" }
-func (m AssetRemoved) Describe() string {
-	return fmt.Sprintf("faction %s lost asset %s", m.FactionID, m.AssetID)
-}
+func (mutation AssetRemoved) Type() string { return "asset_removed" }
 
 // AssetMaintainedFlag updates the Maintained flag on a specific asset.
 type AssetMaintainedFlag struct {
-	FactionID  string
-	AssetID    string
-	Maintained bool
+	FactionID  string `json:"faction_id"`
+	AssetID    string `json:"asset_id"`
+	Maintained bool   `json:"maintained"`
 }
 
-func (m AssetMaintainedFlag) Type() string { return "asset_maintained_flag" }
-func (m AssetMaintainedFlag) Describe() string {
-	if m.Maintained {
-		return fmt.Sprintf("asset %s (faction %s) is now maintained", m.AssetID, m.FactionID)
-	}
-	return fmt.Sprintf("asset %s (faction %s) is now unmaintained", m.AssetID, m.FactionID)
-}
+func (mutation AssetMaintainedFlag) Type() string { return "asset_maintained_flag" }

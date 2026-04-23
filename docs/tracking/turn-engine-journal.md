@@ -16,7 +16,7 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | 3 | Action Selection | In progress | ActionEngine and Action interface built; Sell Asset wired; remaining actions not started |
 | 4 | Action Resolution | In progress | Sell Asset complete; remaining actions not started; depends on Tag Engine, Ability Engine for Attack and Use Asset Ability |
 | 5 | State Mutation | In progress | MutationEngine scaffolded; Apply wired into bookkeeping and action phase; history recording deferred |
-| 6 | Event Recording | Not started | |
+| 6 | Event Recording | Complete | Per-faction JSONL records; one EventRecord per faction per cycle; HistoryEngine wired into turn wizard |
 | 7 | Goal Engine | Not started | Depends on Action Resolution |
 | 8 | Tag Engine | Not started | Scope TBD; discovery doc pending |
 
@@ -99,6 +99,23 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 |------------|-------------|--------------|
 | #30 | Register action instances directly | Shared instance retains state from prior faction's action phase if resolution fails mid-way |
 | #31 | `huh` calls directly inside action `Inputs` | Couples engine to a UI library; AI agent would require a different concrete type rather than a different collector |
+
+### feature/history-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 34 | `Describe()` removed from `Mutation` interface | Description is a renderer concern; coupling prose to the mutation type locks the renderer to pre-baked strings and mixes display logic into the domain |
+| 35 | `MutationRecord` stores a `json.RawMessage` payload alongside the type discriminator | Preserves the full structured mutation data for querying; avoids custom marshalers; sidesteps interface serialisation issues |
+| 36 | History records at per-faction granularity, not per-Cycle | Consistent with per-faction state commits; a per-Cycle record would require buffering history until Cycle end while state already commits per-faction, creating a sync gap on interrupted Cycles |
+| 37 | `HistoryEngine` is a separate engine, not folded into `MutationEngine.Apply` | Single responsibility; history engine can grow (readers, narrative renderer) without touching the mutation path |
+| 38 | Index-based `huh.Select` for action selection | Interface equality is unreliable in huh's option matching; integer indices are unambiguous and avoid the lookup entirely |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #36 | Per-Cycle event record (original discovery doc design) | State commits per-faction for pause/resume correctness; deferring history to Cycle end would create a sync gap on interrupted Cycles |
+| #38 | `engine.Action` directly as huh option value | huh's option matching behaved unexpectedly with interface values; integer indices are unambiguous |
 
 <br/>
 <br/>
