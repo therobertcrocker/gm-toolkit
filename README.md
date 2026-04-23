@@ -15,10 +15,13 @@ Track factions across a campaign — stats, assets, Coin, goals, and turn histor
 - `faction create` — interactive wizard to create a new faction (name, homeworld, scale, stats, starting assets, tags, goal)
 - `faction list` — summary view of all factions in a campaign (name, scale, HP, current goal)
 - `faction delete` — remove a faction with confirmation
+- `turn` — interactive turn wizard: resume/abandon detection, per-faction income and maintenance bookkeeping, action placeholder, Cycle summary
 
 ### In Progress
-- Turn engine (income, maintenance, action resolution)
-- History/event log (append-only JSONL)
+- Action Selection — validate and present available actions per faction state
+- Action Resolution — per-action logic (Attack, Buy Asset, Expand Influence, etc.)
+- Event Recording — append-only JSONL history log
+- Goal Engine — multi-turn processes (Change Homeworld, Seize Planet)
 - Narrative summary renderer
 - Review Mode and Edit Mode
 
@@ -30,18 +33,22 @@ gm-toolkit/
 │       ├── main.go
 │       ├── bin/                  # Compiled binary
 │       ├── campaigns/            # Campaign state files (gitignored)
+│       ├── config.go             # Env var loading (godotenv)
 │       └── commands/             # Cobra command tree
 │           ├── app.go            # App struct, engine init, command wiring
 │           ├── review.go         # Review Mode (stub)
-│           ├── turn.go           # Turn Mode (stub)
+│           ├── turn.go           # Turn command entrypoint
+│           ├── turn/             # Turn wizard implementation
+│           │   ├── cmd.go
+│           │   └── wizard.go
 │           └── faction/          # Faction subcommands (create, list, delete)
 │               └── wizard/       # Interactive wizard steps
 ├── internal/
 │   └── faction/
-│       ├── domain/               # Pure data types
+│       ├── domain/               # Pure data types (Faction, Asset, Mutation, TurnState)
 │       ├── loader/               # Rulebook loader (static TOML data)
 │       ├── state/                # Campaign state load/save
-│       ├── engine/               # Game logic (growing)
+│       ├── engine/               # Game logic (TurnEngine, MutationEngine)
 │       └── data/                 # Static asset, tag, and goal TOML files
 └── docs/
     ├── swn-faction-mechanics.md  # Rules reference

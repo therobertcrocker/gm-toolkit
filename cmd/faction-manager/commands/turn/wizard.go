@@ -20,37 +20,39 @@ const (
 
 // runTurnWizard drives the interactive Cycle wizard: resume detection,
 // per-faction Turn loop, and Cycle completion summary.
-func runTurnWizard(te *engine.TurnEngine, s *state.FactionState, statePath string) error {
-	if err := resumeOrStart(te, s, statePath); err != nil {
+func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath string) error {
+	if err := resumeOrStart(e, factionState, statePath); err != nil {
 		return err
 	}
-	if !te.InProgress(s) {
+	if !e.Turn.InProgress(factionState) {
 		return nil // GM abandoned
 	}
 
 	for {
-		f, err := te.CurrentFaction(s)
+		faction, err := e.Turn.CurrentFaction(factionState)
 		if err != nil {
 			return err
 		}
 
-		printFactionHeader(f)
+		printFactionHeader(faction)
 
-		// TODO: goal selection if f.Goal == nil (bookkeeping sub-task 1)
+		// TODO: goal selection if faction.Goal == nil (bookkeeping sub-task 1)
 
-		result, err := te.ApplyBookkeeping(s)
+		result, err := e.Turn.ApplyBookkeeping(factionState)
 		if err != nil {
 			return err
 		}
 		printBookkeepingResult(result)
 
-		printActionPlaceholder()
+		if err := runActionPhase(e, faction, factionState); err != nil {
+			return err
+		}
 
-		done, err := te.Advance(s)
+		done, err := e.Turn.Advance(factionState)
 		if err != nil {
 			return err
 		}
-		if err := state.Save(statePath, s); err != nil {
+		if err := state.Save(statePath, factionState); err != nil {
 			return fmt.Errorf("saving state: %w", err)
 		}
 
@@ -59,20 +61,59 @@ func runTurnWizard(te *engine.TurnEngine, s *state.FactionState, statePath strin
 		}
 	}
 
-	printCycleSummary(s)
+	printCycleSummary(factionState)
+	return nil
+}
+
+// runActionPhase presents available actions to the GM, collects a selection,
+// and applies the resulting mutations to faction state.
+func runActionPhase(e *engine.Engine, faction *domain.Faction, factionState *state.FactionState) error {
+	available := e.Action.AvailableActions(faction, factionState, e.Rulebook)
+	if len(available) == 0 {
+		fmt.Println("  No actions available.")
+		return nil
+	}
+
+	options := make([]huh.Option[engine.Action], 0, len(available)+1)
+	for _, action := range available {
+		options = append(options, huh.NewOption(action.Name(), action))
+	}
+	options = append(options, huh.NewOption[engine.Action]("No Action", nil))
+
+	var selected engine.Action
+	if err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[engine.Action]().
+				Title("Select an action").
+				Options(options...).
+				Value(&selected),
+		),
+	).Run(); err != nil {
+		return fmt.Errorf("action selection cancelled: %w", err)
+	}
+
+	if selected == nil {
+		return nil
+	}
+
+	mutations, err := e.Action.Run(selected, faction, factionState, e.Rulebook)
+	if err != nil {
+		return err
+	}
+	e.Mutation.Apply(factionState, mutations)
 	return nil
 }
 
 // resumeOrStart handles resume detection at Cycle entry. If a Cycle is already
 // in progress the GM is prompted to resume or abandon. Otherwise a new Cycle is started.
-func resumeOrStart(te *engine.TurnEngine, s *state.FactionState, statePath string) error {
-	if te.InProgress(s) {
+func resumeOrStart(e *engine.Engine, factionState *state.FactionState, statePath string) error {
+	if e.Turn.InProgress(factionState) {
 		var resume bool
-		current := factionName(s, s.CurrentTurn.FactionOrder[s.CurrentTurn.CurrentIndex])
+		current := factionName(factionState, factionState.CurrentTurn.FactionOrder[factionState.CurrentTurn.CurrentIndex])
 		if err := huh.NewForm(
 			huh.NewGroup(
 				huh.NewConfirm().
-					Title(fmt.Sprintf("Cycle %d is already in progress", s.CurrentTurn.CycleNumber)).
+					Title(fmt.Sprintf("Cycle %d is already in progress", factionState.CurrentTurn.CycleNumber)).
 					Description(fmt.Sprintf("Currently on: %s\nResume?", current)).
 					Value(&resume),
 			),
@@ -81,30 +122,30 @@ func resumeOrStart(te *engine.TurnEngine, s *state.FactionState, statePath strin
 		}
 
 		if !resume {
-			te.Abandon(s)
-			if err := state.Save(statePath, s); err != nil {
+			e.Turn.Abandon(factionState)
+			if err := state.Save(statePath, factionState); err != nil {
 				return fmt.Errorf("saving state: %w", err)
 			}
 			fmt.Println("Cycle abandoned.")
 			return nil
 		}
-		fmt.Printf("Resuming Cycle %d — currently on: %s\n\n", s.CurrentTurn.CycleNumber, current)
+		fmt.Printf("Resuming Cycle %d — currently on: %s\n\n", factionState.CurrentTurn.CycleNumber, current)
 		return nil
 	}
 
-	if err := te.Start(s); err != nil {
+	if err := e.Turn.Start(factionState); err != nil {
 		return fmt.Errorf("starting cycle: %w", err)
 	}
-	if err := state.Save(statePath, s); err != nil {
+	if err := state.Save(statePath, factionState); err != nil {
 		return fmt.Errorf("saving state: %w", err)
 	}
 
-	names := make([]string, len(s.CurrentTurn.FactionOrder))
-	for i, id := range s.CurrentTurn.FactionOrder {
-		names[i] = fmt.Sprintf("  %d. %s", i+1, factionName(s, id))
+	names := make([]string, len(factionState.CurrentTurn.FactionOrder))
+	for i, id := range factionState.CurrentTurn.FactionOrder {
+		names[i] = fmt.Sprintf("  %d. %s", i+1, factionName(factionState, id))
 	}
 	fmt.Printf("%s=== Cycle %d Begins ===%s\nFaction order:\n%s\n\n",
-		bold, s.CurrentTurn.CycleNumber, reset,
+		bold, factionState.CurrentTurn.CycleNumber, reset,
 		strings.Join(names, "\n"),
 	)
 	return nil
@@ -112,61 +153,54 @@ func resumeOrStart(te *engine.TurnEngine, s *state.FactionState, statePath strin
 
 // factionName returns the display name for a faction ID, falling back to the ID
 // if not found.
-func factionName(s *state.FactionState, id string) string {
-	for _, f := range s.Factions {
-		if f.ID == id {
-			return f.Name
+func factionName(factionState *state.FactionState, id string) string {
+	for _, faction := range factionState.Factions {
+		if faction.ID == id {
+			return faction.Name
 		}
 	}
 	return id
 }
 
-func printFactionHeader(f *domain.Faction) {
+func printFactionHeader(faction *domain.Faction) {
 	goalName := "(none)"
-	if f.Goal != nil {
-		goalName = f.Goal.Name
+	if faction.Goal != nil {
+		goalName = faction.Goal.Name
 	}
-	fmt.Printf("%s─── %s %s%s\n", bold, f.Name, strings.Repeat("─", max(0, 40-len(f.Name))), reset)
+	fmt.Printf("%s─── %s %s%s\n", bold, faction.Name, strings.Repeat("─", max(0, 40-len(faction.Name))), reset)
 	fmt.Printf("  Scale: %s  HP: %d/%d  Coin: %s%d%s  Goal: %s%s%s\n",
-		f.Scale,
-		f.CurrentHP, f.MaxHP,
-		bold, f.Coin, reset,
+		faction.Scale,
+		faction.CurrentHP, faction.MaxHP,
+		bold, faction.Coin, reset,
 		dim, goalName, reset,
 	)
 	fmt.Println()
 }
 
-func printBookkeepingResult(r engine.BookkeepingResult) {
+func printBookkeepingResult(result engine.BookkeepingResult) {
 	fmt.Printf("  Income: %s+%d Coin%s %s(Wealth: %d, Stats: %d)%s\n",
-		green, r.IncomeGained, reset,
-		dim, r.WealthIncome, r.StatIncome, reset,
+		green, result.IncomeGained, reset,
+		dim, result.WealthIncome, result.StatIncome, reset,
 	)
-	for _, a := range r.AssetsUnmaintained {
-		fmt.Printf("  %s! %s on %s is now unmaintained%s\n", red, a.DefinitionID, a.Location, reset)
+	for _, asset := range result.AssetsUnmaintained {
+		fmt.Printf("  %s! %s on %s is now unmaintained%s\n", red, asset.DefinitionID, asset.Location, reset)
 	}
-	for _, a := range r.AssetsLost {
-		fmt.Printf("  %sx %s on %s has been lost%s\n", red, a.DefinitionID, a.Location, reset)
+	for _, asset := range result.AssetsLost {
+		fmt.Printf("  %sx %s on %s has been lost%s\n", red, asset.DefinitionID, asset.Location, reset)
 	}
 	fmt.Println()
 }
 
-func printCycleSummary(s *state.FactionState) {
-	fmt.Printf("%s=== Cycle %d Complete ===%s\n\n", bold, s.CycleNumber, reset)
-	for _, f := range s.Factions {
+func printCycleSummary(factionState *state.FactionState) {
+	fmt.Printf("%s=== Cycle %d Complete ===%s\n\n", bold, factionState.CycleNumber, reset)
+	for _, faction := range factionState.Factions {
 		goalName := "(none)"
-		if f.Goal != nil {
-			goalName = f.Goal.Name
+		if faction.Goal != nil {
+			goalName = faction.Goal.Name
 		}
 		fmt.Printf("%-30s  HP: %d/%d  Coin: %d  Goal: %s\n",
-			f.Name, f.CurrentHP, f.MaxHP, f.Coin, goalName,
+			faction.Name, faction.CurrentHP, faction.MaxHP, faction.Coin, goalName,
 		)
 	}
-	fmt.Println()
-}
-
-func printActionPlaceholder() {
-	fmt.Println("[ Action phase — not yet implemented ]")
-	fmt.Print("Press Enter to continue...")
-	fmt.Scanln()
 	fmt.Println()
 }

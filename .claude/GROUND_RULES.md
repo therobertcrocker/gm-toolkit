@@ -9,3 +9,4 @@
 7. Use conventional commits. Commit messages must follow the format `type: description` (e.g. `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Keep the description concise and in the imperative mood.
 8. Always consult the relevant `docs/` files before discussing or implementing any feature. Key files: `dev-journal-factions.md`, `discovery/turn-engine-discovery.md`, `discovery/action-resolution-discovery.md`, `discovery/goal-engine-discovery.md`, `tracking/turn-engine-journal.md`, `swn-faction-mechanics.md`.
 9. Before updating docs and merging a branch, do a code review of all changes from the perspective of a senior engineer.
+10. Use full words for all function parameter names — never single-letter abbreviations (e.g. `factionState` not `s`, `faction` not `f`, `rulebook` not `rb`).
