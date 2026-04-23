@@ -1,22 +1,23 @@
-package engine
+package actions
 
 import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // SellAsset removes an asset from the faction and returns half its cost in Coin.
 type SellAsset struct {
-	collector     InputCollector
+	collector     engine.InputCollector
 	selectedAsset *domain.Asset
 	factionID     string
 	saleValue     int
 }
 
-func NewSellAsset(collector InputCollector) *SellAsset {
+func NewSellAsset(collector engine.InputCollector) *SellAsset {
 	return &SellAsset{collector: collector}
 }
 

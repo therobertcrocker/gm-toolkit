@@ -1,5 +1,13 @@
 package domain
 
+type FactionStat string
+
+const (
+	StatForce   FactionStat = "Force"
+	StatCunning FactionStat = "Cunning"
+	StatWealth  FactionStat = "Wealth"
+)
+
 type FactionScale string
 
 const (

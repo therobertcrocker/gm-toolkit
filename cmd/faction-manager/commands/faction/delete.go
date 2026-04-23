@@ -2,17 +2,16 @@ package faction
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/charmbracelet/huh"
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 func runDeleteFactionWizard(campaignID string) error {
-	statePath := filepath.Join(".", "campaigns", campaignID, "faction_state.toml")
-
-	s, err := state.Load(statePath)
+	p := paths.New(campaignID)
+	s, err := state.Load(p.State)
 	if err != nil {
 		return fmt.Errorf("loading state: %w", err)
 	}
@@ -80,7 +79,7 @@ func runDeleteFactionWizard(campaignID string) error {
 	}
 	s.Factions = filtered
 
-	if err := state.Save(statePath, s); err != nil {
+	if err := state.Save(p.State, s); err != nil {
 		return fmt.Errorf("saving state: %w", err)
 	}
 

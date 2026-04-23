@@ -15,8 +15,8 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 		name      string
 		homeworld string
 		scale     domain.FactionScale
-		primary   string
-		secondary string
+		primary   domain.FactionStat
+		secondary domain.FactionStat
 		confirmed bool
 	)
 
@@ -58,13 +58,13 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	// Step 2: Primary attribute
 	if err := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[string]().
+			huh.NewSelect[domain.FactionStat]().
 				Title("Primary Attribute").
 				Description("This stat receives the highest rating").
 				Options(
-					huh.NewOption("Force", "Force"),
-					huh.NewOption("Cunning", "Cunning"),
-					huh.NewOption("Wealth", "Wealth"),
+					huh.NewOption("Force", domain.StatForce),
+					huh.NewOption("Cunning", domain.StatCunning),
+					huh.NewOption("Wealth", domain.StatWealth),
 				).
 				Value(&primary),
 		),
@@ -73,16 +73,16 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	}
 
 	// Step 3: Secondary attribute (filtered)
-	secondaryOptions := make([]huh.Option[string], 0, 2)
-	for _, stat := range []string{"Force", "Cunning", "Wealth"} {
+	secondaryOptions := make([]huh.Option[domain.FactionStat], 0, 2)
+	for _, stat := range []domain.FactionStat{domain.StatForce, domain.StatCunning, domain.StatWealth} {
 		if stat != primary {
-			secondaryOptions = append(secondaryOptions, huh.NewOption(stat, stat))
+			secondaryOptions = append(secondaryOptions, huh.NewOption(string(stat), stat))
 		}
 	}
 
 	if err := huh.NewForm(
 		huh.NewGroup(
-			huh.NewSelect[string]().
+			huh.NewSelect[domain.FactionStat]().
 				Title("Secondary Attribute").
 				Description("This stat receives the middle rating").
 				Options(secondaryOptions...).
@@ -93,8 +93,8 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	}
 
 	// Derive tertiary
-	tertiary := ""
-	for _, stat := range []string{"Force", "Cunning", "Wealth"} {
+	var tertiary domain.FactionStat
+	for _, stat := range []domain.FactionStat{domain.StatForce, domain.StatCunning, domain.StatWealth} {
 		if stat != primary && stat != secondary {
 			tertiary = stat
 			break
@@ -103,7 +103,7 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 
 	// Calculate ratings
 	primaryRating, secondaryRating, tertiaryRating := domain.RatingsFromScale(scale)
-	ratings := map[string]int{
+	ratings := map[domain.FactionStat]int{
 		primary:   primaryRating,
 		secondary: secondaryRating,
 		tertiary:  tertiaryRating,
@@ -114,16 +114,16 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 		Name:      name,
 		Scale:     scale,
 		Homeworld: homeworld,
-		Force:     ratings["Force"],
-		Cunning:   ratings["Cunning"],
-		Wealth:    ratings["Wealth"],
+		Force:     ratings[domain.StatForce],
+		Cunning:   ratings[domain.StatCunning],
+		Wealth:    ratings[domain.StatWealth],
 	}
 	faction.MaxHP = domain.CalcMaxHP(faction)
 	faction.CurrentHP = faction.MaxHP
 
 	// Step 4: Starting asset selection
-	otherStats := []string{}
-	for _, stat := range []string{"Force", "Cunning", "Wealth"} {
+	otherStats := []domain.FactionStat{}
+	for _, stat := range []domain.FactionStat{domain.StatForce, domain.StatCunning, domain.StatWealth} {
 		if stat != primary {
 			otherStats = append(otherStats, stat)
 		}
