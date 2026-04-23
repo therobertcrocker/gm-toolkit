@@ -2,9 +2,9 @@ package faction
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -37,9 +37,8 @@ func newCreateCmd(rb *loader.Rulebook, campaignID *string) *cobra.Command {
 				return err
 			}
 
-			statePath := filepath.Join(".", "campaigns", *campaignID, "faction_state.toml")
-
-			s, err := state.Load(statePath)
+			p := paths.New(*campaignID)
+			s, err := state.Load(p.State)
 			if err != nil {
 				return fmt.Errorf("loading state: %w", err)
 			}
@@ -47,7 +46,7 @@ func newCreateCmd(rb *loader.Rulebook, campaignID *string) *cobra.Command {
 			s.CampaignID = *campaignID
 			s.Factions = append(s.Factions, faction)
 
-			if err := state.Save(statePath, s); err != nil {
+			if err := state.Save(p.State, s); err != nil {
 				return fmt.Errorf("saving state: %w", err)
 			}
 
@@ -62,8 +61,8 @@ func newListCmd(campaignID *string) *cobra.Command {
 		Use:   "list",
 		Short: "List all factions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			statePath := filepath.Join(".", "campaigns", *campaignID, "faction_state.toml")
-			s, err := state.Load(statePath)
+			p := paths.New(*campaignID)
+			s, err := state.Load(p.State)
 			if err != nil {
 				return fmt.Errorf("loading state: %w", err)
 			}

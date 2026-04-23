@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/huh"
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -24,15 +24,13 @@ const (
 
 // runTurnWizard drives the interactive Cycle wizard: resume detection,
 // per-faction Turn loop, and Cycle completion summary.
-func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath string) error {
-	if err := resumeOrStart(e, factionState, statePath); err != nil {
+func runTurnWizard(e *engine.Engine, factionState *state.FactionState, p paths.Paths) error {
+	if err := resumeOrStart(e, factionState, p); err != nil {
 		return err
 	}
 	if !e.Turn.InProgress(factionState) {
 		return nil // GM abandoned
 	}
-
-	historyPath := filepath.Join(filepath.Dir(statePath), "history.jsonl")
 
 	for {
 		faction, err := e.Turn.CurrentFaction(factionState)
@@ -51,7 +49,7 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 			if err != nil {
 				return err
 			}
-			if err := state.Save(statePath, factionState); err != nil {
+			if err := state.Save(p.State, factionState); err != nil {
 				return fmt.Errorf("saving state: %w", err)
 			}
 			if done {
@@ -84,10 +82,10 @@ func runTurnWizard(e *engine.Engine, factionState *state.FactionState, statePath
 			return fmt.Errorf("building event record: %w", err)
 		}
 
-		if err := state.Save(statePath, factionState); err != nil {
+		if err := state.Save(p.State, factionState); err != nil {
 			return fmt.Errorf("saving state: %w", err)
 		}
-		if err := e.History.Record(historyPath, event); err != nil {
+		if err := e.History.Record(p.History, event); err != nil {
 			return fmt.Errorf("recording history: %w", err)
 		}
 
@@ -163,7 +161,7 @@ func buildEventRecord(factionState *state.FactionState, faction *domain.Faction,
 
 // resumeOrStart handles resume detection at Cycle entry. If a Cycle is already
 // in progress the GM is prompted to resume or abandon. Otherwise a new Cycle is started.
-func resumeOrStart(e *engine.Engine, factionState *state.FactionState, statePath string) error {
+func resumeOrStart(e *engine.Engine, factionState *state.FactionState, p paths.Paths) error {
 	if e.Turn.InProgress(factionState) {
 		var resume bool
 		current := factionName(factionState, factionState.CurrentTurn.FactionOrder[factionState.CurrentTurn.CurrentIndex])
@@ -180,7 +178,7 @@ func resumeOrStart(e *engine.Engine, factionState *state.FactionState, statePath
 
 		if !resume {
 			e.Turn.Abandon(factionState)
-			if err := state.Save(statePath, factionState); err != nil {
+			if err := state.Save(p.State, factionState); err != nil {
 				return fmt.Errorf("saving state: %w", err)
 			}
 			fmt.Println("Cycle abandoned.")
@@ -193,7 +191,7 @@ func resumeOrStart(e *engine.Engine, factionState *state.FactionState, statePath
 	if err := e.Turn.Start(factionState); err != nil {
 		return fmt.Errorf("starting cycle: %w", err)
 	}
-	if err := state.Save(statePath, factionState); err != nil {
+	if err := state.Save(p.State, factionState); err != nil {
 		return fmt.Errorf("saving state: %w", err)
 	}
 

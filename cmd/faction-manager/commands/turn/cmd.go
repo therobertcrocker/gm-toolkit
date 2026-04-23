@@ -2,9 +2,9 @@ package turn
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -16,9 +16,9 @@ func NewCmd(e *engine.Engine) *cobra.Command {
 		Use:   "turn",
 		Short: "Execute a faction turn",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			statePath := filepath.Join(".", "campaigns", campaignID, "faction_state.toml")
+			p := paths.New(campaignID)
 
-			factionState, err := state.Load(statePath)
+			factionState, err := state.Load(p.State)
 			if err != nil {
 				return fmt.Errorf("loading state: %w", err)
 			}
@@ -26,7 +26,7 @@ func NewCmd(e *engine.Engine) *cobra.Command {
 				return fmt.Errorf("no factions found in campaign %q", campaignID)
 			}
 
-			return runTurnWizard(e, factionState, statePath)
+			return runTurnWizard(e, factionState, p)
 		},
 	}
 

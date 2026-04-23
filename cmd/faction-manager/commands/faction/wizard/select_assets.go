@@ -8,7 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-func SelectStartingAssets(factionID, homeworld, primary string, otherStats []string, ratings map[string]int, scale domain.FactionScale, assets map[string]*domain.AssetDefinition) ([]*domain.Asset, error) {
+func SelectStartingAssets(factionID, homeworld string, primary domain.FactionStat, otherStats []domain.FactionStat, ratings map[domain.FactionStat]int, scale domain.FactionScale, assets map[string]*domain.AssetDefinition) ([]*domain.Asset, error) {
 	primaryCount, otherCount := domain.AssetCountsFromScale(scale)
 	var selected []*domain.Asset
 	assetIndex := 0
@@ -36,16 +36,16 @@ func SelectStartingAssets(factionID, homeworld, primary string, otherStats []str
 	}
 
 	// Other attribute picks
-	otherStatOptions := make([]huh.Option[string], len(otherStats))
+	otherStatOptions := make([]huh.Option[domain.FactionStat], len(otherStats))
 	for i, stat := range otherStats {
-		otherStatOptions[i] = huh.NewOption(stat, stat)
+		otherStatOptions[i] = huh.NewOption(string(stat), stat)
 	}
 
 	for i := range otherCount {
-		var chosenStat string
+		var chosenStat domain.FactionStat
 		if err := huh.NewForm(
 			huh.NewGroup(
-				huh.NewSelect[string]().
+				huh.NewSelect[domain.FactionStat]().
 					Title(fmt.Sprintf("Other Asset %d of %d — Choose Attribute", i+1, otherCount)).
 					Options(otherStatOptions...).
 					Value(&chosenStat),
@@ -78,10 +78,10 @@ func SelectStartingAssets(factionID, homeworld, primary string, otherStats []str
 	return selected, nil
 }
 
-func assetsForStat(stat string, rating int, assets map[string]*domain.AssetDefinition) []*domain.AssetDefinition {
+func assetsForStat(stat domain.FactionStat, rating int, assets map[string]*domain.AssetDefinition) []*domain.AssetDefinition {
 	var result []*domain.AssetDefinition
 	for _, def := range assets {
-		if string(def.Category) == stat && def.MinRating <= rating {
+		if def.Category == stat && def.MinRating <= rating {
 			result = append(result, def)
 		}
 	}
