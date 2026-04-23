@@ -9,7 +9,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func NewCmd(te *engine.TurnEngine) *cobra.Command {
+func NewCmd(e *engine.Engine) *cobra.Command {
 	var campaignID string
 
 	cmd := &cobra.Command{
@@ -18,15 +18,15 @@ func NewCmd(te *engine.TurnEngine) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			statePath := filepath.Join(".", "campaigns", campaignID, "faction_state.toml")
 
-			s, err := state.Load(statePath)
+			factionState, err := state.Load(statePath)
 			if err != nil {
 				return fmt.Errorf("loading state: %w", err)
 			}
-			if len(s.Factions) == 0 {
+			if len(factionState.Factions) == 0 {
 				return fmt.Errorf("no factions found in campaign %q", campaignID)
 			}
 
-			return runTurnWizard(te, s, statePath)
+			return runTurnWizard(e, factionState, statePath)
 		},
 	}
 

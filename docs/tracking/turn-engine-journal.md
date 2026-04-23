@@ -13,9 +13,9 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 |---|---------|--------|-------|
 | 1 | Turn Scaffolding | Complete | |
 | 2 | Per-Faction Bookkeeping | In progress | Income and maintenance skeleton done; maintenance costs deferred until AssetDefinition carries structured cost data |
-| 3 | Action Selection | Not started | |
-| 4 | Action Resolution | Not started | Depends on Tag Engine, Ability Engine |
-| 5 | State Mutation | In progress | MutationEngine scaffolded; Apply wired into bookkeeping; history recording deferred |
+| 3 | Action Selection | In progress | ActionEngine and Action interface built; Sell Asset wired; remaining actions not started |
+| 4 | Action Resolution | In progress | Sell Asset complete; remaining actions not started; depends on Tag Engine, Ability Engine for Attack and Use Asset Ability |
+| 5 | State Mutation | In progress | MutationEngine scaffolded; Apply wired into bookkeeping and action phase; history recording deferred |
 | 6 | Event Recording | Not started | |
 | 7 | Goal Engine | Not started | Depends on Action Resolution |
 | 8 | Tag Engine | Not started | Scope TBD; discovery doc pending |
@@ -81,6 +81,24 @@ A high-level tracker for features, tasks, and decisions made during turn engine 
 | 25 | `applyMaintenance` receives a pointer-to-slice and a `startCoin` (post-income balance) | Income mutation is prepended by the caller before maintenance runs, so the simulated running balance is correct; pointer-to-slice avoids a messy return tuple |
 | 26 | `godotenv` + `config.go` for environment variable management | Separates runtime config from the binary; dev path lives in `.env`, never hardcoded; `LoadConfig()` is the single point of failure with a clear error message |
 | 27 | ANSI escape codes for terminal styling in the turn wizard; `lipgloss` deferred to TUI layer | `lipgloss` is a layout library designed for Bubbletea TUI components, not sequential CLI text output; ANSI codes are sufficient and add no dependency |
+
+### feature/action-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 28 | `Action` interface lives in `engine`, not `domain` | Depends on `loader.Rulebook` and `state.FactionState`; domain cannot import either |
+| 29 | Actions are stateful structs; Inputs populates fields, Resolve reads them | Keeps interface signatures uniform; no generic input bag or type assertions needed |
+| 30 | `ActionEngine` uses factories (`func() Action`) rather than registered instances | Ensures a fresh zero-value struct per faction turn; prevents stale state from a previous faction carrying over |
+| 31 | `InputCollector` interface injected into actions via factory; `GMCollector` in `cmd/forms` | Keeps `huh` out of the engine; AI agent implements the same interface with goal-driven logic; `Inputs` method unchanged between GM and AI modes |
+| 32 | Action selection prompt lives in the wizard, not `ActionEngine` | `ActionEngine` is pure orchestration; UI belongs in the command layer |
+| 33 | `No Action` hardcoded in the wizard, not registered as an action | GM UI affordance, not a game mechanic; keeps it out of AI action selection |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #30 | Register action instances directly | Shared instance retains state from prior faction's action phase if resolution fails mid-way |
+| #31 | `huh` calls directly inside action `Inputs` | Couples engine to a UI library; AI agent would require a different concrete type rather than a different collector |
 
 <br/>
 <br/>

@@ -124,8 +124,8 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- Action Selection (validate and present available actions per faction state)
-- Action Resolution (common interface: Inputs, Validate, Resolve, Output)
+- Remaining action implementations (Repair Asset/Faction, Buy Asset, Refit Asset, Expand Influence, Attack)
+- Action Selection validation rules wired per action
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
 - History/event log (append-only JSONL); wire into `MutationEngine.Apply`
 - Narrative summary renderer
@@ -156,6 +156,10 @@ Design questions that are unresolved and will need answers before the relevant f
 - `turn` command: fully interactive wizard with resume/abandon detection, per-faction bookkeeping→action placeholder→commit loop, and Cycle summary; ANSI terminal styling
 - `MutationEngine` scaffolding: `Mutation` interface (`Type`/`Describe`), `CoinDelta`/`AssetRemoved`/`AssetMaintainedFlag` concrete types, `Apply` wired into bookkeeping
 - `godotenv` + `config.go` env var management; `FACTION_DATA_DIR` via `.env`; pre-merge code review practice established
+- Action Engine foundation: `Action` interface (Validate, Inputs, Resolve, Output), `ActionEngine` with factory-based registration, `InputCollector` interface for swappable GM/AI input collection, `GMCollector` in `cmd/forms` using huh prompts
+- `SellAsset` action: first concrete action implementation; full Validate→Inputs→Resolve→Output cycle; mutations wired into `MutationEngine.Apply`
+- Turn wizard action phase: replaces placeholder with real action selection, `No Action` option, mutation application
+- Engine package reorganized: files renamed to `*_engine.go` convention; `engine.go` → `core.go`
 
 <br/>
 <br/>
@@ -262,3 +266,24 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #41 | Apply mutations inline inside `applyMaintenance` | Would scatter state writes across bookkeeping logic; breaks the "MutationEngine is sole writer" invariant |
 | #44 | Use `lipgloss` for terminal styling | Designed for TUI layout components (panels, borders, grids); wrong abstraction for sequential text output |
+
+### feature/action-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 46 | `Action` interface lives in `engine`, not `domain` | Depends on `loader.Rulebook` and `state.FactionState`; domain cannot import either |
+| 47 | `Action` interface has four methods: Validate, Inputs, Resolve, Output | Matches discovery doc design; Validate gates selection, Inputs collects data, Resolve executes logic, Output produces mutations — clean separation of concerns |
+| 48 | Actions are stateful structs; Inputs stores collected data, Resolve reads it | Keeps the interface uniform across all actions; no generic input bag or type assertions needed |
+| 49 | `ActionEngine` uses factories (`func() Action`) rather than registered instances | Ensures a fresh zero-value struct per faction turn; prevents stale state from a previous faction's action phase carrying over |
+| 50 | `InputCollector` interface injected into actions via factory; `GMCollector` lives in `cmd/forms` | Keeps `huh` out of the engine; AI agent plugs in by implementing the same interface with goal-driven logic; Inputs method itself never changes between GM and AI modes |
+| 51 | Action selection `huh` prompt lives in the wizard, not the `ActionEngine` | `ActionEngine` is pure orchestration; UI concerns belong in the command layer — same principle as bookkeeping display living in the wizard |
+| 52 | `No Action` hardcoded as a wizard-level option, not a registered action | It is a GM UI affordance, not a game mechanic; keeping it out of the action registry avoids polluting AI action selection |
+| 53 | Turn command receives `*engine.Engine` rather than individual sub-engines | Turn wizard needs TurnEngine, ActionEngine, MutationEngine, and Rulebook — passing individual engines grew to the point where passing the full orchestrator is the cleaner call |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #49 | Register action instances directly | Single instance shared across all factions; leftover state from a prior faction's Inputs would persist if resolution failed mid-way |
+| #50 | `huh` calls directly inside action `Inputs` methods | Couples engine to a UI library; AI agent would require a different concrete action type rather than a different collector |
+| #53 | Pass individual sub-engines to turn command | Started with TurnEngine only; grew to TurnEngine + ActionEngine + MutationEngine + Rulebook — at that point the full engine is the right boundary |

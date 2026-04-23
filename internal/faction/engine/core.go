@@ -10,9 +10,9 @@ type Engine struct {
 	Rulebook *loader.Rulebook
 	Turn     *TurnEngine
 	Mutation *MutationEngine
-	// Action *ActionEngine — future
-	// Goal   *GoalEngine   — future
-	// Tag    *TagEngine     — future
+	Action   *ActionEngine
+	// Goal *GoalEngine — future
+	// Tag  *TagEngine  — future
 }
 
 func New(dataDir string) (*Engine, error) {
@@ -23,5 +23,6 @@ func New(dataDir string) (*Engine, error) {
 	e := &Engine{Rulebook: rb}
 	e.Mutation = newMutationEngine()
 	e.Turn = newTurnEngine(e.Mutation)
+	e.Action = newActionEngine()
 	return e, nil
 }
