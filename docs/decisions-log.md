@@ -1,0 +1,150 @@
+# Decisions Log
+
+A record of key decisions made during development, grouped by feature branch.
+
+### Scaffolding & Foundation
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 1 | Go as the implementation language | Familiar to primary developer; compiles to a single binary; strong stdlib |
+| 2 | CLI-first architecture | Keeps UI and business logic cleanly separated; frontend can be added later |
+| 3 | TOML for static data, JSON lines for history | TOML is human-readable and hand-editable; JSON lines is easy to append programmatically and render into narrative |
+| 4 | No database | Data volume is small; access patterns are simple; a database would be overkill |
+| 5 | Actions as first-class logic, not data | Actions have complex conditional logic that can't live in TOML; metadata could be data but resolution belongs in code |
+| 6 | Review Mode and Turn Mode as separate flows | Clean separation of read-only browsing from stateful turn execution |
+| 7 | Turn pause/resume support | A turn is always completed in one sitting but can be saved mid-execution and resumed later |
+| 8 | Domain types in `internal/faction/domain` | Separates pure data types from logic; clean import path |
+| 9 | `Rulebook` as single static data object, no `DataLoader` interface | Interface was premature abstraction; loader is internal plumbing, not a public contract |
+| 10 | `Rulebook` passed explicitly, not as a global | Idiomatic Go; avoids hidden dependencies; easier to test |
+| 11 | Dice notation parsed at load time, stored as `DiceRoll` struct | Keeps TOML human-friendly; structured data makes AI and resolution engine cleaner |
+| 12 | Assets split by category into `*_assets.toml` files, merged at load time | Easier to hand-edit; loader globs automatically so new files need no code changes |
+| 13 | Special-effect-only attacks (no dice damage) have attack section omitted | Engine handles these by asset ID; description captures the mechanic; avoids inventing a parallel data structure before the engine is designed |
+| 14 | `Asset.Definition *AssetDefinition` tagged `toml:"-"` | Runtime link to static data; excluded from serialization; resolved at engine startup |
+| 15 | Campaign scoped by `CampaignID`; state path is `campaigns/<id>/faction_state.toml` | Keeps multiple campaigns isolated; hooks up cleanly when a campaign manager is built later |
+| 16 | Conventional commits + semantic versioning | Consistent history; clear versioning baseline at v0.1.0 |
+| 17 | Dev journal updated on every branch merge | Keeps design decisions and progress in sync with the codebase |
+| 18 | Assets no longer store AssetDefinitions, only DefinitionID | Avoids circular references and serialization issues; when we need the definition, we can look it up from the Rulebook using the ID; simplifies the data model |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #2 | TUI or web app as primary interface | Couples UI to domain logic; CLI-first keeps them separable |
+| #3 | SQLite for state storage | Data is hand-editable TOML; a database adds complexity without benefit at this data volume |
+| #4 | Single monolithic state file for all campaigns | Campaign scoping isolates data; prevents one broken campaign from affecting others |
+| #9 | `DataLoader` interface for the Rulebook | Interface was premature abstraction; loader is internal plumbing, not a public contract |
+
+### feature/faction-create-wizard
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 19 | `App` struct owns the engine; commands wired in `Execute()` | Explicit dependency injection; no globals; engine initialized once before command tree is built |
+| 20 | Command packages split into `faction/`, `review/`, `turn/` subdirectories | Readability and scalability; each mode has its own package with clear boundaries |
+| 21 | Wizard sub-steps live in `faction/wizard/` package; receive only the data they need | Keeps create wizard orchestration clean; decouples wizard steps from the full Rulebook |
+| 22 | Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain` | Game logic belongs in the domain layer, not the command layer |
+| 23 | `FACTION_DATA_DIR` environment variable controls data path at runtime | Dev/distribution separation; data files stay in source tree during development; binary resolves path at runtime via env var, falls back to path relative to executable |
+
+### chore/internal-code-review
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 24 | `FactionScale` exported; `ScaleFromString` removed | `huh.NewSelect[domain.FactionScale]()` uses constants directly — no string conversion needed; eliminates a class of invalid-value bugs |
+| 25 | `HPValueForRating` converted from map to switch | Avoids a heap allocation on every call; switch is clearer and idiomatic for a fixed value table |
+| 26 | TOML tags added to `Faction`, `Asset`, `Tag`, `Goal` | Documents the serialization contract explicitly; snake_case keys are conventional TOML; tags are load-bearing for `FactionState` round-trips |
+| 27 | Duplicate asset ID detection added to loader | Silent overwrites when merging `*_assets.toml` files would lose data with no error; loader now returns an error on collision |
+| 28 | Commands currently own state mutation and path resolution | Noted as design debt: `newCreateCmd` appends directly to state and computes the state path — both should move into the engine as it grows |
+
+### feature/faction-list
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 29 | `faction list` shows one summary line per faction (name, scale, HP, goal) | Quick orientation for the GM; richer per-faction detail belongs in Review Mode |
+| 30 | Binary run from `cmd/faction-manager/`; `campaigns/` is a sibling of `bin/` | Keeps data out of the binary directory; clean separation between executable and campaign files |
+
+### feature/turn-engine-scaffolding
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 31 | `Engine` restructured as core orchestrator composing sub-engines | Maps directly to the discovery doc design; keeps each sub-engine focused and testable; dependencies stay explicit |
+| 32 | `TurnEngine` is a plain struct with no back-reference to `Engine` | No dependency needed now; if Rulebook access is required later, pass `*loader.Rulebook` directly rather than the whole engine |
+| 33 | Faction order is a rotation, not a shuffle | Rules specify "roll a die no smaller than the number of factions; proceed in order" — a starting index rotation satisfies this without inventing a shuffle |
+| 34 | `ApplyBookkeeping` is idempotent via `BookkeepingApplied` flag | Ensures income and maintenance are never double-applied if a paused turn is resumed after bookkeeping was already run |
+| 35 | `Advance` returning `true` is the seam for Mutation and History engines | Turn completion is a single, clean signal point; future engines plug in here without touching `TurnEngine` |
+| 36 | `maintenanceCost` returns 0 until `AssetDefinition` carries structured cost data | Maintenance costs exist in asset description text only; deferred until the field is modelled and resolved via Rulebook |
+| 37 | Mutation and History writes commit together at the end of each faction's turn | Keeps state and history always in sync; pause/resume is correct because each faction's commit lands before the next faction's bookkeeping runs — deferring to Cycle end would require re-playing all prior factions on resume |
+| 38 | `Asset.Maintained` doubles as the consecutive-miss tracker for the two-turn loss rule | First missed payment sets `Maintained = false`; second consecutive miss destroys the asset — no extra field needed |
+| 39 | `TurnPhase` is an int/iota enum replacing `BookkeepingApplied bool` | Three phases needed (Bookkeeping, Action, Complete) for correct pause/resume across action resolution; a bool cannot represent the Action phase |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #31 | All methods on a single `Engine` struct | Would work today but makes sub-engine dependencies implicit as the codebase grows |
+| #33 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
+| #37 | Defer all writes to end of full Cycle | If interrupted mid-Cycle, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
+
+### feature/turn-command
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 40 | `Mutation` interface defined in `domain` with `Type()` and `Describe()` | `Type()` is the stable history serialization discriminator; `Describe()` is the narrative renderer contract; domain owns the contract, engine owns the logic |
+| 41 | `MutationEngine` is the sole writer to campaign state; `BookkeepingResult.RecordedMutations` bridges calculation to history recording | Centralizes all state writes; bookkeeping logic stays pure and testable; mutations are applied inside `ApplyBookkeeping` and returned under `RecordedMutations` for history recording only |
+| 42 | `applyMaintenance` receives a pointer-to-slice and a `startCoin` (simulated post-income balance) | Income is prepended by the caller before maintenance runs so the running balance is correct; pointer-to-slice avoids a messy return tuple |
+| 43 | `godotenv` + `config.go` for environment variable management | Dev path lives in `.env`, never hardcoded; `LoadConfig()` is the single point of failure with a helpful error; follows the project's existing env-var pattern |
+| 44 | ANSI escape codes for turn wizard terminal styling; `lipgloss` deferred to TUI layer | `lipgloss` is a layout library for Bubbletea TUI components, not sequential CLI output; ANSI codes are sufficient and add no dependency |
+| 45 | Pre-merge senior engineer code review added as a standard practice | Catches stale comments, misleading docs, missing tests, and alignment issues before they land on `main`; cost is low, benefit is high |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #41 | Apply mutations inline inside `applyMaintenance` | Would scatter state writes across bookkeeping logic; breaks the "MutationEngine is sole writer" invariant |
+| #44 | Use `lipgloss` for terminal styling | Designed for TUI layout components (panels, borders, grids); wrong abstraction for sequential text output |
+
+### feature/action-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 46 | `Action` interface lives in `engine`, not `domain` | Depends on `loader.Rulebook` and `state.FactionState`; domain cannot import either |
+| 47 | `Action` interface has four methods: Validate, Inputs, Resolve, Output | Matches discovery doc design; Validate gates selection, Inputs collects data, Resolve executes logic, Output produces mutations — clean separation of concerns |
+| 48 | Actions are stateful structs; Inputs stores collected data, Resolve reads it | Keeps the interface uniform across all actions; no generic input bag or type assertions needed |
+| 49 | `ActionEngine` uses factories (`func() Action`) rather than registered instances | Ensures a fresh zero-value struct per faction turn; prevents stale state from a previous faction's action phase carrying over |
+| 50 | `InputCollector` interface injected into actions via factory; `GMCollector` lives in `cmd/forms` | Keeps `huh` out of the engine; AI agent plugs in by implementing the same interface with goal-driven logic; Inputs method itself never changes between GM and AI modes |
+| 51 | Action selection `huh` prompt lives in the wizard, not the `ActionEngine` | `ActionEngine` is pure orchestration; UI concerns belong in the command layer — same principle as bookkeeping display living in the wizard |
+| 52 | `No Action` hardcoded as a wizard-level option, not a registered action | It is a GM UI affordance, not a game mechanic; keeping it out of the action registry avoids polluting AI action selection |
+| 53 | Turn command receives `*engine.Engine` rather than individual sub-engines | Turn wizard needs TurnEngine, ActionEngine, MutationEngine, and Rulebook — passing individual engines grew to the point where passing the full orchestrator is the cleaner call |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #49 | Register action instances directly | Single instance shared across all factions; leftover state from a prior faction's Inputs would persist if resolution failed mid-way |
+| #50 | `huh` calls directly inside action `Inputs` methods | Couples engine to a UI library; AI agent would require a different concrete action type rather than a different collector |
+| #53 | Pass individual sub-engines to turn command | Started with TurnEngine only; grew to TurnEngine + ActionEngine + MutationEngine + Rulebook — at that point the full engine is the right boundary |
+
+### feature/history-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 54 | `Describe()` removed from `Mutation` interface | Description is a renderer concern; prose on the mutation type locks the renderer to pre-baked strings and mixes display logic into the domain |
+| 55 | `MutationRecord` stores a `json.RawMessage` payload alongside the type discriminator | Preserves full structured mutation data for querying; avoids custom marshalers; sidesteps interface serialisation issues |
+| 56 | History records at per-faction granularity, not per-Cycle | Consistent with per-faction state commits; a per-Cycle record would require buffering history until Cycle end while state already commits per-faction, creating a sync gap on interrupted Cycles |
+| 57 | `HistoryEngine` is a separate engine, not folded into `MutationEngine.Apply` | Single responsibility; history engine can grow independently without touching the mutation path |
+| 58 | Index-based `huh.Select` for action selection | Interface equality is unreliable in huh's option matching; integer indices are unambiguous |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #56 | Per-Cycle event record (original discovery doc design) | State commits per-faction for pause/resume correctness; deferring history to Cycle end would create a sync gap on interrupted Cycles |
+| #58 | `engine.Action` directly as huh option value | huh's option matching behaved unexpectedly with interface values; integer indices are unambiguous |
+
+### chore/code-review-2
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 59 | `cmd/faction-manager/paths` package with `paths.New(campaignID)` as canonical campaign path resolver | Three command files each had an inline `filepath.Join` for the same paths; single source of truth eliminates the inline history path derivation in the wizard and makes future path changes a one-line edit |
+| 60 | `domain.FactionStat` typed throughout faction creation wizard | Removes untyped string literals and comparisons from `create.go` and `select_assets.go`; compiler enforces valid values; consistent with how `loader` converts TOML strings to typed constants at the boundary |
+| 61 | `BookkeepingResult.Mutations` renamed to `RecordedMutations` | Mutations are already applied inside `ApplyBookkeeping`; the old name implied the caller should apply them, creating a double-apply risk; `RecordedMutations` makes the recording-only purpose explicit |
+| 62 | `FactionStat` moved from `asset.go` to `faction.go` | Used across faction creation, loader, and asset definitions — it is a domain-wide type, not an asset-specific concern |
+| 63 | Concrete actions moved to `engine/actions` sub-package | `ActionEngine` holds only the `Action` interface and factory registry and never references concrete types; `engine/actions` imports `engine` for the interface contract with no circular import; all future actions have a clear, consistent home before the list grows |
