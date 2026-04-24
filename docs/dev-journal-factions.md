@@ -124,9 +124,9 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- Remaining action implementations (Repair Asset/Faction, Buy Asset, Refit Asset, Expand Influence, Attack)
-- Action Selection validation rules wired per action
+- Remaining action implementations (Expand Influence, Attack, Use Asset Ability)
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
+- Tag Engine (shared utility; discovery doc pending)
 - Narrative summary renderer
 
 ### Deferred
@@ -161,6 +161,7 @@ Design questions that are unresolved and will need answers before the relevant f
 - Engine package reorganized: files renamed to `*_engine.go` convention; `engine.go` → `core.go`
 - History Engine: `EventRecord`/`MutationRecord` domain types; `HistoryEngine` appends one per-faction JSONL record per cycle; turn wizard accumulates bookkeeping and action mutations and records them together; skip-turn prompt and press-Enter pause added to turn wizard
 - Code review (`chore/code-review-2`): `cmd/faction-manager/paths` package with `paths.New(campaignID)` as canonical campaign path resolver; `domain.FactionStat` typed throughout faction creation wizard; `BookkeepingResult.RecordedMutations` renamed to make already-applied status explicit; `FactionStat` moved to `faction.go`; concrete actions moved to `engine/actions` sub-package
+- `simple-actions` branch: four new actions (BuyAsset, RepairAsset, RepairFaction, RefitAsset); new mutation types (`AssetAdded`, `FactionHPDelta`, `AssetHPDelta`); `FactionState.Factions` refactored from slice to map for O(1) lookup by ID; turn-start re-ready of assets purchased the prior cycle (per SWN "inactive until next turn" rule); collision-free asset IDs via monotonic per-(faction, definition) suffix; `InputCollector` extended with `SelectRepairOrders`, `SelectBuyOrder`, `SelectRefitOrder`; `InputCollector` wide-interface shape ratified (revisit refactor after remaining actions land)
 
 <br/>
 <br/>

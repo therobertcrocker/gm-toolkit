@@ -148,3 +148,22 @@ A record of key decisions made during development, grouped by feature branch.
 | 61 | `BookkeepingResult.Mutations` renamed to `RecordedMutations` | Mutations are already applied inside `ApplyBookkeeping`; the old name implied the caller should apply them, creating a double-apply risk; `RecordedMutations` makes the recording-only purpose explicit |
 | 62 | `FactionStat` moved from `asset.go` to `faction.go` | Used across faction creation, loader, and asset definitions — it is a domain-wide type, not an asset-specific concern |
 | 63 | Concrete actions moved to `engine/actions` sub-package | `ActionEngine` holds only the `Action` interface and factory registry and never references concrete types; `engine/actions` imports `engine` for the interface contract with no circular import; all future actions have a clear, consistent home before the list grows |
+
+### simple-actions
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 64 | `FactionState.Factions` refactored from `[]*Faction` to `map[string]*Faction` | Actions and mutations reference factions by ID; O(1) lookup replaces O(n) scan; TOML shape changes from `[[factions]]` to `[factions.<id>]` (accepted as pre-1.0 break) |
+| 65 | New mutation types: `AssetAdded`, `FactionHPDelta`, `AssetHPDelta` | Required to express the new actions' state changes without bypassing `MutationEngine`; HP deltas carry a signed delta rather than an absolute new value so repair and damage share a type |
+| 66 | Turn-start re-ready flips `Ready` directly, not via a mutation | Deterministic turn-start housekeeping; fully derivable from the cycle counter; no history replay feature exists that would need the event recorded; chose YAGNI over the "MutationEngine is sole writer" invariant |
+| 67 | Asset ID suffix is per-`(faction, definition)`, monotonic among live assets | Prefix scan picks `max(N) + 1`; per-def scope because `defID` is already in the ID; no persisted counter across sells because JSONL history is self-contained and nothing in the current system is confused by a reused ID after a sell |
+| 68 | `InputCollector` interface stays wide (one method per action) | Seven methods projected once all actions land; narrowing (per-action ISP, primitives, request/response) will be reassessed when pain is concrete |
+| 69 | Refit replacement filter: same category, different definition, attribute ≥ `MinRating`, faction `Coin ≥ max(0, newCost - oldCost)` | Matches BuyAsset's pre-filter approach; avoids dead-end menu options; old-asset list is also pre-filtered to assets with ≥1 valid replacement |
+| 70 | Refitted asset starts at full HP per new definition | Rules say "replace with new asset" — inheriting old HP would be a special case with no rule support |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #66 | Add `AssetReadyFlag` mutation and record turn-start re-readies to history | Pure housekeeping — adds noise to `history.jsonl` for events fully determined by the cycle counter |
+| #67 | `Faction.NextAssetCounter map[defID]int` persisted counter for monotonic IDs across sells | Would solve ID reuse after sell+buy, but no present-day consequence: state holds only live assets, history is append-only self-contained events, no cross-references; speculative fix for a problem that doesn't exist yet |
