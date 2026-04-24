@@ -209,10 +209,8 @@ func resumeOrStart(e *engine.Engine, factionState *state.FactionState, p paths.P
 // factionName returns the display name for a faction ID, falling back to the ID
 // if not found.
 func factionName(factionState *state.FactionState, id string) string {
-	for _, faction := range factionState.Factions {
-		if faction.ID == id {
-			return faction.Name
-		}
+	if faction, ok := factionState.Factions[id]; ok {
+		return faction.Name
 	}
 	return id
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -21,9 +20,9 @@ func runDeleteFactionWizard(campaignID string) error {
 		return nil
 	}
 
-	options := make([]huh.Option[string], len(s.Factions))
-	for i, f := range s.Factions {
-		options[i] = huh.NewOption(f.Name, f.ID)
+	options := make([]huh.Option[string], 0, len(s.Factions))
+	for _, f := range s.Factions {
+		options = append(options, huh.NewOption(f.Name, f.ID))
 	}
 
 	var targetID string
@@ -39,13 +38,7 @@ func runDeleteFactionWizard(campaignID string) error {
 		return fmt.Errorf("wizard cancelled: %w", err)
 	}
 
-	var target *domain.Faction
-	for _, f := range s.Factions {
-		if f.ID == targetID {
-			target = f
-			break
-		}
-	}
+	target := s.Factions[targetID]
 
 	summary := fmt.Sprintf(
 		"Name: %s\nHomeworld: %s\nForce: %d  Cunning: %d  Wealth: %d\nHP: %d / %d",
@@ -71,13 +64,7 @@ func runDeleteFactionWizard(campaignID string) error {
 		return nil
 	}
 
-	filtered := s.Factions[:0]
-	for _, f := range s.Factions {
-		if f.ID != targetID {
-			filtered = append(filtered, f)
-		}
-	}
-	s.Factions = filtered
+	delete(s.Factions, targetID)
 
 	if err := state.Save(p.State, s); err != nil {
 		return fmt.Errorf("saving state: %w", err)

@@ -19,36 +19,45 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 	for _, mutation := range mutations {
 		switch v := mutation.(type) {
 		case domain.CoinDelta:
-			for _, faction := range factionState.Factions {
-				if faction.ID == v.FactionID {
-					faction.Coin += v.Delta
-					break
-				}
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.Coin += v.Delta
 			}
 		case domain.AssetRemoved:
-			for _, faction := range factionState.Factions {
-				if faction.ID == v.FactionID {
-					surviving := make([]*domain.Asset, 0, len(faction.Assets))
-					for _, asset := range faction.Assets {
-						if asset.ID != v.AssetID {
-							surviving = append(surviving, asset)
-						}
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				surviving := make([]*domain.Asset, 0, len(faction.Assets))
+				for _, asset := range faction.Assets {
+					if asset.ID != v.AssetID {
+						surviving = append(surviving, asset)
 					}
-					faction.Assets = surviving
-					break
 				}
+				faction.Assets = surviving
 			}
 		case domain.AssetMaintainedFlag:
-			for _, faction := range factionState.Factions {
-				if faction.ID == v.FactionID {
-					for _, asset := range faction.Assets {
-						if asset.ID == v.AssetID {
-							asset.Maintained = v.Maintained
-							break
-						}
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, asset := range faction.Assets {
+					if asset.ID == v.AssetID {
+						asset.Maintained = v.Maintained
+						break
 					}
-					break
 				}
+			}
+		case domain.FactionHPDelta:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.CurrentHP += v.Delta
+			}
+		case domain.AssetHPDelta:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, asset := range faction.Assets {
+					if asset.ID == v.AssetID {
+						asset.CurrentHP += v.Delta
+						break
+					}
+				}
+			}
+		case domain.AssetAdded:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				asset := v.Asset
+				faction.Assets = append(faction.Assets, &asset)
 			}
 		}
 	}

@@ -31,3 +31,31 @@ type AssetMaintainedFlag struct {
 }
 
 func (mutation AssetMaintainedFlag) Type() string { return "asset_maintained_flag" }
+
+// FactionHPDelta adjusts a faction's CurrentHP by Delta. Resolve pre-caps the
+// delta so the applied value never exceeds MaxHP.
+type FactionHPDelta struct {
+	FactionID string `json:"faction_id"`
+	Delta     int    `json:"delta"`
+}
+
+func (mutation FactionHPDelta) Type() string { return "faction_hp_delta" }
+
+// AssetHPDelta adjusts an asset's CurrentHP by Delta. Resolve pre-caps the
+// delta so the applied value never exceeds the asset's definition max HP.
+type AssetHPDelta struct {
+	FactionID string `json:"faction_id"`
+	AssetID   string `json:"asset_id"`
+	Delta     int    `json:"delta"`
+}
+
+func (mutation AssetHPDelta) Type() string { return "asset_hp_delta" }
+
+// AssetAdded adds a newly purchased or created asset to a faction's roster.
+// The asset is flagged Ready: false (inactive until the start of the next turn).
+type AssetAdded struct {
+	FactionID string `json:"faction_id"`
+	Asset     Asset  `json:"asset"`
+}
+
+func (mutation AssetAdded) Type() string { return "asset_added" }

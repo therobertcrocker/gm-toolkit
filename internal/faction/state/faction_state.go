@@ -10,10 +10,10 @@ import (
 )
 
 type FactionState struct {
-	CampaignID  string              `toml:"campaign_id"`
-	CycleNumber int                 `toml:"cycle_number"`
-	Factions    []*domain.Faction   `toml:"factions"`
-	CurrentTurn *domain.TurnState   `toml:"current_turn,omitempty"`
+	CampaignID  string                       `toml:"campaign_id"`
+	CycleNumber int                          `toml:"cycle_number"`
+	Factions    map[string]*domain.Faction   `toml:"factions"`
+	CurrentTurn *domain.TurnState            `toml:"current_turn,omitempty"`
 }
 
 // Load reads campaign state from path. Returns an empty State if the file does not exist.
@@ -21,9 +21,12 @@ func Load(path string) (*FactionState, error) {
 	var s FactionState
 	if _, err := toml.DecodeFile(path, &s); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return &FactionState{}, nil
+			return &FactionState{Factions: make(map[string]*domain.Faction)}, nil
 		}
 		return nil, err
+	}
+	if s.Factions == nil {
+		s.Factions = make(map[string]*domain.Faction)
 	}
 	return &s, nil
 }
