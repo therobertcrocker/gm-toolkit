@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 	"math/rand/v2"
+	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -59,6 +60,7 @@ func (t *TurnEngine) Start(factionState *state.FactionState) error {
 	}
 
 	factionState.CycleNumber++
+	readyAllAssets(factionState)
 	factionState.CurrentTurn = &domain.TurnState{
 		InProgress:   true,
 		CycleNumber:   factionState.CycleNumber,
@@ -69,16 +71,25 @@ func (t *TurnEngine) Start(factionState *state.FactionState) error {
 	return nil
 }
 
+// readyAllAssets flips Ready=true on every asset across all factions. Called
+// at cycle start so assets bought last cycle become active (SWN: "newly bought
+// asset cannot attack...until the start of next turn").
+func readyAllAssets(factionState *state.FactionState) {
+	for _, faction := range factionState.Factions {
+		for _, asset := range faction.Assets {
+			asset.Ready = true
+		}
+	}
+}
+
 // CurrentFaction returns the faction whose turn it currently is.
 func (t *TurnEngine) CurrentFaction(factionState *state.FactionState) (*domain.Faction, error) {
 	if !t.InProgress(factionState) {
 		return nil, ErrNoTurnActive
 	}
 	id := factionState.CurrentTurn.FactionOrder[factionState.CurrentTurn.CurrentIndex]
-	for _, f := range factionState.Factions {
-		if f.ID == id {
-			return f, nil
-		}
+	if faction, ok := factionState.Factions[id]; ok {
+		return faction, nil
 	}
 	return nil, errors.New("faction not found: " + id)
 }
@@ -186,13 +197,18 @@ func maintenanceCost(_ *domain.Asset) int {
 }
 
 // buildFactionOrder rolls a starting index and returns faction IDs as a rotation.
-// Die size equals the number of factions, satisfying the "no smaller than" rule.
-func buildFactionOrder(factions []*domain.Faction) []string {
-	n := len(factions)
+// Keys are sorted before randomizing so the rotation is deterministic given the same set.
+func buildFactionOrder(factions map[string]*domain.Faction) []string {
+	ids := make([]string, 0, len(factions))
+	for id := range factions {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	n := len(ids)
 	start := rand.IntN(n)
 	order := make([]string, n)
 	for i := range n {
-		order[i] = factions[(start+i)%n].ID
+		order[i] = ids[(start+i)%n]
 	}
 	return order
 }

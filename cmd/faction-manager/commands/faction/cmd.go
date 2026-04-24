@@ -44,7 +44,7 @@ func newCreateCmd(rb *loader.Rulebook, campaignID *string) *cobra.Command {
 			}
 
 			s.CampaignID = *campaignID
-			s.Factions = append(s.Factions, faction)
+			s.Factions[faction.ID] = faction
 
 			if err := state.Save(p.State, s); err != nil {
 				return fmt.Errorf("saving state: %w", err)

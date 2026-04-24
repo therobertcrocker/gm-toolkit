@@ -10,15 +10,15 @@ import (
 // --- helpers ---
 
 func newTestState(factionIDs ...string) *state.FactionState {
-	s := &state.FactionState{CampaignID: "test"}
+	s := &state.FactionState{CampaignID: "test", Factions: make(map[string]*domain.Faction)}
 	for _, id := range factionIDs {
-		s.Factions = append(s.Factions, &domain.Faction{
-			ID:     id,
-			Force:  4,
+		s.Factions[id] = &domain.Faction{
+			ID:      id,
+			Force:   4,
 			Cunning: 3,
-			Wealth: 6,
-			Coin:   0,
-		})
+			Wealth:  6,
+			Coin:    0,
+		}
 	}
 	return s
 }
@@ -110,11 +110,11 @@ func TestStart_IncrementsCycleNumber(t *testing.T) {
 // --- buildFactionOrder ---
 
 func TestBuildFactionOrder_ContainsAllIDs(t *testing.T) {
-	factions := []*domain.Faction{
-		{ID: "alpha"},
-		{ID: "beta"},
-		{ID: "gamma"},
-		{ID: "delta"},
+	factions := map[string]*domain.Faction{
+		"alpha": {ID: "alpha"},
+		"beta":  {ID: "beta"},
+		"gamma": {ID: "gamma"},
+		"delta": {ID: "delta"},
 	}
 
 	seen := map[string]int{}
@@ -128,20 +128,20 @@ func TestBuildFactionOrder_ContainsAllIDs(t *testing.T) {
 		}
 	}
 
-	for _, f := range factions {
-		if seen[f.ID] == 0 {
-			t.Errorf("faction %q never appeared in order", f.ID)
+	for id := range factions {
+		if seen[id] == 0 {
+			t.Errorf("faction %q never appeared in order", id)
 		}
 	}
 }
 
 func TestBuildFactionOrder_IsRotation(t *testing.T) {
-	factions := []*domain.Faction{
-		{ID: "a"},
-		{ID: "b"},
-		{ID: "c"},
+	factions := map[string]*domain.Faction{
+		"a": {ID: "a"},
+		"b": {ID: "b"},
+		"c": {ID: "c"},
 	}
-	ids := []string{"a", "b", "c"}
+	ids := []string{"a", "b", "c"} // sorted order matches buildFactionOrder's sort step
 
 	for range 50 {
 		order := buildFactionOrder(factions)
@@ -205,16 +205,16 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 			te := newTurn()
 			s := &state.FactionState{
 				CampaignID: "test",
-				Factions: []*domain.Faction{
-					{ID: "f", Force: tt.force, Cunning: tt.cunning, Wealth: tt.wealth, Coin: 0},
+				Factions: map[string]*domain.Faction{
+					"f": {ID: "f", Force: tt.force, Cunning: tt.cunning, Wealth: tt.wealth, Coin: 0},
 				},
 			}
 			_ = te.Start(s)
 			if _, err := te.ApplyBookkeeping(s); err != nil {
 				t.Fatalf("ApplyBookkeeping() error: %v", err)
 			}
-			if s.Factions[0].Coin != tt.wantIncome {
-				t.Errorf("Coin after income: got %d, want %d", s.Factions[0].Coin, tt.wantIncome)
+			if s.Factions["f"].Coin != tt.wantIncome {
+				t.Errorf("Coin after income: got %d, want %d", s.Factions["f"].Coin, tt.wantIncome)
 			}
 		})
 	}
@@ -227,8 +227,8 @@ func TestApplyBookkeeping_NoDoubleApply(t *testing.T) {
 	_, _ = te.ApplyBookkeeping(s)
 	_, _ = te.ApplyBookkeeping(s) // second call should be a no-op
 
-	if s.Factions[0].Coin != 4 {
-		t.Errorf("Coin after double apply: got %d, want 4", s.Factions[0].Coin)
+	if s.Factions["a"].Coin != 4 {
+		t.Errorf("Coin after double apply: got %d, want 4", s.Factions["a"].Coin)
 	}
 }
 

@@ -11,8 +11,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	original := &FactionState{
 		CampaignID: "test-campaign",
 		CycleNumber: 3,
-		Factions: []*domain.Faction{
-			{
+		Factions: map[string]*domain.Faction{
+			"iron-collective": {
 				ID:        "iron-collective",
 				Name:      "Iron Collective",
 				Scale:     domain.ScaleMajor,
@@ -28,10 +28,10 @@ func TestFactionStateRoundTrip(t *testing.T) {
 					{ID: "T-001", Name: "Colonists", Description: "Settler faction", Effect: "+1 Wealth"},
 				},
 				Goal: &domain.Goal{
-					ID:         "G-001",
-					Name:       "Military Conquest",
+					ID:          "G-001",
+					Name:        "Military Conquest",
 					Description: "Destroy half the enemy's assets",
-					Difficulty: "half_assets_destroyed",
+					Difficulty:  "half_assets_destroyed",
 				},
 				Assets: []*domain.Asset{
 					{
@@ -70,8 +70,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 		t.Fatalf("Factions: got %d, want 1", len(loaded.Factions))
 	}
 
-	got := loaded.Factions[0]
-	want := original.Factions[0]
+	got := loaded.Factions["iron-collective"]
+	want := original.Factions["iron-collective"]
 
 	if got.ID != want.ID {
 		t.Errorf("Faction.ID: got %q, want %q", got.ID, want.ID)

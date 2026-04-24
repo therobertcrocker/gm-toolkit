@@ -9,8 +9,8 @@ import (
 
 func newMutationTestState() *state.FactionState {
 	return &state.FactionState{
-		Factions: []*domain.Faction{
-			{
+		Factions: map[string]*domain.Faction{
+			"f1": {
 				ID:   "f1",
 				Name: "Faction One",
 				Coin: 10,
@@ -30,14 +30,14 @@ func TestMutationEngine_CoinDelta(t *testing.T) {
 	me.Apply(s, []domain.Mutation{
 		domain.CoinDelta{FactionID: "f1", Delta: 5},
 	})
-	if got := s.Factions[0].Coin; got != 15 {
+	if got := s.Factions["f1"].Coin; got != 15 {
 		t.Errorf("Coin = %d, want 15", got)
 	}
 
 	me.Apply(s, []domain.Mutation{
 		domain.CoinDelta{FactionID: "f1", Delta: -3},
 	})
-	if got := s.Factions[0].Coin; got != 12 {
+	if got := s.Factions["f1"].Coin; got != 12 {
 		t.Errorf("Coin = %d, want 12", got)
 	}
 }
@@ -50,7 +50,7 @@ func TestMutationEngine_AssetRemoved(t *testing.T) {
 		domain.AssetRemoved{FactionID: "f1", AssetID: "a1"},
 	})
 
-	assets := s.Factions[0].Assets
+	assets := s.Factions["f1"].Assets
 	if len(assets) != 1 {
 		t.Fatalf("len(Assets) = %d, want 1", len(assets))
 	}
@@ -67,7 +67,7 @@ func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 	me.Apply(s, []domain.Mutation{
 		domain.AssetMaintainedFlag{FactionID: "f1", AssetID: "a1", Maintained: false},
 	})
-	if s.Factions[0].Assets[0].Maintained {
+	if s.Factions["f1"].Assets[0].Maintained {
 		t.Error("expected a1 to be unmaintained")
 	}
 
@@ -75,7 +75,7 @@ func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 	me.Apply(s, []domain.Mutation{
 		domain.AssetMaintainedFlag{FactionID: "f1", AssetID: "a2", Maintained: true},
 	})
-	if !s.Factions[0].Assets[1].Maintained {
+	if !s.Factions["f1"].Assets[1].Maintained {
 		t.Error("expected a2 to be maintained")
 	}
 }
@@ -87,7 +87,7 @@ func TestMutationEngine_UnknownFactionIsNoop(t *testing.T) {
 	me.Apply(s, []domain.Mutation{
 		domain.CoinDelta{FactionID: "missing", Delta: 100},
 	})
-	if got := s.Factions[0].Coin; got != 10 {
+	if got := s.Factions["f1"].Coin; got != 10 {
 		t.Errorf("Coin = %d, want 10 (unknown faction should be no-op)", got)
 	}
 }
