@@ -10,11 +10,13 @@ import (
 
 func (a *App) turnCmd() *cobra.Command {
 	collector := forms.NewGMCollector()
+	roller := engine.NewRandRoller()
 	a.Engine.Action.Register(func() engine.Action { return actions.NewSellAsset(collector) })
 	a.Engine.Action.Register(func() engine.Action { return actions.NewRepairFaction() })
 	a.Engine.Action.Register(func() engine.Action { return actions.NewRepairAsset(collector) })
 	a.Engine.Action.Register(func() engine.Action { return actions.NewBuyAsset(collector) })
 	a.Engine.Action.Register(func() engine.Action { return actions.NewRefitAsset(collector) })
+	a.Engine.Action.Register(func() engine.Action { return actions.NewAttack(collector, roller) })
 
 	return turn.NewCmd(a.Engine)
 }

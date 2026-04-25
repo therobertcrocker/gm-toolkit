@@ -13,6 +13,10 @@ type InputCollector interface {
 	SelectRepairOrders(faction *domain.Faction, damagedAssets []*domain.Asset, rulebook *loader.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(worlds []string, purchasable []*domain.AssetDefinition) (BuyOrder, error)
 	SelectRefitOrder(options []RefitOption, rulebook *loader.Rulebook) (RefitOrder, error)
+	// Attack
+	SelectAttackers(eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error)
+	SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error)
+	ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error)
 }
 
 // RepairOrder describes a single asset repair instruction: which asset and how

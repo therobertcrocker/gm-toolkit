@@ -124,9 +124,8 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- Remaining action implementations (Expand Influence, Attack, Use Asset Ability)
+- Remaining action implementations (Expand Influence, Use Asset Ability)
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
-- Tag Engine (shared utility; discovery doc pending)
 - Narrative summary renderer
 
 ### Deferred
@@ -134,6 +133,8 @@ Design questions that are unresolved and will need answers before the relevant f
 - Tag-granted assets: some tags grant bonus starting assets; deferred until engine action resolution is designed
 - Command layer does state mutation directly (`s.Factions = append(...)`) and resolves the state file path — both should move into the engine as `engine.CreateFaction(campaignID, faction)` once the engine has more substance. Commands should be thin: collect input, call engine, report result.
 - Maintenance costs per asset: `maintenanceCost` returns 0 until structured cost data is added to `AssetDefinition` and resolved via Rulebook
+- Programmatic tag handling: v1 does not automate tag mechanics (bonus dice, purchase gates, event hooks, etc.); GMs adjudicate at the table. Design captured in `docs/discovery/tag-engine-discovery.md`
+- Tag reminder affordance: surface attacker's and defender's active tags at roll-time in the turn wizard so the GM remembers to apply effects manually; deferred alongside programmatic tag handling
 
 ### Completed
 - Project scaffolding (`go.mod`, `main.go`, Cobra CLI entrypoint)
@@ -162,6 +163,7 @@ Design questions that are unresolved and will need answers before the relevant f
 - History Engine: `EventRecord`/`MutationRecord` domain types; `HistoryEngine` appends one per-faction JSONL record per cycle; turn wizard accumulates bookkeeping and action mutations and records them together; skip-turn prompt and press-Enter pause added to turn wizard
 - Code review (`chore/code-review-2`): `cmd/faction-manager/paths` package with `paths.New(campaignID)` as canonical campaign path resolver; `domain.FactionStat` typed throughout faction creation wizard; `BookkeepingResult.RecordedMutations` renamed to make already-applied status explicit; `FactionStat` moved to `faction.go`; concrete actions moved to `engine/actions` sub-package
 - `simple-actions` branch: four new actions (BuyAsset, RepairAsset, RepairFaction, RefitAsset); new mutation types (`AssetAdded`, `FactionHPDelta`, `AssetHPDelta`); `FactionState.Factions` refactored from slice to map for O(1) lookup by ID; turn-start re-ready of assets purchased the prior cycle (per SWN "inactive until next turn" rule); collision-free asset IDs via monotonic per-(faction, definition) suffix; `InputCollector` extended with `SelectRepairOrders`, `SelectBuyOrder`, `SelectRefitOrder`; `InputCollector` wide-interface shape ratified (revisit refactor after remaining actions land)
+- `attack-action` branch: `Base` domain type + `Faction.Bases` slice; homeworld Base seeded at faction create time; `Roller` interface + `RandRoller` production impl + `DiceRoll.Roll(Roller)`; `Attack` action with up-front attacker commit, per-matchup re-check, stealth-cleared dedup, inline destruction, Base-redirect prompt; new mutations (`AssetStealthCleared`, `BaseHPDelta`, `BaseDestroyed`); `InputCollector` extended with `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase`; base-redirect on homeworld uses `FactionHPDelta` (non-homeworld Bases land with Expand Influence); comprehensive attack unit tests with fake collector and deterministic roller
 
 <br/>
 <br/>

@@ -120,6 +120,17 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	}
 	faction.MaxHP = domain.CalcMaxHP(faction)
 	faction.CurrentHP = faction.MaxHP
+	faction.Bases = []*domain.Base{
+		{
+			ID:          fmt.Sprintf("%s-homeworld", faction.ID),
+			OwnerID:     faction.ID,
+			Location:    homeworld,
+			CurrentHP:   faction.MaxHP,
+			MaxHP:       faction.MaxHP,
+			Ready:       true,
+			IsHomeworld: true,
+		},
+	}
 
 	// Step 4: Starting asset selection
 	otherStats := []domain.FactionStat{}

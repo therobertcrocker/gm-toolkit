@@ -159,6 +159,6 @@ The Goal Engine is a first-class part of the turn engine. It manages multi-turn 
 
 ## 8. Tag Engine
 
-The Tag Engine evaluates tag relevance in the context of a roll or action and applies the +1d10 keep highest modifier when applicable. It is a shared utility called from within the action engine — not owned by any single action. Tags surface in Attack rolls, faction tests, and potentially other actions as the engine grows.
+The Tag Engine will eventually serve as the single authority for the mechanical effects of faction tags — rolls, purchases, events, actions, goals. **Deferred from v1:** the tool keeps tag data visible on factions but does not apply tag mechanics programmatically; GMs adjudicate at the table.
 
-> Discovery doc to be written when Tag Engine scope is better understood.
+> Full breakdown in [tag-engine-discovery.md](tag-engine-discovery.md).

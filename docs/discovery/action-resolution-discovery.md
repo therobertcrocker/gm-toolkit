@@ -197,35 +197,52 @@ A breakdown of the resolution logic for each of the 9 faction actions.
 
 ## Attack
 
-**Complexity:** High — dice rolls, tag modifiers, defender choice, damage redirection, multi-asset sequencing.
+**Complexity:** High — dice rolls, tag modifiers, defender choice, damage redirection, multi-asset sequencing across potentially multiple worlds.
 
 ### Inputs
 - Faction performing the action
-- One or more attacking assets
-- Target world
-- Per matchup: defending asset (chosen by GM for the rival faction)
+- Full list of attacking assets (committed up front — see Design Decisions). Attackers may span multiple worlds; each attacker's world is implicit from its current location.
+- Per matchup: defending asset (chosen by the same GM, acting for whichever rival on that attacker's world is being targeted)
 
 ### Resolution Steps
-1. GM selects one or more attacking assets on the target world
-2. For each attacking asset in sequence:
-   a. GM selects the defending asset (chosen by the defending faction's GM)
-   b. Check tag relevance for attacker and defender via Tag Engine; apply +1d10 keep highest if relevant
-   c. Roll attack: `1d10 + attacker's relevant attribute` (plus tag die if applicable)
-   d. Roll defense: `1d10 + defender's relevant attribute` (plus tag die if applicable)
-   e. Resolve outcome:
-      - **Attacker strictly greater:** defending asset takes listed attack damage; GM may redirect damage to Base of Influence on that world instead; if asset HP = 0 it is destroyed
-      - **Defender wins or ties:** attacking asset takes counterattack damage (if any listed on defending asset)
-      - **Tie:** both attack damage and counterattack damage apply simultaneously
-3. Update HP for all affected assets; remove destroyed assets from state
+1. GM selects attacking assets from anywhere in the faction. Eligibility: the attacker must be on a world that has at least one rival's known (non-stealthed), non-inactive, alive asset; the attacker itself must also be non-inactive and alive.
+2. For each attacking asset in the committed order:
+   a. **Re-check eligibility:** confirm the attacker is still alive, non-inactive, and still on a world with at least one eligible rival asset; skip this matchup if not
+   b. GM selects the defending asset from all eligible rival assets on that attacker's world (any rival faction, any non-stealthed non-inactive alive asset)
+   c. Tag relevance is *not* evaluated by code in v1 — the GM applies any tag effects manually at the table (see [tag-engine-discovery.md](tag-engine-discovery.md))
+   d. Emit stealth-loss mutations for both attacker and defender if either is Stealthy (applied before damage so state is consistent)
+   e. Roll attack: `1d10 + attacker's relevant attribute`
+   f. Roll defense: `1d10 + defender's relevant attribute`
+   g. Resolve outcome:
+      - **Attacker strictly greater:** defending asset takes listed attack damage; if the defending faction has a Base of Influence on the attacker's world, GM is prompted inline to redirect the attack damage to the Base instead; if resulting HP ≤ 0 the asset (or Base) is destroyed
+      - **Defender strictly greater:** attacking asset takes counterattack damage if the defender's `Counter` is non-nil; otherwise no damage
+      - **Tie:** attack damage and counterattack damage both apply simultaneously (redirect prompt still offered for the attack half; counterattack half always lands on the attacker)
+3. After all matchups resolve, the aggregated mutations (HP deltas, stealth flags, asset removals, Base HP changes) are committed by the engine
 
 ### Outputs
 - Asset HP updated or assets destroyed
-- Base of Influence HP updated if damage redirected
-- All attack outcomes recorded to history
+- Base of Influence HP updated if damage redirected; Base destroyed if HP ≤ 0
+- Stealth flags cleared on any attacker/defender that participated
+- All per-matchup outcomes recorded to the EventRecord
 
-### Notes
-- **Depends on Tag Engine (planned)** — tag relevance per roll is evaluated by the Tag Engine; tags surface across multiple actions not just Attack
-- Defender asset selection is manual (GM decides for rival faction); AI agent defender logic is a future concern
-- A defending asset can defend multiple times in one turn; an attacking asset can only attack once
-- Only known (non-stealthed) assets can be targeted; stealth is lost if an asset attacks or defends
-- Stealth loss on defend should be applied before damage resolution so state is consistent
+### Design Decisions (locked in discovery)
+
+1. **Single-GM prompt for defender selection** — the same GM answers both attacker and defender prompts; the UI may label the prompt ("Defender's choice — pick for \<rival\>") but there is no separate "opposing GM" mode. Slots cleanly into the existing `InputCollector` pattern and leaves room for an AI-driven rival later.
+2. **Up-front attacker commit (pattern a)** — GM picks all attacking assets in one step; engine walks the sequence without asking "another?" between matchups. Attackers may be on different worlds; each matchup plays out on its own attacker's world. Reads as a single coherent action rather than a loop of mini-actions. Mid-sequence abort is not offered; the committed sequence runs to completion.
+3. **No pub/sub event bus for destroyed assets** — destruction is captured in the EventRecord's per-turn JSONL audit log, which is the only event surface we have. Scavengers / Tag Engine Phase 2 will introduce a real dispatcher when a live subscriber actually exists (YAGNI).
+4. **Stealth loss before damage** — when an attacker attacks or a defender defends, the `Stealthy: false` mutation is emitted ahead of any HP mutation in the same matchup, so the timeline in the EventRecord is consistent.
+5. **Inline redirect to Base of Influence** — redirection is prompted at outcome resolution time, not as a post-pass. Prompt only appears when (i) the attacker won (strictly greater, or the attack half of a tie) and (ii) the defending faction has a Base of Influence on the attacker's world.
+
+### Consequences of the above
+
+- **Nil counterattack:** many assets have no `Counter` value. A tie against a no-counter defender applies attack damage only; defender-wins against a no-counter defender applies no damage at all.
+- **Redirect scope:** redirection applies only to *attack* damage. Counterattack damage on ties or defender wins always lands on the attacking asset — the attacker has no redirect escape.
+- **Per-matchup re-check (pattern a consequence):** queued attackers and the currently-selected defender must be re-validated at the start of each matchup, since earlier matchups may have destroyed assets, removed them from a world, or changed stealth state. A queued attacker destroyed by counterattack in matchup #1 is simply skipped if it was also queued for matchup #3.
+- **Multi-world sequencing:** because attackers can span worlds, the matchup loop implicitly walks from world to world. The EventRecord should capture each matchup's world so the narrative renderer can group them coherently.
+
+### Open Notes
+- Defender asset selection is manual; AI agent defender logic is a future concern.
+- A defending asset can defend multiple times in one turn; an attacking asset can only attack once.
+- Only known (non-stealthed) assets can be targeted.
+- The `Ready` (inactive) flag is currently written by Buy/Refit and reset at turn start but never read. Attack is the first consumer: inactive assets must be filtered out of both attacker and defender eligibility lists.
+- New mutation shapes are likely needed (e.g. `AssetStealthCleared`, `BaseHPDelta` / `BaseDestroyed`); the final list will be enumerated during implementation planning.

@@ -45,6 +45,7 @@ type Faction struct {
 	Tags      []*Tag       `toml:"tags"`
 	Goal      *Goal        `toml:"goal"`
 	Assets    []*Asset     `toml:"assets"`
+	Bases     []*Base      `toml:"bases"`
 }
 
 func RatingsFromScale(s FactionScale) (primary, secondary, tertiary int) {

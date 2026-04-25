@@ -189,6 +189,87 @@ func (c *GMCollector) SelectRefitOrder(options []engine.RefitOption, rulebook *l
 	return engine.RefitOrder{OldAsset: selectedOption.Asset, NewDefinition: selectedDef}, nil
 }
 
+func (c *GMCollector) SelectAttackers(eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error) {
+	options := make([]huh.Option[*domain.Asset], 0, len(eligible))
+	for _, asset := range eligible {
+		label := asset.DefinitionID
+		if def, ok := rulebook.Assets[asset.DefinitionID]; ok {
+			atkLabel := ""
+			if def.Attack != nil {
+				atkLabel = fmt.Sprintf(", %s vs %s", def.Attack.AttackerStat, def.Attack.DefenderStat)
+			}
+			label = fmt.Sprintf("%s (%s) — HP: %d/%d%s", def.Name, asset.Location, asset.CurrentHP, def.HP, atkLabel)
+		}
+		options = append(options, huh.NewOption(label, asset))
+	}
+
+	var selected []*domain.Asset
+	if err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewMultiSelect[*domain.Asset]().
+				Title("Select attacking assets").
+				Description("All selected assets commit now; sequence runs to completion.").
+				Options(options...).
+				Value(&selected),
+		),
+	).Run(); err != nil {
+		return nil, fmt.Errorf("selection cancelled: %w", err)
+	}
+	return selected, nil
+}
+
+func (c *GMCollector) SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error) {
+	attackerName := attacker.DefinitionID
+	if def, ok := rulebook.Assets[attacker.DefinitionID]; ok {
+		attackerName = def.Name
+	}
+
+	options := make([]huh.Option[*domain.Asset], 0, len(eligible))
+	for _, asset := range eligible {
+		label := fmt.Sprintf("[%s] %s", asset.OwnerID, asset.DefinitionID)
+		if def, ok := rulebook.Assets[asset.DefinitionID]; ok {
+			counterLabel := "no counter"
+			if def.Counter != nil {
+				counterLabel = fmt.Sprintf("counter: %dd%d", def.Counter.NumDice, def.Counter.Sides)
+			}
+			label = fmt.Sprintf("[%s] %s (%s) — HP: %d/%d, %s",
+				asset.OwnerID, def.Name, asset.Location, asset.CurrentHP, def.HP, counterLabel)
+		}
+		options = append(options, huh.NewOption(label, asset))
+	}
+
+	var selected *domain.Asset
+	if err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[*domain.Asset]().
+				Title(fmt.Sprintf("Defender's choice — select target for %s", attackerName)).
+				Options(options...).
+				Value(&selected),
+		),
+	).Run(); err != nil {
+		return nil, fmt.Errorf("selection cancelled: %w", err)
+	}
+	return selected, nil
+}
+
+func (c *GMCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
+	var redirect bool
+	if err := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title(fmt.Sprintf("Redirect %d damage to %s's Base on %s? (HP: %d)",
+					damage, defenderFaction.Name, base.Location, base.CurrentHP)).
+				Description("Defender's choice — damage to the Base is also dealt to faction HP.").
+				Affirmative("Redirect to Base").
+				Negative("Asset takes damage").
+				Value(&redirect),
+		),
+	).Run(); err != nil {
+		return false, fmt.Errorf("prompt cancelled: %w", err)
+	}
+	return redirect, nil
+}
+
 // maxAffordableHeals returns the most heals purchasable with the given Coin,
 // where n heals costs n*(n+1)/2 total (1 + 2 + ... + n).
 func maxAffordableHeals(coin int) int {

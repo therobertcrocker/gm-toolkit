@@ -91,3 +91,48 @@ func TestMutationEngine_UnknownFactionIsNoop(t *testing.T) {
 		t.Errorf("Coin = %d, want 10 (unknown faction should be no-op)", got)
 	}
 }
+
+func TestMutationEngine_AssetStealthCleared(t *testing.T) {
+	s := newMutationTestState()
+	s.Factions["f1"].Assets[0].Stealthy = true
+	me := newMutationEngine()
+
+	me.Apply(s, []domain.Mutation{
+		domain.AssetStealthCleared{FactionID: "f1", AssetID: "a1"},
+	})
+	if s.Factions["f1"].Assets[0].Stealthy {
+		t.Error("expected a1 Stealthy to be false after AssetStealthCleared")
+	}
+}
+
+func newMutationTestStateWithBase() *state.FactionState {
+	s := newMutationTestState()
+	s.Factions["f1"].Bases = []*domain.Base{
+		{ID: "b1", OwnerID: "f1", Location: "Anchorage", CurrentHP: 10, MaxHP: 10},
+	}
+	return s
+}
+
+func TestMutationEngine_BaseHPDelta(t *testing.T) {
+	s := newMutationTestStateWithBase()
+	me := newMutationEngine()
+
+	me.Apply(s, []domain.Mutation{
+		domain.BaseHPDelta{FactionID: "f1", BaseID: "b1", Delta: -4},
+	})
+	if got := s.Factions["f1"].Bases[0].CurrentHP; got != 6 {
+		t.Errorf("Base CurrentHP = %d, want 6", got)
+	}
+}
+
+func TestMutationEngine_BaseDestroyed(t *testing.T) {
+	s := newMutationTestStateWithBase()
+	me := newMutationEngine()
+
+	me.Apply(s, []domain.Mutation{
+		domain.BaseDestroyed{FactionID: "f1", BaseID: "b1"},
+	})
+	if got := len(s.Factions["f1"].Bases); got != 0 {
+		t.Errorf("len(Bases) = %d, want 0 after BaseDestroyed", got)
+	}
+}
