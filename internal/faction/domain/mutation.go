@@ -59,3 +59,34 @@ type AssetAdded struct {
 }
 
 func (mutation AssetAdded) Type() string { return "asset_added" }
+
+// AssetStealthCleared flips an asset's Stealthy flag to false. Per SWN,
+// stealth is lost when an asset attacks or defends; Attack resolution emits
+// this before any HP mutation in the same matchup so the timeline in the
+// EventRecord is consistent.
+type AssetStealthCleared struct {
+	FactionID string `json:"faction_id"`
+	AssetID   string `json:"asset_id"`
+}
+
+func (mutation AssetStealthCleared) Type() string { return "asset_stealth_cleared" }
+
+// BaseHPDelta adjusts a Base of Influence's CurrentHP by Delta. Per SWN,
+// damage to a Base is also dealt to faction HP; callers must emit an
+// accompanying FactionHPDelta with the same delta value.
+type BaseHPDelta struct {
+	FactionID string `json:"faction_id"`
+	BaseID    string `json:"base_id"`
+	Delta     int    `json:"delta"`
+}
+
+func (mutation BaseHPDelta) Type() string { return "base_hp_delta" }
+
+// BaseDestroyed removes a Base of Influence from a faction. Emitted inline
+// after a BaseHPDelta that takes CurrentHP to 0 or below.
+type BaseDestroyed struct {
+	FactionID string `json:"faction_id"`
+	BaseID    string `json:"base_id"`
+}
+
+func (mutation BaseDestroyed) Type() string { return "base_destroyed" }

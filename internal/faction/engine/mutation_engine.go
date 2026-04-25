@@ -59,6 +59,34 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 				asset := v.Asset
 				faction.Assets = append(faction.Assets, &asset)
 			}
+		case domain.AssetStealthCleared:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, asset := range faction.Assets {
+					if asset.ID == v.AssetID {
+						asset.Stealthy = false
+						break
+					}
+				}
+			}
+		case domain.BaseHPDelta:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, base := range faction.Bases {
+					if base.ID == v.BaseID {
+						base.CurrentHP += v.Delta
+						break
+					}
+				}
+			}
+		case domain.BaseDestroyed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				surviving := make([]*domain.Base, 0, len(faction.Bases))
+				for _, base := range faction.Bases {
+					if base.ID != v.BaseID {
+						surviving = append(surviving, base)
+					}
+				}
+				faction.Bases = surviving
+			}
 		}
 	}
 }

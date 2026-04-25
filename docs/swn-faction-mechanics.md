@@ -144,7 +144,7 @@ A faction with no current goal may pick one. A faction **can take one action typ
 - Tags add +1d10 (keep highest) when relevant to the roll
 - **Attacker wins (strictly greater):** defending asset takes listed damage; if HP = 0, it's destroyed
   - Defender may redirect damage to their Base of Influence on that world instead
-- **Defender wins or ties:** attacker's asset takes the defender's Counterattack damage (if any)
+- **Defender wins (strictly greater):** attacker's asset takes the defender's Counterattack damage (if any)
 - **Tie:** both Attack and Counterattack succeed — both sides take damage
 - Only **known** assets can be attacked; Stealthed assets cannot be targeted until revealed
 
