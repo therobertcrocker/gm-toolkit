@@ -1,0 +1,257 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/tui/style"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+)
+
+func narrateAction(action engine.Action, mutations []domain.Mutation, faction *domain.Faction, rulebook *loader.Rulebook) []string {
+	switch action.Name() {
+	case "Sell Asset":
+		return narrateSell(mutations, faction, rulebook)
+	case "Buy Asset":
+		return narrateBuy(mutations, rulebook)
+	case "Refit Asset":
+		return narrateRefit(mutations, faction, rulebook)
+	case "Repair Asset":
+		return narrateRepairAsset(mutations, faction, rulebook)
+	case "Repair Faction":
+		return narrateRepairFaction(mutations)
+	default:
+		return nil
+	}
+}
+
+func narrateSell(mutations []domain.Mutation, faction *domain.Faction, rulebook *loader.Rulebook) []string {
+	name := "unknown"
+	coin := 0
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.AssetRemoved:
+			if asset := findAssetByID(mut.AssetID, faction); asset != nil {
+				name = assetDisplayName(asset, rulebook)
+			}
+		case domain.CoinDelta:
+			coin = mut.Delta
+		}
+	}
+	return []string{fmt.Sprintf("Sold: %s (+%d Coin)", name, coin)}
+}
+
+func narrateBuy(mutations []domain.Mutation, rulebook *loader.Rulebook) []string {
+	for _, m := range mutations {
+		if mut, ok := m.(domain.AssetAdded); ok {
+			name := mut.Asset.DefinitionID
+			if def, ok := rulebook.Assets[mut.Asset.DefinitionID]; ok {
+				name = def.Name
+			}
+			return []string{fmt.Sprintf("Bought: %s on %s", name, mut.Asset.Location)}
+		}
+	}
+	return nil
+}
+
+func narrateRefit(mutations []domain.Mutation, faction *domain.Faction, rulebook *loader.Rulebook) []string {
+	oldName := "unknown"
+	newName := "unknown"
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.AssetRemoved:
+			if asset := findAssetByID(mut.AssetID, faction); asset != nil {
+				oldName = assetDisplayName(asset, rulebook)
+			}
+		case domain.AssetAdded:
+			if def, ok := rulebook.Assets[mut.Asset.DefinitionID]; ok {
+				newName = def.Name
+			}
+		}
+	}
+	return []string{fmt.Sprintf("Refitted: %s → %s", oldName, newName)}
+}
+
+func narrateRepairAsset(mutations []domain.Mutation, faction *domain.Faction, rulebook *loader.Rulebook) []string {
+	var lines []string
+	totalCost := 0
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.AssetHPDelta:
+			if asset := findAssetByID(mut.AssetID, faction); asset != nil {
+				lines = append(lines, fmt.Sprintf("%s: +%d HP", assetDisplayName(asset, rulebook), mut.Delta))
+			}
+		case domain.CoinDelta:
+			totalCost = -mut.Delta
+		}
+	}
+	if totalCost > 0 {
+		lines = append(lines, fmt.Sprintf("Cost: %d Coin", totalCost))
+	}
+	return lines
+}
+
+func narrateRepairFaction(mutations []domain.Mutation) []string {
+	for _, m := range mutations {
+		if mut, ok := m.(domain.FactionHPDelta); ok {
+			return []string{fmt.Sprintf("Faction HP restored: +%d", mut.Delta)}
+		}
+	}
+	return nil
+}
+
+func narrateAttack(collector *TUICollector, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []string {
+	assetDeltas := make(map[string]int)
+	assetDestroyedMap := make(map[string]bool)
+	baseDeltas := make(map[string]int)
+	baseDestroyedMap := make(map[string]bool)
+	factionBaseRedirects := make(map[string]bool)
+
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.AssetHPDelta:
+			assetDeltas[mut.AssetID] += mut.Delta
+		case domain.AssetRemoved:
+			assetDestroyedMap[mut.AssetID] = true
+		case domain.BaseHPDelta:
+			baseDeltas[mut.BaseID] += mut.Delta
+			factionBaseRedirects[mut.FactionID] = true
+		case domain.BaseDestroyed:
+			baseDestroyedMap[mut.BaseID] = true
+		}
+	}
+
+	var lines []string
+
+	for _, attacker := range collector.attackers {
+		defender := collector.defenders[attacker.ID]
+		if defender == nil {
+			continue
+		}
+
+		attackerName := assetNameFromState(attacker.ID, factionState, rulebook)
+		defenderName := assetNameFromState(defender.ID, factionState, rulebook)
+		defenderFaction := ownerFactionOf(defender.ID, factionState)
+
+		defDelta := assetDeltas[defender.ID]
+		attackDelta := assetDeltas[attacker.ID]
+		defHadRedirect := defenderFaction != nil && factionBaseRedirects[defenderFaction.ID]
+
+		var outcome string
+		switch {
+		case defDelta < 0:
+			outcome = fmt.Sprintf("attacker wins! %d damage", -defDelta)
+		case defHadRedirect:
+			outcome = "attacker wins! damage to base"
+		default:
+			outcome = "defender holds"
+		}
+
+		if defenderFaction != nil {
+			lines = append(lines, fmt.Sprintf("%s → %s (%s): %s", attackerName, defenderName, defenderFaction.Name, outcome))
+		} else {
+			lines = append(lines, fmt.Sprintf("%s → %s: %s", attackerName, defenderName, outcome))
+		}
+
+		if assetDestroyedMap[defender.ID] {
+			lines = append(lines, fmt.Sprintf("  %s destroyed", defenderName))
+		}
+		if attackDelta < 0 {
+			lines = append(lines, fmt.Sprintf("  Counter: %d damage to %s", -attackDelta, attackerName))
+			if assetDestroyedMap[attacker.ID] {
+				lines = append(lines, fmt.Sprintf("  %s destroyed", attackerName))
+			}
+		}
+	}
+
+	for baseID, delta := range baseDeltas {
+		if delta >= 0 {
+			continue
+		}
+		base := findBaseByID(baseID, factionState)
+		location := baseID
+		if base != nil {
+			location = base.Location
+		}
+		lines = append(lines, fmt.Sprintf("Base at %s: %d damage redirected", location, -delta))
+		if baseDestroyedMap[baseID] {
+			lines = append(lines, fmt.Sprintf("  Base at %s destroyed", location))
+		}
+	}
+
+	if len(lines) == 0 {
+		return []string{"Attack: no engagements resolved"}
+	}
+	return lines
+}
+
+func renderLogSection(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString(style.Muted.Render("─── Play-by-play"))
+	sb.WriteString("\n")
+	for _, line := range lines {
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
+	return sb.String()
+}
+
+func logSummary(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	return lines[0]
+}
+
+func findAssetByID(assetID string, faction *domain.Faction) *domain.Asset {
+	for _, asset := range faction.Assets {
+		if asset.ID == assetID {
+			return asset
+		}
+	}
+	return nil
+}
+
+func assetNameFromState(assetID string, factionState *state.FactionState, rulebook *loader.Rulebook) string {
+	for _, faction := range factionState.Factions {
+		if asset := findAssetByID(assetID, faction); asset != nil {
+			return assetDisplayName(asset, rulebook)
+		}
+	}
+	return assetID
+}
+
+func assetDisplayName(asset *domain.Asset, rulebook *loader.Rulebook) string {
+	if def, ok := rulebook.Assets[asset.DefinitionID]; ok {
+		return def.Name
+	}
+	return asset.DefinitionID
+}
+
+func ownerFactionOf(assetID string, factionState *state.FactionState) *domain.Faction {
+	for _, faction := range factionState.Factions {
+		for _, asset := range faction.Assets {
+			if asset.ID == assetID {
+				return faction
+			}
+		}
+	}
+	return nil
+}
+
+func findBaseByID(baseID string, factionState *state.FactionState) *domain.Base {
+	for _, faction := range factionState.Factions {
+		for _, base := range faction.Bases {
+			if base.ID == baseID {
+				return base
+			}
+		}
+	}
+	return nil
+}

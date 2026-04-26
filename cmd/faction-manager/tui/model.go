@@ -67,9 +67,12 @@ type TurnModel struct {
 	pendingAction     engine.Action
 	subModel          tea.Model
 	attackEventCh     chan tea.Msg
+	attackCollector   *TUICollector
 	pendingRedirect   *AttackRedirectMsg
 	snapshots         map[string]factionSnapshot // faction ID → pre-turn HP/Coin
 	actionsTaken      map[string]string          // faction ID → action description
+	actionResults     map[string]string          // faction ID → result summary for cycle summary
+	turnLog           []string                   // play-by-play lines for current faction's action
 	err               error
 }
 
@@ -263,6 +266,14 @@ func (m TurnModel) handleSkipChoice(skip bool) (tea.Model, tea.Cmd) {
 	return m, m.subModel.Init()
 }
 
+func (m TurnModel) appendLog(content string) string {
+	log := renderLogSection(m.turnLog)
+	if log == "" {
+		return content
+	}
+	return content + "\n\n" + log
+}
+
 func (m TurnModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n\nPress q to quit.", m.err)
@@ -280,11 +291,11 @@ func (m TurnModel) View() string {
 			style.SectionTitle.Render(m.actionResultText),
 			style.Muted.Render("Press any key to continue"),
 		)
-		return renderSplitPanel(renderLeft(m), right, m.width)
+		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
 
 	case stateAttackRedirect:
 		right := renderRedirectPrompt(m.pendingRedirect)
-		return renderSplitPanel(renderLeft(m), right, m.width)
+		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
 
 	case stateCycleSummary:
 		if m.subModel != nil {
@@ -303,7 +314,7 @@ func (m TurnModel) View() string {
 		} else if m.attackEventCh != nil {
 			right = style.Muted.Render("Resolving attack...")
 		}
-		return renderSplitPanel(left, right, m.width)
+		return renderSplitPanel(left, m.appendLog(right), m.width)
 	}
 }
 
@@ -463,6 +474,7 @@ func (m TurnModel) startAttackResolution(msg inputs.AttackInputsSelectedMsg) (te
 		defenders: msg.Defenders,
 		eventCh:   eventCh,
 	}
+	m.attackCollector = collector
 	action := actions.NewAttack(collector, engine.NewRandRoller())
 	faction := m.currentFaction
 	factionState := m.factionState
@@ -481,6 +493,10 @@ func (m TurnModel) handleAttackCompleted(msg AttackCompletedMsg) (tea.Model, tea
 	if msg.Err != nil {
 		m.err = msg.Err
 		return m, nil
+	}
+	if m.attackCollector != nil {
+		m.turnLog = narrateAttack(m.attackCollector, msg.Mutations, m.factionState, m.engine.Rulebook)
+		m.attackCollector = nil
 	}
 	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
 	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
@@ -517,6 +533,7 @@ func (m TurnModel) runAction(action engine.Action) (tea.Model, tea.Cmd) {
 		m.err = err
 		return m, nil
 	}
+	m.turnLog = narrateAction(action, mutations, m.currentFaction, m.engine.Rulebook)
 	m.engine.Mutation.Apply(m.factionState, mutations)
 	m.pendingMutations = append(m.pendingMutations, mutations...)
 	m.actionResultText = action.Name()
@@ -527,6 +544,7 @@ func (m TurnModel) runAction(action engine.Action) (tea.Model, tea.Cmd) {
 
 func (m TurnModel) commitAndAdvance() (tea.Model, tea.Cmd) {
 	m.actionsTaken[m.currentFaction.ID] = m.actionResultText
+	m.actionResults[m.currentFaction.ID] = logSummary(m.turnLog)
 	event, err := buildEventRecord(m.factionState, m.currentFaction, m.pendingMutations)
 	if err != nil {
 		m.err = err
@@ -547,6 +565,7 @@ func (m TurnModel) commitAndAdvance() (tea.Model, tea.Cmd) {
 	}
 	m.pendingMutations = nil
 	m.actionResultText = ""
+	m.turnLog = nil
 
 	if done {
 		m.state = stateCycleSummary
@@ -570,10 +589,11 @@ func (m TurnModel) buildSummaryRows() []phases.FactionSummaryRow {
 	for _, faction := range m.factionState.Factions {
 		snap, hasSnap := m.snapshots[faction.ID]
 		row := phases.FactionSummaryRow{
-			Name:   faction.Name,
-			EndHP:  faction.CurrentHP,
-			EndCoin: faction.Coin,
-			Action: m.actionsTaken[faction.ID],
+			Name:          faction.Name,
+			EndHP:         faction.CurrentHP,
+			EndCoin:       faction.Coin,
+			Action:        m.actionsTaken[faction.ID],
+			ResultSummary: m.actionResults[faction.ID],
 		}
 		if hasSnap {
 			row.StartHP = snap.hp
@@ -613,13 +633,14 @@ func truncate(s string, n int) string {
 
 func RunTurnTUI(e *engine.Engine, factionState *state.FactionState, p paths.Paths) error {
 	m := TurnModel{
-		engine:       e,
-		factionState: factionState,
-		paths:        p,
-		state:        stateResumePrompt,
-		subModel:     phases.NewResumeTurnModel(e.Turn.InProgress(factionState)),
-		snapshots:    make(map[string]factionSnapshot),
-		actionsTaken: make(map[string]string),
+		engine:        e,
+		factionState:  factionState,
+		paths:         p,
+		state:         stateResumePrompt,
+		subModel:      phases.NewResumeTurnModel(e.Turn.InProgress(factionState)),
+		snapshots:     make(map[string]factionSnapshot),
+		actionsTaken:  make(map[string]string),
+		actionResults: make(map[string]string),
 	}
 
 	prog := tea.NewProgram(m,
