@@ -112,8 +112,8 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		attackRoll := attack.roller.Roll(10) + statScore(faction, attackerDef.Attack.AttackerStat)
 		defenseRoll := attack.roller.Roll(10) + statScore(defenderFaction, attackerDef.Attack.DefenderStat)
 
-		// Attack damage: attacker wins (strictly greater) or tie.
-		if attackRoll >= defenseRoll {
+		// Attack damage: attacker wins (strictly greater)
+		if attackRoll > defenseRoll {
 			damage := attackerDef.Attack.Damage.Roll(attack.roller)
 			base := factionBaseOnWorld(defenderFaction, attacker.Location)
 
