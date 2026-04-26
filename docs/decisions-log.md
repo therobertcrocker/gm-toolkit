@@ -167,3 +167,40 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #66 | Add `AssetReadyFlag` mutation and record turn-start re-readies to history | Pure housekeeping — adds noise to `history.jsonl` for events fully determined by the cycle counter |
 | #67 | `Faction.NextAssetCounter map[defID]int` persisted counter for monotonic IDs across sells | Would solve ID reuse after sell+buy, but no present-day consequence: state holds only live assets, history is append-only self-contained events, no cross-references; speculative fix for a problem that doesn't exist yet |
+
+### attack-action
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 71 | `Base` domain type added; `Faction.Bases` replaces a bare location string | Bases carry HP and location and are the redirect target for overflow damage; a bare string cannot represent that; first-class type keeps the domain model consistent with the game rules |
+| 72 | Homeworld Base seeded at faction create time | Homeworld is always a Base of Influence per SWN rules; seeding at create avoids special-casing it throughout the attack and redirect paths |
+| 73 | `Roller` interface + `RandRoller` production impl; `DiceRoll.Roll(roller)` takes a `Roller` | Injects the random source; deterministic fake roller enables table-driven unit tests without global state or random seeds |
+| 74 | Attack resolution uses up-front attacker commit then per-matchup defender re-check | Matches SWN rules — all attackers are declared before resolution; re-check each matchup in sequence because a prior matchup may have destroyed the defender's asset before the current one resolves |
+| 75 | Redirect to homeworld emits `FactionHPDelta`; redirect to non-homeworld Base emits `BaseHPDelta` | SWN rules treat homeworld Base destruction as direct faction HP loss; non-homeworld Bases are independent entities — different mutation types preserve this distinction in history |
+| 76 | `ConfirmRedirectToBase` lives on the `InputCollector` interface | Redirect is a game-mechanic prompt that occurs mid-resolution; keeping it in the interface ensures a future AI agent handles it through the same contract without changing the action engine |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #73 | `math/rand` global with a fixed seed | Global state makes parallel tests unreliable; a fixed seed hard-codes test assumptions into production code |
+| #76 | Redirect decision hard-coded as "always redirect" or resolved outside `InputCollector` | Bypasses the source-agnostic contract; would require a parallel mechanism when AI decision-making lands |
+
+### feature/tui
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 77 | Bubbletea TUI replaces the `huh` wizard; `wizard.go` and `GMCollector` deleted | TUI is the exclusive Turn Mode interface; retaining the wizard as a dead code path would create two diverging UIs; deletion is cleaner than deprecation |
+| 78 | Nine-state state machine owns all TUI transitions | Each state owns its own rendering and key handling; explicit states prevent ad-hoc flag proliferation; transitions are the only place side effects (history writes, snapshot capture) fire |
+| 79 | `TUICollector` bridges pre-collected TUI inputs to `InputCollector` | Engine never sees the TUI; collector methods return pre-filled values; consistent with the source-agnostic design — the engine cannot distinguish `TUICollector` from a future `AICollector` |
+| 80 | Goroutine/channel bridge for `ConfirmRedirectToBase` | Redirect must happen post-roll (after the attack hits), not pre-collected; resolution runs in a goroutine, sends `AttackRedirectMsg` to the BubbleTea event loop, and blocks on a `responseCh chan bool` until the user answers — the standard BubbleTea pattern for mid-computation interactivity |
+| 81 | Nil collectors in action factory registrations | Registered factories are called only for `Validate` (action selection menu); `Validate` never calls the collector; nil avoids a now-deleted `GMCollector` reference while the collector-at-Run-time injection refactor is deferred |
+| 82 | `lipgloss.NewStyle().Width(n)` for cycle summary column padding | `fmt.Sprintf("%-12s", ...)` measures bytes, not visible characters; ANSI escape codes from lipgloss color styles inflate byte length and break alignment; `lipgloss.Width` is ANSI-aware |
+| 83 | Per-faction HP/Coin snapshot taken at the skip/bookkeeping state transition | Snapshot captures the faction's state before any mutations apply; correct start value for the cycle summary delta without replaying history |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #80 | Pre-collect redirect answer before running attack resolution | Redirect answer depends on the attack roll — the GM can only decide whether to redirect after seeing that the attack hit; pre-collection is mechanically incorrect |
+| #81 | Inject a real collector at factory registration time | No concrete `InputCollector` to inject after `GMCollector` was deleted; deferred to a future refactor where the collector is injected at action Run time rather than construction time |
