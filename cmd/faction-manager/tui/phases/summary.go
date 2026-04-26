@@ -12,12 +12,13 @@ import (
 type SummaryDoneMsg struct{}
 
 type FactionSummaryRow struct {
-	Name      string
-	StartHP   int
-	EndHP     int
-	StartCoin int
-	EndCoin   int
-	Action    string
+	Name          string
+	StartHP       int
+	EndHP         int
+	StartCoin     int
+	EndCoin       int
+	Action        string
+	ResultSummary string
 }
 
 type CycleSummaryModel struct {
@@ -44,25 +45,34 @@ func (m CycleSummaryModel) View() string {
 	sb.WriteString("\n\n")
 	nameCol := lipgloss.NewStyle().Width(22)
 	deltaCol := lipgloss.NewStyle().Width(12)
+	actionCol := lipgloss.NewStyle().Width(18)
 
-	fmt.Fprintf(&sb, "%s  %s  %s  %s\n",
+	fmt.Fprintf(&sb, "%s  %s  %s  %s  %s\n",
 		style.Muted.Inherit(nameCol).Render("Faction"),
 		style.Muted.Inherit(deltaCol).Render("HP"),
 		style.Muted.Inherit(deltaCol).Render("Coin"),
-		style.Muted.Render("Action"),
+		style.Muted.Inherit(actionCol).Render("Action"),
+		style.Muted.Render("Result"),
 	)
-	sb.WriteString(style.Muted.Render(strings.Repeat("─", 64)))
+	sb.WriteString(style.Muted.Render(strings.Repeat("─", 80)))
 	sb.WriteString("\n")
 	for _, row := range m.rows {
-		action := row.Action
-		if action == "" {
-			action = style.Muted.Render("—")
+		var actionRendered string
+		if row.Action == "" {
+			actionRendered = actionCol.Render(style.Muted.Render("—"))
+		} else {
+			actionRendered = actionCol.Render(summaryTruncate(row.Action, 18))
 		}
-		fmt.Fprintf(&sb, "%s  %s  %s  %s\n",
+		result := row.ResultSummary
+		if result == "" {
+			result = style.Muted.Render("—")
+		}
+		fmt.Fprintf(&sb, "%s  %s  %s  %s  %s\n",
 			nameCol.Render(summaryTruncate(row.Name, 22)),
 			summaryDelta(row.StartHP, row.EndHP, deltaCol, true),
 			summaryDelta(row.StartCoin, row.EndCoin, deltaCol, false),
-			action,
+			actionRendered,
+			result,
 		)
 	}
 	sb.WriteString("\n")

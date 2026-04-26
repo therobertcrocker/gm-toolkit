@@ -204,3 +204,21 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #80 | Pre-collect redirect answer before running attack resolution | Redirect answer depends on the attack roll — the GM can only decide whether to redirect after seeing that the attack hit; pre-collection is mechanically incorrect |
 | #81 | Inject a real collector at factory registration time | No concrete `InputCollector` to inject after `GMCollector` was deleted; deferred to a future refactor where the collector is injected at action Run time rather than construction time |
+
+### feature/tui-qol
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 84 | Post-hoc narrative from mutations + pre-mutation faction state, no engine interface changes | Narrative strings (names, amounts) are derivable from mutations + the pre-Apply faction snapshot; avoids adding `Log(string)` to `InputCollector`, which would ripple across all implementations including future AI collectors |
+| 85 | `narrateAction` and `narrateAttack` called before `Mutation.Apply` | Asset lookups (name from ID via the faction's Assets slice) must happen before assets are removed; calling before Apply ensures the pre-mutation state is still intact |
+| 86 | `attackCollector *TUICollector` stored on `TurnModel` across the goroutine boundary | Attacker/defender pairs needed for per-matchup narrative are held by the `TUICollector` created in `startAttackResolution`; storing it on the model bridges the goroutine lifetime to `handleAttackCompleted` where narration fires |
+| 87 | Play-by-play log resets per faction, not per cycle | The log is scoped to one faction's action; a cumulative cycle log would grow into an unreadable wall of text and conflate different factions' events |
+| 88 | `logSummary` takes the first log line as the cycle summary Result column | First line captures the most significant event (action outcome); multi-line result strings would break the table layout; last column is unconstrained so long first lines are not truncated |
+| 89 | Base-redirect attribution in `narrateAttack` is global (faction-level), not per-matchup | True per-matchup attribution would require indexing mutations against attacker order, which is not encoded in the mutation list; the global heuristic is correct for all common cases (one base per defending faction per attack) |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #84 | Add `Log(message string)` to `InputCollector`; narrate from inside `Resolve()` | Would require all three existing `InputCollector` implementations (TUI, test mock, future AI) to implement `Log`; narrative is a renderer concern, not a resolution concern — keeping it in the TUI layer is the right separation |
+| #87 | Accumulate log across full cycle | Grows into a wall of text; individual faction turns are the natural scope for a play-by-play; the cycle summary table already covers the full cycle at a glance |
