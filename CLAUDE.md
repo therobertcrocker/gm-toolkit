@@ -7,10 +7,11 @@
 3. Role: mentor or co-pilot. Robert is designing, Claude is advising.
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Before writing any code, ask. Before making design suggestions, wait for a prompt.
-6. Update the dev journal (`docs/dev-journal-factions.md`) and decisions log (`docs/decisions-log.md`) after every branch merge.
-7. Before updating docs and merging a branch, do a code review from the perspective of a senior engineer.
-8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly (current version: **v0.8.0**).
-9. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
+6. Before merging a branch, do  the following:
+   1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
+   2. Update the dev journal (`docs/dev-journal-factions.md`) and decisions log (`docs/decisions-log.md`) with any relevant notes, decisions, or reflections from the implementation process. This is crucial for maintaining a clear record of the project's evolution and rationale behind decisions.
+7. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly (current version: **v0.8.0**).
+8.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
 ## Always Consult docs/ First
 
