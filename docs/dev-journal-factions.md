@@ -124,6 +124,9 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
+- Left panel asset HP display: `renderLeft` shows `CurrentHP/CurrentHP` — second value should be `MaxHP` from `AssetDefinition` (requires rulebook lookup at render time)
+- Summary row ordering: `buildSummaryRows` iterates a map, so row order is non-deterministic; sort by faction name or turn order
+- `assetCategoryAbbrev` stub: always returns `"?"`; implement once category abbreviation convention is settled
 - Remaining action implementations (Expand Influence, Use Asset Ability)
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
 - Narrative summary renderer
@@ -164,6 +167,7 @@ Design questions that are unresolved and will need answers before the relevant f
 - Code review (`chore/code-review-2`): `cmd/faction-manager/paths` package with `paths.New(campaignID)` as canonical campaign path resolver; `domain.FactionStat` typed throughout faction creation wizard; `BookkeepingResult.RecordedMutations` renamed to make already-applied status explicit; `FactionStat` moved to `faction.go`; concrete actions moved to `engine/actions` sub-package
 - `simple-actions` branch: four new actions (BuyAsset, RepairAsset, RepairFaction, RefitAsset); new mutation types (`AssetAdded`, `FactionHPDelta`, `AssetHPDelta`); `FactionState.Factions` refactored from slice to map for O(1) lookup by ID; turn-start re-ready of assets purchased the prior cycle (per SWN "inactive until next turn" rule); collision-free asset IDs via monotonic per-(faction, definition) suffix; `InputCollector` extended with `SelectRepairOrders`, `SelectBuyOrder`, `SelectRefitOrder`; `InputCollector` wide-interface shape ratified (revisit refactor after remaining actions land)
 - `attack-action` branch: `Base` domain type + `Faction.Bases` slice; homeworld Base seeded at faction create time; `Roller` interface + `RandRoller` production impl + `DiceRoll.Roll(Roller)`; `Attack` action with up-front attacker commit, per-matchup re-check, stealth-cleared dedup, inline destruction, Base-redirect prompt; new mutations (`AssetStealthCleared`, `BaseHPDelta`, `BaseDestroyed`); `InputCollector` extended with `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase`; base-redirect on homeworld uses `FactionHPDelta` (non-homeworld Bases land with Expand Influence); comprehensive attack unit tests with fake collector and deterministic roller
+- `feature/tui` branch: full-screen Bubbletea TUI replaces the huh wizard for Turn Mode; split-panel layout (faction info left, input right) driven by a nine-state state machine; `TUICollector` bridges pre-collected input to the engine's `InputCollector` interface; all six implemented actions (SellAsset, BuyAsset, RefitAsset, RepairAsset, RepairFaction, Attack) wired with dedicated input sub-models; Attack redirect runs post-roll via goroutine/channel bridge — `ConfirmRedirectToBase` sends `AttackRedirectMsg` to the BubbleTea event loop and blocks until the user answers; per-faction HP/Coin snapshots and action-taken tracking feed a cycle summary table using lipgloss ANSI-aware column widths; history recording (including skipped factions) and state persistence unchanged from wizard; old `wizard.go` and `GMCollector` deleted; action factory registrations use nil collector (validation-only path); `pendingAction` field vestigial — tracked for cleanup
 
 <br/>
 <br/>

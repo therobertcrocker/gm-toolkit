@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
+	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/tui"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -26,7 +27,7 @@ func NewCmd(e *engine.Engine) *cobra.Command {
 				return fmt.Errorf("no factions found in campaign %q", campaignID)
 			}
 
-			return runTurnWizard(e, factionState, p)
+			return tui.RunTurnTUI(e, factionState, p)
 		},
 	}
 
