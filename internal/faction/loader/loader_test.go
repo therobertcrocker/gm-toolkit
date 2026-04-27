@@ -3,6 +3,8 @@ package loader
 import (
 	"strings"
 	"testing"
+
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
 const testDataDir = "../data"
@@ -72,6 +74,98 @@ func TestLoad(t *testing.T) {
 		}
 		if asset.Counter != nil {
 			t.Errorf("expected nil counter, got %+v", asset.Counter)
+		}
+	})
+
+	t.Run("nil ability for non-action asset", func(t *testing.T) {
+		asset, ok := rb.Assets["F1-001"]
+		if !ok {
+			t.Fatal("asset F1-001 not found")
+		}
+		if asset.Ability != nil {
+			t.Errorf("expected nil ability, got %+v", asset.Ability)
+		}
+	})
+
+	t.Run("movement ability parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["F2-001"]
+		if !ok {
+			t.Fatal("asset F2-001 not found")
+		}
+		if asset.Ability == nil {
+			t.Fatal("expected ability, got nil")
+		}
+		if len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %d, want 1", len(asset.Ability.Steps))
+		}
+		step := asset.Ability.Steps[0]
+		if step.Type != domain.AbilityStepMovement {
+			t.Errorf("step type: got %q, want %q", step.Type, domain.AbilityStepMovement)
+		}
+		if step.MaxHex != 1 {
+			t.Errorf("max_hex: got %d, want 1", step.MaxHex)
+		}
+		if step.CoinCost != 1 {
+			t.Errorf("coin_cost: got %d, want 1", step.CoinCost)
+		}
+	})
+
+	t.Run("faction_test ability parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["C1-002"]
+		if !ok {
+			t.Fatal("asset C1-002 not found")
+		}
+		if asset.Ability == nil {
+			t.Fatal("expected ability, got nil")
+		}
+		if len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %d, want 1", len(asset.Ability.Steps))
+		}
+		step := asset.Ability.Steps[0]
+		if step.Type != domain.AbilityStepFactionTest {
+			t.Errorf("step type: got %q, want %q", step.Type, domain.AbilityStepFactionTest)
+		}
+		if step.Effect != domain.EffectRevealStealth {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectRevealStealth)
+		}
+	})
+
+	t.Run("combo ability parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["C2-004"]
+		if !ok {
+			t.Fatal("asset C2-004 not found")
+		}
+		if asset.Ability == nil {
+			t.Fatal("expected ability, got nil")
+		}
+		if len(asset.Ability.Steps) != 2 {
+			t.Fatalf("steps: got %d, want 2", len(asset.Ability.Steps))
+		}
+		if asset.Ability.Steps[0].Type != domain.AbilityStepMovement {
+			t.Errorf("step 0 type: got %q, want movement", asset.Ability.Steps[0].Type)
+		}
+		if asset.Ability.Steps[1].Type != domain.AbilityStepFactionTest {
+			t.Errorf("step 1 type: got %q, want faction_test", asset.Ability.Steps[1].Type)
+		}
+	})
+
+	t.Run("effect_dice parsed for coin_drain", func(t *testing.T) {
+		asset, ok := rb.Assets["W5-001"]
+		if !ok {
+			t.Fatal("asset W5-001 not found")
+		}
+		if asset.Ability == nil {
+			t.Fatal("expected ability, got nil")
+		}
+		testStep := asset.Ability.Steps[1]
+		if testStep.Effect != domain.EffectCoinDrain {
+			t.Errorf("effect: got %q, want coin_drain", testStep.Effect)
+		}
+		if testStep.EffectDice == nil {
+			t.Fatal("expected effect_dice, got nil")
+		}
+		if testStep.EffectDice.NumDice != 1 || testStep.EffectDice.Sides != 4 {
+			t.Errorf("effect_dice: got %+v, want 1d4", testStep.EffectDice)
 		}
 	})
 

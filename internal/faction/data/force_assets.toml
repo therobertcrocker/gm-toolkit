@@ -67,6 +67,11 @@ flags = ["A"]
 counter = ""
 description = "These craft allow for the transport of resources from one world to another. As an action, any one non-Starship asset, including this one, may be moved to any world within one hex for one FacCred."
 
+[[assets.HeavyDropAssets.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 1
+
 [assets.EliteSkirmishers]
 id = "F2-002"
 name = "Elite Skirmishers"
@@ -178,6 +183,11 @@ flags = ["A"]
 counter = ""
 description = "A collection of short-range, high-capacity spike drive ships capable of moving large numbers of troops. As an action, the asset may move any number of assets on the planet, including itself, to any world within one hex at a cost of one FacCred per asset moved."
 
+[[assets.BeachheadLanders.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 1
+
 [assets.ExtendedTheater]
 id = "F4-002"
 name = "Extended Theater"
@@ -190,6 +200,11 @@ type = "Facility"
 flags = ["A"]
 counter = ""
 description = "These facilities allow for transporting assets long distances. As an action, any one non-Starship asset, including itself, can be moved between any two worlds within two hexes at a cost of one FacCred."
+
+[[assets.ExtendedTheater.ability.steps]]
+type = "movement"
+max_hex = 2
+coin_cost = 1
 
 [assets.StrikeFleet]
 id = "F4-003"
@@ -208,6 +223,11 @@ description = "Forces composed of frigate or cruiser-class vessels equipped with
 attacker_stat = "Force"
 defender_stat = "Force"
 damage = "2d6"
+
+[[assets.StrikeFleet.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 0
 
 [assets.PostechInfantry]
 id = "F4-004"
@@ -338,6 +358,11 @@ flags = ["A"]
 counter = ""
 description = "Advanced transport ships capable of moving an asset long distances. As an action, any one non-Starship asset, including itself, can be moved between any two worlds within three hexes at a cost of 2 FacCreds, even if the local planetary government objects."
 
+[[assets.DeepStrikeLanders.ability.steps]]
+type = "movement"
+max_hex = 3
+coin_cost = 2
+
 [assets.IntegralProtocols]
 id = "F7-002"
 name = "Integral Protocols"
@@ -369,6 +394,11 @@ attacker_stat = "Force"
 defender_stat = "Force"
 damage = "2d8+2"
 
+[[assets.SpaceMarines.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 0
+
 [assets.CapitalFleet]
 id = "F8-001"
 name = "Capital Fleet"
@@ -386,3 +416,8 @@ description = "The pride of an empire, a collection of massive capital warships 
 attacker_stat = "Force"
 defender_stat = "Force"
 damage = "3d10+4"
+
+[[assets.CapitalFleet.ability.steps]]
+type = "movement"
+max_hex = 3
+coin_cost = 0

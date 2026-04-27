@@ -49,24 +49,39 @@ type assetFile struct {
 }
 
 type assetRecord struct {
-	ID          string        `toml:"id"`
-	Name        string        `toml:"name"`
-	Category    string        `toml:"category"`
-	MinRating   int           `toml:"min_rating"`
-	HP          int           `toml:"hp"`
-	Cost        int           `toml:"cost"`
-	TechLevel   int           `toml:"tech_level"`
-	Type        string        `toml:"type"`
-	Flags       []string      `toml:"flags"`
-	Counter     string        `toml:"counter"`
-	Description string        `toml:"description"`
-	Attack      *attackRecord `toml:"attack"`
+	ID          string         `toml:"id"`
+	Name        string         `toml:"name"`
+	Category    string         `toml:"category"`
+	MinRating   int            `toml:"min_rating"`
+	HP          int            `toml:"hp"`
+	Cost        int            `toml:"cost"`
+	TechLevel   int            `toml:"tech_level"`
+	Type        string         `toml:"type"`
+	Flags       []string       `toml:"flags"`
+	Counter     string         `toml:"counter"`
+	Description string         `toml:"description"`
+	Attack      *attackRecord  `toml:"attack"`
+	Ability     *abilityRecord `toml:"ability"`
 }
 
 type attackRecord struct {
 	AttackerStat string `toml:"attacker_stat"`
 	DefenderStat string `toml:"defender_stat"`
 	Damage       string `toml:"damage"`
+}
+
+type abilityRecord struct {
+	Steps []abilityStepRecord `toml:"steps"`
+}
+
+type abilityStepRecord struct {
+	Type         string `toml:"type"`
+	MaxHex       int    `toml:"max_hex"`
+	CoinCost     int    `toml:"coin_cost"`
+	AttackerStat string `toml:"attacker_stat"`
+	DefenderStat string `toml:"defender_stat"`
+	Effect       string `toml:"effect"`
+	EffectDice   string `toml:"effect_dice"`
 }
 
 // loadAssets globs all *_assets.toml files in dataDir and merges them into one map.
@@ -138,6 +153,11 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		}
 	}
 
+	ability, err := convertAbility(r.Ability)
+	if err != nil {
+		return nil, fmt.Errorf("ability: %w", err)
+	}
+
 	return &domain.AssetDefinition{
 		ID:          r.ID,
 		Name:        r.Name,
@@ -151,7 +171,73 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Counter:     counter,
 		Flags:       flags,
 		Description: r.Description,
+		Ability:     ability,
 	}, nil
+}
+
+func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
+	if r == nil {
+		return nil, nil
+	}
+	steps := make([]domain.AbilityStep, 0, len(r.Steps))
+	for i, sr := range r.Steps {
+		step, err := convertAbilityStep(sr)
+		if err != nil {
+			return nil, fmt.Errorf("step %d: %w", i, err)
+		}
+		steps = append(steps, step)
+	}
+	return &domain.AbilityDefinition{Steps: steps}, nil
+}
+
+func convertAbilityStep(r abilityStepRecord) (domain.AbilityStep, error) {
+	switch r.Type {
+	case "movement":
+		return domain.AbilityStep{
+			Type:     domain.AbilityStepMovement,
+			MaxHex:   r.MaxHex,
+			CoinCost: r.CoinCost,
+		}, nil
+	case "faction_test":
+		attackerStat, err := toFactionStat(r.AttackerStat)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("attacker_stat: %w", err)
+		}
+		defenderStat, err := toFactionStat(r.DefenderStat)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
+		}
+		effect, err := toAbilityEffect(r.Effect)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		effectDice, err := parseDice(r.EffectDice)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("effect_dice: %w", err)
+		}
+		return domain.AbilityStep{
+			Type:         domain.AbilityStepFactionTest,
+			AttackerStat: attackerStat,
+			DefenderStat: defenderStat,
+			Effect:       effect,
+			EffectDice:   effectDice,
+		}, nil
+	default:
+		return domain.AbilityStep{}, fmt.Errorf("unknown ability step type: %q", r.Type)
+	}
+}
+
+func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
+	switch s {
+	case "reveal_stealth":
+		return domain.EffectRevealStealth, nil
+	case "coin_drain":
+		return domain.EffectCoinDrain, nil
+	case "coin_steal":
+		return domain.EffectCoinSteal, nil
+	default:
+		return "", fmt.Errorf("unknown ability effect: %q", s)
+	}
 }
 
 // ---------------------------------------------------------------------------
