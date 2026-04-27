@@ -240,3 +240,30 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #90 | Register `baseAttack` as a standalone action or reuse the existing `Attack` action | Standalone registration would expose it in the action menu; reusing `Attack` would require the normal attack flow to carry Expand Influence context — both couple unrelated mechanics |
 | #92 | Pre-collect `SelectBaseAttackers` before starting resolution | Which rivals win the contested roll (and therefore which eligible attacker lists are needed) is unknown until the dice are rolled in `Resolve`; pre-collection is mechanically impossible |
+
+### feature/use-asset-ability
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 96 | Movement does not enforce hex distance — GM confirms, engine updates `Asset.Location` only | Distances are GM-world-specific and would require a per-campaign world graph that doesn't exist; GM adjudication is the correct boundary for spatial constraints |
+| 97 | Assets with `Ability == nil` fall through to GM adjudication: `ConfirmAbilityApplied` shows the asset description and blocks for GM confirmation | Several abilities (Pretech Logistics, Tripwire Cells, Seditionists) are too bespoke to encode as TOML step data; the fallback keeps them playable before they receive custom handlers |
+| 98 | `AbilityEngine` has a step handler registry keyed by `AbilityStepType` plus a custom handler override map keyed by asset definition ID | Two-layer dispatch — most abilities compose standard steps; bespoke abilities bypass the registry entirely via the custom handler map; the two paths are independent and neither intrudes on the other |
+| 99 | World list for `SelectMoveDestination` is derived from `FactionState` at resolve time; `"Astral Sea"` appended last as a hardcoded option | No static world list exists; all known worlds are implied by where assets and bases currently are; Astral Sea is a rules-canonical transit space with no permanent placements and must always be available |
+| 100 | Movement Coin cost is emitted as a `CoinDelta` mutation (negative) when `step.CoinCost > 0` | Coin cost is part of using the ability, not a separate action; encoding it as a mutation keeps the mutation log complete and consistent with every other Coin change in the system |
+| 101 | Faction test uses the existing `Roller` interface — same dice-rolling contract as Attack | Same interface; same deterministic-roller test pattern; no new abstraction needed when the existing one fits exactly |
+| 102 | `reveal_stealth` emits one `AssetStealthCleared` per stealthed asset on the acting asset's world belonging to the target faction | SWN rules say all stealthy assets on the world are revealed; one mutation per asset is the correct granularity for history replay and for the play-by-play narrator |
+| 103 | `coin_steal` emits paired `CoinDelta` mutations: negative on target, positive on acting faction | Drain destroys Coin; steal transfers it — paired mutations correctly model the transfer without needing a new transfer mutation type |
+| 104 | Faction test tie goes to the defender — ability effect does not apply | Same tie-goes-to-defender rule as Attack; consistent with the established precedent |
+| 105 | `UseAssetAbility` selects all assets up-front (ordered list), then resolves each in sequence — same committed-upfront pattern as Attack | SWN rules require declaring all intended assets before resolution; committed-upfront enforces this and prevents re-selecting after seeing earlier results |
+| 106 | `SelectAbilityAssets` returns an ordered list; order determines resolution sequence | SWN specifies "each form of asset must be fully used before the next type is triggered"; ordering is meaningful, not decorative — the input model shows `[1]`, `[2]` badges alongside selected items |
+| 107 | Nil guard added after `SelectFactionTestTarget` in `factionTestStepHandler` | Nil return is a valid collector signal (cancelled or no candidates); without the guard, calling `Roll` on a nil faction would panic at runtime |
+| 108 | Nil guard added before `step.EffectDice.Roll` in `applyAbilityEffect` for `coin_drain` and `coin_steal` | Effect dice are required for these effects but are not validated at load time; a missing TOML field would reach here as nil and panic |
+| 109 | Faction test candidates sorted by name at end of `factionTestCandidates` | `FactionState.Factions` is a map; without sorting, the sequence of `SelectFactionTestTarget` prompts would differ between runs — same fix rationale as rivals in `feature/expand-influence` |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #97 | Block until custom handlers are written for all bespoke assets | Blocks the entire action until every edge case is handled; GM fallback is the right interim path for abilities that have no step encoding |
+| #98 | Single flat handler map keyed by step type only | Custom overrides per definition ID cannot be expressed with a single registry; bespoke abilities would require inventing a synthetic step type per asset |
+| #105 | Collect assets one at a time as each resolves | SWN rules require up-front declaration; allowing per-step selection gives the GM information about prior results before committing later assets |
