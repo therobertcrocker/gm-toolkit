@@ -135,6 +135,7 @@ func narrateAttack(collector *TUICollector, mutations []domain.Mutation, faction
 		attackerName := assetNameFromState(attacker.ID, factionState, rulebook)
 		defenderName := assetNameFromState(defender.ID, factionState, rulebook)
 		defenderFaction := ownerFactionOf(defender.ID, factionState)
+		attackerFaction := ownerFactionOf(attacker.ID, factionState)
 
 		defDelta := assetDeltas[defender.ID]
 		attackDelta := assetDeltas[attacker.ID]
@@ -142,12 +143,14 @@ func narrateAttack(collector *TUICollector, mutations []domain.Mutation, faction
 
 		var outcome string
 		switch {
-		case defDelta < 0:
-			outcome = fmt.Sprintf("attacker wins! %d damage", -defDelta)
+		case defDelta < 0 && attackDelta >= 0:
+			outcome = fmt.Sprintf("%s wins! %d damage", attackerFaction.Name, -defDelta)
 		case defHadRedirect:
-			outcome = "attacker wins! damage to base"
+			outcome = fmt.Sprintf("%s wins! %s redirects damage to base", attackerFaction.Name, defenderFaction.Name)
+		case defDelta < 0 && attackDelta < 0:
+			outcome = fmt.Sprintf("Tie! %d damage from attack", -defDelta)
 		default:
-			outcome = "defender holds"
+			outcome = fmt.Sprintf("%s holds", defenderName)
 		}
 
 		if defenderFaction != nil {
@@ -157,12 +160,12 @@ func narrateAttack(collector *TUICollector, mutations []domain.Mutation, faction
 		}
 
 		if assetDestroyedMap[defender.ID] {
-			lines = append(lines, fmt.Sprintf("  %s destroyed", defenderName))
+			lines = append(lines, fmt.Sprintf("  %s (%s) destroyed", defenderName, defenderFaction.Name))
 		}
 		if attackDelta < 0 {
 			lines = append(lines, fmt.Sprintf("  Counter: %d damage to %s", -attackDelta, attackerName))
 			if assetDestroyedMap[attacker.ID] {
-				lines = append(lines, fmt.Sprintf("  %s destroyed", attackerName))
+				lines = append(lines, fmt.Sprintf("  %s (%s) destroyed", attackerName, attackerFaction.Name))
 			}
 		}
 	}
@@ -176,7 +179,7 @@ func narrateAttack(collector *TUICollector, mutations []domain.Mutation, faction
 		if base != nil {
 			location = base.Location
 		}
-		lines = append(lines, fmt.Sprintf("Base at %s: %d damage redirected", location, -delta))
+		lines = append(lines, fmt.Sprintf("Base at %s: %d damage received", location, -delta))
 		if baseDestroyedMap[baseID] {
 			lines = append(lines, fmt.Sprintf("  Base at %s destroyed", location))
 		}
@@ -193,7 +196,7 @@ func renderLogSection(lines []string) string {
 		return ""
 	}
 	var sb strings.Builder
-	sb.WriteString(style.Muted.Render("─── Play-by-play"))
+	sb.WriteString(style.Muted.Render("─── Play-by-play ───"))
 	sb.WriteString("\n")
 	for _, line := range lines {
 		sb.WriteString(line)
