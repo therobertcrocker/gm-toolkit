@@ -222,3 +222,21 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #84 | Add `Log(message string)` to `InputCollector`; narrate from inside `Resolve()` | Would require all three existing `InputCollector` implementations (TUI, test mock, future AI) to implement `Log`; narrative is a renderer concern, not a resolution concern — keeping it in the TUI layer is the right separation |
 | #87 | Accumulate log across full cycle | Grows into a wall of text; individual faction turns are the natural scope for a play-by-play; the cycle summary table already covers the full cycle at a glance |
+
+### feature/expand-influence
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 90 | `baseAttack` is an unexported sub-struct within `expand_influence.go`, not a registered action | Free rival attacks are a sub-mechanic of Expand Influence, not an independent GM choice; registering it would surface it in the action selection menu and couple the two actions inappropriately |
+| 91 | `baseHPTracker *int` threaded by pointer across rival attacks | Mutations are accumulated but not yet applied during `resolveNewBase`; the tracker allows each successive rival — and each attacker within a rival's sequence — to see the correct effective base HP before any mutations are applied to state |
+| 92 | Goroutine/channel bridge extended with `ConfirmRivalFreeAttack` (bool) and `SelectBaseAttackers` (`[]*domain.Asset`) | Both prompts occur mid-`Resolve` after rolls that cannot be pre-collected; same pattern as `ConfirmRedirectToBase` in Attack — resolution goroutine sends a typed message to the BubbleTea event loop and blocks on a response channel until the GM answers |
+| 93 | `ReinforceMax` for the increase-max-HP sub-mode (rejected `ReinforceExpand`, `ReinforceGrow`) | `ReinforceExpand` clashed semantically with the outer `ExpandMode` type; `ReinforceGrow` was ambiguous; `ReinforceMax` is explicit about what the sub-mode changes |
+| 94 | Rivals for the contested roll sorted by name for deterministic order | `FactionState.Factions` is a map; iterating in random order would make the sequence of mid-resolution prompts unpredictable across runs |
+| 95 | Input model helpers duplicated from `engine/actions` into the `inputs` package | Cross-package coupling for six small filter functions would require a new shared package with no other consumers; YAGNI — duplication is acknowledged with an inline comment and the functions remain independent |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #90 | Register `baseAttack` as a standalone action or reuse the existing `Attack` action | Standalone registration would expose it in the action menu; reusing `Attack` would require the normal attack flow to carry Expand Influence context — both couple unrelated mechanics |
+| #92 | Pre-collect `SelectBaseAttackers` before starting resolution | Which rivals win the contested roll (and therefore which eligible attacker lists are needed) is unknown until the dice are rolled in `Resolve`; pre-collection is mechanically impossible |
