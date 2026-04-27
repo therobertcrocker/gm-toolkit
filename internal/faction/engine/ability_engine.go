@@ -37,7 +37,7 @@ type AbilityEngine struct {
 	customHandlers map[string]CustomAbilityHandler // keyed by AssetDefinition ID
 }
 
-func newAbilityEngine() *AbilityEngine {
+func NewAbilityEngine() *AbilityEngine {
 	ae := &AbilityEngine{
 		stepHandlers:   make(map[domain.AbilityStepType]StepHandler),
 		customHandlers: make(map[string]CustomAbilityHandler),

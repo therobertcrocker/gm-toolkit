@@ -26,7 +26,7 @@ func New(dataDir string) (*Engine, error) {
 	e.Mutation = newMutationEngine()
 	e.Turn = newTurnEngine(e.Mutation)
 	e.Action = newActionEngine()
-	e.AbilityEngine = newAbilityEngine()
+	e.AbilityEngine = NewAbilityEngine()
 	e.History = newHistoryEngine()
 	return e, nil
 }
