@@ -125,6 +125,9 @@ func factionTestStepHandler(
 	if err != nil {
 		return nil, err
 	}
+	if targetFaction == nil {
+		return nil, fmt.Errorf("faction test: no target faction selected")
+	}
 
 	attackRoll := roller.Roll(10) + abilityStatScore(faction, step.AttackerStat)
 	defenseRoll := roller.Roll(10) + abilityStatScore(targetFaction, step.DefenderStat)
@@ -158,6 +161,9 @@ func factionTestCandidates(factionState *state.FactionState, actingFactionID, wo
 			}
 		}
 	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].Name < candidates[j].Name
+	})
 	return candidates
 }
 
@@ -181,11 +187,17 @@ func applyAbilityEffect(
 		}
 		return mutations, nil
 	case domain.EffectCoinDrain:
+		if step.EffectDice == nil {
+			return nil, fmt.Errorf("effect %q requires effect_dice", step.Effect)
+		}
 		amount := step.EffectDice.Roll(roller)
 		return []domain.Mutation{
 			domain.CoinDelta{FactionID: targetFaction.ID, Delta: -amount},
 		}, nil
 	case domain.EffectCoinSteal:
+		if step.EffectDice == nil {
+			return nil, fmt.Errorf("effect %q requires effect_dice", step.Effect)
+		}
 		amount := step.EffectDice.Roll(roller)
 		return []domain.Mutation{
 			domain.CoinDelta{FactionID: targetFaction.ID, Delta: -amount},
