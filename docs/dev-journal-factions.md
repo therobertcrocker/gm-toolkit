@@ -124,7 +124,7 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- Remaining action implementations (Use Asset Ability, Change Homeworld, Seize Planet)
+- Remaining action implementations (Use Asset Ability)
 - Goal Engine (multi-turn action locks for Change Homeworld and Seize Planet)
 - Narrative summary renderer
 
