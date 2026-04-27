@@ -28,6 +28,47 @@ func narrateAction(action engine.Action, mutations []domain.Mutation, faction *d
 	}
 }
 
+func narrateExpandInfluence(mutations []domain.Mutation, faction *domain.Faction) []string {
+	// Build a location index that covers both existing bases and newly added ones
+	// (BaseAdded mutations haven't been applied to state yet at narration time).
+	baseLocations := make(map[string]string)
+	for _, base := range faction.Bases {
+		baseLocations[base.ID] = base.Location
+	}
+	for _, m := range mutations {
+		if mut, ok := m.(domain.BaseAdded); ok {
+			baseLocations[mut.Base.ID] = mut.Base.Location
+		}
+	}
+
+	var lines []string
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.BaseAdded:
+			lines = append(lines, fmt.Sprintf("New Base placed on %s (%d HP)", mut.Base.Location, mut.Base.MaxHP))
+		case domain.BaseHealed:
+			lines = append(lines, fmt.Sprintf("Base on %s: +%d HP healed", baseLocations[mut.BaseID], mut.Delta))
+		case domain.BaseExpanded:
+			lines = append(lines, fmt.Sprintf("Base on %s: max HP +%d", baseLocations[mut.BaseID], mut.Delta))
+		case domain.CoinDelta:
+			if mut.Delta < 0 {
+				lines = append(lines, fmt.Sprintf("Cost: %d Coin", -mut.Delta))
+			}
+		case domain.BaseHPDelta:
+			if mut.Delta < 0 {
+				lines = append(lines, fmt.Sprintf("Rival attack: base at %s took %d damage", baseLocations[mut.BaseID], -mut.Delta))
+			}
+		case domain.BaseDestroyed:
+			lines = append(lines, fmt.Sprintf("Base at %s destroyed", baseLocations[mut.BaseID]))
+		case domain.FactionHPDelta:
+			if mut.Delta < 0 && mut.FactionID == faction.ID {
+				lines = append(lines, fmt.Sprintf("Faction HP: %d damage from base attack", -mut.Delta))
+			}
+		}
+	}
+	return lines
+}
+
 func narrateSell(mutations []domain.Mutation, faction *domain.Faction, rulebook *loader.Rulebook) []string {
 	name := "unknown"
 	coin := 0

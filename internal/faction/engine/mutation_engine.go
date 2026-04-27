@@ -87,6 +87,33 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 				}
 				faction.Bases = surviving
 			}
+		case domain.BaseAdded:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				base := v.Base
+				faction.Bases = append(faction.Bases, &base)
+			}
+		case domain.BaseHealed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, base := range faction.Bases {
+					if base.ID == v.BaseID {
+						base.CurrentHP += v.Delta
+						if max := base.EffectiveMaxHP(faction); base.CurrentHP > max {
+							base.CurrentHP = max
+						}
+						break
+					}
+				}
+			}
+		case domain.BaseExpanded:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, base := range faction.Bases {
+					if base.ID == v.BaseID {
+						base.MaxHP += v.Delta
+						base.CurrentHP += v.Delta
+						break
+					}
+				}
+			}
 		}
 	}
 }

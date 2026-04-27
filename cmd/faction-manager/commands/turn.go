@@ -14,6 +14,7 @@ func (a *App) turnCmd() *cobra.Command {
 	a.Engine.Action.Register(func() engine.Action { return actions.NewBuyAsset(nil) })
 	a.Engine.Action.Register(func() engine.Action { return actions.NewRefitAsset(nil) })
 	a.Engine.Action.Register(func() engine.Action { return actions.NewAttack(nil, nil) })
+	a.Engine.Action.Register(func() engine.Action { return actions.NewExpandInfluence(nil, nil) })
 
 	return turn.NewCmd(a.Engine)
 }

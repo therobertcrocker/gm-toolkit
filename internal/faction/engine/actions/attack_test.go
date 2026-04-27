@@ -56,6 +56,15 @@ func (collector *fakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefi
 func (collector *fakeCollector) SelectRefitOrder(_ []engine.RefitOption, _ *loader.Rulebook) (engine.RefitOrder, error) {
 	panic("SelectRefitOrder: not used in attack tests")
 }
+func (collector *fakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (engine.ExpandInfluenceOrder, error) {
+	panic("SelectExpandInfluenceOrder: not used in attack tests")
+}
+func (collector *fakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
+	panic("ConfirmRivalFreeAttack: not used in attack tests")
+}
+func (collector *fakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+	panic("SelectBaseAttackers: not used in attack tests")
+}
 
 // makeAttackRulebook returns a minimal Rulebook with three asset definitions:
 //   - "force-attacker": has an Attack profile (Force vs Force, 1d6 damage)

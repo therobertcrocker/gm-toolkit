@@ -27,7 +27,9 @@ const (
 	stateActionSelect
 	stateActionInput
 	stateActionResult
-	stateAttackRedirect // waiting for redirect confirm mid-resolution
+	stateAttackRedirect                    // waiting for redirect confirm mid-resolution
+	stateExpandInfluenceRivalConfirm       // waiting for rival free-attack y/n
+	stateExpandInfluenceSelectAttackers    // waiting for base attacker selection
 	stateCycleSummary
 	stateDone
 )
@@ -44,6 +46,13 @@ type AttackRedirectMsg struct {
 // AttackCompletedMsg is sent by the attack resolution goroutine when Resolve
 // finishes (successfully or with an error).
 type AttackCompletedMsg struct {
+	Mutations []domain.Mutation
+	Err       error
+}
+
+// ExpandInfluenceCompletedMsg is sent by the Expand Influence resolution goroutine
+// when Resolve finishes (successfully or with an error).
+type ExpandInfluenceCompletedMsg struct {
 	Mutations []domain.Mutation
 	Err       error
 }
@@ -67,9 +76,12 @@ type TurnModel struct {
 	availableActions  []engine.Action
 	pendingAction     engine.Action
 	subModel          tea.Model
-	attackEventCh     chan tea.Msg
-	attackCollector   *TUICollector
-	pendingRedirect   *AttackRedirectMsg
+	attackEventCh              chan tea.Msg
+	attackCollector            *TUICollector
+	pendingRedirect            *AttackRedirectMsg
+	expandInfluenceEventCh     chan tea.Msg
+	pendingRivalAttack         *ExpandInfluenceRivalMsg
+	pendingBaseAttackers       *ExpandInfluenceBaseAttackersMsg
 	snapshots         map[string]factionSnapshot // faction ID → pre-turn HP/Coin
 	actionsTaken      map[string]string          // faction ID → action description
 	actionResults     map[string]string          // faction ID → result summary for cycle summary
@@ -116,9 +128,18 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.state == stateAttackRedirect {
 			return m.handleRedirectKey(msg)
 		}
+		if m.state == stateExpandInfluenceRivalConfirm {
+			return m.handleRivalConfirmKey(msg)
+		}
 
 	case inputs.AttackInputsSelectedMsg:
 		return m.startAttackResolution(msg)
+
+	case inputs.ExpandInfluenceOrderSelectedMsg:
+		return m.startExpandInfluenceResolution(msg)
+
+	case inputs.BaseAttackersSelectedMsg:
+		return m.handleBaseAttackersSelected(msg)
 
 	case AttackRedirectMsg:
 		m.pendingRedirect = &msg
@@ -128,6 +149,21 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AttackCompletedMsg:
 		return m.handleAttackCompleted(msg)
+
+	case ExpandInfluenceRivalMsg:
+		m.pendingRivalAttack = &msg
+		m.state = stateExpandInfluenceRivalConfirm
+		m.subModel = nil
+		return m, nil
+
+	case ExpandInfluenceBaseAttackersMsg:
+		m.pendingBaseAttackers = &msg
+		m.state = stateExpandInfluenceSelectAttackers
+		m.subModel = m.resizeSub(inputs.NewSelectBaseAttackersModel(msg.Rival, msg.Eligible, m.engine.Rulebook))
+		return m, m.subModel.Init()
+
+	case ExpandInfluenceCompletedMsg:
+		return m.handleExpandInfluenceCompleted(msg)
 
 	case inputs.AssetSelectedMsg:
 		collector := &TUICollector{selectedAsset: msg.Asset}
@@ -298,6 +334,18 @@ func (m TurnModel) View() string {
 		right := renderRedirectPrompt(m.pendingRedirect)
 		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
 
+	case stateExpandInfluenceRivalConfirm:
+		right := renderRivalConfirmPrompt(m.pendingRivalAttack)
+		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
+
+	case stateExpandInfluenceSelectAttackers:
+		left := renderLeft(m)
+		right := ""
+		if m.subModel != nil {
+			right = m.subModel.View()
+		}
+		return renderSplitPanel(left, right, m.width)
+
 	case stateCycleSummary:
 		if m.subModel != nil {
 			return m.subModel.View()
@@ -407,6 +455,24 @@ func renderRedirectPrompt(msg *AttackRedirectMsg) string {
 	return sb.String()
 }
 
+func renderRivalConfirmPrompt(msg *ExpandInfluenceRivalMsg) string {
+	if msg == nil {
+		return ""
+	}
+	var sb strings.Builder
+	sb.WriteString(style.SectionTitle.Render("Rival Free Attack?"))
+	sb.WriteString("\n\n")
+	fmt.Fprintf(&sb, "%s matched or beat your contested roll.\n\n", msg.Rival.Name)
+	fmt.Fprintf(&sb, "Your roll: %s   %s's roll: %s\n\n",
+		style.HP.Render(fmt.Sprintf("%d", msg.FactionRoll)),
+		msg.Rival.Name,
+		style.LowHP.Render(fmt.Sprintf("%d", msg.RivalRoll)),
+	)
+	fmt.Fprintf(&sb, "Does %s make a free attack against the new Base?\n\n", msg.Rival.Name)
+	sb.WriteString(style.Muted.Render("y — attack   n — pass"))
+	return sb.String()
+}
+
 func assetCategoryAbbrev(category domain.FactionStat) string {
 	switch category {
 	case domain.StatForce:
@@ -476,6 +542,10 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 		m.state = stateActionInput
 		m.subModel = m.resizeSub(inputs.NewAttackInputsModel(eligible, m.factionState, m.engine.Rulebook))
 		return m, m.subModel.Init()
+	case "Expand Influence":
+		m.state = stateActionInput
+		m.subModel = m.resizeSub(inputs.NewExpandInfluenceModel(m.currentFaction))
+		return m, m.subModel.Init()
 	default:
 		m.actionResultText = m.pendingAction.Name() + " — not yet implemented in TUI"
 		m.state = stateActionResult
@@ -540,9 +610,71 @@ func (m TurnModel) handleRedirectKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func waitForAttackEvent(eventCh chan tea.Msg) tea.Cmd {
-	return func() tea.Msg {
-		return <-eventCh
+	return func() tea.Msg { return <-eventCh }
+}
+
+func (m TurnModel) startExpandInfluenceResolution(msg inputs.ExpandInfluenceOrderSelectedMsg) (tea.Model, tea.Cmd) {
+	eventCh := make(chan tea.Msg, 1)
+	m.expandInfluenceEventCh = eventCh
+	collector := &TUICollector{
+		expandInfluenceOrder: msg.Order,
+		eventCh:              eventCh,
 	}
+	action := actions.NewExpandInfluence(collector, engine.NewRandRoller())
+	faction := m.currentFaction
+	factionState := m.factionState
+	rulebook := m.engine.Rulebook
+	go func() {
+		mutations, err := m.engine.Action.Run(action, faction, factionState, rulebook)
+		eventCh <- ExpandInfluenceCompletedMsg{Mutations: mutations, Err: err}
+	}()
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForExpandInfluenceEvent(eventCh)
+}
+
+func (m TurnModel) handleExpandInfluenceCompleted(msg ExpandInfluenceCompletedMsg) (tea.Model, tea.Cmd) {
+	m.expandInfluenceEventCh = nil
+	if msg.Err != nil {
+		m.err = msg.Err
+		return m, nil
+	}
+	m.turnLog = narrateExpandInfluence(msg.Mutations, m.currentFaction)
+	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
+	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	m.actionResultText = "Expand Influence"
+	m.state = stateActionResult
+	m.subModel = nil
+	return m, nil
+}
+
+func (m TurnModel) handleRivalConfirmKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "y", "Y":
+		m.pendingRivalAttack.ResponseCh <- true
+	case "n", "N":
+		m.pendingRivalAttack.ResponseCh <- false
+	default:
+		return m, nil
+	}
+	m.pendingRivalAttack = nil
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForExpandInfluenceEvent(m.expandInfluenceEventCh)
+}
+
+func (m TurnModel) handleBaseAttackersSelected(msg inputs.BaseAttackersSelectedMsg) (tea.Model, tea.Cmd) {
+	if m.pendingBaseAttackers != nil {
+		m.pendingBaseAttackers.ResponseCh <- msg.Attackers
+		m.pendingBaseAttackers = nil
+	}
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForExpandInfluenceEvent(m.expandInfluenceEventCh)
+}
+
+func waitForExpandInfluenceEvent(eventCh chan tea.Msg) tea.Cmd {
+	return func() tea.Msg { return <-eventCh }
 }
 
 func (m TurnModel) runAction(action engine.Action) (tea.Model, tea.Cmd) {

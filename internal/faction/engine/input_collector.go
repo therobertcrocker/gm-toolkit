@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // InputCollector abstracts input collection for action resolution. The GM
@@ -17,6 +18,10 @@ type InputCollector interface {
 	SelectAttackers(eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error)
 	SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error)
+	// Expand Influence
+	SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState) (ExpandInfluenceOrder, error)
+	ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error)
+	SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error)
 }
 
 // RepairOrder describes a single asset repair instruction: which asset and how
@@ -46,4 +51,29 @@ type RefitOption struct {
 type RefitOrder struct {
 	OldAsset      *domain.Asset
 	NewDefinition *domain.AssetDefinition
+}
+
+// ExpandMode distinguishes between placing a new Base and reinforcing an existing one.
+type ExpandMode string
+
+const (
+	ExpandModeNew       ExpandMode = "new"
+	ExpandModeReinforce ExpandMode = "reinforce"
+)
+
+// ReinforceMode distinguishes between healing a damaged Base and increasing its max HP.
+type ReinforceMode string
+
+const (
+	ReinforceHeal ReinforceMode = "heal"
+	ReinforceMax  ReinforceMode = "max"
+)
+
+// ExpandInfluenceOrder describes an Expand Influence instruction.
+type ExpandInfluenceOrder struct {
+	Mode     ExpandMode
+	World    string
+	BaseID   string        // reinforce only
+	SubMode  ReinforceMode // reinforce only
+	HPAmount int
 }

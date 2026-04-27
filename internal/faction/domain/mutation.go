@@ -90,3 +90,32 @@ type BaseDestroyed struct {
 }
 
 func (mutation BaseDestroyed) Type() string { return "base_destroyed" }
+
+// BaseAdded places a new Base of Influence on a world. The base is flagged
+// Ready: false (inactive until the start of the next turn).
+type BaseAdded struct {
+	FactionID string `json:"faction_id"`
+	Base      Base   `json:"base"`
+}
+
+func (mutation BaseAdded) Type() string { return "base_added" }
+
+// BaseHealed restores CurrentHP on a Base of Influence without changing MaxHP.
+// Unlike BaseHPDelta (attack damage), healing carries no faction HP side effect.
+type BaseHealed struct {
+	FactionID string `json:"faction_id"`
+	BaseID    string `json:"base_id"`
+	Delta     int    `json:"delta"`
+}
+
+func (mutation BaseHealed) Type() string { return "base_healed" }
+
+// BaseExpanded increases both MaxHP and CurrentHP on a Base of Influence by
+// Delta. Used when purchasing additional HP capacity via Expand Influence.
+type BaseExpanded struct {
+	FactionID string `json:"faction_id"`
+	BaseID    string `json:"base_id"`
+	Delta     int    `json:"delta"`
+}
+
+func (mutation BaseExpanded) Type() string { return "base_expanded" }
