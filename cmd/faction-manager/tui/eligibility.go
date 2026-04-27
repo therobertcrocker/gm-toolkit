@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -68,6 +69,23 @@ func tuiEligibleAttackers(faction *domain.Faction, factionState *state.FactionSt
 			continue
 		}
 		if tuiHasEligibleTarget(asset, faction.ID, factionState) {
+			result = append(result, asset)
+		}
+	}
+	return result
+}
+
+func tuiEligibleAbilityAssets(faction *domain.Faction, rulebook *loader.Rulebook) []*domain.Asset {
+	var result []*domain.Asset
+	for _, asset := range faction.Assets {
+		if !asset.Ready || !asset.Maintained {
+			continue
+		}
+		def, ok := rulebook.Assets[asset.DefinitionID]
+		if !ok {
+			continue
+		}
+		if slices.Contains(def.Flags, domain.FlagAction) {
 			result = append(result, asset)
 		}
 	}

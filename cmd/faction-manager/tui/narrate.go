@@ -144,6 +144,38 @@ func narrateRepairFaction(mutations []domain.Mutation) []string {
 	return nil
 }
 
+func narrateUseAssetAbility(mutations []domain.Mutation, faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) []string {
+	if len(mutations) == 0 {
+		return []string{"Ability applied (GM adjudicated)"}
+	}
+	var lines []string
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.AssetMoved:
+			name := assetNameFromState(mut.AssetID, factionState, rulebook)
+			lines = append(lines, fmt.Sprintf("%s relocated to %s", name, mut.ToLocation))
+		case domain.CoinDelta:
+			if mut.FactionID == faction.ID {
+				if mut.Delta < 0 {
+					lines = append(lines, fmt.Sprintf("Cost: %d Coin", -mut.Delta))
+				} else if mut.Delta > 0 {
+					lines = append(lines, fmt.Sprintf("%s gained %d Coin", faction.Name, mut.Delta))
+				}
+			} else if mut.Delta < 0 {
+				targetName := mut.FactionID
+				if f, ok := factionState.Factions[mut.FactionID]; ok {
+					targetName = f.Name
+				}
+				lines = append(lines, fmt.Sprintf("%s lost %d Coin", targetName, -mut.Delta))
+			}
+		case domain.AssetStealthCleared:
+			name := assetNameFromState(mut.AssetID, factionState, rulebook)
+			lines = append(lines, fmt.Sprintf("%s revealed", name))
+		}
+	}
+	return lines
+}
+
 func narrateAttack(collector *TUICollector, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []string {
 	assetDeltas := make(map[string]int)
 	assetDestroyedMap := make(map[string]bool)

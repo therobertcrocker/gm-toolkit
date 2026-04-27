@@ -9,15 +9,16 @@ import (
 )
 
 type TUICollector struct {
-	selectedAsset          *domain.Asset
-	buyOrder               engine.BuyOrder
-	refitOrder             engine.RefitOrder
-	repairOrders           []engine.RepairOrder
-	attackers              []*domain.Asset
-	defenders              map[string]*domain.Asset // attacker ID → defender
-	expandInfluenceOrder   engine.ExpandInfluenceOrder
-	baseAttackers          []*domain.Asset
-	eventCh                chan tea.Msg // used by ConfirmRedirectToBase and ConfirmRivalFreeAttack
+	selectedAsset        *domain.Asset
+	buyOrder             engine.BuyOrder
+	refitOrder           engine.RefitOrder
+	repairOrders         []engine.RepairOrder
+	attackers            []*domain.Asset
+	defenders            map[string]*domain.Asset // attacker ID → defender
+	expandInfluenceOrder engine.ExpandInfluenceOrder
+	baseAttackers        []*domain.Asset
+	abilityAssets        []*domain.Asset
+	eventCh              chan tea.Msg
 }
 
 // ExpandInfluenceRivalMsg is sent from the Expand Influence resolution goroutine
@@ -104,20 +105,49 @@ func (c *TUICollector) SelectBaseAttackers(rival *domain.Faction, eligible []*do
 	return <-responseCh, nil
 }
 
-// Use Asset Ability — stubs wired in Phase 4.
+// AbilityMoveMsg is sent by TUICollector.SelectMoveDestination to ask the GM
+// where to relocate the asset. Called from the ability resolution goroutine.
+type AbilityMoveMsg struct {
+	Asset      *domain.Asset
+	Worlds     []string
+	ResponseCh chan string
+}
+
+// AbilityFactionTestMsg is sent by TUICollector.SelectFactionTestTarget to ask
+// the GM which faction to target with a faction test ability step.
+type AbilityFactionTestMsg struct {
+	Asset      *domain.Asset
+	Effect     domain.AbilityEffectType
+	Candidates []*domain.Faction
+	ResponseCh chan *domain.Faction
+}
+
+// AbilityConfirmMsg is sent by TUICollector.ConfirmAbilityApplied to ask the
+// GM to confirm a GM-adjudicated ability was applied.
+type AbilityConfirmMsg struct {
+	Asset      *domain.Asset
+	Def        *domain.AssetDefinition
+	ResponseCh chan bool
+}
 
 func (c *TUICollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
-	return nil, nil
+	return c.abilityAssets, nil
 }
 
-func (c *TUICollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
-	return "", nil
+func (c *TUICollector) SelectMoveDestination(asset *domain.Asset, worlds []string) (string, error) {
+	responseCh := make(chan string, 1)
+	c.eventCh <- AbilityMoveMsg{Asset: asset, Worlds: worlds, ResponseCh: responseCh}
+	return <-responseCh, nil
 }
 
-func (c *TUICollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
-	return nil, nil
+func (c *TUICollector) SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error) {
+	responseCh := make(chan *domain.Faction, 1)
+	c.eventCh <- AbilityFactionTestMsg{Asset: asset, Effect: effect, Candidates: candidates, ResponseCh: responseCh}
+	return <-responseCh, nil
 }
 
-func (c *TUICollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {
-	return false, nil
+func (c *TUICollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
+	responseCh := make(chan bool, 1)
+	c.eventCh <- AbilityConfirmMsg{Asset: asset, Def: def, ResponseCh: responseCh}
+	return <-responseCh, nil
 }
