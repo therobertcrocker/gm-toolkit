@@ -103,3 +103,21 @@ func (c *TUICollector) SelectBaseAttackers(rival *domain.Faction, eligible []*do
 	}
 	return <-responseCh, nil
 }
+
+// Use Asset Ability — stubs wired in Phase 4.
+
+func (c *TUICollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+	return nil, nil
+}
+
+func (c *TUICollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
+	return "", nil
+}
+
+func (c *TUICollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
+	return nil, nil
+}
+
+func (c *TUICollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {
+	return false, nil
+}

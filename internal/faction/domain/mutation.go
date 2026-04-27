@@ -119,3 +119,13 @@ type BaseExpanded struct {
 }
 
 func (mutation BaseExpanded) Type() string { return "base_expanded" }
+
+// AssetMoved updates an asset's Location. Emitted by movement ability steps.
+type AssetMoved struct {
+	FactionID    string `json:"faction_id"`
+	AssetID      string `json:"asset_id"`
+	FromLocation string `json:"from_location"`
+	ToLocation   string `json:"to_location"`
+}
+
+func (mutation AssetMoved) Type() string { return "asset_moved" }

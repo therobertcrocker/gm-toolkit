@@ -7,11 +7,12 @@ import (
 // Engine is the core orchestrator. It owns the Rulebook and composes all
 // sub-engines. Sub-engines that are not yet implemented are nil.
 type Engine struct {
-	Rulebook *loader.Rulebook
-	Turn     *TurnEngine
-	Mutation *MutationEngine
-	Action   *ActionEngine
-	History  *HistoryEngine
+	Rulebook      *loader.Rulebook
+	Turn          *TurnEngine
+	Mutation      *MutationEngine
+	Action        *ActionEngine
+	AbilityEngine *AbilityEngine
+	History       *HistoryEngine
 	// Goal *GoalEngine — future
 	// Tag  *TagEngine  — future
 }
@@ -25,6 +26,7 @@ func New(dataDir string) (*Engine, error) {
 	e.Mutation = newMutationEngine()
 	e.Turn = newTurnEngine(e.Mutation)
 	e.Action = newActionEngine()
+	e.AbilityEngine = newAbilityEngine()
 	e.History = newHistoryEngine()
 	return e, nil
 }
