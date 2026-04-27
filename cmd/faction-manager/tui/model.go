@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -353,11 +354,19 @@ func renderLeft(m TurnModel) string {
 		sb.WriteString(style.SectionTitle.Render("Assets"))
 		for _, asset := range f.Assets {
 			flags := assetFlags(asset)
+			name := asset.DefinitionID
+			maxHP := asset.CurrentHP
+			catAbbrev := "?"
+			if def, ok := m.engine.Rulebook.Assets[asset.DefinitionID]; ok {
+				name = def.Name
+				maxHP = def.HP
+				catAbbrev = assetCategoryAbbrev(def.Category)
+			}
 			fmt.Fprintf(&sb, "\n%-18s %s %2d/%-2d%s",
-				truncate(asset.DefinitionID, 18),
-				assetCategoryAbbrev(asset),
+				truncate(name, 18),
+				catAbbrev,
 				asset.CurrentHP,
-				asset.CurrentHP,
+				maxHP,
 				flags,
 			)
 		}
@@ -398,8 +407,17 @@ func renderRedirectPrompt(msg *AttackRedirectMsg) string {
 	return sb.String()
 }
 
-func assetCategoryAbbrev(_ *domain.Asset) string {
-	return "?"
+func assetCategoryAbbrev(category domain.FactionStat) string {
+	switch category {
+	case domain.StatForce:
+		return "F"
+	case domain.StatCunning:
+		return "C"
+	case domain.StatWealth:
+		return "W"
+	default:
+		return "?"
+	}
 }
 
 func assetFlags(asset *domain.Asset) string {
@@ -604,6 +622,7 @@ func (m TurnModel) buildSummaryRows() []phases.FactionSummaryRow {
 		}
 		rows = append(rows, row)
 	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 	return rows
 }
 
