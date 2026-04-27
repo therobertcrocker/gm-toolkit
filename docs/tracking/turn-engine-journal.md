@@ -15,8 +15,8 @@ A high-level tracker for turn engine feature status and open questions.
 |---|---------|--------|-------|
 | 1 | Turn Scaffolding | Complete | |
 | 2 | Per-Faction Bookkeeping | In progress | Income and maintenance skeleton done; maintenance costs deferred until AssetDefinition carries structured cost data |
-| 3 | Action Selection | In progress | ActionEngine and Action interface built; Sell/Buy/Repair Asset/Repair Faction/Refit/Attack wired; Expand Influence, Use Asset Ability remaining (Change Homeworld, Seize Planet belong to Goal Engine) |
-| 4 | Action Resolution | In progress | Sell/Buy/Repair Asset/Repair Faction/Refit/Attack complete; Expand Influence, Use Asset Ability remaining; Use Asset Ability depends on Ability Engine |
+| 3 | Action Selection | Complete | All nine SWN actions wired; Change Homeworld and Seize Planet gated by Goal Engine (not started) |
+| 4 | Action Resolution | Complete | All nine SWN actions implemented; Change Homeworld and Seize Planet pending Goal Engine multi-turn lock |
 | 5 | State Mutation | Complete | |
 | 6 | Event Recording | Complete | Per-faction JSONL records; one EventRecord per faction per cycle; HistoryEngine wired into turn wizard |
 | 7 | Goal Engine | Not started | Depends on Action Resolution |

@@ -27,9 +27,12 @@ const (
 	stateActionSelect
 	stateActionInput
 	stateActionResult
-	stateAttackRedirect                    // waiting for redirect confirm mid-resolution
-	stateExpandInfluenceRivalConfirm       // waiting for rival free-attack y/n
-	stateExpandInfluenceSelectAttackers    // waiting for base attacker selection
+	stateAttackRedirect                 // waiting for redirect confirm mid-resolution
+	stateExpandInfluenceRivalConfirm    // waiting for rival free-attack y/n
+	stateExpandInfluenceSelectAttackers // waiting for base attacker selection
+	stateAbilityMoveDestination         // waiting for move destination mid-resolution
+	stateAbilityFactionTestTarget       // waiting for faction test target mid-resolution
+	stateAbilityConfirmApplied          // waiting for GM fallback confirm mid-resolution
 	stateCycleSummary
 	stateDone
 )
@@ -53,6 +56,13 @@ type AttackCompletedMsg struct {
 // ExpandInfluenceCompletedMsg is sent by the Expand Influence resolution goroutine
 // when Resolve finishes (successfully or with an error).
 type ExpandInfluenceCompletedMsg struct {
+	Mutations []domain.Mutation
+	Err       error
+}
+
+// AbilityCompletedMsg is sent by the Use Asset Ability resolution goroutine
+// when Resolve finishes (successfully or with an error).
+type AbilityCompletedMsg struct {
 	Mutations []domain.Mutation
 	Err       error
 }
@@ -82,6 +92,10 @@ type TurnModel struct {
 	expandInfluenceEventCh     chan tea.Msg
 	pendingRivalAttack         *ExpandInfluenceRivalMsg
 	pendingBaseAttackers       *ExpandInfluenceBaseAttackersMsg
+	abilityEventCh             chan tea.Msg
+	pendingAbilityMove         *AbilityMoveMsg
+	pendingAbilityFactionTest  *AbilityFactionTestMsg
+	pendingAbilityConfirm      *AbilityConfirmMsg
 	snapshots         map[string]factionSnapshot // faction ID → pre-turn HP/Coin
 	actionsTaken      map[string]string          // faction ID → action description
 	actionResults     map[string]string          // faction ID → result summary for cycle summary
@@ -131,6 +145,9 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.state == stateExpandInfluenceRivalConfirm {
 			return m.handleRivalConfirmKey(msg)
 		}
+		if m.state == stateAbilityConfirmApplied {
+			return m.handleAbilityConfirmKey(msg)
+		}
 
 	case inputs.AttackInputsSelectedMsg:
 		return m.startAttackResolution(msg)
@@ -164,6 +181,36 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ExpandInfluenceCompletedMsg:
 		return m.handleExpandInfluenceCompleted(msg)
+
+	case inputs.AbilityAssetsSelectedMsg:
+		return m.startAbilityResolution(msg)
+
+	case AbilityMoveMsg:
+		m.pendingAbilityMove = &msg
+		m.state = stateAbilityMoveDestination
+		m.subModel = m.resizeSub(inputs.NewMoveDestinationModel(msg.Asset, msg.Worlds, m.engine.Rulebook))
+		return m, m.subModel.Init()
+
+	case AbilityFactionTestMsg:
+		m.pendingAbilityFactionTest = &msg
+		m.state = stateAbilityFactionTestTarget
+		m.subModel = m.resizeSub(inputs.NewFactionTestTargetModel(msg.Asset, msg.Effect, msg.Candidates, m.engine.Rulebook))
+		return m, m.subModel.Init()
+
+	case AbilityConfirmMsg:
+		m.pendingAbilityConfirm = &msg
+		m.state = stateAbilityConfirmApplied
+		m.subModel = nil
+		return m, nil
+
+	case inputs.AbilityMoveDestinationSelectedMsg:
+		return m.handleAbilityMoveDestinationSelected(msg)
+
+	case inputs.FactionTestTargetSelectedMsg:
+		return m.handleFactionTestTargetSelected(msg)
+
+	case AbilityCompletedMsg:
+		return m.handleAbilityCompleted(msg)
 
 	case inputs.AssetSelectedMsg:
 		collector := &TUICollector{selectedAsset: msg.Asset}
@@ -338,13 +385,17 @@ func (m TurnModel) View() string {
 		right := renderRivalConfirmPrompt(m.pendingRivalAttack)
 		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
 
-	case stateExpandInfluenceSelectAttackers:
+	case stateExpandInfluenceSelectAttackers, stateAbilityMoveDestination, stateAbilityFactionTestTarget:
 		left := renderLeft(m)
 		right := ""
 		if m.subModel != nil {
 			right = m.subModel.View()
 		}
 		return renderSplitPanel(left, right, m.width)
+
+	case stateAbilityConfirmApplied:
+		right := renderAbilityConfirmPrompt(m.pendingAbilityConfirm)
+		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
 
 	case stateCycleSummary:
 		if m.subModel != nil {
@@ -362,6 +413,8 @@ func (m TurnModel) View() string {
 			right = m.subModel.View()
 		} else if m.attackEventCh != nil {
 			right = style.Muted.Render("Resolving attack...")
+		} else if m.abilityEventCh != nil {
+			right = style.Muted.Render("Resolving ability...")
 		}
 		return renderSplitPanel(left, m.appendLog(right), m.width)
 	}
@@ -455,6 +508,25 @@ func renderRedirectPrompt(msg *AttackRedirectMsg) string {
 	return sb.String()
 }
 
+func renderAbilityConfirmPrompt(msg *AbilityConfirmMsg) string {
+	if msg == nil {
+		return ""
+	}
+	name := msg.Asset.DefinitionID
+	if msg.Def != nil {
+		name = msg.Def.Name
+	}
+	var sb strings.Builder
+	sb.WriteString(style.SectionTitle.Render("Ability Applied?"))
+	sb.WriteString("\n\n")
+	fmt.Fprintf(&sb, "%s\n\n", name)
+	if msg.Def != nil && msg.Def.Description != "" {
+		fmt.Fprintf(&sb, "%s\n\n", style.Muted.Render(msg.Def.Description))
+	}
+	sb.WriteString(style.Muted.Render("y — applied   n — skip"))
+	return sb.String()
+}
+
 func renderRivalConfirmPrompt(msg *ExpandInfluenceRivalMsg) string {
 	if msg == nil {
 		return ""
@@ -545,6 +617,11 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 	case "Expand Influence":
 		m.state = stateActionInput
 		m.subModel = m.resizeSub(inputs.NewExpandInfluenceModel(m.currentFaction))
+		return m, m.subModel.Init()
+	case "Use Asset Ability":
+		candidates := tuiEligibleAbilityAssets(m.currentFaction, m.engine.Rulebook)
+		m.state = stateActionInput
+		m.subModel = m.resizeSub(inputs.NewAbilityAssetsModel(candidates, m.engine.Rulebook))
 		return m, m.subModel.Init()
 	default:
 		m.actionResultText = m.pendingAction.Name() + " — not yet implemented in TUI"
@@ -674,6 +751,83 @@ func (m TurnModel) handleBaseAttackersSelected(msg inputs.BaseAttackersSelectedM
 }
 
 func waitForExpandInfluenceEvent(eventCh chan tea.Msg) tea.Cmd {
+	return func() tea.Msg { return <-eventCh }
+}
+
+func (m TurnModel) startAbilityResolution(msg inputs.AbilityAssetsSelectedMsg) (tea.Model, tea.Cmd) {
+	eventCh := make(chan tea.Msg, 1)
+	m.abilityEventCh = eventCh
+	collector := &TUICollector{
+		abilityAssets: msg.Assets,
+		eventCh:       eventCh,
+	}
+	action := actions.NewUseAssetAbility(collector, engine.NewRandRoller(), m.engine.AbilityEngine)
+	faction := m.currentFaction
+	factionState := m.factionState
+	rulebook := m.engine.Rulebook
+	go func() {
+		mutations, err := m.engine.Action.Run(action, faction, factionState, rulebook)
+		eventCh <- AbilityCompletedMsg{Mutations: mutations, Err: err}
+	}()
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForAbilityEvent(eventCh)
+}
+
+func (m TurnModel) handleAbilityCompleted(msg AbilityCompletedMsg) (tea.Model, tea.Cmd) {
+	m.abilityEventCh = nil
+	if msg.Err != nil {
+		m.err = msg.Err
+		return m, nil
+	}
+	m.turnLog = narrateUseAssetAbility(msg.Mutations, m.currentFaction, m.factionState, m.engine.Rulebook)
+	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
+	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	m.actionResultText = "Use Asset Ability"
+	m.state = stateActionResult
+	m.subModel = nil
+	return m, nil
+}
+
+func (m TurnModel) handleAbilityMoveDestinationSelected(msg inputs.AbilityMoveDestinationSelectedMsg) (tea.Model, tea.Cmd) {
+	if m.pendingAbilityMove != nil {
+		m.pendingAbilityMove.ResponseCh <- msg.Destination
+		m.pendingAbilityMove = nil
+	}
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForAbilityEvent(m.abilityEventCh)
+}
+
+func (m TurnModel) handleFactionTestTargetSelected(msg inputs.FactionTestTargetSelectedMsg) (tea.Model, tea.Cmd) {
+	if m.pendingAbilityFactionTest != nil {
+		m.pendingAbilityFactionTest.ResponseCh <- msg.Faction
+		m.pendingAbilityFactionTest = nil
+	}
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForAbilityEvent(m.abilityEventCh)
+}
+
+func (m TurnModel) handleAbilityConfirmKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.pendingAbilityConfirm == nil {
+		return m, nil
+	}
+	switch key.String() {
+	case "y", "Y":
+		m.pendingAbilityConfirm.ResponseCh <- true
+	case "n", "N":
+		m.pendingAbilityConfirm.ResponseCh <- false
+	default:
+		return m, nil
+	}
+	m.pendingAbilityConfirm = nil
+	m.state = stateActionInput
+	m.subModel = nil
+	return m, waitForAbilityEvent(m.abilityEventCh)
+}
+
+func waitForAbilityEvent(eventCh chan tea.Msg) tea.Cmd {
 	return func() tea.Msg { return <-eventCh }
 }
 

@@ -32,6 +32,39 @@ type AttackProfile struct {
 	Damage       DiceRoll
 }
 
+type AbilityStepType string
+
+const (
+	AbilityStepMovement    AbilityStepType = "movement"
+	AbilityStepFactionTest AbilityStepType = "faction_test"
+)
+
+type AbilityEffectType string
+
+const (
+	EffectRevealStealth AbilityEffectType = "reveal_stealth"
+	EffectCoinDrain     AbilityEffectType = "coin_drain"
+	EffectCoinSteal     AbilityEffectType = "coin_steal"
+)
+
+type AbilityStep struct {
+	Type AbilityStepType
+
+	// movement fields
+	MaxHex   int
+	CoinCost int
+
+	// faction_test fields
+	AttackerStat FactionStat
+	DefenderStat FactionStat
+	Effect       AbilityEffectType
+	EffectDice   *DiceRoll
+}
+
+type AbilityDefinition struct {
+	Steps []AbilityStep
+}
+
 type AssetDefinition struct {
 	ID          string
 	Name        string
@@ -45,6 +78,7 @@ type AssetDefinition struct {
 	Counter     *DiceRoll
 	Flags       []AssetFlag
 	Description string
+	Ability     *AbilityDefinition
 }
 
 type Asset struct {

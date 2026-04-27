@@ -57,6 +57,11 @@ flags = ["A"]
 counter = "1d6"
 description = "A long-term contract with a commercial shipping company for priority cargo and personnel transport. As an action, this asset may transport any one non-Starship asset to any world within one hex at no cost."
 
+[[assets.FreighterContract.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 0
+
 [assets.Lawyers]
 id = "W2-002"
 name = "Lawyers"
@@ -158,6 +163,11 @@ flags = ["A"]
 counter = "1d8"
 description = "A fleet of commercial freighters and bulk transports contracted to the faction. As an action, any two assets on this planet may be moved to worlds within two hexes at a cost of 1 FacCred per asset moved."
 
+[[assets.ShippingCombine.ability.steps]]
+type = "movement"
+max_hex = 2
+coin_cost = 1
+
 [assets.Monopoly]
 id = "W4-002"
 name = "Monopoly"
@@ -210,6 +220,18 @@ flags = ["A"]
 counter = ""
 description = "Commercial intelligence operatives skilled in undermining rival economic interests. As an action, Marketers may move to any world within one hex. On a successful Wealth vs. Wealth attack, the target faction loses 1d4 FacCreds."
 
+[[assets.Marketers.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 0
+
+[[assets.Marketers.ability.steps]]
+type = "faction_test"
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+effect = "coin_drain"
+effect_dice = "1d4"
+
 [assets.PretechResearchers]
 id = "W5-002"
 name = "Pretech Researchers"
@@ -240,6 +262,18 @@ description = "Fast, lightly armed commercial vessels with hidden cargo bays and
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "2d6"
+
+[[assets.BlockadeRunners.ability.steps]]
+type = "movement"
+max_hex = 2
+coin_cost = 0
+
+[[assets.BlockadeRunners.ability.steps]]
+type = "faction_test"
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+effect = "coin_steal"
+effect_dice = "1d4"
 
 [assets.VentureCapital]
 id = "W6-001"
@@ -324,6 +358,11 @@ flags = ["A"]
 counter = ""
 description = "A network of commercial shipping lanes, bribed port authorities, and exclusive transit contracts spanning an entire region. As an action, any number of assets on this planet may be moved to any worlds within three hexes at a cost of 1 FacCred per asset moved."
 
+[[assets.TransitWeb.ability.steps]]
+type = "movement"
+max_hex = 3
+coin_cost = 1
+
 [assets.ScavengerFleet]
 id = "W8-001"
 name = "Scavenger Fleet"
@@ -341,3 +380,8 @@ description = "A vast armada of salvage vessels, decommissioned warships, and ar
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "2d8+4"
+
+[[assets.ScavengerFleet.ability.steps]]
+type = "movement"
+max_hex = 3
+coin_cost = 0

@@ -114,6 +114,15 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 					}
 				}
 			}
+		case domain.AssetMoved:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, asset := range faction.Assets {
+					if asset.ID == v.AssetID {
+						asset.Location = v.ToLocation
+						break
+					}
+				}
+			}
 		}
 	}
 }

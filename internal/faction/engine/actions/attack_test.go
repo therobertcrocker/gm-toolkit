@@ -65,6 +65,18 @@ func (collector *fakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ i
 func (collector *fakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
 	panic("SelectBaseAttackers: not used in attack tests")
 }
+func (collector *fakeCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+	panic("SelectAbilityAssets: not used in attack tests")
+}
+func (collector *fakeCollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
+	panic("SelectMoveDestination: not used in attack tests")
+}
+func (collector *fakeCollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
+	panic("SelectFactionTestTarget: not used in attack tests")
+}
+func (collector *fakeCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {
+	panic("ConfirmAbilityApplied: not used in attack tests")
+}
 
 // makeAttackRulebook returns a minimal Rulebook with three asset definitions:
 //   - "force-attacker": has an Attack profile (Force vs Force, 1d6 damage)
