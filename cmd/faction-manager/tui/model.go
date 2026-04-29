@@ -23,6 +23,8 @@ type turnState int
 const (
 	stateResumePrompt   turnState = iota
 	stateSkipPrompt
+	stateGoalSelect
+	stateGoalLocked
 	stateBookkeeping
 	stateActionSelect
 	stateActionInput
@@ -96,6 +98,9 @@ type TurnModel struct {
 	pendingAbilityMove         *AbilityMoveMsg
 	pendingAbilityFactionTest  *AbilityFactionTestMsg
 	pendingAbilityConfirm      *AbilityConfirmMsg
+	goalLock                engine.GoalLock
+	pendingGoalLockMutations []domain.Mutation
+	lockedGoalDestination   string
 	snapshots         map[string]factionSnapshot // faction ID → pre-turn HP/Coin
 	actionsTaken      map[string]string          // faction ID → action description
 	actionResults     map[string]string          // faction ID → result summary for cycle summary
@@ -138,6 +143,9 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.state == stateActionResult {
 			return m.commitAndAdvance()
+		}
+		if m.state == stateGoalLocked {
+			return m.handleGoalLockedAck()
 		}
 		if m.state == stateAttackRedirect {
 			return m.handleRedirectKey(msg)
@@ -234,8 +242,15 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case phases.SkipChoiceMsg:
 		return m.handleSkipChoice(msg.Skip)
 
+	case phases.GoalSelectedMsg:
+		m.currentFaction.ActiveGoal = msg.ActiveGoal
+		return m.proceedAfterGoalSelect()
+
 	case phases.BookkeepingDoneMsg:
 		available := m.engine.Action.AvailableActions(m.currentFaction, m.factionState, m.engine.Rulebook)
+		if m.goalLock.Type == engine.LockRestrictActions {
+			available = filterAllowedActions(available, m.goalLock.AllowedActions)
+		}
 		m.availableActions = available
 		m.state = stateActionSelect
 		m.subModel = m.resizeSub(phases.NewActionSelectModel(available))
@@ -302,16 +317,12 @@ func (m TurnModel) handleResumeChoice(choice phases.ResumeChoice) (tea.Model, te
 
 func (m TurnModel) handleSkipChoice(skip bool) (tea.Model, tea.Cmd) {
 	if !skip {
-		result, err := m.engine.Turn.ApplyBookkeeping(m.factionState)
-		if err != nil {
-			m.err = err
-			return m, nil
+		if m.currentFaction.ActiveGoal == nil {
+			m.state = stateGoalSelect
+			m.subModel = m.resizeSub(phases.NewGoalSelectModel(m.currentFaction, m.factionState, m.engine.Rulebook))
+			return m, m.subModel.Init()
 		}
-		m.bookkeepingResult = result
-		m.pendingMutations = result.RecordedMutations
-		m.state = stateBookkeeping
-		m.subModel = m.resizeSub(phases.NewBookkeepingModel(result, m.engine.Rulebook))
-		return m, m.subModel.Init()
+		return m.proceedAfterGoalSelect()
 	}
 
 	m.actionsTaken[m.currentFaction.ID] = "Skipped"
@@ -392,6 +403,10 @@ func (m TurnModel) View() string {
 			right = m.subModel.View()
 		}
 		return renderSplitPanel(left, right, m.width)
+
+	case stateGoalLocked:
+		right := renderGoalLockedPrompt(m)
+		return renderSplitPanel(renderLeft(m), right, m.width)
 
 	case stateAbilityConfirmApplied:
 		right := renderAbilityConfirmPrompt(m.pendingAbilityConfirm)
@@ -584,6 +599,8 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 	switch m.pendingAction.Name() {
 	case "Repair Faction":
 		return m.runAction(actions.NewRepairFaction())
+	case "Abandon Goal":
+		return m.runAction(actions.NewAbandonGoal())
 	case "Repair Asset":
 		var damagedAssets []*domain.Asset
 		for _, asset := range m.currentFaction.Assets {
@@ -829,6 +846,109 @@ func (m TurnModel) handleAbilityConfirmKey(key tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 func waitForAbilityEvent(eventCh chan tea.Msg) tea.Cmd {
 	return func() tea.Msg { return <-eventCh }
+}
+
+// proceedAfterGoalSelect calls CheckLock and routes to stateGoalLocked or
+// bookkeeping depending on the result.
+func (m TurnModel) proceedAfterGoalSelect() (tea.Model, tea.Cmd) {
+	if m.currentFaction.ActiveGoal != nil && m.currentFaction.ActiveGoal.GoalID == "G-012" {
+		m.lockedGoalDestination = m.currentFaction.ActiveGoal.TargetWorld
+	}
+	lock, lockMutations := m.engine.Goal.CheckLock(m.currentFaction, m.factionState, m.engine.Rulebook)
+	m.goalLock = lock
+	m.pendingGoalLockMutations = lockMutations
+	if lock.Type == engine.LockSkip {
+		m.state = stateGoalLocked
+		m.subModel = nil
+		return m, nil
+	}
+	return m.startBookkeeping()
+}
+
+func (m TurnModel) startBookkeeping() (tea.Model, tea.Cmd) {
+	result, err := m.engine.Turn.ApplyBookkeeping(m.factionState)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.bookkeepingResult = result
+	m.pendingMutations = result.RecordedMutations
+	m.state = stateBookkeeping
+	m.subModel = m.resizeSub(phases.NewBookkeepingModel(result, m.engine.Rulebook))
+	return m, m.subModel.Init()
+}
+
+func (m TurnModel) handleGoalLockedAck() (tea.Model, tea.Cmd) {
+	if len(m.pendingGoalLockMutations) > 0 {
+		m.engine.Mutation.Apply(m.factionState, m.pendingGoalLockMutations)
+	}
+	m.actionsTaken[m.currentFaction.ID] = "Change Homeworld (transit)"
+	event, err := buildEventRecord(m.factionState, m.currentFaction, m.pendingGoalLockMutations)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	done, err := m.engine.Turn.Advance(m.factionState)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	if err := state.Save(m.paths.State, m.factionState); err != nil {
+		m.err = err
+		return m, nil
+	}
+	if err := m.engine.History.Record(m.paths.History, event); err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.pendingGoalLockMutations = nil
+	m.lockedGoalDestination = ""
+	m.goalLock = engine.GoalLock{}
+	if done {
+		m.state = stateCycleSummary
+		m.subModel = m.resizeSub(phases.NewCycleSummaryModel(m.factionState.CycleNumber, m.buildSummaryRows()))
+		return m, m.subModel.Init()
+	}
+	faction, err := m.engine.Turn.CurrentFaction(m.factionState)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.currentFaction = faction
+	m.snapshots[faction.ID] = factionSnapshot{hp: faction.CurrentHP, coin: faction.Coin}
+	m.subModel = m.resizeSub(phases.NewSkipTurnModel(faction.Name))
+	m.state = stateSkipPrompt
+	return m, m.subModel.Init()
+}
+
+func renderGoalLockedPrompt(m TurnModel) string {
+	var sb strings.Builder
+	sb.WriteString(style.SectionTitle.Render("Change Homeworld — In Transit"))
+	sb.WriteString("\n\n")
+	if m.currentFaction.ActiveGoal != nil {
+		fmt.Fprintf(&sb, "Moving to %s\n", m.lockedGoalDestination)
+		fmt.Fprintf(&sb, "%s turns remaining\n\n",
+			style.HP.Render(fmt.Sprintf("%d", m.currentFaction.ActiveGoal.TurnsRemaining)),
+		)
+	} else {
+		fmt.Fprintf(&sb, "Homeworld relocated to %s\n\n", m.lockedGoalDestination)
+	}
+	sb.WriteString(style.Muted.Render("Press any key to continue"))
+	return sb.String()
+}
+
+func filterAllowedActions(available []engine.Action, allowed []string) []engine.Action {
+	set := make(map[string]bool, len(allowed))
+	for _, name := range allowed {
+		set[name] = true
+	}
+	filtered := available[:0]
+	for _, action := range available {
+		if set[action.Name()] {
+			filtered = append(filtered, action)
+		}
+	}
+	return filtered
 }
 
 func (m TurnModel) runAction(action engine.Action) (tea.Model, tea.Cmd) {
