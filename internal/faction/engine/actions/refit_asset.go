@@ -82,11 +82,11 @@ func (ra *RefitAsset) Resolve(faction *domain.Faction, _ *state.FactionState, ru
 
 func (ra *RefitAsset) Output() ([]domain.Mutation, error) {
 	mutations := []domain.Mutation{
-		domain.AssetRemoved{FactionID: ra.factionID, AssetID: ra.refitOrder.OldAsset.ID},
-		domain.AssetAdded{FactionID: ra.factionID, Asset: ra.newAsset},
+		domain.AssetRemoved{FactionID: ra.factionID, AssetID: ra.refitOrder.OldAsset.ID, Cause: "refit", CausedByFactionID: ra.factionID},
+		domain.AssetAdded{FactionID: ra.factionID, Asset: ra.newAsset, Cause: "refit", CausedByFactionID: ra.factionID},
 	}
 	if ra.costDelta > 0 {
-		mutations = append(mutations, domain.CoinDelta{FactionID: ra.factionID, Delta: -ra.costDelta})
+		mutations = append(mutations, domain.CoinDelta{FactionID: ra.factionID, Delta: -ra.costDelta, Cause: "refit", CausedByFactionID: ra.factionID})
 	}
 	return mutations, nil
 }

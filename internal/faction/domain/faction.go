@@ -30,22 +30,32 @@ type Goal struct {
 	Difficulty  string `toml:"difficulty"`
 }
 
+// ActiveGoal holds the faction's current goal and live progress state.
+type ActiveGoal struct {
+	GoalID          string `toml:"goal_id"`
+	TargetFactionID string `toml:"target_faction_id"`
+	TargetWorld     string `toml:"target_world"`
+	Progress        int    `toml:"progress"`
+	ProcessPhase    int    `toml:"process_phase"`
+	TurnsRemaining  int    `toml:"turns_remaining"`
+}
+
 type Faction struct {
-	ID        string       `toml:"id"`
-	Name      string       `toml:"name"`
-	Scale     FactionScale `toml:"scale"`
-	Force     int          `toml:"force"`
-	Cunning   int          `toml:"cunning"`
-	Wealth    int          `toml:"wealth"`
-	CurrentHP int          `toml:"current_hp"`
-	MaxHP     int          `toml:"max_hp"`
-	Coin      int          `toml:"coin"`
-	XP        int          `toml:"xp"`
-	Homeworld string       `toml:"homeworld"`
-	Tags      []*Tag       `toml:"tags"`
-	Goal      *Goal        `toml:"goal"`
-	Assets    []*Asset     `toml:"assets"`
-	Bases     []*Base      `toml:"bases"`
+	ID          string       `toml:"id"`
+	Name        string       `toml:"name"`
+	Scale       FactionScale `toml:"scale"`
+	Force       int          `toml:"force"`
+	Cunning     int          `toml:"cunning"`
+	Wealth      int          `toml:"wealth"`
+	CurrentHP   int          `toml:"current_hp"`
+	MaxHP       int          `toml:"max_hp"`
+	Coin        int          `toml:"coin"`
+	XP          int          `toml:"xp"`
+	Homeworld   string       `toml:"homeworld"`
+	Tags        []*Tag       `toml:"tags"`
+	ActiveGoal  *ActiveGoal  `toml:"active_goal"`
+	Assets      []*Asset     `toml:"assets"`
+	Bases       []*Base      `toml:"bases"`
 }
 
 func RatingsFromScale(s FactionScale) (primary, secondary, tertiary int) {

@@ -115,7 +115,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 	total := wealthIncome + statIncome
 
 	var mutations []domain.Mutation
-	mutations = append(mutations, domain.CoinDelta{FactionID: f.ID, Delta: total})
+	mutations = append(mutations, domain.CoinDelta{FactionID: f.ID, Delta: total, Cause: "bookkeeping"})
 
 	result := applyMaintenance(f, f.Coin+total, &mutations)
 	result.IncomeGained = total
@@ -167,24 +167,24 @@ func applyMaintenance(f *domain.Faction, startCoin int, mutations *[]domain.Muta
 		cost := maintenanceCost(a)
 		if cost == 0 {
 			if !a.Maintained {
-				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true})
+				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true, Cause: "bookkeeping"})
 			}
 			continue
 		}
 		ref := AssetRef{ID: a.ID, DefinitionID: a.DefinitionID, Location: a.Location}
 		if runningCoin >= cost {
 			runningCoin -= cost
-			*mutations = append(*mutations, domain.CoinDelta{FactionID: f.ID, Delta: -cost})
+			*mutations = append(*mutations, domain.CoinDelta{FactionID: f.ID, Delta: -cost, Cause: "bookkeeping"})
 			if !a.Maintained {
-				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true})
+				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true, Cause: "bookkeeping"})
 			}
 		} else if !a.Maintained {
 			// second consecutive missed payment — asset is lost
 			result.AssetsLost = append(result.AssetsLost, ref)
-			*mutations = append(*mutations, domain.AssetRemoved{FactionID: f.ID, AssetID: a.ID})
+			*mutations = append(*mutations, domain.AssetRemoved{FactionID: f.ID, AssetID: a.ID, Cause: "bookkeeping"})
 		} else {
 			result.AssetsUnmaintained = append(result.AssetsUnmaintained, ref)
-			*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: false})
+			*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: false, Cause: "bookkeeping"})
 		}
 	}
 	return result

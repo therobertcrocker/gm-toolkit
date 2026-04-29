@@ -100,13 +100,15 @@ func movementStepHandler(
 	}
 	var mutations []domain.Mutation
 	if step.CoinCost > 0 {
-		mutations = append(mutations, domain.CoinDelta{FactionID: faction.ID, Delta: -step.CoinCost})
+		mutations = append(mutations, domain.CoinDelta{FactionID: faction.ID, Delta: -step.CoinCost, Cause: "ability", CausedByFactionID: faction.ID})
 	}
 	mutations = append(mutations, domain.AssetMoved{
-		FactionID:    faction.ID,
-		AssetID:      asset.ID,
-		FromLocation: asset.Location,
-		ToLocation:   destination,
+		FactionID:         faction.ID,
+		AssetID:           asset.ID,
+		FromLocation:      asset.Location,
+		ToLocation:        destination,
+		Cause:             "ability",
+		CausedByFactionID: faction.ID,
 	})
 	return mutations, nil
 }
@@ -180,8 +182,10 @@ func applyAbilityEffect(
 		for _, targetAsset := range targetFaction.Assets {
 			if targetAsset.Location == asset.Location && targetAsset.Stealthy {
 				mutations = append(mutations, domain.AssetStealthCleared{
-					FactionID: targetFaction.ID,
-					AssetID:   targetAsset.ID,
+					FactionID:         targetFaction.ID,
+					AssetID:           targetAsset.ID,
+					Cause:             "ability",
+					CausedByFactionID: actingFaction.ID,
 				})
 			}
 		}
@@ -192,7 +196,7 @@ func applyAbilityEffect(
 		}
 		amount := step.EffectDice.Roll(roller)
 		return []domain.Mutation{
-			domain.CoinDelta{FactionID: targetFaction.ID, Delta: -amount},
+			domain.CoinDelta{FactionID: targetFaction.ID, Delta: -amount, Cause: "ability", CausedByFactionID: actingFaction.ID},
 		}, nil
 	case domain.EffectCoinSteal:
 		if step.EffectDice == nil {
@@ -200,8 +204,8 @@ func applyAbilityEffect(
 		}
 		amount := step.EffectDice.Roll(roller)
 		return []domain.Mutation{
-			domain.CoinDelta{FactionID: targetFaction.ID, Delta: -amount},
-			domain.CoinDelta{FactionID: actingFaction.ID, Delta: amount},
+			domain.CoinDelta{FactionID: targetFaction.ID, Delta: -amount, Cause: "ability", CausedByFactionID: actingFaction.ID},
+			domain.CoinDelta{FactionID: actingFaction.ID, Delta: amount, Cause: "ability", CausedByFactionID: actingFaction.ID},
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown ability effect %q", step.Effect)

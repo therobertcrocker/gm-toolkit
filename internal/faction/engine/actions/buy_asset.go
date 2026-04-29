@@ -71,8 +71,8 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, _ *l
 
 func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 	return []domain.Mutation{
-		domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset},
-		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost},
+		domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
+		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost, Cause: "buy", CausedByFactionID: ba.factionID},
 	}, nil
 }
 

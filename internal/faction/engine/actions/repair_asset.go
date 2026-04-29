@@ -80,9 +80,11 @@ func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, r
 
 		if totalHeal > 0 {
 			mutations = append(mutations, domain.AssetHPDelta{
-				FactionID: ra.factionID,
-				AssetID:   order.Asset.ID,
-				Delta:     totalHeal,
+				FactionID:         ra.factionID,
+				AssetID:           order.Asset.ID,
+				Delta:             totalHeal,
+				Cause:             "repair",
+				CausedByFactionID: ra.factionID,
 			})
 		}
 	}
@@ -91,7 +93,7 @@ func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, r
 		return fmt.Errorf("insufficient Coin: need %d, have %d", totalCost, faction.Coin)
 	}
 	if totalCost > 0 {
-		mutations = append(mutations, domain.CoinDelta{FactionID: ra.factionID, Delta: -totalCost})
+		mutations = append(mutations, domain.CoinDelta{FactionID: ra.factionID, Delta: -totalCost, Cause: "repair", CausedByFactionID: ra.factionID})
 	}
 
 	ra.mutations = mutations

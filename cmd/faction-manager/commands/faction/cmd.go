@@ -72,8 +72,8 @@ func newListCmd(campaignID *string) *cobra.Command {
 			}
 			for _, f := range s.Factions {
 				goalName := "(none)"
-				if f.Goal != nil {
-					goalName = f.Goal.Name
+				if f.ActiveGoal != nil {
+					goalName = f.ActiveGoal.GoalID
 				}
 				fmt.Printf("%-30s [ %s ]  HP: %d/%d  Goal: %s\n",
 					f.Name, f.Scale, f.CurrentHP, f.MaxHP, goalName)

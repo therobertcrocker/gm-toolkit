@@ -65,3 +65,9 @@ id = "G-011"
 name = "Wealth of Worlds"
 description = "Spend FacCreds equal to four times your faction's Wealth rating on bribes and influence. The faction's Wealth rating must increase before this goal can be selected again."
 difficulty = "moderate"
+
+[goals.ChangeHomeworld]
+id = "G-012"
+name = "Change Homeworld"
+description = "Relocate the faction's homeworld to another world where it has a Base of Influence. The move takes a number of turns equal to the hex distance plus one."
+difficulty = "none"

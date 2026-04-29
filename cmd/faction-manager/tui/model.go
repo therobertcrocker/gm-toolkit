@@ -442,8 +442,8 @@ func renderLeft(m TurnModel) string {
 	fmt.Fprintf(&sb, "Coin: %s\n", style.Coin.Render(fmt.Sprintf("%d", f.Coin)))
 
 	goalName := "(none)"
-	if f.Goal != nil {
-		goalName = f.Goal.Name
+	if f.ActiveGoal != nil {
+		goalName = f.ActiveGoal.GoalID
 	}
 	fmt.Fprintf(&sb, "Goal: %s\n\n", style.Muted.Render(goalName))
 

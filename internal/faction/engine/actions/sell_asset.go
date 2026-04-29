@@ -50,7 +50,7 @@ func (sa *SellAsset) Resolve(_ *domain.Faction, _ *state.FactionState, rulebook 
 
 func (sa *SellAsset) Output() ([]domain.Mutation, error) {
 	return []domain.Mutation{
-		domain.AssetRemoved{FactionID: sa.factionID, AssetID: sa.selectedAsset.ID},
-		domain.CoinDelta{FactionID: sa.factionID, Delta: sa.saleValue},
+		domain.AssetRemoved{FactionID: sa.factionID, AssetID: sa.selectedAsset.ID, Cause: "sell", CausedByFactionID: sa.factionID},
+		domain.CoinDelta{FactionID: sa.factionID, Delta: sa.saleValue, Cause: "sell", CausedByFactionID: sa.factionID},
 	}, nil
 }
