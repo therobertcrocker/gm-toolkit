@@ -9,7 +9,7 @@
 5. Before writing any code, ask. Before making design suggestions, wait for a prompt.
 6. Before merging a branch, do  the following:
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
-   2. Update the dev journal (`docs/dev-journal-factions.md`) and decisions log (`docs/decisions-log.md`) with any relevant notes, decisions, or reflections from the implementation process. This is crucial for maintaining a clear record of the project's evolution and rationale behind decisions.
+   2. Update the dev journal (`docs/dev-journal-factions.md`), decisions log (`docs/decisions-log.md`) and any relevant tracking documents (e.g. `docs/tracking/turn-engine-journal.md`) with any relevant notes, decisions, or reflections from the implementation process. This is crucial for maintaining a clear record of the project's evolution and rationale behind decisions.
 7. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly (current version: **v0.11.0**).
 8. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
@@ -25,6 +25,10 @@ Before any feature discussion or implementation — and whenever a design questi
 - `docs/tracking/turn-engine-journal.md` — feature status and design decisions
 - `docs/swn-faction-mechanics.md` — rules reference
 - `docs/style-guide.md` — doc and journal style; consult before creating any new doc
+
+## Implementation Discipline
+
+When an implementation doc specifies the work (signatures, triggers, thresholds, formulas), read only the files you'll directly use — the relevant domain types and any data files the spec references. Do not read existing action/engine files for pattern context. Start writing; let the compiler surface gaps.
 
 ## Development Setup
 

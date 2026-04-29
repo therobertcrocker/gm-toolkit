@@ -137,21 +137,21 @@ func (ge *GoalEngine) UpdateProgress(
 	case "G-003":
 		return progressIntelligenceCoup(actingFaction, mutations, factionState, rulebook)
 	case "G-004":
-		return progressPlanetarySeizure(actingFaction, mutations, factionState, rulebook)
+		return progressPlanetarySeizure(actingFaction, mutations, factionState)
 	case "G-005":
-		return progressExpandInfluence(actingFaction, mutations, factionState, rulebook)
+		return progressExpandInfluence(actingFaction, mutations, factionState)
 	case "G-006":
-		return progressBloodTheEnemy(actingFaction, mutations, factionState, rulebook)
+		return progressBloodTheEnemy(actingFaction, mutations)
 	case "G-007":
-		return progressPeaceableKingdom(actingFaction, mutations, factionState, rulebook)
+		return progressPeaceableKingdom(actingFaction, mutations)
 	case "G-008":
-		return progressDestroyTheFoe(actingFaction, mutations, factionState, rulebook)
+		return progressDestroyTheFoe(actingFaction, mutations, factionState)
 	case "G-009":
-		return progressInsideEnemyTerritory(actingFaction, mutations, factionState, rulebook)
+		return progressInsideEnemyTerritory(actingFaction, mutations, factionState)
 	case "G-010":
 		return progressInvincibleValor(actingFaction, mutations, factionState, rulebook)
 	case "G-011":
-		return progressWealthOfWorlds(actingFaction, mutations, factionState, rulebook)
+		return progressWealthOfWorlds(actingFaction, mutations)
 	}
 	return nil
 }
@@ -198,7 +198,7 @@ func progressIntelligenceCoup(actingFaction *domain.Faction, mutations []domain.
 
 // progressPlanetarySeizure handles the Phase 0 → Phase 1 transition. Phase 1
 // (occupation countdown and completion) is managed by CheckLock each turn.
-func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
 	goal := actingFaction.ActiveGoal
 	if goal.ProcessPhase != 0 {
 		return nil
@@ -227,7 +227,7 @@ func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.
 	return nil
 }
 
-func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.BaseAdded)
 		if !ok || v.CausedByFactionID != actingFaction.ID {
@@ -245,7 +245,7 @@ func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.M
 	return nil
 }
 
-func progressBloodTheEnemy(actingFaction *domain.Faction, mutations []domain.Mutation, _ *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressBloodTheEnemy(actingFaction *domain.Faction, mutations []domain.Mutation) []domain.Mutation {
 	damage := 0
 	for _, mutation := range mutations {
 		switch v := mutation.(type) {
@@ -270,7 +270,7 @@ func progressBloodTheEnemy(actingFaction *domain.Faction, mutations []domain.Mut
 	return completeGoal(actingFaction, 2)
 }
 
-func progressPeaceableKingdom(actingFaction *domain.Faction, mutations []domain.Mutation, _ *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressPeaceableKingdom(actingFaction *domain.Faction, mutations []domain.Mutation) []domain.Mutation {
 	attacked := false
 	for _, mutation := range mutations {
 		switch v := mutation.(type) {
@@ -300,7 +300,7 @@ func progressPeaceableKingdom(actingFaction *domain.Faction, mutations []domain.
 	return completeGoal(actingFaction, 1)
 }
 
-func progressDestroyTheFoe(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressDestroyTheFoe(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
 	targetFaction, ok := factionState.Factions[actingFaction.ActiveGoal.TargetFactionID]
 	if !ok {
 		return nil
@@ -322,7 +322,7 @@ func progressDestroyTheFoe(actingFaction *domain.Faction, mutations []domain.Mut
 // progressInsideEnemyTerritory counts AssetStealthApplied events on worlds
 // where a rival holds a Planetary Government tag. Approximation: a rival "holds
 // PG on a world" when they have both the T-011 tag and a Base on that world.
-func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.AssetStealthApplied)
 		if !ok || v.FactionID != actingFaction.ID {
@@ -368,7 +368,7 @@ func progressInvincibleValor(actingFaction *domain.Faction, mutations []domain.M
 	return nil
 }
 
-func progressWealthOfWorlds(actingFaction *domain.Faction, mutations []domain.Mutation, _ *state.FactionState, _ *loader.Rulebook) []domain.Mutation {
+func progressWealthOfWorlds(actingFaction *domain.Faction, mutations []domain.Mutation) []domain.Mutation {
 	spent := 0
 	for _, mutation := range mutations {
 		if v, ok := mutation.(domain.InfluenceDelta); ok && v.CausedByFactionID == actingFaction.ID && v.Delta > 0 {
