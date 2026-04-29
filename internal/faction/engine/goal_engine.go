@@ -69,10 +69,15 @@ func checkLockChangeHomeworld(faction *domain.Faction) (GoalLock, []domain.Mutat
 
 func checkLockPlanetarySeizure(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) (GoalLock, []domain.Mutation) {
 	goal := faction.ActiveGoal
+	// Phase 0: goal selected, Seize Planet action not yet taken — no lock.
 	if goal.ProcessPhase == 0 {
+		return GoalLock{Type: LockNone}, nil
+	}
+	// Phase 1: combat — restrict to Attack only.
+	if goal.ProcessPhase == 1 {
 		return GoalLock{Type: LockRestrictActions, AllowedActions: []string{"Attack"}}, nil
 	}
-	// Phase 1: occupation — faction must maintain at least one unstealthed asset on TargetWorld.
+	// Phase 2: occupation — faction must maintain at least one unstealthed asset on TargetWorld.
 	if !factionHasUnstealthedAssetOn(faction, goal.TargetWorld) {
 		goalID := goal.GoalID
 		faction.ActiveGoal = nil
@@ -196,11 +201,11 @@ func progressIntelligenceCoup(actingFaction *domain.Faction, mutations []domain.
 	return completeGoal(actingFaction, actingFaction.ActiveGoal.Progress/2)
 }
 
-// progressPlanetarySeizure handles the Phase 0 → Phase 1 transition. Phase 1
+// progressPlanetarySeizure handles the Phase 1 → Phase 2 transition. Phase 2
 // (occupation countdown and completion) is managed by CheckLock each turn.
 func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
 	goal := actingFaction.ActiveGoal
-	if goal.ProcessPhase != 0 {
+	if goal.ProcessPhase != 1 {
 		return nil
 	}
 	// Collect asset IDs removed this turn.
@@ -222,7 +227,7 @@ func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.
 		}
 	}
 	// No rivals remain — transition to occupation (3 turns).
-	goal.ProcessPhase = 1
+	goal.ProcessPhase = 2
 	goal.TurnsRemaining = 3
 	return nil
 }

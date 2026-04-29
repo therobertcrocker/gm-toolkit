@@ -62,6 +62,14 @@ func (c *abilityFakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domai
 	panic("SelectBaseAttackers: not used in use_asset_ability tests")
 }
 
+func (c *abilityFakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
+	panic("SelectBribeTarget: not used in use_asset_ability tests")
+}
+
+func (c *abilityFakeCollector) SelectSiezeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	panic("SelectSiezeTarget: not used in use_asset_ability tests")
+}
+
 // makeAbilityRulebook returns a minimal Rulebook with four asset definitions:
 //   - "move-asset": A-flagged, movement ability, no coin cost
 //   - "move-asset-coin": A-flagged, movement ability, coin cost 2

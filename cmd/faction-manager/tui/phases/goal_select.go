@@ -10,7 +10,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/tui/style"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 type GoalSelectedMsg struct{ ActiveGoal *domain.ActiveGoal }
@@ -19,7 +18,7 @@ type goalSelectStep int
 
 const (
 	goalStepGoal     goalSelectStep = iota
-	goalStepWorld                   // G-012 destination or G-004 target
+	goalStepWorld                   // G-012 destination
 	goalStepDistance                // G-012 hex distance
 )
 
@@ -29,9 +28,8 @@ type goalOption struct {
 }
 
 type GoalSelectModel struct {
-	faction      *domain.Faction
-	factionState *state.FactionState
-	rulebook     *loader.Rulebook
+	faction  *domain.Faction
+	rulebook *loader.Rulebook
 
 	step         goalSelectStep
 	goalOptions  []goalOption
@@ -45,19 +43,18 @@ type GoalSelectModel struct {
 	distanceStr string
 }
 
-func NewGoalSelectModel(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) GoalSelectModel {
+func NewGoalSelectModel(faction *domain.Faction, rulebook *loader.Rulebook) GoalSelectModel {
 	goals := make([]goalOption, 0, len(rulebook.Goals))
 	for id, g := range rulebook.Goals {
 		goals = append(goals, goalOption{id: id, name: g.Name})
 	}
 	sort.Slice(goals, func(i, j int) bool { return goals[i].id < goals[j].id })
 	return GoalSelectModel{
-		faction:      faction,
-		factionState: factionState,
-		rulebook:     rulebook,
-		goalOptions:  goals,
-		distance:     1,
-		distanceStr:  "1",
+		faction:     faction,
+		rulebook:    rulebook,
+		goalOptions: goals,
+		distance:    1,
+		distanceStr: "1",
 	}
 }
 
@@ -94,13 +91,6 @@ func (m GoalSelectModel) updateGoalStep(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch m.selectedGoal.id {
 		case "G-012":
 			m.worldOptions = goalChangeHomeworldDestinations(m.faction)
-			if len(m.worldOptions) == 0 {
-				return m, nil
-			}
-			m.worldCursor = 0
-			m.step = goalStepWorld
-		case "G-004":
-			m.worldOptions = goalSeizePlanetTargets(m.faction, m.factionState)
 			if len(m.worldOptions) == 0 {
 				return m, nil
 			}
@@ -208,13 +198,7 @@ func (m GoalSelectModel) viewGoalStep() string {
 
 func (m GoalSelectModel) viewWorldStep() string {
 	var sb strings.Builder
-	var title string
-	if m.selectedGoal.id == "G-012" {
-		title = "Change Homeworld — Select Destination"
-	} else {
-		title = "Planetary Seizure — Select Target World"
-	}
-	sb.WriteString(style.SectionTitle.Render(title))
+	sb.WriteString(style.SectionTitle.Render("Change Homeworld — Select Destination"))
 	sb.WriteString("\n\n")
 	for i, world := range m.worldOptions {
 		cursor := "  "
@@ -261,29 +245,3 @@ func goalChangeHomeworldDestinations(faction *domain.Faction) []string {
 	return worlds
 }
 
-// goalSeizePlanetTargets returns worlds contested by the faction and a rival for G-004.
-func goalSeizePlanetTargets(faction *domain.Faction, factionState *state.FactionState) []string {
-	factionWorlds := map[string]bool{}
-	for _, asset := range faction.Assets {
-		if !asset.Stealthy {
-			factionWorlds[asset.Location] = true
-		}
-	}
-	contested := map[string]bool{}
-	for factionID, rival := range factionState.Factions {
-		if factionID == faction.ID {
-			continue
-		}
-		for _, asset := range rival.Assets {
-			if !asset.Stealthy && factionWorlds[asset.Location] {
-				contested[asset.Location] = true
-			}
-		}
-	}
-	worlds := make([]string, 0, len(contested))
-	for world := range contested {
-		worlds = append(worlds, world)
-	}
-	sort.Strings(worlds)
-	return worlds
-}

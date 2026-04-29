@@ -18,6 +18,9 @@ type TUICollector struct {
 	expandInfluenceOrder engine.ExpandInfluenceOrder
 	baseAttackers        []*domain.Asset
 	abilityAssets        []*domain.Asset
+	bribeBase            *domain.Base
+	bribeAmount          int
+	seizeWorld           string
 	eventCh              chan tea.Msg
 }
 
@@ -150,4 +153,12 @@ func (c *TUICollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.As
 	responseCh := make(chan bool, 1)
 	c.eventCh <- AbilityConfirmMsg{Asset: asset, Def: def, ResponseCh: responseCh}
 	return <-responseCh, nil
+}
+
+func (c *TUICollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
+	return c.bribeBase, c.bribeAmount, nil
+}
+
+func (c *TUICollector) SelectSiezeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	return c.seizeWorld, nil
 }

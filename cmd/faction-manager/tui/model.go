@@ -228,6 +228,14 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		collector := &TUICollector{buyOrder: msg.Order}
 		return m.runAction(actions.NewBuyAsset(collector))
 
+	case inputs.BribeOrderSelectedMsg:
+		collector := &TUICollector{bribeBase: msg.Base, bribeAmount: msg.Amount}
+		return m.runAction(actions.NewBribe(collector))
+
+	case inputs.SeizePlanetTargetSelectedMsg:
+		collector := &TUICollector{seizeWorld: msg.World}
+		return m.runAction(actions.NewSeizePlanet(collector))
+
 	case inputs.RefitOrderSelectedMsg:
 		collector := &TUICollector{refitOrder: msg.Order}
 		return m.runAction(actions.NewRefitAsset(collector))
@@ -319,7 +327,7 @@ func (m TurnModel) handleSkipChoice(skip bool) (tea.Model, tea.Cmd) {
 	if !skip {
 		if m.currentFaction.ActiveGoal == nil {
 			m.state = stateGoalSelect
-			m.subModel = m.resizeSub(phases.NewGoalSelectModel(m.currentFaction, m.factionState, m.engine.Rulebook))
+			m.subModel = m.resizeSub(phases.NewGoalSelectModel(m.currentFaction, m.engine.Rulebook))
 			return m, m.subModel.Init()
 		}
 		return m.proceedAfterGoalSelect()
@@ -639,6 +647,15 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 		candidates := tuiEligibleAbilityAssets(m.currentFaction, m.engine.Rulebook)
 		m.state = stateActionInput
 		m.subModel = m.resizeSub(inputs.NewAbilityAssetsModel(candidates, m.engine.Rulebook))
+		return m, m.subModel.Init()
+	case "Bribe":
+		m.state = stateActionInput
+		m.subModel = m.resizeSub(inputs.NewBribeModel(m.currentFaction))
+		return m, m.subModel.Init()
+	case "Seize Planet":
+		worlds := tuiSeizePlanetWorlds(m.currentFaction, m.factionState)
+		m.state = stateActionInput
+		m.subModel = m.resizeSub(inputs.NewSeizePlanetModel(worlds))
 		return m, m.subModel.Init()
 	default:
 		m.actionResultText = m.pendingAction.Name() + " — not yet implemented in TUI"

@@ -106,6 +106,36 @@ func tuiHasEligibleTarget(attacker *domain.Asset, attackerFactionID string, fact
 	return false
 }
 
+// tuiSeizePlanetWorlds returns worlds where the faction has at least one
+// unstealthed asset and a rival also has at least one unstealthed asset.
+func tuiSeizePlanetWorlds(faction *domain.Faction, factionState *state.FactionState) []string {
+	factionWorlds := map[string]struct{}{}
+	for _, asset := range faction.Assets {
+		if !asset.Stealthy {
+			factionWorlds[asset.Location] = struct{}{}
+		}
+	}
+	contested := map[string]struct{}{}
+	for factionID, rival := range factionState.Factions {
+		if factionID == faction.ID {
+			continue
+		}
+		for _, asset := range rival.Assets {
+			if !asset.Stealthy {
+				if _, ok := factionWorlds[asset.Location]; ok {
+					contested[asset.Location] = struct{}{}
+				}
+			}
+		}
+	}
+	result := make([]string, 0, len(contested))
+	for world := range contested {
+		result = append(result, world)
+	}
+	sort.Strings(result)
+	return result
+}
+
 func tuiValidRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rulebook *loader.Rulebook) []*domain.AssetDefinition {
 	oldDef, ok := rulebook.Assets[oldAsset.DefinitionID]
 	if !ok {

@@ -16,11 +16,12 @@ import (
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
 // Tech-level filtering and P-flag (government permission) checks are deferred.
 type BuyAsset struct {
-	collector engine.InputCollector
-	factionID string
-	buyOrder  engine.BuyOrder
-	newAsset  domain.Asset
-	cost      int
+	collector      engine.InputCollector
+	factionID      string
+	buyOrder       engine.BuyOrder
+	newAsset       domain.Asset
+	cost           int
+	stealthTargets []string // asset IDs to stealth when buying C3-002
 }
 
 func NewBuyAsset(collector engine.InputCollector) *BuyAsset {
@@ -51,7 +52,7 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 	return nil
 }
 
-func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) error {
+func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
 	def := ba.buyOrder.Definition
 	if faction.Coin < def.Cost {
 		return fmt.Errorf("insufficient Coin: need %d, have %d", def.Cost, faction.Coin)
@@ -66,14 +67,31 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, _ *l
 		Ready:        false,
 		Maintained:   true,
 	}
+	if def.ID == "C3-002" {
+		for _, asset := range faction.Assets {
+			adef, ok := rulebook.Assets[asset.DefinitionID]
+			if ok && adef.Type == domain.TypeSpecialForces && asset.Location == ba.buyOrder.World {
+				ba.stealthTargets = append(ba.stealthTargets, asset.ID)
+			}
+		}
+	}
 	return nil
 }
 
 func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
-	return []domain.Mutation{
+	mutations := []domain.Mutation{
 		domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
 		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost, Cause: "buy", CausedByFactionID: ba.factionID},
-	}, nil
+	}
+	for _, assetID := range ba.stealthTargets {
+		mutations = append(mutations, domain.AssetStealthApplied{
+			FactionID:         ba.factionID,
+			AssetID:           assetID,
+			Cause:             "buy",
+			CausedByFactionID: ba.factionID,
+		})
+	}
+	return mutations, nil
 }
 
 // availableWorlds returns the faction's homeworld plus the unique set of
