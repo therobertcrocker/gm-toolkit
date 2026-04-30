@@ -225,7 +225,7 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.runAction(actions.NewSellAsset(collector))
 
 	case inputs.BuyOrderSelectedMsg:
-		collector := &TUICollector{buyOrder: msg.Order}
+		collector := &TUICollector{buyOrder: msg.Order, selectedAsset: msg.StealthTarget}
 		return m.runAction(actions.NewBuyAsset(collector))
 
 	case inputs.BribeOrderSelectedMsg:
@@ -636,7 +636,7 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 		worlds := tuiAvailableWorlds(m.currentFaction)
 		purchasable := tuiPurchasableDefinitions(m.currentFaction, m.engine.Rulebook)
 		m.state = stateActionInput
-		m.subModel = m.resizeSub(inputs.NewBuyOrderModel(worlds, purchasable))
+		m.subModel = m.resizeSub(inputs.NewBuyOrderModel(worlds, purchasable, m.currentFaction, m.engine.Rulebook))
 		return m, m.subModel.Init()
 	case "Refit Asset":
 		options := tuiRefitOptions(m.currentFaction, m.engine.Rulebook)

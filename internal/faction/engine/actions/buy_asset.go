@@ -16,12 +16,12 @@ import (
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
 // Tech-level filtering and P-flag (government permission) checks are deferred.
 type BuyAsset struct {
-	collector      engine.InputCollector
-	factionID      string
-	buyOrder       engine.BuyOrder
-	newAsset       domain.Asset
-	cost           int
-	stealthTargets []string // asset IDs to stealth when buying C3-002
+	collector     engine.InputCollector
+	factionID     string
+	buyOrder      engine.BuyOrder
+	newAsset      domain.Asset
+	cost          int
+	stealthTarget string // asset ID to stealth when buying C3-002; empty if no eligible target
 }
 
 func NewBuyAsset(collector engine.InputCollector) *BuyAsset {
@@ -49,6 +49,22 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 	}
 	ba.factionID = faction.ID
 	ba.buyOrder = order
+
+	if order.Definition.ID == "C3-002" {
+		targets := eligibleStealthTargets(faction, order.World, rulebook)
+		switch len(targets) {
+		case 0:
+			// no eligible SF assets on the world — stealth quality purchased with no immediate target
+		case 1:
+			ba.stealthTarget = targets[0].ID
+		default:
+			target, err := ba.collector.SelectAsset(targets, rulebook)
+			if err != nil {
+				return fmt.Errorf("buy asset: select stealth target: %w", err)
+			}
+			ba.stealthTarget = target.ID
+		}
+	}
 	return nil
 }
 
@@ -67,31 +83,43 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 		Ready:        false,
 		Maintained:   true,
 	}
-	if def.ID == "C3-002" {
-		for _, asset := range faction.Assets {
-			adef, ok := rulebook.Assets[asset.DefinitionID]
-			if ok && adef.Type == domain.TypeSpecialForces && asset.Location == ba.buyOrder.World {
-				ba.stealthTargets = append(ba.stealthTargets, asset.ID)
-			}
-		}
-	}
 	return nil
 }
 
 func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 	mutations := []domain.Mutation{
-		domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
 		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost, Cause: "buy", CausedByFactionID: ba.factionID},
 	}
-	for _, assetID := range ba.stealthTargets {
+	if ba.buyOrder.Definition.ID != "C3-002" {
+		mutations = append([]domain.Mutation{
+			domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
+		}, mutations...)
+	}
+	if ba.stealthTarget != "" {
 		mutations = append(mutations, domain.AssetStealthApplied{
 			FactionID:         ba.factionID,
-			AssetID:           assetID,
+			AssetID:           ba.stealthTarget,
 			Cause:             "buy",
 			CausedByFactionID: ba.factionID,
 		})
 	}
 	return mutations, nil
+}
+
+// eligibleStealthTargets returns non-stealthy Special Forces assets owned by
+// the faction on the given world — valid targets when buying C3-002 Stealth.
+func eligibleStealthTargets(faction *domain.Faction, world string, rulebook *loader.Rulebook) []*domain.Asset {
+	var result []*domain.Asset
+	for _, asset := range faction.Assets {
+		if asset.Location != world || asset.Stealthy {
+			continue
+		}
+		def, ok := rulebook.Assets[asset.DefinitionID]
+		if ok && def.Type == domain.TypeSpecialForces {
+			result = append(result, asset)
+		}
+	}
+	return result
 }
 
 // availableWorlds returns the faction's homeworld plus the unique set of
