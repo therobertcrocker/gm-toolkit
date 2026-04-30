@@ -414,7 +414,7 @@ func (m TurnModel) View() string {
 
 	case stateGoalLocked:
 		right := renderGoalLockedPrompt(m)
-		return renderSplitPanel(renderLeft(m), right, m.width)
+		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
 
 	case stateAbilityConfirmApplied:
 		right := renderAbilityConfirmPrompt(m.pendingAbilityConfirm)
@@ -466,9 +466,18 @@ func renderLeft(m TurnModel) string {
 
 	goalName := "(none)"
 	if f.ActiveGoal != nil {
-		goalName = f.ActiveGoal.GoalID
+		if goal, ok := m.engine.Rulebook.Goals[f.ActiveGoal.GoalID]; ok {
+			goalName = goal.Name
+		} else {
+			goalName = f.ActiveGoal.GoalID
+		}
 	}
-	fmt.Fprintf(&sb, "Goal: %s\n\n", style.Muted.Render(goalName))
+	fmt.Fprintf(&sb, "Goal: %s\n", style.Muted.Render(goalName))
+	if f.ActiveGoal != nil && f.ActiveGoal.GoalID == "G-012" && f.ActiveGoal.TurnsRemaining > 0 {
+		fmt.Fprintf(&sb, "%s\n\n", style.Muted.Render(fmt.Sprintf("→ %s (%d turns)", f.ActiveGoal.TargetWorld, f.ActiveGoal.TurnsRemaining)))
+	} else {
+		sb.WriteString("\n")
+	}
 
 	sb.WriteString(style.SectionTitle.Render("Stats"))
 	fmt.Fprintf(&sb, "\nForce   %d\nCunning %d\nWealth  %d", f.Force, f.Cunning, f.Wealth)
@@ -693,12 +702,15 @@ func (m TurnModel) handleAttackCompleted(msg AttackCompletedMsg) (tea.Model, tea
 		m.err = msg.Err
 		return m, nil
 	}
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, msg.Mutations, m.factionState, m.engine.Rulebook)
+	allMutations := append(msg.Mutations, goalMutations...)
 	if m.attackCollector != nil {
-		m.turnLog = narrateAttack(m.attackCollector, msg.Mutations, m.factionState, m.engine.Rulebook)
+		m.turnLog = append(m.turnLog, narrateAttack(m.attackCollector, allMutations, m.factionState, m.engine.Rulebook)...)
 		m.attackCollector = nil
 	}
-	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
-	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(allMutations, m.engine.Rulebook)...)
+	m.engine.Mutation.Apply(m.factionState, allMutations)
+	m.pendingMutations = append(m.pendingMutations, allMutations...)
 	m.actionResultText = "Attack"
 	m.state = stateActionResult
 	m.subModel = nil
@@ -750,9 +762,12 @@ func (m TurnModel) handleExpandInfluenceCompleted(msg ExpandInfluenceCompletedMs
 		m.err = msg.Err
 		return m, nil
 	}
-	m.turnLog = narrateExpandInfluence(msg.Mutations, m.currentFaction)
-	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
-	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, msg.Mutations, m.factionState, m.engine.Rulebook)
+	allMutations := append(msg.Mutations, goalMutations...)
+	m.turnLog = append(m.turnLog, narrateExpandInfluence(allMutations, m.currentFaction)...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(allMutations, m.engine.Rulebook)...)
+	m.engine.Mutation.Apply(m.factionState, allMutations)
+	m.pendingMutations = append(m.pendingMutations, allMutations...)
 	m.actionResultText = "Expand Influence"
 	m.state = stateActionResult
 	m.subModel = nil
@@ -814,9 +829,12 @@ func (m TurnModel) handleAbilityCompleted(msg AbilityCompletedMsg) (tea.Model, t
 		m.err = msg.Err
 		return m, nil
 	}
-	m.turnLog = narrateUseAssetAbility(msg.Mutations, m.currentFaction, m.factionState, m.engine.Rulebook)
-	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
-	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, msg.Mutations, m.factionState, m.engine.Rulebook)
+	allMutations := append(msg.Mutations, goalMutations...)
+	m.turnLog = append(m.turnLog, narrateUseAssetAbility(allMutations, m.currentFaction, m.factionState, m.engine.Rulebook)...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(allMutations, m.engine.Rulebook)...)
+	m.engine.Mutation.Apply(m.factionState, allMutations)
+	m.pendingMutations = append(m.pendingMutations, allMutations...)
 	m.actionResultText = "Use Asset Ability"
 	m.state = stateActionResult
 	m.subModel = nil
@@ -875,9 +893,21 @@ func (m TurnModel) proceedAfterGoalSelect() (tea.Model, tea.Cmd) {
 	m.goalLock = lock
 	m.pendingGoalLockMutations = lockMutations
 	if lock.Type == engine.LockSkip {
+		// Narrate homeworld completion when TurnsRemaining just hit 0.
+		if len(lockMutations) > 0 {
+			m.turnLog = append(m.turnLog, narrateGoalEvents(lockMutations, m.engine.Rulebook)...)
+		}
 		m.state = stateGoalLocked
 		m.subModel = nil
 		return m, nil
+	}
+	// LockNone / LockRestrictActions: apply any CheckLock mutations (e.g. GoalAbandoned
+	// on Planetary Seizure occupation fail) before bookkeeping runs.
+	if len(lockMutations) > 0 {
+		m.turnLog = append(m.turnLog, narrateGoalEvents(lockMutations, m.engine.Rulebook)...)
+		m.engine.Mutation.Apply(m.factionState, lockMutations)
+		m.pendingMutations = append(m.pendingMutations, lockMutations...)
+		m.pendingGoalLockMutations = nil
 	}
 	return m.startBookkeeping()
 }
@@ -921,6 +951,7 @@ func (m TurnModel) handleGoalLockedAck() (tea.Model, tea.Cmd) {
 	m.pendingGoalLockMutations = nil
 	m.lockedGoalDestination = ""
 	m.goalLock = engine.GoalLock{}
+	m.turnLog = nil
 	if done {
 		m.state = stateCycleSummary
 		m.subModel = m.resizeSub(phases.NewCycleSummaryModel(m.factionState.CycleNumber, m.buildSummaryRows()))
@@ -974,7 +1005,10 @@ func (m TurnModel) runAction(action engine.Action) (tea.Model, tea.Cmd) {
 		m.err = err
 		return m, nil
 	}
-	m.turnLog = narrateAction(action, mutations, m.currentFaction, m.engine.Rulebook)
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, mutations, m.factionState, m.engine.Rulebook)
+	mutations = append(mutations, goalMutations...)
+	m.turnLog = append(m.turnLog, narrateAction(action, mutations, m.currentFaction, m.engine.Rulebook)...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(mutations, m.engine.Rulebook)...)
 	m.engine.Mutation.Apply(m.factionState, mutations)
 	m.pendingMutations = append(m.pendingMutations, mutations...)
 	m.actionResultText = action.Name()

@@ -267,3 +267,29 @@ A record of key decisions made during development, grouped by feature branch.
 | #97 | Block until custom handlers are written for all bespoke assets | Blocks the entire action until every edge case is handled; GM fallback is the right interim path for abilities that have no step encoding |
 | #98 | Single flat handler map keyed by step type only | Custom overrides per definition ID cannot be expressed with a single registry; bespoke abilities would require inventing a synthetic step type per asset |
 | #105 | Collect assets one at a time as each resolves | SWN rules require up-front declaration; allowing per-step selection gives the GM information about prior results before committing later assets |
+
+### feature/goal-engine
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 110 | `Faction.Goal *Goal` replaced by `Faction.ActiveGoal *ActiveGoal` | `Goal` was a reference to static data; `ActiveGoal` carries live progress state (Progress, ProcessPhase, TurnsRemaining, target fields) — the two concepts are fundamentally different and deserve separate types |
+| 111 | Goal behavior lives in code as per-goal-type handlers; TOML holds metadata only (name, description, difficulty label) | Goal resolution logic has conditional branching on mutation types, faction stats, and world state — none of which can be expressed in data; metadata stays in TOML so GMs can rename goals or adjust descriptions without touching code |
+| 112 | Change Homeworld is a goal, not a registered action; Difficulty 0 added to `goals.toml` | Change Homeworld spans multiple turns and requires lock state; modeling it as an action would require the action system to manage multi-turn state, which is the Goal Engine's job |
+| 113 | Seize Planet (action) initiates the Planetary Seizure (goal) process; Goal Engine manages subsequent turns | The action creates the goal state; the engine steps it through combat → occupation → completion over subsequent turns; same pattern as Expand Influence (action initiates, Goal Engine observes) |
+| 114 | Abandon Goal is a registered action that deducts income and clears `ActiveGoal` | Abandonment is a GM-initiated game-turn decision with mechanical cost (income forfeited); registering it as an action exposes it in the action menu at the right point in the turn flow |
+| 115 | `GoalEngine.UpdateProgress` is called by the TUI after `ActionEngine.Run` and before `MutationEngine.Apply` | Goal progress inspection must happen before destructive mutations fire (Destroy the Foe XP reads live target HP); doing it in the TUI rather than inside `ActionEngine.Run` keeps the engine layer free of Goal dependencies |
+| 116 | All mutations gain `CausedByFactionID string` and `Cause string` attribution fields | Goal handlers must distinguish "rival Force kill caused by acting faction" from maintenance losses or own-asset losses; attribution fields carry this provenance through the mutation list without requiring separate event types |
+| 117 | `AssetStealthApplied` is emitted during Buy Asset when a Stealth-type Cunning asset is purchased | The goal handler for Inside Enemy Territory needs a discrete event to count stealths that post-date goal adoption; emitting at purchase time (not at use time) matches the SWN rule |
+| 118 | `GoalEngine.CheckLock(faction, factionState) GoalLock` return value (Option B) | Option A (post-Action inspection) couldn't express Change Homeworld (no action is taken); Option B (pre-turn return value) gives the TUI a clean routing signal before any action selection runs |
+| 119 | Each goal type has its own `CalculateXP` formula; XP for variable-difficulty goals calculated at completion time before destructive mutations apply | XP formulas reference live state (target faction stats for Destroy the Foe, rival presence for Expand Influence); calculating before Apply ensures the data hasn't been destroyed by that turn's mutations |
+| 120 | `Base.Influence int` is a new field; Bribe is the only action that modifies it; no mechanical effect beyond Wealth of Worlds progress | Influence exists to satisfy the Wealth of Worlds goal's "Coin spent on bribes" requirement; it has no other game mechanic, so a dedicated counter field is correct — not a general-purpose currency modifier |
+| 121 | Inside Enemy Territory tracks only stealths applied after the goal was adopted; stealths at adoption time do not count | SWN rule: "units already stealthed when this goal is adopted do not count"; `AssetStealthApplied` mutations only fire for new stealths, so pre-adoption stealths naturally do not contribute |
+| 122 | Change Homeworld completion fires inside `CheckLock` when `TurnsRemaining` reaches 0, not inside `UpdateProgress` | There is no action on the completion turn — `CheckLock` is the only Goal Engine call that runs for a skipped faction; `UpdateProgress` requires an action's mutation list as input |
+| 123 | Destroy the Foe XP calculated before the target faction is removed from state | XP formula reads target stats; if computed after `FactionHPDelta` or faction removal mutations apply, the target faction may no longer exist in state |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #115 | Call `UpdateProgress` inside `ActionEngine.Run` | Would require `ActionEngine` to depend on `GoalEngine`; creates a circular-style coupling between two engines that should be peers; TUI orchestration is the right layer for cross-engine sequencing |
+| #118 | Option A — inspect mutations post-action to determine lock | Cannot express Change Homeworld (skip the entire turn — there is no action to inspect) |

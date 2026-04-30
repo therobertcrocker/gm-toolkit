@@ -19,7 +19,7 @@ A high-level tracker for turn engine feature status and open questions.
 | 4 | Action Resolution | Complete | All nine SWN actions implemented; Change Homeworld and Seize Planet pending Goal Engine multi-turn lock |
 | 5 | State Mutation | Complete | |
 | 6 | Event Recording | Complete | Per-faction JSONL records; one EventRecord per faction per cycle; HistoryEngine wired into turn wizard |
-| 7 | Goal Engine | Not started | Depends on Action Resolution |
+| 7 | Goal Engine | Complete | |
 
 <br/>
 <br/>
@@ -30,4 +30,4 @@ Design questions that are unresolved and will need answers before the relevant f
 
 | # | Question | Relevant Feature |
 |---|----------|-----------------|
-| 1 | How does the Goal Engine communicate lock state back to the turn flow — method call, return value, or flag on `TurnState`? | Goal Engine |
+| 1 | ~~How does the Goal Engine communicate lock state back to the turn flow — method call, return value, or flag on `TurnState`?~~ Resolved: `GoalEngine.CheckLock` returns a `GoalLock` value (Option B); the TUI calls it before action selection and routes accordingly | Goal Engine |
