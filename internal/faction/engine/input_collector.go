@@ -27,6 +27,10 @@ type InputCollector interface {
 	SelectMoveDestination(asset *domain.Asset, worlds []string) (string, error)
 	SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error)
 	ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error)
+	// Bribe
+	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
+	// Seize Planet
+	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
 }
 
 // RepairOrder describes a single asset repair instruction: which asset and how

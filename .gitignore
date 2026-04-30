@@ -20,7 +20,10 @@ reference/
 .vscode/
 *.swp
 *.swo
-notes.txt
+
+# notes, etc
+scratch.txt
+scratch/
 
 # OS
 .DS_Store

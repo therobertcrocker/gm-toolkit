@@ -79,8 +79,8 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 
 	// CoinDelta emitted first: Coin is spent even if the base is immediately destroyed.
 	ei.mutations = append(ei.mutations,
-		domain.CoinDelta{FactionID: faction.ID, Delta: -cost},
-		domain.BaseAdded{FactionID: faction.ID, Base: newBase},
+		domain.CoinDelta{FactionID: faction.ID, Delta: -cost, Cause: "expand", CausedByFactionID: faction.ID},
+		domain.BaseAdded{FactionID: faction.ID, Base: newBase, Cause: "expand", CausedByFactionID: faction.ID},
 	)
 
 	// Contested roll: faction rolls 1d10 + Cunning; each rival on the world rolls the same.
@@ -127,8 +127,8 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 			return fmt.Errorf("expand influence: insufficient Coin: need %d, have %d", amount, faction.Coin)
 		}
 		ei.mutations = append(ei.mutations,
-			domain.BaseHealed{FactionID: faction.ID, BaseID: base.ID, Delta: amount},
-			domain.CoinDelta{FactionID: faction.ID, Delta: -amount},
+			domain.BaseHealed{FactionID: faction.ID, BaseID: base.ID, Delta: amount, Cause: "expand", CausedByFactionID: faction.ID},
+			domain.CoinDelta{FactionID: faction.ID, Delta: -amount, Cause: "expand", CausedByFactionID: faction.ID},
 		)
 	case engine.ReinforceMax:
 		amount := min(ei.order.HPAmount, faction.MaxHP-base.MaxHP)
@@ -136,8 +136,8 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 			return fmt.Errorf("expand influence: insufficient Coin: need %d, have %d", amount, faction.Coin)
 		}
 		ei.mutations = append(ei.mutations,
-			domain.BaseExpanded{FactionID: faction.ID, BaseID: base.ID, Delta: amount},
-			domain.CoinDelta{FactionID: faction.ID, Delta: -amount},
+			domain.BaseExpanded{FactionID: faction.ID, BaseID: base.ID, Delta: amount, Cause: "expand", CausedByFactionID: faction.ID},
+			domain.CoinDelta{FactionID: faction.ID, Delta: -amount, Cause: "expand", CausedByFactionID: faction.ID},
 		)
 	default:
 		return fmt.Errorf("expand influence: unknown reinforce sub-mode %q", ei.order.SubMode)
@@ -182,12 +182,12 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			damage := attackerDef.Attack.Damage.Roll(ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.
-				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage},
-				domain.FactionHPDelta{FactionID: ownerFaction.ID, Delta: -damage},
+				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID},
+				domain.FactionHPDelta{FactionID: ownerFaction.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID},
 			)
 			*baseHPTracker -= damage
 			if target.CurrentHP+*baseHPTracker <= 0 {
-				*mutations = append(*mutations, domain.BaseDestroyed{FactionID: ownerFaction.ID, BaseID: target.ID})
+				*mutations = append(*mutations, domain.BaseDestroyed{FactionID: ownerFaction.ID, BaseID: target.ID, Cause: "expand", CausedByFactionID: rival.ID})
 			}
 		}
 	}

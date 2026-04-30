@@ -264,6 +264,35 @@ func narrateAttack(collector *TUICollector, mutations []domain.Mutation, faction
 	return lines
 }
 
+func narrateGoalEvents(mutations []domain.Mutation, rulebook *loader.Rulebook) []string {
+	var lines []string
+	for _, m := range mutations {
+		switch mut := m.(type) {
+		case domain.GoalCompleted:
+			name := mut.GoalID
+			if goal, ok := rulebook.Goals[mut.GoalID]; ok {
+				name = goal.Name
+			}
+			if mut.XPAwarded > 0 {
+				lines = append(lines, fmt.Sprintf("Goal completed: %s (+%d XP)", name, mut.XPAwarded))
+			} else {
+				lines = append(lines, fmt.Sprintf("Goal completed: %s", name))
+			}
+		case domain.GoalAbandoned:
+			name := mut.GoalID
+			if goal, ok := rulebook.Goals[mut.GoalID]; ok {
+				name = goal.Name
+			}
+			lines = append(lines, fmt.Sprintf("Goal abandoned: %s (income forfeited)", name))
+		case domain.HomeworldChanged:
+			lines = append(lines, fmt.Sprintf("Homeworld: %s → %s", mut.FromWorld, mut.ToWorld))
+		case domain.TagAdded:
+			lines = append(lines, fmt.Sprintf("Tag gained: %s", mut.Tag.Name))
+		}
+	}
+	return lines
+}
+
 func renderLogSection(lines []string) string {
 	if len(lines) == 0 {
 		return ""

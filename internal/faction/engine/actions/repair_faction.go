@@ -50,6 +50,6 @@ func (rf *RepairFaction) Resolve(faction *domain.Faction, _ *state.FactionState,
 
 func (rf *RepairFaction) Output() ([]domain.Mutation, error) {
 	return []domain.Mutation{
-		domain.FactionHPDelta{FactionID: rf.factionID, Delta: rf.healAmount},
+		domain.FactionHPDelta{FactionID: rf.factionID, Delta: rf.healAmount, Cause: "repair", CausedByFactionID: rf.factionID},
 	}, nil
 }

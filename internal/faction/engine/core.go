@@ -13,7 +13,7 @@ type Engine struct {
 	Action        *ActionEngine
 	AbilityEngine *AbilityEngine
 	History       *HistoryEngine
-	// Goal *GoalEngine — future
+	Goal          *GoalEngine
 	// Tag  *TagEngine  — future
 }
 
@@ -28,5 +28,6 @@ func New(dataDir string) (*Engine, error) {
 	e.Action = newActionEngine()
 	e.AbilityEngine = NewAbilityEngine()
 	e.History = newHistoryEngine()
+	e.Goal = NewGoalEngine()
 	return e, nil
 }

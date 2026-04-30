@@ -94,15 +94,19 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		// Stealth loss is emitted before damage so the EventRecord timeline is consistent.
 		if attacker.Stealthy && !stealthCleared[attacker.ID] {
 			attack.mutations = append(attack.mutations, domain.AssetStealthCleared{
-				FactionID: faction.ID,
-				AssetID:   attacker.ID,
+				FactionID:         faction.ID,
+				AssetID:           attacker.ID,
+				Cause:             "attack",
+				CausedByFactionID: faction.ID,
 			})
 			stealthCleared[attacker.ID] = true
 		}
 		if defender.Stealthy && !stealthCleared[defender.ID] {
 			attack.mutations = append(attack.mutations, domain.AssetStealthCleared{
-				FactionID: defenderFaction.ID,
-				AssetID:   defender.ID,
+				FactionID:         defenderFaction.ID,
+				AssetID:           defender.ID,
+				Cause:             "attack",
+				CausedByFactionID: faction.ID,
 			})
 			stealthCleared[defender.ID] = true
 		}
@@ -125,22 +129,24 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				}
 				if redirect {
 					attack.mutations = append(attack.mutations,
-						domain.BaseHPDelta{FactionID: defenderFaction.ID, BaseID: base.ID, Delta: -damage},
+						domain.BaseHPDelta{FactionID: defenderFaction.ID, BaseID: base.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID},
 						// SWN: damage to a Base is also dealt directly to faction HP.
-						domain.FactionHPDelta{FactionID: defenderFaction.ID, Delta: -damage},
+						domain.FactionHPDelta{FactionID: defenderFaction.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID},
 					)
 					baseHPTracker[base.ID] -= damage
 					if base.CurrentHP+baseHPTracker[base.ID] <= 0 {
 						attack.mutations = append(attack.mutations, domain.BaseDestroyed{
-							FactionID: defenderFaction.ID,
-							BaseID:    base.ID,
+							FactionID:         defenderFaction.ID,
+							BaseID:            base.ID,
+							Cause:             "attack",
+							CausedByFactionID: faction.ID,
 						})
 					}
 				} else {
-					attack.applyAssetDamage(defenderFaction.ID, defender, damage, assetHPTracker)
+					attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker)
 				}
 			} else {
-				attack.applyAssetDamage(defenderFaction.ID, defender, damage, assetHPTracker)
+				attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker)
 			}
 		}
 
@@ -148,7 +154,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		if defenseRoll >= attackRoll {
 			if defenderDef.Counter != nil {
 				counterDamage := defenderDef.Counter.Roll(attack.roller)
-				attack.applyAssetDamage(faction.ID, attacker, counterDamage, assetHPTracker)
+				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker)
 			}
 		}
 	}
@@ -160,18 +166,23 @@ func (attack *AttackAction) Output() ([]domain.Mutation, error) {
 }
 
 // applyAssetDamage emits AssetHPDelta and, when lethal, AssetRemoved inline.
+// factionID is the owner of the damaged asset; causedByFactionID is the attacker.
 // Updates the local tracker so subsequent re-checks see the correct effective HP.
-func (attack *AttackAction) applyAssetDamage(factionID string, asset *domain.Asset, damage int, tracker map[string]int) {
+func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker map[string]int) {
 	attack.mutations = append(attack.mutations, domain.AssetHPDelta{
-		FactionID: factionID,
-		AssetID:   asset.ID,
-		Delta:     -damage,
+		FactionID:         factionID,
+		AssetID:           asset.ID,
+		Delta:             -damage,
+		Cause:             "attack",
+		CausedByFactionID: causedByFactionID,
 	})
 	tracker[asset.ID] -= damage
 	if asset.CurrentHP+tracker[asset.ID] <= 0 {
 		attack.mutations = append(attack.mutations, domain.AssetRemoved{
-			FactionID: factionID,
-			AssetID:   asset.ID,
+			FactionID:         factionID,
+			AssetID:           asset.ID,
+			Cause:             "attack",
+			CausedByFactionID: causedByFactionID,
 		})
 	}
 }

@@ -13,6 +13,7 @@ type Base struct {
 	Location    string `toml:"location"`
 	CurrentHP   int    `toml:"current_hp"`
 	MaxHP       int    `toml:"max_hp"`
+	Influence   int    `toml:"influence"`
 	Ready       bool   `toml:"ready"`
 	IsHomeworld bool   `toml:"is_homeworld"`
 }

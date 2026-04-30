@@ -7,11 +7,14 @@
 3. Role: mentor or co-pilot. Robert is designing, Claude is advising.
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Before writing any code, ask. Before making design suggestions, wait for a prompt.
-6. Before merging a branch, do  the following:
-   1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
-   2. Update the dev journal (`docs/dev-journal-factions.md`) and decisions log (`docs/decisions-log.md`) with any relevant notes, decisions, or reflections from the implementation process. This is crucial for maintaining a clear record of the project's evolution and rationale behind decisions.
-7. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly (current version: **v0.11.0**).
-8. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
+6. Before making a commit, do the following:
+   1. Update the decisions log (`docs/decisions-log.md`) with any new decisions or changes to existing decisions.
+7. Before merging a branch, do  the following:
+   1. Update the dev journal (`docs/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
+   2. Update the tracking journal (`docs/tracking/turn-engine-journal.md`) with the status of relevant features and any open questions that arose during implementation
+   3. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
+8. After every branch merge, Check current version with git describe --tags --abbrev=0 before tagging.
+9.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
 ## Always Consult docs/ First
 
@@ -19,12 +22,14 @@ Before any feature discussion or implementation — and whenever a design questi
 
 - `docs/dev-journal-factions.md` — overall design, decisions log, progress
 - `docs/decisions-log.md` — ratified decisions
-- `docs/discovery/turn-engine-discovery.md` — turn engine sub-systems and interfaces
-- `docs/discovery/action-resolution-discovery.md` — per-action resolution logic
-- `docs/discovery/goal-engine-discovery.md` — Goal Engine and multi-turn processes
+- `docs/architecture-overview.md` — high-level architecture and design rationale
 - `docs/tracking/turn-engine-journal.md` — feature status and design decisions
 - `docs/swn-faction-mechanics.md` — rules reference
 - `docs/style-guide.md` — doc and journal style; consult before creating any new doc
+
+## Implementation Discipline
+
+When an implementation doc specifies the work (signatures, triggers, thresholds, formulas), read only the files you'll directly use — the relevant domain types and any data files the spec references. Do not read existing action/engine files for pattern context. Start writing; let the compiler surface gaps.
 
 ## Development Setup
 

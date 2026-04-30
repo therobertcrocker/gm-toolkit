@@ -160,7 +160,7 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 	if err != nil {
 		return nil, err
 	}
-	faction.Goal = goal
+	faction.ActiveGoal = &domain.ActiveGoal{GoalID: goal.ID}
 
 	// Step 7: Confirmation
 	assetNames := make([]string, len(assets))
@@ -178,7 +178,7 @@ func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
 		faction.Force, faction.Cunning, faction.Wealth,
 		faction.MaxHP,
 		strings.Join(tagNames, "\n"),
-		faction.Goal.Name,
+		goal.Name,
 		strings.Join(assetNames, "\n"),
 	)
 

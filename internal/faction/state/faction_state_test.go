@@ -27,11 +27,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				Tags: []*domain.Tag{
 					{ID: "T-001", Name: "Colonists", Description: "Settler faction", Effect: "+1 Wealth"},
 				},
-				Goal: &domain.Goal{
-					ID:          "G-001",
-					Name:        "Military Conquest",
-					Description: "Destroy half the enemy's assets",
-					Difficulty:  "half_assets_destroyed",
+				ActiveGoal: &domain.ActiveGoal{
+					GoalID: "G-001",
 				},
 				Assets: []*domain.Asset{
 					{
@@ -114,11 +111,11 @@ func TestFactionStateRoundTrip(t *testing.T) {
 		t.Errorf("Faction.Tags[0]: got %+v, want %+v", got.Tags[0], want.Tags[0])
 	}
 
-	if got.Goal == nil {
-		t.Fatal("Faction.Goal: got nil, want non-nil")
+	if got.ActiveGoal == nil {
+		t.Fatal("Faction.ActiveGoal: got nil, want non-nil")
 	}
-	if got.Goal.ID != want.Goal.ID || got.Goal.Name != want.Goal.Name || got.Goal.Difficulty != want.Goal.Difficulty {
-		t.Errorf("Faction.Goal: got %+v, want %+v", got.Goal, want.Goal)
+	if got.ActiveGoal.GoalID != want.ActiveGoal.GoalID {
+		t.Errorf("Faction.ActiveGoal.GoalID: got %q, want %q", got.ActiveGoal.GoalID, want.ActiveGoal.GoalID)
 	}
 
 	if len(got.Assets) != 1 {

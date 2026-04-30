@@ -123,6 +123,45 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 					}
 				}
 			}
+		case domain.AssetStealthApplied:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, asset := range faction.Assets {
+					if asset.ID == v.AssetID {
+						asset.Stealthy = true
+						break
+					}
+				}
+			}
+		case domain.GoalAbandoned:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.ActiveGoal = nil
+			}
+		case domain.GoalCompleted:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.ActiveGoal = nil
+			}
+		case domain.XPAwarded:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.XP += v.Amount
+			}
+		case domain.HomeworldChanged:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.Homeworld = v.ToWorld
+			}
+		case domain.TagAdded:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				tag := v.Tag
+				faction.Tags = append(faction.Tags, &tag)
+			}
+		case domain.InfluenceDelta:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				for _, base := range faction.Bases {
+					if base.ID == v.BaseID {
+						base.Influence += v.Delta
+						break
+					}
+				}
+			}
 		}
 	}
 }

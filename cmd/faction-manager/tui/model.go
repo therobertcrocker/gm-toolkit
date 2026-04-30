@@ -23,6 +23,8 @@ type turnState int
 const (
 	stateResumePrompt   turnState = iota
 	stateSkipPrompt
+	stateGoalSelect
+	stateGoalLocked
 	stateBookkeeping
 	stateActionSelect
 	stateActionInput
@@ -96,6 +98,9 @@ type TurnModel struct {
 	pendingAbilityMove         *AbilityMoveMsg
 	pendingAbilityFactionTest  *AbilityFactionTestMsg
 	pendingAbilityConfirm      *AbilityConfirmMsg
+	goalLock                engine.GoalLock
+	pendingGoalLockMutations []domain.Mutation
+	lockedGoalDestination   string
 	snapshots         map[string]factionSnapshot // faction ID → pre-turn HP/Coin
 	actionsTaken      map[string]string          // faction ID → action description
 	actionResults     map[string]string          // faction ID → result summary for cycle summary
@@ -138,6 +143,9 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.state == stateActionResult {
 			return m.commitAndAdvance()
+		}
+		if m.state == stateGoalLocked {
+			return m.handleGoalLockedAck()
 		}
 		if m.state == stateAttackRedirect {
 			return m.handleRedirectKey(msg)
@@ -220,6 +228,14 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		collector := &TUICollector{buyOrder: msg.Order}
 		return m.runAction(actions.NewBuyAsset(collector))
 
+	case inputs.BribeOrderSelectedMsg:
+		collector := &TUICollector{bribeBase: msg.Base, bribeAmount: msg.Amount}
+		return m.runAction(actions.NewBribe(collector))
+
+	case inputs.SeizePlanetTargetSelectedMsg:
+		collector := &TUICollector{seizeWorld: msg.World}
+		return m.runAction(actions.NewSeizePlanet(collector))
+
 	case inputs.RefitOrderSelectedMsg:
 		collector := &TUICollector{refitOrder: msg.Order}
 		return m.runAction(actions.NewRefitAsset(collector))
@@ -234,8 +250,15 @@ func (m TurnModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case phases.SkipChoiceMsg:
 		return m.handleSkipChoice(msg.Skip)
 
+	case phases.GoalSelectedMsg:
+		m.currentFaction.ActiveGoal = msg.ActiveGoal
+		return m.proceedAfterGoalSelect()
+
 	case phases.BookkeepingDoneMsg:
 		available := m.engine.Action.AvailableActions(m.currentFaction, m.factionState, m.engine.Rulebook)
+		if m.goalLock.Type == engine.LockRestrictActions {
+			available = filterAllowedActions(available, m.goalLock.AllowedActions)
+		}
 		m.availableActions = available
 		m.state = stateActionSelect
 		m.subModel = m.resizeSub(phases.NewActionSelectModel(available))
@@ -302,16 +325,12 @@ func (m TurnModel) handleResumeChoice(choice phases.ResumeChoice) (tea.Model, te
 
 func (m TurnModel) handleSkipChoice(skip bool) (tea.Model, tea.Cmd) {
 	if !skip {
-		result, err := m.engine.Turn.ApplyBookkeeping(m.factionState)
-		if err != nil {
-			m.err = err
-			return m, nil
+		if m.currentFaction.ActiveGoal == nil {
+			m.state = stateGoalSelect
+			m.subModel = m.resizeSub(phases.NewGoalSelectModel(m.currentFaction, m.engine.Rulebook))
+			return m, m.subModel.Init()
 		}
-		m.bookkeepingResult = result
-		m.pendingMutations = result.RecordedMutations
-		m.state = stateBookkeeping
-		m.subModel = m.resizeSub(phases.NewBookkeepingModel(result, m.engine.Rulebook))
-		return m, m.subModel.Init()
+		return m.proceedAfterGoalSelect()
 	}
 
 	m.actionsTaken[m.currentFaction.ID] = "Skipped"
@@ -393,6 +412,10 @@ func (m TurnModel) View() string {
 		}
 		return renderSplitPanel(left, right, m.width)
 
+	case stateGoalLocked:
+		right := renderGoalLockedPrompt(m)
+		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
+
 	case stateAbilityConfirmApplied:
 		right := renderAbilityConfirmPrompt(m.pendingAbilityConfirm)
 		return renderSplitPanel(renderLeft(m), m.appendLog(right), m.width)
@@ -442,10 +465,19 @@ func renderLeft(m TurnModel) string {
 	fmt.Fprintf(&sb, "Coin: %s\n", style.Coin.Render(fmt.Sprintf("%d", f.Coin)))
 
 	goalName := "(none)"
-	if f.Goal != nil {
-		goalName = f.Goal.Name
+	if f.ActiveGoal != nil {
+		if goal, ok := m.engine.Rulebook.Goals[f.ActiveGoal.GoalID]; ok {
+			goalName = goal.Name
+		} else {
+			goalName = f.ActiveGoal.GoalID
+		}
 	}
-	fmt.Fprintf(&sb, "Goal: %s\n\n", style.Muted.Render(goalName))
+	fmt.Fprintf(&sb, "Goal: %s\n", style.Muted.Render(goalName))
+	if f.ActiveGoal != nil && f.ActiveGoal.GoalID == "G-012" && f.ActiveGoal.TurnsRemaining > 0 {
+		fmt.Fprintf(&sb, "%s\n\n", style.Muted.Render(fmt.Sprintf("→ %s (%d turns)", f.ActiveGoal.TargetWorld, f.ActiveGoal.TurnsRemaining)))
+	} else {
+		sb.WriteString("\n")
+	}
 
 	sb.WriteString(style.SectionTitle.Render("Stats"))
 	fmt.Fprintf(&sb, "\nForce   %d\nCunning %d\nWealth  %d", f.Force, f.Cunning, f.Wealth)
@@ -584,6 +616,8 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 	switch m.pendingAction.Name() {
 	case "Repair Faction":
 		return m.runAction(actions.NewRepairFaction())
+	case "Abandon Goal":
+		return m.runAction(actions.NewAbandonGoal())
 	case "Repair Asset":
 		var damagedAssets []*domain.Asset
 		for _, asset := range m.currentFaction.Assets {
@@ -623,6 +657,15 @@ func (m TurnModel) handleActionSelected(index int) (tea.Model, tea.Cmd) {
 		m.state = stateActionInput
 		m.subModel = m.resizeSub(inputs.NewAbilityAssetsModel(candidates, m.engine.Rulebook))
 		return m, m.subModel.Init()
+	case "Bribe":
+		m.state = stateActionInput
+		m.subModel = m.resizeSub(inputs.NewBribeModel(m.currentFaction))
+		return m, m.subModel.Init()
+	case "Seize Planet":
+		worlds := tuiSeizePlanetWorlds(m.currentFaction, m.factionState)
+		m.state = stateActionInput
+		m.subModel = m.resizeSub(inputs.NewSeizePlanetModel(worlds))
+		return m, m.subModel.Init()
 	default:
 		m.actionResultText = m.pendingAction.Name() + " — not yet implemented in TUI"
 		m.state = stateActionResult
@@ -659,12 +702,15 @@ func (m TurnModel) handleAttackCompleted(msg AttackCompletedMsg) (tea.Model, tea
 		m.err = msg.Err
 		return m, nil
 	}
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, msg.Mutations, m.factionState, m.engine.Rulebook)
+	allMutations := append(msg.Mutations, goalMutations...)
 	if m.attackCollector != nil {
-		m.turnLog = narrateAttack(m.attackCollector, msg.Mutations, m.factionState, m.engine.Rulebook)
+		m.turnLog = append(m.turnLog, narrateAttack(m.attackCollector, allMutations, m.factionState, m.engine.Rulebook)...)
 		m.attackCollector = nil
 	}
-	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
-	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(allMutations, m.engine.Rulebook)...)
+	m.engine.Mutation.Apply(m.factionState, allMutations)
+	m.pendingMutations = append(m.pendingMutations, allMutations...)
 	m.actionResultText = "Attack"
 	m.state = stateActionResult
 	m.subModel = nil
@@ -716,9 +762,12 @@ func (m TurnModel) handleExpandInfluenceCompleted(msg ExpandInfluenceCompletedMs
 		m.err = msg.Err
 		return m, nil
 	}
-	m.turnLog = narrateExpandInfluence(msg.Mutations, m.currentFaction)
-	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
-	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, msg.Mutations, m.factionState, m.engine.Rulebook)
+	allMutations := append(msg.Mutations, goalMutations...)
+	m.turnLog = append(m.turnLog, narrateExpandInfluence(allMutations, m.currentFaction)...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(allMutations, m.engine.Rulebook)...)
+	m.engine.Mutation.Apply(m.factionState, allMutations)
+	m.pendingMutations = append(m.pendingMutations, allMutations...)
 	m.actionResultText = "Expand Influence"
 	m.state = stateActionResult
 	m.subModel = nil
@@ -780,9 +829,12 @@ func (m TurnModel) handleAbilityCompleted(msg AbilityCompletedMsg) (tea.Model, t
 		m.err = msg.Err
 		return m, nil
 	}
-	m.turnLog = narrateUseAssetAbility(msg.Mutations, m.currentFaction, m.factionState, m.engine.Rulebook)
-	m.engine.Mutation.Apply(m.factionState, msg.Mutations)
-	m.pendingMutations = append(m.pendingMutations, msg.Mutations...)
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, msg.Mutations, m.factionState, m.engine.Rulebook)
+	allMutations := append(msg.Mutations, goalMutations...)
+	m.turnLog = append(m.turnLog, narrateUseAssetAbility(allMutations, m.currentFaction, m.factionState, m.engine.Rulebook)...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(allMutations, m.engine.Rulebook)...)
+	m.engine.Mutation.Apply(m.factionState, allMutations)
+	m.pendingMutations = append(m.pendingMutations, allMutations...)
 	m.actionResultText = "Use Asset Ability"
 	m.state = stateActionResult
 	m.subModel = nil
@@ -831,13 +883,132 @@ func waitForAbilityEvent(eventCh chan tea.Msg) tea.Cmd {
 	return func() tea.Msg { return <-eventCh }
 }
 
+// proceedAfterGoalSelect calls CheckLock and routes to stateGoalLocked or
+// bookkeeping depending on the result.
+func (m TurnModel) proceedAfterGoalSelect() (tea.Model, tea.Cmd) {
+	if m.currentFaction.ActiveGoal != nil && m.currentFaction.ActiveGoal.GoalID == "G-012" {
+		m.lockedGoalDestination = m.currentFaction.ActiveGoal.TargetWorld
+	}
+	lock, lockMutations := m.engine.Goal.CheckLock(m.currentFaction, m.factionState, m.engine.Rulebook)
+	m.goalLock = lock
+	m.pendingGoalLockMutations = lockMutations
+	if lock.Type == engine.LockSkip {
+		// Narrate homeworld completion when TurnsRemaining just hit 0.
+		if len(lockMutations) > 0 {
+			m.turnLog = append(m.turnLog, narrateGoalEvents(lockMutations, m.engine.Rulebook)...)
+		}
+		m.state = stateGoalLocked
+		m.subModel = nil
+		return m, nil
+	}
+	// LockNone / LockRestrictActions: apply any CheckLock mutations (e.g. GoalAbandoned
+	// on Planetary Seizure occupation fail) before bookkeeping runs.
+	if len(lockMutations) > 0 {
+		m.turnLog = append(m.turnLog, narrateGoalEvents(lockMutations, m.engine.Rulebook)...)
+		m.engine.Mutation.Apply(m.factionState, lockMutations)
+		m.pendingMutations = append(m.pendingMutations, lockMutations...)
+		m.pendingGoalLockMutations = nil
+	}
+	return m.startBookkeeping()
+}
+
+func (m TurnModel) startBookkeeping() (tea.Model, tea.Cmd) {
+	result, err := m.engine.Turn.ApplyBookkeeping(m.factionState)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.bookkeepingResult = result
+	m.pendingMutations = result.RecordedMutations
+	m.state = stateBookkeeping
+	m.subModel = m.resizeSub(phases.NewBookkeepingModel(result, m.engine.Rulebook))
+	return m, m.subModel.Init()
+}
+
+func (m TurnModel) handleGoalLockedAck() (tea.Model, tea.Cmd) {
+	if len(m.pendingGoalLockMutations) > 0 {
+		m.engine.Mutation.Apply(m.factionState, m.pendingGoalLockMutations)
+	}
+	m.actionsTaken[m.currentFaction.ID] = "Change Homeworld (transit)"
+	event, err := buildEventRecord(m.factionState, m.currentFaction, m.pendingGoalLockMutations)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	done, err := m.engine.Turn.Advance(m.factionState)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	if err := state.Save(m.paths.State, m.factionState); err != nil {
+		m.err = err
+		return m, nil
+	}
+	if err := m.engine.History.Record(m.paths.History, event); err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.pendingGoalLockMutations = nil
+	m.lockedGoalDestination = ""
+	m.goalLock = engine.GoalLock{}
+	m.turnLog = nil
+	if done {
+		m.state = stateCycleSummary
+		m.subModel = m.resizeSub(phases.NewCycleSummaryModel(m.factionState.CycleNumber, m.buildSummaryRows()))
+		return m, m.subModel.Init()
+	}
+	faction, err := m.engine.Turn.CurrentFaction(m.factionState)
+	if err != nil {
+		m.err = err
+		return m, nil
+	}
+	m.currentFaction = faction
+	m.snapshots[faction.ID] = factionSnapshot{hp: faction.CurrentHP, coin: faction.Coin}
+	m.subModel = m.resizeSub(phases.NewSkipTurnModel(faction.Name))
+	m.state = stateSkipPrompt
+	return m, m.subModel.Init()
+}
+
+func renderGoalLockedPrompt(m TurnModel) string {
+	var sb strings.Builder
+	sb.WriteString(style.SectionTitle.Render("Change Homeworld — In Transit"))
+	sb.WriteString("\n\n")
+	if m.currentFaction.ActiveGoal != nil {
+		fmt.Fprintf(&sb, "Moving to %s\n", m.lockedGoalDestination)
+		fmt.Fprintf(&sb, "%s turns remaining\n\n",
+			style.HP.Render(fmt.Sprintf("%d", m.currentFaction.ActiveGoal.TurnsRemaining)),
+		)
+	} else {
+		fmt.Fprintf(&sb, "Homeworld relocated to %s\n\n", m.lockedGoalDestination)
+	}
+	sb.WriteString(style.Muted.Render("Press any key to continue"))
+	return sb.String()
+}
+
+func filterAllowedActions(available []engine.Action, allowed []string) []engine.Action {
+	set := make(map[string]bool, len(allowed))
+	for _, name := range allowed {
+		set[name] = true
+	}
+	filtered := available[:0]
+	for _, action := range available {
+		if set[action.Name()] {
+			filtered = append(filtered, action)
+		}
+	}
+	return filtered
+}
+
 func (m TurnModel) runAction(action engine.Action) (tea.Model, tea.Cmd) {
 	mutations, err := m.engine.Action.Run(action, m.currentFaction, m.factionState, m.engine.Rulebook)
 	if err != nil {
 		m.err = err
 		return m, nil
 	}
-	m.turnLog = narrateAction(action, mutations, m.currentFaction, m.engine.Rulebook)
+	goalMutations := m.engine.Goal.UpdateProgress(m.currentFaction.ID, mutations, m.factionState, m.engine.Rulebook)
+	mutations = append(mutations, goalMutations...)
+	m.turnLog = append(m.turnLog, narrateAction(action, mutations, m.currentFaction, m.engine.Rulebook)...)
+	m.turnLog = append(m.turnLog, narrateGoalEvents(mutations, m.engine.Rulebook)...)
 	m.engine.Mutation.Apply(m.factionState, mutations)
 	m.pendingMutations = append(m.pendingMutations, mutations...)
 	m.actionResultText = action.Name()

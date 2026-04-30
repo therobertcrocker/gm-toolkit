@@ -78,6 +78,14 @@ func (collector *fakeCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain
 	panic("ConfirmAbilityApplied: not used in attack tests")
 }
 
+func (collector *fakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
+	panic("SelectBribeTarget: not used in attack tests")
+}
+
+func (collector *fakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	panic("SelectSeizeTarget: not used in attack tests")
+}
+
 // makeAttackRulebook returns a minimal Rulebook with three asset definitions:
 //   - "force-attacker": has an Attack profile (Force vs Force, 1d6 damage)
 //   - "force-defender": has a Counter (1d4) but no Attack profile
