@@ -66,8 +66,8 @@ func (c *abilityFakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.Fac
 	panic("SelectBribeTarget: not used in use_asset_ability tests")
 }
 
-func (c *abilityFakeCollector) SelectSiezeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
-	panic("SelectSiezeTarget: not used in use_asset_ability tests")
+func (c *abilityFakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	panic("SelectSeizeTarget: not used in use_asset_ability tests")
 }
 
 // makeAbilityRulebook returns a minimal Rulebook with four asset definitions:

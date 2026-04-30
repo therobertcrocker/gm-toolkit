@@ -30,7 +30,7 @@ type InputCollector interface {
 	// Bribe
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
 	// Seize Planet
-	SelectSiezeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
+	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
 }
 
 // RepairOrder describes a single asset repair instruction: which asset and how

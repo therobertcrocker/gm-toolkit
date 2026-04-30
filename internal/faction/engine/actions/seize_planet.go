@@ -29,7 +29,7 @@ func (s *SeizePlanet) Validate(faction *domain.Faction, factionState *state.Fact
 }
 
 func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *loader.Rulebook) error {
-	world, err := s.collector.SelectSiezeTarget(faction, factionState)
+	world, err := s.collector.SelectSeizeTarget(faction, factionState)
 	if err != nil {
 		return fmt.Errorf("seize planet: %w", err)
 	}

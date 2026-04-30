@@ -82,8 +82,8 @@ func (collector *fakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.Fa
 	panic("SelectBribeTarget: not used in attack tests")
 }
 
-func (collector *fakeCollector) SelectSiezeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
-	panic("SelectSiezeTarget: not used in attack tests")
+func (collector *fakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	panic("SelectSeizeTarget: not used in attack tests")
 }
 
 // makeAttackRulebook returns a minimal Rulebook with three asset definitions:

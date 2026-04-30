@@ -159,6 +159,6 @@ func (c *TUICollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionStat
 	return c.bribeBase, c.bribeAmount, nil
 }
 
-func (c *TUICollector) SelectSiezeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+func (c *TUICollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
 	return c.seizeWorld, nil
 }
