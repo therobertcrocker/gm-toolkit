@@ -127,6 +127,9 @@ Design questions that are unresolved and will need answers before the relevant f
 - Narrative summary renderer
 
 ### Deferred (minor)
+- `BuyAsset` Stealth detection hardcodes `"C3-002"` (`actions/buy_asset.go`): robust fix requires a `"stealth_applicator"` flag in the TOML or a typed `TypeStealth` constant; low risk while asset definitions are static, but silently breaks if the TOML ID changes
+- `SeizePlanet` action is invisible in history: `Output()` returns no mutations, so the EventRecord for the turn the seize was initiated has no entry recording the phase transition; a `GoalPhaseAdvanced` mutation would make history replay accurate
+- `GoalSelectModel` world-slot hack (`tui/phases/goal_select.go`): when a G-012 destination is selected, `worldOptions` is collapsed to `[]string{selectedWorld}` to carry the value to the distance step — a dedicated `selectedWorld string` field would be cleaner
 - `"Resolving expand influence..."` view gap: the TUI default view shows `"Resolving attack..."` when an attack goroutine is running but shows nothing for Expand Influence; low-priority cosmetic gap
 - `narrateUseAssetAbility` misleading fallback text (`narrate.go`): `len(mutations) == 0` fires for all-failed faction-test rolls (ties / defender wins) as well as the nil-ability GM fallback path — the GM sees "Ability applied (GM adjudicated)" after a contested roll that simply didn't land, which is incorrect; fix requires either a sentinel mutation from the engine on the GM fallback path or tracking which assets resolved via `ConfirmAbilityApplied`
 - `hasActionFlag` inconsistency (`actions/use_asset_ability.go`): the engine action uses a manual loop to check for `FlagAction` while `tuiEligibleAbilityAssets` uses `slices.Contains`; both are correct, engine package doesn't import `slices`, not worth changing unilaterally
