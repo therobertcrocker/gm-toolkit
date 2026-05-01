@@ -16,7 +16,7 @@
 8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 9. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
-## Always Consult docs/ First
+## Documentation Discipline
 
 Before any feature discussion or implementation, read the doc(s) relevant to the work at hand:
 
@@ -34,7 +34,7 @@ When docs conflict, flag the conflict before proceeding. When docs are silent on
 
 ## Implementation Discipline
 
-When an implementation doc specifies the work (signatures, triggers, thresholds, formulas), read only the files you'll directly use — the relevant domain types and any data files the spec references. Do not read existing action/engine files for pattern context. Start writing; let the compiler surface gaps.
+Prioritize following the implementation plan, instead of reading files or code that isn't directly relevant to the task at hand. If the implementation plan is incomplete, ask for clarification or next steps.
 
 ## Development Setup
 
