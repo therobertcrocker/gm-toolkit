@@ -92,13 +92,13 @@ var bribeTemplates = []string{
 }
 
 var repairAssetTemplates = []string{
-	"{faction} repaired {asset}, restoring {hp} HP.",
-	"Maintenance logged: {faction} brought {asset} back to readiness (+{hp} HP).",
+	"{faction} spent {cost} Coin repairing {asset}, restoring {hp} HP.",
+	"Maintenance logged: {faction} brought {asset} back to readiness (+{hp} HP) at a cost of {cost} Coin.",
 }
 
 var repairFactionTemplates = []string{
-	"{faction} tended to its own wounds, recovering {hp} HP.",
-	"Recovery operations: {faction} restored {hp} faction HP.",
+	"{faction} spent {cost} Coin on recovery operations, restoring {hp} faction HP.",
+	"Recovery underway: {faction} invested {cost} Coin and restored {hp} HP.",
 }
 
 var expansionNewBaseTemplates = []string{

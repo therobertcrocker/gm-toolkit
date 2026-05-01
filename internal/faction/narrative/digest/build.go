@@ -44,6 +44,8 @@ func getOrCreateCross(crossMap map[crossKey]*CrossEvent, actorID, targetID strin
 }
 
 // findCrossTarget returns the first faction ID in a record's mutations that differs from record.FactionID.
+// Only the first cross-faction target is detected; records targeting multiple distinct factions in one
+// event are not supported by any current action and would be misattributed.
 func findCrossTarget(record domain.EventRecord) string {
 	type partial struct {
 		FactionID string `json:"faction_id"`
@@ -468,7 +470,7 @@ func Build(
 	if factionState != nil {
 		for id := range seenFactionIDs {
 			if _, exists := factionState.Factions[id]; !exists {
-				destroyedFactions = append(destroyedFactions, FactionRef{ID: id, Name: id})
+				destroyedFactions = append(destroyedFactions, FactionRef{ID: id, Name: resolveFactionName(id, factionState)})
 			}
 		}
 	}

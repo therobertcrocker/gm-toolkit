@@ -15,7 +15,6 @@ type FactionRef struct {
 
 type FactionBeat struct {
 	Faction      FactionRef
-	Goal         *GoalRef
 	CoinDelta    int
 	HPDelta      int
 	XPGained     int
@@ -28,11 +27,6 @@ type FactionBeat struct {
 	GoalEvents   []GoalEvent
 	StealthOps   []StealthEvent
 	Notes        []string
-}
-
-type GoalRef struct {
-	ID   string
-	Name string
 }
 
 type AssetMove struct {

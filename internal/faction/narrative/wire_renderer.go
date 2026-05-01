@@ -169,15 +169,18 @@ func renderBribe(bribe digest.BribeEvent, factionName string, rng *rand.Rand) st
 }
 
 func renderRepair(rep digest.RepairEvent, factionName string, rng *rand.Rand) string {
+	cost := fmt.Sprintf("%d", -rep.Coin)
 	if rep.IsFaction {
 		tmpl := pick(rng, repairFactionTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
-		return strings.ReplaceAll(result, "{hp}", fmt.Sprintf("%d", rep.HPGained))
+		result = strings.ReplaceAll(result, "{hp}", fmt.Sprintf("%d", rep.HPGained))
+		return strings.ReplaceAll(result, "{cost}", cost)
 	}
 	tmpl := pick(rng, repairAssetTemplates)
 	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 	result = strings.ReplaceAll(result, "{asset}", rep.Target.AssetName)
-	return strings.ReplaceAll(result, "{hp}", fmt.Sprintf("%d", rep.HPGained))
+	result = strings.ReplaceAll(result, "{hp}", fmt.Sprintf("%d", rep.HPGained))
+	return strings.ReplaceAll(result, "{cost}", cost)
 }
 
 func renderExpansion(exp digest.ExpansionEvent, factionName string, rng *rand.Rand) string {

@@ -67,7 +67,7 @@ func NewCmd(rulebook *loader.Rulebook) *cobra.Command {
 			if cmd.Flags().Changed("out") {
 				dest = outPath
 			} else {
-				dest, err = resolveOutputPath(campaignID, cycleNumber)
+				dest, err = resolveOutputPath(p.Narratives, cycleNumber)
 				if err != nil {
 					return fmt.Errorf("resolving output path: %w", err)
 				}
@@ -94,8 +94,8 @@ func NewCmd(rulebook *loader.Rulebook) *cobra.Command {
 	return cmd
 }
 
-func resolveOutputPath(campaignID string, cycleNumber int) (string, error) {
-	base := filepath.Join(".", "campaigns", campaignID, "narratives")
+func resolveOutputPath(narrativesDir string, cycleNumber int) (string, error) {
+	base := narrativesDir
 	primary := filepath.Join(base, fmt.Sprintf("cycle-%03d.md", cycleNumber))
 	if _, err := os.Stat(primary); os.IsNotExist(err) {
 		return primary, nil
