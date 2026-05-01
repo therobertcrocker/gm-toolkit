@@ -8,15 +8,15 @@
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Before writing any code not specified in an implementation doc, ask. Before making design suggestions, wait for a prompt.
 6. Before making a commit, do the following:
-   1. Update the decisions log (`docs/decisions-log.md`) with any new decisions or changes to existing decisions.
+   1. Update the decisions log (`docs/tracking/decisions-log.md`) with any new decisions or changes to existing decisions.
 7. Before merging a branch, do the following:
-   1. Update the dev journal (`docs/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
+   1. Update the dev journal (`docs/tracking/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
    2. Update the tracking journal (`docs/tracking/turn-engine-journal.md`) with the status of relevant features and any open questions that arose during implementation
    3. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
 8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 9. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
-## Always Consult docs/ First
+## Documentation Discipline
 
 Before any feature discussion or implementation, read the doc(s) relevant to the work at hand:
 
@@ -34,7 +34,7 @@ When docs conflict, flag the conflict before proceeding. When docs are silent on
 
 ## Implementation Discipline
 
-When an implementation doc specifies the work (signatures, triggers, thresholds, formulas), read only the files you'll directly use — the relevant domain types and any data files the spec references. Do not read existing action/engine files for pattern context. Start writing; let the compiler surface gaps.
+Prioritize following the implementation plan, instead of reading files or code that isn't directly relevant to the task at hand. If the implementation plan is incomplete, ask for clarification or next steps.
 
 ## Development Setup
 

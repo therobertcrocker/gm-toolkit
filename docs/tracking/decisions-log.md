@@ -293,3 +293,26 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #115 | Call `UpdateProgress` inside `ActionEngine.Run` | Would require `ActionEngine` to depend on `GoalEngine`; creates a circular-style coupling between two engines that should be peers; TUI orchestration is the right layer for cross-engine sequencing |
 | #118 | Option A — inspect mutations post-action to determine lock | Cannot express Change Homeworld (skip the entire turn — there is no action to inspect) |
+
+### feature/narrative-renderer
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 124 | Hybrid architecture: deterministic `digest` layer + pluggable `Renderer` interface | `digest.Build` extracts all meaningful events into a structured `CycleDigest` without formatting concerns; the `Renderer` interface then expresses those events as prose; the LLM renderer (post-v1) will operate on the same structured input without touching history parsing logic |
+| 125 | v1 ships wire-service renderer only; LLM renderer is post-v1 | Building LLM integration before the rendering interface is validated would lock in design decisions prematurely; deterministic output proves the interface contract before a second implementation is written |
+| 126 | Default output path `campaigns/<id>/narratives/cycle-NNN.md`; reruns increment to `-002`, `-003` (3-digit zero-padding) | Increments preserve prior runs for comparison without overwriting; 3-digit padding ensures lexical sort matches numeric order |
+| 127 | Output structure: cycle headline + lede paragraph + per-faction `###` sections + quiet tail | Mirrors how a GM describes a cycle: headline captures the most important event, lede sets context, per-faction detail follows, quiet factions are acknowledged without crowding out active ones |
+| 128 | Cross-faction events owned by the actor's section; defender section does not echo | Avoids duplication — narrating both sides produces the same engagement twice with different phrasing; the attacker's section gives the full outcome |
+| 129 | Goal events flow as ordinary narrative beats within `FactionBeat` — no separate milestone struct | Goal completion is already captured in `GoalEvent` within `FactionBeat`; a parallel milestone type would duplicate data and add indirection with no rendering benefit |
+| 130 | Headline priority: Attack > GoalCompleted > FactionDestroyed > HomeworldShift > GoalAbandoned > Quiet; tie-break by impact then alphabetical | Ordered by reader impact — violent events drive the most immediate GM/player decisions; quiet cycles should not displace any meaningful passive event |
+| 131 | `AssetMaintainedFlag` mutations dropped from narration | Maintenance flags are bookkeeping artifacts emitted for every asset on every turn; including them buries meaningful events in noise |
+| 132 | Faction destruction detected by comparing history actor IDs against live `factionState.Factions` | Simpler than scanning for `FactionHPDelta`-to-zero: a faction ID that appears in the cycle's history records but is absent from live state was destroyed before state was saved |
+| 133 | Live state acceptable for ID→name resolution; resolvers fall back to the ID | History records store IDs, not names; live state is the source of truth for the current name; fallback to ID prevents nil panics when a faction has been destroyed and is absent from state |
+| 134 | Variant rotation via seeded `math/rand` RNG; default seed is `time.Now().UnixNano()`; seed printed to stdout after each run | Deterministic output is required for golden-file tests and for GMs to share reproducible narratives; printing the seed allows any run to be reproduced exactly with `--seed` |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #124 | Monolithic renderer that reads JSONL and produces prose directly | Would mix history parsing with rendering logic; the LLM renderer would have no structured input to work from — it would need to re-parse history itself |
+| #128 | Echo the attack in both attacker and defender sections | Creates duplicate prose that reads as padding; cross-faction events are single-perspective by convention |
