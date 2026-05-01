@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"fmt"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -162,6 +164,25 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 					}
 				}
 			}
+
+		case domain.GoalInitiated:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.ActiveGoal = &domain.ActiveGoal{
+					GoalID:       v.GoalID,
+					ProcessPhase: v.ProcessPhase,
+					TargetWorld:  v.TargetWorld,
+				}
+			}
+
+		case domain.GoalProgressed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if faction.ActiveGoal != nil && faction.ActiveGoal.GoalID == v.GoalID {
+					faction.ActiveGoal.Progress += v.Delta
+				}
+			}
+
+		default:
+			panic(fmt.Sprintf("unhandled mutation type: %s", mutation.Type()))
 		}
 	}
 }

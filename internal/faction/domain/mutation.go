@@ -21,7 +21,7 @@ func (mutation CoinDelta) Type() string { return "coin_delta" }
 type AssetRemoved struct {
 	FactionID         string `json:"faction_id"`
 	AssetID           string `json:"asset_id"`
-	Cause             string `json:"cause"`              // "attack", "sell", "refit", "bookkeeping"
+	Cause             string `json:"cause"` // "attack", "sell", "refit", "bookkeeping"
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
@@ -232,3 +232,26 @@ type InfluenceDelta struct {
 }
 
 func (mutation InfluenceDelta) Type() string { return "influence_delta" }
+
+// GoalInitiated records that a faction initiated a goal. Used for bookkeeping and validation of goal-specific actions; has no direct mechanical effect.
+type GoalInitiated struct {
+	FactionID         string `json:"faction_id"`
+	GoalID            string `json:"goal_id"`
+	TargetWorld       string `json:"target_world"`
+	ProcessPhase      int    `json:"process_phase"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (mutation GoalInitiated) Type() string { return "goal_initiated" }
+
+// GoalProgressed records a discrete step in a multi-phase goal process. Like GoalInitiated, this has no direct mechanical effect but serves as a record of progress through the goal's process.
+type GoalProgressed struct {
+	FactionID         string `json:"faction_id"`
+	GoalID            string `json:"goal_id"`
+	Delta             int    `json:"delta"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (mutation GoalProgressed) Type() string { return "goal_progressed" }

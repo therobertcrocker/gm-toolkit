@@ -11,8 +11,10 @@ import (
 )
 
 type SeizePlanet struct {
-	collector   engine.InputCollector
-	targetWorld string
+	factionID    string
+	collector    engine.InputCollector
+	targetWorld  string
+	processPhase int
 }
 
 func NewSeizePlanet(collector engine.InputCollector) *SeizePlanet {
@@ -34,17 +36,29 @@ func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.Factio
 		return fmt.Errorf("seize planet: %w", err)
 	}
 	s.targetWorld = world
+	s.factionID = faction.ID
 	return nil
 }
 
 func (s *SeizePlanet) Resolve(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) error {
-	faction.ActiveGoal.TargetWorld = s.targetWorld
-	faction.ActiveGoal.ProcessPhase = 1
+	if s.targetWorld == "" {
+		return fmt.Errorf("seize planet: no target world selected")
+	}
+	s.processPhase = 1
 	return nil
 }
 
 func (s *SeizePlanet) Output() ([]domain.Mutation, error) {
-	return nil, nil
+	return []domain.Mutation{
+		domain.GoalInitiated{
+			FactionID:         s.factionID,
+			GoalID:            "G-004",
+			TargetWorld:       s.targetWorld,
+			ProcessPhase:      s.processPhase,
+			Cause:             "seize planet",
+			CausedByFactionID: s.factionID,
+		},
+	}, nil
 }
 
 // seizePlanetTargetWorlds returns worlds where the faction has at least one
