@@ -8,9 +8,9 @@
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Before writing any code not specified in an implementation doc, ask. Before making design suggestions, wait for a prompt.
 6. Before making a commit, do the following:
-   1. Update the decisions log (`docs/decisions-log.md`) with any new decisions or changes to existing decisions.
+   1. Update the decisions log (`docs/tracking/decisions-log.md`) with any new decisions or changes to existing decisions.
 7. Before merging a branch, do the following:
-   1. Update the dev journal (`docs/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
+   1. Update the dev journal (`docs/tracking/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
    2. Update the tracking journal (`docs/tracking/turn-engine-journal.md`) with the status of relevant features and any open questions that arose during implementation
    3. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
 8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
