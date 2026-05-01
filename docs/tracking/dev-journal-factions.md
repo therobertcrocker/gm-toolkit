@@ -124,7 +124,10 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- (nothing currently queued)
+- unify state modification to only occur via mutations - refactor direct state changes in places like the Goal Engine into mutations. 
+- Implementation Plan: Core Engine Orchestrator (see `docs/discovery/core-engine-orchestrator-discovery.md`)
+- TUI Refactor
+
 
 ### Deferred (minor)
 - `BuyAsset` Stealth detection hardcodes `"C3-002"` (`actions/buy_asset.go`): robust fix requires a `"stealth_applicator"` flag in the TOML or a typed `TypeStealth` constant; low risk while asset definitions are static, but silently breaks if the TOML ID changes
