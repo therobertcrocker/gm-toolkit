@@ -1,13 +1,5 @@
 package digest
 
-import (
-	"fmt"
-
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
-)
-
 type CycleDigest struct {
 	Cycle          int
 	ActiveFactions []FactionBeat
@@ -142,16 +134,4 @@ type Headline struct {
 	Subject FactionRef
 	Kind    HeadlineKind
 	Detail  string
-}
-
-func Build(
-	records []domain.EventRecord,
-	cycleNumber int,
-	factionState *state.FactionState,
-	rulebook *loader.Rulebook,
-) (CycleDigest, error) {
-	if len(records) == 0 {
-		return CycleDigest{}, fmt.Errorf("no history records for cycle %d", cycleNumber)
-	}
-	return CycleDigest{Cycle: cycleNumber}, nil
 }
