@@ -333,9 +333,53 @@ Five phases. Commit at the end of each per CLAUDE.md cadence.
 
 Land types and history reader; no rendering yet.
 
-**Files:** `internal/faction/narrative/digest/digest.go`, `internal/faction/narrative/history_reader.go`, `internal/faction/narrative/digest/digest_test.go`.
+#### Key files to read
 
-**Scope:** all type definitions; `LoadCycle`; `digest.Build` stub returning a `CycleDigest` with `Cycle` set and the rest empty. Tests cover `LoadCycle` (file not found, multiple cycles, single cycle filter) and the empty-build error case ("no history records for cycle N").
+| File | Why |
+|------|-----|
+| `internal/faction/domain/event.go` | `EventRecord` and `MutationRecord` — the types `LoadCycle` reads and returns |
+| `cmd/faction-manager/paths/paths.go` | `Paths.History` is the path `LoadCycle` receives |
+
+#### Tasks
+
+**1. Create `internal/faction/narrative/digest/digest.go`**
+
+All type definitions from the Domain Types section above. No behavior yet.
+
+**2. Create `internal/faction/narrative/history_reader.go`**
+
+```go
+package narrative
+
+// LoadCycle reads history.jsonl at historyPath and returns all EventRecords
+// whose Cycle field matches cycleNumber. Returns an error if no records match.
+func LoadCycle(historyPath string, cycleNumber int) ([]domain.EventRecord, error)
+```
+
+Implementation: open the file; scan line by line with `bufio.Scanner`; `json.Unmarshal` each line into `domain.EventRecord`; collect those where `record.Cycle == cycleNumber`. Return `fmt.Errorf("no history records for cycle %d", cycleNumber)` if the slice is empty.
+
+**3. Add `digest.Build` stub to `digest.go`**
+
+```go
+func Build(
+    records []domain.EventRecord,
+    cycleNumber int,
+    factionState *state.FactionState,
+    rulebook *loader.Rulebook,
+) (CycleDigest, error)
+```
+
+Stub body: return `CycleDigest{}, fmt.Errorf("no history records for cycle %d", cycleNumber)` when `len(records) == 0`; otherwise return `CycleDigest{Cycle: cycleNumber}, nil`.
+
+**4. Create `internal/faction/narrative/digest/digest_test.go`**
+
+Table-driven tests for `LoadCycle`:
+- file not found → wrapped error containing the path
+- JSONL with two cycles → only records matching the requested cycle returned
+- JSONL with one cycle, matching → records returned
+- JSONL with one cycle, non-matching → error "no history records for cycle N"
+
+One test for the stub: `Build(nil, 1, ...)` → error; `Build(oneRecord, 1, ...)` → `CycleDigest{Cycle: 1}`.
 
 **Commit:** `feat: phase 1 — narrative digest types and history reader`
 
@@ -345,9 +389,90 @@ Land types and history reader; no rendering yet.
 
 Fill in `digest.Build` with full mutation→digest mapping, cross-faction pairing, ID resolution, and headline selection.
 
-**Files:** `internal/faction/narrative/digest/digest.go`, expanded `digest_test.go`.
+#### Key files to read
 
-**Scope:** per-`Cause` grouping for all mutation types; cross-faction pairing via `CausedByFactionID`; `resolveFactionName`/`resolveAssetName`/`resolveGoalName`/`resolveTagName` helpers with ID fallback; headline selection per priority (decision #9); faction destruction detection by scanning history for `FactionHPDelta` to 0. Tests cover one path per row in the mutation→digest mapping table.
+| File | Why |
+|------|-----|
+| `internal/faction/domain/mutation.go` | All mutation type strings (`"coin_delta"`, `"asset_removed"`, etc.) and their JSON field names — needed for the deserialization switch |
+| `internal/faction/domain/faction.go` | `Faction.Name`, `Faction.Assets`, `Faction.Bases`, `Faction.Tags` — used by name resolution helpers |
+| `internal/faction/loader/loader.go` | `Rulebook.Assets`, `Rulebook.Goals`, `Rulebook.Tags` — for definition lookups |
+| `internal/faction/state/faction_state.go` | `FactionState.Factions map[string]*domain.Faction` — keyed by faction ID |
+
+#### Tasks
+
+**1. Name resolution helpers** (unexported, in `digest.go`)
+
+```go
+func resolveFactionName(factionID string, factionState *state.FactionState) string
+// factionState.Factions[factionID].Name, or factionID if absent
+
+func resolveAssetName(factionID, assetID string, factionState *state.FactionState) string
+// scan factionState.Factions[factionID].Assets for matching ID; return Name or assetID
+
+func resolveGoalName(goalID string, rulebook *loader.Rulebook) string
+// rulebook.Goals[goalID].Name, or goalID if absent
+
+func resolveTagName(tagID string, rulebook *loader.Rulebook) string
+// rulebook.Tags[tagID].Name, or tagID if absent
+```
+
+**2. Deserialization pattern**
+
+Each case in the grouping switch unmarshals `MutationRecord.Payload` into the concrete type:
+
+```go
+case "coin_delta":
+    var m domain.CoinDelta
+    if err := json.Unmarshal(mr.Payload, &m); err != nil {
+        return CycleDigest{}, err
+    }
+    // map m to digest fields
+```
+
+`mr` is a `domain.MutationRecord` from `record.Mutations`. `record` is a `domain.EventRecord` from the input slice.
+
+**3. Per-faction accumulation loop**
+
+`Build` maintains a `beats map[string]*FactionBeat` keyed by faction ID. For each `domain.EventRecord`, create or fetch the beat for `record.FactionID`, then iterate `record.Mutations` and dispatch on `MutationRecord.Type` per the Mutation→Digest Mapping table.
+
+Unknown type: append `fmt.Sprintf("unknown mutation: %s", mr.Type)` to `beat.Notes` rather than returning an error (per Risk #1).
+
+`AssetMaintainedFlag`: skip (drop entirely).
+
+**4. Cross-faction pairing**
+
+Each `domain.EventRecord` is owned by the acting faction (`record.FactionID` = actor). Within that record, any mutation where the mutation's `FactionID` field differs from `record.FactionID` is a defender-side mutation. Collect attacker + defender mutations for a given `(actor, target)` pair into one `CrossEvent`:
+
+```go
+// Within one EventRecord iteration:
+// actor  = record.FactionID
+// target = mutation's FactionID field (when it differs from record.FactionID)
+```
+
+For attack records: `AssetHPDelta` with `FactionID == record.FactionID` → `DamageToAttacker`; `AssetHPDelta` with `FactionID != record.FactionID` → `DamageToDefender`. `AssetRemoved` with `FactionID != record.FactionID` → `DefenderAsset`, `DefenderAssetDestroyed = true`. `AssetRemoved` with `FactionID == record.FactionID` → `AttackerAsset`, `AttackerAssetDestroyed = true`. `BaseHPDelta` / `BaseDestroyed` with `FactionID != record.FactionID` → `BaseHit`.
+
+**5. Faction destruction detection**
+
+After processing all records: for any faction ID that appears in at least one record but is absent from `factionState.Factions`, that faction was destroyed this cycle. Surface as `HeadlineFactionDestroyed` in headline selection and as a `GoalEvent{Kind: GoalCompleted}` beat entry for any faction whose `Destroy the Foe` goal targeted it (detected by `CausedByFactionID` on a `FactionHPDelta` with `delta` taking HP to 0 — check this by summing `FactionHPDelta.Delta` across the cycle for that faction).
+
+**6. ActiveFactions vs QuietFactions split**
+
+A faction beat is quiet if all of the following are empty: `Acquisitions`, `Losses`, `Movements`, `Bribes`, `Repairs`, `Expansions`, `GoalEvents`, `StealthOps`, and no `CrossEvent` has `Attacker.ID == faction.ID` or `Defender.ID == faction.ID`. Quiet factions go into `CycleDigest.QuietFactions` as `FactionRef` values; active factions go into `ActiveFactions`.
+
+**7. Headline selection**
+
+After all beats are built, walk the priority chain (decision #9) and pick the first matching kind:
+
+1. `HeadlineMajorAttack` — any `CrossEvent` exists; tie-break: highest `DamageToDefender + DamageToAttacker`, then alphabetical by `Attacker.Name`
+2. `HeadlineGoalCompleted` — any `GoalEvent{Kind: GoalCompleted}`; tie-break: highest `XPAwarded`, then alphabetical by faction name
+3. `HeadlineFactionDestroyed` — destruction detected (step 5); tie-break: alphabetical by faction name
+4. `HeadlineHomeworldShift` — any `GoalEvent{Kind: GoalHomeworldShift}`; tie-break: alphabetical
+5. `HeadlineGoalAbandoned` — any `GoalEvent{Kind: GoalAbandoned}`; tie-break: alphabetical
+6. `HeadlineQuiet` — fallback
+
+**8. Expand `digest_test.go`**
+
+One test per row in the Mutation→Digest Mapping table, using hand-built `[]domain.EventRecord` literals. Additional tests: cross-faction pairing with attacker and defender mutations in the same record; headline priority resolution (attack beats goal completion); tie-break (higher damage wins; equal damage → alphabetical).
 
 **Commit:** `feat: phase 2 — digest construction with full mutation mapping`
 
@@ -357,9 +482,63 @@ Fill in `digest.Build` with full mutation→digest mapping, cross-faction pairin
 
 Add the renderer interface and deterministic implementation.
 
-**Files:** `internal/faction/narrative/renderer.go`, `internal/faction/narrative/wire_renderer.go`, `internal/faction/narrative/wire_templates.go`, `internal/faction/narrative/wire_renderer_test.go`, `internal/faction/narrative/testdata/*.golden.md`.
+#### Key files to read
 
-**Scope:** `Renderer` interface; full template set (headline, lede, faction section, quiet tail, per-event renderers); variant pools; golden-file tests with hand-built `CycleDigest` literals; same-seed determinism test; different-seed variation test.
+| File | Why |
+|------|-----|
+| `internal/faction/narrative/digest/digest.go` | All `CycleDigest` types — the input to every render function |
+
+#### Tasks
+
+**1. Create `internal/faction/narrative/renderer.go`**
+
+`Renderer` interface and `NewWireRenderer()` factory as shown in the Renderer Interface section above.
+
+**2. Create `internal/faction/narrative/wire_templates.go`**
+
+Package-level `[]string` pools for each template slot. Minimum two variants per pool so variation tests can pass. Helper:
+
+```go
+func pick(rng *rand.Rand, pool []string) string {
+    return pool[rng.Intn(len(pool))]
+}
+```
+
+Template pools needed: `headlineAttackTemplates`, `headlineGoalCompletedTemplates`, `headlineFactionDestroyedTemplates`, `headlineHomeworldTemplates`, `headlineGoalAbandonedTemplates`, `headlineQuietTemplates`, `ledeAttackTemplates`, `ledeGoalTemplates`, `ledeQuietTemplates`, and per-event pools for acquisitions, losses, movements, bribes, repairs, expansions, goal events, stealth ops, cross-attack, cross-ability, quiet tail.
+
+**3. Create `internal/faction/narrative/wire_renderer.go`**
+
+Top-level `Render` method body as shown in the Renderer Interface section, plus these unexported functions:
+
+```go
+func renderHeadline(cycleDigest digest.CycleDigest, rng *rand.Rand) string
+// picks from the pool matching cycleDigest.Headline.Kind;
+// substitutes Subject.Name and Detail into the template
+
+func renderLede(cycleDigest digest.CycleDigest, rng *rand.Rand) string
+// 2–3 sentence paragraph; pool keyed on whether cycle had attacks, goal events, or was quiet
+
+func renderFactionSection(beat digest.FactionBeat, crossEvents []digest.CrossEvent, rng *rand.Rand) string
+// emits "### FactionName\n\n" then one prose sentence per event in order:
+// goal events → acquisitions → losses → movements → bribes → repairs → expansions → stealth ops
+// then any CrossEvent where CrossEvent.Attacker.ID == beat.Faction.ID
+
+func renderQuietTail(quietFactions []digest.FactionRef, rng *rand.Rand) string
+// picks a tail template and substitutes a comma-joined list of faction names
+```
+
+**4. Create `internal/faction/narrative/wire_renderer_test.go`**
+
+Test cases:
+- Same seed → byte-identical output: `render(digest, 1) == render(digest, 1)`
+- Different seeds → not equal: `render(digest, 1) != render(digest, 2)`
+- Golden-file tests: `render(attackDigest, 42)` matches `testdata/attack.golden.md`; `render(goalDigest, 42)` matches `testdata/goal_completed.golden.md`; `render(quietDigest, 42)` matches `testdata/quiet.golden.md`
+
+Use `flag.Bool("update", ...)` in `TestMain` to regenerate golden files.
+
+**5. Create `internal/faction/narrative/testdata/*.golden.md`**
+
+Hand-write `attack.golden.md`, `goal_completed.golden.md`, `quiet.golden.md` using seed 42 output. After the renderer compiles, regenerate with `-update` and commit the result.
 
 **Commit:** `feat: phase 3 — wire-service deterministic renderer`
 
@@ -369,9 +548,72 @@ Add the renderer interface and deterministic implementation.
 
 Wire the command into the binary; add the demo fixture campaign.
 
-**Files:** `cmd/faction-manager/commands/narrate.go`, `cmd/faction-manager/commands/narrate/cmd.go`, `cmd/faction-manager/commands/app.go` (one-line registration), `campaigns/narrative-fixture/history.jsonl`, `campaigns/narrative-fixture/faction_state.toml`.
+#### Key files to read
 
-**Scope:** command body with all flags wired; `resolveOutputPath` with increment-on-rerun and `--out` bypass; fixture campaign exercising buy, sell, refit, attack (with destruction + counter), bribe, expand, repair, goal completion, abandon, homeworld in one cycle.
+| File | Why |
+|------|-----|
+| `cmd/faction-manager/commands/turn/cmd.go` | Exact pattern for `--campaign` → `paths.New()` → `state.Load()` |
+| `cmd/faction-manager/commands/app.go` | Where to add `root.AddCommand(a.narrateCmd())` |
+| `cmd/faction-manager/paths/paths.go` | `Paths` struct — note it has no `Narratives` field; build that path directly from `campaignID` |
+
+#### Tasks
+
+**1. Create `cmd/faction-manager/commands/narrate.go`** — one-method shim on `App`:
+
+```go
+func (a *App) narrateCmd() *cobra.Command {
+    return narrate.NewCmd(a.Engine.Rulebook)
+}
+```
+
+**2. Edit `cmd/faction-manager/commands/app.go`**
+
+Add one line in `Execute()` after the existing `root.AddCommand` calls:
+
+```go
+root.AddCommand(a.narrateCmd())
+```
+
+**3. Create `cmd/faction-manager/commands/narrate/cmd.go`**
+
+Flags: `--campaign` (string, required), `--out` (string), `--seed` (int64), `--stdout` (bool).
+
+Detect whether `--seed` was explicitly set using `cmd.Flags().Changed("seed")` inside `RunE`; if not set, assign `seed = time.Now().UnixNano()`.
+
+Command body:
+1. Parse `args[0]` as int; return error on parse failure
+2. `p := paths.New(campaignID)`
+3. `factionState, err := state.Load(p.State)`
+4. `records, err := narrative.LoadCycle(p.History, cycleNumber)`
+5. `cycleDigest, err := digest.Build(records, cycleNumber, factionState, rulebook)`
+6. `output, err := narrative.NewWireRenderer().Render(cycleDigest, seed)`
+7. If `--stdout`: `fmt.Print(output)`, print seed to stderr, return
+8. If `--out` set: write to that path verbatim (create dirs, overwrite)
+9. Otherwise: `dest, err = resolveOutputPath(campaignID, cycleNumber)`; create dirs; write
+
+After a successful file write: `fmt.Printf("wrote %s (seed: %d)\n", dest, seed)`.
+
+`resolveOutputPath(campaignID string, cycleNumber int) (string, error)`:
+- Base: `filepath.Join(".", "campaigns", campaignID, "narratives")`
+- Primary: `fmt.Sprintf("cycle-%03d.md", cycleNumber)` — return if absent
+- Increments: `fmt.Sprintf("cycle-%03d-%03d.md", cycleNumber, i)` for i = 2..999 — return first absent
+- If all 999 slots taken: return error
+
+**4. Create `campaigns/narrative-fixture/faction_state.toml`**
+
+Two factions minimum. Faction A: has Force assets, a base, an active goal. Faction B: has Force and Wealth assets, a base. Both factions must have IDs and names that match the `history.jsonl` records below.
+
+**5. Create `campaigns/narrative-fixture/history.jsonl`**
+
+One `domain.EventRecord` per event type, written as JSONL. Each line is a JSON object:
+
+```json
+{"cycle":1,"faction_id":"faction-a","timestamp":"2024-01-01T00:00:00Z","mutations":[...]}
+```
+
+The `mutations` array contains `{"type":"<type_string>","payload":{...}}` objects. Fields in `payload` must match the JSON tags on the corresponding mutation struct in `internal/faction/domain/mutation.go`.
+
+Cover at minimum one record exercising: `buy` (AssetAdded + CoinDelta), `sell` (AssetRemoved + CoinDelta), `refit` (AssetAdded + AssetRemoved + CoinDelta), `attack` cross-event (AssetHPDelta on defender, AssetRemoved on defender, FactionHPDelta on defender — all with `caused_by_faction_id` set to attacker), `bribe` (CoinDelta + InfluenceDelta), `expand` (BaseAdded + CoinDelta), `repair` (AssetHPDelta + CoinDelta), `goal_completed` (GoalCompleted + XPAwarded), `abandon_goal` (GoalAbandoned + CoinDelta), `goal_completed` with `homeworld_changed`.
 
 **Commit:** `feat: phase 4 — narrate command and demo fixture`
 
@@ -399,7 +641,7 @@ Wire the command into the binary; add the demo fixture campaign.
 
 `LoadCycle` + `digest.Build` + `NewWireRenderer().Render` against `campaigns/narrative-fixture/`.
 
-### Manual smoke
+### Manual smoke (User will run these commands and verify outputs match expectations):
 
 ```
 cd cmd/faction-manager

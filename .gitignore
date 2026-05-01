@@ -24,6 +24,7 @@ reference/
 # notes, etc
 scratch.txt
 scratch/
+HANDOFF.md
 
 # OS
 .DS_Store
