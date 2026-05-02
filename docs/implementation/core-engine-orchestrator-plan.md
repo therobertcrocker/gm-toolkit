@@ -307,7 +307,7 @@ Goal-lock and bookkeeping mutations each get their own `applyAndRecord` cycle (a
 
 Current (`internal/faction/engine/turn_engine.go:100-129`): `ApplyBookkeeping` builds mutations, calls `t.mutation.Apply(...)` internally, advances `Phase` to `PhaseAction`, returns `BookkeepingResult` (with `RecordedMutations` populated).
 
-New: returns `(BookkeepingResult, []domain.Mutation, error)`. Does not call `Apply`. Still advances `Phase`. The orchestrator owns apply/record. The `RecordedMutations` field on `BookkeepingResult` is dropped (callers use the returned slice).
+New: returns `(BookkeepingResult, []domain.Mutation, error)`. Does not call `Apply`. The orchestrator owns apply/record. The `RecordedMutations` field on `BookkeepingResult` is dropped (callers use the returned slice).
 
 The narrative digest (`internal/faction/narrative/digest`) reads from history.jsonl, not from `RecordedMutations` — so removing the field is safe.
 
