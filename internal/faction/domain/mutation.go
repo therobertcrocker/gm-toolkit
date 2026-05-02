@@ -245,7 +245,7 @@ type GoalInitiated struct {
 
 func (mutation GoalInitiated) Type() string { return "goal_initiated" }
 
-// GoalProgressed records a discrete step in a multi-phase goal process. Like GoalInitiated, this has no direct mechanical effect but serves as a record of progress through the goal's process.
+// GoalProgressed records a progress increment (or reset) on the active goal.
 type GoalProgressed struct {
 	FactionID         string `json:"faction_id"`
 	GoalID            string `json:"goal_id"`
@@ -255,3 +255,24 @@ type GoalProgressed struct {
 }
 
 func (mutation GoalProgressed) Type() string { return "goal_progressed" }
+
+// GoalTurnsTick decrements ActiveGoal.TurnsRemaining by 1.
+type GoalTurnsTick struct {
+	FactionID string `json:"faction_id"`
+	GoalID    string `json:"goal_id"`
+	Cause     string `json:"cause"`
+}
+
+func (mutation GoalTurnsTick) Type() string { return "goal_turns_tick" }
+
+// GoalPhaseAdvanced records a phase transition in a multi-phase goal,
+// setting both ProcessPhase and TurnsRemaining atomically.
+type GoalPhaseAdvanced struct {
+	FactionID      string `json:"faction_id"`
+	GoalID         string `json:"goal_id"`
+	ProcessPhase   int    `json:"process_phase"`
+	TurnsRemaining int    `json:"turns_remaining"`
+	Cause          string `json:"cause"`
+}
+
+func (mutation GoalPhaseAdvanced) Type() string { return "goal_phase_advanced" }

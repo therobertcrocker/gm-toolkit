@@ -429,6 +429,15 @@ func Build(
 					bribe.location = resolveBaseLocation(m.FactionID, m.BaseID, factionState)
 				}
 
+			case "goal_initiated":
+				// dropped — bookkeeping only
+			case "goal_progressed":
+				// dropped — bookkeeping only
+			case "goal_turns_tick":
+				// dropped — bookkeeping only
+			case "goal_phase_advanced":
+				// dropped — bookkeeping only
+
 			default:
 				beat.Notes = append(beat.Notes, fmt.Sprintf("unknown mutation: %s", mr.Type))
 			}

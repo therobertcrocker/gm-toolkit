@@ -21,7 +21,7 @@ import (
 type turnState int
 
 const (
-	stateResumePrompt   turnState = iota
+	stateResumePrompt turnState = iota
 	stateSkipPrompt
 	stateGoalSelect
 	stateGoalLocked
@@ -75,37 +75,37 @@ type factionSnapshot struct {
 }
 
 type TurnModel struct {
-	engine            *engine.Engine
-	factionState      *state.FactionState
-	paths             paths.Paths
-	width             int
-	height            int
-	state             turnState
-	currentFaction    *domain.Faction
-	bookkeepingResult engine.BookkeepingResult
-	pendingMutations  []domain.Mutation
-	actionResultText  string
-	availableActions  []engine.Action
-	pendingAction     engine.Action
-	subModel          tea.Model
-	attackEventCh              chan tea.Msg
-	attackCollector            *TUICollector
-	pendingRedirect            *AttackRedirectMsg
-	expandInfluenceEventCh     chan tea.Msg
-	pendingRivalAttack         *ExpandInfluenceRivalMsg
-	pendingBaseAttackers       *ExpandInfluenceBaseAttackersMsg
-	abilityEventCh             chan tea.Msg
-	pendingAbilityMove         *AbilityMoveMsg
-	pendingAbilityFactionTest  *AbilityFactionTestMsg
-	pendingAbilityConfirm      *AbilityConfirmMsg
-	goalLock                engine.GoalLock
-	pendingGoalLockMutations []domain.Mutation
-	lockedGoalDestination   string
-	snapshots         map[string]factionSnapshot // faction ID → pre-turn HP/Coin
-	actionsTaken      map[string]string          // faction ID → action description
-	actionResults     map[string]string          // faction ID → result summary for cycle summary
-	turnLog           []string                   // play-by-play lines for current faction's action
-	err               error
+	engine                    *engine.Engine
+	factionState              *state.FactionState
+	paths                     paths.Paths
+	width                     int
+	height                    int
+	state                     turnState
+	currentFaction            *domain.Faction
+	bookkeepingResult         engine.BookkeepingResult
+	pendingMutations          []domain.Mutation
+	actionResultText          string
+	availableActions          []engine.Action
+	pendingAction             engine.Action
+	subModel                  tea.Model
+	attackEventCh             chan tea.Msg
+	attackCollector           *TUICollector
+	pendingRedirect           *AttackRedirectMsg
+	expandInfluenceEventCh    chan tea.Msg
+	pendingRivalAttack        *ExpandInfluenceRivalMsg
+	pendingBaseAttackers      *ExpandInfluenceBaseAttackersMsg
+	abilityEventCh            chan tea.Msg
+	pendingAbilityMove        *AbilityMoveMsg
+	pendingAbilityFactionTest *AbilityFactionTestMsg
+	pendingAbilityConfirm     *AbilityConfirmMsg
+	goalLock                  engine.GoalLock
+	pendingGoalLockMutations  []domain.Mutation
+	lockedGoalDestination     string
+	snapshots                 map[string]factionSnapshot // faction ID → pre-turn HP/Coin
+	actionsTaken              map[string]string          // faction ID → action description
+	actionResults             map[string]string          // faction ID → result summary for cycle summary
+	turnLog                   []string                   // play-by-play lines for current faction's action
+	err                       error
 }
 
 // resizeSub forwards the current terminal dimensions to a newly created sub-model.
@@ -990,7 +990,7 @@ func filterAllowedActions(available []engine.Action, allowed []string) []engine.
 	for _, name := range allowed {
 		set[name] = true
 	}
-	filtered := available[:0]
+	filtered := make([]engine.Action, 0, len(allowed))
 	for _, action := range available {
 		if set[action.Name()] {
 			filtered = append(filtered, action)

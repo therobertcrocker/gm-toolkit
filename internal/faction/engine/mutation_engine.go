@@ -181,6 +181,21 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 				}
 			}
 
+		case domain.GoalTurnsTick:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if faction.ActiveGoal != nil && faction.ActiveGoal.GoalID == v.GoalID {
+					faction.ActiveGoal.TurnsRemaining--
+				}
+			}
+
+		case domain.GoalPhaseAdvanced:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if faction.ActiveGoal != nil && faction.ActiveGoal.GoalID == v.GoalID {
+					faction.ActiveGoal.ProcessPhase = v.ProcessPhase
+					faction.ActiveGoal.TurnsRemaining = v.TurnsRemaining
+				}
+			}
+
 		default:
 			panic(fmt.Sprintf("unhandled mutation type: %s", mutation.Type()))
 		}

@@ -46,9 +46,15 @@ func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.Fac
 }
 
 func checkLockChangeHomeworld(faction *domain.Faction) (GoalLock, []domain.Mutation) {
-	faction.ActiveGoal.TurnsRemaining--
-	if faction.ActiveGoal.TurnsRemaining == 0 {
-		mutations := []domain.Mutation{
+	newTurns := faction.ActiveGoal.TurnsRemaining - 1
+	tick := domain.GoalTurnsTick{
+		FactionID: faction.ID,
+		GoalID:    faction.ActiveGoal.GoalID,
+		Cause:     "change_homeworld_transit",
+	}
+	if newTurns == 0 {
+		return GoalLock{Type: LockSkip}, []domain.Mutation{
+			tick,
 			domain.HomeworldChanged{
 				FactionID: faction.ID,
 				FromWorld: faction.Homeworld,
@@ -61,62 +67,48 @@ func checkLockChangeHomeworld(faction *domain.Faction) (GoalLock, []domain.Mutat
 				XPAwarded: 0,
 			},
 		}
-		faction.ActiveGoal = nil
-		return GoalLock{Type: LockSkip}, mutations
 	}
-	return GoalLock{Type: LockSkip}, nil
+	return GoalLock{Type: LockSkip}, []domain.Mutation{tick}
 }
 
 func checkLockPlanetarySeizure(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) (GoalLock, []domain.Mutation) {
 	goal := faction.ActiveGoal
-	// Phase 0: goal selected, Seize Planet action not yet taken — no lock.
 	if goal.ProcessPhase == 0 {
 		return GoalLock{Type: LockNone}, nil
 	}
-	// Phase 1: combat — restrict to Attack only.
 	if goal.ProcessPhase == 1 {
 		return GoalLock{Type: LockRestrictActions, AllowedActions: []string{"Attack"}}, nil
 	}
-	// Phase 2: occupation — faction must maintain at least one unstealthed asset on TargetWorld.
+	// Phase 2: occupation.
 	if !factionHasUnstealthedAssetOn(faction, goal.TargetWorld) {
-		goalID := goal.GoalID
-		faction.ActiveGoal = nil
 		return GoalLock{Type: LockNone}, []domain.Mutation{
 			domain.GoalAbandoned{
 				FactionID: faction.ID,
-				GoalID:    goalID,
+				GoalID:    goal.GoalID,
 				Cause:     "occupation_failed",
 			},
 		}
 	}
-	goal.TurnsRemaining--
-	if goal.TurnsRemaining == 0 {
+	tick := domain.GoalTurnsTick{
+		FactionID: faction.ID,
+		GoalID:    goal.GoalID,
+		Cause:     "planetary_seizure_occupation",
+	}
+	newTurns := goal.TurnsRemaining - 1
+	if newTurns == 0 {
 		xp := calcPlanetarySeizureXP(goal.TargetFactionID, factionState)
 		var pgTag domain.Tag
 		if t, ok := rulebook.Tags["T-011"]; ok {
 			pgTag = *t
 		}
-		mutations := []domain.Mutation{
-			domain.TagAdded{
-				FactionID: faction.ID,
-				Tag:       pgTag,
-				Cause:     "goal_completed",
-			},
-			domain.GoalCompleted{
-				FactionID: faction.ID,
-				GoalID:    goal.GoalID,
-				XPAwarded: xp,
-			},
-			domain.XPAwarded{
-				FactionID: faction.ID,
-				Amount:    xp,
-				Cause:     "goal_completed",
-			},
+		return GoalLock{Type: LockNone}, []domain.Mutation{
+			tick,
+			domain.TagAdded{FactionID: faction.ID, Tag: pgTag, Cause: "goal_completed"},
+			domain.GoalCompleted{FactionID: faction.ID, GoalID: goal.GoalID, XPAwarded: xp},
+			domain.XPAwarded{FactionID: faction.ID, Amount: xp, Cause: "goal_completed"},
 		}
-		faction.ActiveGoal = nil
-		return GoalLock{Type: LockNone}, mutations
 	}
-	return GoalLock{Type: LockNone}, nil
+	return GoalLock{Type: LockNone}, []domain.Mutation{tick}
 }
 
 // UpdateProgress inspects the acting faction's mutation list for goal-relevant
@@ -170,11 +162,17 @@ func progressMilitaryConquest(actingFaction *domain.Faction, mutations []domain.
 	if kills == 0 {
 		return nil
 	}
-	actingFaction.ActiveGoal.Progress += kills
-	if actingFaction.ActiveGoal.Progress < actingFaction.Force {
-		return nil
+	newProgress := actingFaction.ActiveGoal.Progress + kills
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     kills,
+		Cause:     "military_conquest",
 	}
-	return completeGoal(actingFaction, actingFaction.ActiveGoal.Progress/2)
+	if newProgress < actingFaction.Force {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, newProgress/2)...)
 }
 
 func progressCommercialExpansion(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
@@ -182,11 +180,17 @@ func progressCommercialExpansion(actingFaction *domain.Faction, mutations []doma
 	if kills == 0 {
 		return nil
 	}
-	actingFaction.ActiveGoal.Progress += kills
-	if actingFaction.ActiveGoal.Progress < actingFaction.Wealth {
-		return nil
+	newProgress := actingFaction.ActiveGoal.Progress + kills
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     kills,
+		Cause:     "commercial_expansion",
 	}
-	return completeGoal(actingFaction, actingFaction.ActiveGoal.Progress/2)
+	if newProgress < actingFaction.Wealth {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, newProgress/2)...)
 }
 
 func progressIntelligenceCoup(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
@@ -194,11 +198,17 @@ func progressIntelligenceCoup(actingFaction *domain.Faction, mutations []domain.
 	if kills == 0 {
 		return nil
 	}
-	actingFaction.ActiveGoal.Progress += kills
-	if actingFaction.ActiveGoal.Progress < actingFaction.Cunning {
-		return nil
+	newProgress := actingFaction.ActiveGoal.Progress + kills
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     kills,
+		Cause:     "intelligence_coup",
 	}
-	return completeGoal(actingFaction, actingFaction.ActiveGoal.Progress/2)
+	if newProgress < actingFaction.Cunning {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, newProgress/2)...)
 }
 
 // progressPlanetarySeizure handles the Phase 1 → Phase 2 transition. Phase 2
@@ -227,9 +237,15 @@ func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.
 		}
 	}
 	// No rivals remain — transition to occupation (3 turns).
-	goal.ProcessPhase = 2
-	goal.TurnsRemaining = 3
-	return nil
+	return []domain.Mutation{
+		domain.GoalPhaseAdvanced{
+			FactionID:      actingFaction.ID,
+			GoalID:         goal.GoalID,
+			ProcessPhase:   2,
+			TurnsRemaining: 3,
+			Cause:          "planetary_seizure_phase_advance",
+		},
+	}
 }
 
 func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
@@ -267,12 +283,18 @@ func progressBloodTheEnemy(actingFaction *domain.Faction, mutations []domain.Mut
 	if damage == 0 {
 		return nil
 	}
-	actingFaction.ActiveGoal.Progress += damage
+	newProgress := actingFaction.ActiveGoal.Progress + damage
 	threshold := actingFaction.Force + actingFaction.Cunning + actingFaction.Wealth
-	if actingFaction.ActiveGoal.Progress < threshold {
-		return nil
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     damage,
+		Cause:     "blood_the_enemy",
 	}
-	return completeGoal(actingFaction, 2)
+	if newProgress < threshold {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, 2)...)
 }
 
 func progressPeaceableKingdom(actingFaction *domain.Faction, mutations []domain.Mutation) []domain.Mutation {
@@ -295,14 +317,27 @@ func progressPeaceableKingdom(actingFaction *domain.Faction, mutations []domain.
 		}
 	}
 	if attacked {
-		actingFaction.ActiveGoal.Progress = 0
-		return nil
+		if actingFaction.ActiveGoal.Progress == 0 {
+			return nil
+		}
+		return []domain.Mutation{domain.GoalProgressed{
+			FactionID: actingFaction.ID,
+			GoalID:    actingFaction.ActiveGoal.GoalID,
+			Delta:     -actingFaction.ActiveGoal.Progress,
+			Cause:     "peaceable_kingdom_reset",
+		}}
 	}
-	actingFaction.ActiveGoal.Progress++
-	if actingFaction.ActiveGoal.Progress < 4 {
-		return nil
+	newProgress := actingFaction.ActiveGoal.Progress + 1
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     1,
+		Cause:     "peaceable_kingdom",
 	}
-	return completeGoal(actingFaction, 1)
+	if newProgress < 4 {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, 1)...)
 }
 
 func progressDestroyTheFoe(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
@@ -328,6 +363,7 @@ func progressDestroyTheFoe(actingFaction *domain.Faction, mutations []domain.Mut
 // where a rival holds a Planetary Government tag. Approximation: a rival "holds
 // PG on a world" when they have both the T-011 tag and a Base on that world.
 func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
+	gained := 0
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.AssetStealthApplied)
 		if !ok || v.FactionID != actingFaction.ID {
@@ -340,12 +376,22 @@ func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []dom
 		if !rivalHasPlanetaryGovernmentOnWorld(actingFaction.ID, asset.Location, factionState) {
 			continue
 		}
-		actingFaction.ActiveGoal.Progress++
+		gained++
 	}
-	if actingFaction.ActiveGoal.Progress < actingFaction.Cunning {
+	if gained == 0 {
 		return nil
 	}
-	return completeGoal(actingFaction, 2)
+	newProgress := actingFaction.ActiveGoal.Progress + gained
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     gained,
+		Cause:     "inside_enemy_territory",
+	}
+	if newProgress < actingFaction.Cunning {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, 2)...)
 }
 
 func progressInvincibleValor(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
@@ -383,11 +429,17 @@ func progressWealthOfWorlds(actingFaction *domain.Faction, mutations []domain.Mu
 	if spent == 0 {
 		return nil
 	}
-	actingFaction.ActiveGoal.Progress += spent
-	if actingFaction.ActiveGoal.Progress < 4*actingFaction.Wealth {
-		return nil
+	newProgress := actingFaction.ActiveGoal.Progress + spent
+	progressed := domain.GoalProgressed{
+		FactionID: actingFaction.ID,
+		GoalID:    actingFaction.ActiveGoal.GoalID,
+		Delta:     spent,
+		Cause:     "wealth_of_worlds",
 	}
-	return completeGoal(actingFaction, 2)
+	if newProgress < 4*actingFaction.Wealth {
+		return []domain.Mutation{progressed}
+	}
+	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, 2)...)
 }
 
 // ---------------------------------------------------------------------------
@@ -397,7 +449,6 @@ func progressWealthOfWorlds(actingFaction *domain.Faction, mutations []domain.Mu
 // completeGoal sets ActiveGoal to nil and returns the completion mutation pair.
 func completeGoal(faction *domain.Faction, xp int) []domain.Mutation {
 	goalID := faction.ActiveGoal.GoalID
-	faction.ActiveGoal = nil
 	return []domain.Mutation{
 		domain.GoalCompleted{
 			FactionID: faction.ID,
