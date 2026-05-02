@@ -12,6 +12,8 @@ A reference for writing and maintaining dev journals and tracking journals consi
 
 **Discovery Doc** (`docs/discovery/*-discovery.md`) — written before implementation begins. Covers inputs, resolution steps, outputs, and notes for each feature or action. Not updated after the fact — it is a planning artifact.
 
+**Implementation Plan** (`docs/implementation/*-plan.md`) — a step-by-step plan for implementing a new feature. Includes a phased breakdown of the tasks, split by commit - with notes on the design rationale and any open questions to resolve during implementation. Updated as needed during implementation, but not after completion.
+
 <br/>
 
 ## Section Order
