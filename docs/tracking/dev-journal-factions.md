@@ -124,6 +124,7 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
+- Unit and Integration Testing: comprehensive coverage for all existing code, especially the core engine and action resolution logic. Utilize headless test harness with scripted input and recorded observer output for deterministic end-to-end tests. 
 - TUI Rebuild: fresh Bubbletea TUI against the new `InputCollector` + `TurnObserver` interfaces
 
 

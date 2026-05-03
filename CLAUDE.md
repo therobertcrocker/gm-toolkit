@@ -13,7 +13,6 @@
 7. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Update the dev journal (`docs/tracking/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
-   3. Update the tracking journal (`docs/tracking/turn-engine-journal.md`) with the status of relevant features and any open questions that arose during implementation
 8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 9.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
