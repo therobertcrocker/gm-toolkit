@@ -475,7 +475,17 @@ go vet ./...
 
 Running list of restructure / cleanup opportunities surfaced during Phase 2 implementation. Each entry: **what**, **why**, **rough size**. Phase 3 pulls from here.
 
-_(empty — populate during Phase 2)_
+- **Drop the `*MutationEngine` arg from `newTurnEngine`.** The TurnEngine no longer applies mutations, so the constructor parameter is unused — Phase 2 left it as `_ *MutationEngine` to avoid touching the `core.go` call site. Drop the param and update `Engine.New`. *Tiny.*
+- **Unify sub-engine constructor visibility.** `newTurnEngine`, `newMutationEngine`, `newActionEngine`, `newHistoryEngine` are unexported; `NewAbilityEngine`, `NewGoalEngine`, `NewRandRoller` are exported. Only `Engine.New` calls them — make all unexported (or all exported and stop initializing in `New`). *Small.*
+- **Disambiguate "Phase".** `engine.PhaseBookkeeping` (checkpoint name on InputCollector) and `domain.PhaseBookkeeping` (turn-cursor state) are now adjacent and easy to confuse. Rename the checkpoint constants to `CheckpointBookkeeping` etc., or move them onto a `Checkpoint` type. *Small, mechanical.*
+- **Inline `event_record.go`.** A 25-line file housing one helper used only by `orchestrator.go`. Either inline `buildEventRecord` into `applyAndRecord`, or merge the file into `orchestrator.go`. *Tiny.*
+- **Add `engine.NewWithRulebook(*loader.Rulebook)`.** Phase 2 tests had to point at `../data` to construct an Engine because `engine.New` does disk I/O. A rulebook-injecting constructor would make engine-package unit tests independent of fixture files and unlock truly hermetic tests in higher-level packages. *Small.*
+- **Trim `BookkeepingResult`.** `IncomeGained = WealthIncome + StatIncome` — the sum is computed eagerly even though callers could derive it. Now that `RecordedMutations` is gone, the struct's other redundancies stand out. *Tiny.*
+- **`AssetRef` in `turn_engine.go` may be redundant.** Same data lives in `AssetRemoved` / `AssetMaintainedFlag` mutations. If display callers can derive from mutations, the helper struct + the `AssetsLost` / `AssetsUnmaintained` fields can collapse. *Investigate first; small if it pans out.*
+- **Sub-package layout — sub-engines as their own packages?** `engine.go` currently composes six sub-engines as fields on a struct in one package. With the orchestrator landing, the package's purpose is split between "the orchestrator" and "the sub-engines." Worth an architectural discussion before any move. *Larger; design first.*
+- **`buildFactionOrder` bypasses `e.Rand`.** `turn_engine.go` imports `math/rand/v2` and calls `rand.IntN(n)` directly. `e.Rand` was added precisely for test determinism, but faction ordering is still non-deterministic in tests. Fix: pass a `domain.Roller` to `TurnEngine.Start` (or store it on `TurnEngine`). Affects `TurnEngine`, `core.go`, and any direct `Turn.Start` callers. *Small.*
+- **`AbilityEngine *AbilityEngine` field naming inconsistency.** Every other field on `Engine` follows `Role *RoleEngine` — `Turn`, `Mutation`, `Action`, `History`, `Goal`. The ability sub-engine field is `AbilityEngine *AbilityEngine` (same name for field and type). Rename the field to `Ability *AbilityEngine`. Mechanical find-replace in `core.go`, `actions/register.go`, and any closures that reference `e.AbilityEngine`. *Tiny.*
+- **`Phase*` constants live on `input_collector.go` but name pipeline checkpoints.** `PhaseBookkeeping`, `PhaseActionResult`, `PhaseGoalLocked`, `PhaseCycleSummary` are checkpoint gate names, not collector-specific concepts. They're currently co-located with the `InputCollector` interface. Move them to `observer.go` where pipeline-phase concepts live. Zero semantic change; purely organizational. *Tiny.*
 
 <br/>
 

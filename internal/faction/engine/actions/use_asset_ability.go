@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -14,12 +15,12 @@ import (
 type UseAssetAbility struct {
 	collector      engine.InputCollector
 	roller         domain.Roller
-	abilityEngine  *engine.AbilityEngine
+	abilityEngine  *ability.AbilityEngine
 	selectedAssets []*domain.Asset
 	mutations      []domain.Mutation
 }
 
-func NewUseAssetAbility(collector engine.InputCollector, roller domain.Roller, abilityEngine *engine.AbilityEngine) *UseAssetAbility {
+func NewUseAssetAbility(collector engine.InputCollector, roller domain.Roller, abilityEngine *ability.AbilityEngine) *UseAssetAbility {
 	return &UseAssetAbility{
 		collector:     collector,
 		roller:        roller,

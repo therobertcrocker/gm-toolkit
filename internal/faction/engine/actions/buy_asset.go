@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -16,15 +16,15 @@ import (
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
 // Tech-level filtering and P-flag (government permission) checks are deferred.
 type BuyAsset struct {
-	collector     engine.InputCollector
+	collector     action.Collector
 	factionID     string
-	buyOrder      engine.BuyOrder
+	buyOrder      action.BuyOrder
 	newAsset      domain.Asset
 	cost          int
 	stealthTarget string // asset ID to stealth when buying C3-002; empty if no eligible target
 }
 
-func NewBuyAsset(collector engine.InputCollector) *BuyAsset {
+func NewBuyAsset(collector action.Collector) *BuyAsset {
 	return &BuyAsset{collector: collector}
 }
 

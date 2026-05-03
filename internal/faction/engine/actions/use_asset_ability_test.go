@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -34,13 +35,13 @@ func (c *abilityFakeCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.
 func (c *abilityFakeCollector) SelectAsset(_ []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
 	panic("SelectAsset: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]engine.RepairOrder, error) {
+func (c *abilityFakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]action.RepairOrder, error) {
 	panic("SelectRepairOrders: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (engine.BuyOrder, error) {
+func (c *abilityFakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (action.BuyOrder, error) {
 	panic("SelectBuyOrder: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectRefitOrder(_ []engine.RefitOption, _ *loader.Rulebook) (engine.RefitOrder, error) {
+func (c *abilityFakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *loader.Rulebook) (action.RefitOrder, error) {
 	panic("SelectRefitOrder: not used in use_asset_ability tests")
 }
 func (c *abilityFakeCollector) SelectAttackers(_ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
@@ -52,7 +53,7 @@ func (c *abilityFakeCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset
 func (c *abilityFakeCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {
 	panic("ConfirmRedirectToBase: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (engine.ExpandInfluenceOrder, error) {
+func (c *abilityFakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (action.ExpandInfluenceOrder, error) {
 	panic("SelectExpandInfluenceOrder: not used in use_asset_ability tests")
 }
 func (c *abilityFakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
@@ -69,6 +70,12 @@ func (c *abilityFakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.Fac
 func (c *abilityFakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
 	panic("SelectSeizeTarget: not used in use_asset_ability tests")
 }
+
+func (c *abilityFakeCollector) SelectAction(_ *domain.Faction, _ []action.Action) (action.Action, error) {
+	panic("SelectAction: not used in use_asset_ability tests")
+}
+
+func (c *abilityFakeCollector) AwaitCheckpoint(_ string) error { return nil }
 
 // makeAbilityRulebook returns a minimal Rulebook with four asset definitions:
 //   - "move-asset": A-flagged, movement ability, no coin cost
@@ -162,15 +169,15 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 // runAbility drives a full Inputs→Resolve→Output cycle for UseAssetAbility.
 func runAbility(t *testing.T, collector *abilityFakeCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
 	t.Helper()
-	ae := engine.NewAbilityEngine()
-	action := NewUseAssetAbility(collector, roller, ae)
-	if err := action.Inputs(faction, factionState, rulebook); err != nil {
+	ae := ability.New()
+	act := NewUseAssetAbility(collector, roller, ae)
+	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
-	if err := action.Resolve(faction, factionState, rulebook); err != nil {
+	if err := act.Resolve(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	mutations, err := action.Output()
+	mutations, err := act.Output()
 	if err != nil {
 		t.Fatalf("Output: %v", err)
 	}
@@ -184,8 +191,8 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "x1", DefinitionID: "no-flag", Ready: true, Maintained: true}
 		rulebook.Assets["no-flag"] = &domain.AssetDefinition{ID: "no-flag", Flags: nil}
 		faction := &domain.Faction{ID: "f1", Assets: []*domain.Asset{asset}}
-		action := NewUseAssetAbility(nil, nil, nil)
-		if action.Validate(faction, nil, rulebook) {
+		act := NewUseAssetAbility(nil, nil, nil)
+		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when no A-flagged assets")
 		}
 	})
@@ -193,8 +200,8 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("A-flagged but not Ready", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "move-asset", Ready: false, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: []*domain.Asset{asset}}
-		action := NewUseAssetAbility(nil, nil, nil)
-		if action.Validate(faction, nil, rulebook) {
+		act := NewUseAssetAbility(nil, nil, nil)
+		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when A-flagged asset is not Ready")
 		}
 	})
@@ -202,8 +209,8 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("A-flagged but not Maintained", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "move-asset", Ready: true, Maintained: false}
 		faction := &domain.Faction{ID: "f1", Assets: []*domain.Asset{asset}}
-		action := NewUseAssetAbility(nil, nil, nil)
-		if action.Validate(faction, nil, rulebook) {
+		act := NewUseAssetAbility(nil, nil, nil)
+		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when A-flagged asset is not Maintained")
 		}
 	})
@@ -211,8 +218,8 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("usable A-flagged asset", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "move-asset", Ready: true, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: []*domain.Asset{asset}}
-		action := NewUseAssetAbility(nil, nil, nil)
-		if !action.Validate(faction, nil, rulebook) {
+		act := NewUseAssetAbility(nil, nil, nil)
+		if !act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate true when A-flagged, Ready, Maintained asset exists")
 		}
 	})

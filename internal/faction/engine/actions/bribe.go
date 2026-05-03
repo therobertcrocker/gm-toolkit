@@ -4,19 +4,19 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 type Bribe struct {
-	collector  engine.InputCollector
+	collector  action.Collector
 	factionID  string
 	baseID     string
 	coinAmount int
 }
 
-func NewBribe(collector engine.InputCollector) *Bribe {
+func NewBribe(collector action.Collector) *Bribe {
 	return &Bribe{collector: collector}
 }
 

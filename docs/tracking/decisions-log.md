@@ -316,3 +316,30 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #124 | Monolithic renderer that reads JSONL and produces prose directly | Would mix history parsing with rendering logic; the LLM renderer would have no structured input to work from — it would need to re-parse history itself |
 | #128 | Echo the attack in both attacker and defender sections | Creates duplicate prose that reads as padding; cross-faction events are single-perspective by convention |
+
+### feature/core-engine-orchestrator
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 135 | Acknowledgement gating lives on `InputCollector` as `AwaitCheckpoint(phase string) error` | Collector owns turn pacing; observers stay strictly fire-and-forget; manual implementations block on user input; test/AI implementations return nil immediately |
+| 136 | Action selection lives on `InputCollector` as `SelectAction(faction, available) (Action, error)` | Engine computes `AvailableActions` itself; the observer is not in the decision loop; the collector interface is already the "caller decides" contract |
+| 137 | `EventHook` ships as interface + documented dispatch site only — no registry, no dispatcher | The seam is needed now to lock the mutation-apply order; the dispatcher has no consumer until the Tag Engine ships; YAGNI |
+| 138 | Hook recursion bounded at depth 5; on cap trip the engine logs and stops | Surfaces content bugs rather than silently absorbing runaway loops |
+| 139 | Observer and collector are passed per-call to `RunFactionTurn` / `RunCycle`, not stored on `Engine` | Engine stays a long-lived stateless toolbox; the same instance can serve a manual run and a headless test without re-construction |
+| 140 | Runtime config flows through a new `internal/faction/config` package holding a `Config` struct | Establishes the config pattern before future runtime knobs (dry-run, log level, AI settings) join; keeps CLI path derivation in `paths/` and engine path injection in `Config` |
+| 141 | `Turn.ApplyBookkeeping` refactored to return `(BookkeepingResult, []domain.Mutation, error)` without applying mutations | Removes the asymmetry where one sub-engine wrote state and the others didn't; makes mutation flow uniform — the orchestrator owns every `Apply + Record + Save` call |
+| 142 | `ActionFactory` changes from `func() Action` to `func(InputCollector) Action`; `AvailableActions` takes a collector | Without this, `SelectAction` returning a ready `Action` is broken — prior factories produced nil-collector stubs valid only for `Validate`; the TUI's switch-on-Name reconstruction logic is eliminated |
+| 143 | `Engine` gains a `Rand domain.Roller` field initialized to `engine.NewRandRoller()` in `New` | Action factories that need a roller capture `e.Rand` in the closure; single injection point enables deterministic headless tests via `eng.Rand = &fixedRoller{...}` |
+| 144 | `RegisterDefaultActions(*Engine)` helper lives in `internal/faction/engine/actions` | Prior registration site (`commands/turn.go`) was deleted in Phase 1; placing the helper next to the action structs keeps engine and actions free of import cycles; test harnesses and future TUI use a single call |
+| 145 | Sub-engines extracted to their own packages: `ability`, `action`, `goal`, `history`, `mutation`, `turn` | Engine package was a single flat directory mixing six sub-engines and the orchestrator; named packages enforce the sub-engine boundary at the import level and make dependencies explicit |
+| 146 | `engine.NewWithRulebook(*loader.Rulebook)` added alongside `New(dataDir string)` | `engine.New` does disk I/O, blocking truly hermetic engine tests; injecting an already-loaded rulebook removes the test dependency on fixture files |
+| 147 | `Checkpoint*` constants renamed from `Phase*` to `Checkpoint*` | `domain.Phase*` (turn-cursor state) and the original `engine.Phase*` (checkpoint gate names) were adjacent and easy to confuse; `Checkpoint*` unambiguously names the `AwaitCheckpoint` call sites |
+| 148 | `TurnEngine` takes a `domain.Roller`; `buildFactionOrder` uses it | `buildFactionOrder` had called `rand.IntN` directly, bypassing `e.Rand`; faction ordering was non-deterministic in headless tests even when `eng.Rand` was swapped to a fixed roller |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #137 | Ship `EventHook` with a dispatcher and `RegisterHook` now | No consumer until the Tag Engine lands; building the dispatcher first would require test coverage for a code path with no callers — pure speculative work |
+| #139 | Store observer + collector on `Engine` at construction time | Engine would need to be reconstructed for every test scenario that uses different observer/collector configs; per-call injection is idiomatic Go and keeps the engine stateless |
+| #141 | Leave `ApplyBookkeeping` applying mutations internally | Breaks uniform mutation flow — one sub-engine was writing state, all others returned mutations for the caller to apply; asymmetry makes the orchestrator's write path non-obvious |

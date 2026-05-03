@@ -30,7 +30,6 @@ func (a *App) Execute() error {
 	}
 
 	root.AddCommand(a.reviewCmd())
-	root.AddCommand(a.turnCmd())
 	root.AddCommand(faction.NewCmd(a.Engine.Rulebook))
 	root.AddCommand(a.narrateCmd())
 

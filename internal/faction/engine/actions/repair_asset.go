@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -12,13 +12,13 @@ import (
 // RepairAsset restores HP to one or more of the faction's damaged assets.
 // Cost escalates per heal on the same asset; resets to 1 Coin for each new asset.
 type RepairAsset struct {
-	collector    engine.InputCollector
+	collector    action.Collector
 	factionID    string
-	repairOrders []engine.RepairOrder
+	repairOrders []action.RepairOrder
 	mutations    []domain.Mutation
 }
 
-func NewRepairAsset(collector engine.InputCollector) *RepairAsset {
+func NewRepairAsset(collector action.Collector) *RepairAsset {
 	return &RepairAsset{collector: collector}
 }
 

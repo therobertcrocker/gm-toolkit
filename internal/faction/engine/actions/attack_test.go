@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -47,16 +47,16 @@ func (collector *fakeCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *doma
 func (collector *fakeCollector) SelectAsset(_ []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
 	panic("SelectAsset: not used in attack tests")
 }
-func (collector *fakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]engine.RepairOrder, error) {
+func (collector *fakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]action.RepairOrder, error) {
 	panic("SelectRepairOrders: not used in attack tests")
 }
-func (collector *fakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (engine.BuyOrder, error) {
+func (collector *fakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (action.BuyOrder, error) {
 	panic("SelectBuyOrder: not used in attack tests")
 }
-func (collector *fakeCollector) SelectRefitOrder(_ []engine.RefitOption, _ *loader.Rulebook) (engine.RefitOrder, error) {
+func (collector *fakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *loader.Rulebook) (action.RefitOrder, error) {
 	panic("SelectRefitOrder: not used in attack tests")
 }
-func (collector *fakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (engine.ExpandInfluenceOrder, error) {
+func (collector *fakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (action.ExpandInfluenceOrder, error) {
 	panic("SelectExpandInfluenceOrder: not used in attack tests")
 }
 func (collector *fakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
@@ -85,6 +85,12 @@ func (collector *fakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.Fa
 func (collector *fakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
 	panic("SelectSeizeTarget: not used in attack tests")
 }
+
+func (collector *fakeCollector) SelectAction(_ *domain.Faction, _ []action.Action) (action.Action, error) {
+	panic("SelectAction: not used in attack tests")
+}
+
+func (collector *fakeCollector) AwaitCheckpoint(_ string) error { return nil }
 
 // makeAttackRulebook returns a minimal Rulebook with three asset definitions:
 //   - "force-attacker": has an Attack profile (Force vs Force, 1d6 damage)

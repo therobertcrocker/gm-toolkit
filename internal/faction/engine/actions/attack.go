@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -14,13 +14,13 @@ import (
 // completion. Each attacker may attack once; a defender may defend multiple
 // times. Only known (non-stealthy) rival assets may be targeted.
 type AttackAction struct {
-	collector engine.InputCollector
+	collector action.Collector
 	roller    domain.Roller
 	attackers []*domain.Asset
 	mutations []domain.Mutation
 }
 
-func NewAttack(collector engine.InputCollector, roller domain.Roller) *AttackAction {
+func NewAttack(collector action.Collector, roller domain.Roller) *AttackAction {
 	return &AttackAction{collector: collector, roller: roller}
 }
 

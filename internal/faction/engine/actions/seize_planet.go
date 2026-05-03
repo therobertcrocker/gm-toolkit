@@ -5,19 +5,19 @@ import (
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 type SeizePlanet struct {
 	factionID    string
-	collector    engine.InputCollector
+	collector    action.Collector
 	targetWorld  string
 	processPhase int
 }
 
-func NewSeizePlanet(collector engine.InputCollector) *SeizePlanet {
+func NewSeizePlanet(collector action.Collector) *SeizePlanet {
 	return &SeizePlanet{collector: collector}
 }
 
