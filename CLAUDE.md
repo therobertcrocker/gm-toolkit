@@ -9,6 +9,7 @@
 5. Before writing any code not specified in an implementation doc, ask. Before making design suggestions, wait for a prompt.
 6. Before making a commit, do the following:
    1. Update the decisions log (`docs/tracking/decisions-log.md`) with any new decisions or changes to existing decisions.
+   2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
 7. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Update the dev journal (`docs/tracking/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
