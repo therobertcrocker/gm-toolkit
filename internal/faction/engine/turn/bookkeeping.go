@@ -7,7 +7,6 @@ import (
 
 // BookkeepingResult captures what happened during a faction's bookkeeping phase.
 type BookkeepingResult struct {
-	IncomeGained       int
 	WealthIncome       int
 	StatIncome         int
 	AssetsLost         []AssetRef
@@ -45,7 +44,6 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 	mutations = append(mutations, domain.CoinDelta{FactionID: f.ID, Delta: total, Cause: "bookkeeping"})
 
 	result := applyMaintenance(f, f.Coin+total, &mutations)
-	result.IncomeGained = total
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
 

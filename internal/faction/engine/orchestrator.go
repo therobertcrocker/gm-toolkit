@@ -10,6 +10,15 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
+// Checkpoint constants name the pipeline phases where the orchestrator pauses
+// for caller acknowledgement via InputCollector.AwaitCheckpoint.
+const (
+	CheckpointBookkeeping  = "bookkeeping"
+	CheckpointActionResult = "action_result"
+	CheckpointGoalLocked   = "goal_locked"
+	CheckpointCycleSummary = "cycle_summary"
+)
+
 // RunFactionTurn drives one faction's turn from goal-lock check through state
 // save. Errors are reported to the observer via OnError and returned to the
 // caller; partial mutations already applied stay applied.

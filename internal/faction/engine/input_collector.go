@@ -15,11 +15,3 @@ type InputCollector interface {
 	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	AwaitCheckpoint(phase string) error
 }
-
-// Checkpoint constants name the pipeline phases where the orchestrator pauses.
-const (
-	CheckpointBookkeeping  = "bookkeeping"
-	CheckpointActionResult = "action_result"
-	CheckpointGoalLocked   = "goal_locked"
-	CheckpointCycleSummary = "cycle_summary"
-)
