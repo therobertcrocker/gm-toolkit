@@ -5,6 +5,8 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -30,14 +32,14 @@ func (e *Engine) RunFactionTurn(
 	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook)
 	observer.OnGoalLockApplied(faction, lock, lockMutations)
 
-	if lock.Type == LockSkip {
+	if lock.Type == goal.LockSkip {
 		if len(lockMutations) > 0 {
 			if err := e.applyAndRecord(factionState, faction, lockMutations, cfg); err != nil {
 				observer.OnError(faction, err)
 				return false, err
 			}
 		}
-		if err := collector.AwaitCheckpoint(PhaseGoalLocked); err != nil {
+		if err := collector.AwaitCheckpoint(CheckpointGoalLocked); err != nil {
 			observer.OnError(faction, err)
 			return false, err
 		}
@@ -63,29 +65,29 @@ func (e *Engine) RunFactionTurn(
 		}
 	}
 	observer.OnBookkeepingApplied(faction, bookResult, bookMutations)
-	if err := collector.AwaitCheckpoint(PhaseBookkeeping); err != nil {
+	if err := collector.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
 		observer.OnError(faction, err)
 		return false, err
 	}
 
 	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collector)
-	if lock.Type == LockRestrictActions {
+	if lock.Type == goal.LockRestrictActions {
 		available = filterAllowedActions(available, lock.AllowedActions)
 	}
 
-	action, err := collector.SelectAction(faction, available)
+	selectedAction, err := collector.SelectAction(faction, available)
 	if err != nil {
 		observer.OnError(faction, err)
 		return false, err
 	}
-	if action == nil {
+	if selectedAction == nil {
 		observer.OnFactionSkipped(faction)
 		return e.finishFactionTurn(factionState, faction, cfg, collector, observer)
 	}
 
-	observer.OnActionSelected(faction, action)
+	observer.OnActionSelected(faction, selectedAction)
 
-	actionMutations, err := e.Action.Run(action, faction, factionState, e.Rulebook)
+	actionMutations, err := e.Action.Run(selectedAction, faction, factionState, e.Rulebook)
 	if err != nil {
 		observer.OnError(faction, err)
 		return false, err
@@ -102,8 +104,8 @@ func (e *Engine) RunFactionTurn(
 		observer.OnError(faction, err)
 		return false, err
 	}
-	observer.OnActionResolved(faction, action, combined)
-	if err := collector.AwaitCheckpoint(PhaseActionResult); err != nil {
+	observer.OnActionResolved(faction, selectedAction, combined)
+	if err := collector.AwaitCheckpoint(CheckpointActionResult); err != nil {
 		observer.OnError(faction, err)
 		return false, err
 	}
@@ -154,7 +156,7 @@ func (e *Engine) finishFactionTurn(
 
 	if cycleDone {
 		observer.OnCycleCompleted(factionState.CycleNumber, factionState)
-		if err := collector.AwaitCheckpoint(PhaseCycleSummary); err != nil {
+		if err := collector.AwaitCheckpoint(CheckpointCycleSummary); err != nil {
 			observer.OnError(faction, err)
 			return cycleDone, err
 		}
@@ -176,11 +178,7 @@ func (e *Engine) applyAndRecord(
 		return nil
 	}
 	e.Mutation.Apply(factionState, mutations)
-	record, err := buildEventRecord(factionState, faction, mutations)
-	if err != nil {
-		return fmt.Errorf("building event record: %w", err)
-	}
-	if err := e.History.Record(cfg.HistoryPath, record); err != nil {
+	if err := e.History.Record(cfg.HistoryPath, factionState, faction, mutations); err != nil {
 		return fmt.Errorf("recording history: %w", err)
 	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
@@ -192,7 +190,7 @@ func (e *Engine) applyAndRecord(
 // filterAllowedActions narrows a list of available actions to those whose
 // Name() appears in allowed. Used when a goal lock restricts the action set
 // (e.g. Planetary Seizure Phase 1 → Attack only).
-func filterAllowedActions(available []Action, allowed []string) []Action {
+func filterAllowedActions(available []action.Action, allowed []string) []action.Action {
 	if len(allowed) == 0 {
 		return nil
 	}
@@ -200,10 +198,10 @@ func filterAllowedActions(available []Action, allowed []string) []Action {
 	for _, name := range allowed {
 		allowedSet[name] = true
 	}
-	filtered := make([]Action, 0, len(available))
-	for _, action := range available {
-		if allowedSet[action.Name()] {
-			filtered = append(filtered, action)
+	filtered := make([]action.Action, 0, len(available))
+	for _, a := range available {
+		if allowedSet[a.Name()] {
+			filtered = append(filtered, a)
 		}
 	}
 	return filtered

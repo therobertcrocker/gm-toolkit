@@ -11,7 +11,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/actions"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -163,7 +165,7 @@ func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
 	h.addFaction("alpha", "Tartarus", 4, 3, 2)
 	h.addFaction("beta", "Hadrian", 4, 3, 2)
 
-	h.collector.SelectActionFn = func(_ *domain.Faction, available []engine.Action) (engine.Action, error) {
+	h.collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
 		for _, action := range available {
 			if action.Name() == "Sell Asset" {
 				return action, nil
@@ -242,7 +244,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 	h.addFaction("beta", "Hadrian", 4, 3, 2)
 
 	// Beta will pick Sell Asset; alpha is locked-skip and shouldn't reach SelectAction.
-	h.collector.SelectActionFn = func(faction *domain.Faction, available []engine.Action) (engine.Action, error) {
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID == "alpha" {
 			t.Fatalf("SelectAction called for locked faction alpha")
 		}
@@ -296,7 +298,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 			alphaLock = ev.Payload.(testharness.GoalLockPayload)
 		}
 	}
-	if alphaLock.Lock.Type != engine.LockSkip {
+	if alphaLock.Lock.Type != goal.LockSkip {
 		t.Errorf("alpha lock type: got %v, want LockSkip", alphaLock.Lock.Type)
 	}
 	if len(alphaLock.Mutations) != 1 {
@@ -342,7 +344,7 @@ func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
 	// Capture what SelectAction sees for alpha. The lock should have already
 	// filtered the available list down to Attack only.
 	var alphaAvailable []string
-	h.collector.SelectActionFn = func(faction *domain.Faction, available []engine.Action) (engine.Action, error) {
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID == "alpha" {
 			alphaAvailable = nil
 			for _, action := range available {

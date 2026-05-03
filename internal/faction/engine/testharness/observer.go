@@ -5,7 +5,9 @@ package testharness
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -32,7 +34,7 @@ func (r *RecordingObserver) OnFactionSkipped(faction *domain.Faction) {
 	r.Events = append(r.Events, ObservedEvent{Kind: "FactionSkipped", Faction: faction})
 }
 
-func (r *RecordingObserver) OnGoalLockApplied(faction *domain.Faction, lock engine.GoalLock, mutations []domain.Mutation) {
+func (r *RecordingObserver) OnGoalLockApplied(faction *domain.Faction, lock goal.GoalLock, mutations []domain.Mutation) {
 	r.Events = append(r.Events, ObservedEvent{
 		Kind:    "GoalLockApplied",
 		Faction: faction,
@@ -40,7 +42,7 @@ func (r *RecordingObserver) OnGoalLockApplied(faction *domain.Faction, lock engi
 	})
 }
 
-func (r *RecordingObserver) OnBookkeepingApplied(faction *domain.Faction, result engine.BookkeepingResult, mutations []domain.Mutation) {
+func (r *RecordingObserver) OnBookkeepingApplied(faction *domain.Faction, result turn.BookkeepingResult, mutations []domain.Mutation) {
 	r.Events = append(r.Events, ObservedEvent{
 		Kind:    "BookkeepingApplied",
 		Faction: faction,
@@ -48,15 +50,15 @@ func (r *RecordingObserver) OnBookkeepingApplied(faction *domain.Faction, result
 	})
 }
 
-func (r *RecordingObserver) OnActionSelected(faction *domain.Faction, action engine.Action) {
-	r.Events = append(r.Events, ObservedEvent{Kind: "ActionSelected", Faction: faction, Payload: action})
+func (r *RecordingObserver) OnActionSelected(faction *domain.Faction, selectedAction action.Action) {
+	r.Events = append(r.Events, ObservedEvent{Kind: "ActionSelected", Faction: faction, Payload: selectedAction})
 }
 
-func (r *RecordingObserver) OnActionResolved(faction *domain.Faction, action engine.Action, mutations []domain.Mutation) {
+func (r *RecordingObserver) OnActionResolved(faction *domain.Faction, selectedAction action.Action, mutations []domain.Mutation) {
 	r.Events = append(r.Events, ObservedEvent{
 		Kind:    "ActionResolved",
 		Faction: faction,
-		Payload: ActionResolvedPayload{Action: action, Mutations: mutations},
+		Payload: ActionResolvedPayload{Action: selectedAction, Mutations: mutations},
 	})
 }
 
@@ -87,19 +89,19 @@ func (r *RecordingObserver) Kinds() []string {
 
 // GoalLockPayload is the Payload type for GoalLockApplied events.
 type GoalLockPayload struct {
-	Lock      engine.GoalLock
+	Lock      goal.GoalLock
 	Mutations []domain.Mutation
 }
 
 // BookkeepingPayload is the Payload type for BookkeepingApplied events.
 type BookkeepingPayload struct {
-	Result    engine.BookkeepingResult
+	Result    turn.BookkeepingResult
 	Mutations []domain.Mutation
 }
 
 // ActionResolvedPayload is the Payload type for ActionResolved events.
 type ActionResolvedPayload struct {
-	Action    engine.Action
+	Action    action.Action
 	Mutations []domain.Mutation
 }
 

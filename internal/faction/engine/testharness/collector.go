@@ -2,7 +2,7 @@ package testharness
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -15,13 +15,13 @@ import (
 // AwaitCheckpoint always returns nil so headless tests do not block.
 type ScriptedCollector struct {
 	SelectAssetFn                func([]*domain.Asset, *loader.Rulebook) (*domain.Asset, error)
-	SelectRepairOrdersFn         func(*domain.Faction, []*domain.Asset, *loader.Rulebook) ([]engine.RepairOrder, error)
-	SelectBuyOrderFn             func([]string, []*domain.AssetDefinition) (engine.BuyOrder, error)
-	SelectRefitOrderFn           func([]engine.RefitOption, *loader.Rulebook) (engine.RefitOrder, error)
+	SelectRepairOrdersFn         func(*domain.Faction, []*domain.Asset, *loader.Rulebook) ([]action.RepairOrder, error)
+	SelectBuyOrderFn             func([]string, []*domain.AssetDefinition) (action.BuyOrder, error)
+	SelectRefitOrderFn           func([]action.RefitOption, *loader.Rulebook) (action.RefitOrder, error)
 	SelectAttackersFn            func([]*domain.Asset, *loader.Rulebook) ([]*domain.Asset, error)
 	SelectDefenderFn             func(*domain.Asset, []*domain.Asset, *loader.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBaseFn      func(*domain.Faction, *domain.Base, int) (bool, error)
-	SelectExpandInfluenceOrderFn func(*domain.Faction, *state.FactionState) (engine.ExpandInfluenceOrder, error)
+	SelectExpandInfluenceOrderFn func(*domain.Faction, *state.FactionState) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn     func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn        func(*domain.Faction, []*domain.Asset, *loader.Rulebook) ([]*domain.Asset, error)
 	SelectAbilityAssetsFn        func(*domain.Faction, []*domain.Asset, *loader.Rulebook) ([]*domain.Asset, error)
@@ -30,7 +30,7 @@ type ScriptedCollector struct {
 	ConfirmAbilityAppliedFn      func(*domain.Asset, *domain.AssetDefinition) (bool, error)
 	SelectBribeTargetFn          func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTargetFn          func(*domain.Faction, *state.FactionState) (string, error)
-	SelectActionFn               func(*domain.Faction, []engine.Action) (engine.Action, error)
+	SelectActionFn               func(*domain.Faction, []action.Action) (action.Action, error)
 }
 
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error) {
@@ -40,25 +40,25 @@ func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *loader
 	return nil, nil
 }
 
-func (c *ScriptedCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *loader.Rulebook) ([]engine.RepairOrder, error) {
+func (c *ScriptedCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *loader.Rulebook) ([]action.RepairOrder, error) {
 	if c.SelectRepairOrdersFn != nil {
 		return c.SelectRepairOrdersFn(faction, damaged, rulebook)
 	}
 	return nil, nil
 }
 
-func (c *ScriptedCollector) SelectBuyOrder(worlds []string, purchasable []*domain.AssetDefinition) (engine.BuyOrder, error) {
+func (c *ScriptedCollector) SelectBuyOrder(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
 	if c.SelectBuyOrderFn != nil {
 		return c.SelectBuyOrderFn(worlds, purchasable)
 	}
-	return engine.BuyOrder{}, nil
+	return action.BuyOrder{}, nil
 }
 
-func (c *ScriptedCollector) SelectRefitOrder(options []engine.RefitOption, rulebook *loader.Rulebook) (engine.RefitOrder, error) {
+func (c *ScriptedCollector) SelectRefitOrder(options []action.RefitOption, rulebook *loader.Rulebook) (action.RefitOrder, error) {
 	if c.SelectRefitOrderFn != nil {
 		return c.SelectRefitOrderFn(options, rulebook)
 	}
-	return engine.RefitOrder{}, nil
+	return action.RefitOrder{}, nil
 }
 
 func (c *ScriptedCollector) SelectAttackers(eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error) {
@@ -82,11 +82,11 @@ func (c *ScriptedCollector) ConfirmRedirectToBase(defenderFaction *domain.Factio
 	return false, nil
 }
 
-func (c *ScriptedCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState) (engine.ExpandInfluenceOrder, error) {
+func (c *ScriptedCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState) (action.ExpandInfluenceOrder, error) {
 	if c.SelectExpandInfluenceOrderFn != nil {
 		return c.SelectExpandInfluenceOrderFn(faction, factionState)
 	}
-	return engine.ExpandInfluenceOrder{}, nil
+	return action.ExpandInfluenceOrder{}, nil
 }
 
 func (c *ScriptedCollector) ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error) {
@@ -145,7 +145,7 @@ func (c *ScriptedCollector) SelectSeizeTarget(faction *domain.Faction, factionSt
 	return "", nil
 }
 
-func (c *ScriptedCollector) SelectAction(faction *domain.Faction, available []engine.Action) (engine.Action, error) {
+func (c *ScriptedCollector) SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error) {
 	if c.SelectActionFn != nil {
 		return c.SelectActionFn(faction, available)
 	}
