@@ -1,8 +1,8 @@
 # Core Engine Orchestrator — Implementation Plan
 
-A phased build guide for moving turn orchestration from the TUI into the Core Engine. Three new collaboration interfaces (`InputCollector` extension, `TurnObserver`, `EventHook`) frame the engine's relationship with its callers. `EventHook` is documented as a seam in this refactor; its dispatcher is deferred until the Tag Engine lands.
+A phased build guide for making the Core Engine the orchestrator of a faction turn. Three new collaboration interfaces (`InputCollector` extension, `TurnObserver`, `EventHook`) frame the engine's relationship with its callers. `EventHook` is documented as a seam in this refactor; its dispatcher is deferred until the Tag Engine lands.
 
-The deliverable of this planning session is this implementation doc itself, intended to live at `docs/implementation/core-engine-orchestrator.md` once approved.
+This branch covers the **internal engine refactor only**. The TUI was deleted in Phase 1 to clear the way; a fresh TUI will be built against the new interfaces on a separate branch.
 
 **Branch:** `feature/core-engine-orchestrator`
 
@@ -10,34 +10,35 @@ The deliverable of this planning session is this implementation doc itself, inte
 
 ## Context
 
-The Core Engine (`internal/faction/engine/core.go:9-33`) currently composes six sub-engines but does not run them. The full per-faction pipeline — resume/skip prompts, goal lock evaluation, bookkeeping, action selection, action resolution, mutation application, history recording, state persistence — is driven by `TurnModel` in `cmd/faction-manager/tui/model.go`. Two consequences follow:
+Before Phase 1, the Core Engine composed six sub-engines but did not run them. The full per-faction pipeline — resume/skip prompts, goal lock evaluation, bookkeeping, action selection, action resolution, mutation application, history recording, state persistence — was driven by `TurnModel` in `cmd/faction-manager/tui/model.go`. Two consequences followed:
 
-- The pipeline cannot run without the Bubbletea event loop. Headless tests, AI batch runs, and any future non-TUI frontend are blocked.
-- Adding a new action that needs mid-resolution prompts requires touching the TUI state machine, the event channels, and the pending-message fields in `TurnModel`. The pattern is re-derived each time.
+- The pipeline could not run without the Bubbletea event loop. Headless tests, AI batch runs, and any future non-TUI frontend were blocked.
+- Adding a new action that needed mid-resolution prompts required touching the TUI state machine, the event channels, and the pending-message fields in `TurnModel`. The pattern was re-derived each time.
 
-The intended outcome is for the Core Engine to be the orchestrator: it calls the sub-engines in sequence, asks the caller for decisions through `InputCollector`, narrates progress through `TurnObserver`, and (in a future PR) reacts to mutations through `EventHook`. The TUI becomes a display layer that implements two interfaces and reacts to engine-driven events rather than driving the engine.
+The intended outcome is for the Core Engine to be the orchestrator: it calls the sub-engines in sequence, asks the caller for decisions through `InputCollector`, narrates progress through `TurnObserver`, and (in a future PR) reacts to mutations through `EventHook`. A future TUI implements `InputCollector` + `TurnObserver` and reacts to engine-driven events rather than driving the engine.
+
+Phase 1 cleared the runway by deleting the TUI and the `turn` Cobra command. Phase 2 (this session's work) lands the new interfaces and orchestrator. Phase 3 looks for restructure / cleanup opportunities across the engine package.
 
 <br/>
 
 ## Shape of the Change
 
 ```
-BEFORE                                          AFTER
-──────                                          ─────
-Cobra cmd (turn)                                Cobra cmd (turn)
-    │                                               │   constructs *config.Config
-    └─► TUI.RunTurnTUI ──┐                          │   constructs TUICollector, TUIObserver
-                         │ owns pipeline,           ▼
-                         │ calls each sub-engine,   TUI.RunTurnTUI
-                         │ Apply / Record / Save        │   spawns goroutine that calls:
-                         ▼                              ▼
-        ┌────────┬────────┬────────┐        Engine.RunCycle ──► Engine.RunFactionTurn
-        ▼        ▼        ▼        ▼            │  drives pipeline
-      Turn    Goal    Action    Mutation        │  Apply / Record / Save lives here
-                                  History       ▼
-                                  state.Save     ┌──── InputCollector (extended) ──► TUI sub-models
-                                                 ├──── TurnObserver  ──► TUI snapshot/log
-                                                 └──── EventHook     ──► (interface only; no dispatch)
+BEFORE                                  AFTER (Phase 2)
+──────                                  ────────────────
+TUI owns pipeline,                      caller (test harness today,
+calls each sub-engine,                  fresh TUI tomorrow):
+calls Apply / Record / Save                 │   constructs *config.Config
+        │                                   │   constructs an InputCollector
+        ▼                                   │   constructs a TurnObserver
+┌──────┬──────┬──────┐                      ▼
+▼      ▼      ▼      ▼              Engine.RunCycle ──► Engine.RunFactionTurn
+Turn  Goal  Action  Mutation            │   drives pipeline,
+                    History             │   owns Apply / Record / Save
+                    state.Save          ▼
+                                ┌── InputCollector (extended) ──► caller decisions
+                                ├── TurnObserver                ──► caller display / logs
+                                └── EventHook (interface only)  ──► future Tag Engine
 ```
 
 ```mermaid
@@ -68,18 +69,19 @@ flowchart TD
 
 ## Resolved Decisions
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| 1 | Acknowledgement gating lives on `InputCollector` as `AwaitCheckpoint(phase string) error` | Collector owns turn pacing; observers stay strictly fire-and-forget. Manual TUI blocks until GM continues; test/AI implementations return immediately. |
-| 2 | Action selection lives on `InputCollector` as `SelectAction(faction, available) (Action, error)` | Engine computes `AvailableActions` itself; observer is not in the decision loop. |
-| 3 | Multiple `EventHook` implementations fire in registration order | Simplest. Defer alphabetical-by-name decision until Tag Engine lands. |
-| 4 | Hook recursion bounded at depth 5; on cap trip the engine logs and stops | Surface content bugs rather than silently absorb runaway loops. |
-| 5 | `EventHook` ships as interface + documented dispatch site only — no registry, no `RegisterHook`, no dispatcher, no default no-op | The seam is needed now to lock the mutation-apply order; the dispatcher has no consumer until the Tag Engine ships. YAGNI. |
-| 6 | Observer and collector are passed per-call to `RunFactionTurn` / `RunCycle`, not stored on `Engine` | Engine stays a long-lived stateless toolbox. The same engine instance can serve a manual TUI run today and a headless test tomorrow without re-construction. |
-| 7 | Runtime config (state path, history path) flows through a new `internal/faction/config` package holding a `Config` struct | Establishes the config pattern now while we're already moving things across the engine/CLI boundary; future runtime knobs (dry-run, log level, AI settings) join the same struct without churn. |
-| 8 | `Turn.ApplyBookkeeping` is refactored to return mutations without applying them; the orchestrator owns apply + record | Removes the asymmetry where one sub-engine writes state and the others don't. Makes mutation flow uniform across the pipeline. |
-| 9 | `ActionFactory` becomes `func(InputCollector) Action`; `AvailableActions` takes a collector and returns runnable actions | Without this, `SelectAction` returning `Action` is broken — current factories produce nil-collector stubs only good for `Validate`. The TUI's switch-on-Name reconstruction logic vanishes. Roller and AbilityEngine ride the factory closure (they're owned by Engine). |
+| #  | Decision | Rationale |
+|----|----------|-----------|
+| 1  | Acknowledgement gating lives on `InputCollector` as `AwaitCheckpoint(phase string) error` | Collector owns turn pacing; observers stay strictly fire-and-forget. Manual implementations block until GM continues; test/AI implementations return immediately. |
+| 2  | Action selection lives on `InputCollector` as `SelectAction(faction, available) (Action, error)` | Engine computes `AvailableActions` itself; observer is not in the decision loop. |
+| 3  | Multiple `EventHook` implementations fire in registration order | Simplest. Defer alphabetical-by-name decision until Tag Engine lands. |
+| 4  | Hook recursion bounded at depth 5; on cap trip the engine logs and stops | Surface content bugs rather than silently absorb runaway loops. |
+| 5  | `EventHook` ships as interface + documented dispatch site only — no registry, no `RegisterHook`, no dispatcher, no default no-op | The seam is needed now to lock the mutation-apply order; the dispatcher has no consumer until the Tag Engine ships. YAGNI. |
+| 6  | Observer and collector are passed per-call to `RunFactionTurn` / `RunCycle`, not stored on `Engine` | Engine stays a long-lived stateless toolbox. The same engine instance can serve a manual run today and a headless test tomorrow without re-construction. |
+| 7  | Runtime config (state path, history path) flows through a new `internal/faction/config` package holding a `Config` struct | Establishes the config pattern now while we're already moving things across the engine/CLI boundary; future runtime knobs (dry-run, log level, AI settings) join the same struct without churn. |
+| 8  | `Turn.ApplyBookkeeping` is refactored to return mutations without applying them; the orchestrator owns apply + record | Removes the asymmetry where one sub-engine writes state and the others don't. Makes mutation flow uniform across the pipeline. |
+| 9  | `ActionFactory` becomes `func(InputCollector) Action`; `AvailableActions` takes a collector and returns runnable actions | Without this, `SelectAction` returning `Action` is broken — current factories produce nil-collector stubs only good for `Validate`. The TUI's switch-on-Name reconstruction logic vanishes. Roller and AbilityEngine ride the factory closure (they're owned by Engine). |
 | 10 | `Engine` gains a `Rand domain.Roller` field defaulting to `engine.NewRandRoller()`; tests can swap it | Action factories that need a roller (Attack, ExpandInfluence) capture `e.Rand` in the closure. Determinism in headless tests requires a single injection point. |
+| 11 | Action registration moves to a `RegisterDefaultActions(*Engine)` helper in `internal/faction/engine/actions` | The previous registration site (`cmd/faction-manager/commands/turn.go`) was deleted in Phase 1. Putting the helper next to the action structs keeps engine and actions free of import cycles, and gives test harnesses + future TUI a single call to wire up the default action set. |
 
 <br/>
 
@@ -87,7 +89,7 @@ flowchart TD
 
 ### `InputCollector` (extended)
 
-The existing 16 methods on `internal/faction/engine/input_collector.go:12-34` are unchanged. Two methods are added:
+The existing 16 methods on `internal/faction/engine/input_collector.go` are unchanged. Two methods are added:
 
 ```go
 type InputCollector interface {
@@ -177,7 +179,7 @@ func (e *Engine) RunCycle(
 ) error
 ```
 
-The resume / abandon / start-new prompt stays in the caller (TUI). By the time `RunCycle` is called the caller has already committed; `RunCycle` resumes from the cursor if `Turn.InProgress` is true.
+The resume / abandon / start-new prompt is the caller's responsibility. By the time `RunCycle` is called the caller has already committed; `RunCycle` resumes from the cursor if `Turn.InProgress` is true.
 
 <br/>
 
@@ -193,35 +195,46 @@ type Config struct {
 }
 ```
 
-Scope note on `paths/`: the existing `cmd/faction-manager/paths` package is also consumed by `cmd/faction-manager/commands/narrate/cmd.go` (uses `p.Narratives`) and `cmd/faction-manager/commands/faction/{cmd.go,delete.go}` (uses `p.State`). Those are non-engine commands; their needs (a `Narratives` directory, plus state path) don't belong in `config.Config`. **Keep `paths/` as the CLI's path-derivation helper for now.** Phase 2 changes only the `turn` command: it computes a `*config.Config` from `paths.New(campaignID)` (taking `.State` and `.History`) and passes it to the engine. No `paths/` deletion in this refactor.
+Scope note on `paths/`: the existing `cmd/faction-manager/paths` package is also consumed by `cmd/faction-manager/commands/narrate/cmd.go` (uses `p.Narratives`) and `cmd/faction-manager/commands/faction/{cmd.go,delete.go}` (uses `p.State`). Those non-engine commands' needs (a `Narratives` directory, plus state path) don't belong in `config.Config`. **Keep `paths/` as the CLI's path-derivation helper for now.** Future callers building a `*config.Config` derive it from `paths.New(campaignID).State` and `.History`.
 
 <br/>
 
-## ActionFactory and Roller (Decision #9, #10)
+## ActionFactory and Roller (Decision #9, #10, #11)
 
-`ActionFactory` changes from `func() Action` to `func(InputCollector) Action`. Engine gains a `Rand domain.Roller` field initialized to `engine.NewRandRoller()` in `New(...)`. Action factories that need a roller capture `e.Rand` in the closure; same for `e.AbilityEngine`.
+`ActionFactory` changes from `func() Action` to `func(InputCollector) Action`. `Engine` gains a `Rand domain.Roller` field initialized to `engine.NewRandRoller()` in `New(...)`. Action factories that need a roller capture `e.Rand` in the closure; same for `e.AbilityEngine`.
 
 `AvailableActions(faction, factionState, rulebook, collector)` calls each factory with the collector and runs `Validate`. Returned actions are runnable as-is — no second construction step in the orchestrator.
 
-CLI registration moves to look like:
+Registration lives in a single helper inside the actions package:
 
 ```go
-// cmd/faction-manager/commands/turn.go (after change)
-e := a.Engine
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewSellAsset(c) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewRepairFaction() })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewRepairAsset(c) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewBuyAsset(c) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewRefitAsset(c) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewAttack(c, e.Rand) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewExpandInfluence(c, e.Rand) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewBribe(c) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewUseAssetAbility(c, e.Rand, e.AbilityEngine) })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewAbandonGoal() })
-e.Action.Register(func(c engine.InputCollector) engine.Action { return actions.NewSeizePlanet(c) })
+// internal/faction/engine/actions/register.go
+package actions
+
+func RegisterDefaultActions(e *engine.Engine) {
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewSellAsset(c) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewRepairFaction() })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewRepairAsset(c) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewBuyAsset(c) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewRefitAsset(c) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewAttack(c, e.Rand) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewExpandInfluence(c, e.Rand) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewBribe(c) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewUseAssetAbility(c, e.Rand, e.AbilityEngine) })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewAbandonGoal() })
+    e.Action.Register(func(c engine.InputCollector) engine.Action { return NewSeizePlanet(c) })
+}
 ```
 
-Note: `SeizePlanet` is currently referenced in the TUI but missing from registration in `cmd/faction-manager/commands/turn.go`. The new registration list adds it; this is a minor side fix.
+Callers (test harness today, future TUI tomorrow) do:
+
+```go
+e, _ := engine.New(dataDir)
+actions.RegisterDefaultActions(e)
+e.RunCycle(...)
+```
+
+The actions package already imports the engine package (for `InputCollector` etc.), so this helper introduces no new cycle.
 
 <br/>
 
@@ -305,57 +318,11 @@ Goal-lock and bookkeeping mutations each get their own `applyAndRecord` cycle (a
 
 ## Bookkeeping Signature Change (Decision #8)
 
-Current (`internal/faction/engine/turn_engine.go:100-129`): `ApplyBookkeeping` builds mutations, calls `t.mutation.Apply(...)` internally, advances `Phase` to `PhaseAction`, returns `BookkeepingResult` (with `RecordedMutations` populated).
+Current (`internal/faction/engine/turn_engine.go`): `ApplyBookkeeping` builds mutations, calls `t.mutation.Apply(...)` internally, advances `Phase` to `PhaseAction`, returns `BookkeepingResult` (with `RecordedMutations` populated).
 
 New: returns `(BookkeepingResult, []domain.Mutation, error)`. Does not call `Apply`. The orchestrator owns apply/record. The `RecordedMutations` field on `BookkeepingResult` is dropped (callers use the returned slice).
 
 The narrative digest (`internal/faction/narrative/digest`) reads from history.jsonl, not from `RecordedMutations` — so removing the field is safe.
-
-<br/>
-
-## TUI Impact
-
-### Collapses (deleted from `cmd/faction-manager/tui/model.go`)
-
-- `turnState` enum loses: `stateBookkeeping`, `stateActionSelect`, `stateActionInput`, `stateActionResult`, `stateGoalLocked`, `stateCycleSummary`, `stateDone`. Sub-resolution states stay (`stateAttackRedirect`, `stateExpandInfluenceRivalConfirm`, `stateExpandInfluenceSelectAttackers`, `stateAbilityMoveDestination`, `stateAbilityFactionTestTarget`, `stateAbilityConfirmApplied`) — they correspond to mid-`Action.Run` collector callbacks.
-- `AttackCompletedMsg`, `ExpandInfluenceCompletedMsg`, `AbilityCompletedMsg` (`cmd/faction-manager/tui/model.go:53-70`) are deleted entirely; the engine drives Action.Run now, no per-action goroutines remain in the TUI.
-- `commitAndAdvance`, `handleAttackCompleted`, `handleExpandInfluenceCompleted`, `handleAbilityCompleted`, `proceedAfterGoalSelect`, `startBookkeeping`, `handleGoalLockedAck`, `runAction`, the post-skip Advance/Save/Record portion of `handleSkipChoice`, `startAttackResolution`, `startExpandInfluenceResolution`, `startAbilityResolution`, `handleActionSelected` — all of this orchestration logic moves into the engine.
-- `buildEventRecord` (`cmd/faction-manager/tui/model.go:1086-1101`) moves into the engine package.
-- `filterAllowedActions` (`cmd/faction-manager/tui/model.go:988-1000`) moves into the engine package.
-
-### Stays
-
-- `TUICollector` channel-bridge pattern (`cmd/faction-manager/tui/collector.go:11-25`). The async-from-sync bridge is still correct for `ConfirmRedirectToBase`, `ConfirmRivalFreeAttack`, `SelectBaseAttackers`, `SelectMoveDestination`, `SelectFactionTestTarget`, `ConfirmAbilityApplied`. Existing 16 methods stay.
-- `phases.NewResumeTurnModel`, `phases.NewSkipTurnModel`, `phases.NewGoalSelectModel`, `phases.NewBookkeepingModel`, `phases.NewActionSelectModel`, `phases.NewCycleSummaryModel`, all `inputs/*` sub-models — all stay; what changes is what message they emit (collector responses or checkpoint acks rather than TUI state advancement).
-- The resume / abandon / start-new prompt stays in the TUI; it precedes engine entry.
-
-### Newly implemented
-
-- `cmd/faction-manager/tui/observer.go` — `TUIObserver` implementing `engine.TurnObserver`. Each method posts a `tea.Msg` (e.g. `factionStartedMsg`, `actionResolvedMsg`, `cycleCompletedMsg`). The TUI updates its left-panel snapshot, narration log, and cycle summary in response.
-- `TUICollector.SelectAction` — posts `ActionSelectRequestMsg{Available, ResponseCh}` to the event loop, blocks on `<-ResponseCh`. The TUI renders `phases.NewActionSelectModel(available)` and writes the chosen `Action` (or nil for skip) back. Also handles the per-action input flow: when SelectAction returns, the TUI's existing `inputs.New*Model` paths feed the collector's input fields before the engine calls `Action.Run`.
-- `TUICollector.AwaitCheckpoint(phase)` — posts `CheckpointMsg{Phase, ResponseCh}`, blocks. The TUI renders the appropriate "press to continue" prompt for the named phase and acks on keypress. This replaces the existing `stateActionResult` keypress handler (`cmd/faction-manager/tui/model.go:144-148`) and the `handleGoalLockedAck` flow.
-
-### Per-action input collection — wiring detail
-
-The current TUI flow is: action selected → render input model → user enters inputs → goroutine starts Action.Run with collector pre-populated with those inputs → resolution runs.
-
-After the cutover, the engine calls `Action.Run` directly. Inputs (`SelectAttackers`, `SelectBuyOrder`, `SelectBribeTarget`, etc.) are gathered through the same `eventCh` bridge already used for `ConfirmRedirectToBase`. Several `TUICollector` methods that currently return pre-stashed fields (`selectedAsset`, `buyOrder`, `attackers`, etc.) need to switch to the request-response pattern: post a `tea.Msg` carrying a `ResponseCh`, block until the TUI renders the `inputs.New*Model` and responds.
-
-This is the largest non-trivial bit of TUI work. Concretely, these `TUICollector` methods become channel-bridge calls (post msg, block on response) instead of returning pre-stashed fields:
-
-- `SelectAsset` (Sell)
-- `SelectBuyOrder` (Buy)
-- `SelectRefitOrder` (Refit)
-- `SelectRepairOrders` (Repair Asset)
-- `SelectAttackers` and `SelectDefender` (Attack — replaces the pre-stash from `inputs.AttackInputsSelectedMsg`)
-- `SelectExpandInfluenceOrder` (Expand Influence)
-- `SelectAbilityAssets` (Use Asset Ability)
-- `SelectBribeTarget` (Bribe)
-- `SelectSeizeTarget` (Seize Planet)
-
-Each becomes: build `Msg{ResponseCh}`, post on `eventCh`, `<-ResponseCh`. The TUI renders the existing `inputs.New*Model` when the message arrives, posts the response when the user submits.
-
-The seven `TUICollector` fields that pre-stashed input data (`selectedAsset`, `buyOrder`, `refitOrder`, `repairOrders`, `attackers`, `defenders`, `expandInfluenceOrder`, `abilityAssets`, `bribeBase`, `bribeAmount`, `seizeWorld`) are deleted; only `eventCh` remains.
 
 <br/>
 
@@ -393,6 +360,7 @@ Sample integration test (lives in `internal/faction/engine/orchestrator_test.go`
 ```go
 func TestRunCycle_TwoFactionsBuyAndAttack(t *testing.T) {
     eng, factionState, cfg := loadFixture(t, "two-factions-ready-to-attack")
+    actions.RegisterDefaultActions(eng)
 
     collector := &ScriptedCollector{
         SelectActionFn: func(f *domain.Faction, available []engine.Action) (engine.Action, error) {
@@ -417,11 +385,13 @@ func TestRunCycle_TwoFactionsBuyAndAttack(t *testing.T) {
         "TurnStarted", "BookkeepingApplied", "ActionSelected", "ActionResolved", "TurnCompleted",
         "CycleCompleted",
     )
-    assertHistoryHasEvents(t, cfg.HistoryPath, 4) // 2 bookkeeping + 2 action events
+    assertHistoryFileContents(t, cfg.HistoryPath, ...) // load-bearing — reads file from disk
 }
 ```
 
 Tests inject deterministic rolls via `eng.Rand = &fakeRoller{...}` before calling `RunCycle`.
+
+The three Phase 2 integration tests must each assert **observer event sequence AND history file contents** (not just "no error returned"). They are the load-bearing demonstration that orchestration left the TUI; shallow tests defeat the purpose.
 
 <br/>
 
@@ -429,36 +399,41 @@ Tests inject deterministic rolls via `eng.Rand = &fakeRoller{...}` before callin
 
 Three phases. Each is independently shippable and reviewable.
 
-### Phase 1 — Interfaces, config, factory change, engine orchestrator
+### Phase 1 — Delete the TUI and `turn` Cobra command (DONE)
 
-**Goal:** Three interfaces defined; `config.Config` lives in `internal/faction/config`; `ActionFactory` takes a collector; `RunFactionTurn` and `RunCycle` land on `Engine` and pass headless tests; `Turn.ApplyBookkeeping` refactored to return mutations. TUI continues to work via the existing pipeline (with its inline orchestration adapted to the new factory signature). No call site invokes the new entrypoints yet.
+**Status:** shipped in commit `aded14c` on `feature/core-engine-orchestrator`.
+
+The TUI (`cmd/faction-manager/tui/`) and the `turn` Cobra command (`cmd/faction-manager/commands/turn.go`, `cmd/faction-manager/commands/turn/cmd.go`) were removed in full to clear the way for the orchestrator refactor. `buildEventRecord` was moved out of the TUI to `internal/faction/engine/event_record.go` so it survives. `cmd/faction-manager/paths/` and the `narrate` / `faction` Cobra commands were preserved.
+
+The fresh TUI is out of scope for this branch — it will be built against the new interfaces on a separate branch in a separate effort.
+
+---
+
+### Phase 2 — Interfaces, config, factory change, engine orchestrator
+
+**Goal:** Three interfaces defined. `config.Config` lives in `internal/faction/config`. `ActionFactory` takes a collector. `Engine.Rand` field added. `Turn.ApplyBookkeeping` refactored to return mutations without applying them. `RunFactionTurn` and `RunCycle` land on `Engine`. `RegisterDefaultActions` helper exists in the actions package. Headless test harness (`RecordingObserver`, `ScriptedCollector`) lives in `internal/faction/engine/testharness/`. Three load-bearing integration tests pass: two-faction full cycle, `LockSkip`, `LockRestrictActions`.
 
 **Files to create**
 
 - `internal/faction/config/config.go` — `Config` struct.
 - `internal/faction/engine/observer.go` — `TurnObserver` interface, `Phase*` constants.
 - `internal/faction/engine/event_hook.go` — `EventHook` interface only, with the deferred-dispatcher comment.
-- `internal/faction/engine/orchestrator.go` — `RunFactionTurn`, `RunCycle`, internal `applyAndRecord`, `filterAllowedActions` (moved from TUI).
-- `internal/faction/engine/event_record.go` — `buildEventRecord` moved from `cmd/faction-manager/tui/model.go:1086-1101`.
+- `internal/faction/engine/orchestrator.go` — `RunFactionTurn`, `RunCycle`, internal `applyAndRecord`, `filterAllowedActions`.
+- `internal/faction/engine/actions/register.go` — `RegisterDefaultActions(*engine.Engine)` helper.
 - `internal/faction/engine/testharness/observer.go` — `RecordingObserver`.
 - `internal/faction/engine/testharness/collector.go` — `ScriptedCollector`.
-- `internal/faction/engine/orchestrator_test.go` — three tests minimum:
-  1. Two factions, both pick an action, full cycle completes; assert observer event sequence and history line count.
-  2. One faction with `LockSkip` (Change Homeworld countdown), one normal turn; assert `OnGoalLockApplied` fires and bookkeeping is skipped on the locked faction.
-  3. One faction with `LockRestrictActions` (Planetary Seizure combat phase); assert `SelectAction` is called with only the Attack action.
+- `internal/faction/engine/orchestrator_test.go` — three load-bearing tests:
+  1. Two factions, both pick an action, full cycle completes. Assert observer event sequence and history file contents.
+  2. One faction with `LockSkip` (Change Homeworld countdown), one normal turn. Assert `OnGoalLockApplied` fires, bookkeeping is skipped on the locked faction, history records the lock event with `cause = "change_homeworld_transit"`.
+  3. One faction with `LockRestrictActions` (Planetary Seizure combat phase). Assert `SelectAction` is called with only the Attack action, history records the resulting mutation event.
 
 **Files to modify**
 
-- `internal/faction/engine/input_collector.go` — append `SelectAction` and `AwaitCheckpoint`; declare the `Phase*` constants.
+- `internal/faction/engine/input_collector.go` — append `SelectAction` and `AwaitCheckpoint`; declare the `Phase*` constants (or co-locate in `observer.go` — implementor's choice).
 - `internal/faction/engine/core.go` — add `Rand domain.Roller` field; initialize in `New(...)` to `engine.NewRandRoller()`.
 - `internal/faction/engine/action_engine.go` — change `ActionFactory` to `func(InputCollector) Action`; change `AvailableActions` to take a collector; iterate factories with the collector.
 - `internal/faction/engine/turn_engine.go` — change `ApplyBookkeeping` signature to `(BookkeepingResult, []domain.Mutation, error)`; remove the internal `Mutation.Apply` call; drop `RecordedMutations` field from `BookkeepingResult`.
-- `cmd/faction-manager/commands/turn.go` — update factory registrations to the new signature; add the missing `SeizePlanet` registration.
-- `cmd/faction-manager/tui/model.go` — adapt to:
-  - new `AvailableActions` signature (pass a stub collector or the real `TUICollector`),
-  - new `ApplyBookkeeping` return tuple (call `Mutation.Apply` on the returned slice, populate `pendingMutations` from the slice),
-  - existing `handleActionSelected` no longer constructs a fresh action — it uses the action returned by the registry directly (since factories now wire in the collector). This is a partial rewrite of that method, but the surrounding state machine still works.
-- `cmd/faction-manager/tui/collector.go` — add stub `SelectAction` (returns `nil, errors.New("not yet wired")`) and `AwaitCheckpoint` (returns nil) so the build passes. Phase 2 replaces stubs with real implementations.
+- Existing tests in `internal/faction/engine/turn_test.go` — update for the new `ApplyBookkeeping` signature.
 
 **Verification**
 
@@ -468,58 +443,22 @@ go test ./internal/faction/engine/...
 go test ./...
 ```
 
-Existing TUI flow continues to work end-to-end on the test campaign. Run a manual smoke turn to confirm.
+The three integration tests passing against a real `engine.Engine` with no Bubbletea program is the load-bearing demonstration that orchestration has truly left the TUI.
 
-**Commit:** `feat: phase 1 — TurnObserver, EventHook, Engine.RunFactionTurn/RunCycle, config package, factory takes collector`
-
----
-
-### Phase 2 — TUI cutover
-
-**Goal:** The TUI calls `Engine.RunCycle` instead of running its own pipeline. `TUIObserver` is implemented; `SelectAction` and `AwaitCheckpoint` on `TUICollector` are wired to event-loop messages; the per-action input methods on `TUICollector` switch to channel-bridge. Deleted state-machine values are gone. The `turn` command constructs `*config.Config` from `paths.New(campaignID)` (taking `.State` and `.History`).
-
-**Files to create**
-
-- `cmd/faction-manager/tui/observer.go` — `TUIObserver`.
-- New TUI message types in `cmd/faction-manager/tui/`: `ActionSelectRequestMsg`, `CheckpointMsg`, plus per-input request messages for the collector methods that switch from pre-stashed-fields to channel-bridge (`SellAssetRequestMsg`, `BuyOrderRequestMsg`, etc.). Each carries a response channel.
-
-**Files to modify**
-
-- `cmd/faction-manager/tui/collector.go` — implement `SelectAction` and `AwaitCheckpoint` for real (post msg + block on response). Convert pre-stashed fields to channel-bridge calls on `SelectAsset`, `SelectBuyOrder`, `SelectRefitOrder`, `SelectRepairOrders`, `SelectAttackers`, `SelectDefender`, `SelectExpandInfluenceOrder`, `SelectAbilityAssets`, `SelectBribeTarget`, `SelectSeizeTarget`. Delete pre-stash fields.
-- `cmd/faction-manager/tui/model.go` — major surgery as listed in TUI Impact. `RunTurnTUI` (or equivalent) spawns a goroutine that calls `engine.RunCycle` with a `TUIObserver` and the existing `TUICollector`. The Bubbletea program runs in the foreground handling collector requests and observer messages; when `RunCycle` returns it posts `tea.Quit`.
-- `cmd/faction-manager/tui/phases/` — `BookkeepingDoneMsg` becomes a `CheckpointMsg{Phase: PhaseBookkeeping}` ack; `ActionSelectedMsg` becomes the response on `ActionSelectRequestMsg.ResponseCh`; `SummaryDoneMsg` becomes `CheckpointMsg{Phase: PhaseCycleSummary}` ack. Sub-models stay; only the message they emit changes.
-- `cmd/faction-manager/commands/turn/cmd.go` — construct `*config.Config{StatePath: p.State, HistoryPath: p.History}` from `paths.New(campaignID)` and pass it through `RunTurnTUI`.
-
-**Files NOT deleted**
-
-- `cmd/faction-manager/paths/paths.go` stays — still consumed by `narrate` and `faction` commands.
-
-**Verification**
-
-```bash
-go test ./...
-cd cmd/faction-manager && go build -o bin/faction-manager .
-FACTION_DATA_DIR=/workspaces/gm-toolkit/internal/faction/data \
-  ./bin/faction-manager --campaign test turn
-```
-
-Manual smoke: one full cycle of the test campaign covering at least one Attack (sub-resolution input), one Expand Influence (multi-prompt sub-resolution), one bookkeeping checkpoint ack, one action result ack, the cycle summary ack, and a clean diff against a pre-refactor run on the same starting state.
-
-**Commit:** `refactor: phase 2 — TUI calls Engine.RunCycle; orchestration leaves the TUI`
+**Commit:** `feat: phase 2 — engine orchestrator, three interfaces, config package, headless test harness`
 
 ---
 
-### Phase 3 — Cleanup and coverage
+### Phase 3 — Engine package restructure / cleanup
 
-**Goal:** Dead code from the old pipeline is removed; headless integration coverage is expanded; tracking docs are updated.
+**Goal:** Take a deliberate pass at the engine package's shape now that orchestration has landed. Candidates accumulate in [Refactor Candidates](#refactor-candidates) below as Phase 2 implementation surfaces them. At Phase 3 entry, Robert reviews the list, prioritizes, and we land changes in small reviewable commits.
 
-**Tasks**
+**Likely scope (placeholder until Phase 2 fills the candidate list):**
 
-- Audit `cmd/faction-manager/tui/model.go` for unused fields on `TurnModel` (`pendingMutations`, `pendingGoalLockMutations`, `bookkeepingResult`, `actionResultText`, `goalLock`, `availableActions`, `pendingAction`, `lockedGoalDestination`). Many become snapshot-only state held by the observer; delete the rest.
-- Audit `cmd/faction-manager/tui/phases/` for sub-models that no longer have callers. `BookkeepingDoneMsg`, `SummaryDoneMsg` may be deleted entirely if `CheckpointMsg` replaces them.
-- Add headless integration tests for the remaining action types: Sell, Buy (with Stealth target), Refit, Repair, Use Asset Ability (move-destination path), Bribe, Seize Planet, Abandon Goal. One test per action minimum, asserting mutation sequence and observer event sequence.
-- Update `docs/tracking/dev-journal-factions.md` and `docs/tracking/decisions-log.md` with the ten resolved decisions.
-- Update `docs/tracking/turn-engine-journal.md` — close the open question on orchestrator location; note `EventHook` as a deferred feature pending Tag Engine.
+- File / package layout — should `orchestrator.go` move to its own subpackage? Should sub-engines (`turn`, `action`, `goal`, `mutation`, `history`) be subpackages?
+- Sub-engine API consistency — uniform constructor naming (`new*Engine` vs `New*Engine` is currently mixed), uniform method signatures, uniform error handling.
+- Naming clean-up — orchestrator-era names that read awkwardly now that the pipeline is engine-driven.
+- Test seam tightening — fixtures, fakes, and the test harness's API.
 
 **Verification**
 
@@ -528,9 +467,15 @@ go test ./...
 go vet ./...
 ```
 
-Manual: one full cycle to confirm nothing regressed during cleanup.
+**Commit pattern:** small commits per cleanup, each titled `refactor: <area> — <change>`.
 
-**Commit:** `chore: phase 3 — orchestrator cutover cleanup and headless integration coverage`
+<br/>
+
+## Refactor Candidates
+
+Running list of restructure / cleanup opportunities surfaced during Phase 2 implementation. Each entry: **what**, **why**, **rough size**. Phase 3 pulls from here.
+
+_(empty — populate during Phase 2)_
 
 <br/>
 
@@ -543,6 +488,7 @@ Manual: one full cycle to confirm nothing regressed during cleanup.
 - Any change to `domain.Mutation` types or `MutationEngine.Apply` signature.
 - Migrating `narrate` and `faction` commands to `config.Config`. They keep using `paths/`. Possible follow-up.
 - Backward-compat shims, feature flags, or parallel pipeline modes. The cutover is clean per phase.
+- **TUI rebuild.** Will be built against the new interfaces on a separate branch in a separate effort. Not this branch.
 
 <br/>
 
@@ -552,7 +498,6 @@ Manual: one full cycle to confirm nothing regressed during cleanup.
 
 ```bash
 go build ./...
-cd cmd/faction-manager && go build -o bin/faction-manager .
 ```
 
 ### Unit and integration tests
@@ -563,39 +508,22 @@ go test ./internal/faction/engine/...      # focused engine + orchestrator tests
 go test -run TestRunCycle ./...            # headless cycle tests
 ```
 
-### Manual smoke (after Phase 2)
-
-```bash
-cd cmd/faction-manager
-go build -o bin/faction-manager .
-FACTION_DATA_DIR=/workspaces/gm-toolkit/internal/faction/data \
-  ./bin/faction-manager --campaign test turn
-```
-
-Walk one full cycle and confirm:
-
-- Bookkeeping displays and waits for ack (proves `AwaitCheckpoint(PhaseBookkeeping)`).
-- Action menu appears and only enabled actions are shown (proves `SelectAction` and the `LockRestrictActions` filter).
-- Attack action prompts for attackers, defender, and any redirect (proves mid-resolution collector callbacks still flow through the channel bridge).
-- Action result displays and waits for ack (proves `AwaitCheckpoint(PhaseActionResult)`).
-- Cycle summary displays at end (proves `OnCycleCompleted` and `AwaitCheckpoint(PhaseCycleSummary)`).
-- `campaigns/test/faction_state.toml` and `campaigns/test/history.jsonl` are updated identically to a pre-refactor run on the same starting state.
-
 ### Key proof point
 
-The Phase 1 headless integration test (`TestRunCycle_TwoFactionsBuyAndAttack` or equivalent) running green against a real `engine.Engine` with no Bubbletea program is the load-bearing demonstration that orchestration has truly left the TUI.
+The three Phase 2 integration tests (two-faction full cycle, `LockSkip`, `LockRestrictActions`) running green against a real `engine.Engine` with no Bubbletea program — and each asserting both observer event sequence AND history file contents — is the load-bearing demonstration that orchestration has truly left the TUI.
 
 <br/>
 
 ## Critical Files for Implementation
 
-- `/home/user/repo/internal/faction/engine/core.go` — engine struct; gains `Rand` field; where `RunFactionTurn` and `RunCycle` are called from.
-- `/home/user/repo/internal/faction/engine/action_engine.go` — `ActionFactory` signature change; `AvailableActions` takes collector.
-- `/home/user/repo/internal/faction/engine/input_collector.go` — extended with `SelectAction` and `AwaitCheckpoint`.
-- `/home/user/repo/internal/faction/engine/turn_engine.go` — `ApplyBookkeeping` signature changes (returns mutations instead of applying them).
-- `/home/user/repo/internal/faction/engine/goal_engine.go` — `CheckLock` and `UpdateProgress` are called by orchestrator (no change to signatures).
-- `/home/user/repo/cmd/faction-manager/commands/turn.go` — registration list updated to new factory signature; SeizePlanet added.
-- `/home/user/repo/cmd/faction-manager/commands/turn/cmd.go` — constructs `*config.Config` from `paths.New(campaignID)`.
-- `/home/user/repo/cmd/faction-manager/tui/model.go` — primary cutover target; loses ~400 lines of orchestration.
-- `/home/user/repo/cmd/faction-manager/tui/collector.go` — gains the two new collector methods and migrates several existing methods to channel-bridge.
-- `/home/user/repo/cmd/faction-manager/paths/paths.go` — kept (used by narrate, faction).
+- `internal/faction/engine/core.go` — engine struct; gains `Rand` field; where `RunFactionTurn` and `RunCycle` are called from.
+- `internal/faction/engine/action_engine.go` — `ActionFactory` signature change; `AvailableActions` takes collector.
+- `internal/faction/engine/input_collector.go` — extended with `SelectAction` and `AwaitCheckpoint`.
+- `internal/faction/engine/turn_engine.go` — `ApplyBookkeeping` signature changes (returns mutations instead of applying them).
+- `internal/faction/engine/goal_engine.go` — `CheckLock` and `UpdateProgress` are called by orchestrator (no change to signatures).
+- `internal/faction/engine/event_record.go` — already moved out of the TUI in Phase 1; consumed by `applyAndRecord`.
+- New: `internal/faction/engine/orchestrator.go`, `observer.go`, `event_hook.go`.
+- New: `internal/faction/engine/actions/register.go`.
+- New: `internal/faction/config/config.go`.
+- New: `internal/faction/engine/testharness/{observer,collector}.go`.
+- New: `internal/faction/engine/orchestrator_test.go`.
