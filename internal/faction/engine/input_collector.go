@@ -3,16 +3,16 @@ package engine
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
-	engineaction "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 )
 
 // InputCollector abstracts input collection for action and ability resolution.
 // The GM implementation uses interactive prompts; AI and test implementations
 // use scripted or goal-driven logic.
 type InputCollector interface {
-	engineaction.Collector
+	action.Collector
 	ability.Collector
-	SelectAction(faction *domain.Faction, available []engineaction.Action) (engineaction.Action, error)
+	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	AwaitCheckpoint(phase string) error
 }
 
