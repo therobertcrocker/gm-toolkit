@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -14,14 +14,14 @@ import (
 // is inactive until the start of the next turn.
 // Tech-level filtering and P-flag (government permission) checks are deferred.
 type RefitAsset struct {
-	collector  engine.InputCollector
+	collector  action.Collector
 	factionID  string
-	refitOrder engine.RefitOrder
+	refitOrder action.RefitOrder
 	newAsset   domain.Asset
 	costDelta  int
 }
 
-func NewRefitAsset(collector engine.InputCollector) *RefitAsset {
+func NewRefitAsset(collector action.Collector) *RefitAsset {
 	return &RefitAsset{collector: collector}
 }
 
@@ -37,13 +37,13 @@ func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, r
 }
 
 func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
-	var options []engine.RefitOption
+	var options []action.RefitOption
 	for _, asset := range faction.Assets {
 		replacements := validRefitReplacements(faction, asset, rulebook)
 		if len(replacements) == 0 {
 			continue
 		}
-		options = append(options, engine.RefitOption{Asset: asset, Replacements: replacements})
+		options = append(options, action.RefitOption{Asset: asset, Replacements: replacements})
 	}
 
 	order, err := ra.collector.SelectRefitOrder(options, rulebook)

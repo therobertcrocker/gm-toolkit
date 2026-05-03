@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -16,13 +16,13 @@ import (
 // existing one. New bases trigger a contested roll; rivals that tie or beat the
 // roll may make a free attack against the new base.
 type ExpandInfluence struct {
-	collector engine.InputCollector
+	collector action.Collector
 	roller    domain.Roller
-	order     engine.ExpandInfluenceOrder
+	order     action.ExpandInfluenceOrder
 	mutations []domain.Mutation
 }
 
-func NewExpandInfluence(collector engine.InputCollector, roller domain.Roller) *ExpandInfluence {
+func NewExpandInfluence(collector action.Collector, roller domain.Roller) *ExpandInfluence {
 	return &ExpandInfluence{collector: collector, roller: roller}
 }
 
@@ -48,9 +48,9 @@ func (ei *ExpandInfluence) Inputs(faction *domain.Faction, factionState *state.F
 
 func (ei *ExpandInfluence) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error {
 	switch ei.order.Mode {
-	case engine.ExpandModeNew:
+	case action.ExpandModeNew:
 		return ei.resolveNewBase(faction, factionState, rulebook)
-	case engine.ExpandModeReinforce:
+	case action.ExpandModeReinforce:
 		return ei.resolveReinforce(faction)
 	default:
 		return fmt.Errorf("expand influence: unknown mode %q", ei.order.Mode)
@@ -120,7 +120,7 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 		return fmt.Errorf("expand influence: base %q not found", ei.order.BaseID)
 	}
 	switch ei.order.SubMode {
-	case engine.ReinforceHeal:
+	case action.ReinforceHeal:
 		maxHP := base.EffectiveMaxHP(faction)
 		amount := min(ei.order.HPAmount, maxHP-base.CurrentHP)
 		if faction.Coin < amount {
@@ -130,7 +130,7 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 			domain.BaseHealed{FactionID: faction.ID, BaseID: base.ID, Delta: amount, Cause: "expand", CausedByFactionID: faction.ID},
 			domain.CoinDelta{FactionID: faction.ID, Delta: -amount, Cause: "expand", CausedByFactionID: faction.ID},
 		)
-	case engine.ReinforceMax:
+	case action.ReinforceMax:
 		amount := min(ei.order.HPAmount, faction.MaxHP-base.MaxHP)
 		if faction.Coin < amount {
 			return fmt.Errorf("expand influence: insufficient Coin: need %d, have %d", amount, faction.Coin)
@@ -149,7 +149,7 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 // Influence. Not registered with the action engine — only invoked from
 // ExpandInfluence.Resolve. Bases do not counterattack.
 type baseAttack struct {
-	collector engine.InputCollector
+	collector action.Collector
 	roller    domain.Roller
 }
 
