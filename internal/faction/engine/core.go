@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 )
 
@@ -8,6 +9,7 @@ import (
 // sub-engines. Sub-engines that are not yet implemented are nil.
 type Engine struct {
 	Rulebook      *loader.Rulebook
+	Rand          domain.Roller
 	Turn          *TurnEngine
 	Mutation      *MutationEngine
 	Action        *ActionEngine
@@ -22,7 +24,7 @@ func New(dataDir string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	e := &Engine{Rulebook: rb}
+	e := &Engine{Rulebook: rb, Rand: NewRandRoller()}
 	e.Mutation = newMutationEngine()
 	e.Turn = newTurnEngine(e.Mutation)
 	e.Action = newActionEngine()

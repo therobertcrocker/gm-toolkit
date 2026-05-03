@@ -16,14 +16,15 @@ var (
 )
 
 // BookkeepingResult captures what happened during a faction's bookkeeping phase.
-// Carries enough detail to serve display, state mutation, and history recording.
+// Carries enough detail for display and history. Mutations are returned
+// separately by ApplyBookkeeping so the orchestrator can apply and record them
+// uniformly with mutations from other pipeline steps.
 type BookkeepingResult struct {
-	IncomeGained       int               // total Coin added
-	WealthIncome       int               // floor(Wealth/2) component
-	StatIncome         int               // floor((Force+Cunning)/4) component
-	AssetsLost         []AssetRef        // destroyed due to second consecutive missed payment
-	AssetsUnmaintained []AssetRef        // newly unmaintained due to first missed payment
-	RecordedMutations  []domain.Mutation // mutations already applied; carried for history recording only
+	IncomeGained       int        // total Coin added
+	WealthIncome       int        // floor(Wealth/2) component
+	StatIncome         int        // floor((Force+Cunning)/4) component
+	AssetsLost         []AssetRef // destroyed due to second consecutive missed payment
+	AssetsUnmaintained []AssetRef // newly unmaintained due to first missed payment
 }
 
 // AssetRef identifies an asset affected during bookkeeping.
@@ -33,15 +34,13 @@ type AssetRef struct {
 	Location     string // for history: where the asset was
 }
 
-// TurnEngine manages turn lifecycle: ordering, bookkeeping, step control,
-// and pause/resume. It is the seam where the Mutation and History engines
-// plug in at turn completion.
-type TurnEngine struct {
-	mutation *MutationEngine
-}
+// TurnEngine manages turn lifecycle: ordering, bookkeeping computation, and
+// pause/resume cursor state. Mutation application is owned by the orchestrator,
+// not the TurnEngine.
+type TurnEngine struct{}
 
-func newTurnEngine(me *MutationEngine) *TurnEngine {
-	return &TurnEngine{mutation: me}
+func newTurnEngine(_ *MutationEngine) *TurnEngine {
+	return &TurnEngine{}
 }
 
 // InProgress reports whether a turn is currently active.
@@ -94,20 +93,21 @@ func (t *TurnEngine) CurrentFaction(factionState *state.FactionState) (*domain.F
 	return nil, errors.New("faction not found: " + id)
 }
 
-// ApplyBookkeeping calculates and applies income and maintenance for the current
-// faction. Returns a BookkeepingResult for display, mutation, and history.
-// Safe to call on resume — returns a zero result and nil error if already applied.
-func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (BookkeepingResult, error) {
+// ApplyBookkeeping computes income and maintenance mutations for the current
+// faction and advances the turn phase to PhaseAction. It does not apply the
+// mutations — the orchestrator owns that step. Safe to call on resume:
+// returns a zero result and nil mutations if bookkeeping has already run.
+func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (BookkeepingResult, []domain.Mutation, error) {
 	if !t.InProgress(factionState) {
-		return BookkeepingResult{}, ErrNoTurnActive
+		return BookkeepingResult{}, nil, ErrNoTurnActive
 	}
 	if factionState.CurrentTurn.Phase != domain.PhaseBookkeeping {
-		return BookkeepingResult{}, nil
+		return BookkeepingResult{}, nil, nil
 	}
 
 	f, err := t.CurrentFaction(factionState)
 	if err != nil {
-		return BookkeepingResult{}, err
+		return BookkeepingResult{}, nil, err
 	}
 
 	wealthIncome := f.Wealth / 2
@@ -121,11 +121,9 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 	result.IncomeGained = total
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
-	result.RecordedMutations = mutations
 
-	t.mutation.Apply(factionState, mutations)
 	factionState.CurrentTurn.Phase = domain.PhaseAction
-	return result, nil
+	return result, mutations, nil
 }
 
 // Advance marks the current faction's turn complete and moves to the next.

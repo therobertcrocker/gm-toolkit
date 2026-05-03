@@ -210,9 +210,11 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 				},
 			}
 			_ = te.Start(s)
-			if _, err := te.ApplyBookkeeping(s); err != nil {
+			_, mutations, err := te.ApplyBookkeeping(s)
+			if err != nil {
 				t.Fatalf("ApplyBookkeeping() error: %v", err)
 			}
+			newMutationEngine().Apply(s, mutations)
 			if s.Factions["f"].Coin != tt.wantIncome {
 				t.Errorf("Coin after income: got %d, want %d", s.Factions["f"].Coin, tt.wantIncome)
 			}
@@ -222,10 +224,18 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 
 func TestApplyBookkeeping_NoDoubleApply(t *testing.T) {
 	te := newTurn()
+	mutationEngine := newMutationEngine()
 	s := newTestState("a") // Force=4, Cunning=3, Wealth=6 → income=4
 	_ = te.Start(s)
-	_, _ = te.ApplyBookkeeping(s)
-	_, _ = te.ApplyBookkeeping(s) // second call should be a no-op
+
+	_, mutations, _ := te.ApplyBookkeeping(s)
+	mutationEngine.Apply(s, mutations)
+
+	_, secondMutations, _ := te.ApplyBookkeeping(s) // second call should be a no-op
+	if len(secondMutations) != 0 {
+		t.Errorf("second ApplyBookkeeping returned %d mutations, want 0", len(secondMutations))
+	}
+	mutationEngine.Apply(s, secondMutations)
 
 	if s.Factions["a"].Coin != 4 {
 		t.Errorf("Coin after double apply: got %d, want 4", s.Factions["a"].Coin)
@@ -236,7 +246,7 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
 	_ = te.Start(s)
-	_, _ = te.ApplyBookkeeping(s)
+	_, _, _ = te.ApplyBookkeeping(s)
 
 	if s.CurrentTurn.Phase != domain.PhaseAction {
 		t.Errorf("Phase: got %v, want PhaseAction after ApplyBookkeeping()", s.CurrentTurn.Phase)
@@ -246,7 +256,7 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 func TestApplyBookkeeping_ErrorIfNoTurn(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
-	if _, err := te.ApplyBookkeeping(s); err != ErrNoTurnActive {
+	if _, _, err := te.ApplyBookkeeping(s); err != ErrNoTurnActive {
 		t.Errorf("ApplyBookkeeping() error = %v, want ErrNoTurnActive", err)
 	}
 }

@@ -6,8 +6,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// ActionFactory is a function that produces a fresh Action instance.
-type ActionFactory func() Action
+// ActionFactory produces a fresh Action wired to the given InputCollector.
+// Factories that need a roller or other engine collaborators capture them in
+// the closure passed to Register.
+type ActionFactory func(InputCollector) Action
 
 // ActionEngine orchestrates action resolution for a faction's turn.
 type ActionEngine struct {
@@ -23,12 +25,14 @@ func (ae *ActionEngine) Register(factory ActionFactory) {
 	ae.factories = append(ae.factories, factory)
 }
 
-// AvailableActions creates a fresh instance from each factory and returns those
-// that pass Validate for the current faction and state.
-func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) []Action {
+// AvailableActions instantiates each registered factory with the collector and
+// returns the actions that pass Validate for the current faction and state.
+// Returned actions are runnable as-is — the orchestrator does not reconstruct
+// them after selection.
+func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook, collector InputCollector) []Action {
 	var available []Action
 	for _, factory := range ae.factories {
-		action := factory()
+		action := factory(collector)
 		if action.Validate(faction, factionState, rulebook) {
 			available = append(available, action)
 		}

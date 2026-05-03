@@ -70,6 +70,12 @@ func (c *abilityFakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.Fac
 	panic("SelectSeizeTarget: not used in use_asset_ability tests")
 }
 
+func (c *abilityFakeCollector) SelectAction(_ *domain.Faction, _ []engine.Action) (engine.Action, error) {
+	panic("SelectAction: not used in use_asset_ability tests")
+}
+
+func (c *abilityFakeCollector) AwaitCheckpoint(_ string) error { return nil }
+
 // makeAbilityRulebook returns a minimal Rulebook with four asset definitions:
 //   - "move-asset": A-flagged, movement ability, no coin cost
 //   - "move-asset-coin": A-flagged, movement ability, coin cost 2

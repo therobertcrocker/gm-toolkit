@@ -31,7 +31,25 @@ type InputCollector interface {
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
 	// Seize Planet
 	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
+
+	// SelectAction asks the caller to pick from the actions the engine has
+	// already determined are valid for this faction. Returning a nil Action
+	// signals "skip — take no action this turn".
+	SelectAction(faction *domain.Faction, available []Action) (Action, error)
+
+	// AwaitCheckpoint blocks until the caller signals readiness to proceed past
+	// the named pipeline phase. Manual implementations gate on user input;
+	// test and AI implementations return nil immediately. The phase name is
+	// one of the Phase* constants.
+	AwaitCheckpoint(phase string) error
 }
+
+const (
+	PhaseBookkeeping  = "bookkeeping"
+	PhaseActionResult = "action_result"
+	PhaseGoalLocked   = "goal_locked"
+	PhaseCycleSummary = "cycle_summary"
+)
 
 // RepairOrder describes a single asset repair instruction: which asset and how
 // many heals to apply. Cost escalates per heal on the same asset (1 Coin for

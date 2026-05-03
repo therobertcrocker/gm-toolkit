@@ -86,6 +86,12 @@ func (collector *fakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.Fa
 	panic("SelectSeizeTarget: not used in attack tests")
 }
 
+func (collector *fakeCollector) SelectAction(_ *domain.Faction, _ []engine.Action) (engine.Action, error) {
+	panic("SelectAction: not used in attack tests")
+}
+
+func (collector *fakeCollector) AwaitCheckpoint(_ string) error { return nil }
+
 // makeAttackRulebook returns a minimal Rulebook with three asset definitions:
 //   - "force-attacker": has an Attack profile (Force vs Force, 1d6 damage)
 //   - "force-defender": has a Counter (1d4) but no Attack profile

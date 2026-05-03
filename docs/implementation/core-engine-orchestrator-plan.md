@@ -475,7 +475,14 @@ go vet ./...
 
 Running list of restructure / cleanup opportunities surfaced during Phase 2 implementation. Each entry: **what**, **why**, **rough size**. Phase 3 pulls from here.
 
-_(empty — populate during Phase 2)_
+- **Drop the `*MutationEngine` arg from `newTurnEngine`.** The TurnEngine no longer applies mutations, so the constructor parameter is unused — Phase 2 left it as `_ *MutationEngine` to avoid touching the `core.go` call site. Drop the param and update `Engine.New`. *Tiny.*
+- **Unify sub-engine constructor visibility.** `newTurnEngine`, `newMutationEngine`, `newActionEngine`, `newHistoryEngine` are unexported; `NewAbilityEngine`, `NewGoalEngine`, `NewRandRoller` are exported. Only `Engine.New` calls them — make all unexported (or all exported and stop initializing in `New`). *Small.*
+- **Disambiguate "Phase".** `engine.PhaseBookkeeping` (checkpoint name on InputCollector) and `domain.PhaseBookkeeping` (turn-cursor state) are now adjacent and easy to confuse. Rename the checkpoint constants to `CheckpointBookkeeping` etc., or move them onto a `Checkpoint` type. *Small, mechanical.*
+- **Inline `event_record.go`.** A 25-line file housing one helper used only by `orchestrator.go`. Either inline `buildEventRecord` into `applyAndRecord`, or merge the file into `orchestrator.go`. *Tiny.*
+- **Add `engine.NewWithRulebook(*loader.Rulebook)`.** Phase 2 tests had to point at `../data` to construct an Engine because `engine.New` does disk I/O. A rulebook-injecting constructor would make engine-package unit tests independent of fixture files and unlock truly hermetic tests in higher-level packages. *Small.*
+- **Trim `BookkeepingResult`.** `IncomeGained = WealthIncome + StatIncome` — the sum is computed eagerly even though callers could derive it. Now that `RecordedMutations` is gone, the struct's other redundancies stand out. *Tiny.*
+- **`AssetRef` in `turn_engine.go` may be redundant.** Same data lives in `AssetRemoved` / `AssetMaintainedFlag` mutations. If display callers can derive from mutations, the helper struct + the `AssetsLost` / `AssetsUnmaintained` fields can collapse. *Investigate first; small if it pans out.*
+- **Sub-package layout — sub-engines as their own packages?** `engine.go` currently composes six sub-engines as fields on a struct in one package. With the orchestrator landing, the package's purpose is split between "the orchestrator" and "the sub-engines." Worth an architectural discussion before any move. *Larger; design first.*
 
 <br/>
 
