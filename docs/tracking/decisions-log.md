@@ -343,3 +343,9 @@ A record of key decisions made during development, grouped by feature branch.
 | #137 | Ship `EventHook` with a dispatcher and `RegisterHook` now | No consumer until the Tag Engine lands; building the dispatcher first would require test coverage for a code path with no callers — pure speculative work |
 | #139 | Store observer + collector on `Engine` at construction time | Engine would need to be reconstructed for every test scenario that uses different observer/collector configs; per-call injection is idiomatic Go and keeps the engine stateless |
 | #141 | Leave `ApplyBookkeeping` applying mutations internally | Breaks uniform mutation flow — one sub-engine was writing state, all others returned mutations for the caller to apply; asymmetry makes the orchestrator's write path non-obvious |
+
+### feature/testing-suite-phase1
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 149 | `go.uber.org/mock/gomock` + generated `MockCollector` in `engine/actions/mocks/` | The `InputCollector` interface has 14 methods; hand-written fake structs require every method to be declared per test file even when only 1–2 are exercised. gomock generates the mock once; each test declares only the expectations it cares about, and any unexpected call fails the test automatically |
