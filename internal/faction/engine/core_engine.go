@@ -11,6 +11,20 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
 )
 
+// Package engine is the turn pipeline for the faction system.
+//
+// Five files form the conceptual core:
+//
+//   - core_engine.go        — composition root; owns the Rulebook and all sub-engines
+//   - core_orchestrator.go  — drives one faction's turn through the pipeline stages
+//   - core_observer.go      — TurnObserver interface; fire-and-forget output channel
+//   - core_input_collector.go — InputCollector interface; abstracts GM vs. AI vs. test input
+//   - core_event_hook.go    — EventHook interface; mutation side-effects (Tag Engine hook point)
+//
+// Supporting files (roller.go) and sub-packages (action/, ability/, goal/,
+// history/, mutation/, turn/, testharness/) provide the mechanics the
+// orchestrator delegates to.
+
 // Engine is the composition root. It owns the Rulebook and all sub-engines.
 type Engine struct {
 	Rulebook *loader.Rulebook

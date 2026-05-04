@@ -12,7 +12,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/actions"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
@@ -34,7 +34,7 @@ type harness struct {
 	factionState *state.FactionState
 	cfg          *config.Config
 	collector    *testharness.ScriptedCollector
-	observer    *testharness.RecordingObserver
+	observer     *testharness.RecordingObserver
 }
 
 // newHarness builds an Engine wired to the real rulebook, a fresh tmpdir for
