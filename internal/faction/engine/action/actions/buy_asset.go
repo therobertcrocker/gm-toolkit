@@ -8,7 +8,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -30,7 +30,7 @@ func NewBuyAsset(collector action.Collector) *BuyAsset {
 
 func (ba *BuyAsset) Name() string { return "Buy Asset" }
 
-func (ba *BuyAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) bool {
+func (ba *BuyAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, def := range rulebook.Assets {
 		if faction.Coin >= def.Cost && statScore(faction, def.Category) >= def.MinRating {
 			return true
@@ -39,7 +39,7 @@ func (ba *BuyAsset) Validate(faction *domain.Faction, _ *state.FactionState, rul
 	return false
 }
 
-func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	worlds := availableWorlds(faction)
 	purchasable := purchasableDefinitions(faction, rulebook)
 
@@ -68,7 +68,7 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 	return nil
 }
 
-func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
 	if faction.Coin < def.Cost {
 		return fmt.Errorf("insufficient Coin: need %d, have %d", def.Cost, faction.Coin)
@@ -108,7 +108,7 @@ func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 
 // eligibleStealthTargets returns non-stealthy Special Forces assets owned by
 // the faction on the given world — valid targets when buying C3-002 Stealth.
-func eligibleStealthTargets(faction *domain.Faction, world string, rulebook *loader.Rulebook) []*domain.Asset {
+func eligibleStealthTargets(faction *domain.Faction, world string, rulebook *rulebook.Rulebook) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range faction.Assets {
 		if asset.Location != world || asset.Stealthy {
@@ -161,7 +161,7 @@ func nextAssetSuffix(faction *domain.Faction, def *domain.AssetDefinition) int {
 
 // purchasableDefinitions returns definitions the faction can afford and
 // meets the minimum attribute rating for. Tech-level and P-flag checks deferred.
-func purchasableDefinitions(faction *domain.Faction, rulebook *loader.Rulebook) []*domain.AssetDefinition {
+func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.AssetDefinition {
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
 		if faction.Coin >= def.Cost && statScore(faction, def.Category) >= def.MinRating {

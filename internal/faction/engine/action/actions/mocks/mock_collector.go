@@ -14,7 +14,7 @@ import (
 
 	domain "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	action "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	loader "github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	state "github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -89,7 +89,7 @@ func (mr *MockCollectorMockRecorder) ConfirmRivalFreeAttack(rival, rivalRoll, fa
 }
 
 // SelectAbilityAssets mocks base method.
-func (m *MockCollector) SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error) {
+func (m *MockCollector) SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectAbilityAssets", faction, candidates, rulebook)
 	ret0, _ := ret[0].([]*domain.Asset)
@@ -104,7 +104,7 @@ func (mr *MockCollectorMockRecorder) SelectAbilityAssets(faction, candidates, ru
 }
 
 // SelectAsset mocks base method.
-func (m *MockCollector) SelectAsset(assets []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error) {
+func (m *MockCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectAsset", assets, rulebook)
 	ret0, _ := ret[0].(*domain.Asset)
@@ -119,7 +119,7 @@ func (mr *MockCollectorMockRecorder) SelectAsset(assets, rulebook any) *gomock.C
 }
 
 // SelectAttackers mocks base method.
-func (m *MockCollector) SelectAttackers(eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error) {
+func (m *MockCollector) SelectAttackers(eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectAttackers", eligible, rulebook)
 	ret0, _ := ret[0].([]*domain.Asset)
@@ -134,7 +134,7 @@ func (mr *MockCollectorMockRecorder) SelectAttackers(eligible, rulebook any) *go
 }
 
 // SelectBaseAttackers mocks base method.
-func (m *MockCollector) SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error) {
+func (m *MockCollector) SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectBaseAttackers", rival, eligible, rulebook)
 	ret0, _ := ret[0].([]*domain.Asset)
@@ -180,7 +180,7 @@ func (mr *MockCollectorMockRecorder) SelectBuyOrder(worlds, purchasable any) *go
 }
 
 // SelectDefender mocks base method.
-func (m *MockCollector) SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error) {
+func (m *MockCollector) SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectDefender", attacker, eligible, rulebook)
 	ret0, _ := ret[0].(*domain.Asset)
@@ -210,7 +210,7 @@ func (mr *MockCollectorMockRecorder) SelectExpandInfluenceOrder(faction, faction
 }
 
 // SelectRefitOrder mocks base method.
-func (m *MockCollector) SelectRefitOrder(options []action.RefitOption, rulebook *loader.Rulebook) (action.RefitOrder, error) {
+func (m *MockCollector) SelectRefitOrder(options []action.RefitOption, rulebook *rulebook.Rulebook) (action.RefitOrder, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectRefitOrder", options, rulebook)
 	ret0, _ := ret[0].(action.RefitOrder)
@@ -225,7 +225,7 @@ func (mr *MockCollectorMockRecorder) SelectRefitOrder(options, rulebook any) *go
 }
 
 // SelectRepairOrders mocks base method.
-func (m *MockCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *loader.Rulebook) ([]action.RepairOrder, error) {
+func (m *MockCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectRepairOrders", faction, damaged, rulebook)
 	ret0, _ := ret[0].([]action.RepairOrder)

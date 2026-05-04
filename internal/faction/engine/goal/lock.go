@@ -2,7 +2,7 @@ package goal
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -72,7 +72,7 @@ func checkLockChangeHomeworld(faction *domain.Faction) (GoalLock, []domain.Mutat
 	return GoalLock{Type: LockSkip}, []domain.Mutation{tick}
 }
 
-func checkLockPlanetarySeizure(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) (GoalLock, []domain.Mutation) {
+func checkLockPlanetarySeizure(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (GoalLock, []domain.Mutation) {
 	goal := faction.ActiveGoal
 	if goal.ProcessPhase == 0 {
 		return GoalLock{Type: LockNone}, nil

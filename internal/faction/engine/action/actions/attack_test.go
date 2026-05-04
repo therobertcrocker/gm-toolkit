@@ -5,7 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -31,10 +31,10 @@ type fakeCollector struct {
 	redIdx      int
 }
 
-func (collector *fakeCollector) SelectAttackers(_ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+func (collector *fakeCollector) SelectAttackers(_ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	return collector.attackers, nil
 }
-func (collector *fakeCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+func (collector *fakeCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	defender := collector.defenderSeq[collector.defIdx]
 	collector.defIdx++
 	return defender, nil
@@ -44,16 +44,16 @@ func (collector *fakeCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *doma
 	collector.redIdx++
 	return redirect, nil
 }
-func (collector *fakeCollector) SelectAsset(_ []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+func (collector *fakeCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	panic("SelectAsset: not used in attack tests")
 }
-func (collector *fakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]action.RepairOrder, error) {
+func (collector *fakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	panic("SelectRepairOrders: not used in attack tests")
 }
 func (collector *fakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (action.BuyOrder, error) {
 	panic("SelectBuyOrder: not used in attack tests")
 }
-func (collector *fakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *loader.Rulebook) (action.RefitOrder, error) {
+func (collector *fakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *rulebook.Rulebook) (action.RefitOrder, error) {
 	panic("SelectRefitOrder: not used in attack tests")
 }
 func (collector *fakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (action.ExpandInfluenceOrder, error) {
@@ -62,10 +62,10 @@ func (collector *fakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ 
 func (collector *fakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
 	panic("ConfirmRivalFreeAttack: not used in attack tests")
 }
-func (collector *fakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+func (collector *fakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	panic("SelectBaseAttackers: not used in attack tests")
 }
-func (collector *fakeCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+func (collector *fakeCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	panic("SelectAbilityAssets: not used in attack tests")
 }
 func (collector *fakeCollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
@@ -96,8 +96,8 @@ func (collector *fakeCollector) AwaitCheckpoint(_ string) error { return nil }
 //   - "force-attacker": has an Attack profile (Force vs Force, 1d6 damage)
 //   - "force-defender": has a Counter (1d4) but no Attack profile
 //   - "force-defender-nocounter": no Counter, no Attack profile
-func makeAttackRulebook() *loader.Rulebook {
-	return &loader.Rulebook{
+func makeAttackRulebook() *rulebook.Rulebook {
+	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
 			"force-attacker": {
 				ID:       "force-attacker",
@@ -171,7 +171,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 
 // runAttack is a test helper that drives a full Validate→Inputs→Resolve→Output
 // cycle and returns the resulting mutation list.
-func runAttack(t *testing.T, collector *fakeCollector, roller *fixedRoller, faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
+func runAttack(t *testing.T, collector *fakeCollector, roller *fixedRoller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	t.Helper()
 	attack := NewAttack(collector, roller)
 	if err := attack.Inputs(faction, factionState, rulebook); err != nil {

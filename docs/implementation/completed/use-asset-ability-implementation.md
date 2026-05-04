@@ -121,7 +121,7 @@ package engine
 
 import (
     "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-    "github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+    "github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
     "github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 

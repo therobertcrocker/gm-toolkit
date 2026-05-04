@@ -2,7 +2,7 @@ package engine
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -18,6 +18,6 @@ type EventHook interface {
 	OnMutations(
 		mutations []domain.Mutation,
 		factionState *state.FactionState,
-		rulebook *loader.Rulebook,
+		rulebook *rulebook.Rulebook,
 	) []domain.Mutation
 }

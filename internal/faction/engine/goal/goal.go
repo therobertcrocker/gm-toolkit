@@ -2,7 +2,7 @@ package goal
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -13,7 +13,7 @@ func New() *GoalEngine { return &GoalEngine{} }
 
 // CheckLock evaluates the faction's active goal and returns the appropriate lock
 // state. Must be called before bookkeeping and action selection each turn.
-func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) (GoalLock, []domain.Mutation) {
+func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (GoalLock, []domain.Mutation) {
 	if faction.ActiveGoal == nil {
 		return GoalLock{Type: LockNone}, nil
 	}
@@ -34,7 +34,7 @@ func (ge *GoalEngine) UpdateProgress(
 	actingFactionID string,
 	mutations []domain.Mutation,
 	factionState *state.FactionState,
-	rulebook *loader.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) []domain.Mutation {
 	actingFaction, ok := factionState.Factions[actingFactionID]
 	if !ok || actingFaction.ActiveGoal == nil {

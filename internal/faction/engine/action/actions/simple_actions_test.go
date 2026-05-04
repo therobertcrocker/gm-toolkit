@@ -5,13 +5,13 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
 
-func makeSimpleRulebook() *loader.Rulebook {
-	return &loader.Rulebook{
+func makeSimpleRulebook() *rulebook.Rulebook {
+	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
 			"sell-me": {ID: "sell-me", Name: "Infantry", Category: domain.StatForce, HP: 4, Cost: 6},
 		},

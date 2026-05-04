@@ -6,12 +6,12 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"go.uber.org/mock/gomock"
 )
 
-func makeRefitRulebook() *loader.Rulebook {
-	return &loader.Rulebook{
+func makeRefitRulebook() *rulebook.Rulebook {
+	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
 			"old-def": {ID: "old-def", Name: "Militia", Category: domain.StatForce, HP: 4, Cost: 2},
 			"new-def": {ID: "new-def", Name: "Infantry", Category: domain.StatForce, HP: 6, Cost: 4},

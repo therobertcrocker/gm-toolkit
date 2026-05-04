@@ -6,12 +6,12 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"go.uber.org/mock/gomock"
 )
 
-func makeRepairAssetRulebook() *loader.Rulebook {
-	return &loader.Rulebook{
+func makeRepairAssetRulebook() *rulebook.Rulebook {
+	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
 			"tough": {ID: "tough", Name: "Infantry", Category: domain.StatForce, HP: 10, Cost: 4},
 		},

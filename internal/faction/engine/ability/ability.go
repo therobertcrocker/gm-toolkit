@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -17,7 +17,7 @@ type StepHandler func(
 	collector Collector,
 	roller domain.Roller,
 	factionState *state.FactionState,
-	rulebook *loader.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error)
 
 // CustomAbilityHandler is a full override for a specific asset definition ID.
@@ -27,7 +27,7 @@ type CustomAbilityHandler func(
 	collector Collector,
 	roller domain.Roller,
 	factionState *state.FactionState,
-	rulebook *loader.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error)
 
 type AbilityEngine struct {
@@ -58,7 +58,7 @@ func (ae *AbilityEngine) Run(
 	collector Collector,
 	roller domain.Roller,
 	factionState *state.FactionState,
-	rulebook *loader.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
 	if handler, ok := ae.customHandlers[def.ID]; ok {
 		return handler(faction, asset, collector, roller, factionState, rulebook)
@@ -88,7 +88,7 @@ func movementStepHandler(
 	collector Collector,
 	_ domain.Roller,
 	factionState *state.FactionState,
-	_ *loader.Rulebook,
+	_ *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
 	destination, err := collector.SelectMoveDestination(asset, worldsFromState(factionState))
 	if err != nil {
@@ -116,7 +116,7 @@ func factionTestStepHandler(
 	collector Collector,
 	roller domain.Roller,
 	factionState *state.FactionState,
-	_ *loader.Rulebook,
+	_ *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
 	candidates := factionTestCandidates(factionState, faction.ID, asset.Location, step.Effect)
 	targetFaction, err := collector.SelectFactionTestTarget(asset, step.Effect, candidates)

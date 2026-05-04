@@ -1,7 +1,7 @@
 package digest
 
 import (
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -17,7 +17,7 @@ func resolveFactionName(factionID string, factionState *state.FactionState) stri
 
 // resolveAssetName looks up the asset's display name via the rulebook definition.
 // Falls back to assetID if the asset or definition is absent (e.g. already destroyed).
-func resolveAssetName(factionID, assetID string, factionState *state.FactionState, rulebook *loader.Rulebook) string {
+func resolveAssetName(factionID, assetID string, factionState *state.FactionState, rulebook *rulebook.Rulebook) string {
 	if factionState == nil {
 		return assetID
 	}
@@ -38,7 +38,7 @@ func resolveAssetName(factionID, assetID string, factionState *state.FactionStat
 	return assetID
 }
 
-func resolveGoalName(goalID string, rulebook *loader.Rulebook) string {
+func resolveGoalName(goalID string, rulebook *rulebook.Rulebook) string {
 	if rulebook == nil {
 		return goalID
 	}

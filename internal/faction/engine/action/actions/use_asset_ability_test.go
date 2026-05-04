@@ -6,7 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -19,7 +19,7 @@ type abilityFakeCollector struct {
 	confirmCalled     bool
 }
 
-func (c *abilityFakeCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+func (c *abilityFakeCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	return c.selectedAssets, nil
 }
 func (c *abilityFakeCollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
@@ -32,22 +32,22 @@ func (c *abilityFakeCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.
 	c.confirmCalled = true
 	return false, nil
 }
-func (c *abilityFakeCollector) SelectAsset(_ []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+func (c *abilityFakeCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	panic("SelectAsset: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]action.RepairOrder, error) {
+func (c *abilityFakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	panic("SelectRepairOrders: not used in use_asset_ability tests")
 }
 func (c *abilityFakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (action.BuyOrder, error) {
 	panic("SelectBuyOrder: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *loader.Rulebook) (action.RefitOrder, error) {
+func (c *abilityFakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *rulebook.Rulebook) (action.RefitOrder, error) {
 	panic("SelectRefitOrder: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectAttackers(_ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+func (c *abilityFakeCollector) SelectAttackers(_ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	panic("SelectAttackers: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+func (c *abilityFakeCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	panic("SelectDefender: not used in use_asset_ability tests")
 }
 func (c *abilityFakeCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {
@@ -59,7 +59,7 @@ func (c *abilityFakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *
 func (c *abilityFakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
 	panic("ConfirmRivalFreeAttack: not used in use_asset_ability tests")
 }
-func (c *abilityFakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+func (c *abilityFakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	panic("SelectBaseAttackers: not used in use_asset_ability tests")
 }
 
@@ -82,9 +82,9 @@ func (c *abilityFakeCollector) AwaitCheckpoint(_ string) error { return nil }
 //   - "move-asset-coin": A-flagged, movement ability, coin cost 2
 //   - "drain-asset": A-flagged, faction_test ability with coin_drain effect (1d6)
 //   - "deferred-asset": A-flagged, no ability (GM adjudication)
-func makeAbilityRulebook() *loader.Rulebook {
+func makeAbilityRulebook() *rulebook.Rulebook {
 	effectDice := &domain.DiceRoll{NumDice: 1, Sides: 6}
-	return &loader.Rulebook{
+	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
 			"move-asset": {
 				ID:    "move-asset",
@@ -167,7 +167,7 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 }
 
 // runAbility drives a full Inputs→Resolve→Output cycle for UseAssetAbility.
-func runAbility(t *testing.T, collector *abilityFakeCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
+func runAbility(t *testing.T, collector *abilityFakeCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	t.Helper()
 	ae := ability.New()
 	act := NewUseAssetAbility(collector, roller, ae)

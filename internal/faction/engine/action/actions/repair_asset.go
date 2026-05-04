@@ -5,7 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -24,7 +24,7 @@ func NewRepairAsset(collector action.Collector) *RepairAsset {
 
 func (ra *RepairAsset) Name() string { return "Repair Asset" }
 
-func (ra *RepairAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) bool {
+func (ra *RepairAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	if faction.Coin < 1 {
 		return false
 	}
@@ -37,7 +37,7 @@ func (ra *RepairAsset) Validate(faction *domain.Faction, _ *state.FactionState, 
 	return false
 }
 
-func (ra *RepairAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (ra *RepairAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var damaged []*domain.Asset
 	for _, asset := range faction.Assets {
 		def, ok := rulebook.Assets[asset.DefinitionID]
@@ -55,7 +55,7 @@ func (ra *RepairAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ru
 	return nil
 }
 
-func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	totalCost := 0
 	var mutations []domain.Mutation
 

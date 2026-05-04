@@ -15,7 +15,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -174,7 +174,7 @@ func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
 		t.Fatalf("Sell Asset not in available actions")
 		return nil, nil
 	}
-	h.collector.SelectAssetFn = func(assets []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+	h.collector.SelectAssetFn = func(assets []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 		return assets[0], nil
 	}
 
@@ -256,7 +256,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 		t.Fatalf("Sell Asset not in available actions")
 		return nil, nil
 	}
-	h.collector.SelectAssetFn = func(assets []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+	h.collector.SelectAssetFn = func(assets []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 		return assets[0], nil
 	}
 
@@ -360,10 +360,10 @@ func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
 		// beta picks no action — keep the test focused on alpha's lock.
 		return nil, nil
 	}
-	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *loader.Rulebook) ([]*domain.Asset, error) {
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 		return eligible, nil
 	}
-	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *loader.Rulebook) (*domain.Asset, error) {
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 		return eligible[0], nil
 	}
 	h.collector.ConfirmRedirectToBaseFn = func(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {

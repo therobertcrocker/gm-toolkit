@@ -6,7 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -23,14 +23,14 @@ func NewSeizePlanet(collector action.Collector) *SeizePlanet {
 
 func (s *SeizePlanet) Name() string { return "Seize Planet" }
 
-func (s *SeizePlanet) Validate(faction *domain.Faction, factionState *state.FactionState, _ *loader.Rulebook) bool {
+func (s *SeizePlanet) Validate(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) bool {
 	if faction.ActiveGoal == nil || faction.ActiveGoal.GoalID != "G-004" || faction.ActiveGoal.ProcessPhase != 0 {
 		return false
 	}
 	return len(seizePlanetTargetWorlds(faction, factionState)) > 0
 }
 
-func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *loader.Rulebook) error {
+func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) error {
 	world, err := s.collector.SelectSeizeTarget(faction, factionState)
 	if err != nil {
 		return fmt.Errorf("seize planet: %w", err)
@@ -40,7 +40,7 @@ func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.Factio
 	return nil
 }
 
-func (s *SeizePlanet) Resolve(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) error {
+func (s *SeizePlanet) Resolve(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
 	if s.targetWorld == "" {
 		return fmt.Errorf("seize planet: no target world selected")
 	}

@@ -350,3 +350,4 @@ A record of key decisions made during development, grouped by feature branch.
 |---|----------|-----------|
 | 149 | `go.uber.org/mock/gomock` + generated `MockCollector` in `engine/actions/mocks/` | The `InputCollector` interface has 14 methods; hand-written fake structs require every method to be declared per test file even when only 1–2 are exercised. gomock generates the mock once; each test declares only the expectations it cares about, and any unexpected call fails the test automatically |
 | 150 | moved `internal/engine/actions/` into `internal/faction/engine/action/`| Actions are an implementation of the action interface, and belong within that sub-engine.
+| 151 | `internal/faction/loader` package renamed to `internal/faction/rulebook` | The package name `loader` described the mechanism (loading files); `rulebook` describes what it produces — static game data. Consistent with the `Rulebook` type name already used throughout the codebase |

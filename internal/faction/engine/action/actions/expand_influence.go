@@ -8,7 +8,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -28,7 +28,7 @@ func NewExpandInfluence(collector action.Collector, roller domain.Roller) *Expan
 
 func (ei *ExpandInfluence) Name() string { return "Expand Influence" }
 
-func (ei *ExpandInfluence) Validate(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) bool {
+func (ei *ExpandInfluence) Validate(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
 	if faction.Coin < 1 {
 		return false
 	}
@@ -37,7 +37,7 @@ func (ei *ExpandInfluence) Validate(faction *domain.Faction, _ *state.FactionSta
 		len(growableNonHomeworldBases(faction)) > 0
 }
 
-func (ei *ExpandInfluence) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *loader.Rulebook) error {
+func (ei *ExpandInfluence) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) error {
 	order, err := ei.collector.SelectExpandInfluenceOrder(faction, factionState)
 	if err != nil {
 		return fmt.Errorf("expand influence: %w", err)
@@ -46,7 +46,7 @@ func (ei *ExpandInfluence) Inputs(faction *domain.Faction, factionState *state.F
 	return nil
 }
 
-func (ei *ExpandInfluence) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error {
+func (ei *ExpandInfluence) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	switch ei.order.Mode {
 	case action.ExpandModeNew:
 		return ei.resolveNewBase(faction, factionState, rulebook)
@@ -61,7 +61,7 @@ func (ei *ExpandInfluence) Output() ([]domain.Mutation, error) {
 	return ei.mutations, nil
 }
 
-func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error {
+func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	cost := ei.order.HPAmount
 	if faction.Coin < cost {
 		return fmt.Errorf("expand influence: insufficient Coin: need %d, have %d", cost, faction.Coin)
@@ -156,7 +156,7 @@ type baseAttack struct {
 // resolve runs the attack sequence for one rival against the target base.
 // baseHPTracker accumulates damage across rival attacks so re-checks see the
 // correct effective HP before mutations are applied to state.
-func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, rulebook *loader.Rulebook) error {
+func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, rulebook *rulebook.Rulebook) error {
 	eligible := rivalAssetsOnWorld(rival, target.Location)
 	if len(eligible) == 0 {
 		return nil
@@ -287,4 +287,3 @@ func newBaseID(faction *domain.Faction, world string) string {
 	}
 	return fmt.Sprintf("%s%d", prefix, highest+1)
 }
-

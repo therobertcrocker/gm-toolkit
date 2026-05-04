@@ -7,10 +7,10 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/commands/faction/wizard"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
-func runCreateFactionWizard(rb *loader.Rulebook) (*domain.Faction, error) {
+func runCreateFactionWizard(rb *rulebook.Rulebook) (*domain.Faction, error) {
 	var (
 		name      string
 		homeworld string

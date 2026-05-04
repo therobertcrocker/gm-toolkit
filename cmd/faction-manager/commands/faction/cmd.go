@@ -5,11 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func NewCmd(rb *loader.Rulebook) *cobra.Command {
+func NewCmd(rb *rulebook.Rulebook) *cobra.Command {
 	var campaignID string
 
 	cmd := &cobra.Command{
@@ -27,7 +27,7 @@ func NewCmd(rb *loader.Rulebook) *cobra.Command {
 	return cmd
 }
 
-func newCreateCmd(rb *loader.Rulebook, campaignID *string) *cobra.Command {
+func newCreateCmd(rb *rulebook.Rulebook, campaignID *string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "create",
 		Short: "Create a new faction",
