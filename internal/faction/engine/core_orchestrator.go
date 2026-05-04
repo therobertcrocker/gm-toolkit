@@ -38,6 +38,12 @@ func (e *Engine) RunFactionTurn(
 	}
 	observer.OnFactionTurnStarted(faction)
 
+	// Phase 1: Goal Lock Check. The engine queries the Goal subsystem for locks
+	// applying to this faction at the start of its turn, and any mutations
+	// resulting from those locks are applied immediately. The lock type (if
+	// any) determines whether the faction is allowed to select an action this
+	// turn or is forced to skip.
+
 	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook)
 	observer.OnGoalLockApplied(faction, lock, lockMutations)
 
@@ -62,6 +68,9 @@ func (e *Engine) RunFactionTurn(
 		}
 	}
 
+	// Phase 2: Bookkeeping. The engine applies any bookkeeping mutations before action selection,
+	// so that they can affect available actions and be observed by the caller.
+
 	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState)
 	if err != nil {
 		observer.OnError(faction, err)
@@ -78,6 +87,10 @@ func (e *Engine) RunFactionTurn(
 		observer.OnError(faction, err)
 		return false, err
 	}
+
+	// Phase 3: Action Selection and Resolution. The engine queries the Action
+	// subsystem for available actions, passing along the lock type and allowed
+	// actions if relevant.
 
 	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collector)
 	if lock.Type == goal.LockRestrictActions {
@@ -104,10 +117,16 @@ func (e *Engine) RunFactionTurn(
 	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook)
 	combined := append(actionMutations, goalMutations...)
 
-	// === EventHook dispatch site (deferred per decision #5) ===
-	// When the Tag Engine lands, registered hooks fire here in registration
-	// order. Returned mutations are appended to `combined` and the loop
+	// === Phase 4: EventHook dispatch site (deferred per decision #5) ===
+	// Registered hooks fire here in registration order.
+	// Returned mutations are appended to `combined` and the loop
 	// recurses with depth bound 5; on cap trip the engine logs and stops.
+
+	// Phase 5: Apply mutations and persist state. The engine applies all mutations
+	// in a single batch to preserve order, then records a single EventRecord in the
+	// history file with the full mutation set. The state is also saved after mutation
+	// application. If any of these steps fail, the error is reported and returned;
+	// successfully applied mutations are not rolled back.
 
 	if err := e.applyAndRecord(factionState, faction, combined, cfg); err != nil {
 		observer.OnError(faction, err)
