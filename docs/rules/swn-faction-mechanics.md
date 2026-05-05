@@ -62,7 +62,9 @@ Coin represents logistics capability, available resources, and managerial focus 
 **Income per turn:**
 `floor(Wealth / 2) + floor((Force + Cunning) / 4)`
 
-- Half Wealth rounded up, plus one-quarter of total Force and Cunning rounded down.
+- Half Wealth rounded down, plus one-quarter of total Force and Cunning rounded down.
+
+> **Source note:** The PDF rule text (p. 213) reads "half their Wealth rating rounded **up**," but the play example (p. 228) and Vothite income (W3 → 2 Coin/turn) both use rounded down. This project follows the example.
 
 **Maintenance:** Paid at the start of each turn. An asset that cannot be maintained is unusable. If unpaid for two consecutive turns, the asset is lost. Factions cannot voluntarily skip maintenance.
 
@@ -98,7 +100,7 @@ Abandoning a goal costs the faction that turn's Coin income and they may take no
 | Blood the Enemy | Inflict HP damage on enemy assets/bases equal to total F+C+W | 2 |
 | Peaceable Kingdom | Don't take an Attack action for four turns | 1 |
 | Destroy the Foe | Destroy a rival faction | 1 + avg of target faction's F/C/W |
-| Inside Enemy Territory | Have Stealthed assets on worlds with other governments equal to Cunning score | 2 |
+| Inside Enemy Territory | Have Stealthed assets on worlds with other governments equal to Cunning score (assets already stealthed when this goal is adopted don't count) | 2 |
 | Invincible Valor | Destroy a Force asset with min_rating higher than your Force rating | 2 |
 | Wealth of Worlds | Spend Coin equal to 4× Wealth rating on bribes (lost); Wealth must increase before selecting again | 2 |
 
@@ -159,6 +161,7 @@ A faction with no current goal may pick one. A faction **can take one action typ
 - Relocate homeworld to a planet where the faction already has a Base of Influence
 - Takes 1 turn + 1 more per hex of distance between old and new homeworld
 - Faction may take **no actions** during the move
+- If the destination already has a Base of Influence, the new homeworld's base is set to maximum HP and the **old homeworld's base inherits the destination base's previous HP value** (the bases swap their HP roles)
 
 ### Expand Influence
 - Purchase a Base of Influence on a planet where the faction has at least one other asset
@@ -182,7 +185,7 @@ A faction with no current goal may pick one. A faction **can take one action typ
 
 ### Seize Planet
 - Attempt to become the ruling government of a world
-- Must destroy all **unstealthed** opposing assets on the planet; if not accomplished in one turn, must continue next turn (no other actions allowed in the meantime)
+- Must destroy all **unstealthed** opposing assets on the planet; if not accomplished in one turn, must continue next turn (no other actions allowed in the meantime). The attempt ends when **either** all resistance is destroyed **or** all of the seizing faction's own assets on that planet are destroyed or have left
 - If all resistance is eliminated, the faction must maintain at least one unstealthed asset on the world for **three turns**
 - On success: gain the **Planetary Government** tag for that world
 
@@ -243,7 +246,7 @@ The **Planetary Government** tag grants or denies this permission for that world
 - Only one Base of Influence per world at a time
 - Cannot be moved once placed; cannot be purchased with Buy Asset — only with Expand Influence
 - Sale value: 0 Coin
-- Damage to a Base is also dealt to the **faction's HP** directly
+- Damage to a Base is also dealt to the **faction's HP** directly; if a Base is brought below 0 HP, the **overflow damage is not** counted against the faction's HP
 - Bases do not count toward the faction's maximum asset totals
 - A faction's homeworld always has a Base of Influence at **maximum HP**
 - Starship-type assets cannot be purchased on worlds with fewer than several hundred thousand inhabitants
@@ -272,7 +275,7 @@ The **Planetary Government** tag grants or denies this permission for that world
 
 PC factions (typically formed around character level 9) start as:
 
-- Force 2 (primary), all others 1
+- Primary attribute 2, others 1
 - 8 HP
 - One asset in the primary attribute
 - One tag appropriate to the faction's nature

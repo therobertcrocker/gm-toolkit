@@ -1,5 +1,9 @@
 # Contributor Guide — Making Code Changes
 
+> [!IMPORTANT]
+> THIS DOCUMENT IS OUT OF DATE AND SHOULD NOT BE REFERENCED. The architecture has evolved significantly since this was written. A new version is forthcoming.
+
+
 This guide walks through the most common code-addition flows in this repo. It assumes you've read `architecture-overview.md` and understand the basic layer split: `internal/faction/` is pure game logic, `cmd/faction-manager/` is the UI and delivery layer.
 
 ---

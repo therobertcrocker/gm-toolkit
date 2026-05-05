@@ -127,6 +127,7 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
+- Event Hooks Baseline: Discovery, Implementation Plan, and Phased Delivery for the Event Hooks sub-system of the core engine.
 - TUI Rebuild: fresh Bubbletea TUI against the new `InputCollector` + `TurnObserver` interfaces
 
 

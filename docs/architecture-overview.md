@@ -1,5 +1,8 @@
 # GM Toolkit — Architecture Overview
 
+> [!IMPORTANT]
+> THIS DOCUMENT IS OUT OF DATE AND SHOULD NOT BE REFERENCED. The architecture has evolved significantly since this was written. A new version is forthcoming.
+
 This document is written for a mid-level Go engineer taking over active development of the gm-toolkit project. It assumes you're comfortable with Go, have built CLI tools before, and just need to understand how this project is structured and why.
 
 ---
