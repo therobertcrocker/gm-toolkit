@@ -4,6 +4,12 @@ This guide walks through the most common code-addition flows in this repo. It as
 
 ---
 
+## Common Commands
+
+`go test ./internal/faction/engine/integration_test/ -v -run TestRunCycle` — run the full-cycle integration test suite.
+`go test ./...` — run all unit tests in the repo.
+
+
 ## Quick Reference: Which Files Change for What
 
 | Task | Files touched |

@@ -351,3 +351,14 @@ A record of key decisions made during development, grouped by feature branch.
 | 149 | `go.uber.org/mock/gomock` + generated `MockCollector` in `engine/actions/mocks/` | The `InputCollector` interface has 14 methods; hand-written fake structs require every method to be declared per test file even when only 1–2 are exercised. gomock generates the mock once; each test declares only the expectations it cares about, and any unexpected call fails the test automatically |
 | 150 | moved `internal/engine/actions/` into `internal/faction/engine/action/`| Actions are an implementation of the action interface, and belong within that sub-engine.
 | 151 | `internal/faction/loader` package renamed to `internal/faction/rulebook` | The package name `loader` described the mechanism (loading files); `rulebook` describes what it produces — static game data. Consistent with the `Rulebook` type name already used throughout the codebase |
+
+### feature/testing-suite-phases2-3
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 152 | `integration_test/` as a standalone Go package for the integration test suite | Build tags exclude tests from normal runs (not wanted here); a flat file in `engine/` mixes concerns; a separate package gives each file a clear job, enforces the public-API-only contract, and is discovered automatically by `go test ./...` |
+| 153 | Three-file split inside `integration_test/`: `harness_test.go` / `fixtures_test.go` / `scenarios_test.go` | Infrastructure (engine wiring, history readers, mutation finders) lives separately from fixture builders and scenario-specific helpers, which in turn live separately from the test scenarios themselves; each file has a single clear job |
+| 154 | `orchestrator_test.go` rewritten as `package engine` white-box unit test covering only `filterAllowedActions` | The existing three `TestRunCycle_*` tests were integration tests and moved to `integration_test/`; the only genuinely unit-testable surface of `core_orchestrator.go` is the unexported `filterAllowedActions` function — white-box access requires `package engine` |
+| 155 | `FixedRoller` promoted to `testharness` package | Any test package that needs deterministic dice can import testharness; keeping it local to `orchestrator_test.go` (as `fixedRoller`) would require duplication in `integration_test/` |
+| 156 | `checkStep(t, description, ok, detail)` helper for labeled assertion output | `t.Logf("  ✓ …")` / `t.Errorf("  ✗ …")` pattern surfaces a per-assertion confirmation log with `go test -v` — readable report without external tooling or test framework dependencies |
+| 157 | `TestRunCycle_Bookkeeping_AssetDestroyedSecondMiss` skipped — not implemented | `maintenanceCost` returns 0 (stub — see decisions log #36 and deferred items); the two-miss destruction path cannot fire until structured cost data is added to `AssetDefinition` |
