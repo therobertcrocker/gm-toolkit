@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -45,8 +45,8 @@ func minState(factions map[string]string) *state.FactionState {
 	return fs
 }
 
-func minRulebook(goals map[string]string) *loader.Rulebook {
-	rb := &loader.Rulebook{
+func minRulebook(goals map[string]string) *rulebook.Rulebook {
+	rb := &rulebook.Rulebook{
 		Assets: make(map[string]*domain.AssetDefinition),
 		Tags:   make(map[string]*domain.Tag),
 		Goals:  make(map[string]*domain.Goal),
@@ -57,7 +57,7 @@ func minRulebook(goals map[string]string) *loader.Rulebook {
 	return rb
 }
 
-func buildOne(t *testing.T, records []domain.EventRecord, fs *state.FactionState, rb *loader.Rulebook) CycleDigest {
+func buildOne(t *testing.T, records []domain.EventRecord, fs *state.FactionState, rb *rulebook.Rulebook) CycleDigest {
 	t.Helper()
 	d, err := Build(records, 1, fs, rb)
 	if err != nil {
@@ -160,7 +160,7 @@ func TestAssetAddedBuy(t *testing.T) {
 	}
 	fs := minState(map[string]string{"faction-a": "Alpha"})
 	fs.Factions["faction-a"].Assets = []*domain.Asset{{ID: "asset-1", DefinitionID: "def-1"}}
-	rb := &loader.Rulebook{
+	rb := &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{"def-1": {ID: "def-1", Name: "Shock Troops"}},
 		Goals:  map[string]*domain.Goal{},
 		Tags:   map[string]*domain.Tag{},

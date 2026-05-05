@@ -6,7 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -30,7 +30,7 @@ func NewUseAssetAbility(collector engine.InputCollector, roller domain.Roller, a
 
 func (u *UseAssetAbility) Name() string { return "Use Asset Ability" }
 
-func (u *UseAssetAbility) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) bool {
+func (u *UseAssetAbility) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, asset := range faction.Assets {
 		def, ok := rulebook.Assets[asset.DefinitionID]
 		if !ok {
@@ -43,7 +43,7 @@ func (u *UseAssetAbility) Validate(faction *domain.Faction, _ *state.FactionStat
 	return false
 }
 
-func (u *UseAssetAbility) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (u *UseAssetAbility) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var candidates []*domain.Asset
 	for _, asset := range faction.Assets {
 		def, ok := rulebook.Assets[asset.DefinitionID]
@@ -62,7 +62,7 @@ func (u *UseAssetAbility) Inputs(faction *domain.Faction, _ *state.FactionState,
 	return nil
 }
 
-func (u *UseAssetAbility) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error {
+func (u *UseAssetAbility) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	for _, asset := range u.selectedAssets {
 		def, ok := rulebook.Assets[asset.DefinitionID]
 		if !ok {

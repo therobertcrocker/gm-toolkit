@@ -2,7 +2,7 @@ package actions
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -19,15 +19,15 @@ func NewRepairFaction() *RepairFaction {
 
 func (rf *RepairFaction) Name() string { return "Repair Faction" }
 
-func (rf *RepairFaction) Validate(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) bool {
+func (rf *RepairFaction) Validate(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
 	return faction.CurrentHP < faction.MaxHP
 }
 
-func (rf *RepairFaction) Inputs(_ *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) error {
+func (rf *RepairFaction) Inputs(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
 	return nil
 }
 
-func (rf *RepairFaction) Resolve(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) error {
+func (rf *RepairFaction) Resolve(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
 	stats := []int{faction.Force, faction.Cunning, faction.Wealth}
 	highest, lowest := stats[0], stats[0]
 	for _, stat := range stats[1:] {

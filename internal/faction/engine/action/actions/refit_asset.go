@@ -5,7 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -27,7 +27,7 @@ func NewRefitAsset(collector action.Collector) *RefitAsset {
 
 func (ra *RefitAsset) Name() string { return "Refit Asset" }
 
-func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) bool {
+func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, asset := range faction.Assets {
 		if len(validRefitReplacements(faction, asset, rulebook)) > 0 {
 			return true
@@ -36,7 +36,7 @@ func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, r
 	return false
 }
 
-func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var options []action.RefitOption
 	for _, asset := range faction.Assets {
 		replacements := validRefitReplacements(faction, asset, rulebook)
@@ -55,7 +55,7 @@ func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rul
 	return nil
 }
 
-func (ra *RefitAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *loader.Rulebook) error {
+func (ra *RefitAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	oldDef, ok := rulebook.Assets[ra.refitOrder.OldAsset.DefinitionID]
 	if !ok {
 		return fmt.Errorf("asset definition not found: %s", ra.refitOrder.OldAsset.DefinitionID)
@@ -94,7 +94,7 @@ func (ra *RefitAsset) Output() ([]domain.Mutation, error) {
 // validRefitReplacements returns definitions the faction could refit oldAsset
 // into: same category, different definition, attribute meets MinRating, and
 // faction can afford the cost delta.
-func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rulebook *loader.Rulebook) []*domain.AssetDefinition {
+func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rulebook *rulebook.Rulebook) []*domain.AssetDefinition {
 	oldDef, ok := rulebook.Assets[oldAsset.DefinitionID]
 	if !ok {
 		return nil

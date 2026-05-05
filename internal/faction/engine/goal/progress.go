@@ -2,11 +2,11 @@ package goal
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func progressMilitaryConquest(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
+func progressMilitaryConquest(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	kills := countAssetKillsByCategory(actingFaction.ID, domain.StatForce, mutations, factionState, rulebook)
 	if kills == 0 {
 		return nil
@@ -24,7 +24,7 @@ func progressMilitaryConquest(actingFaction *domain.Faction, mutations []domain.
 	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, newProgress/2)...)
 }
 
-func progressCommercialExpansion(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
+func progressCommercialExpansion(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	kills := countAssetKillsByCategory(actingFaction.ID, domain.StatWealth, mutations, factionState, rulebook)
 	if kills == 0 {
 		return nil
@@ -42,7 +42,7 @@ func progressCommercialExpansion(actingFaction *domain.Faction, mutations []doma
 	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, newProgress/2)...)
 }
 
-func progressIntelligenceCoup(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
+func progressIntelligenceCoup(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	kills := countAssetKillsByCategory(actingFaction.ID, domain.StatCunning, mutations, factionState, rulebook)
 	if kills == 0 {
 		return nil
@@ -233,7 +233,7 @@ func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []dom
 	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, 2)...)
 }
 
-func progressInvincibleValor(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) []domain.Mutation {
+func progressInvincibleValor(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.AssetRemoved)
 		if !ok || v.Cause != "attack" || v.CausedByFactionID != actingFaction.ID || v.FactionID == actingFaction.ID {
@@ -298,7 +298,7 @@ func completeGoal(faction *domain.Faction, xp int) []domain.Mutation {
 	}
 }
 
-func countAssetKillsByCategory(actingFactionID string, category domain.FactionStat, mutations []domain.Mutation, factionState *state.FactionState, rulebook *loader.Rulebook) int {
+func countAssetKillsByCategory(actingFactionID string, category domain.FactionStat, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) int {
 	count := 0
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.AssetRemoved)

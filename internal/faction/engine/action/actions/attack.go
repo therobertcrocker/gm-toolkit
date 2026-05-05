@@ -5,7 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -26,7 +26,7 @@ func NewAttack(collector action.Collector, roller domain.Roller) *AttackAction {
 
 func (attack *AttackAction) Name() string { return "Attack" }
 
-func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) bool {
+func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, attacker := range eligibleAttackers(faction) {
 		if attackerHasTarget(attacker, faction, factionState, rulebook) {
 			return true
@@ -35,7 +35,7 @@ func (attack *AttackAction) Validate(faction *domain.Faction, factionState *stat
 	return false
 }
 
-func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error {
+func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var candidates []*domain.Asset
 	for _, attacker := range eligibleAttackers(faction) {
 		if attackerHasTarget(attacker, faction, factionState, rulebook) {
@@ -51,7 +51,7 @@ func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.
 	return nil
 }
 
-func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error {
+func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	// Local HP trackers reflect damage dealt this sequence before mutations are
 	// applied to state, so mid-sequence re-checks see accurate effective HP.
 	assetHPTracker := make(map[string]int)
@@ -189,7 +189,7 @@ func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string
 
 // attackerHasTarget returns true if the attacker has a valid Attack profile and
 // at least one eligible defender on its world.
-func attackerHasTarget(attacker *domain.Asset, faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) bool {
+func attackerHasTarget(attacker *domain.Asset, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	def, ok := rulebook.Assets[attacker.DefinitionID]
 	if !ok || def.Attack == nil {
 		return false

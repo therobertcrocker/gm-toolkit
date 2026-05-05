@@ -2,23 +2,23 @@ package action
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // Collector abstracts all user-input methods that action implementations may call.
 type Collector interface {
-	SelectAsset(assets []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error)
-	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *loader.Rulebook) ([]RepairOrder, error)
+	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
+	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(worlds []string, purchasable []*domain.AssetDefinition) (BuyOrder, error)
-	SelectRefitOrder(options []RefitOption, rulebook *loader.Rulebook) (RefitOrder, error)
-	SelectAttackers(eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error)
-	SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *loader.Rulebook) (*domain.Asset, error)
+	SelectRefitOrder(options []RefitOption, rulebook *rulebook.Rulebook) (RefitOrder, error)
+	SelectAttackers(eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
+	SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error)
 	SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState) (ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error)
-	SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error)
-	SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, rulebook *loader.Rulebook) ([]*domain.Asset, error)
+	SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
+	SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
 	ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error)
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)

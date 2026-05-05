@@ -5,7 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -22,11 +22,11 @@ func NewBribe(collector action.Collector) *Bribe {
 
 func (b *Bribe) Name() string { return "Bribe" }
 
-func (b *Bribe) Validate(faction *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) bool {
+func (b *Bribe) Validate(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
 	return len(faction.Bases) > 0 && faction.Coin >= 1
 }
 
-func (b *Bribe) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *loader.Rulebook) error {
+func (b *Bribe) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) error {
 	base, amount, err := b.collector.SelectBribeTarget(faction, factionState)
 	if err != nil {
 		return fmt.Errorf("bribe: %w", err)
@@ -37,7 +37,7 @@ func (b *Bribe) Inputs(faction *domain.Faction, factionState *state.FactionState
 	return nil
 }
 
-func (b *Bribe) Resolve(_ *domain.Faction, _ *state.FactionState, _ *loader.Rulebook) error {
+func (b *Bribe) Resolve(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
 	return nil
 }
 

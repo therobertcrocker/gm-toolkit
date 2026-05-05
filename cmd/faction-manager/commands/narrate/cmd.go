@@ -9,13 +9,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/therobertcrocker/gm-toolkit/cmd/faction-manager/paths"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/narrative"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/narrative/digest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func NewCmd(rulebook *loader.Rulebook) *cobra.Command {
+func NewCmd(rulebook *rulebook.Rulebook) *cobra.Command {
 	var campaignID string
 	var outPath string
 	var seed int64

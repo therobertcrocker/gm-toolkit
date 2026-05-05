@@ -2,16 +2,16 @@ package action
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/loader"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // Action is the contract all faction actions implement.
 type Action interface {
 	Name() string
-	Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) bool
-	Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error
-	Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) error
+	Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool
+	Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error
+	Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error
 	Output() ([]domain.Mutation, error)
 }
 
@@ -34,7 +34,7 @@ func (ae *ActionEngine) Register(factory ActionFactory) {
 
 // AvailableActions instantiates each registered factory with the collector and
 // returns the actions that pass Validate for the current faction and state.
-func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook, collector Collector) []Action {
+func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, collector Collector) []Action {
 	var available []Action
 	for _, factory := range ae.factories {
 		a := factory(collector)
@@ -46,7 +46,7 @@ func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *
 }
 
 // Run calls Inputs, Resolve, and Output in order on the selected action.
-func (ae *ActionEngine) Run(a Action, faction *domain.Faction, factionState *state.FactionState, rulebook *loader.Rulebook) ([]domain.Mutation, error) {
+func (ae *ActionEngine) Run(a Action, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) ([]domain.Mutation, error) {
 	if err := a.Inputs(faction, factionState, rulebook); err != nil {
 		return nil, err
 	}
