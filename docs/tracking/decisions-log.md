@@ -362,3 +362,17 @@ A record of key decisions made during development, grouped by feature branch.
 | 155 | `FixedRoller` promoted to `testharness` package | Any test package that needs deterministic dice can import testharness; keeping it local to `orchestrator_test.go` (as `fixedRoller`) would require duplication in `integration_test/` |
 | 156 | `checkStep(t, description, ok, detail)` helper for labeled assertion output | `t.Logf("  ✓ …")` / `t.Errorf("  ✗ …")` pattern surfaces a per-assertion confirmation log with `go test -v` — readable report without external tooling or test framework dependencies |
 | 157 | `TestRunCycle_Bookkeeping_AssetDestroyedSecondMiss` skipped — not implemented | `maintenanceCost` returns 0 (stub — see decisions log #36 and deferred items); the two-miss destruction path cannot fire until structured cost data is added to `AssetDefinition` |
+
+### feature/event-hooks
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 158 | `Registry` uses `map[Scope][]Registered*` (one map per category) | Preserves registration order within each scope bucket; scope-keyed map is O(1) lookup; composing the result slice (global + faction + asset) makes ordering explicit and testable |
+| 159 | Lookup ordering: global first, then faction-scoped, then asset-scoped | Global hooks are framework-level and should fire before per-faction or per-asset overrides; deterministic ordering across all consumers without needing registration timestamps |
+| 160 | `RollState` included in Phase 1 `types.go` alongside `ModifierOffer` | `ModifierOffer.Apply` requires a concrete `*RollState` parameter; defining it alongside the offer type avoids a forward reference or a dummy `any` signature that would require breaking changes later |
+
+**Notable alternatives rejected:**
+
+| Decision # | Alternative | Why rejected |
+|------------|-------------|--------------|
+| #158 | Flat global slice with per-entry scope field (filter on lookup) | Preserves global registration order across scopes but makes scope-filtered lookup O(n) across the whole registry; buckets keep lookup fast with no ambiguity about ordering semantics |
