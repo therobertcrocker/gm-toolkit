@@ -31,7 +31,6 @@ type RollResult struct {
 
 // RollState is the mutable pre-roll view passed to ModifierOffer.Apply.
 // Apply calls AddDie to expand the dice pool before any dice are rolled.
-// (Populated with dispatch logic in Phase 3b.)
 type RollState struct {
 	extraDice []int
 }
@@ -42,7 +41,7 @@ func (rollState *RollState) AddDie(sides int) {
 	rollState.extraDice = append(rollState.extraDice, sides)
 }
 
-// ExtraDice returns the queued extra dice; read by RollWithHooks in Phase 3b.
+// ExtraDice returns the queued extra dice, consumed by RollWithHooks.
 func (rollState *RollState) ExtraDice() []int {
 	return rollState.extraDice
 }

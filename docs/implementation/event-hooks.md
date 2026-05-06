@@ -49,26 +49,26 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ## Phase 1 — Interfaces + Registry Foundation
 
-**Session deliverable:** Greenfield `eventhooks` package with all five interface families defined and per-category registries built. No dispatch wiring, no consumers. Compiles and passes registry unit tests.
+**Session deliverable:** Greenfield `hooks` package with all five interface families defined and per-category registries built. No dispatch wiring, no consumers. Compiles and passes registry unit tests.
 
 ### Tasks
 
-1. Create the package directory `internal/faction/engine/eventhooks/`.
-2. Add `eventhooks/types.go` defining shared types: `RollPhase` enum (`PhaseAttack`, `PhaseDefense`, `PhaseFactionTest`, `PhaseContested`), `RollContext` struct (Phase, Actor, Opponent, Attribute, Asset, World), `RollResult` struct (Dice []int, Modifier, Sum), `ModifierOffer` struct (Source, Description, BudgetKey, Apply func), `RerollDirective` struct (Source, Indices, BudgetKey, Elective), `TieOutcome` enum (`TieStandard`, `TieAttackerWins`, `TieDefenderWins`).
-3. Add `eventhooks/roll_modifier.go` defining `RollModifier` interface with `OfferModifiers(ctx RollContext, factionState, rulebook) []ModifierOffer`.
-4. Add `eventhooks/roll_result_hook.go` defining `RollResultHook` interface with `OnRollResult(ctx RollContext, result RollResult, factionState, rulebook) RerollDirective`.
-5. Add `eventhooks/mutation_reactor.go` defining `MutationReactor` interface with `OnMutations(mutations, factionState, rulebook) []domain.Mutation`. (Replaces the soon-renamed `EventHook` — full rename happens in Phase 3a.)
-6. Add `eventhooks/rule_modifier.go` defining the typed family: `AssetCostModifier`, `MaintenanceCostModifier`, `WorldTechLevelModifier`, `AssetMovementGranter`. Each interface method takes its specific question (buyer/asset/world/baseCost) and returns the modified answer.
-7. Add `eventhooks/tie_resolver.go` defining `TieResolver` interface with `ResolveTie(ctx RollContext, factionState) TieOutcome`.
-8. Add `eventhooks/scope.go` defining the `Scope` type: `Scope{Kind: ScopeFaction|ScopeAsset|ScopeGlobal, FactionID string, AssetInstanceID string}`.
-9. Add `eventhooks/registry.go` defining `Registry` struct with one map per category, each keyed by `Scope`. Public methods: `RegisterRollModifier(scope Scope, source string, hook RollModifier)`, similar for each category. Internal lookup methods (used by dispatchers in later phases): `RollModifiersFor(faction, asset) []RegisteredRollModifier`, etc.
+1. Create the package directory `internal/faction/engine/hooks/`.
+2. Add `hooks/types.go` defining shared types: `RollPhase` enum (`PhaseAttack`, `PhaseDefense`, `PhaseFactionTest`, `PhaseContested`), `RollContext` struct (Phase, Actor, Opponent, Attribute, Asset, World), `RollResult` struct (Dice []int, Modifier, Sum), `ModifierOffer` struct (Source, Description, BudgetKey, Apply func), `RerollDirective` struct (Source, Indices, BudgetKey, Elective), `TieOutcome` enum (`TieStandard`, `TieAttackerWins`, `TieDefenderWins`).
+3. Add `hooks/roll_modifier.go` defining `RollModifier` interface with `OfferModifiers(ctx RollContext, factionState, rulebook) []ModifierOffer`.
+4. Add `hooks/roll_result_hook.go` defining `RollResultHook` interface with `OnRollResult(ctx RollContext, result RollResult, factionState, rulebook) RerollDirective`.
+5. Add `hooks/mutation_reactor.go` defining `MutationReactor` interface with `OnMutations(mutations, factionState, rulebook) []domain.Mutation`. (Replaces the soon-renamed `EventHook` — full rename happens in Phase 3a.)
+6. Add `hooks/rule_modifier.go` defining the typed family: `AssetCostModifier`, `MaintenanceCostModifier`, `WorldTechLevelModifier`, `AssetMovementGranter`. Each interface method takes its specific question (buyer/asset/world/baseCost) and returns the modified answer.
+7. Add `hooks/tie_resolver.go` defining `TieResolver` interface with `ResolveTie(ctx RollContext, factionState) TieOutcome`.
+8. Add `hooks/scope.go` defining the `Scope` type: `Scope{Kind: ScopeFaction|ScopeAsset|ScopeGlobal, FactionID string, AssetInstanceID string}`.
+9. Add `hooks/registry.go` defining `Registry` struct with one map per category, each keyed by `Scope`. Public methods: `RegisterRollModifier(scope Scope, source string, hook RollModifier)`, similar for each category. Internal lookup methods (used by dispatchers in later phases): `RollModifiersFor(faction, asset) []RegisteredRollModifier`, etc.
 10. Add `RegisteredRollModifier` (and equivalents per category) wrapper struct carrying `Source string` + the hook itself, so dispatchers can attribute offers and decisions.
-11. Document the package in a top-of-file comment in `eventhooks/registry.go`: who registers, who consults, when registration happens (engine startup), ordering guarantee (registration order).
-12. Confirm the package compiles standalone (`go build ./internal/faction/engine/eventhooks/...`).
+11. Document the package in a top-of-file comment in `hooks/registry.go`: who registers, who consults, when registration happens (engine startup), ordering guarantee (registration order).
+12. Confirm the package compiles standalone (`go build ./internal/faction/engine/hooks/...`).
 
 ### Tests
 
-13. Add `eventhooks/registry_test.go` covering:
+13. Add `hooks/registry_test.go` covering:
     - Registration order is preserved on lookup (Cat 1, 2, 3, 4, 5 each).
     - Faction scope filters correctly (a hook scoped to faction A is not returned for faction B).
     - Asset scope filters correctly (a hook scoped to asset instance ID X is not returned for asset Y).
@@ -77,21 +77,21 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/eventhooks/types.go`
-- `internal/faction/engine/eventhooks/roll_modifier.go`
-- `internal/faction/engine/eventhooks/roll_result_hook.go`
-- `internal/faction/engine/eventhooks/mutation_reactor.go`
-- `internal/faction/engine/eventhooks/rule_modifier.go`
-- `internal/faction/engine/eventhooks/tie_resolver.go`
-- `internal/faction/engine/eventhooks/scope.go`
-- `internal/faction/engine/eventhooks/registry.go`
-- `internal/faction/engine/eventhooks/registry_test.go`
+- `internal/faction/engine/hooks/types.go`
+- `internal/faction/engine/hooks/roll_modifier.go`
+- `internal/faction/engine/hooks/roll_result_hook.go`
+- `internal/faction/engine/hooks/mutation_reactor.go`
+- `internal/faction/engine/hooks/rule_modifier.go`
+- `internal/faction/engine/hooks/tie_resolver.go`
+- `internal/faction/engine/hooks/scope.go`
+- `internal/faction/engine/hooks/registry.go`
+- `internal/faction/engine/hooks/registry_test.go`
 
 ### Definition of done
 
 - All interfaces compile.
-- `go test ./internal/faction/engine/eventhooks/...` passes.
-- No wiring yet to `core_engine.go` — `Engine` does not yet hold a `Hooks *eventhooks.Registry` field. That arrives in Phase 3a (when the first dispatcher needs it).
+- `go test ./internal/faction/engine/hooks/...` passes.
+- No wiring yet to `core_engine.go` — `Engine` does not yet hold a `Hooks *hooks.Registry` field. That arrives in Phase 3a (when the first dispatcher needs it).
 
 ### Out of scope for this phase
 
@@ -103,16 +103,16 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ## Phase 2 — Budgets + `InputCollector` Extension + Test-Fake Refactor
 
-**Session deliverable:** `Faction.HookBudgets` field added with TOML round-trip; refill wired into bookkeeping; `InputCollector` gains the two new methods via embedded `eventhooks.Collector`; existing local test fakes retired in favor of gomock.
+**Session deliverable:** `Faction.HookBudgets` field added with TOML round-trip; refill wired into bookkeeping; `InputCollector` gains the two new methods via embedded `hooks.Collector`; existing local test fakes retired in favor of gomock.
 
 ### Tasks
 
 1. Add `HookBudgets map[string]int` to `domain.Faction` at `internal/faction/domain/faction.go:43-59`. Add `toml:"hook_budgets,omitempty"` tag.
 2. Initialize `HookBudgets` to `nil` (omitempty) at faction creation in the wizard / state load paths. Confirm round-trip with a unit test.
-3. Define `eventhooks.Collector` interface in `internal/faction/engine/eventhooks/collector.go` with two methods:
+3. Define `hooks.Collector` interface in `internal/faction/engine/hooks/collector.go` with two methods:
     - `SelectModifiers(offers []ModifierOffer) []ModifierOffer`
     - `ConfirmReroll(directive RerollDirective) bool`
-4. Embed `eventhooks.Collector` into `engine.InputCollector` at `internal/faction/engine/core_input_collector.go:12-17`, alongside `action.Collector` and `ability.Collector`.
+4. Embed `hooks.Collector` into `engine.InputCollector` at `internal/faction/engine/core_input_collector.go:12-17`, alongside `action.Collector` and `ability.Collector`.
 5. Update `ScriptedCollector` at `internal/faction/engine/testharness/collector.go` to implement the two new methods. Default behaviour: take all offers, confirm all rerolls. Add scripting hooks (`SetModifierSelections`, `SetRerollConfirmations`) so tests can override.
 6. Locate and update any other production `InputCollector` implementations (TUI collector if present in `cmd/faction-manager/tui/`). Add the two new methods.
 7. **Refactor test fakes to gomock**:
@@ -142,7 +142,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/eventhooks/collector.go`
+- `internal/faction/engine/hooks/collector.go`
 - `internal/faction/domain/faction_test.go` (if not already present, for round-trip test)
 
 ### Definition of done
@@ -162,14 +162,14 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ## Phase 3a — Cat 3 Dispatch + `EventHook` Rename
 
-**Session deliverable:** `MutationReactor` dispatch site wired into the orchestrator via the new `dispatch/` package. Depth cap returns an error to the caller rather than dispatching to the observer. `EventHook` renamed everywhere. `Engine` now holds `Hooks *eventhooks.Registry`.
+**Session deliverable:** `MutationReactor` dispatch site wired into the orchestrator via the new `dispatch/` package. Depth cap returns an error to the caller rather than dispatching to the observer. `EventHook` renamed everywhere. `Engine` now holds `Hooks *hooks.Registry`.
 
 ### Tasks
 
-1. Add `Hooks *eventhooks.Registry` field to `Engine` at `internal/faction/engine/core_engine.go:31` (next to `Rand`).
-2. Initialize `Hooks: eventhooks.NewRegistry()` in both `engine.New(dataDir)` and `engine.NewWithRulebook(rb)` constructors.
-3. Delete `internal/faction/engine/core_event_hook.go`. The interface now lives in `eventhooks/mutation_reactor.go` (added in Phase 1).
-4. Update the comment at `core_engine.go:22` (currently references `EventHook`) to reference `MutationReactor` and the `eventhooks` package.
+1. Add `Hooks *hooks.Registry` field to `Engine` at `internal/faction/engine/core_engine.go:31` (next to `Rand`).
+2. Initialize `Hooks: hooks.NewRegistry()` in both `engine.New(dataDir)` and `engine.NewWithRulebook(rb)` constructors.
+3. Delete `internal/faction/engine/core_event_hook.go`. The interface now lives in `hooks/mutation_reactor.go` (added in Phase 1).
+4. Update the comment at `core_engine.go:22` (currently references `EventHook`) to reference `MutationReactor` and the `hooks` package.
 5. Replace the dispatch-site comment block at `orchestrator.go:120-123` with a call to `dispatch.MutationReactors`. Algorithm (in `dispatch/mutations.go`):
     1. Take the `combined` mutation slice.
     2. Look up `MutationReactors` registered for the acting faction (faction-scoped) and global scope.
@@ -191,8 +191,8 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/dispatch/mutations.go`
-- `internal/faction/engine/dispatch/mutations_test.go`
+- `internal/faction/engine/hooks/dispatch/mutations.go`
+- `internal/faction/engine/hooks/dispatch/mutations_test.go`
 
 ### Files modified
 
@@ -251,7 +251,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
     12. For elective directives: call `collector.ConfirmReroll(directive)`. Skip if rejected.
     13. For accepted/non-elective directives: reroll the indicated indices using `roller.Roll(sides)`, update `result.Dice` and `result.Sum`, increment budget if `BudgetKey` non-empty.
     14. Return final `result`.
-3. Define `RollState` helper in `eventhooks/types.go` with methods `AddDie(sides int)` (queues a new die for the upcoming roll) — to give `ModifierOffer.Apply` a clean mutation interface. Decide whether `Apply` mutates pre-roll dice count or runs after roll (pre-roll is simpler — Warlike's "+1d10 keep highest" expands the dice pool before any are rolled).
+3. Define `RollState` helper in `hooks/types.go` with methods `AddDie(sides int)` (queues a new die for the upcoming roll) — to give `ModifierOffer.Apply` a clean mutation interface. Decide whether `Apply` mutates pre-roll dice count or runs after roll (pre-roll is simpler — Warlike's "+1d10 keep highest" expands the dice pool before any are rolled).
 
 ### Tests
 
@@ -267,12 +267,12 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/dispatch/roll.go`
-- `internal/faction/engine/dispatch/roll_test.go`
+- `internal/faction/engine/hooks/dispatch/roll.go`
+- `internal/faction/engine/hooks/dispatch/roll_test.go`
 
 ### Files modified
 
-- `internal/faction/engine/eventhooks/types.go` (add `RollState`)
+- `internal/faction/engine/hooks/types.go` (add `RollState`)
 
 ### Definition of done
 
@@ -294,15 +294,15 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 ### Tasks
 
 1. **Asset cost dispatch:** in `internal/faction/engine/action/actions/buy_asset.go` near line 76 (`ba.cost = def.Cost`):
-    1. Replace the assignment with a call to a new helper `eventhooks.ResolveAssetCost(registry, buyer, def, world, baseCost)`.
+    1. Replace the assignment with a call to a new helper `hooks.ResolveAssetCost(registry, buyer, def, world, baseCost)`.
     2. Helper iterates registered `AssetCostModifier`s for the faction, applies in registration order, returns final cost.
 2. **Maintenance cost dispatch:** in `internal/faction/engine/turn/bookkeeping.go:86-90`:
-    1. Update `maintenanceCost(asset)` to take a registry and faction: `maintenanceCost(registry, owner, asset) int`. Default body still returns 0 (decision #36 stub stands until structured cost data exists), but the body now calls `eventhooks.ResolveMaintenanceCost(registry, owner, asset, 0)` so registered modifiers can override.
+    1. Update `maintenanceCost(asset)` to take a registry and faction: `maintenanceCost(registry, owner, asset) int`. Default body still returns 0 (decision #36 stub stands until structured cost data exists), but the body now calls `hooks.ResolveMaintenanceCost(registry, owner, asset, 0)` so registered modifiers can override.
     2. Update the call site at line 61 to pass the registry and owner.
-3. **Tech-level dispatch:** add `eventhooks.ResolveWorldTechLevel(registry, faction, world, baseTL)` helper. Document at the top of `buy_asset.go` (where the line 17 deferred-TL comment lives) that this helper exists; no migration required this branch since TL filtering itself is deferred (decision in `buy_asset.go:17`).
-4. **Movement granters:** add `eventhooks.GrantedMovementAbilities(registry, asset)` helper returning `[]MovementAbility`. Document for use when an action wants to know "what extra movement abilities does this asset have via tags/effects?". No migration required this branch.
+3. **Tech-level dispatch:** add `hooks.ResolveWorldTechLevel(registry, faction, world, baseTL)` helper. Document at the top of `buy_asset.go` (where the line 17 deferred-TL comment lives) that this helper exists; no migration required this branch since TL filtering itself is deferred (decision in `buy_asset.go:17`).
+4. **Movement granters:** add `hooks.GrantedMovementAbilities(registry, asset)` helper returning `[]MovementAbility`. Document for use when an action wants to know "what extra movement abilities does this asset have via tags/effects?". No migration required this branch.
 5. **Tie resolver dispatch:** in `internal/faction/engine/action/actions/attack.go:120` (and `:154`):
-    1. Before the `>=` comparison, call `eventhooks.ResolveTie(registry, ctx, factionState)`.
+    1. Before the `>=` comparison, call `hooks.ResolveTie(registry, ctx, factionState)`.
     2. If returned outcome is `TieStandard`, fall back to current `>=` behaviour.
     3. If `TieAttackerWins`, attacker wins ties unconditionally (current default — but explicit).
     4. If `TieDefenderWins`, defender wins ties (Fanatical's case).
@@ -323,8 +323,8 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/dispatch/rules.go`
-- `internal/faction/engine/dispatch/rules_test.go`
+- `internal/faction/engine/hooks/dispatch/rules.go`
+- `internal/faction/engine/hooks/dispatch/rules_test.go`
 
 ### Files modified
 
@@ -402,7 +402,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 1. **Migrate hook-eligible roll sites in `attack.go`** at lines 116, 117, 121, 156:
     1. For each, build a `RollContext` (Phase: `PhaseAttack` / `PhaseDefense`, Actor, Opponent, Attribute from the action, Asset from the action target).
-    2. Replace direct `roller.Roll(10)` and `DiceRoll.Roll(roller)` calls with `eventhooks.RollWithHooks(ctx, diceRoll, registry, collector, roller, faction, factionState, rulebook)`.
+    2. Replace direct `roller.Roll(10)` and `DiceRoll.Roll(roller)` calls with `hooks.RollWithHooks(ctx, diceRoll, registry, collector, roller, faction, factionState, rulebook)`.
     3. The function returns `RollResult`; use `result.Sum` where the old code used the int return. Use `result.Dice` for any per-die logic (none currently in `attack.go`).
 2. Migrate any *other* hook-eligible sites that proof-of-life consumers depend on. For Fanatical (auto-reroll 1s), per the rules this fires on *all* faction rolls — but for proof-of-life scope, just attack/defense rolls is acceptable. Decide in-session whether to expand to `expand_influence.go` and `ability.go` faction-test sites; if yes, migrate those four sites as well. (Other 7 sites that aren't faction tests stay on the simple `Roll` form.)
 3. **Implement Warlike** in `tag/tags/warlike.go`:
@@ -531,7 +531,7 @@ End-to-end checks to run after each phase:
 | `internal/faction/engine/core_event_hook.go` | 3a (deleted) |
 | `internal/faction/engine/core_engine.go:22, 31` | 3a (Hooks field) |
 | `internal/faction/engine/core_orchestrator.go:120-123` | 3a (dispatch site) |
-| `internal/faction/engine/core_input_collector.go:12-17` | 2 (embed eventhooks.Collector) |
+| `internal/faction/engine/core_input_collector.go:12-17` | 2 (embed hooks.Collector) |
 | `internal/faction/domain/faction.go:43-59` | 2 (HookBudgets field) |
 | `internal/faction/state/faction_state.go:20-45` | 2 (round-trip verified) |
 | `internal/faction/engine/turn/bookkeeping.go:26-90` | 2 (refill), 3c (maintenance signature) |
