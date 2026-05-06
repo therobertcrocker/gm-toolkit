@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"bufio"
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	testDataDir          = "../../data"
+	testDataDir          = "../../../data"
 	defSecurityPersonnel = "F1-001"
 )
 

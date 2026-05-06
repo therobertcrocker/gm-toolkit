@@ -187,7 +187,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
     - Reactor adding mutation that triggers same reactor again → recurses (verify count of invocations).
     - Recursion depth cap: a reactor that always adds a mutation → stops at depth 5, logs/observes the event.
     - Multiple reactors fire in registration order (verify with a recording reactor that appends source markers to mutations).
-9. Integration test added to `internal/faction/engine/integration_test/scenarios_test.go`: register a stub `MutationReactor` that emits a `CoinDelta` whenever it sees an `AssetDestroyed`. Run an attack that destroys an asset. Confirm the additional `CoinDelta` was applied. (This is a structural test — the actual Scavengers tag binding lands in Phase 4a, but the dispatch path is exercised here.)
+9. Integration test added to `internal/faction/engine/test_harness/integration_test/scenarios_test.go`: register a stub `MutationReactor` that emits a `CoinDelta` whenever it sees an `AssetDestroyed`. Run an attack that destroys an asset. Confirm the additional `CoinDelta` was applied. (This is a structural test — the actual Scavengers tag binding lands in Phase 4a, but the dispatch path is exercised here.)
 
 ### Files created
 
@@ -198,7 +198,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 - `internal/faction/engine/core_engine.go` (add `Hooks` field, initialize in both constructors, update comment)
 - `internal/faction/engine/core_orchestrator.go` (replace dispatch-site stub at line 120 with call to helper)
-- `internal/faction/engine/integration_test/scenarios_test.go` (add structural test)
+- `internal/faction/engine/test_harness/integration_test/scenarios_test.go` (add structural test)
 
 ### Files deleted
 
@@ -348,44 +348,44 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ## Phase 4a — Tag Engine Skeleton + Scavengers (Cat 3)
 
-**Session deliverable:** `tagengine` package created. `RegisterDefaultTags(*Engine)` walks `rulebook.Tags` and binds known tag IDs to coded handlers. Scavengers (Cat 3, faction-scoped, no roll-site migration needed) lands as the first registered tag with end-to-end test coverage.
+**Session deliverable:** `tag_engine` package created. `RegisterDefaultTags(*Engine)` walks `rulebook.Tags` and binds known tag IDs to coded handlers. Scavengers (Cat 3, faction-scoped, no roll-site migration needed) lands as the first registered tag with end-to-end test coverage.
 
 ### Tasks
 
-1. Create `internal/faction/engine/tagengine/` package directory.
-2. Add `tagengine/tagengine.go` with:
+1. Create `internal/faction/engine/tag/` package directory.
+2. Add `tag/tag.go` with:
     - `RegisterDefaultTags(eng *engine.Engine)` mirroring `RegisterDefaultActions` from `action/actions/register.go:8-23`.
     - Private dispatch table: `var handlers = map[string]func(*engine.Engine, *domain.Tag){...}` keyed by tag ID.
     - For each tag a faction owns (`faction.Tags`), look up by ID; if a handler exists, register the corresponding hooks scoped to that faction. Tags without handlers are silently no-op (data-only).
 3. Wire registration into engine setup. **Decision point:** `RegisterDefaultTags` walks the *current* faction state to register faction-scoped hooks at engine start. This means `RegisterDefaultTags` takes the `FactionState`, not just the Engine. Adjust signature: `RegisterDefaultTags(eng *engine.Engine, factionState *state.FactionState)`. Call site lives wherever the existing `RegisterDefaultActions(e)` is called (currently `integration_test/harness_test.go:38`; confirm production wiring location and add there too — likely `cmd/faction-manager/` startup).
-4. Add `tagengine/tags/scavengers.go`: implement `ScavengersReactor` as a `MutationReactor`. Logic:
+4. Add `tag/tags/scavengers.go`: implement `ScavengersReactor` as a `MutationReactor`. Logic:
     - Inspect each mutation in the slice; if any is `AssetDestroyed`, emit a `CoinDelta{FactionID: <owner of this tag>, Delta: +1}` per destroyed asset (own *or* rival, per rules p. 219).
     - Returns the new mutations to be appended (the dispatcher recurses, but since the new mutations are `CoinDelta` not `AssetDestroyed`, no infinite loop).
 5. Register Scavengers in the `handlers` map keyed by the tag's ID (`"T-014"` per `tags.toml:93-97` — confirm exact ID).
 
 ### Tests
 
-6. Unit test in `tagengine/tags/scavengers_test.go`: feed `ScavengersReactor.OnMutations` a mutation slice containing one `AssetDestroyed`; assert one `CoinDelta{Delta: +1}` returned.
+6. Unit test in `tag/tags/scavengers_test.go`: feed `ScavengersReactor.OnMutations` a mutation slice containing one `AssetDestroyed`; assert one `CoinDelta{Delta: +1}` returned.
 7. Integration test in `integration_test/scenarios_test.go`: faction A owns Scavengers tag, attacks and destroys faction B's asset. Confirm A's coin balance increases by 1 (above any existing destruction-driven coin changes).
 8. Negative test: faction without Scavengers in same scenario gets no bonus coin.
 
 ### Files created
 
-- `internal/faction/engine/tagengine/tagengine.go`
-- `internal/faction/engine/tagengine/tags/scavengers.go`
-- `internal/faction/engine/tagengine/tags/scavengers_test.go`
+- `internal/faction/engine/tag/tag.go`
+- `internal/faction/engine/tag/tags/scavengers.go`
+- `internal/faction/engine/tag/tags/scavengers_test.go`
 
 ### Files modified
 
-- `internal/faction/engine/integration_test/harness_test.go` (call `RegisterDefaultTags`)
+- `internal/faction/engine/test_harness/integration_test/harness_test.go` (call `RegisterDefaultTags`)
 - Production startup site (likely `cmd/faction-manager/cmd/<root>.go` or wherever `RegisterDefaultActions` is invoked) — confirm in-session and update.
-- `internal/faction/engine/integration_test/scenarios_test.go` (add Scavengers integration test)
+- `internal/faction/engine/test_harness/integration_test/scenarios_test.go` (add Scavengers integration test)
 
 ### Definition of done
 
 - `go test ./...` passes.
 - A faction with the Scavengers tag gains +1 Coin per asset destroyed (own or rival) in any action.
-- Tags without a registered handler in `tagengine.handlers` continue to load as data with no behavioural effect.
+- Tags without a registered handler in `tag_engine.handlers` continue to load as data with no behavioural effect.
 
 ### Out of scope
 
@@ -405,17 +405,17 @@ This plan ships the **complete framework** — all five interfaces, registries, 
     2. Replace direct `roller.Roll(10)` and `DiceRoll.Roll(roller)` calls with `eventhooks.RollWithHooks(ctx, diceRoll, registry, collector, roller, faction, factionState, rulebook)`.
     3. The function returns `RollResult`; use `result.Sum` where the old code used the int return. Use `result.Dice` for any per-die logic (none currently in `attack.go`).
 2. Migrate any *other* hook-eligible sites that proof-of-life consumers depend on. For Fanatical (auto-reroll 1s), per the rules this fires on *all* faction rolls — but for proof-of-life scope, just attack/defense rolls is acceptable. Decide in-session whether to expand to `expand_influence.go` and `ability.go` faction-test sites; if yes, migrate those four sites as well. (Other 7 sites that aren't faction tests stay on the simple `Roll` form.)
-3. **Implement Warlike** in `tagengine/tags/warlike.go`:
+3. **Implement Warlike** in `tag/tags/warlike.go`:
     - `WarlikeRollModifier` implements `RollModifier`.
     - `OfferModifiers` returns one `ModifierOffer` when `ctx.Phase == PhaseAttack` AND `ctx.Attribute == FactionStatForce`. The offer's `Apply` adds 1d10 to the dice pool and instructs the result to keep the highest n dice.
     - `BudgetKey: "tag:Warlike"`, `Source: "tag:Warlike"`.
     - "Keep highest" semantics: since the existing `RollResult` returns `Sum = sum(Dice) + Modifier`, "keep highest" needs explicit handling. Decide: extend `ModifierOffer` with a post-roll trim hook, OR have the offer's `Apply` register a paired `RollResultHook` that drops the lowest die. Recommended approach in this plan: post-roll trim hook on `RollState` — simpler.
     - Document the design choice with a one-line comment.
-4. Register Warlike handler in `tagengine/tagengine.go` `handlers` map keyed by Warlike's tag ID (confirm from `tags.toml:117-122` — likely `"T-016"` or similar).
-5. **Implement Fanatical** in `tagengine/tags/fanatical.go`:
+4. Register Warlike handler in `tag/tag.go` `handlers` map keyed by Warlike's tag ID (confirm from `tags.toml:117-122` — likely `"T-016"` or similar).
+5. **Implement Fanatical** in `tag/tags/fanatical.go`:
     - `FanaticalRollResultHook` implements `RollResultHook`. `OnRollResult` returns a `RerollDirective` listing indices in `result.Dice` where the value is 1, with `Elective: false` (auto-reroll, non-elective per rules) and no `BudgetKey` (unlimited).
     - `FanaticalTieResolver` implements `TieResolver`. `ResolveTie` returns `TieDefenderWins` when `ctx.Actor.HasTag("Fanatical")` and the actor is the attacker, OR `TieAttackerWins` when the Fanatical faction is the defender. (Per rules: "they always lose ties during attacks", which means: if Fanatical is attacker, attacker loses, so defender wins; if Fanatical is defender, defender loses, so attacker wins.)
-6. Register both Fanatical hooks (one source, two interface registrations) in `tagengine.handlers` under Fanatical's tag ID.
+6. Register both Fanatical hooks (one source, two interface registrations) in `tag_engine.handlers` under Fanatical's tag ID.
 
 ### Tests
 
@@ -431,18 +431,18 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/tagengine/tags/warlike.go`
-- `internal/faction/engine/tagengine/tags/warlike_test.go`
-- `internal/faction/engine/tagengine/tags/fanatical.go`
-- `internal/faction/engine/tagengine/tags/fanatical_test.go`
+- `internal/faction/engine/tag/tags/warlike.go`
+- `internal/faction/engine/tag/tags/warlike_test.go`
+- `internal/faction/engine/tag/tags/fanatical.go`
+- `internal/faction/engine/tag/tags/fanatical_test.go`
 
 ### Files modified
 
 - `internal/faction/engine/action/actions/attack.go` (migrate roll sites at lines 116, 117, 121, 156)
 - `internal/faction/engine/action/actions/expand_influence.go` (optional — decide in-session)
 - `internal/faction/engine/ability/ability.go` (optional — decide in-session)
-- `internal/faction/engine/tagengine/tagengine.go` (register Warlike + Fanatical)
-- `internal/faction/engine/integration_test/scenarios_test.go` (add Warlike + Fanatical scenarios)
+- `internal/faction/engine/tag/tag.go` (register Warlike + Fanatical)
+- `internal/faction/engine/test_harness/integration_test/scenarios_test.go` (add Warlike + Fanatical scenarios)
 
 ### Definition of done
 
@@ -466,11 +466,11 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 1. **Decide in-session:** Preceptor Archive (`AssetCostModifier`: -1 Coin on TL4+ asset purchases) vs. Pirates (`AssetCostModifier` or movement-cost modifier: rivals pay +1 Coin to move onto Pirate-BoI worlds).
     - Tradeoff: Preceptor exercises the buy-asset cost path that's already plumbed in Phase 3c. Pirates would either also use the cost path (simpler) or exercise a different rule path (more code). Recommendation: pick whichever has a cleaner rule statement; default to **Preceptor** for path coverage simplicity.
-2. **If Preceptor:** create `tagengine/tags/preceptor_archive.go`:
+2. **If Preceptor:** create `tag/tags/preceptor_archive.go`:
     - `PreceptorArchiveCostModifier` implements `AssetCostModifier`.
     - `ModifyAssetCost(buyer, def, world, baseCost) int` returns `baseCost - 1` when `def.TechLevel >= 4` and `baseCost > 0`; else returns `baseCost`.
-    - Register in `tagengine.handlers` for Preceptor Archive's tag ID (confirm from `tags.toml:75-79`).
-3. **If Pirates:** create `tagengine/tags/pirates.go` with the equivalent logic for the movement/move-onto-world path. Note the Phase 3c helper for movement may need a small extension since this branch didn't migrate the movement cost site.
+    - Register in `tag_engine.handlers` for Preceptor Archive's tag ID (confirm from `tags.toml:75-79`).
+3. **If Pirates:** create `tag/tags/pirates.go` with the equivalent logic for the movement/move-onto-world path. Note the Phase 3c helper for movement may need a small extension since this branch didn't migrate the movement cost site.
 
 ### Tests
 
@@ -480,13 +480,13 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/tagengine/tags/preceptor_archive.go` *or* `pirates.go`
+- `internal/faction/engine/tag/tags/preceptor_archive.go` *or* `pirates.go`
 - Corresponding `_test.go`
 
 ### Files modified
 
-- `internal/faction/engine/tagengine/tagengine.go` (register the chosen handler)
-- `internal/faction/engine/integration_test/scenarios_test.go` (add scenario)
+- `internal/faction/engine/tag/tag.go` (register the chosen handler)
+- `internal/faction/engine/test_harness/integration_test/scenarios_test.go` (add scenario)
 
 ### Definition of done
 
@@ -523,23 +523,6 @@ End-to-end checks to run after each phase:
 
 - `go build ./...` from repo root — all phases.
 - `go test ./...` from repo root — all phases.
-- Faction-manager binary builds and runs:
-  ```
-  cd cmd/faction-manager
-  go build -o bin/faction-manager .
-  FACTION_DATA_DIR=/workspaces/gm-toolkit/internal/faction/data ./bin/faction-manager --campaign test list
-  ```
-  (Spot-check after Phases 2, 4a, 4b, 4c.)
-- Manual smoke after Phase 4b:
-  ```
-  ./bin/faction-manager --campaign test turn
-  ```
-  Drive a turn for a faction with Warlike, choose attack on a Force asset, confirm the GM-election prompt appears. (TUI integration is best-effort here — the proof-of-life uses scripted-collector defaults; full TUI prompts are deferred.)
-- After Phase 4c, run the litmus-test grep:
-  ```
-  git diff main -- internal/faction/engine/core_*.go cmd/faction-manager/tui/
-  ```
-  Should show changes only from Phases 2 and 3a (constructor / dispatch wiring), nothing tag-specific.
 
 ## Critical Files Reference
 

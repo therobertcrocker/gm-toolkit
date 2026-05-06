@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/eventhooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -351,7 +352,7 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 	h := newHarness(t)
 	alpha := h.addFaction("alpha", "Tartarus", 4, 3, 2)
-	addAssetOnWorld(alpha, "Krylos") // gives alpha an asset on Krylos → eligible for new base there
+	addAssetOnWorld(alpha, "Krylos")        // gives alpha an asset on Krylos → eligible for new base there
 	h.addFaction("beta", "Krylos", 2, 2, 2) // beta's asset is on Krylos → will contest
 
 	// Roll sequence: [expansion, rival, attack, defense, damage]
@@ -497,4 +498,85 @@ func TestRunCycle_Bribe(t *testing.T) {
 
 	_, hasCoin := findMutationByTypeAndCause(records, "coin_delta", "bribe")
 	checkStep(t, "coin_delta(cause=bribe) in history", hasCoin, "no bribe coin_delta found")
+}
+
+// --- scenario 9: MutationReactor dispatch — CoinDelta on asset destroyed ---
+
+// coinOnDestroyReactor emits one CoinDelta the first time it observes an
+// AssetRemoved in the mutation slice. Stateful so it does not double-fire on
+// recursive dispatch rounds.
+type coinOnDestroyReactor struct {
+	factionID string
+	fired     bool
+}
+
+func (r *coinOnDestroyReactor) OnMutations(mutations []domain.Mutation, _ *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
+	if r.fired {
+		return nil
+	}
+	for _, m := range mutations {
+		if _, ok := m.(domain.AssetRemoved); ok {
+			r.fired = true
+			return []domain.Mutation{domain.CoinDelta{FactionID: r.factionID, Delta: 1}}
+		}
+	}
+	return nil
+}
+
+func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 4, 3, 2)
+	h.addFaction("beta", "Tartarus", 2, 2, 2)
+
+	// Roll sequence: attack hits and destroys beta's asset.
+	// attack=10+force(4)=14, defense=1+force(2)=3 → hit; damage=3+1=4 ≥ HP(3) → destroyed.
+	h.engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+
+	stub := &coinOnDestroyReactor{factionID: "alpha"}
+	h.engine.Hooks.RegisterMutationReactor(eventhooks.FactionScope("alpha"), "stub-coin-on-destroy", stub)
+
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, a := range available {
+			if a.Name() == "Attack" {
+				return a, nil
+			}
+		}
+		t.Fatal("Attack not available for alpha")
+		return nil, nil
+	}
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+
+	initialCoin := alpha.Coin
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	checkStep(t, "beta asset destroyed", len(h.factionState.Factions["beta"].Assets) == 0,
+		"beta should have no assets after attack")
+	checkStep(t, "reactor fired on AssetRemoved", stub.fired,
+		"reactor never saw AssetRemoved in mutation slice")
+
+	// alpha income: wealth(2)/2=1 + (force(4)+cunning(3))/4=1 = 2; reactor: +1 → total +3
+	wantCoin := initialCoin + 3
+	checkStep(t, "alpha Coin reflects reactor delta (+1 above bookkeeping income)", alpha.Coin == wantCoin,
+		"alpha.Coin mismatch — reactor CoinDelta may not have been applied")
+
+	records := readHistory(t, h.cfg.HistoryPath)
+	_, hasRemoved := findMutationType(records, "asset_removed")
+	checkStep(t, "asset_removed in history", hasRemoved, "no asset_removed mutation found")
+	// reactor's CoinDelta has no Cause; bookkeeping uses Cause="bookkeeping"
+	_, hasReactorCoin := findMutationByTypeAndCause(records, "coin_delta", "")
+	checkStep(t, "reactor coin_delta (cause='') in history", hasReactorCoin, "no reactor coin_delta in history")
 }

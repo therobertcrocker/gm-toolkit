@@ -117,10 +117,10 @@ func (e *Engine) RunFactionTurn(
 	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook)
 	combined := append(actionMutations, goalMutations...)
 
-	// === Phase 4: EventHook dispatch site (deferred per decision #5) ===
-	// Registered hooks fire here in registration order.
-	// Returned mutations are appended to `combined` and the loop
-	// recurses with depth bound 5; on cap trip the engine logs and stops.
+	// Phase 4: MutationReactor dispatch. Registered hooks (Cat 3) fire in
+	// registration order; returned mutations are appended and the loop
+	// recurses with a depth bound of 5.
+	combined = dispatchMutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook, observer)
 
 	// Phase 5: Apply mutations and persist state. The engine applies all mutations
 	// in a single batch to preserve order, then records a single EventRecord in the

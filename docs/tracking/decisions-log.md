@@ -374,6 +374,9 @@ A record of key decisions made during development, grouped by feature branch.
 | 162 | `eventhooks.Collector` embedded into `engine.InputCollector`; mock regenerated from `engine.InputCollector` | `SelectModifiers` and `ConfirmReroll` are hook-dispatch concerns, not action-resolution concerns; embedding keeps the collector interface composable; regenerating the mock from the full interface means tests always use a mock that satisfies the real production type |
 | 163 | `MockCollector` renamed to `MockInputCollector` in `mocks/` after regeneration | Mock type name reflects source interface name (`InputCollector`); `go:generate` directive on `core_input_collector.go` keeps the generation command co-located with the interface definition |
 | 164 | `ScriptedCollector` defaults: `SelectModifiers` returns all offers; `ConfirmReroll` returns true | Integration tests exercise hooks with no GM input; accepting all offers and confirming all rerolls is the maximal-coverage default; tests that need selective behavior override via `SelectModifiersFn`/`ConfirmRerollFn` |
+| 165 | `dispatchMutationReactors` passes the full accumulated `combined` slice to each depth's reactors, not only the new mutations | Reactors are responsible for idempotency; the plan spec says `combined`; stateful one-shot stubs in tests avoid double-fire without changing the dispatch contract |
+| 166 | Reactor depth cap fires at `depth >= 5` (not `> 5`), bounding total rounds to 5 (depths 0–4) | Depth 5 is the cap trip; 5 rounds is the plan spec; the bound is clear and testable |
+| 167 | `EventHook` interface deleted; `MutationReactor` in `eventhooks/interfaces.go` is the sole Cat 3 type | `EventHook` was always a placeholder; `MutationReactor` has the same shape and lives in the right package; removing the alias eliminates confusion |
 
 **Notable alternatives rejected:**
 
@@ -381,3 +384,4 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #158 | Flat global slice with per-entry scope field (filter on lookup) | Preserves global registration order across scopes but makes scope-filtered lookup O(n) across the whole registry; buckets keep lookup fast with no ambiguity about ordering semantics |
 | #161 | Zero out only budget keys declared by registered hooks | Requires registry to be held on engine during bookkeeping (Phase 3a wiring); cleaner to defer that dependency; nil-on-clear is safe since hooks re-register budgets from zero each turn |
+| #165 | Feed only new mutations to each subsequent depth (trigger-batch approach) | Cleaner integration test design, but conflicts with the plan's `combined` spec and forces awkward trigger-type matching in reactors; reactor idempotency is the correct boundary |
