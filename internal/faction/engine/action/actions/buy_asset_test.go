@@ -24,7 +24,7 @@ func TestBuyAsset_Validate(t *testing.T) {
 	t.Run("eligible asset and sufficient coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Homeworld: "Tartarus"}
-		if !NewBuyAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if !NewBuyAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction can afford an eligible asset")
 		}
 	})
@@ -32,7 +32,7 @@ func TestBuyAsset_Validate(t *testing.T) {
 	t.Run("not enough coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 2, Homeworld: "Tartarus"}
-		if NewBuyAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewBuyAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction cannot afford any asset")
 		}
 	})
@@ -40,7 +40,7 @@ func TestBuyAsset_Validate(t *testing.T) {
 	t.Run("stat below MinRating", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 1, Coin: 10, Homeworld: "Tartarus"}
-		if NewBuyAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewBuyAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction stat is below MinRating")
 		}
 	})
@@ -53,7 +53,7 @@ func TestBuyAsset_Output(t *testing.T) {
 	def := rulebook.Assets["cheap"]
 	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Homeworld: "Tartarus"}
 
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectBuyOrder(gomock.Any(), gomock.Any()).Return(
 		action.BuyOrder{World: "Tartarus", Definition: def}, nil,
 	)

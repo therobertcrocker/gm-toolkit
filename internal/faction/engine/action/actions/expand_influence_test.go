@@ -35,7 +35,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
 		faction := &domain.Faction{ID: "f1", Coin: 0, MaxHP: 10, Assets: []*domain.Asset{asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when coin < 1")
 		}
 	})
@@ -47,7 +47,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		base := &domain.Base{ID: "b1", OwnerID: "f1", Location: "Krylos", CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 5, Assets: []*domain.Asset{asset}, Bases: []*domain.Base{base}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when no expansion options available")
 		}
 	})
@@ -57,7 +57,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 10, Assets: []*domain.Asset{asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if !NewExpandInfluence(mocks.NewMockCollector(ctrl), nil).Validate(faction, factionState, nil) {
+		if !NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction has an asset on a world with no base")
 		}
 	})
@@ -72,7 +72,7 @@ func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 3}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &fixedRoller{values: []int{8}})
@@ -115,7 +115,7 @@ func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 		Mode: action.ExpandModeReinforce, BaseID: "b1",
 		SubMode: action.ReinforceHeal, HPAmount: 2,
 	}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}})
@@ -155,7 +155,7 @@ func TestExpandInfluence_Reinforce_Max(t *testing.T) {
 		Mode: action.ExpandModeReinforce, BaseID: "b1",
 		SubMode: action.ReinforceMax, HPAmount: 3,
 	}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}})
@@ -200,7 +200,7 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 	collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)

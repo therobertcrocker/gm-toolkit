@@ -25,7 +25,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 	t.Run("no assets", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction has no assets")
 		}
 	})
@@ -35,7 +35,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		// delta = 4-2 = 2; Coin=1 < 2 → no valid replacement
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: "Tartarus"}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 1, Assets: []*domain.Asset{asset}}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction cannot afford the cost delta")
 		}
 	})
@@ -44,7 +44,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: "Tartarus"}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: []*domain.Asset{asset}}
-		if !NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if !NewRefitAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction can afford the refit")
 		}
 	})
@@ -60,7 +60,7 @@ func TestRefitAsset_Output(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: []*domain.Asset{oldAsset}}
 
 	order := action.RefitOrder{OldAsset: oldAsset, NewDefinition: newDef}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectRefitOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewRefitAsset(collector)

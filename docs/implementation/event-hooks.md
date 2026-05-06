@@ -4,6 +4,8 @@
 
 ## Context
 
+Read: `docs/discovery/event-hooks.md` for the discovery process that led to this plan, including the open questions and the family of five interfaces.
+
 The Core Engine ships with a single-interface stub (`EventHook`) and a documented dispatch site, but no registry, dispatcher, or consumers. Decisions #137 and #138 deferred this work because the Tag Engine wasn't ready and there was nothing to dispatch to. That deferral is now expiring: the next major effort is the TUI rebuild, which assumes a stable Core Engine collaboration surface, and reactive mechanics (tags + `S`-flagged asset effects) are the largest unbuilt piece of that surface.
 
 A close reading of the SWN faction rules surfaced **five distinct shapes** of reactive mechanic, only one of which fits the existing stub. The discovery doc (`docs/discovery/event-hooks.md`) ratified the family of five interfaces, the per-turn budget machinery, and the litmus test: *expanding tags or `S`-flag effects must not require changes to `core_*.go` or `cmd/faction-manager/tui/`*.

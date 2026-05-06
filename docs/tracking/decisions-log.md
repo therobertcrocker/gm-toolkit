@@ -370,9 +370,14 @@ A record of key decisions made during development, grouped by feature branch.
 | 158 | `Registry` uses `map[Scope][]Registered*` (one map per category) | Preserves registration order within each scope bucket; scope-keyed map is O(1) lookup; composing the result slice (global + faction + asset) makes ordering explicit and testable |
 | 159 | Lookup ordering: global first, then faction-scoped, then asset-scoped | Global hooks are framework-level and should fire before per-faction or per-asset overrides; deterministic ordering across all consumers without needing registration timestamps |
 | 160 | `RollState` included in Phase 1 `types.go` alongside `ModifierOffer` | `ModifierOffer.Apply` requires a concrete `*RollState` parameter; defining it alongside the offer type avoids a forward reference or a dummy `any` signature that would require breaking changes later |
+| 161 | `HookBudgets` cleared to `nil` (not zeroed per key) in `ApplyBookkeeping` | "nil" matches the "once per turn" rule wording exactly — budgets reset wholesale each turn and re-accumulate as hooks fire; zeroing individual keys would require registered hook descriptors to be consulted during bookkeeping, coupling the engine to registered hook state before wiring exists |
+| 162 | `eventhooks.Collector` embedded into `engine.InputCollector`; mock regenerated from `engine.InputCollector` | `SelectModifiers` and `ConfirmReroll` are hook-dispatch concerns, not action-resolution concerns; embedding keeps the collector interface composable; regenerating the mock from the full interface means tests always use a mock that satisfies the real production type |
+| 163 | `MockCollector` renamed to `MockInputCollector` in `mocks/` after regeneration | Mock type name reflects source interface name (`InputCollector`); `go:generate` directive on `core_input_collector.go` keeps the generation command co-located with the interface definition |
+| 164 | `ScriptedCollector` defaults: `SelectModifiers` returns all offers; `ConfirmReroll` returns true | Integration tests exercise hooks with no GM input; accepting all offers and confirming all rerolls is the maximal-coverage default; tests that need selective behavior override via `SelectModifiersFn`/`ConfirmRerollFn` |
 
 **Notable alternatives rejected:**
 
 | Decision # | Alternative | Why rejected |
 |------------|-------------|--------------|
 | #158 | Flat global slice with per-entry scope field (filter on lookup) | Preserves global registration order across scopes but makes scope-filtered lookup O(n) across the whole registry; buckets keep lookup fast with no ambiguity about ordering semantics |
+| #161 | Zero out only budget keys declared by registered hooks | Requires registry to be held on engine during bookkeeping (Phase 3a wiring); cleaner to defer that dependency; nil-on-clear is safe since hooks re-register budgets from zero each turn |

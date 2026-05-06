@@ -5,77 +5,11 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"go.uber.org/mock/gomock"
 )
-
-// abilityFakeCollector provides pre-configured responses for UseAssetAbility input methods.
-// Unused InputCollector methods panic to surface accidental calls in tests.
-type abilityFakeCollector struct {
-	selectedAssets    []*domain.Asset
-	moveDestination   string
-	factionTestTarget *domain.Faction
-	confirmCalled     bool
-}
-
-func (c *abilityFakeCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
-	return c.selectedAssets, nil
-}
-func (c *abilityFakeCollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
-	return c.moveDestination, nil
-}
-func (c *abilityFakeCollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
-	return c.factionTestTarget, nil
-}
-func (c *abilityFakeCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {
-	c.confirmCalled = true
-	return false, nil
-}
-func (c *abilityFakeCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
-	panic("SelectAsset: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
-	panic("SelectRepairOrders: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectBuyOrder(_ []string, _ []*domain.AssetDefinition) (action.BuyOrder, error) {
-	panic("SelectBuyOrder: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectRefitOrder(_ []action.RefitOption, _ *rulebook.Rulebook) (action.RefitOrder, error) {
-	panic("SelectRefitOrder: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectAttackers(_ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
-	panic("SelectAttackers: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
-	panic("SelectDefender: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {
-	panic("ConfirmRedirectToBase: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState) (action.ExpandInfluenceOrder, error) {
-	panic("SelectExpandInfluenceOrder: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
-	panic("ConfirmRivalFreeAttack: not used in use_asset_ability tests")
-}
-func (c *abilityFakeCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
-	panic("SelectBaseAttackers: not used in use_asset_ability tests")
-}
-
-func (c *abilityFakeCollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
-	panic("SelectBribeTarget: not used in use_asset_ability tests")
-}
-
-func (c *abilityFakeCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
-	panic("SelectSeizeTarget: not used in use_asset_ability tests")
-}
-
-func (c *abilityFakeCollector) SelectAction(_ *domain.Faction, _ []action.Action) (action.Action, error) {
-	panic("SelectAction: not used in use_asset_ability tests")
-}
-
-func (c *abilityFakeCollector) AwaitCheckpoint(_ string) error { return nil }
 
 // makeAbilityRulebook returns a minimal Rulebook with four asset definitions:
 //   - "move-asset": A-flagged, movement ability, no coin cost
@@ -167,7 +101,7 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 }
 
 // runAbility drives a full Inputs→Resolve→Output cycle for UseAssetAbility.
-func runAbility(t *testing.T, collector *abilityFakeCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
+func runAbility(t *testing.T, collector *mocks.MockInputCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	t.Helper()
 	ae := ability.New()
 	act := NewUseAssetAbility(collector, roller, ae)
@@ -232,10 +166,10 @@ func TestUseAssetAbility_Resolve_Movement_NoCoinCost(t *testing.T) {
 	factionState, actingAsset := makeAbilityState("move-asset", false)
 	faction := factionState.Factions["f1"]
 
-	collector := &abilityFakeCollector{
-		selectedAssets:  []*domain.Asset{actingAsset},
-		moveDestination: "Tartarus",
-	}
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectMoveDestination(gomock.Any(), gomock.Any()).Return("Tartarus", nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
 
@@ -258,10 +192,10 @@ func TestUseAssetAbility_Resolve_Movement_WithCoinCost(t *testing.T) {
 	factionState, actingAsset := makeAbilityState("move-asset-coin", false)
 	faction := factionState.Factions["f1"]
 
-	collector := &abilityFakeCollector{
-		selectedAssets:  []*domain.Asset{actingAsset},
-		moveDestination: "Tartarus",
-	}
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectMoveDestination(gomock.Any(), gomock.Any()).Return("Tartarus", nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
 
@@ -286,10 +220,10 @@ func TestUseAssetAbility_Resolve_FactionTest_AttackerWins(t *testing.T) {
 	faction := factionState.Factions["f1"]
 	targetFaction := factionState.Factions["f2"]
 
-	collector := &abilityFakeCollector{
-		selectedAssets:    []*domain.Asset{actingAsset},
-		factionTestTarget: targetFaction,
-	}
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook)
 
@@ -311,10 +245,10 @@ func TestUseAssetAbility_Resolve_FactionTest_Tie(t *testing.T) {
 	faction := factionState.Factions["f1"]
 	targetFaction := factionState.Factions["f2"]
 
-	collector := &abilityFakeCollector{
-		selectedAssets:    []*domain.Asset{actingAsset},
-		factionTestTarget: targetFaction,
-	}
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{5, 5}}, faction, factionState, rulebook)
 
@@ -332,10 +266,10 @@ func TestUseAssetAbility_Resolve_FactionTest_DefenderWins(t *testing.T) {
 	faction := factionState.Factions["f1"]
 	targetFaction := factionState.Factions["f2"]
 
-	collector := &abilityFakeCollector{
-		selectedAssets:    []*domain.Asset{actingAsset},
-		factionTestTarget: targetFaction,
-	}
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook)
 
@@ -351,15 +285,13 @@ func TestUseAssetAbility_Resolve_NilAbility(t *testing.T) {
 	factionState, actingAsset := makeAbilityState("deferred-asset", false)
 	faction := factionState.Factions["f1"]
 
-	collector := &abilityFakeCollector{
-		selectedAssets: []*domain.Asset{actingAsset},
-	}
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().ConfirmAbilityApplied(gomock.Any(), gomock.Any()).Return(false, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
 
-	if !collector.confirmCalled {
-		t.Error("expected ConfirmAbilityApplied to be called for nil-ability asset")
-	}
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for nil-ability asset, got %v", mutations)
 	}

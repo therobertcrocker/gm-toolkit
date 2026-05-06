@@ -36,6 +36,10 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 		return BookkeepingResult{}, nil, err
 	}
 
+	// Clear all hook budgets so each registered hook fires at most once this turn
+	// (per "once per turn" rule wording). Hooks re-accumulate from scratch each turn.
+	f.HookBudgets = nil
+
 	wealthIncome := f.Wealth / 2
 	statIncome := (f.Force + f.Cunning) / 4
 	total := wealthIncome + statIncome

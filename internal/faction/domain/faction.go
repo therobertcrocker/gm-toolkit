@@ -52,10 +52,11 @@ type Faction struct {
 	Coin        int          `toml:"coin"`
 	XP          int          `toml:"xp"`
 	Homeworld   string       `toml:"homeworld"`
-	Tags        []*Tag       `toml:"tags"`
-	ActiveGoal  *ActiveGoal  `toml:"active_goal"`
-	Assets      []*Asset     `toml:"assets"`
-	Bases       []*Base      `toml:"bases"`
+	Tags        []*Tag            `toml:"tags"`
+	ActiveGoal  *ActiveGoal       `toml:"active_goal"`
+	Assets      []*Asset          `toml:"assets"`
+	Bases       []*Base           `toml:"bases"`
+	HookBudgets map[string]int    `toml:"hook_budgets,omitempty"`
 }
 
 func RatingsFromScale(s FactionScale) (primary, secondary, tertiary int) {
