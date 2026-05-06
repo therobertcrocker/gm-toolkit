@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -119,8 +120,12 @@ func (e *Engine) RunFactionTurn(
 
 	// Phase 4: MutationReactor dispatch. Registered hooks (Cat 3) fire in
 	// registration order; returned mutations are appended and the loop
-	// recurses with a depth bound of 5.
-	combined = dispatchMutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook, observer)
+	// recurses until no new mutations are produced.
+	var dispatchErr error
+	combined, dispatchErr = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
+	if dispatchErr != nil {
+		observer.OnError(faction, dispatchErr)
+	}
 
 	// Phase 5: Apply mutations and persist state. The engine applies all mutations
 	// in a single batch to preserve order, then records a single EventRecord in the

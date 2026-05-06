@@ -17,7 +17,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 | # | Question | Resolution |
 |---|---|---|
 | 1 | Cat 1+2: one interface or two? | **Two.** Different shapes (offers vs. directives), different timings, different GM-input behavior. |
-| 2 | `RuleModifier` package home — `eventhooks` or sibling? | **Same package** (`eventhooks`). Mechanics (typed registry, source-attributed dispatch) are identical to the other categories; semantic difference doesn't justify duplicating registry machinery. |
+| 2 | `RuleModifier` package home — `hooks` or sibling? | **Same package** (`hooks`). Mechanics (typed registry, source-attributed dispatch) are identical to the other categories; semantic difference doesn't justify duplicating registry machinery. |
 | 3 | Registration lifecycle — register-once at engine start? | **Yes.** Dynamic mid-turn registration deferred. |
 | 4 | Persisted budget format — flat map or structured? | **Flat `map[string]int`** keyed by namespaced `BudgetKey` (e.g., `"tag:Warlike"`, `"asset:BookOfSecrets:C7-001"`). |
 | 5 | Cat 1 proof-of-life — Warlike or Eugenics Cult? | **Warlike.** Asset-scoped registration is a registry concern, exercised end-to-end when the Effects Engine ships. Asset-scope path covered by a small unit test in this branch. |
@@ -27,7 +27,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 | # | Question | Resolution |
 |---|---|---|
-| A | Where do `SelectModifiers` / `ConfirmReroll` live on `InputCollector`? | New `eventhooks.Collector` interface, embedded into `engine.InputCollector` alongside `action.Collector` and `ability.Collector`. |
+| A | Where do `SelectModifiers` / `ConfirmReroll` live on `InputCollector`? | New `hooks.Collector` interface, embedded into `engine.InputCollector` alongside `action.Collector` and `ability.Collector`. |
 | B | How do tags bind to hooks? | Mirror the asset → ability pattern (`engine/ability/ability.go:48-51`). `tags.toml` keeps current schema; Tag Engine looks up handlers by tag `id`. Future tags may add structured fields to `tags.toml` when patterns emerge — YAGNI for proof-of-life. |
 | C | How do hook-eligible roll sites get richer dice state? | Introduce a new `RollWithHooks` function returning per-die slice + sum. Migrate hook-eligible call sites; leave non-hook sites (e.g., faction order) on the existing `DiceRoll.Roll(Roller) int`. |
 | D | Test-fake collateral when `InputCollector` extends. | Refactor `attack_test.go` and `use_asset_ability_test.go` local fakes to use the gomock-generated `MockCollector` (decision #149). Lands in Phase 2. |
@@ -38,7 +38,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 |---|---|---|
 | 1 | Interfaces + registry foundation | Five interface families, scoped registries, no dispatch wiring |
 | 2 | Budgets + `InputCollector` extension + test-fake refactor | `Faction.HookBudgets`, refill, two new collector methods, mocks regenerated, local fakes retired |
-| 3a | Cat 3 dispatch + `EventHook` rename | `MutationReactor` dispatch wired into orchestrator with depth-5 recursion bound |
+| 3a | Cat 3 dispatch + `EventHook` rename | `MutationReactor` dispatch wired into orchestrator; error returned on depth cap |
 | 3b | Cat 1+2 dispatch infrastructure | `RollWithHooks` function, registry consultation logic; not yet wired into call sites |
 | 3c | Cat 4+5 dispatch sites | `RuleModifier` family dispatched at each rule path; `TieResolver` dispatched at attack tie site |
 | 4a | Tag Engine skeleton + Scavengers (Cat 3) | Package, registration entry point, one Cat 3 tag end-to-end |
@@ -162,7 +162,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ## Phase 3a — Cat 3 Dispatch + `EventHook` Rename
 
-**Session deliverable:** `MutationReactor` dispatch site wired into the orchestrator with the depth-5 recursion bound. `EventHook` renamed everywhere. `Engine` now holds `Hooks *eventhooks.Registry`.
+**Session deliverable:** `MutationReactor` dispatch site wired into the orchestrator via the new `dispatch/` package. Depth cap returns an error to the caller rather than dispatching to the observer. `EventHook` renamed everywhere. `Engine` now holds `Hooks *eventhooks.Registry`.
 
 ### Tasks
 
@@ -170,13 +170,13 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 2. Initialize `Hooks: eventhooks.NewRegistry()` in both `engine.New(dataDir)` and `engine.NewWithRulebook(rb)` constructors.
 3. Delete `internal/faction/engine/core_event_hook.go`. The interface now lives in `eventhooks/mutation_reactor.go` (added in Phase 1).
 4. Update the comment at `core_engine.go:22` (currently references `EventHook`) to reference `MutationReactor` and the `eventhooks` package.
-5. Replace the dispatch-site comment block at `core_orchestrator.go:120-123` with the actual dispatcher implementation. Algorithm:
+5. Replace the dispatch-site comment block at `orchestrator.go:120-123` with a call to `dispatch.MutationReactors`. Algorithm (in `dispatch/mutations.go`):
     1. Take the `combined` mutation slice.
     2. Look up `MutationReactors` registered for the acting faction (faction-scoped) and global scope.
     3. Iterate in registration order. For each reactor, call `OnMutations(combined, factionState, rulebook)`.
     4. Append returned mutations to `combined`. If any new mutations were added, recurse.
-    5. Track depth; bound at 5. On cap trip, log `"hook recursion depth exceeded for faction %s"` via the observer's `OnError` and stop further recursion (do not error out the turn — already-collected mutations apply).
-6. Add a private helper `dispatchMutationReactors(faction, mutations, factionState, rulebook, observer)` returning the expanded mutation slice. Place in a new file `internal/faction/engine/core_dispatch.go` (so the orchestrator stays focused on phase orchestration, dispatch logic is one file over).
+    5. Track depth; bound at 5. On cap trip, return the accumulated mutations alongside an error — the orchestrator passes the error to `observer.OnError`.
+6. `dispatch.MutationReactors` signature: `(registry, faction, combined, factionState, rulebook) ([]domain.Mutation, error)`. No observer dependency in the `dispatch` package.
 7. Confirm no other production code references `EventHook` (search `grep -r "EventHook" --include="*.go"`).
 
 ### Tests
@@ -185,20 +185,20 @@ This plan ships the **complete framework** — all five interfaces, registries, 
     - Empty registry → mutations passthrough unchanged.
     - One reactor adding one mutation → final slice has both.
     - Reactor adding mutation that triggers same reactor again → recurses (verify count of invocations).
-    - Recursion depth cap: a reactor that always adds a mutation → stops at depth 5, logs/observes the event.
+    - Recursion depth cap: a reactor that always adds a mutation → stops at depth 5, returns a non-nil error.
     - Multiple reactors fire in registration order (verify with a recording reactor that appends source markers to mutations).
 9. Integration test added to `internal/faction/engine/test_harness/integration_test/scenarios_test.go`: register a stub `MutationReactor` that emits a `CoinDelta` whenever it sees an `AssetDestroyed`. Run an attack that destroys an asset. Confirm the additional `CoinDelta` was applied. (This is a structural test — the actual Scavengers tag binding lands in Phase 4a, but the dispatch path is exercised here.)
 
 ### Files created
 
-- `internal/faction/engine/core_dispatch.go`
-- `internal/faction/engine/core_dispatch_test.go`
+- `internal/faction/engine/dispatch/mutations.go`
+- `internal/faction/engine/dispatch/mutations_test.go`
 
 ### Files modified
 
-- `internal/faction/engine/core_engine.go` (add `Hooks` field, initialize in both constructors, update comment)
-- `internal/faction/engine/core_orchestrator.go` (replace dispatch-site stub at line 120 with call to helper)
-- `internal/faction/engine/test_harness/integration_test/scenarios_test.go` (add structural test)
+- `internal/faction/engine/engine.go` (add `Hooks` field, initialize in both constructors, update comment)
+- `internal/faction/engine/orchestrator.go` (replace dispatch-site stub at line 120 with call to `dispatch.MutationReactors`)
+- `internal/faction/engine/testharness/integration_test/scenarios_test.go` (add structural test)
 
 ### Files deleted
 
@@ -223,7 +223,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Tasks
 
-1. In `eventhooks/dispatch.go` (new file), implement `RollWithHooks`:
+1. In `dispatch/roll.go` (new file), implement `RollWithHooks`:
     ```
     func RollWithHooks(
         ctx RollContext,
@@ -255,7 +255,7 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Tests
 
-4. Unit tests in `eventhooks/dispatch_test.go`:
+4. Unit tests in `dispatch/roll_test.go`:
     - Empty registry → result matches plain `DiceRoll.Roll` semantics.
     - One `RollModifier` adding +1d10 → final `result.Dice` has one extra die.
     - Modifier with `BudgetKey` set: first call applies, increments budget; second call (same turn, same faction) skips because budget is non-zero.
@@ -267,8 +267,8 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/eventhooks/dispatch.go`
-- `internal/faction/engine/eventhooks/dispatch_test.go`
+- `internal/faction/engine/dispatch/roll.go`
+- `internal/faction/engine/dispatch/roll_test.go`
 
 ### Files modified
 
@@ -307,11 +307,11 @@ This plan ships the **complete framework** — all five interfaces, registries, 
     3. If `TieAttackerWins`, attacker wins ties unconditionally (current default — but explicit).
     4. If `TieDefenderWins`, defender wins ties (Fanatical's case).
     5. Apply equivalent logic at the counter-damage tie site at `:154`.
-6. Ensure all dispatch helpers live in `eventhooks/` (e.g., `eventhooks/rule_modifier_dispatch.go`), keeping consumer-facing call sites tidy.
+6. Ensure all dispatch helpers live in `dispatch/` (e.g., `dispatch/rules.go`), keeping consumer-facing call sites tidy.
 
 ### Tests
 
-7. Unit tests in `eventhooks/rule_modifier_dispatch_test.go`:
+7. Unit tests in `dispatch/rules_test.go`:
     - `ResolveAssetCost` with no modifiers → returns base.
     - One modifier reducing cost by 1 → returns base-1.
     - Two modifiers chain in registration order (each sees the previous one's output).
@@ -323,8 +323,8 @@ This plan ships the **complete framework** — all five interfaces, registries, 
 
 ### Files created
 
-- `internal/faction/engine/eventhooks/rule_modifier_dispatch.go`
-- `internal/faction/engine/eventhooks/rule_modifier_dispatch_test.go`
+- `internal/faction/engine/dispatch/rules.go`
+- `internal/faction/engine/dispatch/rules_test.go`
 
 ### Files modified
 

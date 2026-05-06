@@ -1,4 +1,4 @@
-package eventhooks
+package hooks
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -21,7 +21,7 @@ type RollResultHook interface {
 
 // MutationReactor responds to the completed mutation slice for a turn phase
 // and may return additional mutations to append (Cat 3). The dispatcher
-// recurses with a depth bound of 5; on cap trip it logs and stops.
+// recurses with a depth bound of 5; on cap trip it returns an error.
 type MutationReactor interface {
 	OnMutations(mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation
 }

@@ -1,4 +1,4 @@
-package eventhooks
+package hooks
 
 // Collector abstracts the two input methods that hook dispatchers require from
 // the GM. SelectModifiers is called with the full Cat 1 offer list; the GM

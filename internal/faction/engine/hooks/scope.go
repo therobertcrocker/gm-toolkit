@@ -1,4 +1,4 @@
-package eventhooks
+package hooks
 
 // ScopeKind identifies what a Scope targets.
 type ScopeKind int

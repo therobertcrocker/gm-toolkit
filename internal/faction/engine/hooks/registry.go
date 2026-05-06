@@ -1,4 +1,4 @@
-package eventhooks
+package hooks
 
 // Registered* types pair a hook implementation with its registration metadata.
 // They live here because each carries a Scope as its primary identity field.

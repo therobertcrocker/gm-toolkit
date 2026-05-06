@@ -1,4 +1,4 @@
-// Package eventhooks defines the five reactive-mechanic hook families and the
+// Package hooks defines the five reactive-mechanic hook families and the
 // scoped registry that binds them.
 //
 // # The five categories
@@ -25,4 +25,5 @@
 // all in registration order within each bucket.
 //
 // Only Cat 3 (MutationReactor) can recurse; recursion is bounded at depth 5.
-package eventhooks
+// Dispatch logic lives in the hooks/dispatch sub-package.
+package hooks

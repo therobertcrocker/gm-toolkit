@@ -14,7 +14,7 @@ import (
 
 	domain "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	action "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	eventhooks "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/eventhooks"
+	hooks "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	rulebook "github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	state "github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	gomock "go.uber.org/mock/gomock"
@@ -89,7 +89,7 @@ func (mr *MockInputCollectorMockRecorder) ConfirmRedirectToBase(defenderFaction,
 }
 
 // ConfirmReroll mocks base method.
-func (m *MockInputCollector) ConfirmReroll(directive eventhooks.RerollDirective) bool {
+func (m *MockInputCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConfirmReroll", directive)
 	ret0, _ := ret[0].(bool)
@@ -269,10 +269,10 @@ func (mr *MockInputCollectorMockRecorder) SelectFactionTestTarget(asset, effect,
 }
 
 // SelectModifiers mocks base method.
-func (m *MockInputCollector) SelectModifiers(offers []eventhooks.ModifierOffer) []eventhooks.ModifierOffer {
+func (m *MockInputCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectModifiers", offers)
-	ret0, _ := ret[0].([]eventhooks.ModifierOffer)
+	ret0, _ := ret[0].([]hooks.ModifierOffer)
 	return ret0
 }
 

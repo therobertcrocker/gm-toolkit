@@ -6,7 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/eventhooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -533,7 +533,7 @@ func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
 	h.engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
 
 	stub := &coinOnDestroyReactor{factionID: "alpha"}
-	h.engine.Hooks.RegisterMutationReactor(eventhooks.FactionScope("alpha"), "stub-coin-on-destroy", stub)
+	h.engine.Hooks.RegisterMutationReactor(hooks.FactionScope("alpha"), "stub-coin-on-destroy", stub)
 
 	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {

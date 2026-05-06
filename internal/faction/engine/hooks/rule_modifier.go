@@ -1,4 +1,4 @@
-package eventhooks
+package hooks
 
 import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 

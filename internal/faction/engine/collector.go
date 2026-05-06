@@ -6,7 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/eventhooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 )
 
 // InputCollector abstracts input collection for action, ability, and hook resolution.
@@ -15,7 +15,7 @@ import (
 type InputCollector interface {
 	action.Collector
 	ability.Collector
-	eventhooks.Collector
+	hooks.Collector
 	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	AwaitCheckpoint(phase string) error
 }
