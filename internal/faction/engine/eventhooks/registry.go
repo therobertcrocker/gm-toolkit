@@ -1,12 +1,3 @@
-// Package eventhooks defines the five reactive-mechanic interface families and
-// the scoped registry that binds them. Registration happens once at engine
-// startup (via RegisterDefaultTags and similar entry points). Dispatchers
-// (added in later phases) consult the registry during turn execution.
-//
-// Who registers: the Tag Engine (tagengine) and, later, the Effects Engine.
-// Who consults: phase dispatchers in core_dispatch.go and RollWithHooks.
-// Ordering guarantee: within a scope bucket, hooks fire in registration order.
-// Global-scope hooks are returned before faction-scope, which precede asset-scope.
 package eventhooks
 
 // Registered* types pair a hook implementation with its registration metadata.
