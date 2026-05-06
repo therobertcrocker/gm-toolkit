@@ -5,6 +5,8 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -16,12 +18,13 @@ import (
 type AttackAction struct {
 	collector action.Collector
 	roller    domain.Roller
+	registry  *hooks.Registry
 	attackers []*domain.Asset
 	mutations []domain.Mutation
 }
 
-func NewAttack(collector action.Collector, roller domain.Roller) *AttackAction {
-	return &AttackAction{collector: collector, roller: roller}
+func NewAttack(collector action.Collector, roller domain.Roller, registry *hooks.Registry) *AttackAction {
+	return &AttackAction{collector: collector, roller: roller, registry: registry}
 }
 
 func (attack *AttackAction) Name() string { return "Attack" }
@@ -116,8 +119,17 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		attackRoll := attack.roller.Roll(10) + statScore(faction, attackerDef.Attack.AttackerStat)
 		defenseRoll := attack.roller.Roll(10) + statScore(defenderFaction, attackerDef.Attack.DefenderStat)
 
-		// Attack damage: attacker wins on tie or strictly greater.
-		if attackRoll >= defenseRoll {
+		tieCtx := hooks.RollContext{
+			Phase:    hooks.PhaseAttack,
+			Actor:    faction,
+			Opponent: defenderFaction,
+			Asset:    attacker,
+			World:    attacker.Location,
+		}
+		tieOutcome := dispatch.ResolveTie(attack.registry, tieCtx, factionState)
+
+		// Attack damage: attacker wins on tie (TieStandard/TieAttackerWins) or strictly greater.
+		if attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins) {
 			damage := attackerDef.Attack.Damage.Roll(attack.roller)
 			base := factionBaseOnWorld(defenderFaction, attacker.Location)
 
@@ -150,8 +162,8 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			}
 		}
 
-		// Counterattack damage: defender wins (strictly greater) or tie.
-		if defenseRoll >= attackRoll {
+		// Counterattack damage: defender wins on tie (TieStandard/TieDefenderWins) or strictly greater.
+		if defenseRoll > attackRoll || (defenseRoll == attackRoll && tieOutcome != hooks.TieAttackerWins) {
 			if defenderDef.Counter != nil {
 				counterDamage := defenderDef.Counter.Roll(attack.roller)
 				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker)

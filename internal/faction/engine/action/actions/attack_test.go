@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
@@ -102,9 +103,9 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 
 // runAttack is a test helper that drives a full Validate→Inputs→Resolve→Output
 // cycle and returns the resulting mutation list.
-func runAttack(t *testing.T, collector action.Collector, roller *fixedRoller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
+func runAttack(t *testing.T, collector action.Collector, roller *fixedRoller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, registry *hooks.Registry) []domain.Mutation {
 	t.Helper()
-	attack := NewAttack(collector, roller)
+	attack := NewAttack(collector, roller, registry)
 	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -126,7 +127,7 @@ func TestAttack_Validate(t *testing.T) {
 		attackerAsset.Ready = false // on cooldown — ineligible
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}})
+		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil)
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when attacker is not Ready")
 		}
@@ -137,7 +138,7 @@ func TestAttack_Validate(t *testing.T) {
 		defenderAsset.Location = "Tartarus" // rival is elsewhere
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}})
+		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil)
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when no rivals on attacker's world")
 		}
@@ -147,7 +148,7 @@ func TestAttack_Validate(t *testing.T) {
 		factionState, _, _ := makeAttackState(8, 8, "force-defender", false)
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}})
+		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil)
 		if !attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate true")
 		}
@@ -166,7 +167,7 @@ func TestAttack_AttackerWins_NonLethal(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
@@ -192,7 +193,7 @@ func TestAttack_AttackerWins_Lethal(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 6}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 6}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 2 {
 		t.Fatalf("len(mutations) = %d, want 2; got %v", len(mutations), mutations)
@@ -221,7 +222,7 @@ func TestAttack_DefenderWins_NoCounter(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations when defender wins with no counter, got %v", mutations)
@@ -240,7 +241,7 @@ func TestAttack_DefenderWins_WithCounter(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 3}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 3}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
@@ -266,7 +267,7 @@ func TestAttack_Tie(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{5, 5, 4, 2}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{5, 5, 4, 2}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 2 {
 		t.Fatalf("len(mutations) = %d, want 2; got %v", len(mutations), mutations)
@@ -295,7 +296,7 @@ func TestAttack_RedirectToBase_Accepted(t *testing.T) {
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().ConfirmRedirectToBase(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 2 {
 		t.Fatalf("len(mutations) = %d, want 2; got %v", len(mutations), mutations)
@@ -324,7 +325,7 @@ func TestAttack_RedirectToBase_Lethal(t *testing.T) {
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().ConfirmRedirectToBase(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 5}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 5}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 3 {
 		t.Fatalf("len(mutations) = %d, want 3; got %v", len(mutations), mutations)
@@ -354,7 +355,7 @@ func TestAttack_RedirectToBase_Declined(t *testing.T) {
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().ConfirmRedirectToBase(gomock.Any(), gomock.Any(), gomock.Any()).Return(false, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook, nil)
 
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
@@ -379,7 +380,7 @@ func TestAttack_StealthCleared(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook, nil)
 
 	// Expect: StealthCleared(a1), AssetHPDelta(d1)
 	if len(mutations) != 2 {
@@ -410,7 +411,7 @@ func TestAttack_StealthCleared_OncePerAsset(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset, attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil).Times(2)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3, 4}}, faction, factionState, rulebook, nil)
 
 	stealthCount := 0
 	for _, mutation := range mutations {
@@ -438,7 +439,7 @@ func TestAttack_DestroyedAttackerSkipped(t *testing.T) {
 	// Only one SelectDefender call — second slot is skipped (attacker already destroyed).
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 8}}, faction, factionState, rulebook)
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 8}}, faction, factionState, rulebook, nil)
 
 	// Matchup 1: defender wins, counter=8, attacker HP=4-8=-4 → AssetHPDelta + AssetRemoved.
 	// Matchup 2: a1 re-check fails (tracker shows -4 net HP) → skipped, SelectDefender not called.
@@ -450,5 +451,41 @@ func TestAttack_DestroyedAttackerSkipped(t *testing.T) {
 	}
 	if removals != 1 {
 		t.Errorf("AssetRemoved count = %d, want 1 (a1 destroyed once, second slot skipped)", removals)
+	}
+}
+
+// stubTieResolverForAttack always returns a fixed TieOutcome.
+type stubTieResolverForAttack struct{ outcome hooks.TieOutcome }
+
+func (stub *stubTieResolverForAttack) ResolveTie(_ hooks.RollContext, _ *state.FactionState) hooks.TieOutcome {
+	return stub.outcome
+}
+
+// TestAttack_TieResolver_DefenderWins: a TieDefenderWins resolver is registered;
+// equal rolls yield no attack damage but counter fires.
+// Rolls: attack=5, defense=5 (tie — no damage roll consumed), counter=3.
+func TestAttack_TieResolver_DefenderWins(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, "force-defender", false)
+	faction := factionState.Factions["f1"]
+
+	registry := hooks.NewRegistry()
+	registry.RegisterTieResolver(hooks.GlobalScope(), "fanatical", &stubTieResolverForAttack{outcome: hooks.TieDefenderWins})
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockInputCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{5, 5, 3}}, faction, factionState, rulebook, registry)
+
+	// TieDefenderWins: attack check (5 > 5 || 5==5 && TieDefenderWins != TieDefenderWins) → false.
+	// Counter check (5 > 5 || 5==5 && TieDefenderWins != TieAttackerWins) → true → counter fires.
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1 (counter only); got %v", len(mutations), mutations)
+	}
+	delta, ok := mutations[0].(domain.AssetHPDelta)
+	if !ok || delta.AssetID != "a1" || delta.Delta != -3 {
+		t.Errorf("mutations[0] = %v, want AssetHPDelta{a1, -3}", mutations[0])
 	}
 }

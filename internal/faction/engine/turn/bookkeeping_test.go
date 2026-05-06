@@ -29,7 +29,7 @@ func TestApplyBookkeeping_ClearsHookBudgets(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	if _, _, err := te.ApplyBookkeeping(s); err != nil {
+	if _, _, err := te.ApplyBookkeeping(s, nil); err != nil {
 		t.Fatalf("ApplyBookkeeping: %v", err)
 	}
 

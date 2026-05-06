@@ -2,6 +2,8 @@ package turn
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -23,7 +25,7 @@ type AssetRef struct {
 // ApplyBookkeeping computes income and maintenance mutations for the current
 // faction and advances the turn phase to PhaseAction. Returns a zero result
 // and nil mutations if bookkeeping has already run (idempotent on resume).
-func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (BookkeepingResult, []domain.Mutation, error) {
+func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry *hooks.Registry) (BookkeepingResult, []domain.Mutation, error) {
 	if !t.InProgress(factionState) {
 		return BookkeepingResult{}, nil, ErrNoTurnActive
 	}
@@ -47,7 +49,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 	var mutations []domain.Mutation
 	mutations = append(mutations, domain.CoinDelta{FactionID: f.ID, Delta: total, Cause: "bookkeeping"})
 
-	result := applyMaintenance(f, f.Coin+total, &mutations)
+	result := applyMaintenance(registry, f, f.Coin+total, &mutations)
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
 
@@ -57,12 +59,12 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState) (Bookkee
 
 // applyMaintenance evaluates per-asset maintenance costs against startCoin,
 // appends the resulting mutations, and returns display-level asset events.
-func applyMaintenance(f *domain.Faction, startCoin int, mutations *[]domain.Mutation) BookkeepingResult {
+func applyMaintenance(registry *hooks.Registry, f *domain.Faction, startCoin int, mutations *[]domain.Mutation) BookkeepingResult {
 	var result BookkeepingResult
 	runningCoin := startCoin
 
 	for _, a := range f.Assets {
-		cost := maintenanceCost(a)
+		cost := maintenanceCost(registry, f, a)
 		if cost == 0 {
 			if !a.Maintained {
 				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: f.ID, AssetID: a.ID, Maintained: true, Cause: "bookkeeping"})
@@ -87,8 +89,9 @@ func applyMaintenance(f *domain.Faction, startCoin int, mutations *[]domain.Muta
 	return result
 }
 
-// maintenanceCost returns the per-turn Coin cost for an asset. Returns 0 until
-// maintenance cost data is added to AssetDefinition.
-func maintenanceCost(_ *domain.Asset) int {
-	return 0
+// maintenanceCost returns the per-turn Coin cost for an asset. Returns 0 as the
+// base until maintenance cost data is added to AssetDefinition; registered
+// MaintenanceCostModifiers may override via the hook registry.
+func maintenanceCost(registry *hooks.Registry, owner *domain.Faction, asset *domain.Asset) int {
+	return dispatch.ResolveMaintenanceCost(registry, owner, asset, 0)
 }

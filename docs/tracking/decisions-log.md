@@ -377,6 +377,9 @@ A record of key decisions made during development, grouped by feature branch.
 | 165 | `dispatchMutationReactors` passes the full accumulated `combined` slice to each depth's reactors, not only the new mutations | Reactors are responsible for idempotency; the plan spec says `combined`; stateful one-shot stubs in tests avoid double-fire without changing the dispatch contract |
 | 166 | Reactor depth cap fires at `depth >= 5` (not `> 5`), bounding total rounds to 5 (depths 0–4) | Depth 5 is the cap trip; 5 rounds is the plan spec; the bound is clear and testable |
 | 167 | `EventHook` interface deleted; `MutationReactor` in `eventhooks/interfaces.go` is the sole Cat 3 type | `EventHook` was always a placeholder; `MutationReactor` has the same shape and lives in the right package; removing the alias eliminates confusion |
+| 168 | `ResolveTie` dispatch uses first-registration-wins unconditionally (not first-non-Standard) | First-registration-wins is a predictable contract; iterating until the first non-Standard result would silently skip Standard-returning resolvers, making the system harder to reason about; if a resolver is registered it must be authoritative |
+| 169 | Registry threaded to `maintenanceCost` via `ApplyBookkeeping` parameter, not stored on `TurnEngine` | Keeps `TurnEngine` stateless with respect to hooks; registry is owned by `Engine` and passed where needed; no constructor signature change required for `TurnEngine.New` |
+| 170 | nil-safe guards added to all Cat 4+5 dispatch helpers | Test call sites pass nil registry; nil guard returns base value without panicking; production path always provides a real registry via `Engine.Hooks` |
 
 **Notable alternatives rejected:**
 
@@ -385,3 +388,4 @@ A record of key decisions made during development, grouped by feature branch.
 | #158 | Flat global slice with per-entry scope field (filter on lookup) | Preserves global registration order across scopes but makes scope-filtered lookup O(n) across the whole registry; buckets keep lookup fast with no ambiguity about ordering semantics |
 | #161 | Zero out only budget keys declared by registered hooks | Requires registry to be held on engine during bookkeeping (Phase 3a wiring); cleaner to defer that dependency; nil-on-clear is safe since hooks re-register budgets from zero each turn |
 | #165 | Feed only new mutations to each subsequent depth (trigger-batch approach) | Cleaner integration test design, but conflicts with the plan's `combined` spec and forces awkward trigger-type matching in reactors; reactor idempotency is the correct boundary |
+| #169 | Store registry on `TurnEngine` (add to constructor) | Would work, but adds coupling to `TurnEngine` for something it doesn't own; parameter threading is more explicit and avoids changing the `turn.New` signature |

@@ -72,7 +72,7 @@ func (e *Engine) RunFactionTurn(
 	// Phase 2: Bookkeeping. The engine applies any bookkeeping mutations before action selection,
 	// so that they can affect available actions and be observed by the caller.
 
-	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState)
+	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks)
 	if err != nil {
 		observer.OnError(faction, err)
 		return false, err

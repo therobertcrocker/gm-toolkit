@@ -123,18 +123,6 @@ func TestRollWithHooks_SelectModifiersReturningEmpty(t *testing.T) {
 	}
 }
 
-// TODO(human): implement TestRollWithHooks_BudgetGating
-// This test should verify the budget-gating invariant: a modifier with a
-// non-empty BudgetKey fires on the first call (when HookBudgets is empty),
-// increments the faction's budget counter, then is excluded on a second call
-// within the same turn (because HookBudgets[key] >= 1).
-//
-// Guidance:
-//   - Create a registry with one faction-scoped stubModifier that has BudgetKey "tag:Warlike"
-//   - Call RollWithHooks twice against the same faction (simulating two rolls in one turn)
-//   - First call: collector accepts the offer → extra die appears in result, budget increments to 1
-//   - Second call: offer is budget-filtered before SelectModifiers is called → only 2 base dice rolled
-//   - Confirm the faction's HookBudgets["tag:Warlike"] equals 1 after both calls
 func TestRollWithHooks_BudgetGating(t *testing.T) {
 	registry := hooks.NewRegistry()
 	mod := stubModifier{offer: hooks.ModifierOffer{
