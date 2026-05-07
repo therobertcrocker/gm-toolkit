@@ -133,6 +133,7 @@ Design questions that are unresolved and will need answers before the relevant f
 
 ### Deferred (minor)
 - `BuyAsset` Stealth detection hardcodes `"C3-002"` (`engine/actions/buy_asset.go`): robust fix requires a `"stealth_applicator"` flag in the TOML or a typed `TypeStealth` constant; low risk while asset definitions are static, but silently breaks if the TOML ID changes
+- Goal and tag dispatch hardcodes display IDs (`"G-004"`, `"T-011"`, etc.) directly in engine switch statements (`engine/goal/goal.go`, `goal/lock.go`, `goal/progress.go`, `seize_planet.go`, `commands/faction/wizard/select_tags.go`): fix is to key `Rulebook.Goals` and `Rulebook.Tags` on the TOML table key (`"PlanetarySeizure"`, `"PlanetaryGovernment"`) instead of the `id` field, then switch on those semantic keys using Go constants; `ActiveGoal.GoalID` would store the table key; `id` becomes display-only; test campaign state would need a one-time migration
 - `SeizePlanet` action is invisible in history: `Output()` returns no mutations, so the EventRecord for the turn the seize was initiated has no entry recording the phase transition; a `GoalPhaseAdvanced` mutation would make history replay accurate
 - `narrateUseAssetAbility` misleading fallback text: now moot until TUI is rebuilt; will resurface when narration is re-implemented against the new observer interface
 
