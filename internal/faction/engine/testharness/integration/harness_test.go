@@ -12,6 +12,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -48,6 +49,12 @@ func newHarness(t *testing.T) *harness {
 		collector: &testharness.ScriptedCollector{},
 		observer:  &testharness.RecordingObserver{},
 	}
+}
+
+// registerTags wires tag hooks for all factions currently in h.factionState.
+// Call after all addFaction calls so the state is populated before walking.
+func (h *harness) registerTags() {
+	tag.RegisterDefaultTags(h.engine, h.factionState)
 }
 
 // addFaction appends a faction with one Security Personnel asset on its homeworld.

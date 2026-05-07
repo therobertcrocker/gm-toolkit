@@ -580,3 +580,88 @@ func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
 	_, hasReactorCoin := findMutationByTypeAndCause(records, "coin_delta", "")
 	checkStep(t, "reactor coin_delta (cause='') in history", hasReactorCoin, "no reactor coin_delta in history")
 }
+
+// --- scenario N: Scavengers tag — +1 Coin per asset destroyed ---
+
+func TestScavengers_GrantsCoinOnKill(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 4, 3, 2)
+	alpha.Tags = []*domain.Tag{{ID: "T-014"}}
+	h.addFaction("beta", "Tartarus", 2, 2, 2)
+	h.registerTags()
+
+	h.engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, a := range available {
+			if a.Name() == "Attack" {
+				return a, nil
+			}
+		}
+		t.Fatalf("Attack not available for alpha")
+		return nil, nil
+	}
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	if got := len(h.factionState.Factions["beta"].Assets); got != 0 {
+		t.Fatalf("beta assets: got %d, want 0 (attack should have destroyed it)", got)
+	}
+
+	records := readHistory(t, h.cfg.HistoryPath)
+	if _, ok := findMutationByTypeAndCause(records, "coin_delta", "scavengers"); !ok {
+		t.Error("expected coin_delta with cause=scavengers in history")
+	}
+}
+
+func TestScavengers_NoBonusWithoutTag(t *testing.T) {
+	h := newHarness(t)
+	h.addFaction("alpha", "Tartarus", 4, 3, 2) // no Scavengers tag
+	h.addFaction("beta", "Tartarus", 2, 2, 2)
+	h.registerTags()
+
+	h.engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, a := range available {
+			if a.Name() == "Attack" {
+				return a, nil
+			}
+		}
+		t.Fatalf("Attack not available for alpha")
+		return nil, nil
+	}
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	records := readHistory(t, h.cfg.HistoryPath)
+	if _, ok := findMutationByTypeAndCause(records, "coin_delta", "scavengers"); ok {
+		t.Error("expected no coin_delta with cause=scavengers when Scavengers tag is absent")
+	}
+}
