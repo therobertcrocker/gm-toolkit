@@ -812,3 +812,93 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 		t.Error("expected no coin_delta with cause=scavengers when Scavengers tag is absent")
 	}
 }
+
+// --- scenario N+4: Preceptor Archive tag — -1 Coin on TL4+ asset purchases ---
+
+// TestPreceptorArchive_ReducesCostOnTL4Asset verifies that buying a TL4 asset
+// costs one fewer Coin when the faction has the Preceptor Archive tag.
+//
+// Setup: Force=2, Cunning=3, Wealth=2, initial Coin=4.
+// Income from bookkeeping: wealth(2)/2=1 + (force(2)+cunning(3))/4=1 = 2.
+// Pre-buy Coin = 6. F2-001 (Heavy Drop Assets) base cost=4, TL4.
+// Preceptor reduces cost to 3 → final Coin = 3.
+func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 2, 3, 2)
+	alpha.Tags = []*domain.Tag{{ID: "T-013"}}
+	alpha.Coin = 4
+	h.registerTags()
+
+	h.collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
+		for _, a := range available {
+			if a.Name() == "Buy Asset" {
+				return a, nil
+			}
+		}
+		t.Fatal("Buy Asset not available")
+		return nil, nil
+	}
+	h.collector.SelectBuyOrderFn = func(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
+		for _, def := range purchasable {
+			if def.ID == defHeavyDropAssets {
+				return action.BuyOrder{World: worlds[0], Definition: def}, nil
+			}
+		}
+		t.Fatal("F2-001 not in purchasable list")
+		return action.BuyOrder{}, nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	// income=2, reduced cost=3 → 4+2-3=3
+	const wantCoin = 3
+	checkStep(t, "alpha Coin reflects Preceptor discount (cost 3, not 4)", alpha.Coin == wantCoin,
+		fmt.Sprintf("alpha.Coin = %d, want %d", alpha.Coin, wantCoin))
+}
+
+// TestPreceptorArchive_NoBonusWithoutTag verifies that full cost is charged
+// when the faction does not have the Preceptor Archive tag.
+//
+// Same setup as above: pre-buy Coin = 6, base cost = 4 → final Coin = 2.
+func TestPreceptorArchive_NoBonusWithoutTag(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 2, 3, 2)
+	alpha.Coin = 4
+	h.registerTags()
+
+	h.collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
+		for _, a := range available {
+			if a.Name() == "Buy Asset" {
+				return a, nil
+			}
+		}
+		t.Fatal("Buy Asset not available")
+		return nil, nil
+	}
+	h.collector.SelectBuyOrderFn = func(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
+		for _, def := range purchasable {
+			if def.ID == defHeavyDropAssets {
+				return action.BuyOrder{World: worlds[0], Definition: def}, nil
+			}
+		}
+		t.Fatal("F2-001 not in purchasable list")
+		return action.BuyOrder{}, nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	// income=2, full cost=4 → 4+2-4=2
+	const wantCoin = 2
+	checkStep(t, "alpha Coin charged full cost without Preceptor tag", alpha.Coin == wantCoin,
+		fmt.Sprintf("alpha.Coin = %d, want %d", alpha.Coin, wantCoin))
+}

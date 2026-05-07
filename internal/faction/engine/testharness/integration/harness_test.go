@@ -20,6 +20,7 @@ import (
 const (
 	testDataDir          = "../../../data"
 	defSecurityPersonnel = "F1-001"
+	defHeavyDropAssets   = "F2-001" // Force 2, cost 4, TL4
 )
 
 type harness struct {

@@ -8,9 +8,10 @@ import (
 )
 
 var handlers = map[string]func(*engine.Engine, *domain.Faction){
-	tags.ScavengersTagID: tags.RegisterScavengers,
-	tags.WarlikeTagID:    tags.RegisterWarlike,
-	tags.FanaticalTagID:  tags.RegisterFanatical,
+	tags.ScavengersTagID:       tags.RegisterScavengers,
+	tags.WarlikeTagID:          tags.RegisterWarlike,
+	tags.FanaticalTagID:        tags.RegisterFanatical,
+	tags.PreceptorArchiveTagID: tags.RegisterPreceptorArchive,
 }
 
 // RegisterDefaultTags walks factionState and, for each faction tag with a
