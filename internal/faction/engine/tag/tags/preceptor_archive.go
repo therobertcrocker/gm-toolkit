@@ -20,7 +20,7 @@ func (modifier *PreceptorArchiveCostModifier) ModifyAssetCost(_ *domain.Faction,
 		newCost = baseCost
 	}
 
-	return max(newCost, 0) // Ensure cost doesn't go negative.
+	return max(newCost, 0)
 
 }
 

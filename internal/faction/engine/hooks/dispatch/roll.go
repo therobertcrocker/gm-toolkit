@@ -20,7 +20,7 @@ func RollWithHooks(
 	roller domain.Roller,
 	faction *domain.Faction,
 	factionState *state.FactionState,
-	rb *rulebook.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) hooks.RollResult {
 	assetInstanceID := ""
 	if ctx.Asset != nil {
@@ -32,7 +32,7 @@ func RollWithHooks(
 	if registry != nil {
 		var allOffers []hooks.ModifierOffer
 		for _, registered := range registry.RollModifiersFor(faction.ID, assetInstanceID) {
-			allOffers = append(allOffers, registered.Hook.OfferModifiers(ctx, factionState, rb)...)
+			allOffers = append(allOffers, registered.Hook.OfferModifiers(ctx, factionState, rulebook)...)
 		}
 		chosen = collector.SelectModifiers(offersBudgetFilter(allOffers, faction))
 	}
@@ -71,7 +71,7 @@ func RollWithHooks(
 		return result
 	}
 	for _, registered := range registry.RollResultHooksFor(faction.ID, assetInstanceID) {
-		directive := registered.Hook.OnRollResult(ctx, result, factionState, rb)
+		directive := registered.Hook.OnRollResult(ctx, result, factionState, rulebook)
 		if len(directive.Indices) == 0 {
 			continue
 		}

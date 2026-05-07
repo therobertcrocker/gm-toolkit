@@ -45,8 +45,8 @@ func New(dataDir string) (*Engine, error) {
 	return NewWithRulebook(rb), nil
 }
 
-func NewWithRulebook(rb *rulebook.Rulebook) *Engine {
-	e := &Engine{Rulebook: rb, Rand: NewRandRoller(), Hooks: hooks.NewRegistry()}
+func NewWithRulebook(rulebook *rulebook.Rulebook) *Engine {
+	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(), Hooks: hooks.NewRegistry()}
 	e.Turn = turn.New(e.Rand)
 	e.Mutation = mutation.New()
 	e.Action = action.New()

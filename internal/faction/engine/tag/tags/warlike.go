@@ -23,6 +23,8 @@ func (modifier *WarlikeRollModifier) OfferModifiers(ctx hooks.RollContext, _ *st
 		Description: "roll an extra d10, keep highest",
 		BudgetKey:   "tag:Warlike",
 		// keep-highest: extra die trimmed post-roll via RollState.SetKeepHighest
+		// keep-highest: SetKeepHighest(1) assumes a 1-die base pool; if the base
+		// pool ever grows, this trim count must be updated alongside it.
 		Apply: func(rollState *hooks.RollState) {
 			rollState.AddDie(10)
 			rollState.SetKeepHighest(1)

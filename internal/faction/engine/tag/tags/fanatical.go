@@ -34,16 +34,11 @@ type FanaticalTieResolver struct {
 	FactionID string
 }
 
-// ResolveTie implements hooks.TieResolver and handles ties for the Fanatical tag.
-// If the actor is the fanatical faction, they lose all ties.
 func (resolver *FanaticalTieResolver) ResolveTie(ctx hooks.RollContext, _ *state.FactionState) hooks.TieOutcome {
-
 	if ctx.Actor.ID == resolver.FactionID {
 		return hooks.TieDefenderWins
 	}
-
 	return hooks.TieAttackerWins
-
 }
 
 func RegisterFanatical(eng *engine.Engine, faction *domain.Faction) {

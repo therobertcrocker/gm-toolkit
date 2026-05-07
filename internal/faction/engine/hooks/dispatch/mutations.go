@@ -21,9 +21,9 @@ func MutationReactors(
 	faction *domain.Faction,
 	combined []domain.Mutation,
 	factionState *state.FactionState,
-	rb *rulebook.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
-	return reactDispatch(registry, faction, combined, factionState, rb, 0)
+	return reactDispatch(registry, faction, combined, factionState, rulebook, 0)
 }
 
 func reactDispatch(
@@ -31,7 +31,7 @@ func reactDispatch(
 	faction *domain.Faction,
 	combined []domain.Mutation,
 	factionState *state.FactionState,
-	rb *rulebook.Rulebook,
+	rulebook *rulebook.Rulebook,
 	depth int,
 ) ([]domain.Mutation, error) {
 	if depth >= maxHookDepth {
@@ -41,7 +41,7 @@ func reactDispatch(
 	reactors := registry.MutationReactorsFor(faction.ID, "")
 	var newMutations []domain.Mutation
 	for _, registered := range reactors {
-		extra := registered.Hook.OnMutations(combined, factionState, rb)
+		extra := registered.Hook.OnMutations(combined, factionState, rulebook)
 		newMutations = append(newMutations, extra...)
 	}
 
@@ -49,5 +49,5 @@ func reactDispatch(
 		return combined, nil
 	}
 
-	return reactDispatch(registry, faction, append(combined, newMutations...), factionState, rb, depth+1)
+	return reactDispatch(registry, faction, append(combined, newMutations...), factionState, rulebook, depth+1)
 }

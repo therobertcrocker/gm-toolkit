@@ -74,10 +74,10 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
-	if faction.Coin < def.Cost {
-		return fmt.Errorf("insufficient Coin: need %d, have %d", def.Cost, faction.Coin)
-	}
 	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
+	if faction.Coin < ba.cost {
+		return fmt.Errorf("insufficient Coin: need %d, have %d", ba.cost, faction.Coin)
+	}
 	ba.newAsset = domain.Asset{
 		ID:           fmt.Sprintf("%s-%s-%d", ba.factionID, def.ID, nextAssetSuffix(faction, def)),
 		DefinitionID: def.ID,

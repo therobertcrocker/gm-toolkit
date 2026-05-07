@@ -125,6 +125,7 @@ func (e *Engine) RunFactionTurn(
 	combined, dispatchErr = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
 	if dispatchErr != nil {
 		observer.OnError(faction, dispatchErr)
+		return false, dispatchErr
 	}
 
 	// Phase 5: Apply mutations and persist state. The engine applies all mutations
