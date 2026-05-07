@@ -8,15 +8,19 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // BuyAsset purchases a new asset and places it on a target world.
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
-// Tech-level filtering and P-flag (government permission) checks are deferred.
+// Tech-level filtering and P-flag (government permission) checks are deferred;
+// when implemented, use dispatch.ResolveWorldTechLevel for tag-based TL modifications.
 type BuyAsset struct {
 	collector     action.Collector
+	registry      *hooks.Registry
 	factionID     string
 	buyOrder      action.BuyOrder
 	newAsset      domain.Asset
@@ -24,8 +28,8 @@ type BuyAsset struct {
 	stealthTarget string // asset ID to stealth when buying C3-002; empty if no eligible target
 }
 
-func NewBuyAsset(collector action.Collector) *BuyAsset {
-	return &BuyAsset{collector: collector}
+func NewBuyAsset(collector action.Collector, registry *hooks.Registry) *BuyAsset {
+	return &BuyAsset{collector: collector, registry: registry}
 }
 
 func (ba *BuyAsset) Name() string { return "Buy Asset" }
@@ -70,10 +74,10 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
-	if faction.Coin < def.Cost {
-		return fmt.Errorf("insufficient Coin: need %d, have %d", def.Cost, faction.Coin)
+	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
+	if faction.Coin < ba.cost {
+		return fmt.Errorf("insufficient Coin: need %d, have %d", ba.cost, faction.Coin)
 	}
-	ba.cost = def.Cost
 	ba.newAsset = domain.Asset{
 		ID:           fmt.Sprintf("%s-%s-%d", ba.factionID, def.ID, nextAssetSuffix(faction, def)),
 		DefinitionID: def.ID,

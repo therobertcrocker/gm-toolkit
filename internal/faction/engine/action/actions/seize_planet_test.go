@@ -14,7 +14,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1"}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewSeizePlanet(mocks.NewMockCollector(ctrl)).Validate(faction, factionState, nil) {
+		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
 			t.Error("expected false when no active goal")
 		}
 	})
@@ -28,7 +28,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 			Assets:     []*domain.Asset{asset},
 		}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewSeizePlanet(mocks.NewMockCollector(ctrl)).Validate(faction, factionState, nil) {
+		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
 			t.Error("expected false when goal ID is not G-004")
 		}
 	})
@@ -42,7 +42,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 			Assets:     []*domain.Asset{asset},
 		}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewSeizePlanet(mocks.NewMockCollector(ctrl)).Validate(faction, factionState, nil) {
+		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
 			t.Error("expected false when no rival assets share a world with the faction")
 		}
 	})
@@ -58,7 +58,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		}
 		rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{f2Asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
-		if !NewSeizePlanet(mocks.NewMockCollector(ctrl)).Validate(faction, factionState, nil) {
+		if !NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction and rival share a world")
 		}
 	})
@@ -77,7 +77,7 @@ func TestSeizePlanet_Output(t *testing.T) {
 	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{f2Asset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectSeizeTarget(gomock.Any(), gomock.Any()).Return("Krylos", nil)
 
 	act := NewSeizePlanet(collector)

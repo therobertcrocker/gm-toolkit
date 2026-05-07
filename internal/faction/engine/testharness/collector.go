@@ -3,6 +3,7 @@ package testharness
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -31,6 +32,8 @@ type ScriptedCollector struct {
 	SelectBribeTargetFn          func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTargetFn          func(*domain.Faction, *state.FactionState) (string, error)
 	SelectActionFn               func(*domain.Faction, []action.Action) (action.Action, error)
+	SelectModifiersFn            func([]hooks.ModifierOffer) []hooks.ModifierOffer
+	ConfirmRerollFn              func(hooks.RerollDirective) bool
 }
 
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
@@ -156,3 +159,19 @@ func (c *ScriptedCollector) SelectAction(faction *domain.Faction, available []ac
 }
 
 func (c *ScriptedCollector) AwaitCheckpoint(_ string) error { return nil }
+
+// SelectModifiers takes all offered modifiers by default; override with SelectModifiersFn.
+func (c *ScriptedCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
+	if c.SelectModifiersFn != nil {
+		return c.SelectModifiersFn(offers)
+	}
+	return offers
+}
+
+// ConfirmReroll confirms all rerolls by default; override with ConfirmRerollFn.
+func (c *ScriptedCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
+	if c.ConfirmRerollFn != nil {
+		return c.ConfirmRerollFn(directive)
+	}
+	return true
+}

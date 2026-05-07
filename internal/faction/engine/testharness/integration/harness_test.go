@@ -1,4 +1,4 @@
-package integration_test
+package integration
 
 import (
 	"bufio"
@@ -12,13 +12,15 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 const (
-	testDataDir          = "../../data"
+	testDataDir          = "../../../data"
 	defSecurityPersonnel = "F1-001"
+	defHeavyDropAssets   = "F2-001" // Force 2, cost 4, TL4
 )
 
 type harness struct {
@@ -48,6 +50,12 @@ func newHarness(t *testing.T) *harness {
 		collector: &testharness.ScriptedCollector{},
 		observer:  &testharness.RecordingObserver{},
 	}
+}
+
+// registerTags wires tag hooks for all factions currently in h.factionState.
+// Call after all addFaction calls so the state is populated before walking.
+func (h *harness) registerTags() {
+	tag.RegisterDefaultTags(h.engine, h.factionState)
 }
 
 // addFaction appends a faction with one Security Personnel asset on its homeworld.

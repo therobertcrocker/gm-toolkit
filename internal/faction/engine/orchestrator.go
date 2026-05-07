@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -71,7 +72,7 @@ func (e *Engine) RunFactionTurn(
 	// Phase 2: Bookkeeping. The engine applies any bookkeeping mutations before action selection,
 	// so that they can affect available actions and be observed by the caller.
 
-	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState)
+	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks)
 	if err != nil {
 		observer.OnError(faction, err)
 		return false, err
@@ -117,10 +118,15 @@ func (e *Engine) RunFactionTurn(
 	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook)
 	combined := append(actionMutations, goalMutations...)
 
-	// === Phase 4: EventHook dispatch site (deferred per decision #5) ===
-	// Registered hooks fire here in registration order.
-	// Returned mutations are appended to `combined` and the loop
-	// recurses with depth bound 5; on cap trip the engine logs and stops.
+	// Phase 4: MutationReactor dispatch. Registered hooks (Cat 3) fire in
+	// registration order; returned mutations are appended and the loop
+	// recurses until no new mutations are produced.
+	var dispatchErr error
+	combined, dispatchErr = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
+	if dispatchErr != nil {
+		observer.OnError(faction, dispatchErr)
+		return false, dispatchErr
+	}
 
 	// Phase 5: Apply mutations and persist state. The engine applies all mutations
 	// in a single batch to preserve order, then records a single EventRecord in the
