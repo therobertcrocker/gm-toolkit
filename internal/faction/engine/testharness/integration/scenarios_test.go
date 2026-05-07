@@ -2,6 +2,7 @@ package integration
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -625,6 +626,152 @@ func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	if _, ok := findMutationByTypeAndCause(records, "coin_delta", "scavengers"); !ok {
 		t.Error("expected coin_delta with cause=scavengers in history")
 	}
+}
+
+// --- scenario N+1: Warlike tag — +1d10 keep highest on Force attack ---
+
+// TestWarlike_FiresOnForceAttack_ConsumesOneBudget verifies that Warlike's bonus die
+// is applied, changes the outcome when the base die alone would miss, and consumes
+// one budget slot for the turn.
+//
+// FixedRoller [2, 9, 5, 3]:
+//   attack-base=2, warlike-bonus=9 → keep max(2,9)=9; +force(1)=10
+//   defense=5+force(4)=9  →  10>9: hit; damage=3+1=4 ≥ HP(3) → destroyed
+//   (without Warlike: 2+1=3 < 5+4=9 → miss)
+func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 1, 3, 2)
+	alpha.Tags = []*domain.Tag{{ID: "T-020"}}
+	h.addFaction("beta", "Tartarus", 4, 3, 2)
+	h.registerTags()
+
+	h.engine.Rand = &testharness.FixedRoller{Values: []int{2, 9, 5, 3}}
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, a := range available {
+			if a.Name() == "Attack" {
+				return a, nil
+			}
+		}
+		t.Fatalf("Attack not available for alpha")
+		return nil, nil
+	}
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	checkStep(t, "beta asset destroyed by Warlike-boosted attack", len(h.factionState.Factions["beta"].Assets) == 0,
+		"beta should have no assets after attack")
+
+	budgets := h.factionState.Factions["alpha"].HookBudgets
+	checkStep(t, "Warlike budget consumed once", budgets["tag:Warlike"] == 1,
+		fmt.Sprintf("HookBudgets[tag:Warlike] = %d, want 1", budgets["tag:Warlike"]))
+}
+
+// --- scenario N+2: Fanatical tag — auto-reroll 1s ---
+
+// TestFanatical_RerollsOnesInAttack verifies that a rolled 1 is rerolled automatically.
+//
+// FixedRoller [1, 9, 6, 3]:
+//   attack-base=1 → Fanatical rerolls → 9+force(4)=13
+//   defense=6+force(2)=8  →  13>8: hit; damage=3+1=4 → destroyed
+//   (without Fanatical: 1+4=5 < 6+2=8 → miss)
+func TestFanatical_RerollsOnesInAttack(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 4, 3, 2)
+	alpha.Tags = []*domain.Tag{{ID: "T-005"}}
+	h.addFaction("beta", "Tartarus", 2, 3, 2)
+	h.registerTags()
+
+	h.engine.Rand = &testharness.FixedRoller{Values: []int{1, 9, 6, 3}}
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, a := range available {
+			if a.Name() == "Attack" {
+				return a, nil
+			}
+		}
+		t.Fatalf("Attack not available for alpha")
+		return nil, nil
+	}
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	checkStep(t, "beta asset destroyed (reroll changed outcome)", len(h.factionState.Factions["beta"].Assets) == 0,
+		"beta should have no assets after Fanatical-rerolled attack")
+}
+
+// --- scenario N+3: Fanatical tag — tie loss as attacker ---
+
+// TestFanatical_TieLoss_AttackerLoses verifies that a Fanatical attacker always
+// loses ties: no damage to the defender, but counter fires and hits the attacker.
+//
+// FixedRoller [6, 3, 3]:
+//   attack=6+force(1)=7, defense=3+force(4)=7 → TIE
+//   TieDefenderWins → no attack damage; counter=3 destroys alpha's asset
+func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
+	h := newHarness(t)
+	alpha := h.addFaction("alpha", "Tartarus", 1, 3, 2)
+	alpha.Tags = []*domain.Tag{{ID: "T-005"}}
+	h.addFaction("beta", "Tartarus", 4, 3, 2)
+	h.registerTags()
+
+	h.engine.Rand = &testharness.FixedRoller{Values: []int{6, 3, 3}}
+	h.collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, a := range available {
+			if a.Name() == "Attack" {
+				return a, nil
+			}
+		}
+		t.Fatalf("Attack not available for alpha")
+		return nil, nil
+	}
+	h.collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+
+	if err := h.engine.Turn.Start(h.factionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.engine.RunCycle(h.factionState, h.cfg, h.collector, h.observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	checkStep(t, "beta asset intact (Fanatical attacker lost tie)", len(h.factionState.Factions["beta"].Assets) == 1,
+		fmt.Sprintf("beta.Assets: got %d, want 1", len(h.factionState.Factions["beta"].Assets)))
+	checkStep(t, "alpha asset destroyed by counter after tie loss", len(h.factionState.Factions["alpha"].Assets) == 0,
+		fmt.Sprintf("alpha.Assets: got %d, want 0", len(h.factionState.Factions["alpha"].Assets)))
 }
 
 func TestScavengers_NoBonusWithoutTag(t *testing.T) {

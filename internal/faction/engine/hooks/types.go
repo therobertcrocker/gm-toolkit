@@ -32,13 +32,25 @@ type RollResult struct {
 // RollState is the mutable pre-roll view passed to ModifierOffer.Apply.
 // Apply calls AddDie to expand the dice pool before any dice are rolled.
 type RollState struct {
-	extraDice []int
+	extraDice   []int
+	keepHighest int
 }
 
 // AddDie queues an additional die with the given number of sides for the
 // upcoming roll.
 func (rollState *RollState) AddDie(sides int) {
 	rollState.extraDice = append(rollState.extraDice, sides)
+}
+
+// SetKeepHighest instructs RollWithHooks to retain only the n highest dice
+// after rolling all base and extra dice.
+func (rollState *RollState) SetKeepHighest(n int) {
+	rollState.keepHighest = n
+}
+
+// KeepHighest returns the keep-highest setting, consumed by RollWithHooks.
+func (rollState *RollState) KeepHighest() int {
+	return rollState.keepHighest
 }
 
 // ExtraDice returns the queued extra dice, consumed by RollWithHooks.

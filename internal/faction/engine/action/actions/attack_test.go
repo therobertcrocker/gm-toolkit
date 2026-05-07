@@ -476,6 +476,7 @@ func TestAttack_TieResolver_DefenderWins(t *testing.T) {
 	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+	collector.EXPECT().SelectModifiers(gomock.Any()).Return(nil).Times(2)
 
 	mutations := runAttack(t, collector, &fixedRoller{values: []int{5, 5, 3}}, faction, factionState, rulebook, registry)
 

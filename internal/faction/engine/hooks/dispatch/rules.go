@@ -62,15 +62,17 @@ func GrantedMovementAbilities(registry *hooks.Registry, asset *domain.Asset) []h
 	return abilities
 }
 
-// ResolveTie consults registered TieResolvers (global + attacker-faction-scoped)
-// in registration order; the first registration wins. Returns TieStandard when
-// registry is nil or no resolvers are registered.
+// ResolveTie consults registered TieResolvers for the attacker, then the
+// defender; first registration wins. Returns TieStandard when no resolvers
+// match.
 func ResolveTie(registry *hooks.Registry, ctx hooks.RollContext, factionState *state.FactionState) hooks.TieOutcome {
 	if registry == nil {
 		return hooks.TieStandard
 	}
-	// TODO(human): look up resolvers and return the outcome
 	resolvers := registry.TieResolversFor(ctx.Actor.ID, "")
+	if len(resolvers) == 0 && ctx.Opponent != nil {
+		resolvers = registry.TieResolversFor(ctx.Opponent.ID, "")
+	}
 	if len(resolvers) == 0 {
 		return hooks.TieStandard
 	}

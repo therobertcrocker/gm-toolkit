@@ -114,10 +114,33 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			stealthCleared[defender.ID] = true
 		}
 
-		// Both rolls use the attacking asset's Attack profile — it defines which
-		// stats are tested on each side.
-		attackRoll := attack.roller.Roll(10) + statScore(faction, attackerDef.Attack.AttackerStat)
-		defenseRoll := attack.roller.Roll(10) + statScore(defenderFaction, attackerDef.Attack.DefenderStat)
+		attackResult := dispatch.RollWithHooks(
+			hooks.RollContext{
+				Phase:     hooks.PhaseAttack,
+				Actor:     faction,
+				Opponent:  defenderFaction,
+				Attribute: string(attackerDef.Attack.AttackerStat),
+				Asset:     attacker,
+				World:     attacker.Location,
+			},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
+			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
+		)
+		attackRoll := attackResult.Sum
+
+		defResult := dispatch.RollWithHooks(
+			hooks.RollContext{
+				Phase:     hooks.PhaseDefense,
+				Actor:     defenderFaction,
+				Opponent:  faction,
+				Attribute: string(attackerDef.Attack.DefenderStat),
+				Asset:     defender,
+				World:     attacker.Location,
+			},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
+			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
+		)
+		defenseRoll := defResult.Sum
 
 		tieCtx := hooks.RollContext{
 			Phase:    hooks.PhaseAttack,

@@ -1,6 +1,8 @@
 package dispatch
 
 import (
+	"sort"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -26,13 +28,14 @@ func RollWithHooks(
 	}
 
 	// Cat 1: gather modifier offers, filter by budget, let collector choose.
-	modifiers := registry.RollModifiersFor(faction.ID, assetInstanceID)
-	var allOffers []hooks.ModifierOffer
-	for _, registered := range modifiers {
-		allOffers = append(allOffers, registered.Hook.OfferModifiers(ctx, factionState, rb)...)
+	var chosen []hooks.ModifierOffer
+	if registry != nil {
+		var allOffers []hooks.ModifierOffer
+		for _, registered := range registry.RollModifiersFor(faction.ID, assetInstanceID) {
+			allOffers = append(allOffers, registered.Hook.OfferModifiers(ctx, factionState, rb)...)
+		}
+		chosen = collector.SelectModifiers(offersBudgetFilter(allOffers, faction))
 	}
-	available := offersBudgetFilter(allOffers, faction)
-	chosen := collector.SelectModifiers(available)
 
 	// Apply chosen offers: expand the dice pool and consume budgets.
 	var rollState hooks.RollState
@@ -56,9 +59,18 @@ func RollWithHooks(
 	}
 	result.Sum = diceSum(result.Dice) + result.Modifier
 
+	// Apply keep-highest trim if any offer requested it.
+	if n := rollState.KeepHighest(); n > 0 && len(result.Dice) > n {
+		sort.Sort(sort.Reverse(sort.IntSlice(result.Dice)))
+		result.Dice = result.Dice[:n]
+		result.Sum = diceSum(result.Dice) + result.Modifier
+	}
+
 	// Cat 2: apply reroll directives from result hooks.
-	resultHooks := registry.RollResultHooksFor(faction.ID, assetInstanceID)
-	for _, registered := range resultHooks {
+	if registry == nil {
+		return result
+	}
+	for _, registered := range registry.RollResultHooksFor(faction.ID, assetInstanceID) {
 		directive := registered.Hook.OnRollResult(ctx, result, factionState, rb)
 		if len(directive.Indices) == 0 {
 			continue
