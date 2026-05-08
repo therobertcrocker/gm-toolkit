@@ -46,26 +46,6 @@ A session ends at its deliverable. Do not start the next mode's work in the same
 
 **Plan mode is a strong signal.** When plan mode is active and the stated deliverable is a file (a discovery doc or implementation plan), that file is the entire session output. ExitPlanMode is not a handoff into implementation — it is the end of the session. Do not queue file edits, Bash commands, or follow-up work to run after exit. End the turn after the file is written.
 
-## Implementation Discipline
-
-Prioritize following the implementation plan, instead of reading files or code that isn't directly relevant to the task at hand. If the implementation plan is incomplete, ask for clarification or next steps.
-
-## Development Setup
-
-Work from `cmd/faction-manager/` as the working directory:
-
-```bash
-go build -o bin/faction-manager .
-FACTION_DATA_DIR=/workspaces/gm-toolkit/internal/faction/data ./bin/faction-manager <command>
-```
-
-*(Path shown is for the Codespace environment. For local development, use `git rev-parse --show-toplevel` to find the repo root and construct paths from there.)*
-
-- `bin/` holds the compiled binary; `campaigns/` sits alongside it
-- `FACTION_DATA_DIR` must point to `internal/faction/data`
-- Test campaign: `campaigns/test/faction_state.toml` — run with `--campaign test`
-- Tests: `go test ./...` from the repo root
-
 ## Code Style
 
 - **Parameter names:** Always full words — `factionState` not `s`, `faction` not `f`, `rulebook` not `rb`.
@@ -73,7 +53,3 @@ FACTION_DATA_DIR=/workspaces/gm-toolkit/internal/faction/data ./bin/faction-mana
 - **Output styling:** For TUI output, use `lipgloss` styles defined in `cmd/faction-manager/tui/styles.go`. For Cobra CLI output, use the `huh` package and ANSI styling.
 - **YAGNI:** Solve the concrete present problem. Don't pitch stronger guarantees (extensibility hooks, future-proofing) unless there is a real, present-day consequence of not doing so. Lead with the simplest fix that addresses the actual bug.
 - **No comments** unless the WHY is non-obvious. No docstrings. No "added for X" comments.
-
-## Terminology
-
-- Currency is **Coin** — never "FacCreds" (that's the SWN source term; this is the GM's own system).

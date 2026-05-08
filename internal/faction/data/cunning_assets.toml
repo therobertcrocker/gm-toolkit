@@ -12,7 +12,7 @@ tech_level = 4
 type = "Starship"
 flags = ["A"]
 counter = ""
-description = "Men and women skilled in extracting personnel. For one FacCred, the smugglers asset can transport itself and/or any one Special Forces unit to a planet up to two hexes away."
+description = "Men and women skilled in extracting personnel. For one Coin, the smugglers asset can transport itself and/or any one Special Forces unit to a planet up to two hexes away."
 
 [assets.Smugglers.attack]
 attacker_stat = "Cunning"
@@ -180,7 +180,7 @@ tech_level = 4
 type = "Logistics Facility"
 flags = ["A", "S"]
 counter = ""
-description = "Any one Special Forces unit can be moved between any worlds within three hexes of the Covert Shipping at the cost of one FacCred."
+description = "Any one Special Forces unit can be moved between any worlds within three hexes of the Covert Shipping at the cost of one Coin."
 
 [[assets.CovertShipping.ability.steps]]
 type = "movement"
@@ -199,7 +199,7 @@ tech_level = 0
 type = "Logistics Facility"
 flags = ["S"]
 counter = "1d6"
-description = "Political blocks firmly in control of the faction. Each turn, a Party Machine provides 1 FacCred to its owning faction."
+description = "Political blocks firmly in control of the faction. Each turn, a Party Machine provides 1 Coin to its owning faction."
 
 [assets.PartyMachine.attack]
 attacker_stat = "Cunning"
@@ -251,7 +251,7 @@ tech_level = 0
 type = "Special Forces"
 flags = ["A"]
 counter = ""
-description = "For a cost of 1d4 FacCreds, the Seditionists can attach themselves to an enemy asset. Until they attach to a different asset or no longer share the same planet, the affected asset cannot attack. If the asset is destroyed, the Seditionists survive."
+description = "For a cost of 1d4 Coins, the Seditionists can attach themselves to an enemy asset. Until they attach to a different asset or no longer share the same planet, the affected asset cannot attack. If the asset is destroyed, the Seditionists survive."
 
 [assets.OrganizationMoles]
 id = "C5-001"
@@ -312,7 +312,7 @@ tech_level = 4
 type = "Tactic"
 flags = ["S"]
 counter = ""
-description = "On a successful Cunning vs. Cunning attack against a rival faction, the rival faction cannot transport assets onto that planet without spending 1d4 FacCreds and waiting one turn."
+description = "On a successful Cunning vs. Cunning attack against a rival faction, the rival faction cannot transport assets onto that planet without spending 1d4 Coins and waiting one turn."
 
 [assets.CovertTransitNet]
 id = "C6-002"
@@ -397,7 +397,7 @@ tech_level = 0
 type = "Tactic"
 flags = ["S"]
 counter = ""
-description = "On a successful Cunning vs. Cunning attack, the Treachery asset is lost, 5 FacCreds are gained, and the targeted asset switches sides to join the traitor's faction, even if the faction does not otherwise have the attributes necessary."
+description = "On a successful Cunning vs. Cunning attack, the Treachery asset is lost, 5 Coins are gained, and the targeted asset switches sides to join the traitor's faction, even if the faction does not otherwise have the attributes necessary."
 
 [assets.PanopticonMatrix]
 id = "C8-001"

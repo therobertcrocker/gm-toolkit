@@ -63,7 +63,7 @@ difficulty = "moderate"
 [goals.WealthOfWorlds]
 id = "G-011"
 name = "Wealth of Worlds"
-description = "Spend FacCreds equal to four times your faction's Wealth rating on bribes and influence. The faction's Wealth rating must increase before this goal can be selected again."
+description = "Spend Coins equal to four times your faction's Wealth rating on bribes and influence. The faction's Wealth rating must increase before this goal can be selected again."
 difficulty = "moderate"
 
 [goals.ChangeHomeworld]

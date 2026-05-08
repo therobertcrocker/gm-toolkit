@@ -58,7 +58,7 @@ effect = "Once per turn, roll an additional d10 when attacking an asset that req
 id = "T-010"
 name = "Pirates"
 description = "This faction is a scourge of the spacelanes."
-effect = "Any movement of an asset onto a world that has a Base of Influence for this faction costs one extra FacCred, paid to this faction."
+effect = "Any movement of an asset onto a world that has a Base of Influence for this faction costs one extra Coin, paid to this faction."
 
 [tags.PlanetaryGovernment]
 id = "T-011"
@@ -76,7 +76,7 @@ effect = "Once per turn, roll an additional d10 when making a Wealth attack."
 id = "T-013"
 name = "Preceptor Archive"
 description = "This faction is or has close ties to a Preceptor Archive."
-effect = "Purchasing an asset requiring tech level 4+ costs one fewer FacCred. May take the special action Teach Planetary Population (2 FacCreds, roll 1d12; on 12 the world's tech level permanently becomes 4 for this faction)."
+effect = "Purchasing an asset requiring tech level 4+ costs one fewer Coin. May take the special action Teach Planetary Population (2 Coins, roll 1d12; on 12 the world's tech level permanently becomes 4 for this faction)."
 
 [tags.PsychicAcademy]
 id = "T-014"
@@ -94,7 +94,7 @@ effect = "Once per turn, roll an extra die when defending with an asset that req
 id = "T-016"
 name = "Scavengers"
 description = "This faction knows how to find worth amid seemingly useless trash."
-effect = "Whenever the faction destroys an asset or has one of their assets destroyed, gain 1 FacCred."
+effect = "Whenever the faction destroys an asset or has one of their assets destroyed, gain 1 Coin."
 
 [tags.Secretive]
 id = "T-017"

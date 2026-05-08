@@ -2,7 +2,7 @@
 
 Sourced from *Stars Without Number Revised Edition*, pp. 212–229.
 
-> **Project note:** The rulebook calls the currency "FacCreds." This project renames it to **Coin** throughout.
+> **Project note:** The rulebook calls the currency "Coins." This project renames it to **Coin** throughout.
 
 ---
 
@@ -55,7 +55,7 @@ Secondary is one less than primary. Tertiary is three less than primary. The GM 
 
 ---
 
-## Coin (FacCreds)
+## Coin (Coins)
 
 Coin represents logistics capability, available resources, and managerial focus — not literal credits.
 
