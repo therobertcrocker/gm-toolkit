@@ -54,7 +54,7 @@ gm-toolkit/
     ├── swn-faction-mechanics.md  # Rules reference
     ├── dev-journal-factions.md   # Living design doc and decisions log
     ├── discovery/                # Feature discovery and planning docs
-    └── tracking/                 # Development tracking journals
+    └── dev_journal/              # Dev journal, decisions log, and planned work
 ```
 
 ## Development

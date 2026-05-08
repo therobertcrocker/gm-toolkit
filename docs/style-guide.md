@@ -8,7 +8,7 @@ A reference for writing and maintaining dev journals and tracking journals consi
 
 **Dev Journal** (`docs/dev-journal-*.md`) — the living design document for a feature area. Covers intent, architecture, decisions, and progress. Updated on every branch merge.
 
-**Tracking Journal** (`docs/tracking/*-journal.md`) — a focused tracker for a specific engine or subsystem. Covers feature status, decisions made during development, and open design questions.
+**Tracking Journal** (`docs/dev_journal/*-journal.md`) — a focused tracker for a specific engine or subsystem. Covers feature status, decisions made during development, and open design questions.
 
 **Discovery Doc** (`docs/discovery/*-discovery.md`) — written before implementation begins. Covers inputs, resolution steps, outputs, and notes for each feature or action. Not updated after the fact — it is a planning artifact.
 

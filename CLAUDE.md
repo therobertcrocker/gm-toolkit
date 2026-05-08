@@ -8,11 +8,11 @@
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Before writing any code not specified in an implementation doc, ask. Before making design suggestions, wait for a prompt.
 6. Before making a commit, do the following:
-   1. Update the decisions log (`docs/tracking/decisions-log.md`) with any new decisions or changes to existing decisions.
+   1. Update the decisions log (`docs/dev_journal/decisions-log.md`) with any new decisions or changes to existing decisions.
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
 7. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
-   2. Update the dev journal (`docs/tracking/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
+   2. Update the dev journal (`docs/dev_journal/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
 8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 9.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
@@ -22,9 +22,9 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 
 | If you're working on…                | Read first                                  |
 |--------------------------------------|---------------------------------------------|
-| Turn engine, actions, triggers       | `docs/tracking/turn-engine-journal.md`      |
-| Overall design or open questions     | `docs/tracking/dev-journal-factions.md`     |
-| A ratified decision                  | `docs/tracking/decisions-log.md`            |
+| Turn engine, actions, triggers       | `docs/dev_journal/completed/turn-engine-journal.md` |
+| Overall design or open questions     | `docs/dev_journal/dev-journal-factions.md`          |
+| A ratified decision                  | `docs/dev_journal/decisions-log.md`                 |
 | Architecture or system shape         | `docs/architecture-overview.md`             |
 | Rules behavior                       | `docs/swn-faction-mechanics.md`             |
 | Creating or editing any doc          | `docs/style-guide.md`                       |

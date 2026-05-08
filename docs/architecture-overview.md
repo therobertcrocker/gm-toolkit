@@ -283,6 +283,6 @@ go test ./...
 
 **Commits.** Conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`. Imperative mood, concise.
 
-**Branches.** Feature branches off `main`. Before merging: code review, update `docs/tracking/dev-journal-factions.md` and `docs/tracking/decisions-log.md`, assess whether the work warrants a version bump.
+**Branches.** Feature branches off `main`. Before merging: code review, update `docs/dev_journal/dev-journal-factions.md` and `docs/dev_journal/decisions-log.md`, assess whether the work warrants a version bump.
 
 **Docs.** Read `docs/` before implementing anything non-trivial. The CLAUDE.md routing table maps work areas to the relevant doc to read first.
