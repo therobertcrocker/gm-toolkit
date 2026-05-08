@@ -149,23 +149,13 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
-	t.Run("effect_dice parsed for coin_drain", func(t *testing.T) {
+	t.Run("marketers has no ability section", func(t *testing.T) {
 		asset, ok := rb.Assets["W5-001"]
 		if !ok {
 			t.Fatal("asset W5-001 not found")
 		}
-		if asset.Ability == nil {
-			t.Fatal("expected ability, got nil")
-		}
-		testStep := asset.Ability.Steps[1]
-		if testStep.Effect != domain.EffectCoinDrain {
-			t.Errorf("effect: got %q, want coin_drain", testStep.Effect)
-		}
-		if testStep.EffectDice == nil {
-			t.Fatal("expected effect_dice, got nil")
-		}
-		if testStep.EffectDice.NumDice != 1 || testStep.EffectDice.Sides != 4 {
-			t.Errorf("effect_dice: got %+v, want 1d4", testStep.EffectDice)
+		if asset.Ability != nil {
+			t.Errorf("expected nil ability, got %+v", asset.Ability)
 		}
 	})
 

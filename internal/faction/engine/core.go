@@ -4,9 +4,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/history"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -14,7 +14,7 @@ import (
 
 // Package engine is the turn pipeline for the faction system.
 //
-//   - engine.go      — composition root; owns the Rulebook and all sub-engines
+//   - core.go      — composition root; owns the Rulebook and all sub-engines
 //   - orchestrator.go — drives one faction's turn through the pipeline stages
 //   - observer.go    — TurnObserver interface; fire-and-forget output channel
 //   - collector.go   — InputCollector interface; abstracts GM vs. AI vs. test input

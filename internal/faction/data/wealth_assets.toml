@@ -5,31 +5,33 @@ id = "W1-001"
 name = "Franchise"
 category = "Wealth"
 min_rating = 1
-hp = 4
-cost = 4
-tech_level = 0
-type = "Logistics Facility"
+hp = 3
+cost = 2
+maintenance = 0
+tech_level = 2
+type = "Facility"
 flags = ["S"]
-counter = "1d6"
-description = "Shops and chain establishments tied to the faction's commercial network. Each turn, the Franchise provides 1 FacCred to its owning faction."
+counter = "1d4-1"
+description = "A deniable connection with a local licensee for the faction's goods and services. When a Franchise successfully attacks an enemy asset, the enemy faction loses 1 Coin (if available), which is gained by the Franchise's owner. This loss can happen only once per turn, no matter how many Franchises attack."
+
+[assets.Franchise.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "1d4"
 
 [assets.Harvesters]
 id = "W1-002"
 name = "Harvesters"
 category = "Wealth"
 min_rating = 1
-hp = 2
+hp = 4
 cost = 2
-tech_level = 3
-type = "Military Unit"
-flags = ["P"]
-counter = ""
-description = "Agricultural or mining workers whose extraction equipment doubles as improvised weaponry when their operations are threatened."
-
-[assets.Harvesters.attack]
-attacker_stat = "Wealth"
-defender_stat = "Force"
-damage = "1d3"
+maintenance = 0
+tech_level = 0
+type = "Facility"
+flags = ["A"]
+counter = "1d4"
+description = "Workers gathering natural resources — ore, biologicals, or other unprocessed goods. As an ability action, the owning faction rolls 1d6; on a 3 or higher, they gain 1 Coin."
 
 [assets.LocalInvestments]
 id = "W1-003"
@@ -38,11 +40,17 @@ category = "Wealth"
 min_rating = 1
 hp = 2
 cost = 1
-tech_level = 0
-type = "Logistics Facility"
-flags = []
-counter = "1d4"
-description = "Minor shareholdings and small business interests spread throughout a local economy. Each turn, Local Investments provide 1 FacCred to its owning faction."
+maintenance = 0
+tech_level = 2
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "Minor commercial interests spread across a local economy. Any other faction that tries to buy an asset on that world must pay 1 extra Coin. This money is lost, not gained by the owner. This penalty applies only once regardless of how many Local Investments are present."
+
+[assets.LocalInvestments.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "1d4-1"
 
 [assets.FreighterContract]
 id = "W2-001"
@@ -50,17 +58,23 @@ name = "Freighter Contract"
 category = "Wealth"
 min_rating = 2
 hp = 4
-cost = 2
+cost = 5
+maintenance = 0
 tech_level = 4
 type = "Starship"
 flags = ["A"]
-counter = "1d6"
-description = "A long-term contract with a commercial shipping company for priority cargo and personnel transport. As an action, this asset may transport any one non-Starship asset to any world within one hex at no cost."
+counter = ""
+description = "A long-term contract with a commercial shipping company. As an action, the faction may move any one non-Force asset, including this one, to any world within two hexes at a cost of 1 Coin."
+
+[assets.FreighterContract.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "1d4"
 
 [[assets.FreighterContract.ability.steps]]
 type = "movement"
-max_hex = 1
-coin_cost = 0
+max_hex = 2
+coin_cost = 1
 
 [assets.Lawyers]
 id = "W2-002"
@@ -68,12 +82,18 @@ name = "Lawyers"
 category = "Wealth"
 min_rating = 2
 hp = 4
-cost = 4
+cost = 6
+maintenance = 0
 tech_level = 0
 type = "Special Forces"
 flags = ["S"]
-counter = ""
-description = "Retained legal counsel skilled in obstructing rival faction dealings. When a rival faction attempts to take a governmental or commercial action that targets this faction, the Lawyers may make an immediate Wealth vs. Wealth test; if successful, the action is nullified until next turn."
+counter = "1d6"
+description = "Retained legal counsel that ties rivals up in their own internal rules, damaging assets with confusion and red tape. Lawyers cannot attack or counterattack Force assets."
+
+[assets.Lawyers.attack]
+attacker_stat = "Cunning"
+defender_stat = "Wealth"
+damage = "2d4"
 
 [assets.UnionToughs]
 id = "W2-003"
@@ -82,42 +102,50 @@ category = "Wealth"
 min_rating = 2
 hp = 6
 cost = 4
+maintenance = 0
 tech_level = 0
 type = "Military Unit"
 flags = []
 counter = "1d4"
-description = "Organized labor enforcers with the muscle to back up economic pressure. Willing to take direct action against rivals who threaten the faction's commercial interests."
+description = "Bruisers willing to take the faction's word on labor disputes. Lightly armed and poorly trained, but able to infiltrate to perform sabotage."
 
 [assets.UnionToughs.attack]
 attacker_stat = "Wealth"
-defender_stat = "Wealth"
-damage = "1d4"
+defender_stat = "Force"
+damage = "1d4+1"
 
 [assets.Surveyors]
 id = "W2-004"
 name = "Surveyors"
 category = "Wealth"
 min_rating = 2
-hp = 2
-cost = 2
-tech_level = 3
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 0
 type = "Special Forces"
-flags = []
-counter = ""
-description = "Skilled prospectors and commercial intelligence operatives. Surveyors can assess a planet's economic potential and identify rival assets. Once per turn as an action, they may reveal one Stealthed non-Special Forces asset on the planet."
+flags = ["A", "S"]
+counter = "1d4"
+description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world. As an action, a Surveyor crew can move to any world within two hexes."
+
+[[assets.Surveyors.ability.steps]]
+type = "movement"
+max_hex = 2
+coin_cost = 0
 
 [assets.PostechIndustry]
 id = "W3-001"
 name = "Postech Industry"
 category = "Wealth"
 min_rating = 3
-hp = 5
-cost = 6
+hp = 4
+cost = 8
+maintenance = 0
 tech_level = 4
-type = "Logistics Facility"
-flags = []
-counter = "1d6"
-description = "Advanced manufacturing facilities using postech equipment. Each turn, Postech Industry provides 1 FacCred. Additionally, the faction may purchase Wealth assets on this planet that require up to tech level 4 at the normal price."
+type = "Facility"
+flags = ["A"]
+counter = "1d4"
+description = "Advanced manufacturing facilities. As an ability action, roll 1d6: on a 1, lose 1 Coin (if this cannot be paid, the asset is destroyed); on a 2–4, gain 1 Coin; on a 5–6, gain 2 Coin."
 
 [assets.Laboratory]
 id = "W3-002"
@@ -125,12 +153,13 @@ name = "Laboratory"
 category = "Wealth"
 min_rating = 3
 hp = 4
-cost = 5
-tech_level = 4
+cost = 6
+maintenance = 0
+tech_level = 0
 type = "Facility"
-flags = []
+flags = ["S"]
 counter = ""
-description = "Cutting-edge research facilities employed to develop commercial and military applications. A Laboratory allows the faction to purchase Cunning assets on this planet at half the normal FacCred cost."
+description = "Research facilities that accelerate local technological development. Assets may be purchased on this planet as if it had Tech Level 4."
 
 [assets.Mercenaries]
 id = "W3-003"
@@ -138,30 +167,37 @@ name = "Mercenaries"
 category = "Wealth"
 min_rating = 3
 hp = 6
-cost = 6
+cost = 8
+maintenance = 1
 tech_level = 4
 type = "Military Unit"
-flags = ["P"]
+flags = ["A", "S", "P"]
 counter = "1d6"
-description = "Professional soldiers hired with faction funds. More reliable than local irregulars, mercenaries are equipped with quality postech gear and contracted for extended operations."
+description = "Well-equipped professional soldiers serving the highest bidder. Mercenaries have a maintenance cost of 1 Coin per turn. As an action, they can move to any world within one hex. Purchasing or moving Mercenaries to a planet requires government permission."
 
 [assets.Mercenaries.attack]
 attacker_stat = "Wealth"
 defender_stat = "Force"
-damage = "2d4"
+damage = "2d4+2"
+
+[[assets.Mercenaries.ability.steps]]
+type = "movement"
+max_hex = 1
+coin_cost = 0
 
 [assets.ShippingCombine]
 id = "W4-001"
 name = "Shipping Combine"
 category = "Wealth"
 min_rating = 4
-hp = 8
+hp = 10
 cost = 10
+maintenance = 0
 tech_level = 4
-type = "Starship"
+type = "Facility"
 flags = ["A"]
-counter = "1d8"
-description = "A fleet of commercial freighters and bulk transports contracted to the faction. As an action, any two assets on this planet may be moved to worlds within two hexes at a cost of 1 FacCred per asset moved."
+counter = "1d6"
+description = "Commercial shipping infrastructure for moving large numbers of assets. As an action, the Combine may move any number of non-Force assets, including itself, to worlds within two hexes at a cost of 1 Coin per asset moved."
 
 [[assets.ShippingCombine.ability.steps]]
 type = "movement"
@@ -173,26 +209,33 @@ id = "W4-002"
 name = "Monopoly"
 category = "Wealth"
 min_rating = 4
-hp = 6
+hp = 12
 cost = 8
-tech_level = 0
-type = "Tactic"
+maintenance = 0
+tech_level = 3
+type = "Facility"
 flags = ["S"]
-counter = ""
-description = "Total commercial dominance over a critical local resource or service. On a successful Wealth vs. Wealth attack, the targeted faction must spend 1 additional FacCred whenever it uses an asset ability on this planet until the start of the attacker's next turn."
+counter = "1d6"
+description = "A stranglehold on vital local businesses or resources. When a Monopoly successfully attacks an enemy faction, the target must pay 1 Coin or lose one asset of their choice on that world."
+
+[assets.Monopoly.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "1d6"
 
 [assets.MedicalCenter]
 id = "W4-003"
 name = "Medical Center"
 category = "Wealth"
 min_rating = 4
-hp = 4
-cost = 5
+hp = 8
+cost = 12
+maintenance = 0
 tech_level = 4
 type = "Facility"
-flags = []
+flags = ["S"]
 counter = ""
-description = "Fully-equipped medical facilities that can restore damaged assets to fighting strength. Once per turn as a free action, this asset may restore up to 4 HP to any one asset on the same planet."
+description = "Fully-equipped medical facilities. If a Special Forces or Military Unit asset on this planet is destroyed, the faction may immediately pay half its purchase cost to restore it at 1 HP. Any Repair Asset action on this planet costs 1 fewer Coin for Special Forces and Military Units."
 
 [assets.Bank]
 id = "W4-004"
@@ -201,167 +244,168 @@ category = "Wealth"
 min_rating = 4
 hp = 8
 cost = 12
-tech_level = 0
-type = "Logistics Facility"
+maintenance = 0
+tech_level = 3
+type = "Facility"
 flags = ["S"]
-counter = "1d8"
-description = "A financial institution under faction control, generating reliable income through lending and investment. Each turn, the Bank provides 2 FacCreds to its owning faction."
+counter = ""
+description = "A financial institution under faction control. Once per turn, the faction can ignore one Coin cost or loss imposed by another faction. This does not require an action. Multiple Banks allow multiple losses to be ignored."
 
 [assets.Marketers]
 id = "W5-001"
 name = "Marketers"
 category = "Wealth"
 min_rating = 5
-hp = 6
-cost = 12
+hp = 8
+cost = 10
+maintenance = 0
 tech_level = 0
-type = "Special Forces"
+type = "Tactic"
 flags = ["A"]
 counter = ""
-description = "Commercial intelligence operatives skilled in undermining rival economic interests. As an action, Marketers may move to any world within one hex. On a successful Wealth vs. Wealth attack, the target faction loses 1d4 FacCreds."
+description = "Operatives deployed to confuse enemy factions into untimely investments. As an ability action, test Cunning vs. Wealth against a rival faction's asset; if successful, the target faction must immediately pay half that asset's purchase cost (rounded down) or have it become disabled until the price is paid."
 
-[[assets.Marketers.ability.steps]]
-type = "movement"
-max_hex = 1
-coin_cost = 0
-
-[[assets.Marketers.ability.steps]]
-type = "faction_test"
-attacker_stat = "Wealth"
+[assets.Marketers.attack]
+attacker_stat = "Cunning"
 defender_stat = "Wealth"
-effect = "coin_drain"
-effect_dice = "1d4"
+damage = "1d6"
 
 [assets.PretechResearchers]
 id = "W5-002"
 name = "Pretech Researchers"
 category = "Wealth"
 min_rating = 5
-hp = 4
+hp = 6
 cost = 12
+maintenance = 1
 tech_level = 5
-type = "Facility"
-flags = []
+type = "Special Forces"
+flags = ["S"]
 counter = ""
-description = "Teams of scientists with access to pretech equipment and recovered Mandate-era knowledge. The faction may purchase any Wealth asset on this planet regardless of tech level requirement, at the normal price."
+description = "Research specialists supporting limited pretech applications. Any world with Pretech Researchers on it is treated as Tech Level 5 for the purpose of buying Cunning and Wealth assets. Pretech Researchers have a maintenance cost of 1 Coin per turn."
 
 [assets.BlockadeRunners]
 id = "W5-003"
 name = "Blockade Runners"
 category = "Wealth"
 min_rating = 5
-hp = 4
+hp = 6
 cost = 12
+maintenance = 0
 tech_level = 4
 type = "Starship"
 flags = ["A"]
-counter = ""
-description = "Fast, lightly armed commercial vessels with hidden cargo bays and corrupted port authorities in their pocket. As an action, this asset may move to any world within two hexes ignoring any Transit Lockdown effects. On a successful Wealth vs. Wealth attack, they steal 1d4 FacCreds from the target faction."
-
-[assets.BlockadeRunners.attack]
-attacker_stat = "Wealth"
-defender_stat = "Wealth"
-damage = "2d6"
+counter = "2d4"
+description = "Starship captains skilled at transporting goods through unfriendly lines. As an action, a Blockade Runner can move itself or any one Military Unit or Special Forces to a world within three hexes at a cost of 2 Coin, even past planetary government opposition."
 
 [[assets.BlockadeRunners.ability.steps]]
 type = "movement"
-max_hex = 2
-coin_cost = 0
-
-[[assets.BlockadeRunners.ability.steps]]
-type = "faction_test"
-attacker_stat = "Wealth"
-defender_stat = "Wealth"
-effect = "coin_steal"
-effect_dice = "1d4"
+max_hex = 3
+coin_cost = 2
 
 [assets.VentureCapital]
 id = "W6-001"
 name = "Venture Capital"
 category = "Wealth"
 min_rating = 6
-hp = 8
-cost = 16
-tech_level = 0
-type = "Tactic"
-flags = []
-counter = "2d6"
-description = "Aggressive financial instruments wielded to destabilize rival economic holdings. Each turn, Venture Capital provides 1 FacCred. On a successful Wealth vs. Wealth attack, the target faction's Logistics Facility assets on the planet cannot use their income abilities until the start of the attacker's next turn."
+hp = 10
+cost = 15
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["A"]
+counter = "1d6"
+description = "Financial instruments that grow resources through aggressive investment. As an ability action, roll 1d8: on a 1, the asset is destroyed; on a 2–3, gain 1 Coin; on 4–7, gain 2 Coin; on an 8, gain 3 Coin."
 
 [assets.VentureCapital.attack]
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
-damage = "2d8"
+damage = "2d6"
 
 [assets.RandDDepartment]
 id = "W6-002"
 name = "R&D Department"
 category = "Wealth"
 min_rating = 6
-hp = 8
+hp = 15
 cost = 18
-tech_level = 5
+maintenance = 0
+tech_level = 4
 type = "Facility"
-flags = []
+flags = ["S"]
 counter = ""
-description = "Cutting-edge research division operating at the frontier of known science. The faction may purchase any asset on this planet at half the normal FacCred cost, regardless of tech level requirement."
+description = "Industrial research extending wealth-creation principles across the faction's operations. A faction with an R&D Department may treat all planets as having Tech Level 4 for the purpose of buying Wealth assets."
 
 [assets.CommoditiesBroker]
 id = "W6-003"
 name = "Commodities Broker"
 category = "Wealth"
 min_rating = 6
-hp = 4
-cost = 14
+hp = 10
+cost = 20
+maintenance = 0
 tech_level = 0
 type = "Special Forces"
-flags = ["S"]
-counter = ""
-description = "A master of market manipulation, able to flood or starve a local economy at will. When this asset successfully defends against an attack, the attacking faction loses 1d4 FacCreds in addition to any other results."
+flags = ["A"]
+counter = "1d8"
+description = "Specialists who reduce large-scale investment costs through precise market timing. As an ability action, roll 1d8; that many Coin are subtracted from the cost of the faction's next asset purchase, down to a minimum of half normal price rounded down."
+
+[assets.CommoditiesBroker.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "2d8"
 
 [assets.PretechManufactory]
 id = "W7-001"
 name = "Pretech Manufactory"
 category = "Wealth"
 min_rating = 7
-hp = 12
+hp = 16
 cost = 25
+maintenance = 0
 tech_level = 5
-type = "Logistics Facility"
-flags = []
-counter = "2d8"
-description = "A fully operational Mandate-era manufacturing complex producing pretech goods at scale. Each turn, the Pretech Manufactory provides 2 FacCreds. The faction may also purchase any asset on this planet at half the normal FacCred cost."
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "Rare, functioning Mandate-era manufacturing facilities. As an action, the owning faction may roll 1d8 and gain half that many Coin, rounded up."
 
 [assets.HostileTakeover]
 id = "W7-002"
 name = "Hostile Takeover"
 category = "Wealth"
 min_rating = 7
-hp = 8
+hp = 10
 cost = 20
-tech_level = 0
+maintenance = 0
+tech_level = 4
 type = "Tactic"
 flags = ["S"]
-counter = ""
-description = "A coordinated financial and legal assault on a rival faction's holdings. On a successful Wealth vs. Wealth attack, the Hostile Takeover asset is lost but the targeted asset switches sides to join the attacker's faction, even if the faction does not otherwise meet its tech level or rating requirements."
+counter = "2d8"
+description = "A coordinated financial and legal assault on a rival's holdings. If a Hostile Takeover deals enough damage to destroy an asset, the target is instead reduced to 1 HP and acquired by the attacking faction."
+
+[assets.HostileTakeover.attack]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+damage = "2d10"
 
 [assets.TransitWeb]
 id = "W7-003"
 name = "Transit Web"
 category = "Wealth"
 min_rating = 7
-hp = 15
-cost = 20
-tech_level = 4
-type = "Logistics Facility"
-flags = ["A"]
+hp = 5
+cost = 15
+maintenance = 0
+tech_level = 5
+type = "Facility"
+flags = ["S"]
 counter = ""
-description = "A network of commercial shipping lanes, bribed port authorities, and exclusive transit contracts spanning an entire region. As an action, any number of assets on this planet may be moved to any worlds within three hexes at a cost of 1 FacCred per asset moved."
+description = "A logistics network spanning commercial shipping lanes, bribed port authorities, and transit contracts. For 1 Coin, any number of non-Starship Cunning or Wealth assets may be moved between any two worlds within three hexes of the Transit Web. This does not require an action."
 
-[[assets.TransitWeb.ability.steps]]
-type = "movement"
-max_hex = 3
-coin_cost = 1
+[assets.TransitWeb.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "1d12"
 
 [assets.ScavengerFleet]
 id = "W8-001"
@@ -370,16 +414,17 @@ category = "Wealth"
 min_rating = 8
 hp = 20
 cost = 30
-tech_level = 4
+maintenance = 2
+tech_level = 5
 type = "Starship"
-flags = ["A", "S"]
-counter = "2d6"
-description = "A vast armada of salvage vessels, decommissioned warships, and armed merchantmen bound together by faction wealth. Capital Fleets cost an additional 2 FacCreds of maintenance each turn. As an action, the fleet may move to any world within three hexes. When it destroys an enemy asset, the faction gains FacCreds equal to half that asset's cost."
+flags = ["A"]
+counter = "2d10"
+description = "A rag-tag armada of salvage vessels, decommissioned warships, and armed merchantmen. As an action, the fleet may move to any world within three hexes. Scavenger Fleets cost 2 Coin per turn in maintenance."
 
 [assets.ScavengerFleet.attack]
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
-damage = "2d8+4"
+damage = "2d10+4"
 
 [[assets.ScavengerFleet.ability.steps]]
 type = "movement"

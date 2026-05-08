@@ -72,6 +72,7 @@ type AssetDefinition struct {
 	MinRating   int
 	HP          int
 	Cost        int
+	Maintenance int
 	TechLevel   int
 	Type        AssetType
 	Attack      *AttackProfile

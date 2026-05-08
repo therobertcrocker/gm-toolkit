@@ -55,6 +55,7 @@ type assetRecord struct {
 	MinRating   int            `toml:"min_rating"`
 	HP          int            `toml:"hp"`
 	Cost        int            `toml:"cost"`
+	Maintenance int            `toml:"maintenance"`
 	TechLevel   int            `toml:"tech_level"`
 	Type        string         `toml:"type"`
 	Flags       []string       `toml:"flags"`
@@ -165,6 +166,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		MinRating:   r.MinRating,
 		HP:          r.HP,
 		Cost:        r.Cost,
+		Maintenance: r.Maintenance,
 		TechLevel:   r.TechLevel,
 		Type:        assetType,
 		Attack:      attack,
