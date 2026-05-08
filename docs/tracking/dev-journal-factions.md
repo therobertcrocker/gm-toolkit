@@ -127,7 +127,6 @@ Design questions that are unresolved and will need answers before the relevant f
 # Progress
 
 ### Up Next
-- Asset Maintenance Costs: add `Maintenance int` field to `AssetDefinition` and read it from TOML; pass as base to the existing `ResolveMaintenanceCost` dispatch in `bookkeeping.go`; add inline over-cap surcharge to `applyMaintenance` (pre-count assets per category vs. stat rating, +1 Coin per excess asset per SWN rules).
 - XP Stat Raise (engine + integration tests): `SelectStatRaise` collector method, `ApplyStatRaise` engine phase (called between bookkeeping and action selection), and two new mutation types (`XPSpent`, `StatRaised`); integration tests via `ScriptedCollector` define the spending contract ahead of any TUI or AI decision-maker implementation.
 - TUI Rebuild: fresh Bubbletea TUI against the new `InputCollector` + `TurnObserver` interfaces
 

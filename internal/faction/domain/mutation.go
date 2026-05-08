@@ -276,3 +276,24 @@ type GoalPhaseAdvanced struct {
 }
 
 func (mutation GoalPhaseAdvanced) Type() string { return "goal_phase_advanced" }
+
+// XPSpent decrements a faction's XP by Amount. Emitted by the stat raise phase.
+type XPSpent struct {
+	FactionID string `json:"faction_id"`
+	Amount    int    `json:"amount"`
+	Cause     string `json:"cause"`
+}
+
+func (m XPSpent) Type() string { return "xp_spent" }
+
+// StatRaised increments one of a faction's attribute ratings by one and
+// recalculates MaxHP. Emitted alongside XPSpent by the stat raise phase.
+type StatRaised struct {
+	FactionID string      `json:"faction_id"`
+	Stat      FactionStat `json:"stat"`
+	OldRating int         `json:"old_rating"`
+	NewRating int         `json:"new_rating"`
+	Cause     string      `json:"cause"`
+}
+
+func (m StatRaised) Type() string { return "stat_raised" }

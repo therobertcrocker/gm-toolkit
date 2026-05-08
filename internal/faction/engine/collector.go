@@ -18,4 +18,5 @@ type InputCollector interface {
 	hooks.Collector
 	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	AwaitCheckpoint(phase string) error
+	SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error)
 }

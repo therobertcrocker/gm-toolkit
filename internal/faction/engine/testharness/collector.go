@@ -34,6 +34,7 @@ type ScriptedCollector struct {
 	SelectActionFn               func(*domain.Faction, []action.Action) (action.Action, error)
 	SelectModifiersFn            func([]hooks.ModifierOffer) []hooks.ModifierOffer
 	ConfirmRerollFn              func(hooks.RerollDirective) bool
+	SelectStatRaiseFn            func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
 }
 
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
@@ -174,4 +175,11 @@ func (c *ScriptedCollector) ConfirmReroll(directive hooks.RerollDirective) bool 
 		return c.ConfirmRerollFn(directive)
 	}
 	return true
+}
+
+func (c *ScriptedCollector) SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error) {
+	if c.SelectStatRaiseFn != nil {
+		return c.SelectStatRaiseFn(faction, eligible)
+	}
+	return nil, nil // default: skip raise
 }

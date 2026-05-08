@@ -22,4 +22,5 @@ type TurnObserver interface {
 	OnFactionTurnCompleted(faction *domain.Faction)
 	OnCycleCompleted(cycleNumber int, factionState *state.FactionState)
 	OnError(faction *domain.Faction, err error)
+	OnStatRaiseApplied(faction *domain.Faction, raised *domain.FactionStat, mutations []domain.Mutation)
 }

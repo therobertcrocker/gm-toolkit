@@ -89,6 +89,21 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 
+	// Phase 2B (optional): Stat Raise. If the faction is eligible for a stat raise, the engine offers
+	// the choice to the collector and applies the resulting mutations if accepted.
+	statToRaise, raiseMutations, err := prepareStatRaise(faction, collector)
+	if err != nil {
+		observer.OnError(faction, err)
+		return false, err
+	}
+	if len(raiseMutations) > 0 {
+		if err := e.applyAndRecord(factionState, faction, raiseMutations, cfg); err != nil {
+			observer.OnError(faction, err)
+			return false, err
+		}
+		observer.OnStatRaiseApplied(faction, statToRaise, raiseMutations)
+	}
+
 	// Phase 3: Action Selection and Resolution. The engine queries the Action
 	// subsystem for available actions, passing along the lock type and allowed
 	// actions if relevant.
@@ -239,4 +254,55 @@ func filterAllowedActions(available []action.Action, allowed []string) []action.
 		}
 	}
 	return filtered
+}
+
+func eligibleStatRaises(faction *domain.Faction) []domain.FactionStat {
+	type entry struct {
+		stat   domain.FactionStat
+		rating int
+	}
+	all := []entry{
+		{stat: domain.StatForce, rating: faction.Force},
+		{stat: domain.StatCunning, rating: faction.Cunning},
+		{stat: domain.StatWealth, rating: faction.Wealth},
+	}
+	eligible := make([]domain.FactionStat, 0, 3)
+	for _, e := range all {
+		if e.rating < 8 && faction.XP >= domain.HPValueForRating(e.rating+1) {
+			eligible = append(eligible, e.stat)
+		}
+	}
+	return eligible
+}
+
+func buildStatRaiseMutations(faction *domain.Faction, stat domain.FactionStat) []domain.Mutation {
+	var oldRating int
+	switch stat {
+	case domain.StatForce:
+		oldRating = faction.Force
+	case domain.StatCunning:
+		oldRating = faction.Cunning
+	case domain.StatWealth:
+		oldRating = faction.Wealth
+	}
+	cost := domain.HPValueForRating(oldRating + 1)
+	return []domain.Mutation{
+		domain.XPSpent{FactionID: faction.ID, Amount: cost, Cause: "stat_raise"},
+		domain.StatRaised{FactionID: faction.ID, Stat: stat, OldRating: oldRating, NewRating: oldRating + 1, Cause: "stat_raise"},
+	}
+}
+
+func prepareStatRaise(faction *domain.Faction, collector InputCollector) (*domain.FactionStat, []domain.Mutation, error) {
+	eligible := eligibleStatRaises(faction)
+	if len(eligible) == 0 {
+		return nil, nil, nil // skip: don't call the collector
+	}
+	stat, err := collector.SelectStatRaise(faction, eligible)
+	if err != nil {
+		return nil, nil, fmt.Errorf("selecting stat raise: %w", err)
+	}
+	if stat == nil {
+		return nil, nil, nil // player declined
+	}
+	return stat, buildStatRaiseMutations(faction, *stat), nil
 }

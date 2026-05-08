@@ -392,6 +392,13 @@ A record of key decisions made during development, grouped by feature branch.
 | 179 | `max(newCost, 0)` floor in `PreceptorArchiveCostModifier.ModifyAssetCost` (not a `baseCost > 0` guard) | Both approaches produce the same result for cost-0 assets; `max` makes the non-negative invariant explicit at the return site rather than buried in a branch condition; floor is expressed once regardless of how many discount modifiers chain together |
 | 180 | `*rulebook.Rulebook` stored on `TurnEngine` (unlike the hooks registry, which is passed per-call) | Rulebook is static data that never changes between turns; storing it avoids threading it through every call site; the registry is turn/session-scoped and owned by `Engine`, so passing it per-call remains correct |
 | 181 | Over-cap surcharge computed via two-pass in `applyMaintenance`: count-by-category first, then apply surplus as +1 per excess asset in the main loop | Pre-counting is required because each asset's effective cost must be known before the affordability check; a single-pass approach would require look-ahead or deferred correction; the surcharge map tracks remaining charges and decrements in iteration order, which is arbitrary but total-correct |
+| 182 | `SelectStatRaise` returns `*domain.FactionStat`; nil = skip | Idiomatic Go optional; avoids sentinel string values; same "nil = nothing chosen" pattern as `SelectAction` returning nil for No Action |
+| 183 | Stat raise phase fires after `CheckpointBookkeeping`, before action selection | Player sees their post-bookkeeping XP balance before deciding; consistent with PDF rule "at the beginning of each turn" meaning before the action |
+| 184 | No new checkpoint for stat raise | The `SelectStatRaise` call itself is the interactive pause; adding a checkpoint would double-pause the turn for a phase that only fires when the faction has enough XP |
+| 185 | `StatRaised.Apply` sets rating to `NewRating` (not `+= 1`) | Idempotent under replay; the old rating is carried in the mutation for history readability |
+| 186 | Eligibility computed in the engine, passed to collector as `eligible []domain.FactionStat` | Consistent with `AvailableActions` pattern; collector shows only valid options without needing to re-derive the cost table |
+| 187 | Skip phase entirely (don't call collector) when `eligibleStatRaises` is empty | Avoids blocking interactive TUIs on a no-op phase; `IneligibleNoPrompt` integration test asserts this |
+| 188 | `SellAsset.Inputs` returns error when `SelectAsset` returns nil | Prevents nil dereference in `Resolve`; nil from collector means user cancelled; a clean error is better than a panic |
 
 **Notable alternatives rejected:**
 

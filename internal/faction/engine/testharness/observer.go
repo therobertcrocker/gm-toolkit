@@ -77,6 +77,14 @@ func (r *RecordingObserver) OnError(faction *domain.Faction, err error) {
 	r.Events = append(r.Events, ObservedEvent{Kind: "Error", Faction: faction, Payload: err})
 }
 
+func (r *RecordingObserver) OnStatRaiseApplied(faction *domain.Faction, raised *domain.FactionStat, mutations []domain.Mutation) {
+	r.Events = append(r.Events, ObservedEvent{
+		Kind:    "StatRaiseApplied",
+		Faction: faction,
+		Payload: StatRaisePayload{Raised: raised, Mutations: mutations},
+	})
+}
+
 // Kinds returns the recorded event kinds in order — convenient for sequence
 // assertions that don't care about payload contents.
 func (r *RecordingObserver) Kinds() []string {
@@ -109,4 +117,9 @@ type ActionResolvedPayload struct {
 type CycleCompletedPayload struct {
 	CycleNumber  int
 	FactionState *state.FactionState
+}
+
+type StatRaisePayload struct {
+	Raised    *domain.FactionStat
+	Mutations []domain.Mutation
 }

@@ -187,6 +187,22 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 					faction.ActiveGoal.TurnsRemaining = v.TurnsRemaining
 				}
 			}
+		case domain.XPSpent:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.XP -= v.Amount
+			}
+		case domain.StatRaised:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				switch v.Stat {
+				case domain.StatForce:
+					faction.Force = v.NewRating
+				case domain.StatCunning:
+					faction.Cunning = v.NewRating
+				case domain.StatWealth:
+					faction.Wealth = v.NewRating
+				}
+				faction.MaxHP = domain.CalcMaxHP(faction)
+			}
 		default:
 			panic(fmt.Sprintf("unhandled mutation type: %s", mutation.Type()))
 		}
