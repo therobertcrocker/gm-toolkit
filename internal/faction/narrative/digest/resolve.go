@@ -25,17 +25,17 @@ func resolveAssetName(factionID, assetID string, factionState *state.FactionStat
 	if !ok {
 		return assetID
 	}
-	for _, asset := range f.Assets {
-		if asset.ID == assetID {
-			if rulebook != nil {
-				if def, ok := rulebook.Assets[asset.DefinitionID]; ok {
-					return def.Name
-				}
-			}
-			return assetID
+	asset, ok := f.Assets[assetID]
+	if !ok {
+		return assetID
+	}
+	if rulebook != nil {
+		if def, ok := rulebook.Assets[asset.DefinitionID]; ok {
+			return def.Name
 		}
 	}
 	return assetID
+
 }
 
 func resolveGoalName(goalID string, rulebook *rulebook.Rulebook) string {

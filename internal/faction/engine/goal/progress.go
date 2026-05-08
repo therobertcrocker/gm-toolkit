@@ -325,12 +325,7 @@ func countAssetKillsByCategory(actingFactionID string, category domain.FactionSt
 }
 
 func findAsset(faction *domain.Faction, assetID string) *domain.Asset {
-	for _, asset := range faction.Assets {
-		if asset.ID == assetID {
-			return asset
-		}
-	}
-	return nil
+	return faction.Assets[assetID]
 }
 
 func factionHasBaseOn(faction *domain.Faction, world string) bool {

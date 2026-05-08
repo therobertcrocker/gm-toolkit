@@ -247,12 +247,5 @@ func liveDefenders(factionState *state.FactionState, attackerFactionID, world st
 
 // ownerFaction returns the faction that owns the given asset, or nil.
 func ownerFaction(factionState *state.FactionState, asset *domain.Asset) *domain.Faction {
-	for _, faction := range factionState.Factions {
-		for _, factionAsset := range faction.Assets {
-			if factionAsset.ID == asset.ID {
-				return faction
-			}
-		}
-	}
-	return nil
+	return factionState.Factions[asset.OwnerID]
 }

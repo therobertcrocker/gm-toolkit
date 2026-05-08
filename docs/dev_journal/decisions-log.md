@@ -34,6 +34,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #4 | Single monolithic state file for all campaigns | Campaign scoping isolates data; prevents one broken campaign from affecting others |
 | #9 | `DataLoader` interface for the Rulebook | Interface was premature abstraction; loader is internal plumbing, not a public contract |
 
+<br />
+
 ### feature/faction-create-wizard
 
 | # | Decision | Rationale |
@@ -43,6 +45,8 @@ A record of key decisions made during development, grouped by feature branch.
 | 21 | Wizard sub-steps live in `faction/wizard/` package; receive only the data they need | Keeps create wizard orchestration clean; decouples wizard steps from the full Rulebook |
 | 22 | Domain helpers (`CalcMaxHP`, `RatingsFromScale`, `AssetCountsFromScale`) moved to `internal/faction/domain` | Game logic belongs in the domain layer, not the command layer |
 | 23 | `FACTION_DATA_DIR` environment variable controls data path at runtime | Dev/distribution separation; data files stay in source tree during development; binary resolves path at runtime via env var, falls back to path relative to executable |
+
+<br />
 
 ### chore/internal-code-review
 
@@ -54,12 +58,16 @@ A record of key decisions made during development, grouped by feature branch.
 | 27 | Duplicate asset ID detection added to loader | Silent overwrites when merging `*_assets.toml` files would lose data with no error; loader now returns an error on collision |
 | 28 | Commands currently own state mutation and path resolution | Noted as design debt: `newCreateCmd` appends directly to state and computes the state path — both should move into the engine as it grows |
 
+<br />
+
 ### feature/faction-list
 
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 29 | `faction list` shows one summary line per faction (name, scale, HP, goal) | Quick orientation for the GM; richer per-faction detail belongs in Review Mode |
 | 30 | Binary run from `cmd/faction-manager/`; `campaigns/` is a sibling of `bin/` | Keeps data out of the binary directory; clean separation between executable and campaign files |
+
+<br />
 
 ### feature/turn-engine-scaffolding
 
@@ -83,6 +91,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #33 | Full shuffle instead of rotation | Rules specify a fixed list order with a random start, not random ordering each turn |
 | #37 | Defer all writes to end of full Cycle | If interrupted mid-Cycle, all prior factions would need to re-act on resume; per-faction commits are the correct granularity given pause/resume is first-class |
 
+<br />
+
 ### feature/turn-command
 
 | # | Decision | Rationale |
@@ -100,6 +110,8 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #41 | Apply mutations inline inside `applyMaintenance` | Would scatter state writes across bookkeeping logic; breaks the "MutationEngine is sole writer" invariant |
 | #44 | Use `lipgloss` for terminal styling | Designed for TUI layout components (panels, borders, grids); wrong abstraction for sequential text output |
+
+<br />
 
 ### feature/action-engine
 
@@ -122,6 +134,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #50 | `huh` calls directly inside action `Inputs` methods | Couples engine to a UI library; AI agent would require a different concrete action type rather than a different collector |
 | #53 | Pass individual sub-engines to turn command | Started with TurnEngine only; grew to TurnEngine + ActionEngine + MutationEngine + Rulebook — at that point the full engine is the right boundary |
 
+<br />
+
 ### feature/history-engine
 
 | # | Decision | Rationale |
@@ -139,6 +153,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #56 | Per-Cycle event record (original discovery doc design) | State commits per-faction for pause/resume correctness; deferring history to Cycle end would create a sync gap on interrupted Cycles |
 | #58 | `engine.Action` directly as huh option value | huh's option matching behaved unexpectedly with interface values; integer indices are unambiguous |
 
+<br />
+
 ### chore/code-review-2
 
 | # | Decision | Rationale |
@@ -148,6 +164,8 @@ A record of key decisions made during development, grouped by feature branch.
 | 61 | `BookkeepingResult.Mutations` renamed to `RecordedMutations` | Mutations are already applied inside `ApplyBookkeeping`; the old name implied the caller should apply them, creating a double-apply risk; `RecordedMutations` makes the recording-only purpose explicit |
 | 62 | `FactionStat` moved from `asset.go` to `faction.go` | Used across faction creation, loader, and asset definitions — it is a domain-wide type, not an asset-specific concern |
 | 63 | Concrete actions moved to `engine/actions` sub-package | `ActionEngine` holds only the `Action` interface and factory registry and never references concrete types; `engine/actions` imports `engine` for the interface contract with no circular import; all future actions have a clear, consistent home before the list grows |
+
+<br />
 
 ### simple-actions
 
@@ -168,6 +186,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #66 | Add `AssetReadyFlag` mutation and record turn-start re-readies to history | Pure housekeeping — adds noise to `history.jsonl` for events fully determined by the cycle counter |
 | #67 | `Faction.NextAssetCounter map[defID]int` persisted counter for monotonic IDs across sells | Would solve ID reuse after sell+buy, but no present-day consequence: state holds only live assets, history is append-only self-contained events, no cross-references; speculative fix for a problem that doesn't exist yet |
 
+<br />
+
 ### attack-action
 
 | # | Decision | Rationale |
@@ -185,6 +205,8 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #73 | `math/rand` global with a fixed seed | Global state makes parallel tests unreliable; a fixed seed hard-codes test assumptions into production code |
 | #76 | Redirect decision hard-coded as "always redirect" or resolved outside `InputCollector` | Bypasses the source-agnostic contract; would require a parallel mechanism when AI decision-making lands |
+
+<br />
 
 ### feature/tui
 
@@ -205,6 +227,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #80 | Pre-collect redirect answer before running attack resolution | Redirect answer depends on the attack roll — the GM can only decide whether to redirect after seeing that the attack hit; pre-collection is mechanically incorrect |
 | #81 | Inject a real collector at factory registration time | No concrete `InputCollector` to inject after `GMCollector` was deleted; deferred to a future refactor where the collector is injected at action Run time rather than construction time |
 
+<br />
+
 ### feature/tui-qol
 
 | # | Decision | Rationale |
@@ -223,6 +247,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #84 | Add `Log(message string)` to `InputCollector`; narrate from inside `Resolve()` | Would require all three existing `InputCollector` implementations (TUI, test mock, future AI) to implement `Log`; narrative is a renderer concern, not a resolution concern — keeping it in the TUI layer is the right separation |
 | #87 | Accumulate log across full cycle | Grows into a wall of text; individual faction turns are the natural scope for a play-by-play; the cycle summary table already covers the full cycle at a glance |
 
+<br />
+
 ### feature/expand-influence
 
 | # | Decision | Rationale |
@@ -240,6 +266,8 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #90 | Register `baseAttack` as a standalone action or reuse the existing `Attack` action | Standalone registration would expose it in the action menu; reusing `Attack` would require the normal attack flow to carry Expand Influence context — both couple unrelated mechanics |
 | #92 | Pre-collect `SelectBaseAttackers` before starting resolution | Which rivals win the contested roll (and therefore which eligible attacker lists are needed) is unknown until the dice are rolled in `Resolve`; pre-collection is mechanically impossible |
+
+<br />
 
 ### feature/use-asset-ability
 
@@ -268,6 +296,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #98 | Single flat handler map keyed by step type only | Custom overrides per definition ID cannot be expressed with a single registry; bespoke abilities would require inventing a synthetic step type per asset |
 | #105 | Collect assets one at a time as each resolves | SWN rules require up-front declaration; allowing per-step selection gives the GM information about prior results before committing later assets |
 
+<br />
+
 ### feature/goal-engine
 
 | # | Decision | Rationale |
@@ -294,6 +324,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #115 | Call `UpdateProgress` inside `ActionEngine.Run` | Would require `ActionEngine` to depend on `GoalEngine`; creates a circular-style coupling between two engines that should be peers; TUI orchestration is the right layer for cross-engine sequencing |
 | #118 | Option A — inspect mutations post-action to determine lock | Cannot express Change Homeworld (skip the entire turn — there is no action to inspect) |
 
+<br />
+
 ### feature/narrative-renderer
 
 | # | Decision | Rationale |
@@ -316,6 +348,8 @@ A record of key decisions made during development, grouped by feature branch.
 |------------|-------------|--------------|
 | #124 | Monolithic renderer that reads JSONL and produces prose directly | Would mix history parsing with rendering logic; the LLM renderer would have no structured input to work from — it would need to re-parse history itself |
 | #128 | Echo the attack in both attacker and defender sections | Creates duplicate prose that reads as padding; cross-faction events are single-perspective by convention |
+
+<br />
 
 ### feature/core-engine-orchestrator
 
@@ -344,6 +378,8 @@ A record of key decisions made during development, grouped by feature branch.
 | #139 | Store observer + collector on `Engine` at construction time | Engine would need to be reconstructed for every test scenario that uses different observer/collector configs; per-call injection is idiomatic Go and keeps the engine stateless |
 | #141 | Leave `ApplyBookkeeping` applying mutations internally | Breaks uniform mutation flow — one sub-engine was writing state, all others returned mutations for the caller to apply; asymmetry makes the orchestrator's write path non-obvious |
 
+<br />
+
 ### feature/testing-suite-phase1
 
 | # | Decision | Rationale |
@@ -351,6 +387,8 @@ A record of key decisions made during development, grouped by feature branch.
 | 149 | `go.uber.org/mock/gomock` + generated `MockCollector` in `engine/actions/mocks/` | The `InputCollector` interface has 14 methods; hand-written fake structs require every method to be declared per test file even when only 1–2 are exercised. gomock generates the mock once; each test declares only the expectations it cares about, and any unexpected call fails the test automatically |
 | 150 | moved `internal/engine/actions/` into `internal/faction/engine/action/`| Actions are an implementation of the action interface, and belong within that sub-engine.
 | 151 | `internal/faction/loader` package renamed to `internal/faction/rulebook` | The package name `loader` described the mechanism (loading files); `rulebook` describes what it produces — static game data. Consistent with the `Rulebook` type name already used throughout the codebase |
+
+<br />
 
 ### feature/testing-suite-phases2-3
 
@@ -362,6 +400,8 @@ A record of key decisions made during development, grouped by feature branch.
 | 155 | `FixedRoller` promoted to `testharness` package | Any test package that needs deterministic dice can import testharness; keeping it local to `orchestrator_test.go` (as `fixedRoller`) would require duplication in `integration_test/` |
 | 156 | `checkStep(t, description, ok, detail)` helper for labeled assertion output | `t.Logf("  ✓ …")` / `t.Errorf("  ✗ …")` pattern surfaces a per-assertion confirmation log with `go test -v` — readable report without external tooling or test framework dependencies |
 | 157 | `TestRunCycle_Bookkeeping_AssetDestroyedSecondMiss` skipped — not implemented | `maintenanceCost` returns 0 (stub — see decisions log #36 and deferred items); the two-miss destruction path cannot fire until structured cost data is added to `AssetDefinition` |
+
+<br />
 
 ### feature/event-hooks
 
@@ -384,7 +424,6 @@ A record of key decisions made during development, grouped by feature branch.
 | 172 | `RegisterDefaultTags` takes `*state.FactionState` in addition to `*engine.Engine` | Tag hooks are faction-scoped and must be registered per owning faction; walking state at startup is the only way to know which factions own which tags; actions need no such walk because they are unconditionally registered |
 | 173 | `ScavengersReactor` matches on `AssetRemoved{Cause: "attack"}` (no `AssetDestroyed` type exists) | The domain represents combat kills as `AssetRemoved` with `Cause: "attack"`; non-combat removals (sell, refit, bookkeeping) carry different cause strings and must not trigger Scavengers |
 | 174 | `harness.registerTags()` helper called per-scenario after `addFaction`, not inside `newHarness` | `newHarness` creates an empty faction state; tags are faction-scoped and must be registered after factions are populated; calling `RegisterDefaultTags` on an empty state would silently register nothing |
-
 | 175 | Keep-highest semantics implemented via `RollState.SetKeepHighest` trim step, not via `ModifierOffer` extension or a paired `RollResultHook` | A trim on `RollState` keeps all dice-pool mutations in one place — `Apply` accumulates, `RollWithHooks` fires once; a paired `RollResultHook` would cross a category boundary (Cat 1 offer registering a Cat 2 effect), complicating the dispatch contract with no benefit |
 | 176 | `action.Collector` embeds `hooks.Collector`; attack roll sites pass the action collector directly to `RollWithHooks` | `engine.InputCollector` already embeds both; embedding in `action.Collector` makes the hierarchy consistent and avoids a separate `hooks.Collector` field on every action struct; `ScriptedCollector` and `MockInputCollector` both already satisfy `hooks.Collector`, so no implementation changes were needed |
 | 177 | `dispatch.ResolveTie` probes `ctx.Actor.ID` first, then `ctx.Opponent.ID` if no attacker resolver is found | A faction-scoped `TieResolver` must fire when that faction is both attacking and defending; the dispatch layer handles role detection at lookup time; the resolver then reads `ctx.Actor.ID` vs. `resolver.FactionID` to return the correct `TieOutcome` for each role |
@@ -399,6 +438,8 @@ A record of key decisions made during development, grouped by feature branch.
 | 186 | Eligibility computed in the engine, passed to collector as `eligible []domain.FactionStat` | Consistent with `AvailableActions` pattern; collector shows only valid options without needing to re-derive the cost table |
 | 187 | Skip phase entirely (don't call collector) when `eligibleStatRaises` is empty | Avoids blocking interactive TUIs on a no-op phase; `IneligibleNoPrompt` integration test asserts this |
 | 188 | `SellAsset.Inputs` returns error when `SelectAsset` returns nil | Prevents nil dereference in `Resolve`; nil from collector means user cancelled; a clean error is better than a panic |
+
+<br />
 
 ### chore/test-infra-split
 
@@ -418,3 +459,14 @@ A record of key decisions made during development, grouped by feature branch.
 | #175 | Paired `RollResultHook` registered by the offer's `Apply` to drop the lowest die | Crosses a category boundary; also requires the Cat 2 hook to receive the pre-trim dice state, which may include the extra die that hasn't been "chosen" to keep yet — ordering semantics become ambiguous |
 | #176 | Add a separate `hooks.Collector` parameter to `NewAttack` and each action factory | Produces two parallel collector fields in every action struct; the factory closure would need to cast or double-pass the same `InputCollector` — mechanical overhead with no conceptual gain |
 | #177 | Register `FanaticalTieResolver` at global scope; check both factions inline | Global scope would fire for all ties, requiring the resolver to check whether either faction is Fanatical; faction-scoped registration is more precise and consistent with every other hook in the system |
+
+<br />
+
+### refactor/faction-assets-map
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 191 | `Faction.Assets` converted from `[]*Asset` to `map[string]*Asset` | Matches the precedent of `FactionState.Factions` (Decision 64); pre-1.0 breaking change is acceptable; O(1) lookups in mutation engine remove 5+ linear scans per mutation batch |
+| 192 | Canonical sort order in `applyMaintenance` is ascending asset ID | Map iteration is unordered; maintenance charging is coin-budget-sensitive (first asset wins when coin runs out); sorting by ID makes the result deterministic and reproducible across runs |
+| 193 | `action.Collector.SelectAsset` keeps `[]*domain.Asset` parameter; map→slice conversion is internal to `SellAsset.Inputs` | The collector interface should not know about the internal storage shape; `domain.SortedAssets` produces a consistent ordered slice without exposing the map |
+| 194 | `ownerFaction` in `attack.go` simplified to `factionState.Factions[asset.OwnerID]` | `Asset.OwnerID` already encodes the owner; the previous O(n × factions) scan was a holdover from when the field may not have been trusted; direct lookup is correct and faster |
