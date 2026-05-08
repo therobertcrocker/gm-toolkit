@@ -400,6 +400,13 @@ A record of key decisions made during development, grouped by feature branch.
 | 187 | Skip phase entirely (don't call collector) when `eligibleStatRaises` is empty | Avoids blocking interactive TUIs on a no-op phase; `IneligibleNoPrompt` integration test asserts this |
 | 188 | `SellAsset.Inputs` returns error when `SelectAsset` returns nil | Prevents nil dereference in `Resolve`; nil from collector means user cancelled; a clean error is better than a panic |
 
+### chore/test-infra-split
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 189 | Test helpers promoted from `integration/*_test.go` to `testharness/harness.go` (regular exported file) | `_test.go` helpers are only visible within their own package; an exported file in `testharness/` lets any future test package import `NewHarness`, `ReadHistory`, `CheckStep`, etc. without duplication |
+| 190 | `integration/` renamed to `scenarios/`; `scenarios_test.go` split into `full_cycle_test.go`, `goal_lock_test.go`, `actions_test.go`, `hooks_test.go`, `tags_test.go`, `stat_raise_test.go` | Single 905-line file made it hard to find specific scenarios; grouping by mechanic (goal locks, actions, hooks, tags) matches how tests are reasoned about and extended |
+
 **Notable alternatives rejected:**
 
 | Decision # | Alternative | Why rejected |

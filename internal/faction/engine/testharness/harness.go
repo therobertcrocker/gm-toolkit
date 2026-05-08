@@ -1,8 +1,9 @@
-package integration
+package testharness
 
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,53 +14,48 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 const (
-	testDataDir          = "../../../data"
-	defSecurityPersonnel = "F1-001"
-	defHeavyDropAssets   = "F2-001" // Force 2, cost 4, TL4
+	DefSecurityPersonnel = "F1-001"
+	DefHeavyDropAssets   = "F2-001"
 )
 
-type harness struct {
-	engine       *engine.Engine
-	factionState *state.FactionState
-	cfg          *config.Config
-	collector    *testharness.ScriptedCollector
-	observer     *testharness.RecordingObserver
+type Harness struct {
+	Engine       *engine.Engine
+	FactionState *state.FactionState
+	Cfg          *config.Config
+	Collector    *ScriptedCollector
+	Observer     *RecordingObserver
 }
 
-func newHarness(t *testing.T) *harness {
+func NewHarness(t *testing.T, dataDir string) *Harness {
 	t.Helper()
-	eng, err := engine.New(testDataDir)
+	eng, err := engine.New(dataDir)
 	if err != nil {
 		t.Fatalf("engine.New: %v", err)
 	}
 	actions.RegisterDefaultActions(eng)
 
 	dir := t.TempDir()
-	return &harness{
-		engine:       eng,
-		factionState: &state.FactionState{CampaignID: "test", Factions: make(map[string]*domain.Faction)},
-		cfg: &config.Config{
+	return &Harness{
+		Engine:       eng,
+		FactionState: &state.FactionState{CampaignID: "test", Factions: make(map[string]*domain.Faction)},
+		Cfg: &config.Config{
 			StatePath:   filepath.Join(dir, "state.toml"),
 			HistoryPath: filepath.Join(dir, "history.jsonl"),
 		},
-		collector: &testharness.ScriptedCollector{},
-		observer:  &testharness.RecordingObserver{},
+		Collector: &ScriptedCollector{},
+		Observer:  &RecordingObserver{},
 	}
 }
 
-// registerTags wires tag hooks for all factions currently in h.factionState.
-// Call after all addFaction calls so the state is populated before walking.
-func (h *harness) registerTags() {
-	tag.RegisterDefaultTags(h.engine, h.factionState)
+func (h *Harness) RegisterTags() {
+	tag.RegisterDefaultTags(h.Engine, h.FactionState)
 }
 
-// addFaction appends a faction with one Security Personnel asset on its homeworld.
-func (h *harness) addFaction(id, homeworld string, force, cunning, wealth int) *domain.Faction {
+func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *domain.Faction {
 	faction := &domain.Faction{
 		ID:        id,
 		Name:      id,
@@ -74,18 +70,18 @@ func (h *harness) addFaction(id, homeworld string, force, cunning, wealth int) *
 	}
 	faction.Assets = []*domain.Asset{{
 		ID:           id + "-asset-1",
-		DefinitionID: defSecurityPersonnel,
+		DefinitionID: DefSecurityPersonnel,
 		OwnerID:      id,
 		Location:     homeworld,
 		CurrentHP:    3,
 		Ready:        true,
 		Maintained:   true,
 	}}
-	h.factionState.Factions[id] = faction
+	h.FactionState.Factions[id] = faction
 	return faction
 }
 
-func readHistory(t *testing.T, path string) []domain.EventRecord {
+func ReadHistory(t *testing.T, path string) []domain.EventRecord {
 	t.Helper()
 	file, err := os.Open(path)
 	if err != nil {
@@ -109,7 +105,7 @@ func readHistory(t *testing.T, path string) []domain.EventRecord {
 	return records
 }
 
-func countKind(kinds []string, want string) int {
+func CountKind(kinds []string, want string) int {
 	count := 0
 	for _, k := range kinds {
 		if k == want {
@@ -119,16 +115,14 @@ func countKind(kinds []string, want string) int {
 	return count
 }
 
-func assertKinds(t *testing.T, got, want []string) {
+func AssertKinds(t *testing.T, got, want []string) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("observer kinds:\n got  %v\n want %v", got, want)
 	}
 }
 
-// findMutationByCause returns the first MutationRecord whose JSON payload
-// contains a "cause" field matching the given value.
-func findMutationByCause(records []domain.EventRecord, cause string) (domain.MutationRecord, bool) {
+func FindMutationByCause(records []domain.EventRecord, cause string) (domain.MutationRecord, bool) {
 	for _, rec := range records {
 		for _, m := range rec.Mutations {
 			var fields struct {
@@ -145,8 +139,7 @@ func findMutationByCause(records []domain.EventRecord, cause string) (domain.Mut
 	return domain.MutationRecord{}, false
 }
 
-// findMutationType returns the first MutationRecord with the given type discriminator.
-func findMutationType(records []domain.EventRecord, mutType string) (domain.MutationRecord, bool) {
+func FindMutationType(records []domain.EventRecord, mutType string) (domain.MutationRecord, bool) {
 	for _, rec := range records {
 		for _, m := range rec.Mutations {
 			if m.Type == mutType {
@@ -157,8 +150,7 @@ func findMutationType(records []domain.EventRecord, mutType string) (domain.Muta
 	return domain.MutationRecord{}, false
 }
 
-// findMutationByTypeAndCause returns the first MutationRecord matching both type and cause.
-func findMutationByTypeAndCause(records []domain.EventRecord, mutType, cause string) (domain.MutationRecord, bool) {
+func FindMutationByTypeAndCause(records []domain.EventRecord, mutType, cause string) (domain.MutationRecord, bool) {
 	for _, rec := range records {
 		for _, m := range rec.Mutations {
 			if m.Type != mutType {
@@ -176,4 +168,41 @@ func findMutationByTypeAndCause(records []domain.EventRecord, mutType, cause str
 		}
 	}
 	return domain.MutationRecord{}, false
+}
+
+func AddBase(faction *domain.Faction, world string, hp int) *domain.Base {
+	base := &domain.Base{
+		ID:          fmt.Sprintf("%s-base-%s-1", faction.ID, world),
+		OwnerID:     faction.ID,
+		Location:    world,
+		CurrentHP:   hp,
+		MaxHP:       hp,
+		Ready:       true,
+		IsHomeworld: false,
+	}
+	faction.Bases = append(faction.Bases, base)
+	return base
+}
+
+func AddAssetOnWorld(faction *domain.Faction, world string) *domain.Asset {
+	asset := &domain.Asset{
+		ID:           fmt.Sprintf("%s-%s-extra", faction.ID, world),
+		DefinitionID: DefSecurityPersonnel,
+		OwnerID:      faction.ID,
+		Location:     world,
+		CurrentHP:    3,
+		Ready:        true,
+		Maintained:   true,
+	}
+	faction.Assets = append(faction.Assets, asset)
+	return asset
+}
+
+func CheckStep(t *testing.T, description string, ok bool, detail string) {
+	t.Helper()
+	if ok {
+		t.Logf("  ✓ %s", description)
+	} else {
+		t.Errorf("  ✗ %s: %s", description, detail)
+	}
 }
