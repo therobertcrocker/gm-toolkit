@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -16,11 +17,12 @@ var (
 // TurnEngine manages turn lifecycle: ordering, bookkeeping computation, and
 // pause/resume cursor state. Mutation application is owned by the orchestrator.
 type TurnEngine struct {
-	roller domain.Roller
+	roller   domain.Roller
+	rulebook *rulebook.Rulebook
 }
 
-func New(roller domain.Roller) *TurnEngine {
-	return &TurnEngine{roller: roller}
+func New(roller domain.Roller, rulebook *rulebook.Rulebook) *TurnEngine {
+	return &TurnEngine{roller: roller, rulebook: rulebook}
 }
 
 // InProgress reports whether a turn is currently active.

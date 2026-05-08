@@ -47,7 +47,7 @@ func New(dataDir string) (*Engine, error) {
 
 func NewWithRulebook(rulebook *rulebook.Rulebook) *Engine {
 	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(), Hooks: hooks.NewRegistry()}
-	e.Turn = turn.New(e.Rand)
+	e.Turn = turn.New(e.Rand, e.Rulebook)
 	e.Mutation = mutation.New()
 	e.Action = action.New()
 	e.Ability = ability.New()

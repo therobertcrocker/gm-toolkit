@@ -4,6 +4,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -49,7 +50,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 	var mutations []domain.Mutation
 	mutations = append(mutations, domain.CoinDelta{FactionID: faction.ID, Delta: total, Cause: "bookkeeping"})
 
-	result := applyMaintenance(registry, faction, faction.Coin+total, &mutations)
+	result := applyMaintenance(registry, faction, faction.Coin+total, &mutations, t.rulebook)
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
 
@@ -59,12 +60,29 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 
 // applyMaintenance evaluates per-asset maintenance costs against startCoin,
 // appends the resulting mutations, and returns display-level asset events.
-func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCoin int, mutations *[]domain.Mutation) BookkeepingResult {
+func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCoin int, mutations *[]domain.Mutation, rulebook *rulebook.Rulebook) BookkeepingResult {
 	var result BookkeepingResult
 	runningCoin := startCoin
 
+	counts := make(map[domain.FactionStat]int)
 	for _, asset := range faction.Assets {
-		cost := maintenanceCost(registry, faction, asset)
+		category := rulebook.Assets[asset.DefinitionID].Category
+		counts[category]++
+	}
+
+	surcharge := map[domain.FactionStat]int{
+		domain.StatForce:   max(0, counts[domain.StatForce]-faction.Force),
+		domain.StatCunning: max(0, counts[domain.StatCunning]-faction.Cunning),
+		domain.StatWealth:  max(0, counts[domain.StatWealth]-faction.Wealth),
+	}
+
+	for _, asset := range faction.Assets {
+		cost := maintenanceCost(registry, faction, asset, rulebook)
+		category := rulebook.Assets[asset.DefinitionID].Category
+		if surcharge[category] > 0 {
+			cost++
+			surcharge[category]--
+		}
 		if cost == 0 {
 			if !asset.Maintained {
 				*mutations = append(*mutations, domain.AssetMaintainedFlag{FactionID: faction.ID, AssetID: asset.ID, Maintained: true, Cause: "bookkeeping"})
@@ -92,6 +110,6 @@ func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCo
 // maintenanceCost returns the per-turn Coin cost for an asset. Returns 0 as the
 // base until maintenance cost data is added to AssetDefinition; registered
 // MaintenanceCostModifiers may override via the hook registry.
-func maintenanceCost(registry *hooks.Registry, faction *domain.Faction, asset *domain.Asset) int {
-	return dispatch.ResolveMaintenanceCost(registry, faction, asset, 0)
+func maintenanceCost(registry *hooks.Registry, faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook) int {
+	return dispatch.ResolveMaintenanceCost(registry, faction, asset, rulebook.Assets[asset.DefinitionID].Maintenance)
 }

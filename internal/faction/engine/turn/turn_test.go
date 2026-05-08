@@ -15,7 +15,7 @@ type randRoller struct{}
 func (r *randRoller) Roll(sides int) int { return rand.IntN(sides) + 1 }
 
 func newTurn() *TurnEngine {
-	return New(&randRoller{})
+	return New(&randRoller{}, nil)
 }
 
 func newTestState(factionIDs ...string) *state.FactionState {
