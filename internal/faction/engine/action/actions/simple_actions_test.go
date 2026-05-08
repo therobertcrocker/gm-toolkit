@@ -34,7 +34,7 @@ func TestSellAsset_Validate(t *testing.T) {
 	t.Run("has assets", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "sell-me"}
-		faction := &domain.Faction{ID: "f1", Assets: []*domain.Asset{asset}}
+		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 		if !NewSellAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction has assets")
 		}
@@ -46,7 +46,7 @@ func TestSellAsset_Output(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	rulebook := makeSimpleRulebook()
 	asset := &domain.Asset{ID: "a1", DefinitionID: "sell-me"}
-	faction := &domain.Faction{ID: "f1", Assets: []*domain.Asset{asset}}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 
 	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectAsset(gomock.Any(), gomock.Any()).Return(asset, nil)

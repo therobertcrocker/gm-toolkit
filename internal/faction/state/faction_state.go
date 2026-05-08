@@ -10,10 +10,10 @@ import (
 )
 
 type FactionState struct {
-	CampaignID  string                       `toml:"campaign_id"`
-	CycleNumber int                          `toml:"cycle_number"`
-	Factions    map[string]*domain.Faction   `toml:"factions"`
-	CurrentTurn *domain.TurnState            `toml:"current_turn,omitempty"`
+	CampaignID  string                     `toml:"campaign_id"`
+	CycleNumber int                        `toml:"cycle_number"`
+	Factions    map[string]*domain.Faction `toml:"factions"`
+	CurrentTurn *domain.TurnState          `toml:"current_turn,omitempty"`
 }
 
 // Load reads campaign state from path. Returns an empty State if the file does not exist.
@@ -27,6 +27,11 @@ func Load(path string) (*FactionState, error) {
 	}
 	if s.Factions == nil {
 		s.Factions = make(map[string]*domain.Faction)
+	}
+	for _, faction := range s.Factions {
+		if faction.Assets == nil {
+			faction.Assets = make(map[string]*domain.Asset)
+		}
 	}
 	return &s, nil
 }

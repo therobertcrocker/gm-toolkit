@@ -8,10 +8,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-func SelectStartingAssets(factionID, homeworld string, primary domain.FactionStat, otherStats []domain.FactionStat, ratings map[domain.FactionStat]int, scale domain.FactionScale, assets map[string]*domain.AssetDefinition) ([]*domain.Asset, error) {
+func SelectStartingAssets(faction *domain.Faction, homeworld string, primary domain.FactionStat, otherStats []domain.FactionStat, ratings map[domain.FactionStat]int, scale domain.FactionScale, assets map[string]*domain.AssetDefinition) (map[string]*domain.Asset, error) {
 	primaryCount, otherCount := domain.AssetCountsFromScale(scale)
-	var selected []*domain.Asset
-	assetIndex := 0
+	selected := make(map[string]*domain.Asset)
 
 	// Primary attribute picks
 	primaryDefs := assetsForStat(primary, ratings[primary], assets)
@@ -31,8 +30,16 @@ func SelectStartingAssets(factionID, homeworld string, primary domain.FactionSta
 		).Run(); err != nil {
 			return nil, fmt.Errorf("wizard cancelled: %w", err)
 		}
-		selected = append(selected, newAsset(factionID, selectedID, homeworld, assetIndex, assets[selectedID].HP))
-		assetIndex++
+		def, ok := assets[selectedID]
+		if !ok {
+			return nil, fmt.Errorf("selected asset definition not found: %s", selectedID)
+		}
+		asset := newAsset(faction, selectedID, homeworld, def.HP)
+		selected[asset.ID] = asset
+		// we add the asset to the faction temporarily to ensure unique IDs for subsequent assets
+		// this gets cleaned up when the faction is saved at the end of the wizard
+		faction.Assets[asset.ID] = asset
+
 	}
 
 	// Other attribute picks
@@ -71,8 +78,15 @@ func SelectStartingAssets(factionID, homeworld string, primary domain.FactionSta
 			return nil, fmt.Errorf("wizard cancelled: %w", err)
 		}
 
-		selected = append(selected, newAsset(factionID, selectedID, homeworld, assetIndex, assets[selectedID].HP))
-		assetIndex++
+		def, ok := assets[selectedID]
+		if !ok {
+			return nil, fmt.Errorf("selected asset definition not found: %s", selectedID)
+		}
+		asset := newAsset(faction, selectedID, homeworld, def.HP)
+		selected[asset.ID] = asset
+		// we add the asset to the faction temporarily to ensure unique IDs for subsequent assets
+		// this gets cleaned up when the faction is saved at the end of the wizard
+		faction.Assets[asset.ID] = asset
 	}
 
 	return selected, nil
@@ -102,11 +116,11 @@ func assetOptions(defs []*domain.AssetDefinition) []huh.Option[string] {
 	return opts
 }
 
-func newAsset(factionID, definitionID, location string, index, hp int) *domain.Asset {
+func newAsset(faction *domain.Faction, definitionID, location string, hp int) *domain.Asset {
 	return &domain.Asset{
-		ID:           fmt.Sprintf("%s-asset-%d", factionID, index),
+		ID:           domain.NextAssetID(faction, definitionID),
 		DefinitionID: definitionID,
-		OwnerID:      factionID,
+		OwnerID:      faction.ID,
 		Location:     location,
 		CurrentHP:    hp,
 		Ready:        true,

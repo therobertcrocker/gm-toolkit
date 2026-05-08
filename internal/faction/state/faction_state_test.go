@@ -9,7 +9,7 @@ import (
 
 func TestFactionStateRoundTrip(t *testing.T) {
 	original := &FactionState{
-		CampaignID: "test-campaign",
+		CampaignID:  "test-campaign",
 		CycleNumber: 3,
 		Factions: map[string]*domain.Faction{
 			"iron-collective": {
@@ -30,8 +30,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				ActiveGoal: &domain.ActiveGoal{
 					GoalID: "G-001",
 				},
-				Assets: []*domain.Asset{
-					{
+				Assets: map[string]*domain.Asset{
+					"iron-collective-asset-0": {
 						ID:           "iron-collective-asset-0",
 						DefinitionID: "F1-001",
 						OwnerID:      "iron-collective",
@@ -121,8 +121,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	if len(got.Assets) != 1 {
 		t.Fatalf("Faction.Assets: got %d, want 1", len(got.Assets))
 	}
-	a := got.Assets[0]
-	wa := want.Assets[0]
+	a := got.Assets["iron-collective-asset-0"]
+	wa := want.Assets["iron-collective-asset-0"]
 	if a.ID != wa.ID || a.DefinitionID != wa.DefinitionID || a.OwnerID != wa.OwnerID {
 		t.Errorf("Asset identity: got %+v, want %+v", a, wa)
 	}
@@ -133,11 +133,11 @@ func TestFactionStateRoundTrip(t *testing.T) {
 
 func TestTurnStateRoundTrip(t *testing.T) {
 	original := &FactionState{
-		CampaignID: "test-campaign",
+		CampaignID:  "test-campaign",
 		CycleNumber: 2,
 		CurrentTurn: &domain.TurnState{
 			InProgress:   true,
-			CycleNumber:   2,
+			CycleNumber:  2,
 			FactionOrder: []string{"faction-b", "faction-a"},
 			CurrentIndex: 1,
 			Phase:        domain.PhaseAction,

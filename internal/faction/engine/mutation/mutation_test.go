@@ -14,9 +14,9 @@ func newMutationTestState() *state.FactionState {
 				ID:   "f1",
 				Name: "Faction One",
 				Coin: 10,
-				Assets: []*domain.Asset{
-					{ID: "a1", DefinitionID: "infantry", Location: "Anchorage", Maintained: true},
-					{ID: "a2", DefinitionID: "spy_net", Location: "Anchorage", Maintained: false},
+				Assets: map[string]*domain.Asset{
+					"a1": {ID: "a1", DefinitionID: "infantry", Location: "Anchorage", Maintained: true},
+					"a2": {ID: "a2", DefinitionID: "spy_net", Location: "Anchorage", Maintained: false},
 				},
 			},
 		},
@@ -54,8 +54,8 @@ func TestMutationEngine_AssetRemoved(t *testing.T) {
 	if len(assets) != 1 {
 		t.Fatalf("len(Assets) = %d, want 1", len(assets))
 	}
-	if assets[0].ID != "a2" {
-		t.Errorf("remaining asset ID = %q, want %q", assets[0].ID, "a2")
+	if assets["a2"].ID != "a2" {
+		t.Errorf("remaining asset ID = %q, want %q", assets["a2"].ID, "a2")
 	}
 }
 
@@ -66,14 +66,14 @@ func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 	me.Apply(s, []domain.Mutation{
 		domain.AssetMaintainedFlag{FactionID: "f1", AssetID: "a1", Maintained: false},
 	})
-	if s.Factions["f1"].Assets[0].Maintained {
+	if s.Factions["f1"].Assets["a1"].Maintained {
 		t.Error("expected a1 to be unmaintained")
 	}
 
 	me.Apply(s, []domain.Mutation{
 		domain.AssetMaintainedFlag{FactionID: "f1", AssetID: "a2", Maintained: true},
 	})
-	if !s.Factions["f1"].Assets[1].Maintained {
+	if !s.Factions["f1"].Assets["a2"].Maintained {
 		t.Error("expected a2 to be maintained")
 	}
 }
@@ -92,13 +92,13 @@ func TestMutationEngine_UnknownFactionIsNoop(t *testing.T) {
 
 func TestMutationEngine_AssetStealthCleared(t *testing.T) {
 	s := newMutationTestState()
-	s.Factions["f1"].Assets[0].Stealthy = true
+	s.Factions["f1"].Assets["a1"].Stealthy = true
 	me := New()
 
 	me.Apply(s, []domain.Mutation{
 		domain.AssetStealthCleared{FactionID: "f1", AssetID: "a1"},
 	})
-	if s.Factions["f1"].Assets[0].Stealthy {
+	if s.Factions["f1"].Assets["a1"].Stealthy {
 		t.Error("expected a1 Stealthy to be false after AssetStealthCleared")
 	}
 }

@@ -1,5 +1,11 @@
 package domain
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 type AssetType string
 
 const (
@@ -91,4 +97,20 @@ type Asset struct {
 	Stealthy     bool   `toml:"stealthy"`
 	Ready        bool   `toml:"ready"`
 	Maintained   bool   `toml:"maintained"`
+}
+
+func NextAssetID(faction *Faction, definitionID string) string {
+	prefix := fmt.Sprintf("%s-%s-", faction.ID, definitionID)
+	highest := 0
+	for id := range faction.Assets {
+		if !strings.HasPrefix(id, prefix) {
+			continue
+		}
+		n, err := strconv.Atoi(strings.TrimPrefix(id, prefix))
+		if err == nil && n > highest {
+			highest = n
+		}
+	}
+
+	return fmt.Sprintf("%s%d", prefix, highest+1)
 }

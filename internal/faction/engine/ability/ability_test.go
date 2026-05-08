@@ -22,8 +22,8 @@ func (roller *fixedRoller) Roll(_ int) int {
 
 // fakeCollector pre-configures responses for ability input methods.
 type fakeCollector struct {
-	moveDestination    string
-	factionTestTarget  *domain.Faction
+	moveDestination   string
+	factionTestTarget *domain.Faction
 }
 
 func (collector *fakeCollector) SelectMoveDestination(_ *domain.Asset, _ []string) (string, error) {
@@ -43,12 +43,12 @@ func makeAbilityState(actingFactionID, assetLocation string) (*state.FactionStat
 	acting := &domain.Faction{
 		ID:     actingFactionID,
 		Force:  0,
-		Assets: []*domain.Asset{asset},
+		Assets: map[string]*domain.Asset{"a1": asset},
 	}
 	rival := &domain.Faction{
 		ID:     "f2",
 		Force:  0,
-		Assets: []*domain.Asset{{ID: "r1", OwnerID: "f2", Location: assetLocation}},
+		Assets: map[string]*domain.Asset{"r1": {ID: "r1", OwnerID: "f2", Location: assetLocation}},
 	}
 	factionState := &state.FactionState{
 		Factions: map[string]*domain.Faction{

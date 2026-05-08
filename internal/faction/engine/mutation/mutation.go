@@ -22,21 +22,12 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			}
 		case domain.AssetRemoved:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				surviving := make([]*domain.Asset, 0, len(faction.Assets))
-				for _, asset := range faction.Assets {
-					if asset.ID != v.AssetID {
-						surviving = append(surviving, asset)
-					}
-				}
-				faction.Assets = surviving
+				delete(faction.Assets, v.AssetID)
 			}
 		case domain.AssetMaintainedFlag:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				for _, asset := range faction.Assets {
-					if asset.ID == v.AssetID {
-						asset.Maintained = v.Maintained
-						break
-					}
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.Maintained = v.Maintained
 				}
 			}
 		case domain.FactionHPDelta:
@@ -45,25 +36,21 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			}
 		case domain.AssetHPDelta:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				for _, asset := range faction.Assets {
-					if asset.ID == v.AssetID {
-						asset.CurrentHP += v.Delta
-						break
-					}
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.CurrentHP += v.Delta
+					break
 				}
 			}
+
 		case domain.AssetAdded:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				asset := v.Asset
-				faction.Assets = append(faction.Assets, &asset)
+				faction.Assets[asset.ID] = &asset
 			}
 		case domain.AssetStealthCleared:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				for _, asset := range faction.Assets {
-					if asset.ID == v.AssetID {
-						asset.Stealthy = false
-						break
-					}
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.Stealthy = false
 				}
 			}
 		case domain.BaseHPDelta:
@@ -114,20 +101,14 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			}
 		case domain.AssetMoved:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				for _, asset := range faction.Assets {
-					if asset.ID == v.AssetID {
-						asset.Location = v.ToLocation
-						break
-					}
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.Location = v.ToLocation
 				}
 			}
 		case domain.AssetStealthApplied:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				for _, asset := range faction.Assets {
-					if asset.ID == v.AssetID {
-						asset.Stealthy = true
-						break
-					}
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.Stealthy = true
 				}
 			}
 		case domain.GoalAbandoned:

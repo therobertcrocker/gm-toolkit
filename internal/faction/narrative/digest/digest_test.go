@@ -159,7 +159,7 @@ func TestAssetAddedBuy(t *testing.T) {
 		),
 	}
 	fs := minState(map[string]string{"faction-a": "Alpha"})
-	fs.Factions["faction-a"].Assets = []*domain.Asset{{ID: "asset-1", DefinitionID: "def-1"}}
+	fs.Factions["faction-a"].Assets = map[string]*domain.Asset{"asset-1": {ID: "asset-1", DefinitionID: "def-1"}}
 	rb := &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{"def-1": {ID: "def-1", Name: "Shock Troops"}},
 		Goals:  map[string]*domain.Goal{},

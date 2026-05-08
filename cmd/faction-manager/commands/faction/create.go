@@ -117,6 +117,7 @@ func runCreateFactionWizard(rb *rulebook.Rulebook) (*domain.Faction, error) {
 		Force:     ratings[domain.StatForce],
 		Cunning:   ratings[domain.StatCunning],
 		Wealth:    ratings[domain.StatWealth],
+		Assets:    make(map[string]*domain.Asset),
 	}
 	faction.MaxHP = domain.CalcMaxHP(faction)
 	faction.CurrentHP = faction.MaxHP
@@ -140,7 +141,7 @@ func runCreateFactionWizard(rb *rulebook.Rulebook) (*domain.Faction, error) {
 		}
 	}
 
-	assets, err := wizard.SelectStartingAssets(faction.ID, homeworld, primary, otherStats, ratings, scale, rb.Assets)
+	assets, err := wizard.SelectStartingAssets(faction, homeworld, primary, otherStats, ratings, scale, rb.Assets)
 	if err != nil {
 		return nil, err
 	}
@@ -163,10 +164,12 @@ func runCreateFactionWizard(rb *rulebook.Rulebook) (*domain.Faction, error) {
 	faction.ActiveGoal = &domain.ActiveGoal{GoalID: goal.ID}
 
 	// Step 7: Confirmation
-	assetNames := make([]string, len(assets))
-	for i, asset := range assets {
+	assetNames := make([]string, len(faction.Assets))
+	i := 0
+	for _, asset := range faction.Assets {
 		def := rb.Assets[asset.DefinitionID]
 		assetNames[i] = fmt.Sprintf("  • %s (%s)", def.Name, def.Category)
+		i++
 	}
 	tagNames := make([]string, len(tags))
 	for i, t := range tags {

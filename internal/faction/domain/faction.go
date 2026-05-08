@@ -1,5 +1,10 @@
 package domain
 
+import (
+	"slices"
+	"strings"
+)
+
 type FactionStat string
 
 const (
@@ -41,20 +46,20 @@ type ActiveGoal struct {
 }
 
 type Faction struct {
-	ID          string       `toml:"id"`
-	Name        string       `toml:"name"`
-	Scale       FactionScale `toml:"scale"`
-	Force       int          `toml:"force"`
-	Cunning     int          `toml:"cunning"`
-	Wealth      int          `toml:"wealth"`
-	CurrentHP   int          `toml:"current_hp"`
-	MaxHP       int          `toml:"max_hp"`
-	Coin        int          `toml:"coin"`
-	XP          int          `toml:"xp"`
-	Homeworld   string       `toml:"homeworld"`
+	ID          string            `toml:"id"`
+	Name        string            `toml:"name"`
+	Scale       FactionScale      `toml:"scale"`
+	Force       int               `toml:"force"`
+	Cunning     int               `toml:"cunning"`
+	Wealth      int               `toml:"wealth"`
+	CurrentHP   int               `toml:"current_hp"`
+	MaxHP       int               `toml:"max_hp"`
+	Coin        int               `toml:"coin"`
+	XP          int               `toml:"xp"`
+	Homeworld   string            `toml:"homeworld"`
 	Tags        []*Tag            `toml:"tags"`
 	ActiveGoal  *ActiveGoal       `toml:"active_goal"`
-	Assets      []*Asset          `toml:"assets"`
+	Assets      map[string]*Asset `toml:"assets"`
 	Bases       []*Base           `toml:"bases"`
 	HookBudgets map[string]int    `toml:"hook_budgets,omitempty"`
 }
@@ -106,4 +111,15 @@ func HPValueForRating(rating int) int {
 	default:
 		return 0
 	}
+}
+
+func SortedAssets(faction *Faction) []*Asset {
+	sorted := make([]*Asset, 0, len(faction.Assets))
+	for _, asset := range faction.Assets {
+		sorted = append(sorted, asset)
+	}
+	slices.SortFunc(sorted, func(a, b *Asset) int {
+		return strings.Compare(a.ID, b.ID)
+	})
+	return sorted
 }

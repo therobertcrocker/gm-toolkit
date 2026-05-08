@@ -65,7 +65,7 @@ func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCo
 	runningCoin := startCoin
 
 	counts := make(map[domain.FactionStat]int)
-	for _, asset := range faction.Assets {
+	for _, asset := range domain.SortedAssets(faction) {
 		category := rulebook.Assets[asset.DefinitionID].Category
 		counts[category]++
 	}
@@ -76,7 +76,7 @@ func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCo
 		domain.StatWealth:  max(0, counts[domain.StatWealth]-faction.Wealth),
 	}
 
-	for _, asset := range faction.Assets {
+	for _, asset := range domain.SortedAssets(faction) {
 		cost := maintenanceCost(registry, faction, asset, rulebook)
 		category := rulebook.Assets[asset.DefinitionID].Category
 		if surcharge[category] > 0 {

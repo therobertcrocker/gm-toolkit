@@ -24,7 +24,7 @@ func TestRepairAsset_Validate(t *testing.T) {
 	t.Run("no damaged assets", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "tough", CurrentHP: 10}
-		faction := &domain.Faction{ID: "f1", Coin: 5, Assets: []*domain.Asset{asset}}
+		faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
 		if NewRepairAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when no assets are damaged")
 		}
@@ -33,7 +33,7 @@ func TestRepairAsset_Validate(t *testing.T) {
 	t.Run("damaged but no coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "tough", CurrentHP: 6}
-		faction := &domain.Faction{ID: "f1", Coin: 0, Assets: []*domain.Asset{asset}}
+		faction := &domain.Faction{ID: "f1", Coin: 0, Assets: map[string]*domain.Asset{"a1": asset}}
 		if NewRepairAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction has no coin")
 		}
@@ -42,7 +42,7 @@ func TestRepairAsset_Validate(t *testing.T) {
 	t.Run("damaged and has coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "tough", CurrentHP: 6}
-		faction := &domain.Faction{ID: "f1", Coin: 5, Assets: []*domain.Asset{asset}}
+		faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
 		if !NewRepairAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction has a damaged asset and coin")
 		}
@@ -56,7 +56,7 @@ func TestRepairAsset_Output(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	rulebook := makeRepairAssetRulebook()
 	asset := &domain.Asset{ID: "a1", DefinitionID: "tough", CurrentHP: 6}
-	faction := &domain.Faction{ID: "f1", Force: 4, Coin: 5, Assets: []*domain.Asset{asset}}
+	faction := &domain.Faction{ID: "f1", Force: 4, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
 
 	orders := []action.RepairOrder{{Asset: asset, HealCount: 1}}
 	collector := mocks.NewMockInputCollector(ctrl)

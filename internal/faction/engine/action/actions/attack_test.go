@@ -81,7 +81,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 	}
 	f2 := &domain.Faction{
 		ID:     "f2",
-		Assets: []*domain.Asset{defenderAsset},
+		Assets: map[string]*domain.Asset{"d1": defenderAsset},
 	}
 	if includeBase {
 		f2.Bases = []*domain.Base{{
@@ -94,7 +94,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 	}
 	factionState := &state.FactionState{
 		Factions: map[string]*domain.Faction{
-			"f1": {ID: "f1", Assets: []*domain.Asset{attackerAsset}},
+			"f1": {ID: "f1", Assets: map[string]*domain.Asset{"a1": attackerAsset}},
 			"f2": f2,
 		},
 	}

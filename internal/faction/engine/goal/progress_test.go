@@ -52,7 +52,7 @@ func makeMilitaryConquestState(f1Force, goalProgress int) (*state.FactionState, 
 	}
 	rival := &domain.Faction{
 		ID:     "f2",
-		Assets: []*domain.Asset{rivalAsset},
+		Assets: map[string]*domain.Asset{"d1": rivalAsset},
 	}
 	factionState := &state.FactionState{
 		Factions: map[string]*domain.Faction{"f1": acting, "f2": rival},
@@ -114,11 +114,11 @@ func TestProgressMilitaryConquest_KillCompletesGoal(t *testing.T) {
 func TestProgressCommercialExpansion_NoKills(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "wealth-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
-		ID:     "f1",
-		Wealth: 2,
+		ID:         "f1",
+		Wealth:     2,
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-002", Progress: 0},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{rivalAsset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	mutations := progressCommercialExpansion(acting, nil, factionState, makeProgressRulebook())
@@ -131,11 +131,11 @@ func TestProgressCommercialExpansion_KillCompletesGoal(t *testing.T) {
 	// Wealth=1 means one Wealth kill completes the goal.
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "wealth-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
-		ID:     "f1",
-		Wealth: 1,
+		ID:         "f1",
+		Wealth:     1,
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-002", Progress: 0},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{rivalAsset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
@@ -152,11 +152,11 @@ func TestProgressCommercialExpansion_KillCompletesGoal(t *testing.T) {
 func TestProgressIntelligenceCoup_NoKills(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "cunning-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
-		ID:      "f1",
-		Cunning: 2,
+		ID:         "f1",
+		Cunning:    2,
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-003", Progress: 0},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{rivalAsset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	mutations := progressIntelligenceCoup(acting, nil, factionState, makeProgressRulebook())
@@ -168,11 +168,11 @@ func TestProgressIntelligenceCoup_NoKills(t *testing.T) {
 func TestProgressIntelligenceCoup_KillBelowThreshold(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "cunning-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
-		ID:      "f1",
-		Cunning: 3,
+		ID:         "f1",
+		Cunning:    3,
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-003", Progress: 0},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{rivalAsset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
@@ -193,11 +193,11 @@ func TestProgressIntelligenceCoup_KillBelowThreshold(t *testing.T) {
 func TestProgressIntelligenceCoup_KillCompletesGoal(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "cunning-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
-		ID:      "f1",
-		Cunning: 1,
+		ID:         "f1",
+		Cunning:    1,
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-003", Progress: 0},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{rivalAsset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
@@ -215,11 +215,11 @@ func TestProgressMilitaryConquest_WrongCategory_NoProgress(t *testing.T) {
 	// Rival has a Wealth asset, not Force — should not count toward MilitaryConquest.
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "wealth-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
-		ID:    "f1",
-		Force: 3,
+		ID:         "f1",
+		Force:      3,
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-001", Progress: 0},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{rivalAsset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}

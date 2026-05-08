@@ -33,7 +33,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 	t.Run("no coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
-		faction := &domain.Faction{ID: "f1", Coin: 0, MaxHP: 10, Assets: []*domain.Asset{asset}}
+		faction := &domain.Faction{ID: "f1", Coin: 0, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 		if NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when coin < 1")
@@ -45,7 +45,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
 		// Base on Krylos at max HP and at faction.MaxHP — no new-base, no heal, no grow option.
 		base := &domain.Base{ID: "b1", OwnerID: "f1", Location: "Krylos", CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
-		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 5, Assets: []*domain.Asset{asset}, Bases: []*domain.Base{base}}
+		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 5, Assets: map[string]*domain.Asset{"a1": asset}, Bases: []*domain.Base{base}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 		if NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when no expansion options available")
@@ -55,7 +55,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 	t.Run("world available for new base", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
-		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 10, Assets: []*domain.Asset{asset}}
+		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 		if !NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction has an asset on a world with no base")
@@ -68,7 +68,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
-	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: []*domain.Asset{asset}}
+	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 3}
@@ -195,8 +195,8 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 		ID: "a2", DefinitionID: "force-unit", OwnerID: "f2",
 		Location: "Krylos", CurrentHP: 8, Ready: true, Maintained: true,
 	}
-	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: []*domain.Asset{f1Asset}}
-	rival := &domain.Faction{ID: "f2", Force: 0, Cunning: 0, Assets: []*domain.Asset{f2Asset}}
+	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": f1Asset}}
+	rival := &domain.Faction{ID: "f2", Force: 0, Cunning: 0, Assets: map[string]*domain.Asset{"a2": f2Asset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}

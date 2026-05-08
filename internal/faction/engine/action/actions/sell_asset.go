@@ -30,7 +30,7 @@ func (sa *SellAsset) Validate(faction *domain.Faction, _ *state.FactionState, _ 
 }
 
 func (sa *SellAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
-	selected, err := sa.collector.SelectAsset(faction.Assets, rulebook)
+	selected, err := sa.collector.SelectAsset(domain.SortedAssets(faction), rulebook)
 	if err != nil {
 		return fmt.Errorf("sell asset: %w", err)
 	}

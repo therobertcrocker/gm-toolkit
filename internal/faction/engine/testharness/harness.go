@@ -68,15 +68,17 @@ func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *
 		CurrentHP: 20,
 		Coin:      0,
 	}
-	faction.Assets = []*domain.Asset{{
-		ID:           id + "-asset-1",
-		DefinitionID: DefSecurityPersonnel,
-		OwnerID:      id,
-		Location:     homeworld,
-		CurrentHP:    3,
-		Ready:        true,
-		Maintained:   true,
-	}}
+	faction.Assets = map[string]*domain.Asset{
+		id + "-asset-1": {
+			ID:           id + "-asset-1",
+			DefinitionID: DefSecurityPersonnel,
+			OwnerID:      id,
+			Location:     homeworld,
+			CurrentHP:    3,
+			Ready:        true,
+			Maintained:   true,
+		},
+	}
 	h.FactionState.Factions[id] = faction
 	return faction
 }
@@ -194,7 +196,7 @@ func AddAssetOnWorld(faction *domain.Faction, world string) *domain.Asset {
 		Ready:        true,
 		Maintained:   true,
 	}
-	faction.Assets = append(faction.Assets, asset)
+	faction.Assets[asset.ID] = asset
 	return asset
 }
 

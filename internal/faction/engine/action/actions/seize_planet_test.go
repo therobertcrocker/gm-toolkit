@@ -25,7 +25,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		faction := &domain.Faction{
 			ID:         "f1",
 			ActiveGoal: &domain.ActiveGoal{GoalID: "G-001", ProcessPhase: 0},
-			Assets:     []*domain.Asset{asset},
+			Assets:     map[string]*domain.Asset{"a1": asset},
 		}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
@@ -39,7 +39,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		faction := &domain.Faction{
 			ID:         "f1",
 			ActiveGoal: &domain.ActiveGoal{GoalID: "G-004", ProcessPhase: 0},
-			Assets:     []*domain.Asset{asset},
+			Assets:     map[string]*domain.Asset{"a1": asset},
 		}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
@@ -54,9 +54,9 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		faction := &domain.Faction{
 			ID:         "f1",
 			ActiveGoal: &domain.ActiveGoal{GoalID: "G-004", ProcessPhase: 0},
-			Assets:     []*domain.Asset{f1Asset},
+			Assets:     map[string]*domain.Asset{"a1": f1Asset},
 		}
-		rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{f2Asset}}
+		rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"a2": f2Asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 		if !NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction and rival share a world")
@@ -72,9 +72,9 @@ func TestSeizePlanet_Output(t *testing.T) {
 	faction := &domain.Faction{
 		ID:         "f1",
 		ActiveGoal: &domain.ActiveGoal{GoalID: "G-004", ProcessPhase: 0},
-		Assets:     []*domain.Asset{f1Asset},
+		Assets:     map[string]*domain.Asset{"a1": f1Asset},
 	}
-	rival := &domain.Faction{ID: "f2", Assets: []*domain.Asset{f2Asset}}
+	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"a2": f2Asset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	collector := mocks.NewMockInputCollector(ctrl)
