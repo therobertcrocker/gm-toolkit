@@ -22,13 +22,16 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 
 | If you're working on…                | Read first                                  |
 |--------------------------------------|---------------------------------------------|
-| Turn engine, actions, triggers       | `docs/dev_journal/completed/turn-engine-journal.md` |
 | Overall design or open questions     | `docs/dev_journal/dev-journal-factions.md`          |
-| A ratified decision                  | `docs/dev_journal/decisions-log.md`                 |
+| Before making a design choice        | `docs/dev_journal/decisions-log.md` — use the index (see below) |
 | Architecture or system shape         | `docs/architecture-overview.md`             |
 | Rules behavior                       | `docs/swn-faction-mechanics.md`             |
 | Creating or editing any doc          | `docs/style-guide.md`                       |
 | When implementing a feature...       | `docs/implementation/<feature>.md`          |                   
+
+**Searching the decisions log:** Do not read the full file. Use one of:
+- **Index first:** Read the index at the top (~25 lines), find the relevant section by topic, then read only that section using `offset`/`limit`.
+- **Keyword grep:** `grep -n "keyword" docs/dev_journal/decisions-log.md` to find the line, then read the surrounding section.
 
 When docs conflict, flag the conflict before proceeding. When docs are silent on something the implementation must decide, ask before deciding.
 

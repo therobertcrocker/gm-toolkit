@@ -2,6 +2,36 @@
 
 A record of key decisions made during development, grouped by feature branch.
 
+## Index
+
+| Section | Decisions | Topic |
+|---------|-----------|-------|
+| [Scaffolding & Foundation](#scaffolding--foundation) | 1–18 | Language, architecture, storage, domain model |
+| [feature/faction-create-wizard](#featurefaction-create-wizard) | 19–23 | App struct, command packages, wizard, env config |
+| [chore/internal-code-review](#choreinternal-code-review) | 24–28 | FactionScale, HP table, TOML tags, asset loader |
+| [feature/faction-list](#featurefaction-list) | 29–30 | List display, binary/data layout |
+| [feature/turn-engine-scaffolding](#featureturn-engine-scaffolding) | 31–39 | Engine structure, bookkeeping, turn phases |
+| [feature/turn-command](#featureturn-command) | 40–45 | Mutation interface, state writes, ANSI styling |
+| [feature/action-engine](#featureaction-engine) | 46–53 | Action interface, factories, collector, registry |
+| [feature/history-engine](#featurehistory-engine) | 54–58 | MutationRecord, per-faction granularity, history writes |
+| [chore/code-review-2](#chorecode-review-2) | 59–63 | Paths package, FactionStat, mutation naming |
+| [simple-actions](#simple-actions) | 64–70 | Factions map, new mutations, asset IDs, InputCollector |
+| [attack-action](#attack-action) | 71–76 | Base type, Roller interface, redirect mutations |
+| [feature/tui](#featuretui) | 77–83 | Bubbletea, state machine, TUICollector, goroutine bridge |
+| [feature/tui-qol](#featuretui-qol) | 84–89 | Post-hoc narrative, log scope, cycle summary |
+| [feature/expand-influence](#featureexpand-influence) | 90–95 | baseAttack sub-mechanic, goroutine bridge extension |
+| [feature/use-asset-ability](#featureuse-asset-ability) | 96–109 | AbilityEngine, step handlers, world list, stealths |
+| [feature/goal-engine](#featuregoal-engine) | 110–123 | ActiveGoal, GoalLock, XP timing, CheckLock |
+| [feature/narrative-renderer](#featurenarrative-renderer) | 124–134 | Digest layer, Renderer interface, wire-service v1 |
+| [feature/core-engine-orchestrator](#featurecore-engine-orchestrator) | 135–148 | Orchestrator, InputCollector, sub-engine packages |
+| [feature/testing-suite-phase1](#featuretesting-suite-phase1) | 149–151 | gomock, package renames |
+| [feature/testing-suite-phases2-3](#featuretesting-suite-phases2-3) | 152–157 | Integration test structure, harness |
+| [feature/event-hooks](#featureevent-hooks) | 158–188 | Hook registry, dispatch, tags, stat raises |
+| [chore/test-infra-split](#choretest-infra-split) | 189–190 | testharness promotion, scenarios split |
+| [refactor/faction-assets-map](#refactorfaction-assets-map) | 191–194 | Assets map conversion |
+
+<br />
+
 ### Scaffolding & Foundation
 
 | # | Decision | Rationale |
