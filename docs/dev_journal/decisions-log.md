@@ -29,6 +29,7 @@ A record of key decisions made during development, grouped by feature branch.
 | [feature/event-hooks](#featureevent-hooks) | 158–188 | Hook registry, dispatch, tags, stat raises |
 | [chore/test-infra-split](#choretest-infra-split) | 189–190 | testharness promotion, scenarios split |
 | [refactor/faction-assets-map](#refactorfaction-assets-map) | 191–194 | Assets map conversion |
+| [refactor/persistence-write-cadence](#refactorpersistence-write-cadence) | 195–196 | History vs. state write separation |
 
 <br />
 
@@ -500,3 +501,10 @@ A record of key decisions made during development, grouped by feature branch.
 | 192 | Canonical sort order in `applyMaintenance` is ascending asset ID | Map iteration is unordered; maintenance charging is coin-budget-sensitive (first asset wins when coin runs out); sorting by ID makes the result deterministic and reproducible across runs |
 | 193 | `action.Collector.SelectAsset` keeps `[]*domain.Asset` parameter; map→slice conversion is internal to `SellAsset.Inputs` | The collector interface should not know about the internal storage shape; `domain.SortedAssets` produces a consistent ordered slice without exposing the map |
 | 194 | `ownerFaction` in `attack.go` simplified to `factionState.Factions[asset.OwnerID]` | `Asset.OwnerID` already encodes the owner; the previous O(n × factions) scan was a holdover from when the field may not have been trusted; direct lookup is correct and faster |
+
+### refactor/persistence-write-cadence
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 195 | `applyAndRecord` no longer calls `state.Save`; callers are responsible for saving at phase-gate checkpoints | History (JSONL) must be written on every mutation batch — it is an audit log. State (TOML) is a resume checkpoint — it only needs to reflect the boundary between meaningful phases. Merging them in one function obscured the distinction and produced 3–4 redundant TOML rewrites per faction turn |
+| 196 | `state.Save` is called explicitly at two points: after `AwaitCheckpoint(CheckpointBookkeeping)` and after `AwaitCheckpoint(CheckpointActionResult)` | These are the only two boundaries where the turn's progress is meaningful for resume. Goal-lock tick mutations and stat-raise mutations between these gates are captured by the next save; `TurnState.Phase` encodes enough phase position to make earlier saves redundant |

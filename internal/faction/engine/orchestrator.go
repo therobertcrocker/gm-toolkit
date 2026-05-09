@@ -89,6 +89,13 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 
+	// Persist state after bookkeeping so that the collector can read any bookkeeping mutations before action selection.
+	// This also creates a restore point in case of errors during action resolution.
+	if err := state.Save(cfg.StatePath, factionState); err != nil {
+		observer.OnError(faction, err)
+		return false, fmt.Errorf("saving state after bookkeeping: %w", err)
+	}
+
 	// Phase 2B (optional): Stat Raise. If the faction is eligible for a stat raise, the engine offers
 	// the choice to the collector and applies the resulting mutations if accepted.
 	statToRaise, raiseMutations, err := prepareStatRaise(faction, collector)
@@ -159,6 +166,14 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 
+	// Persist state before finishing the turn so that the collector can read the results
+	// of the action resolution before the next turn starts.This also creates a restore point
+	// in case of errors during turn completion.
+	if err := state.Save(cfg.StatePath, factionState); err != nil {
+		observer.OnError(faction, err)
+		return false, fmt.Errorf("saving state after action resolution: %w", err)
+	}
+
 	return e.finishFactionTurn(factionState, faction, cfg, collector, observer)
 }
 
@@ -213,10 +228,9 @@ func (e *Engine) finishFactionTurn(
 	return cycleDone, nil
 }
 
-// applyAndRecord is the canonical write path: apply mutations to in-memory
-// state, append a single EventRecord to the history file, and persist state
-// to disk. Mutation order is preserved; the orchestrator is responsible for
-// composing the final ordered slice before invoking.
+// applyAndRecord applies mutations to in-memory state and appends a single
+// EventRecord to the history file. It does not persist state to disk — callers
+// are responsible for calling state.Save at phase-gate checkpoints.
 func (e *Engine) applyAndRecord(
 	factionState *state.FactionState,
 	faction *domain.Faction,
@@ -229,9 +243,6 @@ func (e *Engine) applyAndRecord(
 	e.Mutation.Apply(factionState, mutations)
 	if err := e.History.Record(cfg.HistoryPath, factionState, faction, mutations); err != nil {
 		return fmt.Errorf("recording history: %w", err)
-	}
-	if err := state.Save(cfg.StatePath, factionState); err != nil {
-		return fmt.Errorf("saving state: %w", err)
 	}
 	return nil
 }

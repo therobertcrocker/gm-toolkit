@@ -121,11 +121,13 @@ The data directory is not embedded in the binary. It lives with the campaign and
 
 ## Persistence
 
-Campaign state is one TOML file per campaign: `campaigns/<campaign-id>/faction_state.toml`. The `state` package is the only place that reads or writes this file. All mutations flow through `MutationEngine.Apply()`, after which the orchestrator calls `state.Save()`.
+Campaign state is one TOML file per campaign: `campaigns/<campaign-id>/faction_state.toml`. The `state` package is the only place that reads or writes this file.
 
 TOML was chosen deliberately. The file is human-readable and hand-editable — a GM should be able to open the file and fix something if the tool gets into a bad state. There is no migration system; schema changes require manual edits to existing campaign files.
 
 History is a JSONL file (`campaigns/<campaign-id>/history.jsonl`) that grows over time. It is never read back by the engine — it is a log for the `narrative` package and the GM's reference.
+
+**Write cadences differ by purpose.** `applyAndRecord` writes history on every mutation batch — the JSONL log must be complete. `state.Save` is called only at phase-gate checkpoints (after bookkeeping, after action resolution, and after the turn cursor advances in `finishFactionTurn`). The state file is a resume checkpoint: its purpose is "if the process dies, where do we restart from?" Writing it after every intermediate mutation batch adds no resume value because `TurnState.Phase` already encodes which phase the turn is in. Do not merge these two write paths back together.
 
 ---
 

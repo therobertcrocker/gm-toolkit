@@ -6,15 +6,15 @@
 2. Don't jump ahead — if no question or directive has been given, reflect back what was said and ask where to go next.
 3. Role: mentor or co-pilot. Robert is designing, Claude is advising.
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
-5. Before writing any code not specified in an implementation doc, ask. Before making design suggestions, wait for a prompt.
-6. Before making a commit, do the following:
+5. Before making a commit, do the following:
    1. Update the decisions log (`docs/dev_journal/decisions-log.md`) with any new decisions or changes to existing decisions.
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
-7. Before merging a branch, do the following (step-by-step, in order):
+6. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Update the dev journal (`docs/dev_journal/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
-8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
-9.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
+   3. Update the planned work doc (`docs/planned-work.md`) with any new features or deferred decisions that arose during the work. If a feature was completed, remove it from the planned work doc.
+7. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
+8.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
 ## Documentation Discipline
 
@@ -23,6 +23,7 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 | If you're working on…                | Read first                                  |
 |--------------------------------------|---------------------------------------------|
 | Overall design or open questions     | `docs/dev_journal/dev-journal-factions.md`          |
+| Feature Request or Deferred Decision | `docs/planned-work.md`                      |
 | Before making a design choice        | `docs/dev_journal/decisions-log.md` — use the index (see below) |
 | Architecture or system shape         | `docs/architecture-overview.md`             |
 | Rules behavior                       | `docs/swn-faction-mechanics.md`             |
