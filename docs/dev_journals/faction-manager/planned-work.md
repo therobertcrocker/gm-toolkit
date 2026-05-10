@@ -43,6 +43,9 @@ Small, targeted fixes. No write-up needed — tracked here until scheduled.
 | 2 | Goal/tag dispatch hardcodes display IDs | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only; one-time migration |
 | 3 | `SeizePlanet` invisible in history | `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
 | 4 | `narrateUseAssetAbility` fallback text | Moot until TUI rebuild; resurfaces when narration is re-implemented against the new observer interface |
+| 5 | `internal/spatial` reverse-boundary index | `HybridMap.neighbors` step 4 scans every region's boundaries on each call (O(R × B per call)). Trivial for hand-authored campaign data; revisit if Codex generates large procedural maps and Dijkstra hot-loops surface in profiling |
+| 6 | `Region.Hexes` storage shape | `map[HexCoord]bool` carries a 1-byte value per entry; `map[HexCoord]struct{}` is zero-byte. Pure micro-opt; not worth churning until map sizes are known |
+| 7 | `internal/spatial` package documentation (`doc.go`) | TOML schema reference and concurrency model (read-only after `LoadHybrid`) currently live only in the implementation plan. Defer until Effort 2 lands and the public surface settles |
 
 ---
 <br />

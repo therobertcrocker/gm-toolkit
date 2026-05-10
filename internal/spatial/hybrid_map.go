@@ -24,18 +24,18 @@ type Region struct {
 }
 
 type Fragment struct {
-	FragmentID     string
-	FragmentName   string
-	FragTechLevel  int
-	FragPopulation int
-	Region         string
-	Hex            HexCoord
+	id         string
+	name       string
+	techLevel  int
+	population int
+	Region     string
+	Hex        HexCoord
 }
 
-func (fragment *Fragment) ID() string      { return fragment.FragmentID }
-func (fragment *Fragment) Name() string    { return fragment.FragmentName }
-func (fragment *Fragment) TechLevel() int  { return fragment.FragTechLevel }
-func (fragment *Fragment) Population() int { return fragment.FragPopulation }
+func (fragment *Fragment) ID() string      { return fragment.id }
+func (fragment *Fragment) Name() string    { return fragment.name }
+func (fragment *Fragment) TechLevel() int  { return fragment.techLevel }
+func (fragment *Fragment) Population() int { return fragment.population }
 
 type HybridMap struct {
 	regions   map[string]*Region
@@ -103,6 +103,21 @@ func LoadHybrid(dataDir string) (*HybridMap, error) {
 		}
 	}
 
+	for _, region := range regions {
+		for _, boundary := range region.Boundaries {
+			if !region.Hexes[boundary.From] {
+				return nil, fmt.Errorf("region %q boundary From=(%d,%d) is not in region's hexes", region.ID, boundary.From.Q, boundary.From.R)
+			}
+			target, ok := regions[boundary.ToRegion]
+			if !ok {
+				return nil, fmt.Errorf("region %q boundary references unknown region %q", region.ID, boundary.ToRegion)
+			}
+			if !target.Hexes[boundary.To] {
+				return nil, fmt.Errorf("region %q boundary To=(%d,%d) is not in region %q's hexes", region.ID, boundary.To.Q, boundary.To.R, boundary.ToRegion)
+			}
+		}
+	}
+
 	var fragmentsDoc fragmentsFile
 	if _, err := toml.DecodeFile(filepath.Join(dataDir, "fragments.toml"), &fragmentsDoc); err != nil {
 		return nil, fmt.Errorf("loading fragments.toml: %w", err)
@@ -119,12 +134,12 @@ func LoadHybrid(dataDir string) (*HybridMap, error) {
 			return nil, fmt.Errorf("fragment %q at hex (%d,%d) is not within region %q", fragment.ID, hex.Q, hex.R, fragment.Region)
 		}
 		fragments[fragment.ID] = &Fragment{
-			FragmentID:     fragment.ID,
-			FragmentName:   fragment.Name,
-			FragTechLevel:  fragment.TechLevel,
-			FragPopulation: fragment.Population,
-			Region:         fragment.Region,
-			Hex:            hex,
+			id:         fragment.ID,
+			name:       fragment.Name,
+			techLevel:  fragment.TechLevel,
+			population: fragment.Population,
+			Region:     fragment.Region,
+			Hex:        hex,
 		}
 	}
 
@@ -133,7 +148,10 @@ func LoadHybrid(dataDir string) (*HybridMap, error) {
 
 func (hybridMap *HybridMap) Location(id string) (Location, bool) {
 	fragment, ok := hybridMap.fragments[id]
-	return fragment, ok
+	if !ok {
+		return nil, false
+	}
+	return fragment, true
 }
 
 type hexNode struct {
@@ -153,23 +171,16 @@ var hexNeighbors = [6]HexCoord{
 type pqItem struct {
 	node hexNode
 	cost int
-	idx  int
 }
 
 type priorityQueue []*pqItem
 
 func (priorityQ priorityQueue) Len() int           { return len(priorityQ) }
 func (priorityQ priorityQueue) Less(i, j int) bool { return priorityQ[i].cost < priorityQ[j].cost }
-func (priorityQ priorityQueue) Swap(i, j int) {
-	priorityQ[i], priorityQ[j] = priorityQ[j], priorityQ[i]
-	priorityQ[i].idx = i
-	priorityQ[j].idx = j
-}
+func (priorityQ priorityQueue) Swap(i, j int)      { priorityQ[i], priorityQ[j] = priorityQ[j], priorityQ[i] }
 
 func (priorityQ *priorityQueue) Push(item any) {
-	entry := item.(*pqItem)
-	entry.idx = len(*priorityQ)
-	*priorityQ = append(*priorityQ, entry)
+	*priorityQ = append(*priorityQ, item.(*pqItem))
 }
 
 func (priorityQ *priorityQueue) Pop() any {
@@ -233,13 +244,16 @@ func (hybridMap *HybridMap) neighbors(node hexNode, crossingCost int) []edge {
 }
 
 func (hybridMap *HybridMap) Distance(fromID, toID string, crossingCost int) (int, error) {
+	if crossingCost < 0 {
+		return 0, fmt.Errorf("%w: crossingCost=%d (must be non-negative)", ErrInvalidCost, crossingCost)
+	}
 	fromFragment, ok := hybridMap.fragments[fromID]
 	if !ok {
-		return 0, fmt.Errorf("unknown fragment %q", fromID)
+		return 0, fmt.Errorf("%w: %q", ErrUnknownFragment, fromID)
 	}
 	toFragment, ok := hybridMap.fragments[toID]
 	if !ok {
-		return 0, fmt.Errorf("unknown fragment %q", toID)
+		return 0, fmt.Errorf("%w: %q", ErrUnknownFragment, toID)
 	}
 	if fromID == toID {
 		return 0, nil
@@ -270,5 +284,5 @@ func (hybridMap *HybridMap) Distance(fromID, toID string, crossingCost int) (int
 		}
 	}
 
-	return 0, fmt.Errorf("no path from %q to %q", fromID, toID)
+	return 0, fmt.Errorf("%w: from %q to %q", ErrNoPath, fromID, toID)
 }

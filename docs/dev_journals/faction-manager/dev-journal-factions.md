@@ -85,6 +85,7 @@ The action system's source-agnostic design means the AI and the GM use the same 
 | 9 | TUI | Not started | Fresh Bubbletea TUI against `InputCollector` + `TurnObserver` interfaces |
 | 10 | Edit Mode | Not started | Freeform state manipulation outside turn rules; see Modes above |
 | 11 | AI Decision-Making | Not started | Goal-oriented and in-character modes; see above |
+| 12 | Spatial Model | In progress | Effort 1 Phase 1 complete — standalone `internal/spatial` package: SpatialMap/Location interfaces, HybridMap with TOML loader and Dijkstra distance, HexMap/GraphMap stubs. Effort 2 (engine integration: index/scan replacement, validation, distance-based mechanics) ahead |
 
 <br/>
 <br/>
