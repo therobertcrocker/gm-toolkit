@@ -6,15 +6,16 @@
 2. Don't jump ahead — if no question or directive has been given, reflect back what was said and ask where to go next.
 3. Role: mentor or co-pilot. Robert is designing, Claude is advising.
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
-5. Before making a commit, do the following:
+5. Always create a to-do list for any series of tasks, and make regular check-ins with Robert to confirm the next steps. Do not execute a series of tasks without explicit confirmation of the plan.
+6. Before making a commit, do the following:
    1. Update the decisions log (`docs/dev_journals/faction-manager/decisions-log.md`) with any new decisions or changes to existing decisions.
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
-6. Before merging a branch, do the following (step-by-step, in order):
+7. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Update the dev journal (`docs/dev_journals/faction-manager/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
    3. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred decisions that arose during the work. If a feature was completed, remove it from the planned work doc.
-7. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
-8.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
+8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
+9.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 
 ## Documentation Discipline
 
@@ -49,6 +50,17 @@ A session ends at its deliverable. Do not start the next mode's work in the same
 **Most-violated boundary: Plan → Execution.** When the current session's output is an implementation plan, stop after the plan is written, approved, or handed off. Do not write code, edit source files, or stage edits. If the user pushes to keep going, suggest opening a new session.
 
 **Plan mode is a strong signal.** When plan mode is active and the stated deliverable is a file (a discovery doc or implementation plan), that file is the entire session output. ExitPlanMode is not a handoff into implementation — it is the end of the session. Do not queue file edits, Bash commands, or follow-up work to run after exit. End the turn after the file is written.
+
+## Model Selection
+
+Before each mode transition (including mid-session shifts, e.g. moving from execution into the pre-merge checklist), surface the recommended model and prompt Robert to switch if needed (via `/model`).
+
+| Session type                              | Model  | Notes                                                                 |
+|-------------------------------------------|--------|-----------------------------------------------------------------------|
+| Discovery                                 | Opus   | Always                                                                |
+| Plan                                      | Opus   | Always                                                                |
+| Execution                                 | Sonnet | Default; suggest Opus if the phase involves heavy design decisions or unusual complexity |
+| End-of-phase docs & pre-merge checklist  | Sonnet | Always — documentation and checklist tasks don't need Opus            |
 
 ## Code Style
 

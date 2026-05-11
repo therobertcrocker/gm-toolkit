@@ -7,6 +7,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -19,19 +20,20 @@ type AttackAction struct {
 	collector action.Collector
 	roller    domain.Roller
 	registry  *hooks.Registry
+	index     *world.Index
 	attackers []*domain.Asset
 	mutations []domain.Mutation
 }
 
-func NewAttack(collector action.Collector, roller domain.Roller, registry *hooks.Registry) *AttackAction {
-	return &AttackAction{collector: collector, roller: roller, registry: registry}
+func NewAttack(collector action.Collector, roller domain.Roller, registry *hooks.Registry, index *world.Index) *AttackAction {
+	return &AttackAction{collector: collector, roller: roller, registry: registry, index: index}
 }
 
 func (attack *AttackAction) Name() string { return "Attack" }
 
 func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, attacker := range eligibleAttackers(faction) {
-		if attackerHasTarget(attacker, faction, factionState, rulebook) {
+		if attackerHasTarget(attacker, faction, rulebook, attack.index) {
 			return true
 		}
 	}
@@ -41,7 +43,7 @@ func (attack *AttackAction) Validate(faction *domain.Faction, factionState *stat
 func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var candidates []*domain.Asset
 	for _, attacker := range eligibleAttackers(faction) {
-		if attackerHasTarget(attacker, faction, factionState, rulebook) {
+		if attackerHasTarget(attacker, faction, rulebook, attack.index) {
 			candidates = append(candidates, attacker)
 		}
 	}
@@ -74,7 +76,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			continue
 		}
 
-		defenders := liveDefenders(factionState, faction.ID, attacker.Location, assetHPTracker)
+		defenders := liveDefenders(faction.ID, attacker.Location, assetHPTracker, attack.index)
 		if len(defenders) == 0 {
 			continue
 		}
@@ -224,18 +226,18 @@ func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string
 
 // attackerHasTarget returns true if the attacker has a valid Attack profile and
 // at least one eligible defender on its world.
-func attackerHasTarget(attacker *domain.Asset, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
+func attackerHasTarget(attacker *domain.Asset, faction *domain.Faction, rulebook *rulebook.Rulebook, index *world.Index) bool {
 	def, ok := rulebook.Assets[attacker.DefinitionID]
 	if !ok || def.Attack == nil {
 		return false
 	}
-	return len(eligibleDefenders(factionState, faction.ID, attacker.Location)) > 0
+	return len(eligibleDefenders(faction.ID, attacker.Location, index)) > 0
 }
 
 // liveDefenders filters eligibleDefenders to exclude assets whose effective HP
 // has been driven to 0 by earlier matchups in the current Resolve pass.
-func liveDefenders(factionState *state.FactionState, attackerFactionID, world string, assetHPTracker map[string]int) []*domain.Asset {
-	defenders := eligibleDefenders(factionState, attackerFactionID, world)
+func liveDefenders(attackerFactionID, locationID string, assetHPTracker map[string]int, index *world.Index) []*domain.Asset {
+	defenders := eligibleDefenders(attackerFactionID, locationID, index)
 	live := make([]*domain.Asset, 0, len(defenders))
 	for _, defender := range defenders {
 		if defender.CurrentHP+assetHPTracker[defender.ID] > 0 {

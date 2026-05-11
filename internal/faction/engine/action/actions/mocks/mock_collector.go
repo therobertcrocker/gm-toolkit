@@ -209,18 +209,18 @@ func (mr *MockInputCollectorMockRecorder) SelectBribeTarget(faction, factionStat
 }
 
 // SelectBuyOrder mocks base method.
-func (m *MockInputCollector) SelectBuyOrder(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
+func (m *MockInputCollector) SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectBuyOrder", worlds, purchasable)
+	ret := m.ctrl.Call(m, "SelectBuyOrder", purchasablePerWorld)
 	ret0, _ := ret[0].(action.BuyOrder)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SelectBuyOrder indicates an expected call of SelectBuyOrder.
-func (mr *MockInputCollectorMockRecorder) SelectBuyOrder(worlds, purchasable any) *gomock.Call {
+func (mr *MockInputCollectorMockRecorder) SelectBuyOrder(purchasablePerWorld any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectBuyOrder", reflect.TypeOf((*MockInputCollector)(nil).SelectBuyOrder), worlds, purchasable)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectBuyOrder", reflect.TypeOf((*MockInputCollector)(nil).SelectBuyOrder), purchasablePerWorld)
 }
 
 // SelectDefender mocks base method.
@@ -239,18 +239,18 @@ func (mr *MockInputCollectorMockRecorder) SelectDefender(attacker, eligible, arg
 }
 
 // SelectExpandInfluenceOrder mocks base method.
-func (m *MockInputCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState) (action.ExpandInfluenceOrder, error) {
+func (m *MockInputCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectExpandInfluenceOrder", faction, factionState)
+	ret := m.ctrl.Call(m, "SelectExpandInfluenceOrder", faction, factionState, eligibleNewBaseWorlds)
 	ret0, _ := ret[0].(action.ExpandInfluenceOrder)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SelectExpandInfluenceOrder indicates an expected call of SelectExpandInfluenceOrder.
-func (mr *MockInputCollectorMockRecorder) SelectExpandInfluenceOrder(faction, factionState any) *gomock.Call {
+func (mr *MockInputCollectorMockRecorder) SelectExpandInfluenceOrder(faction, factionState, eligibleNewBaseWorlds any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectExpandInfluenceOrder", reflect.TypeOf((*MockInputCollector)(nil).SelectExpandInfluenceOrder), faction, factionState)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectExpandInfluenceOrder", reflect.TypeOf((*MockInputCollector)(nil).SelectExpandInfluenceOrder), faction, factionState, eligibleNewBaseWorlds)
 }
 
 // SelectFactionTestTarget mocks base method.

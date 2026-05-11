@@ -15,15 +15,15 @@ type Location interface {
 }
 
 var (
-	ErrUnknownFragment = errors.New("spatial: unknown fragment")
-	ErrNoPath          = errors.New("spatial: no path")
-	ErrNotImplemented  = errors.New("spatial: not implemented")
-	ErrInvalidCost     = errors.New("spatial: invalid cost")
+	ErrUnknownWorld   = errors.New("spatial: unknown world")
+	ErrNoPath         = errors.New("spatial: no path")
+	ErrNotImplemented = errors.New("spatial: not implemented")
+	ErrInvalidCost    = errors.New("spatial: invalid cost")
 )
 
 var (
 	_ SpatialMap = (*HybridMap)(nil)
 	_ SpatialMap = (*HexMap)(nil)
 	_ SpatialMap = (*GraphMap)(nil)
-	_ Location   = (*Fragment)(nil)
+	_ Location   = (*World)(nil)
 )

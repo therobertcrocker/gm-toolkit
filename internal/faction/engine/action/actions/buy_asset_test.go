@@ -25,7 +25,7 @@ func TestBuyAsset_Validate(t *testing.T) {
 	t.Run("eligible asset and sufficient coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Homeworld: "Tartarus"}
-		if !NewBuyAsset(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if !NewBuyAsset(mocks.NewMockInputCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction can afford an eligible asset")
 		}
 	})
@@ -33,7 +33,7 @@ func TestBuyAsset_Validate(t *testing.T) {
 	t.Run("not enough coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 2, Homeworld: "Tartarus"}
-		if NewBuyAsset(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if NewBuyAsset(mocks.NewMockInputCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction cannot afford any asset")
 		}
 	})
@@ -41,7 +41,7 @@ func TestBuyAsset_Validate(t *testing.T) {
 	t.Run("stat below MinRating", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 1, Coin: 10, Homeworld: "Tartarus"}
-		if NewBuyAsset(mocks.NewMockInputCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if NewBuyAsset(mocks.NewMockInputCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction stat is below MinRating")
 		}
 	})
@@ -55,11 +55,11 @@ func TestBuyAsset_Output(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Homeworld: "Tartarus"}
 
 	collector := mocks.NewMockInputCollector(ctrl)
-	collector.EXPECT().SelectBuyOrder(gomock.Any(), gomock.Any()).Return(
+	collector.EXPECT().SelectBuyOrder(gomock.Any()).Return(
 		action.BuyOrder{World: "Tartarus", Definition: def}, nil,
 	)
 
-	act := NewBuyAsset(collector, nil)
+	act := NewBuyAsset(collector, nil, nil)
 	if err := act.Inputs(faction, nil, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -109,11 +109,11 @@ func TestBuyAsset_AssetCostModifier(t *testing.T) {
 	registry.RegisterAssetCostModifier(hooks.FactionScope("f1"), "discount", &stubCostReducer{})
 
 	collector := mocks.NewMockInputCollector(ctrl)
-	collector.EXPECT().SelectBuyOrder(gomock.Any(), gomock.Any()).Return(
+	collector.EXPECT().SelectBuyOrder(gomock.Any()).Return(
 		action.BuyOrder{World: "Tartarus", Definition: def}, nil,
 	)
 
-	act := NewBuyAsset(collector, registry)
+	act := NewBuyAsset(collector, registry, nil)
 	if err := act.Inputs(faction, nil, rb); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}

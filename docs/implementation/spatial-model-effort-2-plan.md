@@ -206,7 +206,7 @@ if err != nil || dist > step.MaxHex {
 <br/>
 <br/>
 
-# Phase 4 — Distance Mechanics and `faction create` Wizard
+# Phase 4 — Distance Mechanics
 
 Depends on Phase 2 (HybridMap wired in, DriftCost available).
 
@@ -240,27 +240,8 @@ Apply `GoalTurnsTick` with the computed value. If `Distance` returns an error (n
 
 <br/>
 
-## Commit 2 — `feat: faction create wizard homeworld selection from Fragment registry`
+## Commit 2 — `test: Change Homeworld distance integration test`
 
-### Task 3 — `cmd/faction-manager/commands/faction/wizard/`
-
-Locate the homeworld entry step in the faction creation wizard. Replace the free-text `huh.Input` with a `huh.Select` populated from the loaded `HybridMap`:
-
-```go
-options := make([]huh.Option[string], 0, len(fragments))
-for _, f := range sortedFragments(hybridMap) {
-    options = append(options, huh.NewOption(f.Name(), f.ID()))
-}
-```
-
-Sort fragments by name for a stable, readable list. The selected value is the Fragment ID — store it as `Faction.HomeworldID` (verify field name at execution time).
-
-The wizard's entry point in `cmd/faction-manager` must have access to the loaded `HybridMap`. Pass it in from the command handler, which already loads it via `Config.SpatialDataDir`.
-
-<br/>
-
-## Commit 3 — `test: Change Homeworld distance integration test`
-
-### Task 4 — harness test
+### Task 3 — harness test
 
 Build a two-region `HybridMap`, place a faction's homeworld in Region A, select a destination in Region B, and assert that `TurnsRemaining` equals `1 + expected distance` after the goal is set.

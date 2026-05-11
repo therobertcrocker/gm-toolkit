@@ -105,7 +105,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 // cycle and returns the resulting mutation list.
 func runAttack(t *testing.T, collector action.Collector, roller *fixedRoller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, registry *hooks.Registry) []domain.Mutation {
 	t.Helper()
-	attack := NewAttack(collector, roller, registry)
+	attack := NewAttack(collector, roller, registry, indexFromState(factionState))
 	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestAttack_Validate(t *testing.T) {
 		attackerAsset.Ready = false // on cooldown — ineligible
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil)
+		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when attacker is not Ready")
 		}
@@ -138,7 +138,7 @@ func TestAttack_Validate(t *testing.T) {
 		defenderAsset.Location = "Tartarus" // rival is elsewhere
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil)
+		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when no rivals on attacker's world")
 		}
@@ -148,7 +148,7 @@ func TestAttack_Validate(t *testing.T) {
 		factionState, _, _ := makeAttackState(8, 8, "force-defender", false)
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil)
+		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
 		if !attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate true")
 		}

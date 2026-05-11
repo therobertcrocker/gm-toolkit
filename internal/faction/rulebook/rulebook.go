@@ -11,9 +11,19 @@ import (
 // Rulebook holds all static game data loaded from the data directory.
 // It is the authoritative source of rules for the faction engine.
 type Rulebook struct {
-	Assets map[string]*domain.AssetDefinition
-	Tags   map[string]*domain.Tag
-	Goals  map[string]*domain.Goal
+	Assets     map[string]*domain.AssetDefinition
+	Tags       map[string]*domain.Tag
+	Goals      map[string]*domain.Goal
+	DriftCosts []int
+}
+
+// DriftCost returns the hex-equivalent crossing cost for the given drift rating.
+// Out-of-range ratings fall back to DriftCosts[0] (worst cost).
+func (rulebook *Rulebook) DriftCost(driftRating int) int {
+	if driftRating < 1 || driftRating > len(rulebook.DriftCosts) {
+		return rulebook.DriftCosts[0]
+	}
+	return rulebook.DriftCosts[driftRating-1]
 }
 
 // Load reads all static data files from dataDir and returns a populated Rulebook.
@@ -33,10 +43,16 @@ func Load(dataDir string) (*Rulebook, error) {
 		return nil, fmt.Errorf("loading goals: %w", err)
 	}
 
+	driftCosts, err := loadDriftCosts(filepath.Join(dataDir, "drift_costs.toml"))
+	if err != nil {
+		return nil, fmt.Errorf("loading drift costs: %w", err)
+	}
+
 	return &Rulebook{
-		Assets: assets,
-		Tags:   tags,
-		Goals:  goals,
+		Assets:     assets,
+		Tags:       tags,
+		Goals:      goals,
+		DriftCosts: driftCosts,
 	}, nil
 }
 
@@ -57,6 +73,7 @@ type assetRecord struct {
 	Cost        int            `toml:"cost"`
 	Maintenance int            `toml:"maintenance"`
 	TechLevel   int            `toml:"tech_level"`
+	DriftRating int            `toml:"drift_rating"`
 	Type        string         `toml:"type"`
 	Flags       []string       `toml:"flags"`
 	Counter     string         `toml:"counter"`
@@ -168,6 +185,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Cost:        r.Cost,
 		Maintenance: r.Maintenance,
 		TechLevel:   r.TechLevel,
+		DriftRating: r.DriftRating,
 		Type:        assetType,
 		Attack:      attack,
 		Counter:     counter,
@@ -240,6 +258,22 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Drift Costs
+// ---------------------------------------------------------------------------
+
+type driftCostFile struct {
+	DriftCosts []int `toml:"drift_costs"`
+}
+
+func loadDriftCosts(path string) ([]int, error) {
+	var f driftCostFile
+	if _, err := toml.DecodeFile(path, &f); err != nil {
+		return nil, err
+	}
+	return f.DriftCosts, nil
 }
 
 // ---------------------------------------------------------------------------

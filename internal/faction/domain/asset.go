@@ -80,6 +80,7 @@ type AssetDefinition struct {
 	Cost        int
 	Maintenance int
 	TechLevel   int
+	DriftRating int
 	Type        AssetType
 	Attack      *AttackProfile
 	Counter     *DiceRoll
@@ -97,6 +98,15 @@ type Asset struct {
 	Stealthy     bool   `toml:"stealthy"`
 	Ready        bool   `toml:"ready"`
 	Maintained   bool   `toml:"maintained"`
+}
+
+func (def *AssetDefinition) HasFlag(flag AssetFlag) bool {
+	for _, f := range def.Flags {
+		if f == flag {
+			return true
+		}
+	}
+	return false
 }
 
 func NextAssetID(faction *Faction, definitionID string) string {

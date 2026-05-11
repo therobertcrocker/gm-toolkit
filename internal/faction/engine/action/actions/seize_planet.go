@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -13,12 +14,13 @@ import (
 type SeizePlanet struct {
 	factionID    string
 	collector    action.Collector
+	index        *world.Index
 	targetWorld  string
 	processPhase int
 }
 
-func NewSeizePlanet(collector action.Collector) *SeizePlanet {
-	return &SeizePlanet{collector: collector}
+func NewSeizePlanet(collector action.Collector, index *world.Index) *SeizePlanet {
+	return &SeizePlanet{collector: collector, index: index}
 }
 
 func (s *SeizePlanet) Name() string { return "Seize Planet" }
@@ -27,7 +29,7 @@ func (s *SeizePlanet) Validate(faction *domain.Faction, factionState *state.Fact
 	if faction.ActiveGoal == nil || faction.ActiveGoal.GoalID != "G-004" || faction.ActiveGoal.ProcessPhase != 0 {
 		return false
 	}
-	return len(seizePlanetTargetWorlds(faction, factionState)) > 0
+	return len(seizePlanetTargetWorlds(faction, s.index)) > 0
 }
 
 func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) error {
@@ -63,31 +65,27 @@ func (s *SeizePlanet) Output() ([]domain.Mutation, error) {
 
 // seizePlanetTargetWorlds returns worlds where the faction has at least one
 // unstealthed asset and a rival also has at least one unstealthed asset.
-func seizePlanetTargetWorlds(faction *domain.Faction, factionState *state.FactionState) []string {
-	factionWorlds := map[string]struct{}{}
+func seizePlanetTargetWorlds(faction *domain.Faction, index *world.Index) []string {
+	factionFragments := map[string]struct{}{}
 	for _, asset := range faction.Assets {
 		if !asset.Stealthy {
-			factionWorlds[asset.Location] = struct{}{}
+			factionFragments[asset.Location] = struct{}{}
 		}
 	}
 
 	contested := map[string]struct{}{}
-	for _, other := range factionState.Factions {
-		if other.ID == faction.ID {
-			continue
-		}
-		for _, asset := range other.Assets {
-			if !asset.Stealthy {
-				if _, ok := factionWorlds[asset.Location]; ok {
-					contested[asset.Location] = struct{}{}
-				}
+	for locationID := range factionFragments {
+		for _, asset := range index.AssetsByLocation[locationID] {
+			if asset.OwnerID != faction.ID && !asset.Stealthy {
+				contested[locationID] = struct{}{}
+				break
 			}
 		}
 	}
 
 	result := make([]string, 0, len(contested))
-	for world := range contested {
-		result = append(result, world)
+	for locationID := range contested {
+		result = append(result, locationID)
 	}
 	sort.Strings(result)
 	return result

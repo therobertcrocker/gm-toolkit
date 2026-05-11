@@ -8,6 +8,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -16,29 +17,32 @@ import (
 // existing one. New bases trigger a contested roll; rivals that tie or beat the
 // roll may make a free attack against the new base.
 type ExpandInfluence struct {
-	collector action.Collector
-	roller    domain.Roller
-	order     action.ExpandInfluenceOrder
-	mutations []domain.Mutation
+	collector   action.Collector
+	roller      domain.Roller
+	index       *world.Index
+	worldEngine *world.Engine
+	order       action.ExpandInfluenceOrder
+	mutations   []domain.Mutation
 }
 
-func NewExpandInfluence(collector action.Collector, roller domain.Roller) *ExpandInfluence {
-	return &ExpandInfluence{collector: collector, roller: roller}
+func NewExpandInfluence(collector action.Collector, roller domain.Roller, index *world.Index, worldEngine *world.Engine) *ExpandInfluence {
+	return &ExpandInfluence{collector: collector, roller: roller, index: index, worldEngine: worldEngine}
 }
 
 func (ei *ExpandInfluence) Name() string { return "Expand Influence" }
 
-func (ei *ExpandInfluence) Validate(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
+func (ei *ExpandInfluence) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	if faction.Coin < 1 {
 		return false
 	}
-	return len(worldsForNewBase(faction)) > 0 ||
+	return len(eligibleNewBaseWorlds(faction, rulebook, ei.worldEngine)) > 0 ||
 		len(damagedNonHomeworldBases(faction)) > 0 ||
 		len(growableNonHomeworldBases(faction)) > 0
 }
 
-func (ei *ExpandInfluence) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) error {
-	order, err := ei.collector.SelectExpandInfluenceOrder(faction, factionState)
+func (ei *ExpandInfluence) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
+	eligible := eligibleNewBaseWorlds(faction, rulebook, ei.worldEngine)
+	order, err := ei.collector.SelectExpandInfluenceOrder(faction, factionState, eligible)
 	if err != nil {
 		return fmt.Errorf("expand influence: %w", err)
 	}
@@ -88,7 +92,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 	factionRoll := ei.roller.Roll(10) + faction.Cunning
 	baseHPTracker := 0
 
-	rivals := rivalsOnWorld(factionState, faction.ID, ei.order.World)
+	rivals := rivalsOnWorld(factionState, faction.ID, ei.order.World, ei.index)
 	sort.Slice(rivals, func(i, j int) bool { return rivals[i].Name < rivals[j].Name })
 
 	for _, rival := range rivals {
@@ -194,6 +198,41 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 	return nil
 }
 
+// eligibleNewBaseWorlds returns worlds where the faction can place a new base,
+// filtered by tech level: the world's TL must support the faction's highest-TL
+// asset already operating there. Falls back to worldsForNewBase when worldEngine
+// is nil (no spatial data loaded).
+func eligibleNewBaseWorlds(faction *domain.Faction, rulebook *rulebook.Rulebook, worldEngine *world.Engine) []string {
+	candidates := worldsForNewBase(faction)
+	if worldEngine == nil {
+		return candidates
+	}
+	var result []string
+	for _, worldID := range candidates {
+		loc, ok := worldEngine.Location(worldID)
+		if !ok {
+			continue
+		}
+		maxAssetTL := 0
+		if rulebook != nil {
+			for _, asset := range faction.Assets {
+				if asset.Location != worldID {
+					continue
+				}
+				def, ok := rulebook.Assets[asset.DefinitionID]
+				if ok && def.TechLevel > maxAssetTL {
+					maxAssetTL = def.TechLevel
+				}
+			}
+		}
+		if loc.TechLevel() >= maxAssetTL {
+			result = append(result, worldID)
+		}
+	}
+	sort.Strings(result)
+	return result
+}
+
 func worldsForNewBase(faction *domain.Faction) []string {
 	worldsWithAssets := map[string]struct{}{}
 	for _, asset := range faction.Assets {
@@ -233,20 +272,23 @@ func growableNonHomeworldBases(faction *domain.Faction) []*domain.Base {
 	return result
 }
 
-func rivalsOnWorld(factionState *state.FactionState, factionID, world string) []*domain.Faction {
+func rivalsOnWorld(factionState *state.FactionState, factionID, locationID string, index *world.Index) []*domain.Faction {
+	seen := make(map[string]struct{})
 	var result []*domain.Faction
-	for rivalID, rival := range factionState.Factions {
-		if rivalID == factionID {
+	for _, asset := range index.AssetsByLocation[locationID] {
+		if asset.OwnerID == factionID {
 			continue
 		}
-		for _, asset := range rival.Assets {
-			if asset.Location == world {
-				result = append(result, rival)
-				break
-			}
+		if _, exists := seen[asset.OwnerID]; exists {
+			continue
+		}
+		seen[asset.OwnerID] = struct{}{}
+		if rival, exists := factionState.Factions[asset.OwnerID]; exists {
+			result = append(result, rival)
 		}
 	}
 	return result
+
 }
 
 func rivalAssetsOnWorld(rival *domain.Faction, world string) []*domain.Asset {

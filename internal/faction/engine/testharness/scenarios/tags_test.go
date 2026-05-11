@@ -269,10 +269,12 @@ func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
 		t.Fatal("Buy Asset not available")
 		return nil, nil
 	}
-	h.Collector.SelectBuyOrderFn = func(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
-		for _, def := range purchasable {
-			if def.ID == testharness.DefHeavyDropAssets {
-				return action.BuyOrder{World: worlds[0], Definition: def}, nil
+	h.Collector.SelectBuyOrderFn = func(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+		for world, defs := range purchasablePerWorld {
+			for _, def := range defs {
+				if def.ID == testharness.DefHeavyDropAssets {
+					return action.BuyOrder{World: world, Definition: def}, nil
+				}
 			}
 		}
 		t.Fatal("F2-001 not in purchasable list")
@@ -311,10 +313,12 @@ func TestPreceptorArchive_NoBonusWithoutTag(t *testing.T) {
 		t.Fatal("Buy Asset not available")
 		return nil, nil
 	}
-	h.Collector.SelectBuyOrderFn = func(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
-		for _, def := range purchasable {
-			if def.ID == testharness.DefHeavyDropAssets {
-				return action.BuyOrder{World: worlds[0], Definition: def}, nil
+	h.Collector.SelectBuyOrderFn = func(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+		for world, defs := range purchasablePerWorld {
+			for _, def := range defs {
+				if def.ID == testharness.DefHeavyDropAssets {
+					return action.BuyOrder{World: world, Definition: def}, nil
+				}
 			}
 		}
 		t.Fatal("F2-001 not in purchasable list")

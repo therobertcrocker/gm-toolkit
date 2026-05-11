@@ -20,7 +20,7 @@ func TestHybridMap_Distance(t *testing.T) {
 	cases := []struct {
 		name         string
 		regions      map[string]*Region
-		fragments    map[string]*Fragment
+		worlds       map[string]*World
 		fromID       string
 		toID         string
 		crossingCost int
@@ -28,11 +28,11 @@ func TestHybridMap_Distance(t *testing.T) {
 		wantErr      error
 	}{
 		{
-			name: "same fragment returns 0",
+			name: "same world returns 0",
 			regions: map[string]*Region{
 				"r1": {ID: "r1", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"a": {id: "a", Region: "r1", Hex: HexCoord{0, 0}},
 			},
 			fromID: "a", toID: "a", crossingCost: 5,
@@ -43,7 +43,7 @@ func TestHybridMap_Distance(t *testing.T) {
 			regions: map[string]*Region{
 				"r1": {ID: "r1", Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"a": {id: "a", Region: "r1", Hex: HexCoord{0, 0}},
 				"b": {id: "b", Region: "r1", Hex: HexCoord{1, 0}},
 			},
@@ -57,7 +57,7 @@ func TestHybridMap_Distance(t *testing.T) {
 					HexCoord{0, 0}, HexCoord{1, 0}, HexCoord{2, 0}, HexCoord{3, 0},
 				)},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"a": {id: "a", Region: "r1", Hex: HexCoord{0, 0}},
 				"b": {id: "b", Region: "r1", Hex: HexCoord{3, 0}},
 			},
@@ -71,7 +71,7 @@ func TestHybridMap_Distance(t *testing.T) {
 					HexCoord{0, 0}, HexCoord{0, 1}, HexCoord{1, 1}, HexCoord{2, 1}, HexCoord{2, 0},
 				)},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"a": {id: "a", Region: "r1", Hex: HexCoord{0, 0}},
 				"b": {id: "b", Region: "r1", Hex: HexCoord{2, 0}},
 			},
@@ -90,7 +90,7 @@ func TestHybridMap_Distance(t *testing.T) {
 				},
 				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"p": {id: "p", Region: "a", Hex: HexCoord{0, 0}},
 				"q": {id: "q", Region: "b", Hex: HexCoord{1, 0}},
 			},
@@ -116,7 +116,7 @@ func TestHybridMap_Distance(t *testing.T) {
 				},
 				"c": {ID: "c", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"x": {id: "x", Region: "a", Hex: HexCoord{0, 0}},
 				"y": {id: "y", Region: "c", Hex: HexCoord{0, 0}},
 			},
@@ -124,26 +124,26 @@ func TestHybridMap_Distance(t *testing.T) {
 			wantDist: 6,
 		},
 		{
-			name: "unknown source fragment",
+			name: "unknown source world",
 			regions: map[string]*Region{
 				"r1": {ID: "r1", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"a": {id: "a", Region: "r1", Hex: HexCoord{0, 0}},
 			},
 			fromID: "nope", toID: "a", crossingCost: 1,
-			wantErr: ErrUnknownFragment,
+			wantErr: ErrUnknownWorld,
 		},
 		{
-			name: "unknown target fragment",
+			name: "unknown target world",
 			regions: map[string]*Region{
 				"r1": {ID: "r1", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"a": {id: "a", Region: "r1", Hex: HexCoord{0, 0}},
 			},
 			fromID: "a", toID: "nope", crossingCost: 1,
-			wantErr: ErrUnknownFragment,
+			wantErr: ErrUnknownWorld,
 		},
 		{
 			name: "bidirectional traversal against declared boundary direction",
@@ -157,7 +157,7 @@ func TestHybridMap_Distance(t *testing.T) {
 				},
 				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"p": {id: "p", Region: "b", Hex: HexCoord{0, 0}},
 				"q": {id: "q", Region: "a", Hex: HexCoord{0, 0}},
 			},
@@ -180,7 +180,7 @@ func TestHybridMap_Distance(t *testing.T) {
 				},
 				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"x": {id: "x", Region: "a", Hex: HexCoord{0, 0}},
 				"y": {id: "y", Region: "a", Hex: HexCoord{5, 0}},
 			},
@@ -193,7 +193,7 @@ func TestHybridMap_Distance(t *testing.T) {
 				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0})},
 				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
 			},
-			fragments: map[string]*Fragment{
+			worlds: map[string]*World{
 				"x": {id: "x", Region: "a", Hex: HexCoord{0, 0}},
 				"y": {id: "y", Region: "b", Hex: HexCoord{0, 0}},
 			},
@@ -204,7 +204,7 @@ func TestHybridMap_Distance(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			hybridMap := &HybridMap{regions: testCase.regions, fragments: testCase.fragments}
+			hybridMap := &HybridMap{regions: testCase.regions, worlds: testCase.worlds}
 
 			got, err := hybridMap.Distance(testCase.fromID, testCase.toID, testCase.crossingCost)
 
@@ -229,7 +229,7 @@ func TestHybridMap_Distance(t *testing.T) {
 }
 
 func TestHybridMap_Location(t *testing.T) {
-	fragment := &Fragment{
+	world := &World{
 		id:         "tartarus",
 		name:       "Tartarus",
 		techLevel:  3,
@@ -238,8 +238,8 @@ func TestHybridMap_Location(t *testing.T) {
 		Hex:        HexCoord{1, 1},
 	}
 	hybridMap := &HybridMap{
-		regions:   map[string]*Region{"corona-reach": {ID: "corona-reach"}},
-		fragments: map[string]*Fragment{"tartarus": fragment},
+		regions: map[string]*Region{"corona-reach": {ID: "corona-reach"}},
+		worlds:  map[string]*World{"tartarus": world},
 	}
 
 	t.Run("known id returns Location and true", func(t *testing.T) {
@@ -292,8 +292,8 @@ name  = "Beta"
 hexes = [[0,0]]
 `
 
-	const validFragments = `
-[[fragment]]
+	const validWorlds = `
+[[world]]
 id         = "f1"
 name       = "Frag One"
 tech_level = 4
@@ -302,7 +302,7 @@ region     = "alpha"
 hex_q      = 0
 hex_r      = 0
 
-[[fragment]]
+[[world]]
 id         = "f2"
 name       = "Frag Two"
 tech_level = 2
@@ -313,20 +313,20 @@ hex_r      = 0
 `
 
 	cases := []struct {
-		name          string
-		regionsTOML   string
-		fragmentsTOML string
-		writeRegions  bool
-		writeFragments bool
-		wantErrSubstr string
-		verify        func(t *testing.T, hybridMap *HybridMap)
+		name           string
+		regionsTOML    string
+		worldsTOML  string
+		writeRegions   bool
+		writeWorlds bool
+		wantErrSubstr  string
+		verify         func(t *testing.T, hybridMap *HybridMap)
 	}{
 		{
-			name:          "happy path loads regions and fragments",
-			regionsTOML:   validRegions,
-			fragmentsTOML: validFragments,
-			writeRegions:  true,
-			writeFragments: true,
+			name:           "happy path loads regions and worlds",
+			regionsTOML:    validRegions,
+			worldsTOML:  validWorlds,
+			writeRegions:   true,
+			writeWorlds: true,
 			verify: func(t *testing.T, hybridMap *HybridMap) {
 				if loc, ok := hybridMap.Location("f1"); !ok || loc.Name() != "Frag One" {
 					t.Errorf("Location(f1) = %v, %v; want Frag One", loc, ok)
@@ -338,56 +338,56 @@ hex_r      = 0
 		},
 		{
 			name:           "missing regions.toml errors",
-			fragmentsTOML:  validFragments,
+			worldsTOML:  validWorlds,
 			writeRegions:   false,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  "regions.toml",
 		},
 		{
-			name:           "missing fragments.toml errors",
+			name:           "missing worlds.toml errors",
 			regionsTOML:    validRegions,
 			writeRegions:   true,
-			writeFragments: false,
-			wantErrSubstr:  "fragments.toml",
+			writeWorlds: false,
+			wantErrSubstr:  "worlds.toml",
 		},
 		{
 			name:           "malformed TOML errors",
 			regionsTOML:    "this is = not [valid toml",
-			fragmentsTOML:  validFragments,
+			worldsTOML:  validWorlds,
 			writeRegions:   true,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  "regions.toml",
 		},
 		{
-			name: "fragment references unknown region",
+			name: "world references unknown region",
 			regionsTOML: `[[region]]
 id = "alpha"
 hexes = [[0,0]]
 `,
-			fragmentsTOML: `[[fragment]]
+			worldsTOML: `[[world]]
 id = "f1"
 region = "ghost"
 hex_q = 0
 hex_r = 0
 `,
 			writeRegions:   true,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  "unknown region",
 		},
 		{
-			name: "fragment hex outside its region",
+			name: "world hex outside its region",
 			regionsTOML: `[[region]]
 id = "alpha"
 hexes = [[0,0]]
 `,
-			fragmentsTOML: `[[fragment]]
+			worldsTOML: `[[world]]
 id = "f1"
 region = "alpha"
 hex_q = 5
 hex_r = 5
 `,
 			writeRegions:   true,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  "not within region",
 		},
 		{
@@ -407,9 +407,9 @@ hexes = [[0,0]]
 id = "beta"
 hexes = [[0,0]]
 `,
-			fragmentsTOML:  "",
+			worldsTOML:  "",
 			writeRegions:   true,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  "From=(9,9)",
 		},
 		{
@@ -425,9 +425,9 @@ hexes = [[0,0]]
   to_q = 0
   to_r = 0
 `,
-			fragmentsTOML:  "",
+			worldsTOML:  "",
 			writeRegions:   true,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  `unknown region "ghost"`,
 		},
 		{
@@ -447,9 +447,9 @@ hexes = [[0,0]]
 id = "beta"
 hexes = [[0,0]]
 `,
-			fragmentsTOML:  "",
+			worldsTOML:  "",
 			writeRegions:   true,
-			writeFragments: true,
+			writeWorlds: true,
 			wantErrSubstr:  "To=(9,9)",
 		},
 	}
@@ -462,9 +462,9 @@ hexes = [[0,0]]
 					t.Fatalf("setup regions.toml: %v", err)
 				}
 			}
-			if testCase.writeFragments {
-				if err := os.WriteFile(filepath.Join(dir, "fragments.toml"), []byte(testCase.fragmentsTOML), 0o644); err != nil {
-					t.Fatalf("setup fragments.toml: %v", err)
+			if testCase.writeWorlds {
+				if err := os.WriteFile(filepath.Join(dir, "worlds.toml"), []byte(testCase.worldsTOML), 0o644); err != nil {
+					t.Fatalf("setup worlds.toml: %v", err)
 				}
 			}
 

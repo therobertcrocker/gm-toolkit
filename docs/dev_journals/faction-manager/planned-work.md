@@ -10,7 +10,8 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 
 | # | Item | Size | Status | Trigger |
 |---|------|------|--------|---------|
-| 1 | [Spatial Model and World Graph](#spatial-model-and-world-graph) | Major | Planned | Hex distance, tech level, or Pirates tag becomes blocking |
+| 1 | [Spatial Model and World Graph](#spatial-model-and-world-graph) | Major | In-Progress | Hex distance, tech level, or Pirates tag becomes blocking |
+| 2 | [Asset Movement Redesign](#asset-movement-redesign) | Major | Pending Discovery | Current movement model felt limiting in play; overlaps with Spatial Phase 3 Commit 3 and Phase 4 |
 
 ---
 <br/>
@@ -21,7 +22,8 @@ Items that will eventually warrant a full initiative entry. Each moves to Planne
 
 | # | Item | Trigger |
 |---|------|---------|
-| 1 | TUI Rebuild | Write-up in progress |
+| 0 | CLI Rebuild | When tool is mechanically complete |
+| 1 | TUI Rebuild | When tool is mechanically complete (and CLI Rebuild is done) |
 | 2 | Programmatic tag handling | Scheduled tag milestone; 18 remaining tags + Effects Engine (`S`-flag assets); design in `tag-engine-discovery.md` |
 | 3 | Campaign-scoped static data | No concrete trigger; revisit when distribution story is resolved |
 | 4 | Command layer state mutation | Engine has sufficient substance to absorb `engine.CreateFaction` |
@@ -29,6 +31,8 @@ Items that will eventually warrant a full initiative entry. Each moves to Planne
 | 6 | Starting Coin | Coin tracking designed and landed |
 | 7 | Tag-granted assets | Engine action resolution complete |
 | 8 | Tag reminder affordance | Alongside programmatic tag handling |
+| 9 | Spatial map creation helper | When spatial model work begins; would be a CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
+| 10 | Goal Registration Refactor | When the tool is mechanically stable; would refactor to match action and tag registration patterns |
 
 ---
 <br/>
@@ -43,9 +47,7 @@ Small, targeted fixes. No write-up needed — tracked here until scheduled.
 | 2 | Goal/tag dispatch hardcodes display IDs | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only; one-time migration |
 | 3 | `SeizePlanet` invisible in history | `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
 | 4 | `narrateUseAssetAbility` fallback text | Moot until TUI rebuild; resurfaces when narration is re-implemented against the new observer interface |
-| 5 | `internal/spatial` reverse-boundary index | `HybridMap.neighbors` step 4 scans every region's boundaries on each call (O(R × B per call)). Trivial for hand-authored campaign data; revisit if Codex generates large procedural maps and Dijkstra hot-loops surface in profiling |
-| 6 | `Region.Hexes` storage shape | `map[HexCoord]bool` carries a 1-byte value per entry; `map[HexCoord]struct{}` is zero-byte. Pure micro-opt; not worth churning until map sizes are known |
-| 7 | `internal/spatial` package documentation (`doc.go`) | TOML schema reference and concurrency model (read-only after `LoadHybrid`) currently live only in the implementation plan. Defer until Effort 2 lands and the public surface settles |
+| 5 | Structured logging layer | No `log` package calls anywhere; `BuildSpatialIndex` silently skips stale fragments with a TODO; add a lightweight, consistent logging approach across the tool |
 
 ---
 <br />
@@ -86,4 +88,41 @@ Campaign state gains a `Worlds map[string]*World` field in `FactionState`. The `
 ### Trigger
 
 Pick up when the first of these becomes blocking: tech level enforcement is needed for a campaign, movement distance needs to be enforced (AI decision-making), or the Pirates tag is scheduled for implementation.
+
+<br/>
+
+### Status
+
+- **Phase 1 — `internal/spatial` package:** complete
+- **Phase 2 — engine wiring with `SpatialIndex`:** complete (`feat/spatial-effort-2`)
+- **Phase 3 Commits 1 & 2 — TL and P-flag enforcement:** complete (`feat/spatial-effort-2`)
+- **Paused pending Asset Movement Redesign:** Phase 3 Commit 3 (MaxHex enforcement on `UseAssetAbility` movement), the MaxHex portion of Phase 3 Commit 4 tests, and Phase 4 (Change Homeworld distance from spatial path). These will be re-planned as part of the movement redesign rather than executed against the current `spatial-model-effort-2-plan.md` — a new implementation plan covering them alongside the redesign will be written when the movement initiative reaches its plan session
+
+<br/>
+<br/>
+
+## Asset Movement Redesign
+
+### Problem
+
+Movement is coupled to the faction's action slot — moving an asset consumes the entire turn's action via `UseAssetAbility`. Asset movement is also single-turn-only: an asset moves up to `AbilityStep.MaxHex` hexes per use, with no notion of multi-turn travel. The one multi-turn pattern, `Change Homeworld`, is modeled as a goal and applies only to a faction's homeworld — there is no general way for individual assets to set up longer journeys. `MaxHex` lives on the ability step rather than the asset definition, conflating "this asset's speed" with "this ability's range."
+
+In play this means moving and acting in the same turn is impossible for any asset, and traveling further than `MaxHex` requires a full-turn action per hop in sequence.
+
+### Approach
+
+Decouple movement from the action phase. Promote per-turn speed to an asset-level field on `AssetDefinition`. Generalize the multi-turn pattern: any asset whose chosen destination exceeds per-turn speed sets up a `MovementOrder` (destination + remaining hexes) that ticks down each turn. The controller (GM, AI, test) can issue, revise, or cancel orders each turn. New mutations cover the order lifecycle; `AssetMoved` still fires on completion. The spatial layer's `Distance` primitive supplies hex counts.
+
+Existing ability-step movement (e.g. `Strike Fleet`, `Capital Fleet`, `Integral Protocols`) needs to be reconciled with the new model — either as bonus hops on top of base speed or folded entirely into the new system. To be decided in discovery.
+
+### Unlocks
+
+- Decouples movement from the action economy — assets can move and act in the same turn
+- Multi-turn moves for any asset, not just the homeworld
+- Single coherent movement model (collapses ability-step movement and goal-based movement)
+- Subsumes Spatial Phase 3 Commit 3 (MaxHex enforcement) and Phase 4 (Change Homeworld distance) into one coherent design
+
+### Trigger
+
+Active — current movement model felt limiting in play; design overlap with Spatial Phase 3 Commit 3 and Phase 4 makes this the right time to pause spatial work and redesign. Discovery is the next session.
 

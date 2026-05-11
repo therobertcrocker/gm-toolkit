@@ -10,17 +10,17 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // BuyAsset purchases a new asset and places it on a target world.
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
-// Tech-level filtering and P-flag (government permission) checks are deferred;
-// when implemented, use dispatch.ResolveWorldTechLevel for tag-based TL modifications.
 type BuyAsset struct {
 	collector     action.Collector
 	registry      *hooks.Registry
+	worldEngine   *world.Engine
 	factionID     string
 	buyOrder      action.BuyOrder
 	newAsset      domain.Asset
@@ -28,15 +28,15 @@ type BuyAsset struct {
 	stealthTarget string // asset ID to stealth when buying C3-002; empty if no eligible target
 }
 
-func NewBuyAsset(collector action.Collector, registry *hooks.Registry) *BuyAsset {
-	return &BuyAsset{collector: collector, registry: registry}
+func NewBuyAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.Engine) *BuyAsset {
+	return &BuyAsset{collector: collector, registry: registry, worldEngine: worldEngine}
 }
 
 func (ba *BuyAsset) Name() string { return "Buy Asset" }
 
 func (ba *BuyAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
-	for _, def := range rulebook.Assets {
-		if faction.Coin >= def.Cost && statScore(faction, def.Category) >= def.MinRating {
+	for _, worldID := range availableWorlds(faction) {
+		if len(purchasableDefinitions(faction, rulebook, worldID, ba.worldEngine, ba.registry)) > 0 {
 			return true
 		}
 	}
@@ -44,10 +44,15 @@ func (ba *BuyAsset) Validate(faction *domain.Faction, _ *state.FactionState, rul
 }
 
 func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
-	worlds := availableWorlds(faction)
-	purchasable := purchasableDefinitions(faction, rulebook)
+	purchasableByWorld := make(map[string][]*domain.AssetDefinition)
+	for _, worldID := range availableWorlds(faction) {
+		defs := purchasableDefinitions(faction, rulebook, worldID, ba.worldEngine, ba.registry)
+		if len(defs) > 0 {
+			purchasableByWorld[worldID] = defs
+		}
+	}
 
-	order, err := ba.collector.SelectBuyOrder(worlds, purchasable)
+	order, err := ba.collector.SelectBuyOrder(purchasableByWorld)
 	if err != nil {
 		return fmt.Errorf("buy asset: %w", err)
 	}
@@ -163,14 +168,44 @@ func nextAssetSuffix(faction *domain.Faction, def *domain.AssetDefinition) int {
 	return highest + 1
 }
 
-// purchasableDefinitions returns definitions the faction can afford and
-// meets the minimum attribute rating for. Tech-level and P-flag checks deferred.
-func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.AssetDefinition {
+// purchasableDefinitions returns definitions the faction can afford, meets the
+// minimum attribute rating for, passes tech level on fragmentID, and satisfies
+// the P-flag requirement (Planetary Government on the target world).
+func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.Engine, registry *hooks.Registry) []*domain.AssetDefinition {
+	var worldTL int
+	var worldKnown bool
+	if worldEngine != nil {
+		loc, ok := worldEngine.Location(fragmentID)
+		if !ok {
+			return nil
+		}
+		worldTL = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
+		worldKnown = true
+	}
+
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
-		if faction.Coin >= def.Cost && statScore(faction, def.Category) >= def.MinRating {
-			result = append(result, def)
+		if faction.Coin < def.Cost || statScore(faction, def.Category) < def.MinRating {
+			continue
 		}
+		if worldKnown && def.TechLevel > worldTL {
+			continue
+		}
+		if def.HasFlag(domain.FlagPermission) && worldEngine != nil && worldEngine.Index != nil {
+			if !factionHasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID]) {
+				continue
+			}
+		}
+		result = append(result, def)
 	}
 	return result
+}
+
+func factionHasPlanetaryGovernment(factionID string, bases []*domain.Base) bool {
+	for _, base := range bases {
+		if base.OwnerID == factionID {
+			return true
+		}
+	}
+	return false
 }

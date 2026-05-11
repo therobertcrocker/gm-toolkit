@@ -2,7 +2,7 @@ package actions
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 )
 
 // eligibleAttackers returns faction assets that may attack this turn:
@@ -20,16 +20,11 @@ func eligibleAttackers(faction *domain.Faction) []*domain.Asset {
 // eligibleDefenders returns all assets on world owned by factions other than
 // attackerFactionID that may be targeted: non-stealthy, Ready (SWN: inactive
 // assets cannot defend), alive, and maintained.
-func eligibleDefenders(factionState *state.FactionState, attackerFactionID, world string) []*domain.Asset {
+func eligibleDefenders(attackerFactionID, locationID string, index *world.Index) []*domain.Asset {
 	var result []*domain.Asset
-	for factionID, faction := range factionState.Factions {
-		if factionID == attackerFactionID {
-			continue
-		}
-		for _, asset := range faction.Assets {
-			if asset.Location == world && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
-				result = append(result, asset)
-			}
+	for _, asset := range index.AssetsByLocation[locationID] {
+		if asset.OwnerID != attackerFactionID && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
+			result = append(result, asset)
 		}
 	}
 	return result

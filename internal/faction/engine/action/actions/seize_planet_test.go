@@ -14,7 +14,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1"}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
+		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl), indexFromState(factionState)).Validate(faction, factionState, nil) {
 			t.Error("expected false when no active goal")
 		}
 	})
@@ -28,7 +28,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 			Assets:     map[string]*domain.Asset{"a1": asset},
 		}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
+		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl), indexFromState(factionState)).Validate(faction, factionState, nil) {
 			t.Error("expected false when goal ID is not G-004")
 		}
 	})
@@ -42,7 +42,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 			Assets:     map[string]*domain.Asset{"a1": asset},
 		}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
+		if NewSeizePlanet(mocks.NewMockInputCollector(ctrl), indexFromState(factionState)).Validate(faction, factionState, nil) {
 			t.Error("expected false when no rival assets share a world with the faction")
 		}
 	})
@@ -58,7 +58,7 @@ func TestSeizePlanet_Validate(t *testing.T) {
 		}
 		rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"a2": f2Asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
-		if !NewSeizePlanet(mocks.NewMockInputCollector(ctrl)).Validate(faction, factionState, nil) {
+		if !NewSeizePlanet(mocks.NewMockInputCollector(ctrl), indexFromState(factionState)).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction and rival share a world")
 		}
 	})
@@ -80,7 +80,7 @@ func TestSeizePlanet_Output(t *testing.T) {
 	collector := mocks.NewMockInputCollector(ctrl)
 	collector.EXPECT().SelectSeizeTarget(gomock.Any(), gomock.Any()).Return("Krylos", nil)
 
-	act := NewSeizePlanet(collector)
+	act := NewSeizePlanet(collector, indexFromState(factionState))
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}

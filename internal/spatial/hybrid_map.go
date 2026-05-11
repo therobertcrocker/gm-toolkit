@@ -23,7 +23,7 @@ type Region struct {
 	Boundaries []BoundaryConnection
 }
 
-type Fragment struct {
+type World struct {
 	id         string
 	name       string
 	techLevel  int
@@ -32,14 +32,14 @@ type Fragment struct {
 	Hex        HexCoord
 }
 
-func (fragment *Fragment) ID() string      { return fragment.id }
-func (fragment *Fragment) Name() string    { return fragment.name }
-func (fragment *Fragment) TechLevel() int  { return fragment.techLevel }
-func (fragment *Fragment) Population() int { return fragment.population }
+func (w *World) ID() string      { return w.id }
+func (w *World) Name() string    { return w.name }
+func (w *World) TechLevel() int  { return w.techLevel }
+func (w *World) Population() int { return w.population }
 
 type HybridMap struct {
-	regions   map[string]*Region
-	fragments map[string]*Fragment
+	regions map[string]*Region
+	worlds  map[string]*World
 }
 
 type tomlRegion struct {
@@ -57,7 +57,7 @@ type tomlBoundary struct {
 	ToR      int    `toml:"to_r"`
 }
 
-type tomlFragment struct {
+type tomlWorld struct {
 	ID         string `toml:"id"`
 	Name       string `toml:"name"`
 	TechLevel  int    `toml:"tech_level"`
@@ -71,8 +71,8 @@ type regionsFile struct {
 	Region []tomlRegion `toml:"region"`
 }
 
-type fragmentsFile struct {
-	Fragment []tomlFragment `toml:"fragment"`
+type worldsFile struct {
+	World []tomlWorld `toml:"world"`
 }
 
 func LoadHybrid(dataDir string) (*HybridMap, error) {
@@ -118,40 +118,40 @@ func LoadHybrid(dataDir string) (*HybridMap, error) {
 		}
 	}
 
-	var fragmentsDoc fragmentsFile
-	if _, err := toml.DecodeFile(filepath.Join(dataDir, "fragments.toml"), &fragmentsDoc); err != nil {
-		return nil, fmt.Errorf("loading fragments.toml: %w", err)
+	var worldsDoc worldsFile
+	if _, err := toml.DecodeFile(filepath.Join(dataDir, "worlds.toml"), &worldsDoc); err != nil {
+		return nil, fmt.Errorf("loading worlds.toml: %w", err)
 	}
 
-	fragments := make(map[string]*Fragment, len(fragmentsDoc.Fragment))
-	for _, fragment := range fragmentsDoc.Fragment {
-		region, ok := regions[fragment.Region]
+	worlds := make(map[string]*World, len(worldsDoc.World))
+	for _, world := range worldsDoc.World {
+		region, ok := regions[world.Region]
 		if !ok {
-			return nil, fmt.Errorf("fragment %q references unknown region %q", fragment.ID, fragment.Region)
+			return nil, fmt.Errorf("world %q references unknown region %q", world.ID, world.Region)
 		}
-		hex := HexCoord{Q: fragment.HexQ, R: fragment.HexR}
+		hex := HexCoord{Q: world.HexQ, R: world.HexR}
 		if !region.Hexes[hex] {
-			return nil, fmt.Errorf("fragment %q at hex (%d,%d) is not within region %q", fragment.ID, hex.Q, hex.R, fragment.Region)
+			return nil, fmt.Errorf("world %q at hex (%d,%d) is not within region %q", world.ID, hex.Q, hex.R, world.Region)
 		}
-		fragments[fragment.ID] = &Fragment{
-			id:         fragment.ID,
-			name:       fragment.Name,
-			techLevel:  fragment.TechLevel,
-			population: fragment.Population,
-			Region:     fragment.Region,
+		worlds[world.ID] = &World{
+			id:         world.ID,
+			name:       world.Name,
+			techLevel:  world.TechLevel,
+			population: world.Population,
+			Region:     world.Region,
 			Hex:        hex,
 		}
 	}
 
-	return &HybridMap{regions: regions, fragments: fragments}, nil
+	return &HybridMap{regions: regions, worlds: worlds}, nil
 }
 
 func (hybridMap *HybridMap) Location(id string) (Location, bool) {
-	fragment, ok := hybridMap.fragments[id]
+	world, ok := hybridMap.worlds[id]
 	if !ok {
 		return nil, false
 	}
-	return fragment, true
+	return world, true
 }
 
 type hexNode struct {
@@ -177,7 +177,9 @@ type priorityQueue []*pqItem
 
 func (priorityQ priorityQueue) Len() int           { return len(priorityQ) }
 func (priorityQ priorityQueue) Less(i, j int) bool { return priorityQ[i].cost < priorityQ[j].cost }
-func (priorityQ priorityQueue) Swap(i, j int)      { priorityQ[i], priorityQ[j] = priorityQ[j], priorityQ[i] }
+func (priorityQ priorityQueue) Swap(i, j int) {
+	priorityQ[i], priorityQ[j] = priorityQ[j], priorityQ[i]
+}
 
 func (priorityQ *priorityQueue) Push(item any) {
 	*priorityQ = append(*priorityQ, item.(*pqItem))
@@ -247,20 +249,20 @@ func (hybridMap *HybridMap) Distance(fromID, toID string, crossingCost int) (int
 	if crossingCost < 0 {
 		return 0, fmt.Errorf("%w: crossingCost=%d (must be non-negative)", ErrInvalidCost, crossingCost)
 	}
-	fromFragment, ok := hybridMap.fragments[fromID]
+	fromWorld, ok := hybridMap.worlds[fromID]
 	if !ok {
-		return 0, fmt.Errorf("%w: %q", ErrUnknownFragment, fromID)
+		return 0, fmt.Errorf("%w: %q", ErrUnknownWorld, fromID)
 	}
-	toFragment, ok := hybridMap.fragments[toID]
+	toWorld, ok := hybridMap.worlds[toID]
 	if !ok {
-		return 0, fmt.Errorf("%w: %q", ErrUnknownFragment, toID)
+		return 0, fmt.Errorf("%w: %q", ErrUnknownWorld, toID)
 	}
 	if fromID == toID {
 		return 0, nil
 	}
 
-	source := hexNode{regionID: fromFragment.Region, coord: fromFragment.Hex}
-	target := hexNode{regionID: toFragment.Region, coord: toFragment.Hex}
+	source := hexNode{regionID: fromWorld.Region, coord: fromWorld.Hex}
+	target := hexNode{regionID: toWorld.Region, coord: toWorld.Hex}
 
 	dist := map[hexNode]int{source: 0}
 	queue := &priorityQueue{}

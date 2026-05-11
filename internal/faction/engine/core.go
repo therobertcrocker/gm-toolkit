@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
@@ -9,6 +10,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
@@ -35,14 +37,23 @@ type Engine struct {
 	Ability  *ability.AbilityEngine
 	History  *history.HistoryEngine
 	Goal     *goal.GoalEngine
+	World    *world.Engine
 }
 
-func New(dataDir string) (*Engine, error) {
-	rb, err := rulebook.Load(dataDir)
+func New(cfg *config.Config) (*Engine, error) {
+	rb, err := rulebook.Load(cfg.FactionDataDir)
 	if err != nil {
 		return nil, err
 	}
-	return NewWithRulebook(rb), nil
+	eng := NewWithRulebook(rb)
+	if cfg.SpatialDataDir != "" {
+		worldEngine, err := world.New(cfg.SpatialDataDir)
+		if err != nil {
+			return nil, err
+		}
+		eng.World = worldEngine
+	}
+	return eng, nil
 }
 
 func NewWithRulebook(rulebook *rulebook.Rulebook) *Engine {

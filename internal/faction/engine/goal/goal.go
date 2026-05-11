@@ -2,6 +2,7 @@ package goal
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -35,6 +36,7 @@ func (ge *GoalEngine) UpdateProgress(
 	mutations []domain.Mutation,
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
+	index *world.Index,
 ) []domain.Mutation {
 	actingFaction, ok := factionState.Factions[actingFactionID]
 	if !ok || actingFaction.ActiveGoal == nil {
@@ -50,7 +52,7 @@ func (ge *GoalEngine) UpdateProgress(
 	case "G-004":
 		return progressPlanetarySeizure(actingFaction, mutations, factionState)
 	case "G-005":
-		return progressExpandInfluence(actingFaction, mutations, factionState)
+		return progressExpandInfluence(actingFaction, mutations, factionState, index)
 	case "G-006":
 		return progressBloodTheEnemy(actingFaction, mutations)
 	case "G-007":
@@ -58,7 +60,7 @@ func (ge *GoalEngine) UpdateProgress(
 	case "G-008":
 		return progressDestroyTheFoe(actingFaction, mutations, factionState)
 	case "G-009":
-		return progressInsideEnemyTerritory(actingFaction, mutations, factionState)
+		return progressInsideEnemyTerritory(actingFaction, mutations, factionState, index)
 	case "G-010":
 		return progressInvincibleValor(actingFaction, mutations, factionState, rulebook)
 	case "G-011":

@@ -8,6 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -32,6 +33,10 @@ func (e *Engine) RunFactionTurn(
 	collector InputCollector,
 	observer TurnObserver,
 ) (bool, error) {
+	if e.World != nil {
+		e.World.RebuildIndex(factionState)
+	}
+
 	faction, err := e.Turn.CurrentFaction(factionState)
 	if err != nil {
 		observer.OnError(nil, err)
@@ -137,7 +142,11 @@ func (e *Engine) RunFactionTurn(
 		observer.OnError(faction, err)
 		return false, err
 	}
-	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook)
+	var worldIndex *world.Index
+	if e.World != nil {
+		worldIndex = e.World.Index
+	}
+	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex)
 	combined := append(actionMutations, goalMutations...)
 
 	// Phase 4: MutationReactor dispatch. Registered hooks (Cat 3) fire in

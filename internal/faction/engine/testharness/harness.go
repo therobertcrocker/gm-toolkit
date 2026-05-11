@@ -14,7 +14,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 const (
@@ -30,24 +32,47 @@ type Harness struct {
 	Observer     *RecordingObserver
 }
 
+// stubSpatialMap accepts any location ID, returning TL 5 and distance 1.
+// Used by the test harness so the world index is always populated without
+// requiring real spatial data files.
+type stubSpatialMap struct{}
+
+func (s *stubSpatialMap) Location(id string) (spatial.Location, bool) {
+	return &stubLocation{id: id}, true
+}
+
+func (s *stubSpatialMap) Distance(_, _ string, _ int) (int, error) {
+	return 1, nil
+}
+
+type stubLocation struct{ id string }
+
+func (l *stubLocation) ID() string      { return l.id }
+func (l *stubLocation) Name() string    { return l.id }
+func (l *stubLocation) TechLevel() int  { return 5 }
+func (l *stubLocation) Population() int { return 0 }
+
 func NewHarness(t *testing.T, dataDir string) *Harness {
 	t.Helper()
-	eng, err := engine.New(dataDir)
+	dir := t.TempDir()
+	cfg := &config.Config{
+		FactionDataDir: dataDir,
+		StatePath:      filepath.Join(dir, "state.toml"),
+		HistoryPath:    filepath.Join(dir, "history.jsonl"),
+	}
+	eng, err := engine.New(cfg)
 	if err != nil {
 		t.Fatalf("engine.New: %v", err)
 	}
+	eng.World = world.NewWithMap(&stubSpatialMap{})
 	actions.RegisterDefaultActions(eng)
 
-	dir := t.TempDir()
 	return &Harness{
 		Engine:       eng,
 		FactionState: &state.FactionState{CampaignID: "test", Factions: make(map[string]*domain.Faction)},
-		Cfg: &config.Config{
-			StatePath:   filepath.Join(dir, "state.toml"),
-			HistoryPath: filepath.Join(dir, "history.jsonl"),
-		},
-		Collector: &ScriptedCollector{},
-		Observer:  &RecordingObserver{},
+		Cfg:          cfg,
+		Collector:    &ScriptedCollector{},
+		Observer:     &RecordingObserver{},
 	}
 }
 

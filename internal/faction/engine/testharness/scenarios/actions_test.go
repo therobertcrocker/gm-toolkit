@@ -30,10 +30,12 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 		t.Fatal("Buy Asset not available in first cycle")
 		return nil, nil
 	}
-	h.Collector.SelectBuyOrderFn = func(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
-		for _, def := range purchasable {
-			if def.ID == testharness.DefSecurityPersonnel {
-				return action.BuyOrder{World: worlds[0], Definition: def}, nil
+	h.Collector.SelectBuyOrderFn = func(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+		for world, defs := range purchasablePerWorld {
+			for _, def := range defs {
+				if def.ID == testharness.DefSecurityPersonnel {
+					return action.BuyOrder{World: world, Definition: def}, nil
+				}
 			}
 		}
 		t.Fatal("F1-001 not in purchasable list")
@@ -96,7 +98,7 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 		t.Fatal("Expand Influence not available")
 		return nil, nil
 	}
-	h.Collector.SelectExpandInfluenceOrderFn = func(_ *domain.Faction, _ *state.FactionState) (action.ExpandInfluenceOrder, error) {
+	h.Collector.SelectExpandInfluenceOrderFn = func(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {
 		return action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Tartarus", HPAmount: 1}, nil
 	}
 
@@ -153,7 +155,7 @@ func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 		t.Fatal("Expand Influence not available for alpha")
 		return nil, nil
 	}
-	h.Collector.SelectExpandInfluenceOrderFn = func(_ *domain.Faction, _ *state.FactionState) (action.ExpandInfluenceOrder, error) {
+	h.Collector.SelectExpandInfluenceOrderFn = func(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {
 		return action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 1}, nil
 	}
 	h.Collector.ConfirmRivalFreeAttackFn = func(_ *domain.Faction, _, _ int) (bool, error) {

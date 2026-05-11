@@ -30,7 +30,7 @@ A record of key decisions made during development, grouped by feature branch.
 | [chore/test-infra-split](#choretest-infra-split) | 189–190 | testharness promotion, scenarios split |
 | [refactor/faction-assets-map](#refactorfaction-assets-map) | 191–194 | Assets map conversion |
 | [refactor/persistence-write-cadence](#refactorpersistence-write-cadence) | 195–196 | History vs. state write separation |
-| [feat/spatial-effort-1](#featspatial-effort-1) | 197–203 | Sentinel errors, Fragment field shape, boundary validation, interface asserts |
+| [feat/spatial-effort-2](#featspatial-effort-2) | 197–210 | Wiring the spatial layer into the faction engine: config ownership, world sub-engine, index-based scan replacements, TL/P-flag enforcement |
 
 <br />
 
@@ -324,9 +324,9 @@ A record of key decisions made during development, grouped by feature branch.
 
 | Decision # | Alternative | Why rejected |
 |------------|-------------|--------------|
-| #97 | Block until custom handlers are written for all bespoke assets | Blocks the entire action until every edge case is handled; GM fallback is the right interim path for abilities that have no step encoding |
-| #98 | Single flat handler map keyed by step type only | Custom overrides per definition ID cannot be expressed with a single registry; bespoke abilities would require inventing a synthetic step type per asset |
-| #105 | Collect assets one at a time as each resolves | SWN rules require up-front declaration; allowing per-step selection gives the GM information about prior results before committing later assets |
+| 97 | Block until custom handlers are written for all bespoke assets | Blocks the entire action until every edge case is handled; GM fallback is the right interim path for abilities that have no step encoding |
+| 98 | Single flat handler map keyed by step type only | Custom overrides per definition ID cannot be expressed with a single registry; bespoke abilities would require inventing a synthetic step type per asset |
+| 105 | Collect assets one at a time as each resolves | SWN rules require up-front declaration; allowing per-step selection gives the GM information about prior results before committing later assets |
 
 <br />
 
@@ -353,8 +353,8 @@ A record of key decisions made during development, grouped by feature branch.
 
 | Decision # | Alternative | Why rejected |
 |------------|-------------|--------------|
-| #115 | Call `UpdateProgress` inside `ActionEngine.Run` | Would require `ActionEngine` to depend on `GoalEngine`; creates a circular-style coupling between two engines that should be peers; TUI orchestration is the right layer for cross-engine sequencing |
-| #118 | Option A — inspect mutations post-action to determine lock | Cannot express Change Homeworld (skip the entire turn — there is no action to inspect) |
+| 115 | Call `UpdateProgress` inside `ActionEngine.Run` | Would require `ActionEngine` to depend on `GoalEngine`; creates a circular-style coupling between two engines that should be peers; TUI orchestration is the right layer for cross-engine sequencing |
+| 118 | Option A — inspect mutations post-action to determine lock | Cannot express Change Homeworld (skip the entire turn — there is no action to inspect) |
 
 <br />
 
@@ -378,8 +378,8 @@ A record of key decisions made during development, grouped by feature branch.
 
 | Decision # | Alternative | Why rejected |
 |------------|-------------|--------------|
-| #124 | Monolithic renderer that reads JSONL and produces prose directly | Would mix history parsing with rendering logic; the LLM renderer would have no structured input to work from — it would need to re-parse history itself |
-| #128 | Echo the attack in both attacker and defender sections | Creates duplicate prose that reads as padding; cross-faction events are single-perspective by convention |
+| 124 | Monolithic renderer that reads JSONL and produces prose directly | Would mix history parsing with rendering logic; the LLM renderer would have no structured input to work from — it would need to re-parse history itself |
+| 128 | Echo the attack in both attacker and defender sections | Creates duplicate prose that reads as padding; cross-faction events are single-perspective by convention |
 
 <br />
 
@@ -392,7 +392,7 @@ A record of key decisions made during development, grouped by feature branch.
 | 137 | `EventHook` ships as interface + documented dispatch site only — no registry, no dispatcher | The seam is needed now to lock the mutation-apply order; the dispatcher has no consumer until the Tag Engine ships; YAGNI |
 | 138 | Hook recursion bounded at depth 5; on cap trip the engine logs and stops | Surfaces content bugs rather than silently absorbing runaway loops |
 | 139 | Observer and collector are passed per-call to `RunFactionTurn` / `RunCycle`, not stored on `Engine` | Engine stays a long-lived stateless toolbox; the same instance can serve a manual run and a headless test without re-construction |
-| 140 | Runtime config flows through a new `internal/faction/config` package holding a `Config` struct | Establishes the config pattern before future runtime knobs (dry-run, log level, AI settings) join; keeps CLI path derivation in `paths/` and engine path injection in `Config` |
+| 140 | Runtime config flows through a new `internal/faction/config` package holding a `Config` struct | Establishes the config pattern before future runtime knobs (dry-run, log level, AI settings) join; keeps CLI path derivation in `paths/` and engine path injection in `Config` — **superseded by #204** |
 | 141 | `Turn.ApplyBookkeeping` refactored to return `(BookkeepingResult, []domain.Mutation, error)` without applying mutations | Removes the asymmetry where one sub-engine wrote state and the others didn't; makes mutation flow uniform — the orchestrator owns every `Apply + Record + Save` call |
 | 142 | `ActionFactory` changes from `func() Action` to `func(InputCollector) Action`; `AvailableActions` takes a collector | Without this, `SelectAction` returning a ready `Action` is broken — prior factories produced nil-collector stubs valid only for `Validate`; the TUI's switch-on-Name reconstruction logic is eliminated |
 | 143 | `Engine` gains a `Rand domain.Roller` field initialized to `engine.NewRandRoller()` in `New` | Action factories that need a roller capture `e.Rand` in the closure; single injection point enables deterministic headless tests via `eng.Rand = &fixedRoller{...}` |
@@ -406,9 +406,9 @@ A record of key decisions made during development, grouped by feature branch.
 
 | Decision # | Alternative | Why rejected |
 |------------|-------------|--------------|
-| #137 | Ship `EventHook` with a dispatcher and `RegisterHook` now | No consumer until the Tag Engine lands; building the dispatcher first would require test coverage for a code path with no callers — pure speculative work |
-| #139 | Store observer + collector on `Engine` at construction time | Engine would need to be reconstructed for every test scenario that uses different observer/collector configs; per-call injection is idiomatic Go and keeps the engine stateless |
-| #141 | Leave `ApplyBookkeeping` applying mutations internally | Breaks uniform mutation flow — one sub-engine was writing state, all others returned mutations for the caller to apply; asymmetry makes the orchestrator's write path non-obvious |
+| 137 | Ship `EventHook` with a dispatcher and `RegisterHook` now | No consumer until the Tag Engine lands; building the dispatcher first would require test coverage for a code path with no callers — pure speculative work |
+| 139 | Store observer + collector on `Engine` at construction time | Engine would need to be reconstructed for every test scenario that uses different observer/collector configs; per-call injection is idiomatic Go and keeps the engine stateless |
+| 141 | Leave `ApplyBookkeeping` applying mutations internally | Breaks uniform mutation flow — one sub-engine was writing state, all others returned mutations for the caller to apply; asymmetry makes the orchestrator's write path non-obvious |
 
 <br />
 
@@ -484,13 +484,13 @@ A record of key decisions made during development, grouped by feature branch.
 
 | Decision # | Alternative | Why rejected |
 |------------|-------------|--------------|
-| #158 | Flat global slice with per-entry scope field (filter on lookup) | Preserves global registration order across scopes but makes scope-filtered lookup O(n) across the whole registry; buckets keep lookup fast with no ambiguity about ordering semantics |
-| #161 | Zero out only budget keys declared by registered hooks | Requires registry to be held on engine during bookkeeping (Phase 3a wiring); cleaner to defer that dependency; nil-on-clear is safe since hooks re-register budgets from zero each turn |
-| #165 | Feed only new mutations to each subsequent depth (trigger-batch approach) | Cleaner integration test design, but conflicts with the plan's `combined` spec and forces awkward trigger-type matching in reactors; reactor idempotency is the correct boundary |
-| #169 | Store registry on `TurnEngine` (add to constructor) | Would work, but adds coupling to `TurnEngine` for something it doesn't own; parameter threading is more explicit and avoids changing the `turn.New` signature |
-| #175 | Paired `RollResultHook` registered by the offer's `Apply` to drop the lowest die | Crosses a category boundary; also requires the Cat 2 hook to receive the pre-trim dice state, which may include the extra die that hasn't been "chosen" to keep yet — ordering semantics become ambiguous |
-| #176 | Add a separate `hooks.Collector` parameter to `NewAttack` and each action factory | Produces two parallel collector fields in every action struct; the factory closure would need to cast or double-pass the same `InputCollector` — mechanical overhead with no conceptual gain |
-| #177 | Register `FanaticalTieResolver` at global scope; check both factions inline | Global scope would fire for all ties, requiring the resolver to check whether either faction is Fanatical; faction-scoped registration is more precise and consistent with every other hook in the system |
+| 158 | Flat global slice with per-entry scope field (filter on lookup) | Preserves global registration order across scopes but makes scope-filtered lookup O(n) across the whole registry; buckets keep lookup fast with no ambiguity about ordering semantics |
+| 161 | Zero out only budget keys declared by registered hooks | Requires registry to be held on engine during bookkeeping (Phase 3a wiring); cleaner to defer that dependency; nil-on-clear is safe since hooks re-register budgets from zero each turn |
+| 165 | Feed only new mutations to each subsequent depth (trigger-batch approach) | Cleaner integration test design, but conflicts with the plan's `combined` spec and forces awkward trigger-type matching in reactors; reactor idempotency is the correct boundary |
+| 169 | Store registry on `TurnEngine` (add to constructor) | Would work, but adds coupling to `TurnEngine` for something it doesn't own; parameter threading is more explicit and avoids changing the `turn.New` signature |
+| 175 | Paired `RollResultHook` registered by the offer's `Apply` to drop the lowest die | Crosses a category boundary; also requires the Cat 2 hook to receive the pre-trim dice state, which may include the extra die that hasn't been "chosen" to keep yet — ordering semantics become ambiguous |
+| 176 | Add a separate `hooks.Collector` parameter to `NewAttack` and each action factory | Produces two parallel collector fields in every action struct; the factory closure would need to cast or double-pass the same `InputCollector` — mechanical overhead with no conceptual gain |
+| 177 | Register `FanaticalTieResolver` at global scope; check both factions inline | Global scope would fire for all ties, requiring the resolver to check whether either faction is Fanatical; faction-scoped registration is more precise and consistent with every other hook in the system |
 
 <br />
 
@@ -510,14 +510,21 @@ A record of key decisions made during development, grouped by feature branch.
 | 195 | `applyAndRecord` no longer calls `state.Save`; callers are responsible for saving at phase-gate checkpoints | History (JSONL) must be written on every mutation batch — it is an audit log. State (TOML) is a resume checkpoint — it only needs to reflect the boundary between meaningful phases. Merging them in one function obscured the distinction and produced 3–4 redundant TOML rewrites per faction turn |
 | 196 | `state.Save` is called explicitly at two points: after `AwaitCheckpoint(CheckpointBookkeeping)` and after `AwaitCheckpoint(CheckpointActionResult)` | These are the only two boundaries where the turn's progress is meaningful for resume. Goal-lock tick mutations and stat-raise mutations between these gates are captured by the next save; `TurnState.Phase` encodes enough phase position to make earlier saves redundant |
 
-### feat/spatial-effort-1
+### feat/spatial-effort-2
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| 197 | Sentinel errors in spatial package: `ErrUnknownFragment`, `ErrNoPath`, `ErrNotImplemented`, `ErrInvalidCost`; wrap with `fmt.Errorf("%w: ...", ...)` | Spatial is positioned as a future shared library; callers (faction engine, eventual Codex) need `errors.Is` discrimination to handle missing-fragment vs no-path vs not-yet-implemented distinctly. String matching couples callers to error wording |
-| 198 | `Fragment` locator fields (`id`, `name`, `techLevel`, `population`) are unexported and reached only through `Location` interface methods; `Region` and `Hex` remain exported | Two-tier surface: interface-backed identity goes through methods (real polymorphism across HybridMap/HexMap/GraphMap); spatial-mechanic fields stay direct-readable for the engine's hot-path scans. Resolves the `Fragment*`/`Frag*` prefix collision that arose from dual-export and makes the type immutable from outside the package |
-| 199 | Compile-time interface satisfaction asserts (`var _ SpatialMap = (*HybridMap)(nil)`, etc.) declared in `spatial.go` | Future refactors of `SpatialMap`/`Location` interfaces must fail at compile time at the implementation site, not at downstream call sites. Free safety net for a shared library |
-| 200 | `LoadHybrid` validates every boundary: `From` must be in declaring region's hexes; `ToRegion` must exist; `To` must be in target region's hexes | Without this, a typo in `regions.toml` produces a graph node with zero outgoing edges and Dijkstra silently returns "no path" instead of "your config is broken." Validation-at-boundary is mandatory for a library other tools will write authored data against |
-| 201 | `Distance` rejects negative `crossingCost` with `ErrInvalidCost` | Negative edge weights violate Dijkstra's correctness invariant; cheaper to fail loudly at the call site than to debug a wrong path silently. Faction engine resolves `crossingCost` from `rulebook.DriftCost(...)`, so this catches bad TOML cost data before it corrupts results |
-| 202 | `HybridMap.Location` returns explicit untyped `nil` on miss instead of returning the typed-nil `*Fragment` | Go's interface-nil gotcha: a `(Location, *Fragment, nil)` interface value is not equal to untyped `nil` at the call site; callers writing `if loc != nil` would be misled. Caught by `TestHybridMap_Location/unknown_id` after Location() was tested directly for the first time |
-| 203 | `pqItem.idx` field removed; priority queue's `Swap`/`Push` no longer track index position | The field exists in canonical heap implementations to support `heap.Fix`/`heap.Remove`; this Dijkstra uses neither (relies on the `current.cost > dist[current.node]` skip-stale pattern instead). Dead state was misleading future readers about which heap operations were planned |
+| 197 | `internal/faction/config.Config` is the canonical owner of all runtime paths (`FactionDataDir`, `SpatialDataDir`, `StatePath`, `HistoryPath`, `NarrativesPath`); `cmd/faction-manager/paths` package retired | The tool is headless — no layered CLI state, no campaign ID derivation needed. All paths flow in as env vars, live in the internal config, and are threaded straight through. Two config structs (CLI + internal) for the same data was arbitrary confusion. Supersedes #140 and #59 |
+| 198 | `engine.New()` takes `*config.Config` instead of bare `dataDir string`; `LoadConfig()` returns `*config.Config` directly | `FactionDataDir` is a construction-time path like `StatePath` — no reason for it to travel as a raw string while the others live in a struct. Single entry point, single type, no implicit conventions |
+| 199 | All five paths are required env vars (`FACTION_DATA_DIR`, `SPATIAL_DATA_DIR`, `FACTION_STATE_PATH`, `FACTION_HISTORY_PATH`, `FACTION_NARRATIVES_PATH`); `--campaign` flag retired | Campaign identity is now fully encoded in the paths themselves — the GM sets them per session. Removing the derived-path pattern eliminates the indirection and makes the tool easier to wire into scripts and automation |
+| 200 | `drift_costs.toml` is its own file for now; if more small or ungroupable static data accumulates, consolidate into a single `constants.toml` | One file per concern is fine at small scale; proliferating single-value TOML files is noise — a shared constants file is the consolidation point if the pattern repeats |
+| 201 | `world` sub-engine package (`internal/faction/engine/world`) wraps `HybridMap` + per-turn `Index`; `Engine.World` field replaces raw `spatialMap`/`spatialIndex` fields | Follows the established sub-engine pattern; consolidates index building, distance queries, and fragment lookups under one accessor; makes the spatial concern visible at the `Engine` boundary in the same way as `Turn`, `Action`, and `Goal` |
+| 202 | Sub-engine named `world`, not `spatial` | `internal/faction/engine/spatial` would require an import alias inside its own package to import `internal/spatial` (same package name collision); `world` maps more directly to the game domain and avoids the alias entirely |
+| 203 | `world.NewWithMap(spatial.SpatialMap)` alongside `world.New(dataDir)` — holds the interface, not `*HybridMap` | Mirrors `engine.NewWithRulebook`; any `SpatialMap` implementation (hex, graph, stub) can be injected in tests without touching disk |
+| 204 | O(n) fallback paths removed from all index-based scan functions; `*world.Index` is always required — nil panics rather than falls back | Keeping both paths invites the slow path to silently remain exercised; a panic surfaces misconfiguration immediately and is the correct signal that the harness needs a spatial map |
+| 205 | `indexFromState` test helper in `action/actions/test_helpers_test.go` builds `*world.Index` directly from `*state.FactionState` | Action-layer unit tests own their spatial setup; building the index from the same state the test constructs is minimal, exact, and requires no disk or stub SpatialMap at this layer |
+| 206 | `world.Index` fields and all `fragmentID` parameters renamed to `AssetsByLocation`, `BasesByLocation`, `locationID` throughout the faction engine; `worlds.toml` replaces `fragments.toml` in the spatial package | "Fragment" is specific to the `astral_sea` hybrid map model; the engine's spatial layer treats locations as opaque string keys, so the naming should be agnostic to the underlying map type |
+| 207 | `testharness.NewHarness` wires a `stubSpatialMap` into `eng.World` via `world.NewWithMap`; the stub accepts any location ID with TL 5 and distance 1 | Per #203, the harness needs a spatial map — not nil. The stub lets all scenario tests run without real spatial files, preserves the panic-on-nil invariant (#204), and gives TL 5 (permissive) so existing tests don't filter out any test assets |
+| 208 | `SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition)` replaces `SelectBuyOrder(worlds, purchasable)`; `SelectExpandInfluenceOrder` gains `eligibleNewBaseWorlds []string` | TL enforcement in BuyAsset requires the world to be selected before definitions are filtered; passing a per-world map makes the dependency explicit and lets the collector show only valid defs for the chosen world. ExpandInfluence's eligible world list is pre-filtered by TL before the collector sees it |
+| 209 | `purchasableDefinitions` uses `dispatch.ResolveWorldTechLevel` to apply tag-based TL modifiers before filtering; raw `loc.TechLevel()` is used in `eligibleNewBaseWorlds` (ExpandInfluence has no hook registry) | Consistent with the existing `ResolveAssetCost` pattern for BuyAsset; ExpandInfluence registry can be added when a tag actually needs to modify world TL for base placement |
+| 210 | `factionHasPlanetaryGovernment(factionID, bases)` checks for any faction-owned base on the target world; no base `Type` field or faction tag check required at this stage | `Base` has no `Type` field in the domain; the simplest enforceable interpretation of the P-flag rule is "faction has an administrative presence (base) on this world." Refine if tag T-011 or base types are added |

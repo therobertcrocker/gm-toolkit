@@ -17,12 +17,12 @@ import (
 type ScriptedCollector struct {
 	SelectAssetFn                func([]*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrdersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]action.RepairOrder, error)
-	SelectBuyOrderFn             func([]string, []*domain.AssetDefinition) (action.BuyOrder, error)
+	SelectBuyOrderFn             func(map[string][]*domain.AssetDefinition) (action.BuyOrder, error)
 	SelectRefitOrderFn           func([]action.RefitOption, *rulebook.Rulebook) (action.RefitOrder, error)
 	SelectAttackersFn            func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectDefenderFn             func(*domain.Asset, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBaseFn      func(*domain.Faction, *domain.Base, int) (bool, error)
-	SelectExpandInfluenceOrderFn func(*domain.Faction, *state.FactionState) (action.ExpandInfluenceOrder, error)
+	SelectExpandInfluenceOrderFn func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn     func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn        func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectAbilityAssetsFn        func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
@@ -51,9 +51,9 @@ func (c *ScriptedCollector) SelectRepairOrders(faction *domain.Faction, damaged 
 	return nil, nil
 }
 
-func (c *ScriptedCollector) SelectBuyOrder(worlds []string, purchasable []*domain.AssetDefinition) (action.BuyOrder, error) {
+func (c *ScriptedCollector) SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
 	if c.SelectBuyOrderFn != nil {
-		return c.SelectBuyOrderFn(worlds, purchasable)
+		return c.SelectBuyOrderFn(purchasablePerWorld)
 	}
 	return action.BuyOrder{}, nil
 }
@@ -86,9 +86,9 @@ func (c *ScriptedCollector) ConfirmRedirectToBase(defenderFaction *domain.Factio
 	return false, nil
 }
 
-func (c *ScriptedCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState) (action.ExpandInfluenceOrder, error) {
+func (c *ScriptedCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
 	if c.SelectExpandInfluenceOrderFn != nil {
-		return c.SelectExpandInfluenceOrderFn(faction, factionState)
+		return c.SelectExpandInfluenceOrderFn(faction, factionState, eligibleNewBaseWorlds)
 	}
 	return action.ExpandInfluenceOrder{}, nil
 }

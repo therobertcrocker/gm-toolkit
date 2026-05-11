@@ -2,6 +2,7 @@ package goal
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -92,7 +93,7 @@ func progressPlanetarySeizure(actingFaction *domain.Faction, mutations []domain.
 	}
 }
 
-func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
+func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, index *world.Index) []domain.Mutation {
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.BaseAdded)
 		if !ok || v.CausedByFactionID != actingFaction.ID {
@@ -102,7 +103,7 @@ func progressExpandInfluence(actingFaction *domain.Faction, mutations []domain.M
 			continue
 		}
 		xp := 1
-		if worldHasRivalPresence(v.Base.Location, actingFaction.ID, factionState) {
+		if worldHasRivalPresence(v.Base.Location, actingFaction.ID, index) {
 			xp = 2
 		}
 		return completeGoal(actingFaction, xp)
@@ -201,7 +202,7 @@ func progressDestroyTheFoe(actingFaction *domain.Faction, mutations []domain.Mut
 	return completeGoal(actingFaction, 1+avg)
 }
 
-func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
+func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, index *world.Index) []domain.Mutation {
 	gained := 0
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.AssetStealthApplied)
@@ -212,7 +213,7 @@ func progressInsideEnemyTerritory(actingFaction *domain.Faction, mutations []dom
 		if asset == nil {
 			continue
 		}
-		if !rivalHasPlanetaryGovernmentOnWorld(actingFaction.ID, asset.Location, factionState) {
+		if !rivalHasPlanetaryGovernmentOnWorld(actingFaction.ID, asset.Location, factionState, index) {
 			continue
 		}
 		gained++
@@ -337,37 +338,31 @@ func factionHasBaseOn(faction *domain.Faction, world string) bool {
 	return false
 }
 
-func worldHasRivalPresence(world, actingFactionID string, factionState *state.FactionState) bool {
-	for factionID, faction := range factionState.Factions {
-		if factionID == actingFactionID {
-			continue
+func worldHasRivalPresence(locationID, actingFactionID string, index *world.Index) bool {
+	for _, asset := range index.AssetsByLocation[locationID] {
+		if asset.OwnerID != actingFactionID {
+			return true
 		}
-		for _, asset := range faction.Assets {
-			if asset.Location == world {
-				return true
-			}
-		}
-		for _, base := range faction.Bases {
-			if base.Location == world {
-				return true
-			}
+	}
+	for _, base := range index.BasesByLocation[locationID] {
+		if base.OwnerID != actingFactionID {
+			return true
 		}
 	}
 	return false
 }
 
-func rivalHasPlanetaryGovernmentOnWorld(actingFactionID, world string, factionState *state.FactionState) bool {
-	for factionID, faction := range factionState.Factions {
-		if factionID == actingFactionID {
+func rivalHasPlanetaryGovernmentOnWorld(actingFactionID, locationID string, factionState *state.FactionState, index *world.Index) bool {
+	for _, base := range index.BasesByLocation[locationID] {
+		if base.OwnerID == actingFactionID {
 			continue
 		}
-		if !factionHasPlanetaryGovernmentTag(faction) {
+		rival, ok := factionState.Factions[base.OwnerID]
+		if !ok {
 			continue
 		}
-		for _, base := range faction.Bases {
-			if base.Location == world {
-				return true
-			}
+		if factionHasPlanetaryGovernmentTag(rival) {
+			return true
 		}
 	}
 	return false
