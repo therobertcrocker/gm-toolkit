@@ -53,7 +53,13 @@ func (engine *Engine) RebuildIndex(factionState *state.FactionState) {
 }
 
 func (engine *Engine) Location(id string) (spatial.Location, bool) {
-	return engine.spatialMap.Location(id)
+	// type assert to HexLocation
+	if loc, ok := engine.spatialMap.Location(id); ok {
+		if hexLoc, ok := loc.(spatial.HexLocation); ok {
+			return hexLoc, true
+		}
+	}
+	return nil, false
 }
 
 func (engine *Engine) Distance(fromID, toID string, crossingCost int) (int, error) {

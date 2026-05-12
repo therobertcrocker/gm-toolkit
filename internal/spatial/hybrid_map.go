@@ -37,6 +37,7 @@ func (w *World) Name() string       { return w.name }
 func (w *World) TechLevel() int     { return w.techLevel }
 func (w *World) Population() int    { return w.population }
 func (w *World) Coords() (q, r int) { return w.Hex.Q, w.Hex.R }
+func (w *World) RegionID() string   { return w.Region }
 
 type HybridMap struct {
 	regions map[string]*Region

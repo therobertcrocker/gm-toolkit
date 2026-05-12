@@ -32,6 +32,7 @@ Replaces `Asset.Location string` and the analogous fields on `Base`, mutations, 
 type Location struct {
     WorldID   string    // empty when the entity is in empty space mid-transit
     HexCoords HexCoord  // always populated
+    Region string 
 }
 ```
 

@@ -12,7 +12,12 @@ type Location interface {
 	Name() string
 	TechLevel() int
 	Population() int
+}
+
+type HexLocation interface {
+	Location
 	Coords() (q, r int)
+	RegionID() string
 }
 
 var (
@@ -23,8 +28,8 @@ var (
 )
 
 var (
-	_ SpatialMap = (*HybridMap)(nil)
-	_ SpatialMap = (*HexMap)(nil)
-	_ SpatialMap = (*GraphMap)(nil)
-	_ Location   = (*World)(nil)
+	_ SpatialMap  = (*HybridMap)(nil)
+	_ SpatialMap  = (*HexMap)(nil)
+	_ SpatialMap  = (*GraphMap)(nil)
+	_ HexLocation = (*World)(nil)
 )
