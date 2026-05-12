@@ -43,7 +43,7 @@ Work flows through three modes. Each is its own Claude session.
 
 1. **Discovery** — produces a discovery doc
 2. **Plan** — produces an implementation plan, including its phase breakdown
-3. **Execution** — implements one phase from the plan. **Each phase is its own session** — a plan with three phases takes three execution sessions, not one.
+3. **Execution** — implements the plan, phase by phase. One session per commit or logical chunk of work, with a clear deliverable.
 
 A session ends at its deliverable. Do not start the next mode's work in the same session, even if its inputs are ready.
 

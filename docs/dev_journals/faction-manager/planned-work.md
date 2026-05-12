@@ -11,7 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | # | Item | Size | Status | Trigger |
 |---|------|------|--------|---------|
 | 1 | [Spatial Model and World Graph](#spatial-model-and-world-graph) | Major | In-Progress | Hex distance, tech level, or Pirates tag becomes blocking |
-| 2 | [Asset Movement Redesign](#asset-movement-redesign) | Major | Pending Discovery | Current movement model felt limiting in play; overlaps with Spatial Phase 3 Commit 3 and Phase 4 |
+| 2 | [Asset Movement Redesign](#asset-movement-redesign) | Major | In-Progress | Current movement model felt limiting in play; overlaps with Spatial Phase 3 Commit 3 and Phase 4 |
 
 ---
 <br/>
