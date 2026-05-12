@@ -27,6 +27,14 @@ The discovery flagged eight open questions plus one plan-level question. All are
 
 <br/>
 
+## Open Questions — To Ratify at Implementation Time
+
+| # | Question | Effort / Phase |
+|---|---|---|
+| 1 | **Where does the Movement Phase code live?** Effort 2 Phase 3 currently sketches a new `internal/faction/engine/movement/` package of free functions — which does not match any of the three sub-engine shapes (see `architecture-overview.md` → *Sub-Engine Shapes*) and would establish a fourth pattern under `engine/`. Alternative: host the Movement Phase under the existing `turn/` package as `(*TurnEngine).RunMovementPhase(...)` plus `movement_*.go` files. Turn is already Shape 3; `turn.New`'s arg list extends to take `spatialMap`. Movement is conceptually a turn phase (same family as Bookkeeping), and `turn`-hosting keeps the package boundary aligned with the conceptual owner. | Ratify at the start of Effort 2 Phase 3. See [`docs/discovery/sub-engine-alignment-discovery.md`](../discovery/sub-engine-alignment-discovery.md) for the shape catalog context. |
+
+<br/>
+
 ## Effort Summary
 
 Three efforts. Seven phases. Each phase is its own Sonnet execution session.

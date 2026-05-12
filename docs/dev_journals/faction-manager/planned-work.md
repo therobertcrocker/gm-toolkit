@@ -4,7 +4,7 @@ Pre-discovery initiative tracker. Deferred items move to Planned Initiatives whe
 
 <br/>
 
-## Initiatives
+## Current Initiatives
 
 Full write-ups below. Each item has been scoped enough to warrant a dedicated discovery phase.
 
@@ -15,6 +15,18 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 
 ---
 <br/>
+
+## Up Next (Ready or Near Ready)
+The queue of deferred items that are ready to become initiatives. These are scoped and waiting for their trigger conditions to be met.
+
+|# | Item | Trigger | 
+|---|------|--------|
+| 0 | CLI Rebuild | When tool is mechanically complete |
+| 9 | Spatial map CLI | When spatial model work begins; would be a CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
+| 10 | Registration Pattern Refactor | When the tool is mechanically stable; would refactor Goal, Ability, etc to match action and tag registration patterns |
+
+---
+<br />
 
 ## Deferred — Major
 
@@ -31,8 +43,8 @@ Items that will eventually warrant a full initiative entry. Each moves to Planne
 | 6 | Starting Coin | Coin tracking designed and landed |
 | 7 | Tag-granted assets | Engine action resolution complete |
 | 8 | Tag reminder affordance | Alongside programmatic tag handling |
-| 9 | Spatial map creation helper | When spatial model work begins; would be a CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
-| 10 | Goal Registration Refactor | When the tool is mechanically stable; would refactor to match action and tag registration patterns |
+| 9 | Spatial map CLI | When spatial model work begins; would be a CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
+| 10 | Registration Pattern Refactor | When the tool is mechanically stable; would refactor Goal, Ability, etc to match action and tag registration patterns |
 
 ---
 <br/>

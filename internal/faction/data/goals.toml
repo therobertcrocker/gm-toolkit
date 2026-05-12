@@ -1,4 +1,10 @@
 # Faction Goals
+#
+# Handler implementations: internal/faction/engine/goal/ (switch-based
+# today; refactor to a goal/goals/ sibling package is pending — see
+# docs/discovery/sub-engine-alignment-discovery.md). Goals with no Go
+# behavior produce no progress mutations — a data-only state.
+
 
 [goals.MilitaryConquest]
 id = "G-001"

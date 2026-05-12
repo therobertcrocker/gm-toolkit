@@ -310,6 +310,14 @@ Introduce `AbilityStepTransport` as a distinct step type. The handler is invoked
 
 After Phase 4: a new step type is registered in the rulebook decoder and ability engine, but no TOML uses it yet (Effort 3 Phase 5 reclassifies the transport-pattern entries). Tests use synthetic asset definitions to verify behavior.
 
+### Sub-engine shape note
+
+`ability` is mid-alignment per the [sub-engine shapes catalog](../architecture-overview.md#sub-engine-shapes) — eventual target is Shape 2 open-ended with step handlers in an `ability/steps/` sibling package and external registration via a bootstrap function. That refactor is deferred until after the asset movement redesign lands (see [`docs/discovery/sub-engine-alignment-discovery.md`](../discovery/sub-engine-alignment-discovery.md)).
+
+**For this phase:** add `transportStepHandler` inline in the `ability/` package alongside the existing `movementStepHandler` and `factionTestStepHandler`, and register it inline in `ability.New()` (matches Task 6's instruction). **Do not** pre-position it in `ability/steps/`. A mixed inline/sibling state is a worse asymmetry than the current uniform-inline state.
+
+The post-asset-movement alignment refactor will then move both remaining step handlers (`factionTestStepHandler` + `transportStepHandler` — `movementStepHandler` is deleted in Effort 3 Phase 5) into `ability/steps/` as a single unit, with bootstrap wiring through `steps.RegisterDefaultSteps(eng)`.
+
 <br/>
 
 ## Commit 1 — `feat: add AbilityStepTransport step type and rulebook decoder`

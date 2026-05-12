@@ -147,6 +147,20 @@ The `Engine` struct in `internal/faction/engine/core.go` is the composition root
 
 The sub-engines do not call each other. The `orchestrator.go` coordinates them in sequence across a well-defined pipeline.
 
+### Sub-Engine Shapes
+
+The sub-engines listed above all fit one of three structural shapes. Knowing which shape a sub-engine is helps when reading it (what to expect) and when adding one (what template to follow).
+
+- **Shape 1 — Stateless Dispatcher.** Empty struct, bare `New()`, closed switch over a sealed enum, no extension points. Adding a new variant requires editing the engine file. Sub-engines: `mutation`.
+- **Shape 2 — Open Registry.** Handler registry, bare `New()`, external `Register(...)` extension point, concrete handlers in a sibling subpackage (e.g., `action/actions/`), and a `RegisterDefault…(eng)` bootstrap function in the sibling. Two variants:
+  - *Open-ended* — the handler registry itself defines what exists. Sub-engines: `action`, `hooks`.
+  - *Data-mirroring* — a rulebook TOML file (`internal/faction/data/`) is the authority on the ID universe; the handler set is a subset; a known ID with no registered handler is a legitimate "data-only" state. Sub-engines: `tag`, `goal` (target).
+- **Shape 3 — State-Owning Subsystem.** Constructor takes dependencies, may return an error, owns mutable lifecycle state across calls. Sub-engines: `turn`, `world`.
+
+**Convention.** Any Shape 2 sub-engine with built-in default handlers has a sibling subpackage containing those handlers, plus a `RegisterDefault…(eng)` bootstrap function inside the sibling. Existing and proposed siblings: `action/actions/`, `tag/tags/`, `ability/steps/` (proposed), `goal/goals/` (proposed). Shape 1 and Shape 3 engines do not have this sibling — its presence is the structural signal that an engine is Shape 2 with defaults. `hooks` is the exception that proves the rule: Shape 2 open-ended in interface terms, but has no sibling because nothing *defaults* to it — hooks are registered ad-hoc by other engines (`tag`, `ability`).
+
+For the full shape spec, audit findings, and per-engine alignment work, see [`discovery/sub-engine-alignment-discovery.md`](discovery/sub-engine-alignment-discovery.md). Some sub-engines (`ability`, `goal`, `tag`) are mid-alignment as of writing; the discovery doc tracks current vs. target shape and the order of refactors.
+
 ### The InputCollector and TurnObserver Interfaces
 
 The engine communicates with its caller through two interfaces.
