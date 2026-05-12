@@ -12,6 +12,7 @@ type Location interface {
 	Name() string
 	TechLevel() int
 	Population() int
+	Coords() (q, r int)
 }
 
 var (

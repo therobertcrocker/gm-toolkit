@@ -47,10 +47,11 @@ func (s *stubSpatialMap) Distance(_, _ string, _ int) (int, error) {
 
 type stubLocation struct{ id string }
 
-func (l *stubLocation) ID() string      { return l.id }
-func (l *stubLocation) Name() string    { return l.id }
-func (l *stubLocation) TechLevel() int  { return 5 }
-func (l *stubLocation) Population() int { return 0 }
+func (l *stubLocation) ID() string         { return l.id }
+func (l *stubLocation) Name() string       { return l.id }
+func (l *stubLocation) TechLevel() int     { return 5 }
+func (l *stubLocation) Population() int    { return 0 }
+func (l *stubLocation) Coords() (q, r int) { return 0, 0 }
 
 func NewHarness(t *testing.T, dataDir string) *Harness {
 	t.Helper()

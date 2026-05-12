@@ -113,6 +113,8 @@ In play this means moving and acting in the same turn is impossible for any asse
 
 Decouple movement from the action phase. Promote per-turn speed to an asset-level field on `AssetDefinition`. Generalize the multi-turn pattern: any asset whose chosen destination exceeds per-turn speed sets up a `MovementOrder` (destination + remaining hexes) that ticks down each turn. The controller (GM, AI, test) can issue, revise, or cancel orders each turn. New mutations cover the order lifecycle; `AssetMoved` still fires on completion. The spatial layer's `Distance` primitive supplies hex counts.
 
+Each Faction gets a "movement phase" before the action phase, where they can choose to put in movement orders for any valid assets. The engine processes all movement orders in sequence, ticking them down and moving assets accordingly. This allows for multi-turn movement, and for movement to happen alongside actions in the same turn.
+
 Existing ability-step movement (e.g. `Strike Fleet`, `Capital Fleet`, `Integral Protocols`) needs to be reconciled with the new model — either as bonus hops on top of base speed or folded entirely into the new system. To be decided in discovery.
 
 ### Unlocks

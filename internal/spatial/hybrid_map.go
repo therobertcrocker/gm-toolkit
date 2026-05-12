@@ -32,10 +32,11 @@ type World struct {
 	Hex        HexCoord
 }
 
-func (w *World) ID() string      { return w.id }
-func (w *World) Name() string    { return w.name }
-func (w *World) TechLevel() int  { return w.techLevel }
-func (w *World) Population() int { return w.population }
+func (w *World) ID() string         { return w.id }
+func (w *World) Name() string       { return w.name }
+func (w *World) TechLevel() int     { return w.techLevel }
+func (w *World) Population() int    { return w.population }
+func (w *World) Coords() (q, r int) { return w.Hex.Q, w.Hex.R }
 
 type HybridMap struct {
 	regions map[string]*Region
