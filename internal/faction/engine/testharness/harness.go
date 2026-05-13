@@ -13,7 +13,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag/tags"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
@@ -47,11 +47,14 @@ func (s *stubSpatialMap) Distance(_, _ string, _ int) (int, error) {
 
 type stubLocation struct{ id string }
 
+var _ spatial.HexLocation = (*stubLocation)(nil)
+
 func (l *stubLocation) ID() string         { return l.id }
 func (l *stubLocation) Name() string       { return l.id }
 func (l *stubLocation) TechLevel() int     { return 5 }
 func (l *stubLocation) Population() int    { return 0 }
 func (l *stubLocation) Coords() (q, r int) { return 0, 0 }
+func (l *stubLocation) RegionID() string   { return "" }
 
 func NewHarness(t *testing.T, dataDir string) *Harness {
 	t.Helper()
@@ -67,6 +70,7 @@ func NewHarness(t *testing.T, dataDir string) *Harness {
 	}
 	eng.World = world.NewWithMap(&stubSpatialMap{})
 	actions.RegisterDefaultActions(eng)
+	tags.RegisterDefaultTags(eng)
 
 	return &Harness{
 		Engine:       eng,
@@ -78,7 +82,7 @@ func NewHarness(t *testing.T, dataDir string) *Harness {
 }
 
 func (h *Harness) RegisterTags() {
-	tag.RegisterDefaultTags(h.Engine, h.FactionState)
+	h.Engine.Tag.ApplyAll(h.FactionState, h.Engine.Hooks)
 }
 
 func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *domain.Faction {

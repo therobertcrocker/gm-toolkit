@@ -2,7 +2,6 @@ package tags
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -41,7 +40,19 @@ func (resolver *FanaticalTieResolver) ResolveTie(ctx hooks.RollContext, _ *state
 	return hooks.TieAttackerWins
 }
 
-func RegisterFanatical(eng *engine.Engine, faction *domain.Faction) {
-	eng.Hooks.RegisterRollResultHook(hooks.FactionScope(faction.ID), "fanatical", &FanaticalRollResultHook{})
-	eng.Hooks.RegisterTieResolver(hooks.FactionScope(faction.ID), "fanatical", &FanaticalTieResolver{FactionID: faction.ID})
+type FanaticalHandler struct{}
+
+func (FanaticalHandler) TagID() string { return FanaticalTagID }
+
+func (FanaticalHandler) Apply(faction *domain.Faction, hookRegistry *hooks.Registry) {
+	hookRegistry.RegisterRollResultHook(
+		hooks.FactionScope(faction.ID),
+		"fanatical-roll-result",
+		&FanaticalRollResultHook{},
+	)
+	hookRegistry.RegisterTieResolver(
+		hooks.FactionScope(faction.ID),
+		"fanatical-tie-resolver",
+		&FanaticalTieResolver{FactionID: faction.ID},
+	)
 }

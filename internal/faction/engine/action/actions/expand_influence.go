@@ -20,12 +20,12 @@ type ExpandInfluence struct {
 	collector   action.Collector
 	roller      domain.Roller
 	index       *world.Index
-	worldEngine *world.Engine
+	worldEngine *world.WorldEngine
 	order       action.ExpandInfluenceOrder
 	mutations   []domain.Mutation
 }
 
-func NewExpandInfluence(collector action.Collector, roller domain.Roller, index *world.Index, worldEngine *world.Engine) *ExpandInfluence {
+func NewExpandInfluence(collector action.Collector, roller domain.Roller, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
 	return &ExpandInfluence{collector: collector, roller: roller, index: index, worldEngine: worldEngine}
 }
 
@@ -202,7 +202,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 // filtered by tech level: the world's TL must support the faction's highest-TL
 // asset already operating there. Falls back to worldsForNewBase when worldEngine
 // is nil (no spatial data loaded).
-func eligibleNewBaseWorlds(faction *domain.Faction, rulebook *rulebook.Rulebook, worldEngine *world.Engine) []string {
+func eligibleNewBaseWorlds(faction *domain.Faction, rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine) []string {
 	candidates := worldsForNewBase(faction)
 	if worldEngine == nil {
 		return candidates

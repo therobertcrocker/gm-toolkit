@@ -2,7 +2,6 @@ package tags
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -37,8 +36,12 @@ func (reactor *ScavengersReactor) OnMutations(mutations []domain.Mutation, _ *st
 	return extra
 }
 
-func RegisterScavengers(eng *engine.Engine, faction *domain.Faction) {
-	eng.Hooks.RegisterMutationReactor(
+type ScavengersHandler struct{}
+
+func (ScavengersHandler) TagID() string { return ScavengersTagID }
+
+func (ScavengersHandler) Apply(faction *domain.Faction, hookRegistry *hooks.Registry) {
+	hookRegistry.RegisterMutationReactor(
 		hooks.FactionScope(faction.ID),
 		"scavengers",
 		&ScavengersReactor{FactionID: faction.ID},

@@ -20,7 +20,7 @@ import (
 type BuyAsset struct {
 	collector     action.Collector
 	registry      *hooks.Registry
-	worldEngine   *world.Engine
+	worldEngine   *world.WorldEngine
 	factionID     string
 	buyOrder      action.BuyOrder
 	newAsset      domain.Asset
@@ -28,7 +28,7 @@ type BuyAsset struct {
 	stealthTarget string // asset ID to stealth when buying C3-002; empty if no eligible target
 }
 
-func NewBuyAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.Engine) *BuyAsset {
+func NewBuyAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.WorldEngine) *BuyAsset {
 	return &BuyAsset{collector: collector, registry: registry, worldEngine: worldEngine}
 }
 
@@ -171,7 +171,7 @@ func nextAssetSuffix(faction *domain.Faction, def *domain.AssetDefinition) int {
 // purchasableDefinitions returns definitions the faction can afford, meets the
 // minimum attribute rating for, passes tech level on fragmentID, and satisfies
 // the P-flag requirement (Planetary Government on the target world).
-func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.Engine, registry *hooks.Registry) []*domain.AssetDefinition {
+func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.WorldEngine, registry *hooks.Registry) []*domain.AssetDefinition {
 	var worldTL int
 	var worldKnown bool
 	if worldEngine != nil {

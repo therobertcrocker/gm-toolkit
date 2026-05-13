@@ -11,12 +11,12 @@ type Index struct {
 	BasesByLocation  map[string][]*domain.Base
 }
 
-type Engine struct {
+type WorldEngine struct {
 	spatialMap spatial.SpatialMap
 	Index      *Index
 }
 
-func New(dataDir string) (*Engine, error) {
+func New(dataDir string) (*WorldEngine, error) {
 	spatialMap, err := spatial.LoadHybrid(dataDir)
 	if err != nil {
 		return nil, err
@@ -24,11 +24,11 @@ func New(dataDir string) (*Engine, error) {
 	return NewWithMap(spatialMap), nil
 }
 
-func NewWithMap(spatialMap spatial.SpatialMap) *Engine {
-	return &Engine{spatialMap: spatialMap}
+func NewWithMap(spatialMap spatial.SpatialMap) *WorldEngine {
+	return &WorldEngine{spatialMap: spatialMap}
 }
 
-func (engine *Engine) RebuildIndex(factionState *state.FactionState) {
+func (engine *WorldEngine) RebuildIndex(factionState *state.FactionState) {
 	index := &Index{
 		AssetsByLocation: make(map[string][]*domain.Asset),
 		BasesByLocation:  make(map[string][]*domain.Base),
@@ -52,7 +52,7 @@ func (engine *Engine) RebuildIndex(factionState *state.FactionState) {
 	engine.Index = index
 }
 
-func (engine *Engine) Location(id string) (spatial.Location, bool) {
+func (engine *WorldEngine) Location(id string) (spatial.Location, bool) {
 	// type assert to HexLocation
 	if loc, ok := engine.spatialMap.Location(id); ok {
 		if hexLoc, ok := loc.(spatial.HexLocation); ok {
@@ -62,6 +62,6 @@ func (engine *Engine) Location(id string) (spatial.Location, bool) {
 	return nil, false
 }
 
-func (engine *Engine) Distance(fromID, toID string, crossingCost int) (int, error) {
+func (engine *WorldEngine) Distance(fromID, toID string, crossingCost int) (int, error) {
 	return engine.spatialMap.Distance(fromID, toID, crossingCost)
 }
