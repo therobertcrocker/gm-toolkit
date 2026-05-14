@@ -1,4 +1,4 @@
-package history
+package turn
 
 import (
 	"encoding/json"
@@ -9,13 +9,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-type HistoryEngine struct{}
-
-func New() *HistoryEngine { return &HistoryEngine{} }
-
-// Record builds an EventRecord from factionState, faction, and mutations, then
-// marshals it as a single JSON line appended to historyPath.
-func (h *HistoryEngine) Record(historyPath string, factionState *state.FactionState, faction *domain.Faction, mutations []domain.Mutation) error {
+// RecordHistory marshals an EventRecord for faction's turn mutations and appends
+// it as a single JSON line to historyPath.
+func RecordHistory(historyPath string, factionState *state.FactionState, faction *domain.Faction, mutations []domain.Mutation) error {
 	event, err := buildEventRecord(factionState, faction, mutations)
 	if err != nil {
 		return fmt.Errorf("building event record: %w", err)

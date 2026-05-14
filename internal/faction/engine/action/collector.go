@@ -2,6 +2,7 @@ package action
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -10,6 +11,7 @@ import (
 // Collector abstracts all user-input methods that action implementations may call.
 type Collector interface {
 	hooks.Collector
+	ability.Collector
 	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (BuyOrder, error)

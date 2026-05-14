@@ -1,9 +1,10 @@
-package goal
+package goals
 
 import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -16,23 +17,7 @@ func makeLockRulebook() *rulebook.Rulebook {
 	}
 }
 
-func TestCheckLock_NoActiveGoal(t *testing.T) {
-	ge := New()
-	faction := &domain.Faction{ID: "f1"}
-	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-
-	lock, mutations := ge.CheckLock(faction, factionState, makeLockRulebook())
-
-	if lock.Type != LockNone {
-		t.Errorf("LockType = %v, want LockNone", lock.Type)
-	}
-	if len(mutations) != 0 {
-		t.Errorf("mutations = %v, want nil", mutations)
-	}
-}
-
-func TestCheckLock_ChangeHomeworld_InTransit(t *testing.T) {
-	ge := New()
+func TestChangeHomeworld_InTransit(t *testing.T) {
 	faction := &domain.Faction{
 		ID:        "f1",
 		Homeworld: "Tartarus",
@@ -44,9 +29,9 @@ func TestCheckLock_ChangeHomeworld_InTransit(t *testing.T) {
 	}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	lock, mutations := ge.CheckLock(faction, factionState, makeLockRulebook())
+	lock, mutations := ChangeHomeworld{}.CheckLock(faction, factionState, makeLockRulebook())
 
-	if lock.Type != LockSkip {
+	if lock.Type != locks.LockSkip {
 		t.Errorf("LockType = %v, want LockSkip", lock.Type)
 	}
 	if len(mutations) != 1 {
@@ -61,8 +46,7 @@ func TestCheckLock_ChangeHomeworld_InTransit(t *testing.T) {
 	}
 }
 
-func TestCheckLock_ChangeHomeworld_Completing(t *testing.T) {
-	ge := New()
+func TestChangeHomeworld_Completing(t *testing.T) {
 	faction := &domain.Faction{
 		ID:        "f1",
 		Homeworld: "Tartarus",
@@ -74,9 +58,9 @@ func TestCheckLock_ChangeHomeworld_Completing(t *testing.T) {
 	}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	lock, mutations := ge.CheckLock(faction, factionState, makeLockRulebook())
+	lock, mutations := ChangeHomeworld{}.CheckLock(faction, factionState, makeLockRulebook())
 
-	if lock.Type != LockSkip {
+	if lock.Type != locks.LockSkip {
 		t.Errorf("LockType = %v, want LockSkip", lock.Type)
 	}
 	// GoalTurnsTick, HomeworldChanged, GoalCompleted
@@ -98,8 +82,7 @@ func TestCheckLock_ChangeHomeworld_Completing(t *testing.T) {
 	}
 }
 
-func TestCheckLock_PlanetarySeizure_Phase1(t *testing.T) {
-	ge := New()
+func TestPlanetarySeizure_Phase1(t *testing.T) {
 	faction := &domain.Faction{
 		ID: "f1",
 		ActiveGoal: &domain.ActiveGoal{
@@ -110,9 +93,9 @@ func TestCheckLock_PlanetarySeizure_Phase1(t *testing.T) {
 	}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	lock, mutations := ge.CheckLock(faction, factionState, makeLockRulebook())
+	lock, mutations := PlanetarySeizure{}.CheckLock(faction, factionState, makeLockRulebook())
 
-	if lock.Type != LockRestrictActions {
+	if lock.Type != locks.LockRestrictActions {
 		t.Errorf("LockType = %v, want LockRestrictActions", lock.Type)
 	}
 	if len(lock.AllowedActions) != 1 || lock.AllowedActions[0] != "Attack" {

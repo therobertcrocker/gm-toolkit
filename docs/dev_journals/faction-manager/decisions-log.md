@@ -31,6 +31,8 @@ A record of key decisions made during development, grouped by feature branch.
 | [refactor/faction-assets-map](#refactorfaction-assets-map) | 191–194 | Assets map conversion |
 | [refactor/persistence-write-cadence](#refactorpersistence-write-cadence) | 195–196 | History vs. state write separation |
 | [feat/spatial-effort-2](#featspatial-effort-2) | 197–210 | Wiring the spatial layer into the faction engine: config ownership, world sub-engine, index-based scan replacements, TL/P-flag enforcement |
+| [docs/planned-work-refactor](#docsplanned-work-refactor) | 211–214 | `planned-work.md` structural refactor: Backlog table, status taxonomy, H1 rename, Type assignments |
+| [refactor/sub-engine-alignment](#refactorsub-engine-alignment) | 215 | Sibling `goal/locks` package as the cycle-resolution mechanism for Shape 2 sub-engines whose interface signatures reference parent-package types |
 
 <br />
 
@@ -528,3 +530,20 @@ A record of key decisions made during development, grouped by feature branch.
 | 208 | `SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition)` replaces `SelectBuyOrder(worlds, purchasable)`; `SelectExpandInfluenceOrder` gains `eligibleNewBaseWorlds []string` | TL enforcement in BuyAsset requires the world to be selected before definitions are filtered; passing a per-world map makes the dependency explicit and lets the collector show only valid defs for the chosen world. ExpandInfluence's eligible world list is pre-filtered by TL before the collector sees it |
 | 209 | `purchasableDefinitions` uses `dispatch.ResolveWorldTechLevel` to apply tag-based TL modifiers before filtering; raw `loc.TechLevel()` is used in `eligibleNewBaseWorlds` (ExpandInfluence has no hook registry) | Consistent with the existing `ResolveAssetCost` pattern for BuyAsset; ExpandInfluence registry can be added when a tag actually needs to modify world TL for base placement |
 | 210 | `factionHasPlanetaryGovernment(factionID, bases)` checks for any faction-owned base on the target world; no base `Type` field or faction tag check required at this stage | `Base` has no `Type` field in the domain; the simplest enforceable interpretation of the P-flag rule is "faction has an administrative presence (base) on this world." Refine if tag T-011 or base types are added |
+
+### docs/planned-work-refactor
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 211 | `Deferred — Major` and `Deferred — Minor` collapsed into a single `Backlog` table with columns `# \| Item \| Type \| Trigger \| Detail`; `Up Next` gains a `Type` column | Two tables with different schemas created friction when routing between stages; a single flat pool with a `Type` column makes the Backlog → Up Next → Planned Initiative flow explicit and matches the lifecycle in `session-modes.md` |
+| 212 | Status values for Planned Initiatives are `In-Progress` and `Blocked`; `Blocked` requires a `by:` note in the write-up naming the blocker; Spatial Model and World Graph marked `Blocked by: Asset Movement Redesign` | Makes blocked work visible without a separate "Paused" state; the required `by:` note forces the blocker to be named rather than implied |
+| 213 | `# Planned Initiatives` (write-ups H1) renamed to `# Initiative Write-Ups`; the "Planned Initiatives" name is now the table section only | Resolved naming collision between the index table at the top and the write-ups H1 below; table and section now have distinct names that describe distinct purposes |
+| 214 | `Type` field added to `Backlog` and `Up Next`; values are `feature`, `refactor`, `bugfix`, `docs`, `chore` per `session-modes.md`; assignments for all existing items ratified by Robert at the start of this session | Enables initiative routing without context-switching to `session-modes.md`; assignments encode the expected flow before discovery begins |
+
+<br />
+
+### refactor/sub-engine-alignment
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 215 | Goal lock types (`LockType`, `LockNone`, `LockSkip`, `LockRestrictActions`, `GoalLock`) live in a new sibling `internal/faction/engine/goal/locks/` package, imported by both `goal/goal.go` and `goal/goals/*.go`. External callers (`engine/observer.go`, `engine/orchestrator.go`, `testharness/observer.go`, `testharness/scenarios/goal_lock_test.go`) reference `locks.GoalLock` / `locks.LockSkip` / `locks.LockRestrictActions` directly. | The Shape 2 self-bootstrap pattern (`goal.New()` imports `goal/goals` to register defaults) would create a `goal` ⇄ `goals` cycle if handlers also had to import `goal` for the `GoalLock` return type. The tag pattern sidesteps this only because `tag.Handler`'s signatures reference no `tag`-internal types; `goal.Handler.CheckLock` returns `GoalLock`, which is `goal`-internal. Type aliases were considered and rejected (Robert generally avoids aliases); a sibling types package was chosen over hosting the types inside `goal/goals/` (which would mix interface contract with concrete implementations and force three external files to import `goal/goals` directly). |

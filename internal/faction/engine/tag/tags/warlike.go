@@ -2,7 +2,6 @@ package tags
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -32,6 +31,14 @@ func (modifier *WarlikeRollModifier) OfferModifiers(ctx hooks.RollContext, _ *st
 	}}
 }
 
-func RegisterWarlike(eng *engine.Engine, faction *domain.Faction) {
-	eng.Hooks.RegisterRollModifier(hooks.FactionScope(faction.ID), "warlike", &WarlikeRollModifier{})
+type WarlikeHandler struct{}
+
+func (WarlikeHandler) TagID() string { return WarlikeTagID }
+
+func (WarlikeHandler) Apply(faction *domain.Faction, hookRegistry *hooks.Registry) {
+	hookRegistry.RegisterRollModifier(
+		hooks.FactionScope(faction.ID),
+		"warlike",
+		&WarlikeRollModifier{},
+	)
 }

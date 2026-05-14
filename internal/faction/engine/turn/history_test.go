@@ -1,4 +1,4 @@
-package history
+package turn
 
 import (
 	"encoding/json"
@@ -11,10 +11,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func TestHistoryEngine_Record(t *testing.T) {
+func TestRecordHistory(t *testing.T) {
 	dir := t.TempDir()
 	historyPath := filepath.Join(dir, "history.jsonl")
-	he := New()
 
 	factionState := &state.FactionState{CycleNumber: 3}
 	faction := &domain.Faction{ID: "f1"}
@@ -23,8 +22,8 @@ func TestHistoryEngine_Record(t *testing.T) {
 		domain.AssetRemoved{FactionID: "f1", AssetID: "a1"},
 	}
 
-	if err := he.Record(historyPath, factionState, faction, mutations); err != nil {
-		t.Fatalf("Record: %v", err)
+	if err := RecordHistory(historyPath, factionState, faction, mutations); err != nil {
+		t.Fatalf("RecordHistory: %v", err)
 	}
 
 	data, err := os.ReadFile(historyPath)
@@ -54,18 +53,17 @@ func TestHistoryEngine_Record(t *testing.T) {
 	}
 }
 
-func TestHistoryEngine_RecordAppends(t *testing.T) {
+func TestRecordHistoryAppends(t *testing.T) {
 	dir := t.TempDir()
 	historyPath := filepath.Join(dir, "history.jsonl")
-	he := New()
 
 	factionState := &state.FactionState{CycleNumber: 1}
 
-	if err := he.Record(historyPath, factionState, &domain.Faction{ID: "f1"}, nil); err != nil {
-		t.Fatalf("Record 1: %v", err)
+	if err := RecordHistory(historyPath, factionState, &domain.Faction{ID: "f1"}, nil); err != nil {
+		t.Fatalf("RecordHistory 1: %v", err)
 	}
-	if err := he.Record(historyPath, factionState, &domain.Faction{ID: "f2"}, nil); err != nil {
-		t.Fatalf("Record 2: %v", err)
+	if err := RecordHistory(historyPath, factionState, &domain.Faction{ID: "f2"}, nil); err != nil {
+		t.Fatalf("RecordHistory 2: %v", err)
 	}
 
 	data, err := os.ReadFile(historyPath)

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -13,14 +13,14 @@ import (
 // UseAssetAbility activates the special ability of one or more A-flagged assets.
 // Assets are committed up front in resolution order; each is resolved in sequence.
 type UseAssetAbility struct {
-	collector      engine.InputCollector
+	collector      action.Collector
 	roller         domain.Roller
 	abilityEngine  *ability.AbilityEngine
 	selectedAssets []*domain.Asset
 	mutations      []domain.Mutation
 }
 
-func NewUseAssetAbility(collector engine.InputCollector, roller domain.Roller, abilityEngine *ability.AbilityEngine) *UseAssetAbility {
+func NewUseAssetAbility(collector action.Collector, roller domain.Roller, abilityEngine *ability.AbilityEngine) *UseAssetAbility {
 	return &UseAssetAbility{
 		collector:     collector,
 		roller:        roller,

@@ -2,27 +2,45 @@ package tag
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag/tags"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-var handlers = map[string]func(*engine.Engine, *domain.Faction){
-	tags.ScavengersTagID:       tags.RegisterScavengers,
-	tags.WarlikeTagID:          tags.RegisterWarlike,
-	tags.FanaticalTagID:        tags.RegisterFanatical,
-	tags.PreceptorArchiveTagID: tags.RegisterPreceptorArchive,
+type Handler interface {
+	TagID() string
+	Apply(faction *domain.Faction, hookRegistry *hooks.Registry)
 }
 
-// RegisterDefaultTags walks factionState and, for each faction tag with a
-// known handler, registers the corresponding hook into eng.
-// Tags without a handler are silently skipped (data-only).
-func RegisterDefaultTags(eng *engine.Engine, factionState *state.FactionState) {
+type TagEngine struct {
+	handlers map[string]Handler
+}
+
+func New() *TagEngine {
+	e := &TagEngine{handlers: make(map[string]Handler)}
+	e.Register(tags.ScavengersHandler{})
+	e.Register(tags.WarlikeHandler{})
+	e.Register(tags.FanaticalHandler{})
+	e.Register(tags.PreceptorArchiveHandler{})
+	return e
+}
+
+func (e *TagEngine) Register(handler Handler) {
+	e.handlers[handler.TagID()] = handler
+}
+
+// ApplyAll walks every faction-tag in factionState and invokes the registered
+// handler for that tag ID. Tags with no registered handler are silently
+// skipped — they are data-only entries from the rulebook.
+func (e *TagEngine) ApplyAll(factionState *state.FactionState, hookRegistry *hooks.Registry) {
 	for _, faction := range factionState.Factions {
 		for _, tag := range faction.Tags {
-			if register, ok := handlers[tag.ID]; ok {
-				register(eng, faction)
+			handler, ok := e.handlers[tag.ID]
+			if !ok {
+				// Data-only tag: present in tags TOML, no Go handler registered. Intentional.
+				continue
 			}
+			handler.Apply(faction, hookRegistry)
 		}
 	}
 }

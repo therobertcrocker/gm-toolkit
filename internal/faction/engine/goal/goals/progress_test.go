@@ -1,4 +1,4 @@
-package goal
+package goals
 
 import (
 	"testing"
@@ -60,21 +60,21 @@ func makeMilitaryConquestState(f1Force, goalProgress int) (*state.FactionState, 
 	return factionState, acting
 }
 
-func TestProgressMilitaryConquest_NoKills(t *testing.T) {
+func TestMilitaryConquest_NoKills(t *testing.T) {
 	factionState, acting := makeMilitaryConquestState(3, 0)
 	rb := makeProgressRulebook()
-	mutations := progressMilitaryConquest(acting, nil, factionState, rb)
+	mutations := MilitaryConquest{}.UpdateProgress(acting, nil, factionState, rb, nil)
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for no kills, got %v", mutations)
 	}
 }
 
-func TestProgressMilitaryConquest_KillBelowThreshold(t *testing.T) {
+func TestMilitaryConquest_KillBelowThreshold(t *testing.T) {
 	factionState, acting := makeMilitaryConquestState(3, 0)
 	rb := makeProgressRulebook()
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
-	mutations := progressMilitaryConquest(acting, input, factionState, rb)
+	mutations := MilitaryConquest{}.UpdateProgress(acting, input, factionState, rb, nil)
 
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
@@ -88,13 +88,13 @@ func TestProgressMilitaryConquest_KillBelowThreshold(t *testing.T) {
 	}
 }
 
-func TestProgressMilitaryConquest_KillCompletesGoal(t *testing.T) {
+func TestMilitaryConquest_KillCompletesGoal(t *testing.T) {
 	// Force=1 means a single kill (progress 0+1 >= 1) triggers completion.
 	factionState, acting := makeMilitaryConquestState(1, 0)
 	rb := makeProgressRulebook()
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
-	mutations := progressMilitaryConquest(acting, input, factionState, rb)
+	mutations := MilitaryConquest{}.UpdateProgress(acting, input, factionState, rb, nil)
 
 	// GoalProgressed + GoalCompleted + XPAwarded
 	if len(mutations) != 3 {
@@ -111,7 +111,7 @@ func TestProgressMilitaryConquest_KillCompletesGoal(t *testing.T) {
 	}
 }
 
-func TestProgressCommercialExpansion_NoKills(t *testing.T) {
+func TestCommercialExpansion_NoKills(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "wealth-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
 		ID:         "f1",
@@ -121,13 +121,13 @@ func TestProgressCommercialExpansion_NoKills(t *testing.T) {
 	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
-	mutations := progressCommercialExpansion(acting, nil, factionState, makeProgressRulebook())
+	mutations := CommercialExpansion{}.UpdateProgress(acting, nil, factionState, makeProgressRulebook(), nil)
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for no kills, got %v", mutations)
 	}
 }
 
-func TestProgressCommercialExpansion_KillCompletesGoal(t *testing.T) {
+func TestCommercialExpansion_KillCompletesGoal(t *testing.T) {
 	// Wealth=1 means one Wealth kill completes the goal.
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "wealth-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
@@ -139,7 +139,7 @@ func TestProgressCommercialExpansion_KillCompletesGoal(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
-	mutations := progressCommercialExpansion(acting, input, factionState, makeProgressRulebook())
+	mutations := CommercialExpansion{}.UpdateProgress(acting, input, factionState, makeProgressRulebook(), nil)
 
 	if len(mutations) != 3 {
 		t.Fatalf("len(mutations) = %d, want 3; got %v", len(mutations), mutations)
@@ -149,7 +149,7 @@ func TestProgressCommercialExpansion_KillCompletesGoal(t *testing.T) {
 	}
 }
 
-func TestProgressIntelligenceCoup_NoKills(t *testing.T) {
+func TestIntelligenceCoup_NoKills(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "cunning-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
 		ID:         "f1",
@@ -159,13 +159,13 @@ func TestProgressIntelligenceCoup_NoKills(t *testing.T) {
 	rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"d1": rivalAsset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
-	mutations := progressIntelligenceCoup(acting, nil, factionState, makeProgressRulebook())
+	mutations := IntelligenceCoup{}.UpdateProgress(acting, nil, factionState, makeProgressRulebook(), nil)
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for no kills, got %v", mutations)
 	}
 }
 
-func TestProgressIntelligenceCoup_KillBelowThreshold(t *testing.T) {
+func TestIntelligenceCoup_KillBelowThreshold(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "cunning-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
 		ID:         "f1",
@@ -176,7 +176,7 @@ func TestProgressIntelligenceCoup_KillBelowThreshold(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
-	mutations := progressIntelligenceCoup(acting, input, factionState, makeProgressRulebook())
+	mutations := IntelligenceCoup{}.UpdateProgress(acting, input, factionState, makeProgressRulebook(), nil)
 
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
@@ -190,7 +190,7 @@ func TestProgressIntelligenceCoup_KillBelowThreshold(t *testing.T) {
 	}
 }
 
-func TestProgressIntelligenceCoup_KillCompletesGoal(t *testing.T) {
+func TestIntelligenceCoup_KillCompletesGoal(t *testing.T) {
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "cunning-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
 		ID:         "f1",
@@ -201,7 +201,7 @@ func TestProgressIntelligenceCoup_KillCompletesGoal(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
-	mutations := progressIntelligenceCoup(acting, input, factionState, makeProgressRulebook())
+	mutations := IntelligenceCoup{}.UpdateProgress(acting, input, factionState, makeProgressRulebook(), nil)
 
 	if len(mutations) != 3 {
 		t.Fatalf("len(mutations) = %d, want 3; got %v", len(mutations), mutations)
@@ -211,7 +211,7 @@ func TestProgressIntelligenceCoup_KillCompletesGoal(t *testing.T) {
 	}
 }
 
-func TestProgressMilitaryConquest_WrongCategory_NoProgress(t *testing.T) {
+func TestMilitaryConquest_WrongCategory_NoProgress(t *testing.T) {
 	// Rival has a Wealth asset, not Force — should not count toward MilitaryConquest.
 	rivalAsset := &domain.Asset{ID: "d1", DefinitionID: "wealth-asset-def", OwnerID: "f2"}
 	acting := &domain.Faction{
@@ -223,7 +223,7 @@ func TestProgressMilitaryConquest_WrongCategory_NoProgress(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": acting, "f2": rival}}
 
 	input := []domain.Mutation{killMutation("f1", "f2", "d1")}
-	mutations := progressMilitaryConquest(acting, input, factionState, makeProgressRulebook())
+	mutations := MilitaryConquest{}.UpdateProgress(acting, input, factionState, makeProgressRulebook(), nil)
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for wrong asset category, got %v", mutations)
 	}

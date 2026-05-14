@@ -2,7 +2,6 @@ package tags
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 )
 
@@ -24,8 +23,12 @@ func (modifier *PreceptorArchiveCostModifier) ModifyAssetCost(_ *domain.Faction,
 
 }
 
-func RegisterPreceptorArchive(eng *engine.Engine, faction *domain.Faction) {
-	eng.Hooks.RegisterAssetCostModifier(
+type PreceptorArchiveHandler struct{}
+
+func (PreceptorArchiveHandler) TagID() string { return PreceptorArchiveTagID }
+
+func (PreceptorArchiveHandler) Apply(faction *domain.Faction, hookRegistry *hooks.Registry) {
+	hookRegistry.RegisterAssetCostModifier(
 		hooks.FactionScope(faction.ID),
 		"preceptor-archive",
 		&PreceptorArchiveCostModifier{},
