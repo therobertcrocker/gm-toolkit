@@ -7,10 +7,26 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// GoalEngine evaluates and advances faction goal state.
-type GoalEngine struct{}
+// Handler resolves goal logic for a single goal ID.
+type Handler interface {
+	GoalID() string
+	CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (GoalLock, []domain.Mutation)
+	UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook, index *world.Index) []domain.Mutation
+}
 
-func New() *GoalEngine { return &GoalEngine{} }
+// GoalEngine evaluates and advances faction goal state.
+type GoalEngine struct {
+	handlers map[string]Handler
+}
+
+func New() *GoalEngine {
+	return &GoalEngine{handlers: make(map[string]Handler)}
+	// Phase 3.2 will add e.Register(goals.Foo{}) calls here.
+}
+
+func (ge *GoalEngine) Register(handler Handler) {
+	ge.handlers[handler.GoalID()] = handler
+}
 
 // CheckLock evaluates the faction's active goal and returns the appropriate lock
 // state. Must be called before bookkeeping and action selection each turn.
@@ -18,6 +34,10 @@ func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.Fac
 	if faction.ActiveGoal == nil {
 		return GoalLock{Type: LockNone}, nil
 	}
+	if handler, ok := ge.handlers[faction.ActiveGoal.GoalID]; ok {
+		return handler.CheckLock(faction, factionState, rulebook)
+	}
+	// Parallel path during Effort 3 migration; removed in Phase 3.2.
 	switch faction.ActiveGoal.GoalID {
 	case "G-012":
 		return checkLockChangeHomeworld(faction)
@@ -42,6 +62,10 @@ func (ge *GoalEngine) UpdateProgress(
 	if !ok || actingFaction.ActiveGoal == nil {
 		return nil
 	}
+	if handler, ok := ge.handlers[actingFaction.ActiveGoal.GoalID]; ok {
+		return handler.UpdateProgress(actingFaction, mutations, factionState, rulebook, index)
+	}
+	// Parallel path during Effort 3 migration; removed in Phase 3.2.
 	switch actingFaction.ActiveGoal.GoalID {
 	case "G-001":
 		return progressMilitaryConquest(actingFaction, mutations, factionState, rulebook)
