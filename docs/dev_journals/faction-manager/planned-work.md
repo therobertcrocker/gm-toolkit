@@ -4,14 +4,14 @@ Pre-discovery initiative tracker. Deferred items move to Planned Initiatives whe
 
 <br/>
 
-## Current Initiatives
+## Planned Initiatives
 
 Full write-ups below. Each item has been scoped enough to warrant a dedicated discovery phase.
 
-| # | Item | Size | Status | Trigger |
-|---|------|------|--------|---------|
-| 1 | [Spatial Model and World Graph](#spatial-model-and-world-graph) | Major | In-Progress | Hex distance, tech level, or Pirates tag becomes blocking |
-| 2 | [Asset Movement Redesign](#asset-movement-redesign) | Major | In-Progress | Current movement model felt limiting in play; overlaps with Spatial Phase 3 Commit 3 and Phase 4 |
+| # | Item | Type | Status | Detail |
+|---|------|------|--------|--------|
+| 1 | [Spatial Model and World Graph](#spatial-model-and-world-graph) | feature | Blocked | — |
+| 2 | [Asset Movement Redesign](#asset-movement-redesign) | feature | In-Progress | — |
 
 ---
 <br/>
@@ -19,53 +19,42 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 ## Up Next (Ready or Near Ready)
 The queue of deferred items that are ready to become initiatives. These are scoped and waiting for their trigger conditions to be met.
 
-|# | Item | Trigger | 
-|---|------|--------|
-| 0 | CLI Rebuild | When tool is mechanically complete |
-| 9 | Spatial map CLI | When spatial model work begins; would be a CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
-| 10 | Registration Pattern Refactor | When the tool is mechanically stable; would refactor Goal, Ability, etc to match action and tag registration patterns |
+| # | Item | Type | Trigger | Detail |
+|---|------|------|---------|--------|
+| 0 | CLI Rebuild | feature | When tool is mechanically complete | — |
+| 9 | Spatial map CLI | feature | When spatial model work begins | CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
+| 10 | Registration Pattern Refactor | refactor | When the tool is mechanically stable | refactor Goal, Ability, etc to match action and tag registration patterns |
 
 ---
 <br />
 
-## Deferred — Major
+## Backlog
 
-Items that will eventually warrant a full initiative entry. Each moves to Planned Initiatives when scoped.
+Unscoped items waiting for their trigger. Move to Up Next when the trigger is close; move to Planned Initiatives when fully scoped for discovery.
 
-| # | Item | Trigger |
-|---|------|---------|
-| 0 | CLI Rebuild | When tool is mechanically complete |
-| 1 | TUI Rebuild | When tool is mechanically complete (and CLI Rebuild is done) |
-| 2 | Programmatic tag handling | Scheduled tag milestone; 18 remaining tags + Effects Engine (`S`-flag assets); design in `tag-engine-discovery.md` |
-| 3 | Campaign-scoped static data | No concrete trigger; revisit when distribution story is resolved |
-| 4 | Command layer state mutation | Engine has sufficient substance to absorb `engine.CreateFaction` |
-| 5 | Maintenance costs per asset | Cost data added to `AssetDefinition` in TOML |
-| 6 | Starting Coin | Coin tracking designed and landed |
-| 7 | Tag-granted assets | Engine action resolution complete |
-| 8 | Tag reminder affordance | Alongside programmatic tag handling |
-| 9 | Spatial map CLI | When spatial model work begins; would be a CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
-| 10 | Registration Pattern Refactor | When the tool is mechanically stable; would refactor Goal, Ability, etc to match action and tag registration patterns |
-
----
-<br/>
-
-## Deferred — Minor
-
-Small, targeted fixes. No write-up needed — tracked here until scheduled.
-
-| # | Item | Detail |
-|---|------|--------|
-| 1 | `BuyAsset` stealth ID hardcode (`"C3-002"`) | Add `stealth_applicator` flag or typed `TypeStealth` constant; silently breaks if the TOML ID changes |
-| 2 | Goal/tag dispatch hardcodes display IDs | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only; one-time migration |
-| 3 | `SeizePlanet` invisible in history | `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
-| 4 | `narrateUseAssetAbility` fallback text | Moot until TUI rebuild; resurfaces when narration is re-implemented against the new observer interface |
-| 5 | Structured logging layer | No `log` package calls anywhere; `BuildSpatialIndex` silently skips stale fragments with a TODO; add a lightweight, consistent logging approach across the tool |
+| # | Item | Type | Trigger | Detail |
+|---|------|------|---------|--------|
+| 1 | TUI Rebuild | feature | When tool is mechanically complete (and CLI Rebuild is done) | — |
+| 2 | Programmatic tag handling | feature | Scheduled tag milestone; 18 remaining tags + Effects Engine (`S`-flag assets); design in `tag-engine-discovery.md` | — |
+| 3 | Campaign-scoped static data | feature | No concrete trigger; revisit when distribution story is resolved | — |
+| 4 | Command layer state mutation | refactor | Engine has sufficient substance to absorb `engine.CreateFaction` | — |
+| 5 | Maintenance costs per asset | feature | Cost data added to `AssetDefinition` in TOML | — |
+| 6 | Starting Coin | feature | Coin tracking designed and landed | — |
+| 7 | Tag-granted assets | feature | Engine action resolution complete | — |
+| 8 | Tag reminder affordance | feature | Alongside programmatic tag handling | — |
+| 11 | Declarative Action Preconditions | refactor | When AI/planner integration becomes scoped | lift `Action.Validate(...) bool` into `Action.Preconditions(...) []Precondition` — unlocks backward search, self-explanation, and structured error messages for free |
+| 12 | Unified Goal State Predicates | feature | When AI/planner integration becomes scoped | add a uniform `Satisfied(state) bool` alongside the per-goal `progressX` functions. Process-style progression stays for narrative; predicate form lets agents set arbitrary world states as goals. Both shapes coexist |
+| 13 | `BuyAsset` stealth ID hardcode (`"C3-002"`) | bugfix | — | Add `stealth_applicator` flag or typed `TypeStealth` constant; silently breaks if the TOML ID changes |
+| 14 | Goal/tag dispatch hardcodes display IDs | bugfix | — | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only; one-time migration |
+| 15 | `SeizePlanet` invisible in history | bugfix | — | `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
+| 16 | `narrateUseAssetAbility` fallback text | bugfix | — | Moot until TUI rebuild; resurfaces when narration is re-implemented against the new observer interface |
+| 17 | Structured logging layer | feature | — | No `log` package calls anywhere; `BuildSpatialIndex` silently skips stale fragments with a TODO; add a lightweight, consistent logging approach across the tool |
 
 ---
 <br />
 <br />
 
-# Planned Initiatives
+# Initiative Write-Ups
 This section contains detailed write-ups for each planned initiative, including problem statements, proposed approaches, tradeoffs, and triggers. This will be the source of truth when it comes time to start discovery work on any of these items.
 
 <br />
@@ -108,7 +97,7 @@ Pick up when the first of these becomes blocking: tech level enforcement is need
 - **Phase 1 — `internal/spatial` package:** complete
 - **Phase 2 — engine wiring with `SpatialIndex`:** complete (`feat/spatial-effort-2`)
 - **Phase 3 Commits 1 & 2 — TL and P-flag enforcement:** complete (`feat/spatial-effort-2`)
-- **Paused pending Asset Movement Redesign:** Phase 3 Commit 3 (MaxHex enforcement on `UseAssetAbility` movement), the MaxHex portion of Phase 3 Commit 4 tests, and Phase 4 (Change Homeworld distance from spatial path). These will be re-planned as part of the movement redesign rather than executed against the current `spatial-model-effort-2-plan.md` — a new implementation plan covering them alongside the redesign will be written when the movement initiative reaches its plan session
+- **Blocked by: Asset Movement Redesign** — Phase 3 Commit 3 (MaxHex enforcement on `UseAssetAbility` movement), the MaxHex portion of Phase 3 Commit 4 tests, and Phase 4 (Change Homeworld distance from spatial path). These will be re-planned as part of the movement redesign rather than executed against the current `spatial-model-effort-2-plan.md` — a new implementation plan covering them alongside the redesign will be written when the movement initiative reaches its plan session
 
 <br/>
 <br/>
@@ -139,4 +128,3 @@ Existing ability-step movement (e.g. `Strike Fleet`, `Capital Fleet`, `Integral 
 ### Trigger
 
 Active — current movement model felt limiting in play; design overlap with Spatial Phase 3 Commit 3 and Phase 4 makes this the right time to pause spatial work and redesign. Discovery is the next session.
-

@@ -29,7 +29,8 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 | Architecture or system shape         | `docs/architecture-overview.md`             |
 | Rules behavior                       | `docs/swn-faction-mechanics.md`             |
 | Creating or editing any doc          | `docs/style-guide.md`                       |
-| When implementing a feature...       | `docs/implementation/<feature>.md`          |                   
+| When implementing a feature...       | `docs/implementation/<feature>.md`          |
+| Session modes, flows, or templates   | `docs/process/session-modes.md`             |
 
 **Searching the decisions log:** Do not read the full file. Use one of:
 - **Index first:** Read the index at the top (~25 lines), find the relevant section by topic, then read only that section using `offset`/`limit`.
@@ -39,17 +40,7 @@ When docs conflict, flag the conflict before proceeding. When docs are silent on
 
 ## Session Modes
 
-Work flows through three modes. Each is its own Claude session.
-
-1. **Discovery** — produces a discovery doc
-2. **Plan** — produces an implementation plan, including its phase breakdown
-3. **Execution** — implements the plan, phase by phase. One session per commit (as defined in the plan).
-
-A session ends at its deliverable. Do not start the next mode's work in the same session, even if its inputs are ready.
-
-**Most-violated boundary: Plan → Execution.** When the current session's output is an implementation plan, stop after the plan is written, approved, or handed off. Do not write code, edit source files, or stage edits. If the user pushes to keep going, suggest opening a new session.
-
-**Plan mode is a strong signal.** When plan mode is active and the stated deliverable is a file (a discovery doc or implementation plan), that file is the entire session output. ExitPlanMode is not a handoff into implementation — it is the end of the session. Do not queue file edits, Bash commands, or follow-up work to run after exit. End the turn after the file is written.
+See `docs/process/session-modes.md` for the full description of Discovery / Plan / Execution modes, the initiative lifecycle, per-type flows (feature / refactor / bugfix / docs / chore), session discipline, and templates.
 
 ## Model Selection
 
