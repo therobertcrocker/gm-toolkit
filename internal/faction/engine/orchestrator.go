@@ -7,6 +7,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -250,7 +251,7 @@ func (e *Engine) applyAndRecord(
 		return nil
 	}
 	e.Mutation.Apply(factionState, mutations)
-	if err := e.History.Record(cfg.HistoryPath, factionState, faction, mutations); err != nil {
+	if err := turn.RecordHistory(cfg.HistoryPath, factionState, faction, mutations); err != nil {
 		return fmt.Errorf("recording history: %w", err)
 	}
 	return nil

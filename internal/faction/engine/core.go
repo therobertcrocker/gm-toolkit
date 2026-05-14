@@ -6,7 +6,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/history"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
@@ -24,8 +23,8 @@ import (
 //   - dispatch/      — category-based hook dispatch (Cat 3 mutations, Cat 1+2 rolls, Cat 4+5 rules)
 //
 // Supporting files (roller.go) and sub-packages (action/, ability/, goal/,
-// history/, mutation/, turn/, testharness/) provide the mechanics the
-// orchestrator delegates to.
+// mutation/, turn/, testharness/) provide the mechanics the orchestrator
+// delegates to.
 
 // Engine is the composition root. It owns the Rulebook and all sub-engines.
 type Engine struct {
@@ -37,7 +36,6 @@ type Engine struct {
 	Mutation *mutation.MutationEngine
 	Action   *action.ActionEngine
 	Ability  *ability.AbilityEngine
-	History  *history.HistoryEngine
 	Goal     *goal.GoalEngine
 	World    *world.WorldEngine
 }
@@ -64,7 +62,6 @@ func NewWithRulebook(rulebook *rulebook.Rulebook) *Engine {
 	e.Mutation = mutation.New()
 	e.Action = action.New()
 	e.Ability = ability.New()
-	e.History = history.New()
 	e.Goal = goal.New()
 	e.Tag = tag.New()
 	return e
