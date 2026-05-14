@@ -3,6 +3,7 @@ package tag
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag/tags"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -16,7 +17,12 @@ type TagEngine struct {
 }
 
 func New() *TagEngine {
-	return &TagEngine{handlers: make(map[string]Handler)}
+	e := &TagEngine{handlers: make(map[string]Handler)}
+	e.Register(tags.ScavengersHandler{})
+	e.Register(tags.WarlikeHandler{})
+	e.Register(tags.FanaticalHandler{})
+	e.Register(tags.PreceptorArchiveHandler{})
+	return e
 }
 
 func (e *TagEngine) Register(handler Handler) {

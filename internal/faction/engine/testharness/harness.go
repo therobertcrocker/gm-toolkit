@@ -13,7 +13,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag/tags"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
@@ -70,7 +69,6 @@ func NewHarness(t *testing.T, dataDir string) *Harness {
 	}
 	eng.World = world.NewWithMap(&stubSpatialMap{})
 	actions.RegisterDefaultActions(eng)
-	tags.RegisterDefaultTags(eng)
 
 	return &Harness{
 		Engine:       eng,
