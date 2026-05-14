@@ -23,7 +23,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 |---|------|------|---------|--------|
 | 0 | CLI Rebuild | feature | When tool is mechanically complete | — |
 | 9 | Spatial map CLI | feature | When spatial model work begins | CLI tool to generate the `worlds.toml` file from a user-provided template or data source |
-| 10 | Registration Pattern Refactor | refactor | When the tool is mechanically stable | refactor Goal, Ability, etc to match action and tag registration patterns |
 
 ---
 <br />
@@ -50,6 +49,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | 16 | `narrateUseAssetAbility` fallback text | bugfix | — | Moot until TUI rebuild; resurfaces when narration is re-implemented against the new observer interface |
 | 17 | Structured logging layer | feature | — | No `log` package calls anywhere; `BuildSpatialIndex` silently skips stale fragments with a TODO; add a lightweight, consistent logging approach across the tool |
 | 18 | Goal XP not derived from `difficulty` | bugfix | — | Each handler in `goal/goals/` hardcodes its XP value (constants like `2` for "moderate", `1` for "low", or inline formulas) and `completeGoal(faction, xp)` accepts the result. The `difficulty` field in `goals.toml` is descriptive-only — a GM edit silently diverges from awarded XP. Two flavors to wire: constants (`"low"`/`"moderate"`/`"none"`) and formulas (`"half_assets_destroyed"`, `"half_avg_ruling_faction"`, `"one_plus_avg_target"`, `"low_plus_contested"`). Likely needs `Difficulty` retyped from `string` to either an int or a tagged sum so the engine can dispatch. |
+| 19 | Ability Engine Redesign | refactor | After Asset Movement Redesign — movement step likely eliminated or restructured, making this the right time to revisit | The `steps/` sub-package is Shape 1 code (closed two-value enum switch) housed in a Shape 2 structure (sibling handler package). Symptom: `steps.Collector` is a structural duplicate of `ability.Collector`, required only to avoid the `ability` ↔ `steps` import cycle. The step functions likely belong directly in `ability/` with no sub-package. Broader question: once movement is decoupled from the ability engine (see Asset Movement Redesign), what does ability resolution actually look like? Discovery should decide the right shape before implementing. |
 
 ---
 <br />

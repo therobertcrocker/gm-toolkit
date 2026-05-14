@@ -9,7 +9,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func FactionTestStepHandler(
+func FactionCheck(
 	faction *domain.Faction,
 	asset *domain.Asset,
 	step domain.AbilityStep,

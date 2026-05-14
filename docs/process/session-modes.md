@@ -59,7 +59,6 @@ Promotion from Up Next to Planned Initiative is Robert's explicit call. The writ
 When all execution phases land and the branch is merged:
 
 1. Remove the row from the Planned Initiatives table and the write-up from `planned-work.md`
-2. Update the dev journal (`docs/dev_journals/faction-manager/dev-journal-factions.md`) per CLAUDE.md's pre-merge checklist
 3. Tag the version bump if warranted (per CLAUDE.md)
 
 ### Minor items

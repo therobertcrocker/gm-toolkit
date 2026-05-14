@@ -8,7 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func MovementStepHandler(
+func Movement(
 	faction *domain.Faction,
 	asset *domain.Asset,
 	step domain.AbilityStep,

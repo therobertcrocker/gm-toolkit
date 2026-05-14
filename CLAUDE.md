@@ -12,8 +12,7 @@
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
 7. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
-   2. Update the dev journal (`docs/dev_journals/faction-manager/dev-journal-factions.md`) with a summary of the work and any relevant notes (e.g. open questions, design decisions, next steps)
-   3. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred decisions that arose during the work. If a feature was completed, remove it from the planned work doc.
+   2. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred decisions that arose during the work. If a feature was completed, remove it from the planned work doc.
 8. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 9.  Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 

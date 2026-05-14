@@ -72,9 +72,9 @@ func runStep(
 ) ([]domain.Mutation, error) {
 	switch step.Type {
 	case domain.AbilityStepMovement:
-		return steps.MovementStepHandler(faction, asset, step, collector, roller, factionState, rulebook)
+		return steps.Movement(faction, asset, step, collector, roller, factionState, rulebook)
 	case domain.AbilityStepFactionTest:
-		return steps.FactionTestStepHandler(faction, asset, step, collector, roller, factionState, rulebook)
+		return steps.FactionCheck(faction, asset, step, collector, roller, factionState, rulebook)
 	default:
 		return nil, fmt.Errorf("no handler for ability step type %q", step.Type)
 	}

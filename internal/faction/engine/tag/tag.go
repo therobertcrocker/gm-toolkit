@@ -37,6 +37,7 @@ func (e *TagEngine) ApplyAll(factionState *state.FactionState, hookRegistry *hoo
 		for _, tag := range faction.Tags {
 			handler, ok := e.handlers[tag.ID]
 			if !ok {
+				// Data-only tag: present in tags TOML, no Go handler registered. Intentional.
 				continue
 			}
 			handler.Apply(faction, hookRegistry)
