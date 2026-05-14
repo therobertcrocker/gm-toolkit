@@ -32,6 +32,7 @@ A record of key decisions made during development, grouped by feature branch.
 | [refactor/persistence-write-cadence](#refactorpersistence-write-cadence) | 195–196 | History vs. state write separation |
 | [feat/spatial-effort-2](#featspatial-effort-2) | 197–210 | Wiring the spatial layer into the faction engine: config ownership, world sub-engine, index-based scan replacements, TL/P-flag enforcement |
 | [docs/planned-work-refactor](#docsplanned-work-refactor) | 211–214 | `planned-work.md` structural refactor: Backlog table, status taxonomy, H1 rename, Type assignments |
+| [refactor/sub-engine-alignment](#refactorsub-engine-alignment) | 215 | Sibling `goal/locks` package as the cycle-resolution mechanism for Shape 2 sub-engines whose interface signatures reference parent-package types |
 
 <br />
 
@@ -538,3 +539,11 @@ A record of key decisions made during development, grouped by feature branch.
 | 212 | Status values for Planned Initiatives are `In-Progress` and `Blocked`; `Blocked` requires a `by:` note in the write-up naming the blocker; Spatial Model and World Graph marked `Blocked by: Asset Movement Redesign` | Makes blocked work visible without a separate "Paused" state; the required `by:` note forces the blocker to be named rather than implied |
 | 213 | `# Planned Initiatives` (write-ups H1) renamed to `# Initiative Write-Ups`; the "Planned Initiatives" name is now the table section only | Resolved naming collision between the index table at the top and the write-ups H1 below; table and section now have distinct names that describe distinct purposes |
 | 214 | `Type` field added to `Backlog` and `Up Next`; values are `feature`, `refactor`, `bugfix`, `docs`, `chore` per `session-modes.md`; assignments for all existing items ratified by Robert at the start of this session | Enables initiative routing without context-switching to `session-modes.md`; assignments encode the expected flow before discovery begins |
+
+<br />
+
+### refactor/sub-engine-alignment
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 215 | Goal lock types (`LockType`, `LockNone`, `LockSkip`, `LockRestrictActions`, `GoalLock`) live in a new sibling `internal/faction/engine/goal/locks/` package, imported by both `goal/goal.go` and `goal/goals/*.go`. External callers (`engine/observer.go`, `engine/orchestrator.go`, `testharness/observer.go`, `testharness/scenarios/goal_lock_test.go`) reference `locks.GoalLock` / `locks.LockSkip` / `locks.LockRestrictActions` directly. | The Shape 2 self-bootstrap pattern (`goal.New()` imports `goal/goals` to register defaults) would create a `goal` ⇄ `goals` cycle if handlers also had to import `goal` for the `GoalLock` return type. The tag pattern sidesteps this only because `tag.Handler`'s signatures reference no `tag`-internal types; `goal.Handler.CheckLock` returns `GoalLock`, which is `goal`-internal. Type aliases were considered and rejected (Robert generally avoids aliases); a sibling types package was chosen over hosting the types inside `goal/goals/` (which would mix interface contract with concrete implementations and force three external files to import `goal/goals` directly). |

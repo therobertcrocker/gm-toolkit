@@ -6,7 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -53,7 +53,7 @@ func (e *Engine) RunFactionTurn(
 	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook)
 	observer.OnGoalLockApplied(faction, lock, lockMutations)
 
-	if lock.Type == goal.LockSkip {
+	if lock.Type == locks.LockSkip {
 		if len(lockMutations) > 0 {
 			if err := e.applyAndRecord(factionState, faction, lockMutations, cfg); err != nil {
 				observer.OnError(faction, err)
@@ -121,7 +121,7 @@ func (e *Engine) RunFactionTurn(
 	// actions if relevant.
 
 	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collector)
-	if lock.Type == goal.LockRestrictActions {
+	if lock.Type == locks.LockRestrictActions {
 		available = filterAllowedActions(available, lock.AllowedActions)
 	}
 

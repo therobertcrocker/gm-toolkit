@@ -5,7 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -71,7 +71,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 			alphaLock = ev.Payload.(testharness.GoalLockPayload)
 		}
 	}
-	if alphaLock.Lock.Type != goal.LockSkip {
+	if alphaLock.Lock.Type != locks.LockSkip {
 		t.Errorf("alpha lock type: got %v, want LockSkip", alphaLock.Lock.Type)
 	}
 	if len(alphaLock.Mutations) != 1 {

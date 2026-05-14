@@ -6,7 +6,7 @@ package testharness
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -34,7 +34,7 @@ func (r *RecordingObserver) OnFactionSkipped(faction *domain.Faction) {
 	r.Events = append(r.Events, ObservedEvent{Kind: "FactionSkipped", Faction: faction})
 }
 
-func (r *RecordingObserver) OnGoalLockApplied(faction *domain.Faction, lock goal.GoalLock, mutations []domain.Mutation) {
+func (r *RecordingObserver) OnGoalLockApplied(faction *domain.Faction, lock locks.GoalLock, mutations []domain.Mutation) {
 	r.Events = append(r.Events, ObservedEvent{
 		Kind:    "GoalLockApplied",
 		Faction: faction,
@@ -97,7 +97,7 @@ func (r *RecordingObserver) Kinds() []string {
 
 // GoalLockPayload is the Payload type for GoalLockApplied events.
 type GoalLockPayload struct {
-	Lock      goal.GoalLock
+	Lock      locks.GoalLock
 	Mutations []domain.Mutation
 }
 

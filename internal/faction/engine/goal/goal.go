@@ -2,6 +2,8 @@ package goal
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/goals"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -10,7 +12,7 @@ import (
 // Handler resolves goal logic for a single goal ID.
 type Handler interface {
 	GoalID() string
-	CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (GoalLock, []domain.Mutation)
+	CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (locks.GoalLock, []domain.Mutation)
 	UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook, index *world.Index) []domain.Mutation
 }
 
@@ -20,8 +22,20 @@ type GoalEngine struct {
 }
 
 func New() *GoalEngine {
-	return &GoalEngine{handlers: make(map[string]Handler)}
-	// Phase 3.2 will add e.Register(goals.Foo{}) calls here.
+	engine := &GoalEngine{handlers: make(map[string]Handler)}
+	engine.Register(goals.MilitaryConquest{})
+	engine.Register(goals.CommercialExpansion{})
+	engine.Register(goals.IntelligenceCoup{})
+	engine.Register(goals.PlanetarySeizure{})
+	engine.Register(goals.ExpandInfluence{})
+	engine.Register(goals.BloodTheEnemy{})
+	engine.Register(goals.PeaceableKingdom{})
+	engine.Register(goals.DestroyTheFoe{})
+	engine.Register(goals.InsideEnemyTerritory{})
+	engine.Register(goals.InvincibleValor{})
+	engine.Register(goals.WealthOfWorlds{})
+	engine.Register(goals.ChangeHomeworld{})
+	return engine
 }
 
 func (ge *GoalEngine) Register(handler Handler) {
@@ -30,21 +44,16 @@ func (ge *GoalEngine) Register(handler Handler) {
 
 // CheckLock evaluates the faction's active goal and returns the appropriate lock
 // state. Must be called before bookkeeping and action selection each turn.
-func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (GoalLock, []domain.Mutation) {
+func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (locks.GoalLock, []domain.Mutation) {
 	if faction.ActiveGoal == nil {
-		return GoalLock{Type: LockNone}, nil
+		return locks.GoalLock{Type: locks.LockNone}, nil
 	}
-	if handler, ok := ge.handlers[faction.ActiveGoal.GoalID]; ok {
-		return handler.CheckLock(faction, factionState, rulebook)
+	handler, ok := ge.handlers[faction.ActiveGoal.GoalID]
+	if !ok {
+		// Data-only goal: present in goals.toml, no Go handler registered. Intentional.
+		return locks.GoalLock{Type: locks.LockNone}, nil
 	}
-	// Parallel path during Effort 3 migration; removed in Phase 3.2.
-	switch faction.ActiveGoal.GoalID {
-	case "G-012":
-		return checkLockChangeHomeworld(faction)
-	case "G-004":
-		return checkLockPlanetarySeizure(faction, factionState, rulebook)
-	}
-	return GoalLock{Type: LockNone}, nil
+	return handler.CheckLock(faction, factionState, rulebook)
 }
 
 // UpdateProgress inspects the acting faction's mutation list for goal-relevant
@@ -62,33 +71,10 @@ func (ge *GoalEngine) UpdateProgress(
 	if !ok || actingFaction.ActiveGoal == nil {
 		return nil
 	}
-	if handler, ok := ge.handlers[actingFaction.ActiveGoal.GoalID]; ok {
-		return handler.UpdateProgress(actingFaction, mutations, factionState, rulebook, index)
+	handler, ok := ge.handlers[actingFaction.ActiveGoal.GoalID]
+	if !ok {
+		// Data-only goal: present in goals.toml, no Go handler registered. Intentional.
+		return nil
 	}
-	// Parallel path during Effort 3 migration; removed in Phase 3.2.
-	switch actingFaction.ActiveGoal.GoalID {
-	case "G-001":
-		return progressMilitaryConquest(actingFaction, mutations, factionState, rulebook)
-	case "G-002":
-		return progressCommercialExpansion(actingFaction, mutations, factionState, rulebook)
-	case "G-003":
-		return progressIntelligenceCoup(actingFaction, mutations, factionState, rulebook)
-	case "G-004":
-		return progressPlanetarySeizure(actingFaction, mutations, factionState)
-	case "G-005":
-		return progressExpandInfluence(actingFaction, mutations, factionState, index)
-	case "G-006":
-		return progressBloodTheEnemy(actingFaction, mutations)
-	case "G-007":
-		return progressPeaceableKingdom(actingFaction, mutations)
-	case "G-008":
-		return progressDestroyTheFoe(actingFaction, mutations, factionState)
-	case "G-009":
-		return progressInsideEnemyTerritory(actingFaction, mutations, factionState, index)
-	case "G-010":
-		return progressInvincibleValor(actingFaction, mutations, factionState, rulebook)
-	case "G-011":
-		return progressWealthOfWorlds(actingFaction, mutations)
-	}
-	return nil
+	return handler.UpdateProgress(actingFaction, mutations, factionState, rulebook, index)
 }

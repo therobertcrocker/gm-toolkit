@@ -528,6 +528,10 @@ One handler file per goal ID (12 total) in `internal/faction/engine/goal/goals/`
 | `wealth_of_worlds.go` | G-011 | `progressWealthOfWorlds` | — |
 | `change_homeworld.go` | G-012 | — | `checkLockChangeHomeworld` |
 
+**Import-cycle resolution.** A naive split — `Handler` interface in `goal/goal.go`, returning `goal.GoalLock`; handlers in `goal/goals/` importing `goal` to construct `GoalLock` values; `goal.New()` importing `goal/goals` to register defaults — creates a `goal` ⇄ `goals` cycle. The tag pattern dodges this because `tag.Handler`'s signatures reference no `tag`-internal types; `goal.Handler.CheckLock` returns `GoalLock`, which is a `goal`-internal type.
+
+Resolution: extract `LockType`, `LockNone`, `LockSkip`, `LockRestrictActions`, and `GoalLock` to a new `internal/faction/engine/goal/locks/` package. Both `goal/goal.go` and `goal/goals/*.go` import `goal/locks`; neither side needs the other for type definitions. The `Handler` interface stays in `goal/goal.go` (symmetric with `tag.Handler`). External callers (`engine/observer.go`, `engine/orchestrator.go`, `testharness/observer.go`) update from `goal.GoalLock`/`goal.LockSkip`/etc. to `locks.GoalLock`/`locks.LockSkip`/etc.
+
 Standard handler shape (G-001 illustration; all progress-only handlers are identical in structure):
 
 ```go
@@ -535,7 +539,7 @@ package goals
 
 import (
     "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-    "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
+    "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
     "github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
     "github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
     "github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -545,8 +549,8 @@ type MilitaryConquest struct{}
 
 func (MilitaryConquest) GoalID() string { return "G-001" }
 
-func (MilitaryConquest) CheckLock(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) (goal.GoalLock, []domain.Mutation) {
-    return goal.GoalLock{Type: goal.LockNone}, nil
+func (MilitaryConquest) CheckLock(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) (locks.GoalLock, []domain.Mutation) {
+    return locks.GoalLock{Type: locks.LockNone}, nil
 }
 
 func (MilitaryConquest) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook, _ *world.Index) []domain.Mutation {
@@ -595,20 +599,20 @@ func New() *GoalEngine {
 - Delete both parallel switches.
 - Replace each with the data-only fall-through:
   ```go
-  func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (GoalLock, []domain.Mutation) {
+  func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (locks.GoalLock, []domain.Mutation) {
       if faction.ActiveGoal == nil {
-          return GoalLock{Type: LockNone}, nil
+          return locks.GoalLock{Type: locks.LockNone}, nil
       }
       handler, ok := ge.handlers[faction.ActiveGoal.GoalID]
       if !ok {
           // Data-only goal: present in goals.toml, no Go handler registered. Intentional.
-          return GoalLock{Type: LockNone}, nil
+          return locks.GoalLock{Type: locks.LockNone}, nil
       }
       return handler.CheckLock(faction, factionState, rulebook)
   }
   ```
   Same shape for `UpdateProgress` (returning `nil` mutations on miss).
-- After migration, `goal.go` only needs `domain`, `state`, `rulebook`, `world`, and `goal/goals` imports.
+- After migration, `goal.go` imports `domain`, `state`, `rulebook`, `world`, `goal/locks`, and `goal/goals`. The `Handler` interface signature uses `locks.GoalLock`.
 
 **No harness change.** `goal.New()` self-wires; no `goals.RegisterDefaultGoals(eng)` exists.
 
@@ -617,7 +621,7 @@ func New() *GoalEngine {
 - `internal/faction/engine/goal/progress.go` — empty after migration.
 - `internal/faction/engine/goal/lock.go` — empty after migration.
 
-  **Important:** before deleting `lock.go`, move the `LockType`, `LockNone`, `LockSkip`, `LockRestrictActions`, and `GoalLock` declarations to `goal/goal.go` (or a new `goal/types.go`). The `goals/` handlers depend on these types.
+  **Important:** before deleting `lock.go`, move the `LockType`, `LockNone`, `LockSkip`, `LockRestrictActions`, and `GoalLock` declarations to the new `internal/faction/engine/goal/locks/locks.go` package (see "Import-cycle resolution" above). The `goals/` handlers depend on these types; the new package breaks the otherwise-unavoidable cycle between `goal` and `goal/goals`.
 
 **Test migration:**
 
@@ -634,16 +638,18 @@ Test helpers (e.g., `makeProgressRulebook`) move into `goals` package or `goals_
 **Acceptance criteria:**
 
 - [ ] `internal/faction/engine/goal/progress.go` and `lock.go` are deleted.
+- [ ] `internal/faction/engine/goal/locks/locks.go` exists with `LockType`, `LockNone`, `LockSkip`, `LockRestrictActions`, `GoalLock`.
 - [ ] Twelve handler files exist in `goal/goals/`, plus `helpers.go`.
 - [ ] **No `goal/goals/register.go` exists** — defaults are wired by `goal.New()`.
 - [ ] `goal/goal.go` contains no `switch` over goal IDs; the data-only comment exists at both fall-throughs.
-- [ ] Tests have moved into `goal/goals/` and reference handler structs directly.
+- [ ] Handler tests have moved into `goal/goals/` and reference handler structs directly. Engine-level tests (e.g. nil-`ActiveGoal`, unregistered ID) stay in `goal/`.
+- [ ] External callers (`engine/observer.go`, `engine/orchestrator.go`, `testharness/observer.go`) reference `locks.GoalLock` / `locks.LockSkip` / `locks.LockRestrictActions`.
 - [ ] `grep -rn "engine\"" internal/faction/engine/goal/` returns nothing (no `engine` import in the goal tree).
 - [ ] `grep -rn "case \"G-" internal/faction/engine/goal/` returns no results.
 - [ ] `go test ./internal/faction/...` is green.
 - [ ] Smoke check: adding a dummy `G-099` to a test rulebook fixture, confirm `CheckLock`/`UpdateProgress` return `nil` cleanly.
 
-**Commit message:** `refactor(goal): promote to Shape 2 self-bootstrapping; migrate 12 handlers to goal/goals/`
+**Commit message:** `refactor(goal): promote to Shape 2 self-bootstrapping; migrate 12 handlers to goal/goals/; extract types`
 
 <br/>
 
