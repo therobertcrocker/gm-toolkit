@@ -1,6 +1,6 @@
 # Asset Movement Redesign — Plan Overview
 
-> Discovery: [`docs/discovery/asset-movement-redesign-discovery.md`](../discovery/asset-movement-redesign-discovery.md)
+> Discovery: [`docs/initiatives/discovery/asset-movement-redesign-discovery.md`](../discovery/asset-movement-redesign-discovery.md)
 > Effort 1 (Foundation): [`asset-movement-redesign-effort-1-plan.md`](asset-movement-redesign-effort-1-plan.md)
 > Effort 2 (Movement Engine): [`asset-movement-redesign-effort-2-plan.md`](asset-movement-redesign-effort-2-plan.md)
 > Effort 3 (Cutover & Integration): [`asset-movement-redesign-effort-3-plan.md`](asset-movement-redesign-effort-3-plan.md)
@@ -31,7 +31,7 @@ The discovery flagged eight open questions plus one plan-level question. All are
 
 | # | Question | Effort / Phase |
 |---|---|---|
-| 1 | **Where does the Movement Phase code live?** Effort 2 Phase 3 currently sketches a new `internal/faction/engine/movement/` package of free functions — which does not match any of the three sub-engine shapes (see `architecture-overview.md` → *Sub-Engine Shapes*) and would establish a fourth pattern under `engine/`. Alternative: host the Movement Phase under the existing `turn/` package as `(*TurnEngine).RunMovementPhase(...)` plus `movement_*.go` files. Turn is already Shape 3; `turn.New`'s arg list extends to take `spatialMap`. Movement is conceptually a turn phase (same family as Bookkeeping), and `turn`-hosting keeps the package boundary aligned with the conceptual owner. | Ratify at the start of Effort 2 Phase 3. See [`docs/discovery/sub-engine-alignment-discovery.md`](../discovery/sub-engine-alignment-discovery.md) for the shape catalog context. |
+| 1 | **Where does the Movement Phase code live?** Effort 2 Phase 3 currently sketches a new `internal/faction/engine/movement/` package of free functions — which does not match any of the three sub-engine shapes (see `architecture-overview.md` → *Sub-Engine Shapes*) and would establish a fourth pattern under `engine/`. Alternative: host the Movement Phase under the existing `turn/` package as `(*TurnEngine).RunMovementPhase(...)` plus `movement_*.go` files. Turn is already Shape 3; `turn.New`'s arg list extends to take `spatialMap`. Movement is conceptually a turn phase (same family as Bookkeeping), and `turn`-hosting keeps the package boundary aligned with the conceptual owner. | Ratify at the start of Effort 2 Phase 3. See [`docs/initiatives/discovery/sub-engine-alignment-discovery.md`](../discovery/sub-engine-alignment-discovery.md) for the shape catalog context. |
 
 <br/>
 

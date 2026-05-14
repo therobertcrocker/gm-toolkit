@@ -159,7 +159,7 @@ All tests pass.
 
 Replace the hardcoded `TurnsRemaining: 3` at goal-initiation with `1 + spatial.Distance(homeworld, target, drift_costs[2])`. The lock-time tick logic at `internal/faction/engine/goal/lock.go:49` is unchanged — it already decrements `TurnsRemaining` each turn.
 
-Retires the paused **Spatial Phase 4** work from `docs/implementation/completed/spatial-model-effort-2-plan.md`.
+Retires the paused **Spatial Phase 4** work from `docs/initiatives/implementation/completed/spatial-model-effort-2-plan.md`.
 
 After Phase 6: `ChangeHomeworld` goals' duration scales with hex distance, using the faction-level default drift rating (3).
 

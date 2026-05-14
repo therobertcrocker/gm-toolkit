@@ -1,14 +1,14 @@
 # Event Hooks Subsystem — Implementation Plan
 
-> **Final destination:** `docs/implementation/event-hooks.md`. Plan mode constrains edits to the harness path; this file moves to the repo location once the plan is approved.
+> **Final destination:** `docs/initiatives/implementation/event-hooks.md`. Plan mode constrains edits to the harness path; this file moves to the repo location once the plan is approved.
 
 ## Context
 
-Read: `docs/discovery/event-hooks.md` for the discovery process that led to this plan, including the open questions and the family of five interfaces.
+Read: `docs/initiatives/discovery/event-hooks.md` for the discovery process that led to this plan, including the open questions and the family of five interfaces.
 
 The Core Engine ships with a single-interface stub (`EventHook`) and a documented dispatch site, but no registry, dispatcher, or consumers. Decisions #137 and #138 deferred this work because the Tag Engine wasn't ready and there was nothing to dispatch to. That deferral is now expiring: the next major effort is the TUI rebuild, which assumes a stable Core Engine collaboration surface, and reactive mechanics (tags + `S`-flagged asset effects) are the largest unbuilt piece of that surface.
 
-A close reading of the SWN faction rules surfaced **five distinct shapes** of reactive mechanic, only one of which fits the existing stub. The discovery doc (`docs/discovery/event-hooks.md`) ratified the family of five interfaces, the per-turn budget machinery, and the litmus test: *expanding tags or `S`-flag effects must not require changes to `core_*.go` or `cmd/faction-manager/tui/`*.
+A close reading of the SWN faction rules surfaced **five distinct shapes** of reactive mechanic, only one of which fits the existing stub. The discovery doc (`docs/initiatives/discovery/event-hooks.md`) ratified the family of five interfaces, the per-turn budget machinery, and the litmus test: *expanding tags or `S`-flag effects must not require changes to `core_*.go` or `cmd/faction-manager/tui/`*.
 
 This plan ships the **complete framework** — all five interfaces, registries, dispatchers, budget bookkeeping — plus **one proof-of-life hook per applicable category**. The Tag Engine ships in skeleton form (one package, three registered tags). The Effects Engine and the remaining tag handlers are deferred to follow-up branches.
 

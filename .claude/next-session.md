@@ -1,8 +1,8 @@
 # Asset Movement Redesign — Plan Session
 
-This is the Plan session for Initiative #2 (Asset Movement Redesign) in `docs/dev_journals/faction-manager/planned-work.md`. Discovery is complete; the discovery doc is at `docs/discovery/asset-movement-redesign-discovery.md` — read it first; it's the source of truth for every design decision.
+This is the Plan session for Initiative #2 (Asset Movement Redesign) in `docs/dev_journals/faction-manager/planned-work.md`. Discovery is complete; the discovery doc is at `docs/initiatives/discovery/asset-movement-redesign-discovery.md` — read it first; it's the source of truth for every design decision.
 
-**Your deliverable** is an implementation plan in `docs/implementation/asset-movement-redesign-plan.md`, broken into discrete phases (each phase = its own execution session). No code edits — Plan mode only.
+**Your deliverable** is an implementation plan in `docs/initiatives/implementation/asset-movement-redesign-plan.md`, broken into discrete phases (each phase = its own execution session). No code edits — Plan mode only.
 
 ## Key inputs already settled in discovery
 
@@ -13,7 +13,7 @@ This is the Plan session for Initiative #2 (Asset Movement Redesign) in `docs/de
 - Self-movement ability steps removed; transport-pattern abilities retained (likely as a new `AbilityStepTransport` type)
 - `ChangeHomeworld` stays a goal — timer becomes `spatial.Distance(homeworld, target, drift=3)`
 - Cargo co-located with transport, individually targetable; attack targeting extends to hex-level lookup
-- This redesign retires Spatial Phase 3 Commit 3 and Phase 4 from `docs/implementation/spatial-model-effort-2-plan.md`
+- This redesign retires Spatial Phase 3 Commit 3 and Phase 4 from `docs/initiatives/implementation/spatial-model-effort-2-plan.md`
 
 ## Open questions to ratify during planning
 

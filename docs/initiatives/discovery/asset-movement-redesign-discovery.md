@@ -236,7 +236,7 @@ Existing mutations affected:
 
 ## Replaces / Retires
 
-This redesign supersedes the following items from `docs/implementation/spatial-model-effort-2-plan.md`:
+This redesign supersedes the following items from `docs/initiatives/implementation/spatial-model-effort-2-plan.md`:
 
 - **Phase 3 Commit 3** — `MaxHex` enforcement on `UseAssetAbility` movement. Self-movement no longer flows through `UseAssetAbility`; transport-range enforcement is handled by the new transport step's `max_hex`.
 - **Phase 4** — `ChangeHomeworld` distance from spatial path. Captured under "Change Homeworld Reconciliation" above.

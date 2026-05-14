@@ -28,7 +28,7 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 | Architecture or system shape         | `docs/architecture-overview.md`             |
 | Rules behavior                       | `docs/swn-faction-mechanics.md`             |
 | Creating or editing any doc          | `docs/style-guide.md`                       |
-| When implementing a feature...       | `docs/implementation/<feature>.md`          |
+| When implementing a feature...       | `docs/initiatives/implementation/<feature>.md`          |
 | Session modes, flows, or templates   | `docs/process/session-modes.md`             |
 
 **Searching the decisions log:** Do not read the full file. Use one of:

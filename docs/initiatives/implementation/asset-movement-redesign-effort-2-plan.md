@@ -312,7 +312,7 @@ After Phase 4: a new step type is registered in the rulebook decoder and ability
 
 ### Sub-engine shape note
 
-`ability` is mid-alignment per the [sub-engine shapes catalog](../architecture-overview.md#sub-engine-shapes) — eventual target is Shape 2 open-ended with step handlers in an `ability/steps/` sibling package and external registration via a bootstrap function. That refactor is deferred until after the asset movement redesign lands (see [`docs/discovery/sub-engine-alignment-discovery.md`](../discovery/sub-engine-alignment-discovery.md)).
+`ability` is mid-alignment per the [sub-engine shapes catalog](../architecture-overview.md#sub-engine-shapes) — eventual target is Shape 2 open-ended with step handlers in an `ability/steps/` sibling package and external registration via a bootstrap function. That refactor is deferred until after the asset movement redesign lands (see [`docs/initiatives/discovery/sub-engine-alignment-discovery.md`](../discovery/sub-engine-alignment-discovery.md)).
 
 **For this phase:** add `transportStepHandler` inline in the `ability/` package alongside the existing `movementStepHandler` and `factionTestStepHandler`, and register it inline in `ability.New()` (matches Task 6's instruction). **Do not** pre-position it in `ability/steps/`. A mixed inline/sibling state is a worse asymmetry than the current uniform-inline state.
 

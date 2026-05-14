@@ -1,12 +1,3 @@
-# Faction Tags
-#
-# Handler implementations: internal/faction/engine/tag/tags/
-# Tags without a registered handler are data-only by design — they exist
-# as text the GM reads, with no mechanical effect in Go. See
-# docs/discovery/sub-engine-alignment-discovery.md for the data-mirroring
-# shape pattern.
-
-
 [tags.Colonists]
 id = "T-001"
 name = "Colonists"

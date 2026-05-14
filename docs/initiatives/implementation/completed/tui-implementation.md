@@ -1,6 +1,6 @@
 # TUI Implementation Plan
 
-A phased build guide for the `feature/tui` branch. Written for a fresh session with no prior context — read this after `docs/discovery/tui-discovery.md`.
+A phased build guide for the `feature/tui` branch. Written for a fresh session with no prior context — read this after `docs/initiatives/discovery/tui-discovery.md`.
 
 <br/>
 
@@ -12,7 +12,7 @@ This plan implements the Bubbletea TUI for Turn Mode, replacing the existing huh
 
 | File | Why |
 |------|-----|
-| `docs/discovery/tui-discovery.md` | Full architecture: state machine, component map, layout, InputCollector bridge |
+| `docs/initiatives/discovery/tui-discovery.md` | Full architecture: state machine, component map, layout, InputCollector bridge |
 | `cmd/faction-manager/commands/turn/wizard.go` | The code being replaced — understand the full turn flow before writing the TUI |
 | `internal/faction/engine/input_collector.go` | The interface `TUICollector` must implement (7 methods) |
 | `internal/faction/engine/action.go` | `Action` interface — `Inputs`, `Resolve`, `Output` |

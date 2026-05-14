@@ -354,7 +354,7 @@ The `stateGoalLocked` screen (Change Homeworld) should show the remaining turn c
 - Update `docs/dev-journal-factions.md` — progress and decisions
 - Update `docs/decisions-log.md` — all ratified decisions from discovery
 - Update `docs/tracking/turn-engine-journal.md` — mark Feature #7 as Complete; close Open Question #1
-- Rewrite `docs/discovery/goal-engine-discovery.md` — the old doc is superseded; replace with the design as built
+- Rewrite `docs/initiatives/discovery/goal-engine-discovery.md` — the old doc is superseded; replace with the design as built
 
 **Commit:** `feat: phase 5 — goal narration, polish, and doc updates`
 

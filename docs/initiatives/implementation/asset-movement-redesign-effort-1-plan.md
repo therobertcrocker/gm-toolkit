@@ -1,7 +1,7 @@
 # Asset Movement Redesign — Effort 1: Foundation
 
 > Overview: [`asset-movement-redesign-plan.md`](asset-movement-redesign-plan.md)
-> Discovery: [`docs/discovery/asset-movement-redesign-discovery.md`](../discovery/asset-movement-redesign-discovery.md)
+> Discovery: [`docs/initiatives/discovery/asset-movement-redesign-discovery.md`](../discovery/asset-movement-redesign-discovery.md)
 
 Two phases. Each is its own execution session.
 

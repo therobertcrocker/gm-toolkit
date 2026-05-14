@@ -91,7 +91,7 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Goal:** understand the problem space, survey relevant existing code, identify approach options, surface tradeoffs and open questions.
 
-**Artifact:** `docs/discovery/<initiative-name>-discovery.md` — see template at `docs/process/templates/discovery.md` for required and optional sections.
+**Artifact:** `docs/initiatives/discovery/<initiative-name>-discovery.md` — see template at `docs/process/templates/discovery.md` for required and optional sections.
 
 **Session ends when:** the discovery doc is written and Robert has signed off. Do not begin planning in the same session.
 
@@ -101,8 +101,8 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Artifacts** — see template at `docs/process/templates/implementation-plan.md`:
 
-- **Top-level plan** — `docs/implementation/<initiative-name>-plan.md`. Always required.
-- **Per-effort plans** — `docs/implementation/<initiative-name>-effort-N-plan.md`. Used when the initiative is large enough to split into multiple efforts; small initiatives keep everything in the top-level plan.
+- **Top-level plan** — `docs/initiatives/implementation/<initiative-name>-plan.md`. Always required.
+- **Per-effort plans** — `docs/initiatives/implementation/<initiative-name>-effort-N-plan.md`. Used when the initiative is large enough to split into multiple efforts; small initiatives keep everything in the top-level plan.
 
 **Session ends when:** the plan is written and Robert has signed off. Do not begin execution in the same session.
 
@@ -209,7 +209,7 @@ Use when:
 
 Flow: **Backlog → Plan → Execution → Done.**
 
-The plan is **lightweight** — typically a single section in `docs/implementation/<bugfix-name>-plan.md` covering:
+The plan is **lightweight** — typically a single section in `docs/initiatives/implementation/<bugfix-name>-plan.md` covering:
 
 - **Root cause** — what's actually wrong
 - **Fix approach** — the chosen approach, with brief rationale if alternatives existed
@@ -289,9 +289,9 @@ Movement between lifecycle stages (Backlog → Up Next → Planned Initiative �
 
 ### File locations
 
-- **Discovery docs** — `docs/discovery/<initiative-name>-discovery.md`
-- **Implementation plans** — `docs/implementation/<initiative-name>-plan.md`, plus per-effort plans at `docs/implementation/<initiative-name>-effort-N-plan.md` when needed
-- **Completed artifacts** — moved to `docs/discovery/completed/` and `docs/implementation/completed/` when the initiative ships
+- **Discovery docs** — `docs/initiatives/discovery/<initiative-name>-discovery.md`
+- **Implementation plans** — `docs/initiatives/implementation/<initiative-name>-plan.md`, plus per-effort plans at `docs/initiatives/implementation/<initiative-name>-effort-N-plan.md` when needed
+- **Completed artifacts** — moved to `docs/initiatives/discovery/completed/` and `docs/initiatives/implementation/completed/` when the initiative ships
 
 Plans never live in `~/.claude/plans/` or other harness defaults — they are repo-tracked artifacts.
 
@@ -313,8 +313,8 @@ When a refactor is scoped but not yet executed, new code added in the meantime m
 
 Templates for the two file artifacts produced by Discovery and Plan sessions:
 
-- **Discovery doc** — [`templates/discovery.md`](./templates/discovery.md). Copy to `docs/discovery/<initiative-name>-discovery.md` and fill in.
-- **Implementation plan** — [`templates/implementation-plan.md`](./templates/implementation-plan.md). Copy to `docs/implementation/<initiative-name>-plan.md` (or split into per-effort files for large initiatives) and fill in.
+- **Discovery doc** — [`templates/discovery.md`](./templates/discovery.md). Copy to `docs/initiatives/discovery/<initiative-name>-discovery.md` and fill in.
+- **Implementation plan** — [`templates/implementation-plan.md`](./templates/implementation-plan.md). Copy to `docs/initiatives/implementation/<initiative-name>-plan.md` (or split into per-effort files for large initiatives) and fill in.
 
 Both templates carry inline guidance (HTML comments) explaining required sections, optional sections, and how to scale the structure to the size of the work. Required sections are marked `REQUIRED`; everything else is included only when relevant.
 

@@ -8,7 +8,7 @@ A phased build guide for the `feature/narrative-renderer` branch. Read the disco
 
 ## How to use this doc
 
-For per-phase work, **scope your reads to the relevant sections** rather than loading the full plan. Each phase only needs a subset. Run `grep -n "^##" docs/implementation/narrative-renderer-implementation-plan.md` to get current line numbers, then `Read` with `offset` + `limit`.
+For per-phase work, **scope your reads to the relevant sections** rather than loading the full plan. Each phase only needs a subset. Run `grep -n "^##" docs/initiatives/implementation/narrative-renderer-implementation-plan.md` to get current line numbers, then `Read` with `offset` + `limit`.
 
 | Section | Read for | Notes |
 |---------|----------|-------|

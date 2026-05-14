@@ -15,7 +15,7 @@ Brings the nine packages under `internal/faction/engine/` into structural alignm
 | 3 | `history` is **demoted into `turn/`** as a package-level `turn.RecordHistory(...)` function. The `History` field is removed from `*Engine`; the `internal/faction/engine/history/` package is deleted. |
 | 4 | `world` stays optional. The `if e.World != nil` guards at `orchestrator.go:36` and `:146` (and `action/actions/register.go:27`) remain, documented but not removed. |
 | 5 | `world.Engine` → `world.WorldEngine` rename is **already complete** (verified pre-plan; visible in `core.go:40`). Discovery Open Question 5 is closed. |
-| 6 | Plan structure: single file in `docs/implementation/sub-engine-alignment-plan.md`. No per-effort sub-plans — total content is comfortably one document and cross-cutting context lives once. |
+| 6 | Plan structure: single file in `docs/initiatives/implementation/sub-engine-alignment-plan.md`. No per-effort sub-plans — total content is comfortably one document and cross-cutting context lives once. |
 
 <br/>
 

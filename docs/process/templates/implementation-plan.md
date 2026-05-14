@@ -1,7 +1,7 @@
 # [Initiative Name] — Implementation Plan
 
 <!--
-COPY THIS FILE TO: docs/implementation/<initiative-name>-plan.md
+COPY THIS FILE TO: docs/initiatives/implementation/<initiative-name>-plan.md
 
 This template covers two cases:
 
@@ -11,7 +11,7 @@ This template covers two cases:
   2. Top-level + per-effort plans for large initiatives — keep the sections above
      "Work Breakdown" in the top-level file; move each effort's Phase/Commit/Task
      breakdown to a separate per-effort file at:
-         docs/implementation/<initiative-name>-effort-N-plan.md
+         docs/initiatives/implementation/<initiative-name>-effort-N-plan.md
      Each per-effort file follows the "Work Breakdown" section structure below.
 
 Delete these comments before writing.
