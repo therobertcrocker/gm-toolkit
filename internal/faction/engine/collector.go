@@ -4,7 +4,6 @@ package engine
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 )
@@ -14,7 +13,6 @@ import (
 // use scripted or goal-driven logic.
 type InputCollector interface {
 	action.Collector
-	ability.Collector
 	hooks.Collector
 	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	AwaitCheckpoint(phase string) error
