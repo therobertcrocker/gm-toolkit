@@ -33,13 +33,13 @@ func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
 	wantKinds := []string{
-		"TurnStarted", "GoalLockApplied", "BookkeepingApplied", "ActionSelected", "ActionResolved", "TurnCompleted",
-		"TurnStarted", "GoalLockApplied", "BookkeepingApplied", "ActionSelected", "ActionResolved", "TurnCompleted",
+		"TurnStarted", "GoalLockApplied", "StatRaiseSkipped", "BookkeepingApplied", "MovementResolved", "ActionSelected", "ActionResolved", "TurnCompleted",
+		"TurnStarted", "GoalLockApplied", "StatRaiseSkipped", "BookkeepingApplied", "MovementResolved", "ActionSelected", "ActionResolved", "TurnCompleted",
 		"CycleCompleted",
 	}
 	testharness.AssertKinds(t, h.Observer.Kinds(), wantKinds)

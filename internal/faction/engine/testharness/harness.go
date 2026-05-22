@@ -14,6 +14,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
@@ -28,32 +29,47 @@ type Harness struct {
 	FactionState *state.FactionState
 	Cfg          *config.Config
 	Collector    *ScriptedCollector
+	Collectors   engine.Collectors
 	Observer     *RecordingObserver
+	SpatialMap   *StubSpatialMap
 }
 
-// stubSpatialMap accepts any location ID, returning TL 5 and distance 1.
+// StubSpatialMap accepts any location ID, returning TL 5 and distance 1.
 // Used by the test harness so the world index is always populated without
-// requiring real spatial data files.
-type stubSpatialMap struct{}
+// requiring real spatial data files. PathFn is overridable so scenario tests
+// can script multi-hex paths.
+type StubSpatialMap struct {
+	PathFn func(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error)
+}
 
-func (s *stubSpatialMap) Location(id string) (spatial.Location, bool) {
+var _ world.HexRouter = (*StubSpatialMap)(nil)
+
+func (s *StubSpatialMap) Location(id string) (spatial.Location, bool) {
 	return &stubLocation{id: id}, true
 }
 
-func (s *stubSpatialMap) Distance(_, _ string, _ int) (int, error) {
+func (s *StubSpatialMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
 	return 1, nil
+}
+
+func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error) {
+	if s.PathFn != nil {
+		return s.PathFn(from, to, crossingCost)
+	}
+	return []spatial.RegionHex{from}, 1, nil
 }
 
 type stubLocation struct{ id string }
 
-var _ spatial.HexLocation = (*stubLocation)(nil)
+var _ spatial.RegionLocation = (*stubLocation)(nil)
 
-func (l *stubLocation) ID() string         { return l.id }
-func (l *stubLocation) Name() string       { return l.id }
-func (l *stubLocation) TechLevel() int     { return 5 }
-func (l *stubLocation) Population() int    { return 0 }
-func (l *stubLocation) Coords() (q, r int) { return 0, 0 }
-func (l *stubLocation) RegionID() string   { return "" }
+func (l *stubLocation) ID() string                   { return l.id }
+func (l *stubLocation) Name() string                 { return l.id }
+func (l *stubLocation) TechLevel() int               { return 5 }
+func (l *stubLocation) Population() int              { return 0 }
+func (l *stubLocation) Coords() (q, r int)           { return 0, 0 }
+func (l *stubLocation) RegionID() string             { return "" }
+func (l *stubLocation) RegionHex() spatial.RegionHex { return spatial.RegionHex{} }
 
 func NewHarness(t *testing.T, dataDir string) *Harness {
 	t.Helper()
@@ -63,24 +79,25 @@ func NewHarness(t *testing.T, dataDir string) *Harness {
 		StatePath:      filepath.Join(dir, "state.toml"),
 		HistoryPath:    filepath.Join(dir, "history.jsonl"),
 	}
-	eng, err := engine.New(cfg)
+	rb, err := rulebook.Load(cfg.FactionDataDir)
 	if err != nil {
-		t.Fatalf("engine.New: %v", err)
+		t.Fatalf("rulebook.Load: %v", err)
 	}
-	eng.World = world.NewWithMap(&stubSpatialMap{})
+	eng := engine.NewWithRulebook(rb)
+	spatialMap := &StubSpatialMap{}
+	eng.World = world.NewWithMap(spatialMap)
 	actions.RegisterDefaultActions(eng)
 
+	scriptedCollector := &ScriptedCollector{}
 	return &Harness{
 		Engine:       eng,
 		FactionState: &state.FactionState{CampaignID: "test", Factions: make(map[string]*domain.Faction)},
 		Cfg:          cfg,
-		Collector:    &ScriptedCollector{},
+		Collector:    scriptedCollector,
+		Collectors:   engine.Collectors{Phase: scriptedCollector, Action: scriptedCollector},
 		Observer:     &RecordingObserver{},
+		SpatialMap:   spatialMap,
 	}
-}
-
-func (h *Harness) RegisterTags() {
-	h.Engine.Tag.ApplyAll(h.FactionState, h.Engine.Hooks)
 }
 
 func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *domain.Faction {
@@ -91,7 +108,7 @@ func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *
 		Force:     force,
 		Cunning:   cunning,
 		Wealth:    wealth,
-		Homeworld: homeworld,
+		Homeworld: domain.Location{WorldID: homeworld},
 		MaxHP:     20,
 		CurrentHP: 20,
 		Coin:      0,
@@ -101,7 +118,7 @@ func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *
 			ID:           id + "-asset-1",
 			DefinitionID: DefSecurityPersonnel,
 			OwnerID:      id,
-			Location:     homeworld,
+			Location:     domain.Location{WorldID: homeworld},
 			CurrentHP:    3,
 			Ready:        true,
 			Maintained:   true,
@@ -204,7 +221,7 @@ func AddBase(faction *domain.Faction, world string, hp int) *domain.Base {
 	base := &domain.Base{
 		ID:          fmt.Sprintf("%s-base-%s-1", faction.ID, world),
 		OwnerID:     faction.ID,
-		Location:    world,
+		Location:    domain.Location{WorldID: world},
 		CurrentHP:   hp,
 		MaxHP:       hp,
 		Ready:       true,
@@ -219,7 +236,7 @@ func AddAssetOnWorld(faction *domain.Faction, world string) *domain.Asset {
 		ID:           fmt.Sprintf("%s-%s-extra", faction.ID, world),
 		DefinitionID: DefSecurityPersonnel,
 		OwnerID:      faction.ID,
-		Location:     world,
+		Location:     domain.Location{WorldID: world},
 		CurrentHP:    3,
 		Ready:        true,
 		Maintained:   true,

@@ -20,8 +20,8 @@ The discovery flagged eight open questions plus one plan-level question. All are
 | 3 | `Asset.Location.WorldID` clears **on issue**, not on first tick. Issuance and progression remain separate code paths with no special-case "first tick" logic. |
 | 4 | `Faction.Homeworld` migrates from `string` to `Location` for type consistency with the rest of the domain. |
 | 5 | `LockSkip` factions (mid-`ChangeHomeworld`) **may not** select an action but **may** issue, revise, cancel, or tick movement orders. |
-| 6 | A distinct `AbilityStepTransport` step type is introduced. `AbilityStepMovement` is deleted entirely once the TOML cutover is complete. |
-| 7 | `Smugglers` (cunning) and `Blockade Runner` (wealth) become transport-only abilities; their existing Coin cost is retained. Self-movement is handled by their `Speed`. |
+| 6 | ~~A distinct `AbilityStepTransport` step type is introduced. `AbilityStepMovement` is deleted entirely once the TOML cutover is complete.~~ *Decision #6 reversed under R-001 — transport is not an ability step. It is an S-flag hook handler firing on `MovementOrderProgressed` / `MovementOrderCompleted` mutations. `AbilityStepTransport` is never introduced; `AbilityStepMovement` is deleted as part of R-001 (the `ability/` package retire). See R-001 plan for the new shape.* |
+| 7 | `Smugglers` (cunning) and `Blockade Runner` (wealth) become transport-only abilities; their existing Coin cost is retained. Self-movement is handled by their `Speed`. *Reframed under R-001 — `Smugglers` and `Blockade Runner`'s cargo behavior moves to the S-flag hooks subsystem; the 1 Coin cost is the hook handler's payload, not an ability cost.* |
 | 8 | Co-location is **state, not an interrupt** — no reaction window inside the Movement Phase. Combat is initiated only via an explicit `Attack` action in some attacker's later turn. |
 | 9 | The `spatial.Path` primitive (path + total distance) lands in Phase 1 as part of the additive domain types phase. |
 
@@ -42,7 +42,7 @@ Three efforts. Seven phases. Each phase is its own Sonnet execution session.
 | Effort | Phases | Theme | What lands |
 |---|---|---|---|
 | [1 — Foundation](asset-movement-redesign-effort-1-plan.md) | 1, 2 | Domain prep | Additive types + `spatial.Path` + `Location`-struct migration of `Asset.Location`, `Base.Location`, `Faction.Homeworld`, `AssetMoved`, `HomeworldChanged`. Zero behavioral change. |
-| [2 — Movement Engine](asset-movement-redesign-effort-2-plan.md) | 3, 4 | The mechanic | Movement Phase wired into the orchestrator with tick/issue/revise/cancel lifecycle, `LockSkip` semantics, and the transport ability step type + handler. Dormant in practice (no asset has `Speed > 0` and no TOML uses transport yet). |
+| [2 — Movement Engine](asset-movement-redesign-effort-2-plan.md) | 3, 4 | The mechanic | Movement Phase wired into the orchestrator with tick/issue/revise/cancel lifecycle, `LockSkip` semantics, and the transport S-flag hook handler (Effects Engine introduction). Dormant in practice (no asset has `Speed > 0` and no TOML carries a `[transport]` block yet). |
 | [3 — Cutover & Integration](asset-movement-redesign-effort-3-plan.md) | 5, 6, 7 | Player-facing change | TOML cutover (Speed values, transport reclassification, old step purged); `ChangeHomeworld` distance reconciliation; hex-level attack targeting. |
 
 <br/>
@@ -71,7 +71,7 @@ Effort 3 Phase 7 adds a parallel `AssetsByHex map[HexCoord][]*domain.Asset` for 
 
 ### `Astral Sea` sentinel retirement
 
-`ability.go:225`'s `worldsFromState` appends the literal string `"Astral Sea"` to its returned world list — the legacy way to represent "in empty space." Under the redesign this is replaced by `Location.WorldID = ""`. The sentinel is removed in Effort 1 Phase 2; any remaining string match elsewhere is flagged for the same migration.
+`internal/faction/engine/ability/steps/movement.go:58`'s `worldsFromState` appends the literal string `"Astral Sea"` to its returned world list — the legacy way to represent "in empty space." Under the redesign this is replaced by `Location.WorldID = ""`. The sentinel is removed in Effort 1 Phase 2; any remaining string match elsewhere is flagged for the same migration.
 
 ### Mutation versioning
 
@@ -80,6 +80,12 @@ No history-format migration is needed for past `AssetMoved` events. The mutation
 ### Test harness
 
 The existing `internal/faction/engine/testharness` helpers build factions with hardcoded string locations and homeworlds. Effort 1 Phase 2 migrates these to use `Location{WorldID: ..., HexCoords: ...}`. Per-effort test additions extend the harness with order-issuance helpers (Effort 2), transport setup helpers (Effort 2 Phase 4), and hex-coord lookup helpers (Effort 3 Phase 7).
+
+### Transport as hook (post-R-001)
+
+Decision #6 was reversed during R-001 execution. Transport is not an ability step — it is an S-flag hook handler firing on `MovementOrder{Issued, Progressed, Completed, Cancelled, Revised}` mutations. `AbilityStepTransport` is never introduced; `AbilityStepMovement` was deleted as part of R-001's `ability/` package retirement.
+
+Effort 2 Phase 4 has been re-planned as a `MutationReactor`-style hook handler addition that introduces the Effects Engine package (per-asset S-flag analog of `TagEngine`). Cargo selection happens at order issuance via a new `SelectTransportCargo` collector method (hooks have no `Collector`); the reactor handles Coin cost emission and cargo co-location reactively. See [`asset-movement-redesign-effort-2-plan.md`](asset-movement-redesign-effort-2-plan.md) Phase 4 for the full plan.
 
 <br/>
 
@@ -103,7 +109,7 @@ Per the discovery doc and Robert's notes:
 | Effort 1 Phase 1 (additive types, no design choices) | Sonnet |
 | Effort 1 Phase 2 (mechanical refactor) | Sonnet |
 | Effort 2 Phase 3 (orchestrator design — collector interface shape matters) | Sonnet, suggest Opus if collector interface design proves nontrivial during the session |
-| Effort 2 Phase 4 (transport handler design — cargo lifecycle) | Sonnet, suggest Opus if cargo-lifecycle edge cases proliferate |
+| Effort 2 Phase 4 (hooks handler addition) | Sonnet |
 | Effort 3 Phase 5 (TOML edits + constant removal) | Sonnet |
 | Effort 3 Phase 6 (small reconciliation) | Sonnet |
 | Effort 3 Phase 7 (hex-index addition + targeting widening) | Sonnet |

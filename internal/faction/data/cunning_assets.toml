@@ -9,8 +9,9 @@ hp = 4
 cost = 2
 maintenance = 0
 tech_level = 4
+speed = 2
 type = "Starship"
-flags = ["A"]
+flags = ["S"]
 counter = ""
 description = "Men and women skilled in extracting personnel. For one Coin, the smugglers asset can transport itself and/or any one Special Forces unit to a planet up to two hexes away."
 
@@ -19,10 +20,11 @@ attacker_stat = "Cunning"
 defender_stat = "Wealth"
 damage = "1d4"
 
-[[assets.Smugglers.ability.steps]]
-type = "movement"
+[assets.Smugglers.transport]
 max_hex = 2
 coin_cost = 1
+cargo_types = ["Special Forces"]
+max_cargo = 1
 
 [assets.Informers]
 id = "C1-002"
@@ -38,8 +40,7 @@ flags = ["A", "S"]
 counter = ""
 description = "Minions that lace a planet's underworld, watchful for intruders. On a successful Cunning vs. Cunning attack, all Stealthed assets on the planet belonging to that faction are revealed. Can target a faction even if none of their assets are visible."
 
-[[assets.Informers.ability.steps]]
-type = "faction_test"
+[assets.Informers.ability]
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 effect = "reveal_stealth"
@@ -119,15 +120,11 @@ hp = 4
 cost = 4
 maintenance = 0
 tech_level = 0
+speed = 1
 type = "Special Forces"
 flags = ["A", "S"]
 counter = ""
 description = "As an action, can travel to any world within one hex. On a successful Cunning vs. Cunning attack, does no damage but immediately reveals any other Stealthed assets of that faction on the planet. Only Special Forces units can attack a Seductress."
-
-[[assets.Seductress.ability.steps]]
-type = "movement"
-max_hex = 1
-coin_cost = 0
 
 [[assets.Seductress.ability.steps]]
 type = "faction_test"
@@ -182,11 +179,6 @@ flags = ["A", "S"]
 counter = ""
 description = "Any one Special Forces unit can be moved between any worlds within three hexes of the Covert Shipping at the cost of one Coin."
 
-[[assets.CovertShipping.ability.steps]]
-type = "movement"
-max_hex = 3
-coin_cost = 1
-
 [assets.PartyMachine]
 id = "C4-001"
 name = "Party Machine"
@@ -235,7 +227,7 @@ cost = 12
 maintenance = 0
 tech_level = 4
 type = "Special Forces"
-flags = ["A", "S"]
+flags = ["S"]
 counter = "1d4"
 description = "Observers alert to the arrival of stealthed units. Whenever a stealthed asset lands or is purchased on a planet with Tripwire Cells, the Cells make an immediate Cunning vs. Cunning attack against the owning faction. If successful, the asset loses its stealth."
 
@@ -327,11 +319,6 @@ type = "Logistics Facility"
 flags = ["A"]
 counter = ""
 description = "Webs an area of space with a network of smugglers and gray-market freighter captains. As an action, any Special Forces assets can be moved between any worlds within three hexes of the Covert Transit Net."
-
-[[assets.CovertTransitNet.ability.steps]]
-type = "movement"
-max_hex = 3
-coin_cost = 0
 
 [assets.Demagogue]
 id = "C6-003"

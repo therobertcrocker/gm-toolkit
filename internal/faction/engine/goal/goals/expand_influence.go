@@ -22,11 +22,11 @@ func (ExpandInfluence) UpdateProgress(actingFaction *domain.Faction, mutations [
 		if !ok || v.CausedByFactionID != actingFaction.ID {
 			continue
 		}
-		if factionHasBaseOn(actingFaction, v.Base.Location) {
+		if factionHasBaseOn(actingFaction, v.Base.Location.WorldID) {
 			continue
 		}
 		xp := 1
-		if worldHasRivalPresence(v.Base.Location, actingFaction.ID, index) {
+		if worldHasRivalPresence(v.Base.Location.WorldID, actingFaction.ID, index) {
 			xp = 2
 		}
 		return completeGoal(actingFaction, xp)

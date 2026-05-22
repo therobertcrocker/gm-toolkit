@@ -76,8 +76,8 @@ func TestStart_InitializesTurnState(t *testing.T) {
 	if s.CurrentTurn.CurrentIndex != 0 {
 		t.Errorf("CurrentTurn.CurrentIndex: got %d, want 0", s.CurrentTurn.CurrentIndex)
 	}
-	if s.CurrentTurn.Phase != domain.PhaseBookkeeping {
-		t.Errorf("CurrentTurn.Phase: got %v, want PhaseBookkeeping", s.CurrentTurn.Phase)
+	if s.CurrentTurn.BookkeepingApplied {
+		t.Error("CurrentTurn.BookkeepingApplied: got true, want false after Start()")
 	}
 	if len(s.CurrentTurn.FactionOrder) != 3 {
 		t.Errorf("FactionOrder length: got %d, want 3", len(s.CurrentTurn.FactionOrder))
@@ -221,7 +221,9 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ApplyBookkeeping() error: %v", err)
 			}
-			mutation.New().Apply(s, mutations)
+			if err := mutation.New().Apply(s, mutations); err != nil {
+					t.Fatalf("Apply() unexpected error: %v", err)
+				}
 			if s.Factions["f"].Coin != tt.wantIncome {
 				t.Errorf("Coin after income: got %d, want %d", s.Factions["f"].Coin, tt.wantIncome)
 			}
@@ -236,13 +238,17 @@ func TestApplyBookkeeping_NoDoubleApply(t *testing.T) {
 	_ = te.Start(s)
 
 	_, mutations, _ := te.ApplyBookkeeping(s, nil)
-	me.Apply(s, mutations)
+	if err := me.Apply(s, mutations); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
 
 	_, secondMutations, _ := te.ApplyBookkeeping(s, nil)
 	if len(secondMutations) != 0 {
 		t.Errorf("second ApplyBookkeeping returned %d mutations, want 0", len(secondMutations))
 	}
-	me.Apply(s, secondMutations)
+	if err := me.Apply(s, secondMutations); err != nil {
+		t.Fatalf("Apply() second call unexpected error: %v", err)
+	}
 
 	if s.Factions["a"].Coin != 4 {
 		t.Errorf("Coin after double apply: got %d, want 4", s.Factions["a"].Coin)
@@ -255,8 +261,8 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 	_ = te.Start(s)
 	_, _, _ = te.ApplyBookkeeping(s, nil)
 
-	if s.CurrentTurn.Phase != domain.PhaseAction {
-		t.Errorf("Phase: got %v, want PhaseAction after ApplyBookkeeping()", s.CurrentTurn.Phase)
+	if !s.CurrentTurn.BookkeepingApplied {
+		t.Error("BookkeepingApplied: got false, want true after ApplyBookkeeping()")
 	}
 }
 
@@ -285,8 +291,8 @@ func TestAdvance_MovesToNextFaction(t *testing.T) {
 	if s.CurrentTurn.CurrentIndex != 1 {
 		t.Errorf("CurrentIndex: got %d, want 1", s.CurrentTurn.CurrentIndex)
 	}
-	if s.CurrentTurn.Phase != domain.PhaseBookkeeping {
-		t.Errorf("Phase: got %v, want PhaseBookkeeping after Advance()", s.CurrentTurn.Phase)
+	if s.CurrentTurn.BookkeepingApplied {
+		t.Error("BookkeepingApplied: got true, want false after Advance()")
 	}
 }
 

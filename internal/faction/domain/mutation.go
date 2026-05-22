@@ -1,5 +1,14 @@
 package domain
 
+import "github.com/therobertcrocker/gm-toolkit/internal/spatial"
+
+const (
+	CauseMovementTick         = "movement_tick"
+	CauseMovementIssue        = "movement_issue"
+	CauseMovementRevision     = "movement_revision"
+	CauseMovementCancellation = "movement_cancellation"
+)
+
 // Mutation represents a discrete state change produced by an action or
 // bookkeeping phase. Type returns a stable string discriminator used for
 // history serialization.
@@ -15,7 +24,7 @@ type CoinDelta struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation CoinDelta) Type() string { return "coin_delta" }
+func (m CoinDelta) Type() string { return "coin_delta" }
 
 // AssetRemoved removes an asset from a faction's roster.
 type AssetRemoved struct {
@@ -25,7 +34,7 @@ type AssetRemoved struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetRemoved) Type() string { return "asset_removed" }
+func (m AssetRemoved) Type() string { return "asset_removed" }
 
 // AssetMaintainedFlag updates the Maintained flag on a specific asset.
 type AssetMaintainedFlag struct {
@@ -36,7 +45,7 @@ type AssetMaintainedFlag struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetMaintainedFlag) Type() string { return "asset_maintained_flag" }
+func (m AssetMaintainedFlag) Type() string { return "asset_maintained_flag" }
 
 // FactionHPDelta adjusts a faction's CurrentHP by Delta. Resolve pre-caps the
 // delta so the applied value never exceeds MaxHP.
@@ -47,7 +56,7 @@ type FactionHPDelta struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation FactionHPDelta) Type() string { return "faction_hp_delta" }
+func (m FactionHPDelta) Type() string { return "faction_hp_delta" }
 
 // AssetHPDelta adjusts an asset's CurrentHP by Delta. Resolve pre-caps the
 // delta so the applied value never exceeds the asset's definition max HP.
@@ -59,7 +68,7 @@ type AssetHPDelta struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetHPDelta) Type() string { return "asset_hp_delta" }
+func (m AssetHPDelta) Type() string { return "asset_hp_delta" }
 
 // AssetAdded adds a newly purchased or created asset to a faction's roster.
 // The asset is flagged Ready: false (inactive until the start of the next turn).
@@ -70,7 +79,7 @@ type AssetAdded struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetAdded) Type() string { return "asset_added" }
+func (m AssetAdded) Type() string { return "asset_added" }
 
 // AssetStealthCleared flips an asset's Stealthy flag to false. Per SWN,
 // stealth is lost when an asset attacks or defends; Attack resolution emits
@@ -83,7 +92,7 @@ type AssetStealthCleared struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetStealthCleared) Type() string { return "asset_stealth_cleared" }
+func (m AssetStealthCleared) Type() string { return "asset_stealth_cleared" }
 
 // BaseHPDelta adjusts a Base of Influence's CurrentHP by Delta. Per SWN,
 // damage to a Base is also dealt to faction HP; callers must emit an
@@ -96,7 +105,7 @@ type BaseHPDelta struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation BaseHPDelta) Type() string { return "base_hp_delta" }
+func (m BaseHPDelta) Type() string { return "base_hp_delta" }
 
 // BaseDestroyed removes a Base of Influence from a faction. Emitted inline
 // after a BaseHPDelta that takes CurrentHP to 0 or below.
@@ -107,7 +116,7 @@ type BaseDestroyed struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation BaseDestroyed) Type() string { return "base_destroyed" }
+func (m BaseDestroyed) Type() string { return "base_destroyed" }
 
 // BaseAdded places a new Base of Influence on a world. The base is flagged
 // Ready: false (inactive until the start of the next turn).
@@ -118,7 +127,7 @@ type BaseAdded struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation BaseAdded) Type() string { return "base_added" }
+func (m BaseAdded) Type() string { return "base_added" }
 
 // BaseHealed restores CurrentHP on a Base of Influence without changing MaxHP.
 // Unlike BaseHPDelta (attack damage), healing carries no faction HP side effect.
@@ -130,7 +139,7 @@ type BaseHealed struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation BaseHealed) Type() string { return "base_healed" }
+func (m BaseHealed) Type() string { return "base_healed" }
 
 // BaseExpanded increases both MaxHP and CurrentHP on a Base of Influence by
 // Delta. Used when purchasing additional HP capacity via Expand Influence.
@@ -142,19 +151,19 @@ type BaseExpanded struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation BaseExpanded) Type() string { return "base_expanded" }
+func (m BaseExpanded) Type() string { return "base_expanded" }
 
 // AssetMoved updates an asset's Location. Emitted by movement ability steps.
 type AssetMoved struct {
-	FactionID         string `json:"faction_id"`
-	AssetID           string `json:"asset_id"`
-	FromLocation      string `json:"from_location"`
-	ToLocation        string `json:"to_location"`
-	Cause             string `json:"cause"`
-	CausedByFactionID string `json:"caused_by_faction_id"`
+	FactionID         string   `json:"faction_id"`
+	AssetID           string   `json:"asset_id"`
+	FromLocation      Location `json:"from_location"`
+	ToLocation        Location `json:"to_location"`
+	Cause             string   `json:"cause"`
+	CausedByFactionID string   `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetMoved) Type() string { return "asset_moved" }
+func (m AssetMoved) Type() string { return "asset_moved" }
 
 // AssetStealthApplied marks an asset as stealthy. Emitted by Buy Asset when
 // a Stealth-type Cunning asset is purchased.
@@ -165,7 +174,7 @@ type AssetStealthApplied struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation AssetStealthApplied) Type() string { return "asset_stealth_applied" }
+func (m AssetStealthApplied) Type() string { return "asset_stealth_applied" }
 
 // GoalAbandoned records that a faction abandoned their active goal. Income for
 // the turn is forfeited via a separate CoinDelta emitted alongside this.
@@ -176,7 +185,7 @@ type GoalAbandoned struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation GoalAbandoned) Type() string { return "goal_abandoned" }
+func (m GoalAbandoned) Type() string { return "goal_abandoned" }
 
 // GoalCompleted records successful goal resolution. XPAwarded is the amount
 // granted; a separate XPAwarded mutation applies it to faction.XP.
@@ -188,7 +197,7 @@ type GoalCompleted struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation GoalCompleted) Type() string { return "goal_completed" }
+func (m GoalCompleted) Type() string { return "goal_completed" }
 
 // XPAwarded increments a faction's XP by Amount.
 type XPAwarded struct {
@@ -198,18 +207,18 @@ type XPAwarded struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation XPAwarded) Type() string { return "xp_awarded" }
+func (m XPAwarded) Type() string { return "xp_awarded" }
 
 // HomeworldChanged updates a faction's homeworld on Change Homeworld completion.
 type HomeworldChanged struct {
-	FactionID         string `json:"faction_id"`
-	FromWorld         string `json:"from_world"`
-	ToWorld           string `json:"to_world"`
-	Cause             string `json:"cause"`
-	CausedByFactionID string `json:"caused_by_faction_id"`
+	FactionID         string   `json:"faction_id"`
+	FromWorld         Location `json:"from_world"`
+	ToWorld           Location `json:"to_world"`
+	Cause             string   `json:"cause"`
+	CausedByFactionID string   `json:"caused_by_faction_id"`
 }
 
-func (mutation HomeworldChanged) Type() string { return "homeworld_changed" }
+func (m HomeworldChanged) Type() string { return "homeworld_changed" }
 
 // TagAdded grants a tag to a faction. The full Tag is embedded so Apply does
 // not need a Rulebook lookup.
@@ -220,7 +229,7 @@ type TagAdded struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation TagAdded) Type() string { return "tag_added" }
+func (m TagAdded) Type() string { return "tag_added" }
 
 // InfluenceDelta adds Delta to a Base's Influence field. Emitted by the Bribe action.
 type InfluenceDelta struct {
@@ -231,19 +240,19 @@ type InfluenceDelta struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation InfluenceDelta) Type() string { return "influence_delta" }
+func (m InfluenceDelta) Type() string { return "influence_delta" }
 
 // GoalInitiated records that a faction initiated a goal. Used for bookkeeping and validation of goal-specific actions; has no direct mechanical effect.
 type GoalInitiated struct {
-	FactionID         string `json:"faction_id"`
-	GoalID            string `json:"goal_id"`
-	TargetWorld       string `json:"target_world"`
-	ProcessPhase      int    `json:"process_phase"`
-	Cause             string `json:"cause"`
-	CausedByFactionID string `json:"caused_by_faction_id"`
+	FactionID         string   `json:"faction_id"`
+	GoalID            string   `json:"goal_id"`
+	TargetWorld       Location `json:"target_world"`
+	ProcessPhase      int      `json:"process_phase"`
+	Cause             string   `json:"cause"`
+	CausedByFactionID string   `json:"caused_by_faction_id"`
 }
 
-func (mutation GoalInitiated) Type() string { return "goal_initiated" }
+func (m GoalInitiated) Type() string { return "goal_initiated" }
 
 // GoalProgressed records a progress increment (or reset) on the active goal.
 type GoalProgressed struct {
@@ -254,7 +263,7 @@ type GoalProgressed struct {
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
-func (mutation GoalProgressed) Type() string { return "goal_progressed" }
+func (m GoalProgressed) Type() string { return "goal_progressed" }
 
 // GoalTurnsTick decrements ActiveGoal.TurnsRemaining by 1.
 type GoalTurnsTick struct {
@@ -263,7 +272,7 @@ type GoalTurnsTick struct {
 	Cause     string `json:"cause"`
 }
 
-func (mutation GoalTurnsTick) Type() string { return "goal_turns_tick" }
+func (m GoalTurnsTick) Type() string { return "goal_turns_tick" }
 
 // GoalPhaseAdvanced records a phase transition in a multi-phase goal,
 // setting both ProcessPhase and TurnsRemaining atomically.
@@ -275,7 +284,7 @@ type GoalPhaseAdvanced struct {
 	Cause          string `json:"cause"`
 }
 
-func (mutation GoalPhaseAdvanced) Type() string { return "goal_phase_advanced" }
+func (m GoalPhaseAdvanced) Type() string { return "goal_phase_advanced" }
 
 // XPSpent decrements a faction's XP by Amount. Emitted by the stat raise phase.
 type XPSpent struct {
@@ -297,3 +306,54 @@ type StatRaised struct {
 }
 
 func (m StatRaised) Type() string { return "stat_raised" }
+
+type MovementOrderIssued struct {
+	FactionID         string        `json:"faction_id"`
+	AssetID           string        `json:"asset_id"`
+	Order             MovementOrder `json:"order"`
+	Cause             string        `json:"cause"`
+	CausedByFactionID string        `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderIssued) Type() string { return "movement_order_issued" }
+
+type MovementOrderProgressed struct {
+	FactionID         string           `json:"faction_id"`
+	AssetID           string           `json:"asset_id"`
+	NewStepIdx        int              `json:"new_step_idx"`
+	RegionHex         spatial.RegionHex `json:"region_hex"`
+	Cause             string           `json:"cause"`
+	CausedByFactionID string           `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderProgressed) Type() string { return "movement_order_progressed" }
+
+type MovementOrderRevised struct {
+	FactionID         string        `json:"faction_id"`
+	AssetID           string        `json:"asset_id"`
+	NewOrder          MovementOrder `json:"new_order"`
+	Cause             string        `json:"cause"`
+	CausedByFactionID string        `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderRevised) Type() string { return "movement_order_revised" }
+
+type MovementOrderCancelled struct {
+	FactionID         string   `json:"faction_id"`
+	AssetID           string   `json:"asset_id"`
+	StrandedAt        Location `json:"stranded_at"` // current hex at cancellation; WorldID empty if mid-flight
+	Cause             string   `json:"cause"`
+	CausedByFactionID string   `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderCancelled) Type() string { return "movement_order_cancelled" }
+
+type MovementOrderCompleted struct {
+	FactionID         string   `json:"faction_id"`
+	AssetID           string   `json:"asset_id"`
+	FinalLocation     Location `json:"final_location"`
+	Cause             string   `json:"cause"`
+	CausedByFactionID string   `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderCompleted) Type() string { return "movement_order_completed" }

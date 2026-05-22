@@ -66,15 +66,17 @@ hp = 6
 cost = 4
 maintenance = 0
 tech_level = 4
+speed = 1
 type = "Facility"
-flags = ["A"]
+flags = ["S"]
 counter = ""
 description = "These craft allow for the transport of resources from one world to another. As an action, any one non-Starship asset, including this one, may be moved to any world within one hex for one Coin."
 
-[[assets.HeavyDropAssets.ability.steps]]
-type = "movement"
+[assets.HeavyDropAssets.transport]
 max_hex = 1
 coin_cost = 1
+cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
+max_cargo = 1
 
 [assets.EliteSkirmishers]
 id = "F2-002"
@@ -189,15 +191,17 @@ hp = 10
 cost = 10
 maintenance = 0
 tech_level = 4
+speed = 1
 type = "Facility"
-flags = ["A"]
+flags = ["S"]
 counter = ""
 description = "A collection of short-range, high-capacity spike drive ships capable of moving large numbers of troops. As an action, the asset may move any number of assets on the planet, including itself, to any world within one hex at a cost of one Coin per asset moved."
 
-[[assets.BeachheadLanders.ability.steps]]
-type = "movement"
+[assets.BeachheadLanders.transport]
 max_hex = 1
 coin_cost = 1
+cargo_types = ["Facility", "Starship", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
+max_cargo = 10
 
 [assets.ExtendedTheater]
 id = "F4-002"
@@ -208,15 +212,17 @@ hp = 10
 cost = 10
 maintenance = 0
 tech_level = 4
+speed = 2
 type = "Facility"
-flags = ["A"]
+flags = ["S"]
 counter = ""
 description = "These facilities allow for transporting assets long distances. As an action, any one non-Starship asset, including itself, can be moved between any two worlds within two hexes at a cost of one Coin."
 
-[[assets.ExtendedTheater.ability.steps]]
-type = "movement"
+[assets.ExtendedTheater.transport]
 max_hex = 2
 coin_cost = 1
+cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
+max_cargo = 1
 
 [assets.StrikeFleet]
 id = "F4-003"
@@ -227,8 +233,9 @@ hp = 8
 cost = 12
 maintenance = 0
 tech_level = 4
+speed = 1
 type = "Starship"
-flags = ["A"]
+flags = []
 counter = "1d8"
 description = "Forces composed of frigate or cruiser-class vessels equipped with space-to-ground weaponry and sophisticated defenses against light planetary weaponry. As an action, they can move to any world within one hex of their current location."
 
@@ -236,11 +243,6 @@ description = "Forces composed of frigate or cruiser-class vessels equipped with
 attacker_stat = "Force"
 defender_stat = "Force"
 damage = "2d6"
-
-[[assets.StrikeFleet.ability.steps]]
-type = "movement"
-max_hex = 1
-coin_cost = 0
 
 [assets.PostechInfantry]
 id = "F4-004"
@@ -270,6 +272,7 @@ hp = 8
 cost = 10
 maintenance = 0
 tech_level = 4
+speed = 1
 type = "Starship"
 flags = ["S"]
 counter = ""
@@ -374,15 +377,17 @@ hp = 10
 cost = 25
 maintenance = 0
 tech_level = 4
+speed = 3
 type = "Facility"
-flags = ["A"]
+flags = ["S"]
 counter = ""
 description = "Advanced transport ships capable of moving an asset long distances. As an action, any one non-Starship asset, including itself, can be moved between any two worlds within three hexes at a cost of 2 Coins, even if the local planetary government objects."
 
-[[assets.DeepStrikeLanders.ability.steps]]
-type = "movement"
+[assets.DeepStrikeLanders.transport]
 max_hex = 3
 coin_cost = 2
+cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
+max_cargo = 1
 
 [assets.IntegralProtocols]
 id = "F7-002"
@@ -407,8 +412,9 @@ hp = 16
 cost = 30
 maintenance = 0
 tech_level = 4
+speed = 1
 type = "Military Unit"
-flags = ["A"]
+flags = []
 counter = "2d8"
 description = "Heavily-armored specialist troops trained for ship boarding actions and opposed landings. As an action, they can move to any world within one hex of their current location, whether or not the planetary government permits it."
 
@@ -416,11 +422,6 @@ description = "Heavily-armored specialist troops trained for ship boarding actio
 attacker_stat = "Force"
 defender_stat = "Force"
 damage = "2d8+2"
-
-[[assets.SpaceMarines.ability.steps]]
-type = "movement"
-max_hex = 1
-coin_cost = 0
 
 [assets.CapitalFleet]
 id = "F8-001"
@@ -431,8 +432,9 @@ hp = 30
 cost = 40
 maintenance = 2
 tech_level = 4
+speed = 3
 type = "Starship"
-flags = ["A", "S"]
+flags = ["S"]
 counter = "3d8"
 description = "The pride of an empire, a collection of massive capital warships without peer in most sectors. Capital fleets cost an additional 2 Coin of maintenance each turn. As an action, they may move to any world within three hexes of their current location. Planetary government permission is required to raise a Capital Fleet, but not to move one into a system."
 
@@ -440,8 +442,3 @@ description = "The pride of an empire, a collection of massive capital warships 
 attacker_stat = "Force"
 defender_stat = "Force"
 damage = "3d10+4"
-
-[[assets.CapitalFleet.ability.steps]]
-type = "movement"
-max_hex = 3
-coin_cost = 0

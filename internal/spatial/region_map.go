@@ -28,18 +28,23 @@ type World struct {
 	name       string
 	techLevel  int
 	population int
-	Region     string
-	Hex        HexCoord
+	loc        RegionHex
 }
 
-func (w *World) ID() string         { return w.id }
-func (w *World) Name() string       { return w.name }
-func (w *World) TechLevel() int     { return w.techLevel }
-func (w *World) Population() int    { return w.population }
-func (w *World) Coords() (q, r int) { return w.Hex.Q, w.Hex.R }
-func (w *World) RegionID() string   { return w.Region }
+func (w *World) ID() string           { return w.id }
+func (w *World) Name() string         { return w.name }
+func (w *World) TechLevel() int       { return w.techLevel }
+func (w *World) Population() int      { return w.population }
+func (w *World) Coords() (q, r int)   { return w.loc.Coord.Q, w.loc.Coord.R }
+func (w *World) RegionID() string     { return w.loc.RegionID }
+func (w *World) RegionHex() RegionHex { return w.loc }
 
-type HybridMap struct {
+type RegionHex struct {
+	RegionID string
+	Coord    HexCoord
+}
+
+type RegionMap struct {
 	regions map[string]*Region
 	worlds  map[string]*World
 }
@@ -77,7 +82,7 @@ type worldsFile struct {
 	World []tomlWorld `toml:"world"`
 }
 
-func LoadHybrid(dataDir string) (*HybridMap, error) {
+func LoadRegionMap(dataDir string) (*RegionMap, error) {
 	var regionsDoc regionsFile
 	if _, err := toml.DecodeFile(filepath.Join(dataDir, "regions.toml"), &regionsDoc); err != nil {
 		return nil, fmt.Errorf("loading regions.toml: %w", err)
@@ -140,20 +145,28 @@ func LoadHybrid(dataDir string) (*HybridMap, error) {
 			name:       world.Name,
 			techLevel:  world.TechLevel,
 			population: world.Population,
-			Region:     world.Region,
-			Hex:        hex,
+			loc:        RegionHex{RegionID: world.Region, Coord: hex},
 		}
 	}
 
-	return &HybridMap{regions: regions, worlds: worlds}, nil
+	return &RegionMap{regions: regions, worlds: worlds}, nil
 }
 
-func (hybridMap *HybridMap) Location(id string) (Location, bool) {
-	world, ok := hybridMap.worlds[id]
+func (regionMap *RegionMap) Location(id string) (Location, bool) {
+	world, ok := regionMap.worlds[id]
 	if !ok {
 		return nil, false
 	}
 	return world, true
+}
+
+func (regionMap *RegionMap) RegionOfHex(hex HexCoord) (string, bool) {
+	for _, region := range regionMap.regions {
+		if region.Hexes[hex] {
+			return region.ID, true
+		}
+	}
+	return "", false
 }
 
 type hexNode struct {
@@ -196,18 +209,10 @@ func (priorityQ *priorityQueue) Pop() any {
 	return entry
 }
 
-func (hybridMap *HybridMap) neighbors(node hexNode, crossingCost int) []edge {
+func (regionMap *RegionMap) neighbors(node hexNode, crossingCost int) []edge {
 	var edges []edge
 
-	// (1) Look up the Region this node lives in.
-	//     region := hybridMap.regions[node.regionID]
-
-	region := hybridMap.regions[node.regionID]
-
-	// (2) Intra-region: for each of the 6 axial deltas in hexNeighbors,
-	//     compute candidate := HexCoord{node.coord.Q + delta.Q, node.coord.R + delta.R}.
-	//     If region.Hexes[candidate] is true, append:
-	//         edge{to: hexNode{node.regionID, candidate}, cost: 1}
+	region := regionMap.regions[node.regionID]
 
 	for _, delta := range hexNeighbors {
 		candidate := HexCoord{Q: node.coord.Q + delta.Q, R: node.coord.R + delta.R}
@@ -216,24 +221,13 @@ func (hybridMap *HybridMap) neighbors(node hexNode, crossingCost int) []edge {
 		}
 	}
 
-	// (3) Outgoing boundaries: walk region.Boundaries.
-	//     For each boundary whose .From == node.coord, append:
-	//         edge{to: hexNode{boundary.ToRegion, boundary.To}, cost: crossingCost}
-
 	for _, boundary := range region.Boundaries {
 		if boundary.From == node.coord {
 			edges = append(edges, edge{to: hexNode{regionID: boundary.ToRegion, coord: boundary.To}, cost: crossingCost})
 		}
 	}
 
-	// (4) Incoming boundaries (the "bidirectional" piece): walk every OTHER region in
-	//     hybridMap.regions, then walk that region's Boundaries.
-	//     If a boundary has .ToRegion == node.regionID AND .To == node.coord,
-	//     it's a forward edge from THAT region pointing at us — so the reverse
-	//     edge goes from us back to its source. Append:
-	//         edge{to: hexNode{otherRegion.ID, boundary.From}, cost: crossingCost}
-
-	for _, otherRegion := range hybridMap.regions {
+	for _, otherRegion := range regionMap.regions {
 		if otherRegion.ID == node.regionID {
 			continue
 		}
@@ -247,26 +241,62 @@ func (hybridMap *HybridMap) neighbors(node hexNode, crossingCost int) []edge {
 	return edges
 }
 
-func (hybridMap *HybridMap) Distance(fromID, toID string, crossingCost int) (int, error) {
+func (regionMap *RegionMap) Distance(from, to RegionHex, crossingCost int) (int, error) {
 	if crossingCost < 0 {
 		return 0, fmt.Errorf("%w: crossingCost=%d (must be non-negative)", ErrInvalidCost, crossingCost)
 	}
-	fromWorld, ok := hybridMap.worlds[fromID]
-	if !ok {
-		return 0, fmt.Errorf("%w: %q", ErrUnknownWorld, fromID)
-	}
-	toWorld, ok := hybridMap.worlds[toID]
-	if !ok {
-		return 0, fmt.Errorf("%w: %q", ErrUnknownWorld, toID)
-	}
-	if fromID == toID {
+	if from == to {
 		return 0, nil
 	}
 
-	source := hexNode{regionID: fromWorld.Region, coord: fromWorld.Hex}
-	target := hexNode{regionID: toWorld.Region, coord: toWorld.Hex}
+	source := hexNode{regionID: from.RegionID, coord: from.Coord}
+	target := hexNode{regionID: to.RegionID, coord: to.Coord}
 
+	dist, _ := dijkstra(regionMap, source, target, crossingCost)
+	cost, found := dist[target]
+	if !found {
+		return 0, fmt.Errorf("%w: from %s(%d,%d) to %s(%d,%d)", ErrNoPath, from.RegionID, from.Coord.Q, from.Coord.R, to.RegionID, to.Coord.Q, to.Coord.R)
+	}
+	return cost, nil
+}
+
+func (regionMap *RegionMap) Path(from, to RegionHex, crossingCost int) ([]RegionHex, int, error) {
+	if crossingCost < 0 {
+		return nil, 0, fmt.Errorf("%w: crossingCost=%d (must be non-negative)", ErrInvalidCost, crossingCost)
+	}
+	if from == to {
+		return []RegionHex{from}, 0, nil
+	}
+
+	source := hexNode{regionID: from.RegionID, coord: from.Coord}
+	target := hexNode{regionID: to.RegionID, coord: to.Coord}
+
+	return regionMap.pathBetween(source, target, crossingCost)
+}
+
+func (regionMap *RegionMap) pathBetween(source, target hexNode, crossingCost int) ([]RegionHex, int, error) {
+	dist, prev := dijkstra(regionMap, source, target, crossingCost)
+	cost, found := dist[target]
+	if !found {
+		return nil, 0, fmt.Errorf("%w: from %s(%d,%d) to %s(%d,%d)", ErrNoPath, source.regionID, source.coord.Q, source.coord.R, target.regionID, target.coord.Q, target.coord.R)
+	}
+
+	var path []RegionHex
+	for at := target; at != source; at = prev[at] {
+		path = append(path, RegionHex{RegionID: at.regionID, Coord: at.coord})
+	}
+	path = append(path, RegionHex{RegionID: source.regionID, Coord: source.coord})
+
+	for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
+		path[i], path[j] = path[j], path[i]
+	}
+
+	return path, cost, nil
+}
+
+func dijkstra(regionMap *RegionMap, source hexNode, target hexNode, crossingCost int) (map[hexNode]int, map[hexNode]hexNode) {
 	dist := map[hexNode]int{source: 0}
+	prev := map[hexNode]hexNode{}
 	queue := &priorityQueue{}
 	heap.Init(queue)
 	heap.Push(queue, &pqItem{node: source, cost: 0})
@@ -277,16 +307,16 @@ func (hybridMap *HybridMap) Distance(fromID, toID string, crossingCost int) (int
 			continue
 		}
 		if current.node == target {
-			return current.cost, nil
+			return dist, prev
 		}
-		for _, next := range hybridMap.neighbors(current.node, crossingCost) {
+		for _, next := range regionMap.neighbors(current.node, crossingCost) {
 			candidate := current.cost + next.cost
 			if known, seen := dist[next.to]; !seen || candidate < known {
 				dist[next.to] = candidate
+				prev[next.to] = current.node
 				heap.Push(queue, &pqItem{node: next.to, cost: candidate})
 			}
 		}
 	}
-
-	return 0, fmt.Errorf("%w: from %q to %q", ErrNoPath, fromID, toID)
+	return dist, prev
 }

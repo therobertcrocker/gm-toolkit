@@ -47,7 +47,6 @@ func (t *TurnEngine) Start(factionState *state.FactionState) error {
 		CycleNumber:  factionState.CycleNumber,
 		FactionOrder: buildFactionOrder(factionState.Factions, t.roller),
 		CurrentIndex: 0,
-		Phase:        domain.PhaseBookkeeping,
 	}
 	return nil
 }
@@ -72,7 +71,7 @@ func (t *TurnEngine) Advance(factionState *state.FactionState) (bool, error) {
 	}
 
 	factionState.CurrentTurn.CurrentIndex++
-	factionState.CurrentTurn.Phase = domain.PhaseBookkeeping
+	factionState.CurrentTurn.BookkeepingApplied = false
 
 	if factionState.CurrentTurn.CurrentIndex >= len(factionState.CurrentTurn.FactionOrder) {
 		factionState.CurrentTurn = nil

@@ -26,7 +26,7 @@ func TestSellAsset_Validate(t *testing.T) {
 	t.Run("no assets", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1"}
-		if NewSellAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewSellAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction has no assets")
 		}
 	})
@@ -35,7 +35,7 @@ func TestSellAsset_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "sell-me"}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		if !NewSellAsset(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if !NewSellAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction has assets")
 		}
 	})
@@ -48,7 +48,7 @@ func TestSellAsset_Output(t *testing.T) {
 	asset := &domain.Asset{ID: "a1", DefinitionID: "sell-me"}
 	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAsset(gomock.Any(), gomock.Any()).Return(asset, nil)
 
 	act := NewSellAsset(collector)
@@ -201,7 +201,7 @@ func TestBribe_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		base := &domain.Base{ID: "b1", OwnerID: "f1"}
 		faction := &domain.Faction{ID: "f1", Coin: 0, Bases: []*domain.Base{base}}
-		if NewBribe(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, nil) {
+		if NewBribe(mocks.NewMockCollector(ctrl)).Validate(faction, nil, nil) {
 			t.Error("expected false when faction has no coin")
 		}
 	})
@@ -209,7 +209,7 @@ func TestBribe_Validate(t *testing.T) {
 	t.Run("no own bases", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Coin: 5}
-		if NewBribe(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, nil) {
+		if NewBribe(mocks.NewMockCollector(ctrl)).Validate(faction, nil, nil) {
 			t.Error("expected false when faction has no bases of its own")
 		}
 	})
@@ -218,7 +218,7 @@ func TestBribe_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		base := &domain.Base{ID: "b1", OwnerID: "f1"}
 		faction := &domain.Faction{ID: "f1", Coin: 5, Bases: []*domain.Base{base}}
-		if !NewBribe(mocks.NewMockInputCollector(ctrl)).Validate(faction, nil, nil) {
+		if !NewBribe(mocks.NewMockCollector(ctrl)).Validate(faction, nil, nil) {
 			t.Error("expected true when faction has bases and coin")
 		}
 	})
@@ -227,12 +227,12 @@ func TestBribe_Validate(t *testing.T) {
 // TestBribe_Output: emits CoinDelta(-amount) + InfluenceDelta(+amount) on target base.
 func TestBribe_Output(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	rivalBase := &domain.Base{ID: "rb1", OwnerID: "f2", Location: "Krylos"}
-	ownBase := &domain.Base{ID: "ob1", OwnerID: "f1", Location: "Krylos"}
+	rivalBase := &domain.Base{ID: "rb1", OwnerID: "f2", Location: domain.Location{WorldID: "Krylos"}}
+	ownBase := &domain.Base{ID: "ob1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 	faction := &domain.Faction{ID: "f1", Coin: 5, Bases: []*domain.Base{ownBase}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectBribeTarget(gomock.Any(), gomock.Any()).Return(rivalBase, 3, nil)
 
 	act := NewBribe(collector)

@@ -20,10 +20,10 @@ func makeLockRulebook() *rulebook.Rulebook {
 func TestChangeHomeworld_InTransit(t *testing.T) {
 	faction := &domain.Faction{
 		ID:        "f1",
-		Homeworld: "Tartarus",
+		Homeworld: domain.Location{WorldID: "Tartarus"},
 		ActiveGoal: &domain.ActiveGoal{
 			GoalID:         "G-012",
-			TargetWorld:    "Krylos",
+			TargetWorld:    domain.Location{WorldID: "Krylos"},
 			TurnsRemaining: 2,
 		},
 	}
@@ -49,10 +49,10 @@ func TestChangeHomeworld_InTransit(t *testing.T) {
 func TestChangeHomeworld_Completing(t *testing.T) {
 	faction := &domain.Faction{
 		ID:        "f1",
-		Homeworld: "Tartarus",
+		Homeworld: domain.Location{WorldID: "Tartarus"},
 		ActiveGoal: &domain.ActiveGoal{
 			GoalID:         "G-012",
-			TargetWorld:    "Krylos",
+			TargetWorld:    domain.Location{WorldID: "Krylos"},
 			TurnsRemaining: 1,
 		},
 	}
@@ -74,8 +74,8 @@ func TestChangeHomeworld_Completing(t *testing.T) {
 	if !ok {
 		t.Fatalf("mutations[1] type = %T, want HomeworldChanged", mutations[1])
 	}
-	if hw.FromWorld != "Tartarus" || hw.ToWorld != "Krylos" {
-		t.Errorf("HomeworldChanged = {%s → %s}, want {Tartarus → Krylos}", hw.FromWorld, hw.ToWorld)
+	if hw.FromWorld.WorldID != "Tartarus" || hw.ToWorld.WorldID != "Krylos" {
+		t.Errorf("HomeworldChanged = {%s → %s}, want {Tartarus → Krylos}", hw.FromWorld.WorldID, hw.ToWorld.WorldID)
 	}
 	if _, ok := mutations[2].(domain.GoalCompleted); !ok {
 		t.Errorf("mutations[2] type = %T, want GoalCompleted", mutations[2])
@@ -87,7 +87,7 @@ func TestPlanetarySeizure_Phase1(t *testing.T) {
 		ID: "f1",
 		ActiveGoal: &domain.ActiveGoal{
 			GoalID:       "G-004",
-			TargetWorld:  "Krylos",
+			TargetWorld:  domain.Location{WorldID: "Krylos"},
 			ProcessPhase: 1,
 		},
 	}

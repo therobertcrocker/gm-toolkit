@@ -1,8 +1,9 @@
 package action
 
+//go:generate mockgen -destination=actions/mocks/mock_collector.go -package=mocks github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action Collector
+
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -11,7 +12,7 @@ import (
 // Collector abstracts all user-input methods that action implementations may call.
 type Collector interface {
 	hooks.Collector
-	ability.Collector
+	SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error)
 	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (BuyOrder, error)
@@ -26,6 +27,7 @@ type Collector interface {
 	ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error)
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
+	SelectChangeHomeworldTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
 }
 
 // RepairOrder describes a single asset repair instruction.

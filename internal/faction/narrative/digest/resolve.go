@@ -58,7 +58,7 @@ func resolveBaseLocation(factionID, baseID string, factionState *state.FactionSt
 	}
 	for _, base := range f.Bases {
 		if base.ID == baseID {
-			return base.Location
+			return base.Location.WorldID
 		}
 	}
 	return ""

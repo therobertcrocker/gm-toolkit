@@ -17,7 +17,6 @@ func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	alpha.Tags = []*domain.Tag{{ID: "T-014"}}
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
-	h.RegisterTags()
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
@@ -42,7 +41,7 @@ func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -60,7 +59,6 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 	h := testharness.NewHarness(t, testDataDir)
 	h.AddFaction("alpha", "Tartarus", 4, 3, 2) // no Scavengers tag
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
-	h.RegisterTags()
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
@@ -85,7 +83,7 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -111,7 +109,6 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 	alpha := h.AddFaction("alpha", "Tartarus", 1, 3, 2)
 	alpha.Tags = []*domain.Tag{{ID: "T-020"}}
 	h.AddFaction("beta", "Tartarus", 4, 3, 2)
-	h.RegisterTags()
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{2, 9, 5, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
@@ -136,7 +133,7 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -162,7 +159,6 @@ func TestFanatical_RerollsOnesInAttack(t *testing.T) {
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	alpha.Tags = []*domain.Tag{{ID: "T-005"}}
 	h.AddFaction("beta", "Tartarus", 2, 3, 2)
-	h.RegisterTags()
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{1, 9, 6, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
@@ -187,7 +183,7 @@ func TestFanatical_RerollsOnesInAttack(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -209,7 +205,6 @@ func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
 	alpha := h.AddFaction("alpha", "Tartarus", 1, 3, 2)
 	alpha.Tags = []*domain.Tag{{ID: "T-005"}}
 	h.AddFaction("beta", "Tartarus", 4, 3, 2)
-	h.RegisterTags()
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{6, 3, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
@@ -234,7 +229,7 @@ func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -258,7 +253,6 @@ func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
 	alpha := h.AddFaction("alpha", "Tartarus", 2, 3, 2)
 	alpha.Tags = []*domain.Tag{{ID: "T-013"}}
 	alpha.Coin = 4
-	h.RegisterTags()
 
 	h.Collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
 		for _, a := range available {
@@ -284,7 +278,7 @@ func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -302,7 +296,6 @@ func TestPreceptorArchive_NoBonusWithoutTag(t *testing.T) {
 	h := testharness.NewHarness(t, testDataDir)
 	alpha := h.AddFaction("alpha", "Tartarus", 2, 3, 2)
 	alpha.Coin = 4
-	h.RegisterTags()
 
 	h.Collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
 		for _, a := range available {
@@ -328,7 +321,7 @@ func TestPreceptorArchive_NoBonusWithoutTag(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 

@@ -15,7 +15,7 @@ const maxHookDepth = 5
 // (faction-scoped and global) in registration order against combined.
 // Returned mutations are appended and the process recurses until no
 // new mutations are produced. Returns an error if the recursion depth
-// exceeds maxHookDepth; already-collected mutations are still returned.
+// exceeds maxHookDepth to prevent infinite loops.
 func MutationReactors(
 	registry *hooks.Registry,
 	faction *domain.Faction,
@@ -35,7 +35,7 @@ func reactDispatch(
 	depth int,
 ) ([]domain.Mutation, error) {
 	if depth >= maxHookDepth {
-		return combined, fmt.Errorf("hook recursion depth exceeded for faction %s", faction.ID)
+		return nil, fmt.Errorf("hook recursion depth exceeded for faction %s", faction.ID)
 	}
 
 	reactors := registry.MutationReactorsFor(faction.ID, "")
@@ -49,5 +49,9 @@ func reactDispatch(
 		return combined, nil
 	}
 
-	return reactDispatch(registry, faction, append(combined, newMutations...), factionState, rulebook, depth+1)
+	// Recurse with only the newly emitted mutations as input so reactors do not
+	// re-fire on the original triggers. The accumulated result is built up on
+	// the way back out.
+	deeper, err := reactDispatch(registry, faction, newMutations, factionState, rulebook, depth+1)
+	return append(combined, deeper...), err
 }

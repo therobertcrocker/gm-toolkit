@@ -313,7 +313,7 @@ func TestRepairFaction(t *testing.T) {
 func TestBribe(t *testing.T) {
 	fs := minState(map[string]string{"faction-a": "Alpha"})
 	fs.Factions["faction-a"].Bases = []*domain.Base{
-		{ID: "base-1", Location: "Anvil"},
+		{ID: "base-1", Location: domain.Location{WorldID: "Anvil"}},
 	}
 	records := []domain.EventRecord{
 		eventRec("faction-a",
@@ -345,7 +345,7 @@ func TestExpandNewBase(t *testing.T) {
 		eventRec("faction-a",
 			mutRec(t, "base_added", domain.BaseAdded{
 				FactionID: "faction-a",
-				Base:      domain.Base{ID: "base-2", Location: "Brightside"},
+				Base:      domain.Base{ID: "base-2", Location: domain.Location{WorldID: "Brightside"}},
 				Cause:     "expand",
 			}),
 			mutRec(t, "coin_delta", domain.CoinDelta{
@@ -374,8 +374,8 @@ func TestAssetMoved(t *testing.T) {
 			mutRec(t, "asset_moved", domain.AssetMoved{
 				FactionID:    "faction-a",
 				AssetID:      "asset-1",
-				FromLocation: "Anvil",
-				ToLocation:   "Brightside",
+				FromLocation: domain.Location{WorldID: "Anvil"},
+				ToLocation:   domain.Location{WorldID: "Brightside"},
 				Cause:        "ability",
 			}),
 		),
@@ -478,7 +478,7 @@ func TestHomeworldChanged(t *testing.T) {
 				FactionID: "faction-a", GoalID: "goal-hw", Cause: "goal_completed",
 			}),
 			mutRec(t, "homeworld_changed", domain.HomeworldChanged{
-				FactionID: "faction-a", FromWorld: "Anvil", ToWorld: "Brightside", Cause: "goal_completed",
+				FactionID: "faction-a", FromWorld: domain.Location{WorldID: "Anvil"}, ToWorld: domain.Location{WorldID: "Brightside"}, Cause: "goal_completed",
 			}),
 		),
 	}
@@ -597,7 +597,7 @@ func TestCrossAttackerAssetDestroyed(t *testing.T) {
 
 func TestCrossBaseHit(t *testing.T) {
 	fs := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Bravo"})
-	fs.Factions["faction-b"].Bases = []*domain.Base{{ID: "base-b1", Location: "Anvil"}}
+	fs.Factions["faction-b"].Bases = []*domain.Base{{ID: "base-b1", Location: domain.Location{WorldID: "Anvil"}}}
 	records := []domain.EventRecord{
 		eventRec("faction-a",
 			mutRec(t, "base_hp_delta", domain.BaseHPDelta{

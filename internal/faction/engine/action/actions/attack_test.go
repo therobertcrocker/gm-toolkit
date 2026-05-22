@@ -7,8 +7,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 	"go.uber.org/mock/gomock"
 )
 
@@ -65,7 +67,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 		ID:           "a1",
 		DefinitionID: "force-attacker",
 		OwnerID:      "f1",
-		Location:     "Anchorage",
+		Location:     domain.Location{WorldID: "Anchorage"},
 		CurrentHP:    attackerHP,
 		Ready:        true,
 		Maintained:   true,
@@ -74,7 +76,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 		ID:           "d1",
 		DefinitionID: defenderDefID,
 		OwnerID:      "f2",
-		Location:     "Anchorage",
+		Location:     domain.Location{WorldID: "Anchorage"},
 		CurrentHP:    defenderHP,
 		Ready:        true,
 		Maintained:   true,
@@ -87,7 +89,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 		f2.Bases = []*domain.Base{{
 			ID:        "f2-base",
 			OwnerID:   "f2",
-			Location:  "Anchorage",
+			Location:  domain.Location{WorldID: "Anchorage"},
 			CurrentHP: 10,
 			MaxHP:     10,
 		}}
@@ -127,7 +129,7 @@ func TestAttack_Validate(t *testing.T) {
 		attackerAsset.Ready = false // on cooldown — ineligible
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when attacker is not Ready")
 		}
@@ -135,12 +137,16 @@ func TestAttack_Validate(t *testing.T) {
 
 	t.Run("no rival assets on world", func(t *testing.T) {
 		factionState, _, defenderAsset := makeAttackState(8, 8, "force-defender", false)
-		defenderAsset.Location = "Tartarus" // rival is elsewhere
+		// Rival is at a genuinely different hex, not just a different WorldID.
+		defenderAsset.Location = domain.Location{
+			WorldID:   "Tartarus",
+			RegionHex: spatial.RegionHex{RegionID: "r2", Coord: spatial.HexCoord{Q: 9, R: 9}},
+		}
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
 		if attack.Validate(faction, factionState, rulebook) {
-			t.Error("expected Validate false when no rivals on attacker's world")
+			t.Error("expected Validate false when no rivals on attacker's hex")
 		}
 	})
 
@@ -148,7 +154,7 @@ func TestAttack_Validate(t *testing.T) {
 		factionState, _, _ := makeAttackState(8, 8, "force-defender", false)
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockInputCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
 		if !attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate true")
 		}
@@ -163,7 +169,7 @@ func TestAttack_AttackerWins_NonLethal(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
@@ -189,7 +195,7 @@ func TestAttack_AttackerWins_Lethal(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
@@ -218,7 +224,7 @@ func TestAttack_DefenderWins_NoCounter(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
@@ -237,7 +243,7 @@ func TestAttack_DefenderWins_WithCounter(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
@@ -263,7 +269,7 @@ func TestAttack_Tie(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
@@ -291,7 +297,7 @@ func TestAttack_RedirectToBase_Accepted(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().ConfirmRedirectToBase(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
@@ -320,7 +326,7 @@ func TestAttack_RedirectToBase_Lethal(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().ConfirmRedirectToBase(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
@@ -350,7 +356,7 @@ func TestAttack_RedirectToBase_Declined(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().ConfirmRedirectToBase(gomock.Any(), gomock.Any(), gomock.Any()).Return(false, nil)
@@ -376,7 +382,7 @@ func TestAttack_StealthCleared(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
@@ -406,7 +412,7 @@ func TestAttack_StealthCleared_OncePerAsset(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	// Queue a1 twice to exercise the stealthCleared dedup map.
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset, attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil).Times(2)
@@ -433,7 +439,7 @@ func TestAttack_DestroyedAttackerSkipped(t *testing.T) {
 	faction := factionState.Factions["f1"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	// Queue a1 twice to directly exercise the re-check path.
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset, attackerAsset}, nil)
 	// Only one SelectDefender call — second slot is skipped (attacker already destroyed).
@@ -451,6 +457,155 @@ func TestAttack_DestroyedAttackerSkipped(t *testing.T) {
 	}
 	if removals != 1 {
 		t.Errorf("AssetRemoved count = %d, want 1 (a1 destroyed once, second slot skipped)", removals)
+	}
+}
+
+// TestAttack_InTransitDefender_Targeted: both attacker and defender are mid-flight
+// at the same hex. The hex-keyed lookup returns the defender; combat resolves normally.
+// Rolls: attack=8, defense=3, damage=4.
+func TestAttack_InTransitDefender_Targeted(t *testing.T) {
+	transitHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 5, R: 3}}
+
+	attackerAsset := &domain.Asset{
+		ID: "a1", DefinitionID: "force-attacker", OwnerID: "f1",
+		Location:  domain.Location{RegionHex: transitHex}, // empty WorldID = mid-flight
+		CurrentHP: 8, Ready: true, Maintained: true,
+	}
+	defenderAsset := &domain.Asset{
+		ID: "d1", DefinitionID: "force-defender-nocounter", OwnerID: "f2",
+		Location:  domain.Location{RegionHex: transitHex},
+		CurrentHP: 8, Ready: true, Maintained: true,
+	}
+	factionState := &state.FactionState{
+		Factions: map[string]*domain.Faction{
+			"f1": {ID: "f1", Assets: map[string]*domain.Asset{"a1": attackerAsset}},
+			"f2": {ID: "f2", Assets: map[string]*domain.Asset{"d1": defenderAsset}},
+		},
+	}
+	idx := &world.Index{
+		AssetsByLocation: make(map[string][]*domain.Asset),
+		BasesByLocation:  make(map[string][]*domain.Base),
+		AssetsByHex:      map[spatial.RegionHex][]*domain.Asset{transitHex: {attackerAsset, defenderAsset}},
+	}
+
+	rulebook := makeAttackRulebook()
+	faction := factionState.Factions["f1"]
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	attack := NewAttack(collector, &fixedRoller{values: []int{8, 3, 4}}, nil, idx)
+	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := attack.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := attack.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
+	}
+	delta, ok := mutations[0].(domain.AssetHPDelta)
+	if !ok {
+		t.Fatalf("mutations[0] type = %T, want AssetHPDelta", mutations[0])
+	}
+	if delta.AssetID != "d1" || delta.Delta != -4 {
+		t.Errorf("AssetHPDelta = {%s, %d}, want {d1, -4}", delta.AssetID, delta.Delta)
+	}
+}
+
+// TestAttack_OnWorldAttacker_TargetsInTransitDefenderAtSameHex: an on-world attacker
+// and a mid-flight defender share the same hex. Combat scope is hex-wide, so the
+// in-transit defender is a valid target.
+// Rolls: attack=8, defense=3, damage=4.
+func TestAttack_OnWorldAttacker_TargetsInTransitDefenderAtSameHex(t *testing.T) {
+	sharedHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 5, R: 3}}
+
+	attackerAsset := &domain.Asset{
+		ID: "a1", DefinitionID: "force-attacker", OwnerID: "f1",
+		Location:  domain.Location{WorldID: "c", RegionHex: sharedHex}, // on-world
+		CurrentHP: 8, Ready: true, Maintained: true,
+	}
+	defenderAsset := &domain.Asset{
+		ID: "d1", DefinitionID: "force-defender-nocounter", OwnerID: "f2",
+		Location:  domain.Location{RegionHex: sharedHex}, // mid-flight, same hex
+		CurrentHP: 8, Ready: true, Maintained: true,
+	}
+	factionState := &state.FactionState{
+		Factions: map[string]*domain.Faction{
+			"f1": {ID: "f1", Assets: map[string]*domain.Asset{"a1": attackerAsset}},
+			"f2": {ID: "f2", Assets: map[string]*domain.Asset{"d1": defenderAsset}},
+		},
+	}
+	idx := &world.Index{
+		AssetsByLocation: map[string][]*domain.Asset{"c": {attackerAsset}},
+		BasesByLocation:  make(map[string][]*domain.Base),
+		AssetsByHex:      map[spatial.RegionHex][]*domain.Asset{sharedHex: {attackerAsset, defenderAsset}},
+	}
+
+	rulebook := makeAttackRulebook()
+	faction := factionState.Factions["f1"]
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	attack := NewAttack(collector, &fixedRoller{values: []int{8, 3, 4}}, nil, idx)
+	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := attack.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := attack.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
+	}
+	delta, ok := mutations[0].(domain.AssetHPDelta)
+	if !ok {
+		t.Fatalf("mutations[0] type = %T, want AssetHPDelta", mutations[0])
+	}
+	if delta.AssetID != "d1" || delta.Delta != -4 {
+		t.Errorf("AssetHPDelta = {%s, %d}, want {d1, -4}", delta.AssetID, delta.Delta)
+	}
+}
+
+// TestAttack_InTransitAttacker_EmptyHex_NoTarget: attacker is mid-flight at a hex
+// with no rival assets. eligibleDefendersAtHex returns empty; Validate returns false.
+func TestAttack_InTransitAttacker_EmptyHex_NoTarget(t *testing.T) {
+	transitHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 2, R: 7}}
+
+	attackerAsset := &domain.Asset{
+		ID: "a1", DefinitionID: "force-attacker", OwnerID: "f1",
+		Location:  domain.Location{RegionHex: transitHex},
+		CurrentHP: 8, Ready: true, Maintained: true,
+	}
+	factionState := &state.FactionState{
+		Factions: map[string]*domain.Faction{
+			"f1": {ID: "f1", Assets: map[string]*domain.Asset{"a1": attackerAsset}},
+		},
+	}
+	idx := &world.Index{
+		AssetsByLocation: make(map[string][]*domain.Asset),
+		BasesByLocation:  make(map[string][]*domain.Base),
+		AssetsByHex:      map[spatial.RegionHex][]*domain.Asset{transitHex: {attackerAsset}},
+	}
+
+	rulebook := makeAttackRulebook()
+	faction := factionState.Factions["f1"]
+	ctrl := gomock.NewController(t)
+	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, idx)
+	if attack.Validate(faction, factionState, rulebook) {
+		t.Error("expected Validate false: in-transit attacker at empty hex has no target")
 	}
 }
 
@@ -473,7 +628,7 @@ func TestAttack_TieResolver_DefenderWins(t *testing.T) {
 	registry.RegisterTieResolver(hooks.GlobalScope(), "fanatical", &stubTieResolverForAttack{outcome: hooks.TieDefenderWins})
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 	collector.EXPECT().SelectModifiers(gomock.Any()).Return(nil).Times(2)

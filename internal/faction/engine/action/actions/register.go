@@ -17,10 +17,11 @@ func RegisterDefaultActions(e *engine.Engine) {
 	e.Action.Register(func(c action.Collector) action.Action { return NewExpandInfluence(c, e.Rand, worldIndex(e), e.World) })
 	e.Action.Register(func(c action.Collector) action.Action { return NewBribe(c) })
 	e.Action.Register(func(c action.Collector) action.Action {
-		return NewUseAssetAbility(c, e.Rand, e.Ability)
+		return NewUseAssetAbility(c, e.Rand)
 	})
 	e.Action.Register(func(_ action.Collector) action.Action { return NewAbandonGoal() })
 	e.Action.Register(func(c action.Collector) action.Action { return NewSeizePlanet(c, worldIndex(e)) })
+	e.Action.Register(func(c action.Collector) action.Action { return NewChangeHomeworld(c, e.World, e.Rulebook) })
 }
 
 func worldIndex(e *engine.Engine) *world.Index {

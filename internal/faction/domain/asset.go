@@ -38,12 +38,13 @@ type AttackProfile struct {
 	Damage       DiceRoll
 }
 
-type AbilityStepType string
-
-const (
-	AbilityStepMovement    AbilityStepType = "movement"
-	AbilityStepFactionTest AbilityStepType = "faction_test"
-)
+type TransportProfile struct {
+	MaxHex            int
+	CoinCost          int
+	CargoTypes        []AssetType
+	MaxCargo          int
+	ExcludeCategories []FactionStat
+}
 
 type AbilityEffectType string
 
@@ -53,22 +54,18 @@ const (
 	EffectCoinSteal     AbilityEffectType = "coin_steal"
 )
 
-type AbilityStep struct {
-	Type AbilityStepType
-
-	// movement fields
-	MaxHex   int
-	CoinCost int
-
-	// faction_test fields
+type AbilityDefinition struct {
+	Die          *DiceRoll
+	Outcomes     []AbilityOutcome
 	AttackerStat FactionStat
 	DefenderStat FactionStat
 	Effect       AbilityEffectType
-	EffectDice   *DiceRoll
 }
 
-type AbilityDefinition struct {
-	Steps []AbilityStep
+type AbilityOutcome struct {
+	From int
+	To   int
+	Coin int
 }
 
 type AssetDefinition struct {
@@ -80,6 +77,7 @@ type AssetDefinition struct {
 	Cost        int
 	Maintenance int
 	TechLevel   int
+	Speed       int
 	DriftRating int
 	Type        AssetType
 	Attack      *AttackProfile
@@ -87,17 +85,19 @@ type AssetDefinition struct {
 	Flags       []AssetFlag
 	Description string
 	Ability     *AbilityDefinition
+	Transport   *TransportProfile
 }
 
 type Asset struct {
-	ID           string `toml:"id"`
-	DefinitionID string `toml:"definition_id"`
-	OwnerID      string `toml:"owner_id"`
-	Location     string `toml:"location"`
-	CurrentHP    int    `toml:"current_hp"`
-	Stealthy     bool   `toml:"stealthy"`
-	Ready        bool   `toml:"ready"`
-	Maintained   bool   `toml:"maintained"`
+	ID           string         `toml:"id"`
+	DefinitionID string         `toml:"definition_id"`
+	OwnerID      string         `toml:"owner_id"`
+	Location     Location       `toml:"location"`
+	CurrentHP    int            `toml:"current_hp"`
+	Stealthy     bool           `toml:"stealthy"`
+	Ready        bool           `toml:"ready"`
+	Maintained   bool           `toml:"maintained"`
+	CurrentOrder *MovementOrder `toml:"current_order,omitempty"`
 }
 
 func (def *AssetDefinition) HasFlag(flag AssetFlag) bool {

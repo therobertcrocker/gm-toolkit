@@ -21,7 +21,7 @@ func (PlanetarySeizure) CheckLock(faction *domain.Faction, factionState *state.F
 		return locks.GoalLock{Type: locks.LockRestrictActions, AllowedActions: []string{"Attack"}}, nil
 	}
 	// Phase 2: occupation.
-	if !factionHasUnstealthedAssetOn(faction, goal.TargetWorld) {
+	if !factionHasUnstealthedAssetOn(faction, goal.TargetWorld.WorldID) {
 		return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{
 			domain.GoalAbandoned{
 				FactionID: faction.ID,
@@ -68,7 +68,7 @@ func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations 
 			continue
 		}
 		for _, asset := range faction.Assets {
-			if asset.Location == goal.TargetWorld && !asset.Stealthy && !removedIDs[asset.ID] {
+			if asset.Location.WorldID == goal.TargetWorld.WorldID && !asset.Stealthy && !removedIDs[asset.ID] {
 				return nil
 			}
 		}

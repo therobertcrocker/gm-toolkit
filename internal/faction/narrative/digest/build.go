@@ -254,8 +254,8 @@ func Build(
 				beat.Movements = append(beat.Movements, AssetMove{
 					AssetID:   m.AssetID,
 					AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
-					From:      m.FromLocation,
-					To:        m.ToLocation,
+					From:      m.FromLocation.WorldID,
+					To:        m.ToLocation.WorldID,
 					Cause:     m.Cause,
 				})
 
@@ -335,7 +335,7 @@ func Build(
 				}
 				if m.Cause == "expand" {
 					expand.baseID = m.Base.ID
-					expand.location = m.Base.Location
+					expand.location = m.Base.Location.WorldID
 					expand.newBase = true
 				}
 
@@ -394,8 +394,8 @@ func Build(
 				}
 				beat.GoalEvents = append(beat.GoalEvents, GoalEvent{
 					Kind:      GoalHomeworldShift,
-					FromWorld: m.FromWorld,
-					ToWorld:   m.ToWorld,
+					FromWorld: m.FromWorld.WorldID,
+					ToWorld:   m.ToWorld.WorldID,
 				})
 
 			case "tag_added":

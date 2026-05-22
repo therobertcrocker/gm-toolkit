@@ -117,8 +117,8 @@ func TestWireRendererVariation(t *testing.T) {
 func TestWireRendererGolden(t *testing.T) {
 	r := NewWireRenderer()
 	cases := []struct {
-		name   string
-		d      digest.CycleDigest
+		name string
+		d    digest.CycleDigest
 	}{
 		{"attack", attackDigest()},
 		{"goal_completed", goalDigest()},

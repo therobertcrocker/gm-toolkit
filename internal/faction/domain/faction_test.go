@@ -32,7 +32,7 @@ func TestFaction_HookBudgets_TOMLRoundTrip(t *testing.T) {
 		original := &domain.Faction{
 			ID: "f1",
 			HookBudgets: map[string]int{
-				"tag:Warlike":  1,
+				"tag:Warlike":   1,
 				"tag:Fanatical": 0,
 			},
 		}

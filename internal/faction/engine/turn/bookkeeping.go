@@ -20,7 +20,7 @@ type BookkeepingResult struct {
 type AssetRef struct {
 	ID           string
 	DefinitionID string
-	Location     string
+	Location     domain.Location
 }
 
 // ApplyBookkeeping computes income and maintenance mutations for the current
@@ -30,7 +30,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 	if !t.InProgress(factionState) {
 		return BookkeepingResult{}, nil, ErrNoTurnActive
 	}
-	if factionState.CurrentTurn.Phase != domain.PhaseBookkeeping {
+	if factionState.CurrentTurn.BookkeepingApplied {
 		return BookkeepingResult{}, nil, nil
 	}
 
@@ -54,7 +54,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
 
-	factionState.CurrentTurn.Phase = domain.PhaseAction
+	factionState.CurrentTurn.BookkeepingApplied = true
 	return result, mutations, nil
 }
 

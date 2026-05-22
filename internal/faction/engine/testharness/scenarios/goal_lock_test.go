@@ -17,7 +17,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 	locked := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	locked.ActiveGoal = &domain.ActiveGoal{
 		GoalID:         "G-012",
-		TargetWorld:    "NewHome",
+		TargetWorld:    domain.Location{WorldID: "Krylos"},
 		TurnsRemaining: 2,
 	}
 	h.AddFaction("beta", "Hadrian", 4, 3, 2)
@@ -41,7 +41,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -52,7 +52,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 	if got, want := testharness.CountKind(kinds, "GoalLockApplied"), 2; got != want {
 		t.Errorf("GoalLockApplied count: got %d, want %d", got, want)
 	}
-	if got, want := testharness.CountKind(kinds, "BookkeepingApplied"), 1; got != want {
+	if got, want := testharness.CountKind(kinds, "BookkeepingApplied"), 2; got != want {
 		t.Errorf("BookkeepingApplied count: got %d, want %d", got, want)
 	}
 	if got, want := testharness.CountKind(kinds, "ActionSelected"), 1; got != want {
@@ -102,7 +102,7 @@ func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
 		GoalID:          "G-004",
 		ProcessPhase:    1,
 		TargetFactionID: target.ID,
-		TargetWorld:     "Tartarus",
+		TargetWorld:     domain.Location{WorldID: "Tartarus"},
 		TurnsRemaining:  3,
 	}
 
@@ -137,7 +137,7 @@ func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 

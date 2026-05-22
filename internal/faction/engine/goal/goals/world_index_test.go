@@ -11,7 +11,7 @@ import (
 func indexWithRivalAsset(locationID, ownerID string) *world.Index {
 	return &world.Index{
 		AssetsByLocation: map[string][]*domain.Asset{
-			locationID: {{ID: "a1", OwnerID: ownerID, Location: locationID}},
+			locationID: {{ID: "a1", OwnerID: ownerID, Location: domain.Location{WorldID: locationID}}},
 		},
 		BasesByLocation: make(map[string][]*domain.Base),
 	}
@@ -21,7 +21,7 @@ func indexWithRivalBase(locationID, ownerID string) *world.Index {
 	return &world.Index{
 		AssetsByLocation: make(map[string][]*domain.Asset),
 		BasesByLocation: map[string][]*domain.Base{
-			locationID: {{ID: "b1", OwnerID: ownerID, Location: locationID}},
+			locationID: {{ID: "b1", OwnerID: ownerID, Location: domain.Location{WorldID: locationID}}},
 		},
 	}
 }
@@ -48,7 +48,7 @@ func TestWorldHasRivalPresence_RivalBaseOnly(t *testing.T) {
 }
 
 func TestRivalHasPlanetaryGovernmentOnWorld_RivalHoldsBase(t *testing.T) {
-	rivalBase := &domain.Base{ID: "b1", OwnerID: "f2", Location: "krylos"}
+	rivalBase := &domain.Base{ID: "b1", OwnerID: "f2", Location: domain.Location{WorldID: "krylos"}}
 	rivalFaction := &domain.Faction{
 		ID:   "f2",
 		Tags: []*domain.Tag{{ID: "T-011"}},
@@ -67,7 +67,7 @@ func TestRivalHasPlanetaryGovernmentOnWorld_RivalHoldsBase(t *testing.T) {
 }
 
 func TestRivalHasPlanetaryGovernmentOnWorld_RivalNoTag(t *testing.T) {
-	rivalBase := &domain.Base{ID: "b1", OwnerID: "f2", Location: "krylos"}
+	rivalBase := &domain.Base{ID: "b1", OwnerID: "f2", Location: domain.Location{WorldID: "krylos"}}
 	rivalFaction := &domain.Faction{ID: "f2"} // no tags
 	factionState := &state.FactionState{
 		Factions: map[string]*domain.Faction{"f1": {ID: "f1"}, "f2": rivalFaction},
@@ -83,7 +83,7 @@ func TestRivalHasPlanetaryGovernmentOnWorld_RivalNoTag(t *testing.T) {
 }
 
 func TestRivalHasPlanetaryGovernmentOnWorld_OwnBaseIgnored(t *testing.T) {
-	ownBase := &domain.Base{ID: "b1", OwnerID: "f1", Location: "krylos"}
+	ownBase := &domain.Base{ID: "b1", OwnerID: "f1", Location: domain.Location{WorldID: "krylos"}}
 	actingFaction := &domain.Faction{
 		ID:   "f1",
 		Tags: []*domain.Tag{{ID: "T-011"}},

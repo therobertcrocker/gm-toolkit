@@ -61,8 +61,9 @@ hp = 4
 cost = 5
 maintenance = 0
 tech_level = 4
+speed = 2
 type = "Starship"
-flags = ["A"]
+flags = ["S"]
 counter = ""
 description = "A long-term contract with a commercial shipping company. As an action, the faction may move any one non-Force asset, including this one, to any world within two hexes at a cost of 1 Coin."
 
@@ -71,10 +72,12 @@ attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "1d4"
 
-[[assets.FreighterContract.ability.steps]]
-type = "movement"
+[assets.FreighterContract.transport]
 max_hex = 2
 coin_cost = 1
+cargo_types = ["Facility", "Starship", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
+max_cargo = 1
+exclude_categories = ["Force"]
 
 [assets.Lawyers]
 id = "W2-002"
@@ -123,15 +126,11 @@ hp = 4
 cost = 4
 maintenance = 0
 tech_level = 0
+speed = 2
 type = "Special Forces"
-flags = ["A", "S"]
+flags = ["S"]
 counter = "1d4"
 description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world. As an action, a Surveyor crew can move to any world within two hexes."
-
-[[assets.Surveyors.ability.steps]]
-type = "movement"
-max_hex = 2
-coin_cost = 0
 
 [assets.PostechIndustry]
 id = "W3-001"
@@ -170,8 +169,9 @@ hp = 6
 cost = 8
 maintenance = 1
 tech_level = 4
+speed = 1
 type = "Military Unit"
-flags = ["A", "S", "P"]
+flags = ["S", "P"]
 counter = "1d6"
 description = "Well-equipped professional soldiers serving the highest bidder. Mercenaries have a maintenance cost of 1 Coin per turn. As an action, they can move to any world within one hex. Purchasing or moving Mercenaries to a planet requires government permission."
 
@@ -179,11 +179,6 @@ description = "Well-equipped professional soldiers serving the highest bidder. M
 attacker_stat = "Wealth"
 defender_stat = "Force"
 damage = "2d4+2"
-
-[[assets.Mercenaries.ability.steps]]
-type = "movement"
-max_hex = 1
-coin_cost = 0
 
 [assets.ShippingCombine]
 id = "W4-001"
@@ -194,15 +189,18 @@ hp = 10
 cost = 10
 maintenance = 0
 tech_level = 4
+speed = 2
 type = "Facility"
-flags = ["A"]
+flags = ["S"]
 counter = "1d6"
 description = "Commercial shipping infrastructure for moving large numbers of assets. As an action, the Combine may move any number of non-Force assets, including itself, to worlds within two hexes at a cost of 1 Coin per asset moved."
 
-[[assets.ShippingCombine.ability.steps]]
-type = "movement"
+[assets.ShippingCombine.transport]
 max_hex = 2
 coin_cost = 1
+cargo_types = ["Facility", "Starship", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
+max_cargo = 10
+exclude_categories = ["Force"]
 
 [assets.Monopoly]
 id = "W4-002"
@@ -214,7 +212,7 @@ cost = 8
 maintenance = 0
 tech_level = 3
 type = "Facility"
-flags = ["S"]
+flags = ["A"]
 counter = "1d6"
 description = "A stranglehold on vital local businesses or resources. When a Monopoly successfully attacks an enemy faction, the target must pay 1 Coin or lose one asset of their choice on that world."
 
@@ -293,15 +291,17 @@ hp = 6
 cost = 12
 maintenance = 0
 tech_level = 4
+speed = 3
 type = "Starship"
-flags = ["A"]
+flags = ["S"]
 counter = "2d4"
 description = "Starship captains skilled at transporting goods through unfriendly lines. As an action, a Blockade Runner can move itself or any one Military Unit or Special Forces to a world within three hexes at a cost of 2 Coin, even past planetary government opposition."
 
-[[assets.BlockadeRunners.ability.steps]]
-type = "movement"
+[assets.BlockadeRunners.transport]
 max_hex = 3
 coin_cost = 2
+cargo_types = ["Military Unit", "Special Forces"]
+max_cargo = 1
 
 [assets.VentureCapital]
 id = "W6-001"
@@ -365,7 +365,7 @@ cost = 25
 maintenance = 0
 tech_level = 5
 type = "Facility"
-flags = ["S"]
+flags = ["A"]
 counter = ""
 description = "Rare, functioning Mandate-era manufacturing facilities. As an action, the owning faction may roll 1d8 and gain half that many Coin, rounded up."
 
@@ -416,8 +416,9 @@ hp = 20
 cost = 30
 maintenance = 2
 tech_level = 5
+speed = 3
 type = "Starship"
-flags = ["A"]
+flags = []
 counter = "2d10"
 description = "A rag-tag armada of salvage vessels, decommissioned warships, and armed merchantmen. As an action, the fleet may move to any world within three hexes. Scavenger Fleets cost 2 Coin per turn in maintenance."
 
@@ -425,8 +426,3 @@ description = "A rag-tag armada of salvage vessels, decommissioned warships, and
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "2d10+4"
-
-[[assets.ScavengerFleet.ability.steps]]
-type = "movement"
-max_hex = 3
-coin_cost = 0

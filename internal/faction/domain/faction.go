@@ -37,12 +37,12 @@ type Goal struct {
 
 // ActiveGoal holds the faction's current goal and live progress state.
 type ActiveGoal struct {
-	GoalID          string `toml:"goal_id"`
-	TargetFactionID string `toml:"target_faction_id"`
-	TargetWorld     string `toml:"target_world"`
-	Progress        int    `toml:"progress"`
-	ProcessPhase    int    `toml:"process_phase"`
-	TurnsRemaining  int    `toml:"turns_remaining"`
+	GoalID          string   `toml:"goal_id"`
+	TargetFactionID string   `toml:"target_faction_id"`
+	TargetWorld     Location `toml:"target_world"`
+	Progress        int      `toml:"progress"`
+	ProcessPhase    int      `toml:"process_phase"`
+	TurnsRemaining  int      `toml:"turns_remaining"`
 }
 
 type Faction struct {
@@ -56,7 +56,7 @@ type Faction struct {
 	MaxHP       int               `toml:"max_hp"`
 	Coin        int               `toml:"coin"`
 	XP          int               `toml:"xp"`
-	Homeworld   string            `toml:"homeworld"`
+	Homeworld   Location          `toml:"homeworld"`
 	Tags        []*Tag            `toml:"tags"`
 	ActiveGoal  *ActiveGoal       `toml:"active_goal"`
 	Assets      map[string]*Asset `toml:"assets"`

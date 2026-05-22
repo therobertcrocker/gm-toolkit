@@ -32,32 +32,32 @@ func makeExpandRulebook() *rulebook.Rulebook {
 func TestExpandInfluence_Validate(t *testing.T) {
 	t.Run("no coin", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
+		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		faction := &domain.Faction{ID: "f1", Coin: 0, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when coin < 1")
 		}
 	})
 
 	t.Run("no expansion options", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
+		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		// Base on Krylos at max HP and at faction.MaxHP — no new-base, no heal, no grow option.
-		base := &domain.Base{ID: "b1", OwnerID: "f1", Location: "Krylos", CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
+		base := &domain.Base{ID: "b1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 5, Assets: map[string]*domain.Asset{"a1": asset}, Bases: []*domain.Base{base}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when no expansion options available")
 		}
 	})
 
 	t.Run("world available for new base", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
+		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if !NewExpandInfluence(mocks.NewMockInputCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if !NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction has an asset on a world with no base")
 		}
 	})
@@ -67,12 +67,12 @@ func TestExpandInfluence_Validate(t *testing.T) {
 // Emits CoinDelta(-HPAmount) + BaseAdded(Ready=false).
 func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
+	asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 3}
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &fixedRoller{values: []int{8}}, indexFromState(factionState), nil)
@@ -95,7 +95,7 @@ func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 		t.Errorf("mutations[0] = %v, want CoinDelta{-3, expand}", mutations[0])
 	}
 	added, ok := mutations[1].(domain.BaseAdded)
-	if !ok || added.Base.Location != "Krylos" || added.Base.CurrentHP != 3 {
+	if !ok || added.Base.Location.WorldID != "Krylos" || added.Base.CurrentHP != 3 {
 		t.Errorf("mutations[1] = %v, want BaseAdded{Krylos, HP=3}", mutations[1])
 	}
 	if added.Base.Ready {
@@ -107,7 +107,7 @@ func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 // Emits BaseHealed(+amount) + CoinDelta(-amount).
 func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	base := &domain.Base{ID: "b1", OwnerID: "f1", Location: "Krylos", CurrentHP: 2, MaxHP: 5, IsHomeworld: false}
+	base := &domain.Base{ID: "b1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 2, MaxHP: 5, IsHomeworld: false}
 	faction := &domain.Faction{ID: "f1", Coin: 5, MaxHP: 10, Bases: []*domain.Base{base}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
@@ -115,7 +115,7 @@ func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 		Mode: action.ExpandModeReinforce, BaseID: "b1",
 		SubMode: action.ReinforceHeal, HPAmount: 2,
 	}
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, indexFromState(factionState), nil)
@@ -147,7 +147,7 @@ func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 // Emits BaseExpanded(+amount) + CoinDelta(-amount).
 func TestExpandInfluence_Reinforce_Max(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	base := &domain.Base{ID: "b1", OwnerID: "f1", Location: "Krylos", CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
+	base := &domain.Base{ID: "b1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
 	faction := &domain.Faction{ID: "f1", Coin: 5, MaxHP: 10, Bases: []*domain.Base{base}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
@@ -155,7 +155,7 @@ func TestExpandInfluence_Reinforce_Max(t *testing.T) {
 		Mode: action.ExpandModeReinforce, BaseID: "b1",
 		SubMode: action.ReinforceMax, HPAmount: 3,
 	}
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, indexFromState(factionState), nil)
@@ -190,17 +190,17 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	rulebook := makeExpandRulebook()
 
-	f1Asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: "Krylos"}
+	f1Asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 	f2Asset := &domain.Asset{
 		ID: "a2", DefinitionID: "force-unit", OwnerID: "f2",
-		Location: "Krylos", CurrentHP: 8, Ready: true, Maintained: true,
+		Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 8, Ready: true, Maintained: true,
 	}
 	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": f1Asset}}
 	rival := &domain.Faction{ID: "f2", Force: 0, Cunning: 0, Assets: map[string]*domain.Asset{"a2": f2Asset}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-	collector := mocks.NewMockInputCollector(ctrl)
+	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 	collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
@@ -226,7 +226,7 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 		t.Errorf("mutations[0] type = %T, want CoinDelta", mutations[0])
 	}
 	added, ok := mutations[1].(domain.BaseAdded)
-	if !ok || added.Base.Location != "Krylos" {
+	if !ok || added.Base.Location.WorldID != "Krylos" {
 		t.Errorf("mutations[1] = %v, want BaseAdded{Krylos}", mutations[1])
 	}
 	baseDelta, ok := mutations[2].(domain.BaseHPDelta)

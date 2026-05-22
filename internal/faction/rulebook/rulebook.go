@@ -65,21 +65,31 @@ type assetFile struct {
 }
 
 type assetRecord struct {
-	ID          string         `toml:"id"`
-	Name        string         `toml:"name"`
-	Category    string         `toml:"category"`
-	MinRating   int            `toml:"min_rating"`
-	HP          int            `toml:"hp"`
-	Cost        int            `toml:"cost"`
-	Maintenance int            `toml:"maintenance"`
-	TechLevel   int            `toml:"tech_level"`
-	DriftRating int            `toml:"drift_rating"`
-	Type        string         `toml:"type"`
-	Flags       []string       `toml:"flags"`
-	Counter     string         `toml:"counter"`
-	Description string         `toml:"description"`
-	Attack      *attackRecord  `toml:"attack"`
-	Ability     *abilityRecord `toml:"ability"`
+	ID          string           `toml:"id"`
+	Name        string           `toml:"name"`
+	Category    string           `toml:"category"`
+	MinRating   int              `toml:"min_rating"`
+	HP          int              `toml:"hp"`
+	Cost        int              `toml:"cost"`
+	Maintenance int              `toml:"maintenance"`
+	TechLevel   int              `toml:"tech_level"`
+	Speed       int              `toml:"speed"`
+	DriftRating int              `toml:"drift_rating"`
+	Type        string           `toml:"type"`
+	Flags       []string         `toml:"flags"`
+	Counter     string           `toml:"counter"`
+	Description string           `toml:"description"`
+	Attack      *attackRecord    `toml:"attack"`
+	Ability     *abilityRecord   `toml:"ability"`
+	Transport   *transportRecord `toml:"transport"`
+}
+
+type transportRecord struct {
+	MaxHex            int      `toml:"max_hex"`
+	CoinCost          int      `toml:"coin_cost"`
+	CargoTypes        []string `toml:"cargo_types"`
+	MaxCargo          int      `toml:"max_cargo"`
+	ExcludeCategories []string `toml:"exclude_categories"`
 }
 
 type attackRecord struct {
@@ -89,17 +99,9 @@ type attackRecord struct {
 }
 
 type abilityRecord struct {
-	Steps []abilityStepRecord `toml:"steps"`
-}
-
-type abilityStepRecord struct {
-	Type         string `toml:"type"`
-	MaxHex       int    `toml:"max_hex"`
-	CoinCost     int    `toml:"coin_cost"`
 	AttackerStat string `toml:"attacker_stat"`
 	DefenderStat string `toml:"defender_stat"`
 	Effect       string `toml:"effect"`
-	EffectDice   string `toml:"effect_dice"`
 }
 
 // loadAssets globs all *_assets.toml files in dataDir and merges them into one map.
@@ -176,6 +178,11 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		return nil, fmt.Errorf("ability: %w", err)
 	}
 
+	transport, err := convertTransport(r.Transport)
+	if err != nil {
+		return nil, fmt.Errorf("transport: %w", err)
+	}
+
 	return &domain.AssetDefinition{
 		ID:          r.ID,
 		Name:        r.Name,
@@ -185,6 +192,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Cost:        r.Cost,
 		Maintenance: r.Maintenance,
 		TechLevel:   r.TechLevel,
+		Speed:       r.Speed,
 		DriftRating: r.DriftRating,
 		Type:        assetType,
 		Attack:      attack,
@@ -192,6 +200,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Flags:       flags,
 		Description: r.Description,
 		Ability:     ability,
+		Transport:   transport,
 	}, nil
 }
 
@@ -199,52 +208,29 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 	if r == nil {
 		return nil, nil
 	}
-	steps := make([]domain.AbilityStep, 0, len(r.Steps))
-	for i, sr := range r.Steps {
-		step, err := convertAbilityStep(sr)
+	def := &domain.AbilityDefinition{}
+	if r.AttackerStat != "" {
+		stat, err := toFactionStat(r.AttackerStat)
 		if err != nil {
-			return nil, fmt.Errorf("step %d: %w", i, err)
+			return nil, fmt.Errorf("attacker_stat: %w", err)
 		}
-		steps = append(steps, step)
+		def.AttackerStat = stat
 	}
-	return &domain.AbilityDefinition{Steps: steps}, nil
-}
-
-func convertAbilityStep(r abilityStepRecord) (domain.AbilityStep, error) {
-	switch r.Type {
-	case "movement":
-		return domain.AbilityStep{
-			Type:     domain.AbilityStepMovement,
-			MaxHex:   r.MaxHex,
-			CoinCost: r.CoinCost,
-		}, nil
-	case "faction_test":
-		attackerStat, err := toFactionStat(r.AttackerStat)
+	if r.DefenderStat != "" {
+		stat, err := toFactionStat(r.DefenderStat)
 		if err != nil {
-			return domain.AbilityStep{}, fmt.Errorf("attacker_stat: %w", err)
+			return nil, fmt.Errorf("defender_stat: %w", err)
 		}
-		defenderStat, err := toFactionStat(r.DefenderStat)
-		if err != nil {
-			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
-		}
+		def.DefenderStat = stat
+	}
+	if r.Effect != "" {
 		effect, err := toAbilityEffect(r.Effect)
 		if err != nil {
-			return domain.AbilityStep{}, err
+			return nil, err
 		}
-		effectDice, err := parseDice(r.EffectDice)
-		if err != nil {
-			return domain.AbilityStep{}, fmt.Errorf("effect_dice: %w", err)
-		}
-		return domain.AbilityStep{
-			Type:         domain.AbilityStepFactionTest,
-			AttackerStat: attackerStat,
-			DefenderStat: defenderStat,
-			Effect:       effect,
-			EffectDice:   effectDice,
-		}, nil
-	default:
-		return domain.AbilityStep{}, fmt.Errorf("unknown ability step type: %q", r.Type)
+		def.Effect = effect
 	}
+	return def, nil
 }
 
 func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
@@ -258,6 +244,35 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
+}
+
+func convertTransport(r *transportRecord) (*domain.TransportProfile, error) {
+	if r == nil {
+		return nil, nil
+	}
+	cargoTypes := make([]domain.AssetType, len(r.CargoTypes))
+	for i, s := range r.CargoTypes {
+		t, err := toAssetType(s)
+		if err != nil {
+			return nil, fmt.Errorf("cargo_types[%d]: %w", i, err)
+		}
+		cargoTypes[i] = t
+	}
+	excludeCategories := make([]domain.FactionStat, len(r.ExcludeCategories))
+	for i, s := range r.ExcludeCategories {
+		stat, err := toFactionStat(s)
+		if err != nil {
+			return nil, fmt.Errorf("exclude_categories[%d]: %w", i, err)
+		}
+		excludeCategories[i] = stat
+	}
+	return &domain.TransportProfile{
+		MaxHex:            r.MaxHex,
+		CoinCost:          r.CoinCost,
+		CargoTypes:        cargoTypes,
+		MaxCargo:          r.MaxCargo,
+		ExcludeCategories: excludeCategories,
+	}, nil
 }
 
 // ---------------------------------------------------------------------------

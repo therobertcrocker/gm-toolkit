@@ -56,7 +56,7 @@ func findAsset(faction *domain.Faction, assetID string) *domain.Asset {
 
 func factionHasBaseOn(faction *domain.Faction, world string) bool {
 	for _, base := range faction.Bases {
-		if base.Location == world {
+		if base.Location.WorldID == world {
 			return true
 		}
 	}
@@ -104,7 +104,7 @@ func factionHasPlanetaryGovernmentTag(faction *domain.Faction) bool {
 
 func factionHasUnstealthedAssetOn(faction *domain.Faction, world string) bool {
 	for _, asset := range faction.Assets {
-		if asset.Location == world && !asset.Stealthy {
+		if asset.Location.WorldID == world && !asset.Stealthy {
 			return true
 		}
 	}

@@ -6,11 +6,12 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func liveAsset(id, ownerID, location string) *domain.Asset {
 	return &domain.Asset{
-		ID: id, OwnerID: ownerID, Location: location,
+		ID: id, OwnerID: ownerID, Location: domain.Location{WorldID: location},
 		CurrentHP: 8, Ready: true, Maintained: true,
 	}
 }
@@ -19,9 +20,13 @@ func indexWithAssets(assets ...*domain.Asset) *world.Index {
 	idx := &world.Index{
 		AssetsByLocation: make(map[string][]*domain.Asset),
 		BasesByLocation:  make(map[string][]*domain.Base),
+		AssetsByHex:      make(map[spatial.RegionHex][]*domain.Asset),
 	}
 	for _, asset := range assets {
-		idx.AssetsByLocation[asset.Location] = append(idx.AssetsByLocation[asset.Location], asset)
+		if !domain.IsInFlight(asset.Location) {
+			idx.AssetsByLocation[asset.Location.WorldID] = append(idx.AssetsByLocation[asset.Location.WorldID], asset)
+		}
+		idx.AssetsByHex[asset.Location.RegionHex] = append(idx.AssetsByHex[asset.Location.RegionHex], asset)
 	}
 	return idx
 }
@@ -32,7 +37,7 @@ func TestEligibleDefenders_ReturnsRivalAssets(t *testing.T) {
 	f3Asset := liveAsset("a3", "f3", "tartarus") // wrong fragment — excluded
 
 	idx := indexWithAssets(f1Asset, f2Asset, f3Asset)
-	result := eligibleDefenders("f1", "krylos", idx)
+	result := eligibleDefendersOnWorld("f1", "krylos", idx)
 
 	if len(result) != 1 || result[0].ID != "a2" {
 		t.Errorf("eligibleDefenders = %v, want [a2]", result)
@@ -43,7 +48,7 @@ func TestEligibleDefenders_ExcludesStealthy(t *testing.T) {
 	stealthy := liveAsset("a2", "f2", "krylos")
 	stealthy.Stealthy = true
 
-	result := eligibleDefenders("f1", "krylos", indexWithAssets(stealthy))
+	result := eligibleDefendersOnWorld("f1", "krylos", indexWithAssets(stealthy))
 	if len(result) != 0 {
 		t.Errorf("expected stealthy asset excluded, got %v", result)
 	}
@@ -53,7 +58,7 @@ func TestEligibleDefenders_ExcludesDead(t *testing.T) {
 	dead := liveAsset("a2", "f2", "krylos")
 	dead.CurrentHP = 0
 
-	result := eligibleDefenders("f1", "krylos", indexWithAssets(dead))
+	result := eligibleDefendersOnWorld("f1", "krylos", indexWithAssets(dead))
 	if len(result) != 0 {
 		t.Errorf("expected dead asset excluded, got %v", result)
 	}
@@ -63,7 +68,7 @@ func TestEligibleDefenders_ExcludesNotReady(t *testing.T) {
 	notReady := liveAsset("a2", "f2", "krylos")
 	notReady.Ready = false
 
-	result := eligibleDefenders("f1", "krylos", indexWithAssets(notReady))
+	result := eligibleDefendersOnWorld("f1", "krylos", indexWithAssets(notReady))
 	if len(result) != 0 {
 		t.Errorf("expected not-Ready asset excluded, got %v", result)
 	}
@@ -73,7 +78,7 @@ func TestEligibleDefenders_ExcludesUnmaintained(t *testing.T) {
 	unmaintained := liveAsset("a2", "f2", "krylos")
 	unmaintained.Maintained = false
 
-	result := eligibleDefenders("f1", "krylos", indexWithAssets(unmaintained))
+	result := eligibleDefendersOnWorld("f1", "krylos", indexWithAssets(unmaintained))
 	if len(result) != 0 {
 		t.Errorf("expected unmaintained asset excluded, got %v", result)
 	}
@@ -87,7 +92,7 @@ func TestLiveDefenders_ExcludesTrackerDead(t *testing.T) {
 	idx := indexWithAssets(live, halfDead)
 	tracker := map[string]int{"a3": -4}
 
-	result := liveDefenders("f1", "krylos", tracker, idx)
+	result := liveDefendersOnWorld("f1", "krylos", tracker, idx)
 	if len(result) != 1 || result[0].ID != "a2" {
 		t.Errorf("liveDefenders = %v, want [a2]", result)
 	}

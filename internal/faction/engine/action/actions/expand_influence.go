@@ -74,7 +74,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 	newBase := domain.Base{
 		ID:          newBaseID(faction, ei.order.World),
 		OwnerID:     faction.ID,
-		Location:    ei.order.World,
+		Location:    domain.Location{WorldID: ei.order.World},
 		CurrentHP:   ei.order.HPAmount,
 		MaxHP:       ei.order.HPAmount,
 		Ready:       false,
@@ -161,7 +161,7 @@ type baseAttack struct {
 // baseHPTracker accumulates damage across rival attacks so re-checks see the
 // correct effective HP before mutations are applied to state.
 func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, rulebook *rulebook.Rulebook) error {
-	eligible := rivalAssetsOnWorld(rival, target.Location)
+	eligible := rivalAssetsOnWorld(rival, target.Location.WorldID)
 	if len(eligible) == 0 {
 		return nil
 	}
@@ -216,7 +216,7 @@ func eligibleNewBaseWorlds(faction *domain.Faction, rulebook *rulebook.Rulebook,
 		maxAssetTL := 0
 		if rulebook != nil {
 			for _, asset := range faction.Assets {
-				if asset.Location != worldID {
+				if asset.Location.WorldID != worldID {
 					continue
 				}
 				def, ok := rulebook.Assets[asset.DefinitionID]
@@ -236,11 +236,11 @@ func eligibleNewBaseWorlds(faction *domain.Faction, rulebook *rulebook.Rulebook,
 func worldsForNewBase(faction *domain.Faction) []string {
 	worldsWithAssets := map[string]struct{}{}
 	for _, asset := range faction.Assets {
-		worldsWithAssets[asset.Location] = struct{}{}
+		worldsWithAssets[asset.Location.WorldID] = struct{}{}
 	}
 	worldsWithBase := map[string]struct{}{}
 	for _, base := range faction.Bases {
-		worldsWithBase[base.Location] = struct{}{}
+		worldsWithBase[base.Location.WorldID] = struct{}{}
 	}
 	var result []string
 	for world := range worldsWithAssets {
@@ -294,7 +294,7 @@ func rivalsOnWorld(factionState *state.FactionState, factionID, locationID strin
 func rivalAssetsOnWorld(rival *domain.Faction, world string) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range rival.Assets {
-		if asset.Location == world && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
+		if asset.Location.WorldID == world && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
 			result = append(result, asset)
 		}
 	}

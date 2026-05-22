@@ -290,21 +290,22 @@ Sites identified during planning. Each gets `asset.Location` → `asset.Location
 
 | File | Line(s) | Change |
 |---|---|---|
-| `internal/faction/engine/ability/ability.go` | 104 | `FromLocation: asset.Location` → keep as `Location` (Commit 4 migrates the mutation field) |
-| `internal/faction/engine/ability/ability.go` | 121 | `asset.Location` (passed to `factionTestCandidates`) — update signature to take `worldID string`, pass `asset.Location.WorldID` |
-| `internal/faction/engine/ability/ability.go` | 151, 174 | `== world` and `== asset.Location` comparisons → compare `WorldID` |
-| `internal/faction/engine/ability/ability.go` | 210, 211 | `asset.Location != "" / seen[asset.Location]` → `asset.Location.WorldID != "" / seen[asset.Location.WorldID]` |
-| `internal/faction/engine/ability/ability.go` | 215, 216 | same for `base.Location` (handled in Commit 2; flag it for Commit 2's audit) |
+| `internal/faction/engine/ability/steps/movement.go` | 31 | `FromLocation: asset.Location` → keep as `Location` (Commit 4 migrates the mutation field) |
+| `internal/faction/engine/ability/steps/faction_check.go` | 21 | `asset.Location` passed to `factionTestCandidates` → change call site to `asset.Location.WorldID` |
+| `internal/faction/engine/ability/steps/faction_check.go` | 51, 74 | `== world` and `== asset.Location` comparisons → compare `.WorldID`; line 74 compares two assets' locations — use `asset.Location.WorldID == targetAsset.Location.WorldID` |
+| `internal/faction/engine/ability/steps/movement.go` | 43, 44 | `asset.Location != "" / seen[asset.Location]` → `asset.Location.WorldID != "" / seen[asset.Location.WorldID]` |
+| `internal/faction/engine/ability/steps/movement.go` | 48, 49 | `base.Location` references → handled in Commit 2; flag for Commit 2's audit |
 | `internal/faction/engine/action/actions/eligibility.go` | 37 | `base.Location == world` (Commit 2) |
 | `internal/faction/engine/action/actions/refit_asset.go` | 75 | `Location: ra.refitOrder.OldAsset.Location` → preserve as `Location` struct |
 | `internal/faction/engine/action/actions/buy_asset.go` | 123, 139 | `asset.Location != world / seen[asset.Location]` → `.WorldID` |
 | `internal/faction/engine/action/actions/attack.go` | 79, 126, 140, 152, 159, 234 | `attacker.Location` → `attacker.Location.WorldID` (for index lookups and `World` field on `RollContext`); `liveDefenders` / `eligibleDefenders` / `factionBaseOnWorld` signatures may accept `string` or be widened — keep them on `string` (world ID) for this commit; Phase 7 widens them |
-| `internal/faction/engine/action/actions/expand_influence.go` | 164, 219, 239, 297 | `asset.Location` → `.WorldID` |
-| `internal/faction/engine/action/actions/expand_influence.go` | 243 | `base.Location` (Commit 2) |
+| `internal/faction/engine/action/actions/expand_influence.go` | 219, 239, 297 | `asset.Location` → `.WorldID` |
+| `internal/faction/engine/action/actions/expand_influence.go` | 164, 243 | `base.Location` (Commit 2) — line 164 is `target.Location` on a `*domain.Base` inside `baseAttack.resolve` |
 | `internal/faction/engine/action/actions/seize_planet.go` | 72 | `asset.Location` → `.WorldID` |
-| `internal/faction/engine/goal/lock.go` | 26 | `asset.Location == world` → `.WorldID` |
-| `internal/faction/engine/goal/progress.go` | 80, 216 | `asset.Location ==` → `.WorldID` |
-| `internal/faction/engine/goal/progress.go` | 102, 106, 334 | `base.Location` (Commit 2) |
+| `internal/faction/engine/goal/goals/helpers.go` | 107 | `asset.Location == world` → `.WorldID` |
+| `internal/faction/engine/goal/goals/inside_enemy_territory.go` | 30 | `asset.Location` passed to helper → `.WorldID` |
+| `internal/faction/engine/goal/goals/planetary_seizure.go` | 71 | `asset.Location == goal.TargetWorld` → `.WorldID` |
+| `internal/faction/engine/goal/goals/helpers.go` | 59 | `base.Location` (Commit 2) |
 | `internal/faction/engine/turn/bookkeeping.go` | 92 | `AssetRef{... Location: asset.Location}` — update `AssetRef.Location` field type to `Location` |
 | `internal/faction/engine/world/world.go` | 38, 42 | `spatialMap.Location(asset.Location)` and `index.AssetsByLocation[asset.Location]` → use `asset.Location.WorldID` for both |
 | `internal/faction/narrative/digest/build.go`, `resolve.go` | various | `base.Location` (Commit 2) |
@@ -334,10 +335,10 @@ Change `Base.Location` from `string` to `Location`.
 
 | File | Line(s) | Change |
 |---|---|---|
-| `internal/faction/engine/ability/ability.go` | 215, 216 | `base.Location` → `.WorldID` |
+| `internal/faction/engine/ability/steps/movement.go` | 48, 49 | `base.Location` → `.WorldID` |
 | `internal/faction/engine/action/actions/eligibility.go` | 37 | `base.Location == world` → `.WorldID` |
-| `internal/faction/engine/action/actions/expand_influence.go` | 243 | `base.Location` → `.WorldID` |
-| `internal/faction/engine/goal/progress.go` | 102, 106, 334 | `base.Location` → `.WorldID` |
+| `internal/faction/engine/action/actions/expand_influence.go` | 164, 243 | `base.Location` → `.WorldID` — line 164 is `target.Location` on a `*domain.Base` inside `baseAttack.resolve` |
+| `internal/faction/engine/goal/goals/helpers.go` | 59 | `base.Location == world` → `.WorldID` |
 | `internal/faction/engine/world/world.go` | 45, 49 | same pattern as asset Commit 1 |
 | `internal/faction/narrative/digest/resolve.go` | 61 | `return base.Location` — caller likely wants a display string; change return to `base.Location.WorldID` (or update the narrative consumer to handle `Location`) |
 | `internal/faction/narrative/digest/build.go` | 338 | `expand.location = m.Base.Location` — same as resolve.go; preserve string-display intent by using `.WorldID` |
@@ -360,7 +361,7 @@ Change `Faction.Homeworld` from `string` to `Location`.
 | File | Line(s) | Change |
 |---|---|---|
 | `internal/faction/engine/action/actions/buy_asset.go` | 137 | `seen := map[string]struct{}{faction.Homeworld: {}}` → use `faction.Homeworld.WorldID` |
-| `internal/faction/engine/goal/lock.go` | 61 | `FromWorld: faction.Homeworld` — `FromWorld` field on `HomeworldChanged` is migrated in Commit 4. For this commit, pass `faction.Homeworld.WorldID` (preserves string compat) |
+| `internal/faction/engine/goal/goals/change_homeworld.go` | 27 | `FromWorld: faction.Homeworld` — `FromWorld` field on `HomeworldChanged` is migrated in Commit 4. For this commit, pass `faction.Homeworld.WorldID` (preserves string compat) |
 | `internal/faction/engine/mutation/mutation.go` | 128 | `faction.Homeworld = v.ToWorld` → `faction.Homeworld = Location{WorldID: v.ToWorld}` placeholder; Commit 4 fixes this properly |
 | `internal/faction/engine/testharness/harness.go` | 92 | `Homeworld: homeworld` → use `Location{WorldID: homeworld, ...}` via the helper from Commit 1 |
 
@@ -399,8 +400,8 @@ type HomeworldChanged struct {
 
 | File | Site | Change |
 |---|---|---|
-| `internal/faction/engine/ability/ability.go` | 100–108 (`movementStepHandler`) | Build `AssetMoved` with full `Location` structs for `FromLocation` / `ToLocation`. **Note:** this handler is removed in Effort 3 Phase 5, but keep it correct in the interim. The `destination` returned by `collector.SelectMoveDestination` is currently a string world ID — wrap it via a helper that looks up the spatial map and builds the `Location`. |
-| `internal/faction/engine/goal/lock.go` | 59–64 | `HomeworldChanged.FromWorld = faction.Homeworld` (struct copy); `ToWorld` built from `faction.ActiveGoal.TargetWorld` via the same spatial-map lookup helper |
+| `internal/faction/engine/ability/steps/movement.go` | 11–37 (`Movement` func) | Build `AssetMoved` with full `Location` structs for `FromLocation` / `ToLocation`. **Note:** this handler is removed in Effort 3 Phase 5, but keep it correct in the interim. The `destination` returned by `collector.SelectMoveDestination` is currently a string world ID — wrap it via a helper that looks up the spatial map and builds the `Location`. |
+| `internal/faction/engine/goal/goals/change_homeworld.go` | 25–28 | `HomeworldChanged.FromWorld = faction.Homeworld` (struct copy); `ToWorld` built from `faction.ActiveGoal.TargetWorld` via the same spatial-map lookup helper |
 
 ### Task 13 — Fix Apply
 
@@ -441,9 +442,9 @@ All tests pass. This is the largest migration commit; expect to spend time on te
 
 ## Commit 5 — `chore: retire "Astral Sea" sentinel`
 
-### Task 16 — `internal/faction/engine/ability/ability.go`
+### Task 16 — `internal/faction/engine/ability/steps/movement.go`
 
-Remove line 225: `worlds = append(worlds, "Astral Sea")`. The `worldsFromState` function is consumed by `collector.SelectMoveDestination` in the old `movementStepHandler`. With `Astral Sea` gone, the collector's "move to empty space" option is also gone — which is correct under the redesign (mid-flight is a state of having an order, not a destination).
+Remove line 58 in `internal/faction/engine/ability/steps/movement.go`: `worlds = append(worlds, "Astral Sea")`. The `worldsFromState` function is consumed by `collector.SelectMoveDestination` in `steps/movement.go`. With `Astral Sea` gone, the collector's "move to empty space" option is also gone — which is correct under the redesign (mid-flight is a state of having an order, not a destination).
 
 ### Task 17 — Sentinel sweep
 

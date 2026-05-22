@@ -23,7 +23,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				MaxHP:     28,
 				Coin:      5,
 				XP:        2,
-				Homeworld: "Tartarus",
+				Homeworld: domain.Location{WorldID: "Tartarus"},
 				Tags: []*domain.Tag{
 					{ID: "T-001", Name: "Colonists", Description: "Settler faction", Effect: "+1 Wealth"},
 				},
@@ -35,7 +35,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 						ID:           "iron-collective-asset-0",
 						DefinitionID: "F1-001",
 						OwnerID:      "iron-collective",
-						Location:     "Tartarus",
+						Location:     domain.Location{WorldID: "Tartarus"},
 						CurrentHP:    3,
 						Stealthy:     false,
 						Ready:        true,
@@ -100,8 +100,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	if got.XP != want.XP {
 		t.Errorf("Faction.XP: got %d, want %d", got.XP, want.XP)
 	}
-	if got.Homeworld != want.Homeworld {
-		t.Errorf("Faction.Homeworld: got %q, want %q", got.Homeworld, want.Homeworld)
+	if got.Homeworld.WorldID != want.Homeworld.WorldID {
+		t.Errorf("Faction.Homeworld: got %q, want %q", got.Homeworld.WorldID, want.Homeworld.WorldID)
 	}
 
 	if len(got.Tags) != 1 {
@@ -140,7 +140,7 @@ func TestTurnStateRoundTrip(t *testing.T) {
 			CycleNumber:  2,
 			FactionOrder: []string{"faction-b", "faction-a"},
 			CurrentIndex: 1,
-			Phase:        domain.PhaseAction,
+			BookkeepingApplied: true,
 		},
 	}
 
@@ -169,8 +169,8 @@ func TestTurnStateRoundTrip(t *testing.T) {
 	if ct.CurrentIndex != want.CurrentIndex {
 		t.Errorf("CurrentIndex: got %d, want %d", ct.CurrentIndex, want.CurrentIndex)
 	}
-	if ct.Phase != want.Phase {
-		t.Errorf("Phase: got %v, want %v", ct.Phase, want.Phase)
+	if ct.BookkeepingApplied != want.BookkeepingApplied {
+		t.Errorf("BookkeepingApplied: got %v, want %v", ct.BookkeepingApplied, want.BookkeepingApplied)
 	}
 	if len(ct.FactionOrder) != len(want.FactionOrder) {
 		t.Fatalf("FactionOrder length: got %d, want %d", len(ct.FactionOrder), len(want.FactionOrder))

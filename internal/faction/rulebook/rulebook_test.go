@@ -1,6 +1,7 @@
 package rulebook
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -87,29 +88,6 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
-	t.Run("movement ability parsed", func(t *testing.T) {
-		asset, ok := rb.Assets["F2-001"]
-		if !ok {
-			t.Fatal("asset F2-001 not found")
-		}
-		if asset.Ability == nil {
-			t.Fatal("expected ability, got nil")
-		}
-		if len(asset.Ability.Steps) != 1 {
-			t.Fatalf("steps: got %d, want 1", len(asset.Ability.Steps))
-		}
-		step := asset.Ability.Steps[0]
-		if step.Type != domain.AbilityStepMovement {
-			t.Errorf("step type: got %q, want %q", step.Type, domain.AbilityStepMovement)
-		}
-		if step.MaxHex != 1 {
-			t.Errorf("max_hex: got %d, want 1", step.MaxHex)
-		}
-		if step.CoinCost != 1 {
-			t.Errorf("coin_cost: got %d, want 1", step.CoinCost)
-		}
-	})
-
 	t.Run("faction_test ability parsed", func(t *testing.T) {
 		asset, ok := rb.Assets["C1-002"]
 		if !ok {
@@ -118,34 +96,14 @@ func TestLoad(t *testing.T) {
 		if asset.Ability == nil {
 			t.Fatal("expected ability, got nil")
 		}
-		if len(asset.Ability.Steps) != 1 {
-			t.Fatalf("steps: got %d, want 1", len(asset.Ability.Steps))
+		if asset.Ability.AttackerStat != domain.StatCunning {
+			t.Errorf("attacker_stat: got %q, want %q", asset.Ability.AttackerStat, domain.StatCunning)
 		}
-		step := asset.Ability.Steps[0]
-		if step.Type != domain.AbilityStepFactionTest {
-			t.Errorf("step type: got %q, want %q", step.Type, domain.AbilityStepFactionTest)
+		if asset.Ability.DefenderStat != domain.StatCunning {
+			t.Errorf("defender_stat: got %q, want %q", asset.Ability.DefenderStat, domain.StatCunning)
 		}
-		if step.Effect != domain.EffectRevealStealth {
-			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectRevealStealth)
-		}
-	})
-
-	t.Run("combo ability parsed", func(t *testing.T) {
-		asset, ok := rb.Assets["C2-004"]
-		if !ok {
-			t.Fatal("asset C2-004 not found")
-		}
-		if asset.Ability == nil {
-			t.Fatal("expected ability, got nil")
-		}
-		if len(asset.Ability.Steps) != 2 {
-			t.Fatalf("steps: got %d, want 2", len(asset.Ability.Steps))
-		}
-		if asset.Ability.Steps[0].Type != domain.AbilityStepMovement {
-			t.Errorf("step 0 type: got %q, want movement", asset.Ability.Steps[0].Type)
-		}
-		if asset.Ability.Steps[1].Type != domain.AbilityStepFactionTest {
-			t.Errorf("step 1 type: got %q, want faction_test", asset.Ability.Steps[1].Type)
+		if asset.Ability.Effect != domain.EffectRevealStealth {
+			t.Errorf("effect: got %q, want %q", asset.Ability.Effect, domain.EffectRevealStealth)
 		}
 	})
 
@@ -156,6 +114,153 @@ func TestLoad(t *testing.T) {
 		}
 		if asset.Ability != nil {
 			t.Errorf("expected nil ability, got %+v", asset.Ability)
+		}
+	})
+
+	t.Run("speed populated on movers", func(t *testing.T) {
+		cases := []struct {
+			id    string
+			speed int
+		}{
+			{"W2-001", 2}, // FreighterContract
+			{"W2-004", 2}, // Surveyors
+			{"W3-003", 1}, // Mercenaries
+			{"W4-001", 2}, // ShippingCombine
+			{"W5-003", 3}, // BlockadeRunners
+			{"W8-001", 3}, // ScavengerFleet
+			{"C1-001", 2}, // Smugglers
+			{"C2-004", 1}, // Seductress
+			{"F2-001", 1}, // HeavyDropAssets
+			{"F4-001", 1}, // BeachheadLanders
+			{"F4-002", 2}, // ExtendedTheater
+			{"F4-003", 1}, // StrikeFleet
+			{"F5-001", 1}, // BlockadeFleet
+			{"F7-001", 3}, // DeepStrikeLanders
+			{"F7-003", 1}, // SpaceMarines
+			{"F8-001", 3}, // CapitalFleet
+		}
+		for _, tc := range cases {
+			def, ok := rb.Assets[tc.id]
+			if !ok {
+				t.Errorf("asset %s not found", tc.id)
+				continue
+			}
+			if def.Speed != tc.speed {
+				t.Errorf("%s (%s): speed got %d, want %d", def.Name, tc.id, def.Speed, tc.speed)
+			}
+		}
+		nonMover, ok := rb.Assets["F1-001"]
+		if ok && nonMover.Speed != 0 {
+			t.Errorf("Security Personnel: expected speed 0, got %d", nonMover.Speed)
+		}
+	})
+
+	t.Run("transport profiles populated", func(t *testing.T) {
+		allTypes := []domain.AssetType{
+			domain.TypeFacility, domain.TypeStarship, domain.TypeMilitaryUnit,
+			domain.TypeSpecialForces, domain.TypeTactic, domain.TypeLogisticsFacility,
+		}
+		nonStarship := []domain.AssetType{
+			domain.TypeFacility, domain.TypeMilitaryUnit, domain.TypeSpecialForces,
+			domain.TypeTactic, domain.TypeLogisticsFacility,
+		}
+		type transportExpect struct {
+			id           string
+			maxHex       int
+			coinCost     int
+			cargoTypes   []domain.AssetType
+			maxCargo     int
+			excludeStats []domain.FactionStat
+		}
+		cases := []transportExpect{
+			{"W2-001", 2, 1, allTypes, 1, []domain.FactionStat{domain.StatForce}},                           // FreighterContract
+			{"W4-001", 2, 1, allTypes, 10, []domain.FactionStat{domain.StatForce}},                          // ShippingCombine
+			{"W5-003", 3, 2, []domain.AssetType{domain.TypeMilitaryUnit, domain.TypeSpecialForces}, 1, nil}, // BlockadeRunners
+			{"C1-001", 2, 1, []domain.AssetType{domain.TypeSpecialForces}, 1, nil},                          // Smugglers
+			{"F2-001", 1, 1, nonStarship, 1, nil},                                                           // HeavyDropAssets
+			{"F4-001", 1, 1, allTypes, 10, nil},                                                             // BeachheadLanders
+			{"F4-002", 2, 1, nonStarship, 1, nil},                                                           // ExtendedTheater
+			{"F7-001", 3, 2, nonStarship, 1, nil},                                                           // DeepStrikeLanders
+		}
+		for _, tc := range cases {
+			def, ok := rb.Assets[tc.id]
+			if !ok {
+				t.Errorf("asset %s not found", tc.id)
+				continue
+			}
+			if def.Transport == nil {
+				t.Errorf("%s: expected Transport != nil", tc.id)
+				continue
+			}
+			tp := def.Transport
+			if tp.MaxHex != tc.maxHex {
+				t.Errorf("%s: MaxHex got %d, want %d", tc.id, tp.MaxHex, tc.maxHex)
+			}
+			if tp.CoinCost != tc.coinCost {
+				t.Errorf("%s: CoinCost got %d, want %d", tc.id, tp.CoinCost, tc.coinCost)
+			}
+			if tp.MaxCargo != tc.maxCargo {
+				t.Errorf("%s: MaxCargo got %d, want %d", tc.id, tp.MaxCargo, tc.maxCargo)
+			}
+			gotTypes := slices.Clone(tp.CargoTypes)
+			slices.Sort(gotTypes)
+			wantTypes := slices.Clone(tc.cargoTypes)
+			slices.Sort(wantTypes)
+			if !slices.Equal(gotTypes, wantTypes) {
+				t.Errorf("%s: CargoTypes got %v, want %v", tc.id, gotTypes, wantTypes)
+			}
+			gotExcl := slices.Clone(tp.ExcludeCategories)
+			slices.Sort(gotExcl)
+			wantExcl := slices.Clone(tc.excludeStats)
+			slices.Sort(wantExcl)
+			if !slices.Equal(gotExcl, wantExcl) {
+				t.Errorf("%s: ExcludeCategories got %v, want %v", tc.id, gotExcl, wantExcl)
+			}
+			if !def.HasFlag(domain.FlagSpecial) {
+				t.Errorf("%s: expected FlagSpecial in flags, got %v", tc.id, def.Flags)
+			}
+		}
+	})
+
+	t.Run("self-movers have speed and no transport", func(t *testing.T) {
+		selfMovers := []string{
+			"W2-004", // Surveyors
+			"W3-003", // Mercenaries
+			"W8-001", // ScavengerFleet
+			"C2-004", // Seductress
+			"F4-003", // StrikeFleet
+			"F7-003", // SpaceMarines
+			"F8-001", // CapitalFleet
+		}
+		for _, id := range selfMovers {
+			def, ok := rb.Assets[id]
+			if !ok {
+				t.Errorf("asset %s not found", id)
+				continue
+			}
+			if def.Speed <= 0 {
+				t.Errorf("%s: expected Speed > 0, got %d", id, def.Speed)
+			}
+			if def.Transport != nil {
+				t.Errorf("%s: expected nil Transport, got %+v", id, def.Transport)
+			}
+		}
+	})
+
+	t.Run("deferred transport assets have no transport and no ability", func(t *testing.T) {
+		deferred := []string{"C3-003", "C6-002"} // CovertShipping, CovertTransitNet
+		for _, id := range deferred {
+			def, ok := rb.Assets[id]
+			if !ok {
+				t.Errorf("asset %s not found", id)
+				continue
+			}
+			if def.Transport != nil {
+				t.Errorf("%s: expected nil Transport, got %+v", id, def.Transport)
+			}
+			if def.Ability != nil {
+				t.Errorf("%s: expected nil Ability, got %+v", id, def.Ability)
+			}
 		}
 	})
 

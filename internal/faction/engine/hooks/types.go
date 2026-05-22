@@ -6,7 +6,7 @@ import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 type RollPhase int
 
 const (
-	PhaseAttack      RollPhase = iota
+	PhaseAttack RollPhase = iota
 	PhaseDefense
 	PhaseFactionTest
 	PhaseContested

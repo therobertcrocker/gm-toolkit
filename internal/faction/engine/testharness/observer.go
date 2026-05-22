@@ -1,10 +1,12 @@
-// Package testharness provides headless implementations of InputCollector
-// and TurnObserver for orchestrator tests, AI batch runs, and any future
-// non-interactive engine consumer.
+// Package testharness provides headless implementations of the engine's
+// collector interfaces (PhaseCollector, action.Collector) and TurnObserver
+// for orchestrator tests, AI batch runs, and any future non-interactive
+// engine consumer.
 package testharness
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
@@ -19,6 +21,8 @@ type ObservedEvent struct {
 	Faction *domain.Faction
 	Payload any
 }
+
+var _ engine.TurnObserver = (*RecordingObserver)(nil)
 
 // RecordingObserver appends every observer callback to Events in call order.
 // Use Kinds() / FactionIDs() in assertions for compact comparisons.
@@ -85,6 +89,30 @@ func (r *RecordingObserver) OnStatRaiseApplied(faction *domain.Faction, raised *
 	})
 }
 
+func (r *RecordingObserver) OnStatRaiseSkipped(faction *domain.Faction) {
+	r.Events = append(r.Events, ObservedEvent{Kind: "StatRaiseSkipped", Faction: faction})
+}
+
+func (r *RecordingObserver) OnMovementTicked(faction *domain.Faction, mutations []domain.Mutation) {
+	r.Events = append(r.Events, ObservedEvent{
+		Kind:    "MovementTicked",
+		Faction: faction,
+		Payload: mutations,
+	})
+}
+
+func (r *RecordingObserver) OnMovementResolved(faction *domain.Faction, mutations []domain.Mutation) {
+	r.Events = append(r.Events, ObservedEvent{
+		Kind:    "MovementResolved",
+		Faction: faction,
+		Payload: mutations,
+	})
+}
+
+func (r *RecordingObserver) OnIndexSkipped(skipped []string) {
+	r.Events = append(r.Events, ObservedEvent{Kind: "IndexSkipped", Payload: skipped})
+}
+
 // Kinds returns the recorded event kinds in order — convenient for sequence
 // assertions that don't care about payload contents.
 func (r *RecordingObserver) Kinds() []string {
@@ -121,5 +149,9 @@ type CycleCompletedPayload struct {
 
 type StatRaisePayload struct {
 	Raised    *domain.FactionStat
+	Mutations []domain.Mutation
+}
+
+type MovementResolvedPayload struct {
 	Mutations []domain.Mutation
 }

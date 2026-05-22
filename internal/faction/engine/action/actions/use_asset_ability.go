@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/ability"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -15,16 +15,14 @@ import (
 type UseAssetAbility struct {
 	collector      action.Collector
 	roller         domain.Roller
-	abilityEngine  *ability.AbilityEngine
 	selectedAssets []*domain.Asset
 	mutations      []domain.Mutation
 }
 
-func NewUseAssetAbility(collector action.Collector, roller domain.Roller, abilityEngine *ability.AbilityEngine) *UseAssetAbility {
+func NewUseAssetAbility(collector action.Collector, roller domain.Roller) *UseAssetAbility {
 	return &UseAssetAbility{
-		collector:     collector,
-		roller:        roller,
-		abilityEngine: abilityEngine,
+		collector: collector,
+		roller:    roller,
 	}
 }
 
@@ -68,13 +66,7 @@ func (u *UseAssetAbility) Resolve(faction *domain.Faction, factionState *state.F
 		if !ok {
 			return fmt.Errorf("use asset ability: definition not found: %s", asset.DefinitionID)
 		}
-		if def.Ability == nil {
-			if _, err := u.collector.ConfirmAbilityApplied(asset, def); err != nil {
-				return fmt.Errorf("use asset ability: confirm: %w", err)
-			}
-			continue
-		}
-		mutations, err := u.abilityEngine.Run(faction, asset, def, u.collector, u.roller, factionState, rulebook)
+		mutations, err := ability.Dispatch(faction, asset, def, u.collector, u.roller, factionState, rulebook)
 		if err != nil {
 			return fmt.Errorf("use asset ability: %w", err)
 		}

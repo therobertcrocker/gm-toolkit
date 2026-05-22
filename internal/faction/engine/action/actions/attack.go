@@ -10,6 +10,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 // AttackAction targets rival assets with one or more of the faction's own
@@ -76,7 +77,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			continue
 		}
 
-		defenders := liveDefenders(faction.ID, attacker.Location, assetHPTracker, attack.index)
+		defenders := liveDefendersAtHex(faction.ID, attacker.Location.RegionHex, assetHPTracker, attack.index)
 		if len(defenders) == 0 {
 			continue
 		}
@@ -123,7 +124,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				Opponent:  defenderFaction,
 				Attribute: string(attackerDef.Attack.AttackerStat),
 				Asset:     attacker,
-				World:     attacker.Location,
+				World:     attacker.Location.WorldID,
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
 			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
@@ -137,7 +138,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				Opponent:  faction,
 				Attribute: string(attackerDef.Attack.DefenderStat),
 				Asset:     defender,
-				World:     attacker.Location,
+				World:     attacker.Location.WorldID,
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
 			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
@@ -149,14 +150,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			Actor:    faction,
 			Opponent: defenderFaction,
 			Asset:    attacker,
-			World:    attacker.Location,
+			World:    attacker.Location.WorldID,
 		}
 		tieOutcome := dispatch.ResolveTie(attack.registry, tieCtx, factionState)
 
 		// Attack damage: attacker wins on tie (TieStandard/TieAttackerWins) or strictly greater.
 		if attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins) {
 			damage := attackerDef.Attack.Damage.Roll(attack.roller)
-			base := factionBaseOnWorld(defenderFaction, attacker.Location)
+			base := factionBaseOnWorld(defenderFaction, attacker.Location.WorldID)
 
 			// Redirect prompt offered only when the defender has a live Base on this world.
 			if base != nil && base.CurrentHP+baseHPTracker[base.ID] > 0 {
@@ -231,13 +232,24 @@ func attackerHasTarget(attacker *domain.Asset, faction *domain.Faction, rulebook
 	if !ok || def.Attack == nil {
 		return false
 	}
-	return len(eligibleDefenders(faction.ID, attacker.Location, index)) > 0
+	return len(eligibleDefendersAtHex(faction.ID, attacker.Location.RegionHex, index)) > 0
 }
 
-// liveDefenders filters eligibleDefenders to exclude assets whose effective HP
-// has been driven to 0 by earlier matchups in the current Resolve pass.
-func liveDefenders(attackerFactionID, locationID string, assetHPTracker map[string]int, index *world.Index) []*domain.Asset {
-	defenders := eligibleDefenders(attackerFactionID, locationID, index)
+// liveDefendersOnWorld filters eligibleDefendersOnWorld to exclude assets
+// whose effective HP has been driven to 0 by earlier matchups in the current
+// Resolve pass.
+func liveDefendersOnWorld(attackerFactionID, worldID string, assetHPTracker map[string]int, index *world.Index) []*domain.Asset {
+	return filterLiveDefenders(eligibleDefendersOnWorld(attackerFactionID, worldID, index), assetHPTracker)
+}
+
+// liveDefendersAtHex filters eligibleDefendersAtHex to exclude assets whose
+// effective HP has been driven to 0 by earlier matchups in the current Resolve
+// pass. Used when the attacker is mid-flight (empty WorldID).
+func liveDefendersAtHex(attackerFactionID string, hex spatial.RegionHex, assetHPTracker map[string]int, index *world.Index) []*domain.Asset {
+	return filterLiveDefenders(eligibleDefendersAtHex(attackerFactionID, hex, index), assetHPTracker)
+}
+
+func filterLiveDefenders(defenders []*domain.Asset, assetHPTracker map[string]int) []*domain.Asset {
 	live := make([]*domain.Asset, 0, len(defenders))
 	for _, defender := range defenders {
 		if defender.CurrentHP+assetHPTracker[defender.ID] > 0 {

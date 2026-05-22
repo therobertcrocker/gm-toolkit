@@ -27,7 +27,7 @@ func (InsideEnemyTerritory) UpdateProgress(actingFaction *domain.Faction, mutati
 		if asset == nil {
 			continue
 		}
-		if !rivalHasPlanetaryGovernmentOnWorld(actingFaction.ID, asset.Location, factionState, index) {
+		if !rivalHasPlanetaryGovernmentOnWorld(actingFaction.ID, asset.Location.WorldID, factionState, index) {
 			continue
 		}
 		gained++

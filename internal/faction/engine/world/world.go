@@ -6,62 +6,77 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
+type HexRouter interface {
+	spatial.SpatialMap
+	Distance(from, to spatial.RegionHex, crossingCost int) (int, error)
+	Path(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error)
+}
+
+var _ HexRouter = (*spatial.RegionMap)(nil)
+
 type Index struct {
 	AssetsByLocation map[string][]*domain.Asset
 	BasesByLocation  map[string][]*domain.Base
+	AssetsByHex      map[spatial.RegionHex][]*domain.Asset
 }
 
 type WorldEngine struct {
-	spatialMap spatial.SpatialMap
+	spatialMap HexRouter
 	Index      *Index
 }
 
 func New(dataDir string) (*WorldEngine, error) {
-	spatialMap, err := spatial.LoadHybrid(dataDir)
+	spatialMap, err := spatial.LoadRegionMap(dataDir)
 	if err != nil {
 		return nil, err
 	}
 	return NewWithMap(spatialMap), nil
 }
 
-func NewWithMap(spatialMap spatial.SpatialMap) *WorldEngine {
+func NewWithMap(spatialMap HexRouter) *WorldEngine {
 	return &WorldEngine{spatialMap: spatialMap}
 }
 
-func (engine *WorldEngine) RebuildIndex(factionState *state.FactionState) {
+func (engine *WorldEngine) RebuildIndex(factionState *state.FactionState) ([]string, error) {
 	index := &Index{
 		AssetsByLocation: make(map[string][]*domain.Asset),
 		BasesByLocation:  make(map[string][]*domain.Base),
+		AssetsByHex:      make(map[spatial.RegionHex][]*domain.Asset),
 	}
+	var skipped []string
 	for _, faction := range factionState.Factions {
 		for _, asset := range faction.Assets {
-			if _, ok := engine.spatialMap.Location(asset.Location); !ok {
-				// TODO: surface skipped locations once a logging layer exists
-				continue
+			index.AssetsByHex[asset.Location.RegionHex] = append(index.AssetsByHex[asset.Location.RegionHex], asset)
+
+			if !domain.IsInFlight(asset.Location) {
+				if _, ok := engine.spatialMap.Location(asset.Location.WorldID); !ok {
+					skipped = append(skipped, asset.Location.WorldID)
+					continue
+				}
+				index.AssetsByLocation[asset.Location.WorldID] = append(index.AssetsByLocation[asset.Location.WorldID], asset)
 			}
-			index.AssetsByLocation[asset.Location] = append(index.AssetsByLocation[asset.Location], asset)
 		}
 		for _, base := range faction.Bases {
-			if _, ok := engine.spatialMap.Location(base.Location); !ok {
-				// TODO: surface skipped locations once a logging layer exists
+			if _, ok := engine.spatialMap.Location(base.Location.WorldID); !ok {
+				skipped = append(skipped, base.Location.WorldID)
 				continue
 			}
-			index.BasesByLocation[base.Location] = append(index.BasesByLocation[base.Location], base)
+			index.BasesByLocation[base.Location.WorldID] = append(index.BasesByLocation[base.Location.WorldID], base)
 		}
 	}
 	engine.Index = index
+	return skipped, nil
 }
 
-func (engine *WorldEngine) Location(id string) (spatial.Location, bool) {
-	// type assert to HexLocation
-	if loc, ok := engine.spatialMap.Location(id); ok {
-		if hexLoc, ok := loc.(spatial.HexLocation); ok {
-			return hexLoc, true
-		}
+func (engine *WorldEngine) Location(id string) (spatial.RegionLocation, bool) {
+	loc, ok := engine.spatialMap.Location(id)
+	if !ok {
+		return nil, false
 	}
-	return nil, false
+	hexLoc, ok := loc.(spatial.RegionLocation)
+	return hexLoc, ok
 }
 
-func (engine *WorldEngine) Distance(fromID, toID string, crossingCost int) (int, error) {
-	return engine.spatialMap.Distance(fromID, toID, crossingCost)
+func (engine *WorldEngine) Distance(from, to spatial.RegionHex, crossingCost int) (int, error) {
+	return engine.spatialMap.Distance(from, to, crossingCost)
 }

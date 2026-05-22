@@ -2,25 +2,50 @@ package engine
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // Checkpoint constants name the pipeline phases where the orchestrator pauses
-// for caller acknowledgement via InputCollector.AwaitCheckpoint.
+// for caller acknowledgement via PhaseCollector.AwaitCheckpoint.
 const (
 	CheckpointBookkeeping  = "bookkeeping"
+	CheckpointMovement     = "movement"
 	CheckpointActionResult = "action_result"
 	CheckpointGoalLocked   = "goal_locked"
 	CheckpointCycleSummary = "cycle_summary"
 )
+
+// RunCycle calls RunFactionTurn until a cycle completes. The caller must have
+// already called Turn.Start (or be resuming a turn that's still InProgress).
+func (e *Engine) RunCycle(
+	factionState *state.FactionState,
+	cfg *config.Config,
+	collectors Collectors,
+	observer TurnObserver,
+) error {
+	e.Tag.ApplyAll(factionState, e.Hooks)
+	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks)
+
+	for {
+		done, err := e.RunFactionTurn(factionState, cfg, collectors, observer)
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+	}
+}
 
 // RunFactionTurn drives one faction's turn from goal-lock check through state
 // save. Errors are reported to the observer via OnError and returned to the
@@ -31,109 +56,225 @@ const (
 func (e *Engine) RunFactionTurn(
 	factionState *state.FactionState,
 	cfg *config.Config,
-	collector InputCollector,
+	collectors Collectors,
 	observer TurnObserver,
 ) (bool, error) {
-	if e.World != nil {
-		e.World.RebuildIndex(factionState)
-	}
-
-	faction, err := e.Turn.CurrentFaction(factionState)
+	faction, err := e.setupFactionTurn(factionState, observer)
 	if err != nil {
-		observer.OnError(nil, err)
 		return false, err
 	}
-	observer.OnFactionTurnStarted(faction)
 
-	// Phase 1: Goal Lock Check. The engine queries the Goal subsystem for locks
-	// applying to this faction at the start of its turn, and any mutations
-	// resulting from those locks are applied immediately. The lock type (if
-	// any) determines whether the faction is allowed to select an action this
-	// turn or is forced to skip.
-
-	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook)
-	observer.OnGoalLockApplied(faction, lock, lockMutations)
-
-	if lock.Type == locks.LockSkip {
-		if len(lockMutations) > 0 {
-			if err := e.applyAndRecord(factionState, faction, lockMutations, cfg); err != nil {
-				observer.OnError(faction, err)
-				return false, err
-			}
-		}
-		if err := collector.AwaitCheckpoint(CheckpointGoalLocked); err != nil {
-			observer.OnError(faction, err)
-			return false, err
-		}
-		return e.finishFactionTurn(factionState, faction, cfg, collector, observer)
-	}
-
-	if len(lockMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, lockMutations, cfg); err != nil {
-			observer.OnError(faction, err)
-			return false, err
-		}
-	}
-
-	// Phase 2: Bookkeeping. The engine applies any bookkeeping mutations before action selection,
-	// so that they can affect available actions and be observed by the caller.
-
-	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks)
+	lock, err := e.runGoalLockPhase(faction, factionState, cfg, collectors, observer)
 	if err != nil {
-		observer.OnError(faction, err)
-		return false, err
-	}
-	if len(bookMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, bookMutations, cfg); err != nil {
-			observer.OnError(faction, err)
-			return false, err
-		}
-	}
-	observer.OnBookkeepingApplied(faction, bookResult, bookMutations)
-	if err := collector.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
-		observer.OnError(faction, err)
 		return false, err
 	}
 
-	// Persist state after bookkeeping so that the collector can read any bookkeeping mutations before action selection.
-	// This also creates a restore point in case of errors during action resolution.
+	if err := e.runStatRaisePhase(faction, factionState, cfg, collectors, observer); err != nil {
+		return false, err
+	}
+
+	if err := e.runBookkeepingPhase(faction, factionState, cfg, collectors, observer); err != nil {
+		return false, err
+	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
 		observer.OnError(faction, err)
 		return false, fmt.Errorf("saving state after bookkeeping: %w", err)
 	}
 
-	// Phase 2B (optional): Stat Raise. If the faction is eligible for a stat raise, the engine offers
-	// the choice to the collector and applies the resulting mutations if accepted.
-	statToRaise, raiseMutations, err := prepareStatRaise(faction, collector)
+	if err := e.runMovementPhase(faction, factionState, cfg, collectors, observer); err != nil {
+		return false, err
+	}
+
+	if lock.Type == locks.LockSkip {
+		return e.finishFactionTurn(factionState, faction, cfg, collectors, observer)
+	}
+
+	if err := e.runActionPhase(faction, factionState, cfg, collectors, observer, lock); err != nil {
+		return false, err
+	}
+	if err := state.Save(cfg.StatePath, factionState); err != nil {
+		observer.OnError(faction, err)
+		return false, fmt.Errorf("saving state after action resolution: %w", err)
+	}
+
+	return e.finishFactionTurn(factionState, faction, cfg, collectors, observer)
+}
+
+func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer TurnObserver) (*domain.Faction, error) {
+	if e.World != nil {
+		skipped, err := e.World.RebuildIndex(factionState)
+		if err != nil {
+			observer.OnError(nil, err)
+			return nil, err
+		}
+		if len(skipped) > 0 {
+			observer.OnIndexSkipped(skipped)
+		}
+	}
+	faction, err := e.Turn.CurrentFaction(factionState)
+	if err != nil {
+		observer.OnError(nil, err)
+		return nil, err
+	}
+
+	observer.OnFactionTurnStarted(faction)
+	return faction, nil
+}
+
+func (e *Engine) runGoalLockPhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	cfg *config.Config,
+	collectors Collectors,
+	observer TurnObserver,
+) (locks.GoalLock, error) {
+	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook)
+	observer.OnGoalLockApplied(faction, lock, lockMutations)
+
+	if len(lockMutations) > 0 {
+		if err := e.applyAndRecord(factionState, faction, lockMutations, cfg); err != nil {
+			observer.OnError(faction, err)
+			return lock, err
+		}
+	}
+
+	if lock.Type == locks.LockSkip {
+		if err := collectors.Phase.AwaitCheckpoint(CheckpointGoalLocked); err != nil {
+			observer.OnError(faction, err)
+			return lock, err
+		}
+	}
+
+	return lock, nil
+}
+
+func (e *Engine) runBookkeepingPhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	cfg *config.Config,
+	collectors Collectors,
+	observer TurnObserver,
+) error {
+	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks)
 	if err != nil {
 		observer.OnError(faction, err)
-		return false, err
+		return err
+	}
+	if len(bookMutations) > 0 {
+		if err := e.applyAndRecord(factionState, faction, bookMutations, cfg); err != nil {
+			observer.OnError(faction, err)
+			return err
+		}
+	}
+	observer.OnBookkeepingApplied(faction, bookResult, bookMutations)
+	if err := collectors.Phase.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
+		observer.OnError(faction, err)
+		return err
+	}
+	return nil
+}
+
+func (e *Engine) runStatRaisePhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	cfg *config.Config,
+	collectors Collectors,
+	observer TurnObserver,
+) error {
+	statToRaise, raiseMutations, err := prepareStatRaise(faction, collectors.Phase)
+	if err != nil {
+		observer.OnError(faction, err)
+		return err
+	}
+	if statToRaise == nil {
+		observer.OnStatRaiseSkipped(faction)
+		return nil
 	}
 	if len(raiseMutations) > 0 {
 		if err := e.applyAndRecord(factionState, faction, raiseMutations, cfg); err != nil {
 			observer.OnError(faction, err)
-			return false, err
+			return err
 		}
 		observer.OnStatRaiseApplied(faction, statToRaise, raiseMutations)
 	}
+	return nil
+}
 
-	// Phase 3: Action Selection and Resolution. The engine queries the Action
-	// subsystem for available actions, passing along the lock type and allowed
-	// actions if relevant.
+func (e *Engine) runMovementPhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	cfg *config.Config,
+	collectors Collectors,
+	observer TurnObserver,
+) error {
+	if e.World == nil {
+		return fmt.Errorf("world engine not found")
+	}
 
-	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collector)
+	tickMutations, err := e.World.TickMovementOrders(faction, e.Rulebook)
+	if err != nil {
+		observer.OnError(faction, err)
+		return err
+	}
+	if len(tickMutations) > 0 {
+		tickMutations, err = dispatch.MutationReactors(e.Hooks, faction, tickMutations, factionState, e.Rulebook)
+		if err != nil {
+			observer.OnError(faction, err)
+			return err
+		}
+		if err := e.applyAndRecord(factionState, faction, tickMutations, cfg); err != nil {
+			observer.OnError(faction, err)
+			return err
+		}
+		observer.OnMovementTicked(faction, tickMutations)
+	}
+
+	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook)
+	if err != nil {
+		observer.OnError(faction, err)
+		return err
+	}
+	if len(decisionMutations) > 0 {
+		decisionMutations, err = dispatch.MutationReactors(e.Hooks, faction, decisionMutations, factionState, e.Rulebook)
+		if err != nil {
+			observer.OnError(faction, err)
+			return err
+		}
+		if err := e.applyAndRecord(factionState, faction, decisionMutations, cfg); err != nil {
+			observer.OnError(faction, err)
+			return err
+		}
+	}
+
+	observer.OnMovementResolved(faction, decisionMutations)
+	if err := collectors.Phase.AwaitCheckpoint(CheckpointMovement); err != nil {
+		observer.OnError(faction, err)
+		return err
+	}
+	return nil
+}
+
+func (e *Engine) runActionPhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	cfg *config.Config,
+	collectors Collectors,
+	observer TurnObserver,
+	lock locks.GoalLock,
+) error {
+	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collectors.Action)
 	if lock.Type == locks.LockRestrictActions {
 		available = filterAllowedActions(available, lock.AllowedActions)
 	}
 
-	selectedAction, err := collector.SelectAction(faction, available)
+	selectedAction, err := collectors.Phase.SelectAction(faction, available)
 	if err != nil {
 		observer.OnError(faction, err)
-		return false, err
+		return err
 	}
 	if selectedAction == nil {
 		observer.OnFactionSkipped(faction)
-		return e.finishFactionTurn(factionState, faction, cfg, collector, observer)
+		return nil
 	}
 
 	observer.OnActionSelected(faction, selectedAction)
@@ -141,69 +282,34 @@ func (e *Engine) RunFactionTurn(
 	actionMutations, err := e.Action.Run(selectedAction, faction, factionState, e.Rulebook)
 	if err != nil {
 		observer.OnError(faction, err)
-		return false, err
+		return err
 	}
+
 	var worldIndex *world.Index
-	if e.World != nil {
-		worldIndex = e.World.Index
+	if e.World == nil {
+		return fmt.Errorf("world engine not found")
 	}
+	worldIndex = e.World.Index
 	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex)
 	combined := append(actionMutations, goalMutations...)
 
-	// Phase 4: MutationReactor dispatch. Registered hooks (Cat 3) fire in
-	// registration order; returned mutations are appended and the loop
-	// recurses until no new mutations are produced.
-	var dispatchErr error
-	combined, dispatchErr = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
-	if dispatchErr != nil {
-		observer.OnError(faction, dispatchErr)
-		return false, dispatchErr
+	combined, err = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
+	if err != nil {
+		observer.OnError(faction, err)
+		return err
 	}
-
-	// Phase 5: Apply mutations and persist state. The engine applies all mutations
-	// in a single batch to preserve order, then records a single EventRecord in the
-	// history file with the full mutation set. The state is also saved after mutation
-	// application. If any of these steps fail, the error is reported and returned;
-	// successfully applied mutations are not rolled back.
 
 	if err := e.applyAndRecord(factionState, faction, combined, cfg); err != nil {
 		observer.OnError(faction, err)
-		return false, err
+		return err
 	}
 	observer.OnActionResolved(faction, selectedAction, combined)
-	if err := collector.AwaitCheckpoint(CheckpointActionResult); err != nil {
+	if err := collectors.Phase.AwaitCheckpoint(CheckpointActionResult); err != nil {
 		observer.OnError(faction, err)
-		return false, err
+		return err
 	}
 
-	// Persist state before finishing the turn so that the collector can read the results
-	// of the action resolution before the next turn starts.This also creates a restore point
-	// in case of errors during turn completion.
-	if err := state.Save(cfg.StatePath, factionState); err != nil {
-		observer.OnError(faction, err)
-		return false, fmt.Errorf("saving state after action resolution: %w", err)
-	}
-
-	return e.finishFactionTurn(factionState, faction, cfg, collector, observer)
-}
-
-// RunCycle calls RunFactionTurn until a cycle completes. The caller must have
-// already called Turn.Start (or be resuming a turn that's still InProgress).
-func (e *Engine) RunCycle(
-	factionState *state.FactionState,
-	cfg *config.Config,
-	collector InputCollector,
-	observer TurnObserver,
-) error {
-	for {
-		done, err := e.RunFactionTurn(factionState, cfg, collector, observer)
-		if err != nil {
-			return err
-		}
-		if done {
-			return nil
-		}
-	}
+	return nil
 }
 
 // finishFactionTurn observes turn completion, advances the turn cursor,
@@ -213,7 +319,7 @@ func (e *Engine) finishFactionTurn(
 	factionState *state.FactionState,
 	faction *domain.Faction,
 	cfg *config.Config,
-	collector InputCollector,
+	collectors Collectors,
 	observer TurnObserver,
 ) (bool, error) {
 	observer.OnFactionTurnCompleted(faction)
@@ -230,7 +336,7 @@ func (e *Engine) finishFactionTurn(
 
 	if cycleDone {
 		observer.OnCycleCompleted(factionState.CycleNumber, factionState)
-		if err := collector.AwaitCheckpoint(CheckpointCycleSummary); err != nil {
+		if err := collectors.Phase.AwaitCheckpoint(CheckpointCycleSummary); err != nil {
 			observer.OnError(faction, err)
 			return cycleDone, err
 		}
@@ -250,7 +356,9 @@ func (e *Engine) applyAndRecord(
 	if len(mutations) == 0 {
 		return nil
 	}
-	e.Mutation.Apply(factionState, mutations)
+	if err := e.Mutation.Apply(factionState, mutations); err != nil {
+		return fmt.Errorf("applying mutations: %w", err)
+	}
 	if err := turn.RecordHistory(cfg.HistoryPath, factionState, faction, mutations); err != nil {
 		return fmt.Errorf("recording history: %w", err)
 	}
@@ -313,7 +421,7 @@ func buildStatRaiseMutations(faction *domain.Faction, stat domain.FactionStat) [
 	}
 }
 
-func prepareStatRaise(faction *domain.Faction, collector InputCollector) (*domain.FactionStat, []domain.Mutation, error) {
+func prepareStatRaise(faction *domain.Faction, collector PhaseCollector) (*domain.FactionStat, []domain.Mutation, error) {
 	eligible := eligibleStatRaises(faction)
 	if len(eligible) == 0 {
 		return nil, nil, nil // skip: don't call the collector
@@ -326,4 +434,93 @@ func prepareStatRaise(faction *domain.Faction, collector InputCollector) (*domai
 		return nil, nil, nil // player declined
 	}
 	return stat, buildStatRaiseMutations(faction, *stat), nil
+}
+
+func prepareMovementDecisions(
+	faction *domain.Faction,
+	collector PhaseCollector,
+	worldEngine *world.WorldEngine,
+	rulebook *rulebook.Rulebook,
+) ([]domain.Mutation, error) {
+	eligible := eligibleMovableAssets(faction, rulebook)
+	if len(eligible) == 0 {
+		return nil, nil
+	}
+	decisions, err := collector.SelectMovementDecisions(faction, eligible)
+	if err != nil {
+		return nil, fmt.Errorf("selecting movement decisions: %w", err)
+	}
+	if len(decisions) == 0 {
+		return nil, nil
+	}
+
+	for i, decision := range decisions {
+		if decision.Kind != world.MovementDecisionIssue {
+			continue
+		}
+		asset, ok := faction.Assets[decision.AssetID]
+		if !ok {
+			return nil, fmt.Errorf("movement decision for unknown asset ID %q", decision.AssetID)
+		}
+		def := rulebook.Assets[asset.DefinitionID]
+		if def == nil || def.Transport == nil {
+			continue
+		}
+		cargoEligible := eligibleCargoForTransport(faction, asset, def.Transport, rulebook)
+		cargoSelected, err := collector.SelectTransportCargo(asset, cargoEligible, def.Transport)
+		if err != nil {
+			return nil, fmt.Errorf("selecting transport cargo: %w", err)
+		}
+		if len(cargoSelected) > def.Transport.MaxCargo {
+			return nil, fmt.Errorf("selected %d cargo assets, exceeding transport max of %d", len(cargoSelected), def.Transport.MaxCargo)
+		}
+		eligibleIDs := make(map[string]bool, len(cargoEligible))
+		for _, c := range cargoEligible {
+			eligibleIDs[c.ID] = true
+		}
+		cargoIDs := make([]string, len(cargoSelected))
+		for j, c := range cargoSelected {
+			if !eligibleIDs[c.ID] {
+				return nil, fmt.Errorf("selected cargo asset %q is not eligible for transport", c.ID)
+			}
+			cargoIDs[j] = c.ID
+		}
+		decisions[i].CargoAssetIDs = cargoIDs
+	}
+
+	return worldEngine.BuildMovementMutations(decisions, faction, rulebook)
+}
+
+func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Asset {
+	var eligible []*domain.Asset
+	for _, asset := range faction.Assets {
+		def := rulebook.Assets[asset.DefinitionID]
+		if def != nil && def.Speed > 0 {
+			eligible = append(eligible, asset)
+		}
+	}
+	return eligible
+}
+
+func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset, profile *domain.TransportProfile, rulebook *rulebook.Rulebook) []*domain.Asset {
+	var eligible []*domain.Asset
+	for _, asset := range faction.Assets {
+		if asset.ID == transport.ID {
+			continue
+		}
+		def := rulebook.Assets[asset.DefinitionID]
+		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 {
+			continue
+		}
+		if slices.Contains(profile.CargoTypes, def.Type) &&
+			!slices.Contains(profile.ExcludeCategories, def.Category) &&
+			isCoLocated(asset.Location, transport.Location) {
+			eligible = append(eligible, asset)
+		}
+	}
+	return eligible
+}
+
+func isCoLocated(a, b domain.Location) bool {
+	return a.WorldID == b.WorldID && a.RegionHex == b.RegionHex
 }

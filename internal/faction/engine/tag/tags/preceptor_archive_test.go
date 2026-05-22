@@ -11,9 +11,9 @@ func TestPreceptorArchiveCostModifier_TL4PlusReducesCost(t *testing.T) {
 	buyer := &domain.Faction{}
 
 	cases := []struct {
-		tl        int
-		baseCost  int
-		wantCost  int
+		tl       int
+		baseCost int
+		wantCost int
 	}{
 		{tl: 4, baseCost: 4, wantCost: 3},
 		{tl: 5, baseCost: 6, wantCost: 5},

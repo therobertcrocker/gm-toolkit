@@ -87,7 +87,7 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 		ID:           fmt.Sprintf("%s-%s-%d", ba.factionID, def.ID, nextAssetSuffix(faction, def)),
 		DefinitionID: def.ID,
 		OwnerID:      ba.factionID,
-		Location:     ba.buyOrder.World,
+		Location:     domain.Location{WorldID: ba.buyOrder.World},
 		CurrentHP:    def.HP,
 		Ready:        false,
 		Maintained:   true,
@@ -120,7 +120,7 @@ func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 func eligibleStealthTargets(faction *domain.Faction, world string, rulebook *rulebook.Rulebook) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range faction.Assets {
-		if asset.Location != world || asset.Stealthy {
+		if asset.Location.WorldID != world || asset.Stealthy {
 			continue
 		}
 		def, ok := rulebook.Assets[asset.DefinitionID]
@@ -134,9 +134,9 @@ func eligibleStealthTargets(faction *domain.Faction, world string, rulebook *rul
 // availableWorlds returns the faction's homeworld plus the unique set of
 // worlds where the faction already has assets.
 func availableWorlds(faction *domain.Faction) []string {
-	seen := map[string]struct{}{faction.Homeworld: {}}
+	seen := map[string]struct{}{faction.Homeworld.WorldID: {}}
 	for _, asset := range faction.Assets {
-		seen[asset.Location] = struct{}{}
+		seen[asset.Location.WorldID] = struct{}{}
 	}
 	worlds := make([]string, 0, len(seen))
 	for world := range seen {

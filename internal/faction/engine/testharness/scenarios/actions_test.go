@@ -45,7 +45,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -74,7 +74,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("second Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("second RunCycle: %v", err)
 	}
 
@@ -105,7 +105,7 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -119,7 +119,7 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 
 	hasBaseTartarus := false
 	for _, base := range alpha.Bases {
-		if base.Location == "Tartarus" {
+		if base.Location.WorldID == "Tartarus" {
 			hasBaseTartarus = true
 			break
 		}
@@ -132,8 +132,8 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 	h := testharness.NewHarness(t, testDataDir)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	testharness.AddAssetOnWorld(alpha, "Krylos")        // gives alpha an asset on Krylos → eligible for new base there
-	h.AddFaction("beta", "Krylos", 2, 2, 2)            // beta's asset is on Krylos → will contest
+	testharness.AddAssetOnWorld(alpha, "Krylos") // gives alpha an asset on Krylos → eligible for new base there
+	h.AddFaction("beta", "Krylos", 2, 2, 2)      // beta's asset is on Krylos → will contest
 
 	// Roll sequence: [expansion, rival, attack, defense, damage]
 	// expansion: 1 → factionRoll = 1+cunning(3) = 4
@@ -168,7 +168,7 @@ func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -222,7 +222,7 @@ func TestRunCycle_GoalCompleted_MilitaryConquest(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -267,7 +267,7 @@ func TestRunCycle_Bribe(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collector, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 

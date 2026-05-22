@@ -15,7 +15,7 @@ type SeizePlanet struct {
 	factionID    string
 	collector    action.Collector
 	index        *world.Index
-	targetWorld  string
+	targetWorld  *domain.Location
 	processPhase int
 }
 
@@ -37,13 +37,13 @@ func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.Factio
 	if err != nil {
 		return fmt.Errorf("seize planet: %w", err)
 	}
-	s.targetWorld = world
+	s.targetWorld = &domain.Location{WorldID: world}
 	s.factionID = faction.ID
 	return nil
 }
 
 func (s *SeizePlanet) Resolve(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
-	if s.targetWorld == "" {
+	if s.targetWorld == nil {
 		return fmt.Errorf("seize planet: no target world selected")
 	}
 	s.processPhase = 1
@@ -55,7 +55,7 @@ func (s *SeizePlanet) Output() ([]domain.Mutation, error) {
 		domain.GoalInitiated{
 			FactionID:         s.factionID,
 			GoalID:            "G-004",
-			TargetWorld:       s.targetWorld,
+			TargetWorld:       *s.targetWorld,
 			ProcessPhase:      s.processPhase,
 			Cause:             "seize planet",
 			CausedByFactionID: s.factionID,
@@ -69,7 +69,7 @@ func seizePlanetTargetWorlds(faction *domain.Faction, index *world.Index) []stri
 	factionFragments := map[string]struct{}{}
 	for _, asset := range faction.Assets {
 		if !asset.Stealthy {
-			factionFragments[asset.Location] = struct{}{}
+			factionFragments[asset.Location.WorldID] = struct{}{}
 		}
 	}
 

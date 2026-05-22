@@ -4,7 +4,6 @@ import "errors"
 
 type SpatialMap interface {
 	Location(id string) (Location, bool)
-	Distance(fromID, toID string, crossingCost int) (int, error)
 }
 
 type Location interface {
@@ -14,10 +13,11 @@ type Location interface {
 	Population() int
 }
 
-type HexLocation interface {
+type RegionLocation interface {
 	Location
 	Coords() (q, r int)
 	RegionID() string
+	RegionHex() RegionHex
 }
 
 var (
@@ -28,8 +28,6 @@ var (
 )
 
 var (
-	_ SpatialMap  = (*HybridMap)(nil)
-	_ SpatialMap  = (*HexMap)(nil)
-	_ SpatialMap  = (*GraphMap)(nil)
-	_ HexLocation = (*World)(nil)
+	_ SpatialMap     = (*RegionMap)(nil)
+	_ RegionLocation = (*World)(nil)
 )

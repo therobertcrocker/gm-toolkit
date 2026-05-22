@@ -8,14 +8,14 @@ package domain
 // Per SWN, damage to a Base is also dealt directly to faction HP; attack
 // resolution emits a FactionHPDelta alongside every BaseHPDelta.
 type Base struct {
-	ID          string `toml:"id"`
-	OwnerID     string `toml:"owner_id"`
-	Location    string `toml:"location"`
-	CurrentHP   int    `toml:"current_hp"`
-	MaxHP       int    `toml:"max_hp"`
-	Influence   int    `toml:"influence"`
-	Ready       bool   `toml:"ready"`
-	IsHomeworld bool   `toml:"is_homeworld"`
+	ID          string   `toml:"id"`
+	OwnerID     string   `toml:"owner_id"`
+	Location    Location `toml:"location"`
+	CurrentHP   int      `toml:"current_hp"`
+	MaxHP       int      `toml:"max_hp"`
+	Influence   int      `toml:"influence"`
+	Ready       bool     `toml:"ready"`
+	IsHomeworld bool     `toml:"is_homeworld"`
 }
 
 // EffectiveMaxHP returns the Base's usable max HP. Homeworld Bases track the

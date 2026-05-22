@@ -113,8 +113,8 @@ func TestMutationReactors_DepthCap(t *testing.T) {
 	if callCount != maxHookDepth {
 		t.Errorf("depth cap: reactor called %d time(s), want %d (maxHookDepth)", callCount, maxHookDepth)
 	}
-	if len(result) != 1+maxHookDepth {
-		t.Errorf("depth cap: mutation count got %d, want %d", len(result), 1+maxHookDepth)
+	if len(result) != maxHookDepth {
+		t.Errorf("depth cap: mutation count got %d, want %d", len(result), maxHookDepth)
 	}
 }
 
