@@ -12,6 +12,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
+	factionErrors "github.com/therobertcrocker/gm-toolkit/internal/faction/errors"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/logging"
@@ -84,6 +85,12 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			turnLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return false, nil
+		}
+		turnLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return false, fmt.Errorf("saving state after bookkeeping: %w", err)
 	}
@@ -100,6 +107,12 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			turnLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return false, nil
+		}
+		turnLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return false, fmt.Errorf("saving state after action resolution: %w", err)
 	}
@@ -146,6 +159,12 @@ func (e *Engine) runGoalLockPhase(
 
 	if len(lockMutations) > 0 {
 		if err := e.applyAndRecord(factionState, faction, lockMutations, cfg, phaseLog); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return lock, nil
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return lock, err
 		}
@@ -153,6 +172,12 @@ func (e *Engine) runGoalLockPhase(
 
 	if lock.Type == locks.LockSkip {
 		if err := collectors.Phase.AwaitCheckpoint(CheckpointGoalLocked); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return lock, nil
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return lock, err
 		}
@@ -176,17 +201,35 @@ func (e *Engine) runBookkeepingPhase(
 
 	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks, phaseLog.With("engine", "turn"))
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
 	if len(bookMutations) > 0 {
 		if err := e.applyAndRecord(factionState, faction, bookMutations, cfg, phaseLog); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return err
 		}
 	}
 	observer.OnBookkeepingApplied(faction, bookResult, bookMutations)
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
@@ -208,6 +251,12 @@ func (e *Engine) runStatRaisePhase(
 
 	statToRaise, raiseMutations, err := prepareStatRaise(faction, collectors.Phase)
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
@@ -218,6 +267,12 @@ func (e *Engine) runStatRaisePhase(
 	}
 	if len(raiseMutations) > 0 {
 		if err := e.applyAndRecord(factionState, faction, raiseMutations, cfg, phaseLog); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return err
 		}
@@ -240,22 +295,40 @@ func (e *Engine) runMovementPhase(
 	phaseLog.Info("phase begin")
 
 	if e.World == nil {
-		return fmt.Errorf("world engine not found")
+		return ErrWorldEngineUnavailable
 	}
 
 	worldLog := phaseLog.With("engine", "world")
 	tickMutations, err := e.World.TickMovementOrders(faction, e.Rulebook, worldLog)
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
 	if len(tickMutations) > 0 {
 		tickMutations, err = dispatch.MutationReactors(e.Hooks, faction, tickMutations, factionState, e.Rulebook)
 		if err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return err
 		}
 		if err := e.applyAndRecord(factionState, faction, tickMutations, cfg, phaseLog); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return err
 		}
@@ -264,16 +337,34 @@ func (e *Engine) runMovementPhase(
 
 	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook, worldLog)
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
 	if len(decisionMutations) > 0 {
 		decisionMutations, err = dispatch.MutationReactors(e.Hooks, faction, decisionMutations, factionState, e.Rulebook)
 		if err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return err
 		}
 		if err := e.applyAndRecord(factionState, faction, decisionMutations, cfg, phaseLog); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return err
 		}
@@ -281,6 +372,12 @@ func (e *Engine) runMovementPhase(
 
 	observer.OnMovementResolved(faction, decisionMutations)
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointMovement); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
@@ -309,6 +406,12 @@ func (e *Engine) runActionPhase(
 
 	selectedAction, err := collectors.Phase.SelectAction(faction, available)
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
@@ -322,13 +425,19 @@ func (e *Engine) runActionPhase(
 
 	actionMutations, err := e.Action.Run(selectedAction, faction, factionState, e.Rulebook, actionLog)
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
 
 	var worldIndex *world.Index
 	if e.World == nil {
-		return fmt.Errorf("world engine not found")
+		return ErrWorldEngineUnavailable
 	}
 	worldIndex = e.World.Index
 	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
@@ -336,16 +445,34 @@ func (e *Engine) runActionPhase(
 
 	combined, err = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
 
 	if err := e.applyAndRecord(factionState, faction, combined, cfg, phaseLog); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
 	observer.OnActionResolved(faction, selectedAction, combined)
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointActionResult); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
 	}
@@ -369,10 +496,22 @@ func (e *Engine) finishFactionTurn(
 
 	cycleDone, err := e.Turn.Advance(factionState, turnLog.With("engine", "turn"))
 	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			turnLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return false, nil
+		}
+		turnLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return false, err
 	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
+		if factionErrors.IsRecoverable(err) {
+			turnLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return false, nil
+		}
+		turnLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return false, fmt.Errorf("saving state: %w", err)
 	}
@@ -380,6 +519,12 @@ func (e *Engine) finishFactionTurn(
 	if cycleDone {
 		observer.OnCycleCompleted(factionState.CycleNumber, factionState)
 		if err := collectors.Phase.AwaitCheckpoint(CheckpointCycleSummary); err != nil {
+			if factionErrors.IsRecoverable(err) {
+				turnLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return cycleDone, nil
+			}
+			turnLog.Error("failure", "err", err)
 			observer.OnError(faction, err)
 			return cycleDone, err
 		}
@@ -402,6 +547,13 @@ func (e *Engine) applyAndRecord(
 		return nil
 	}
 	if err := e.Mutation.Apply(factionState, mutations, phaseLog.With("engine", "mutation")); err != nil {
+		for _, miss := range err.Misses {
+			phaseLog.Error("mutation miss",
+				"mutation_type", miss.MutationType,
+				"faction_id", miss.FactionID,
+				"entity_id", miss.EntityID,
+			)
+		}
 		return fmt.Errorf("applying mutations: %w", err)
 	}
 	if err := turn.RecordHistory(cfg.HistoryPath, factionState, faction, mutations, phaseLog.With("engine", "turn")); err != nil {

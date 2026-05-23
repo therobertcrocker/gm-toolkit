@@ -10,7 +10,6 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
-| `F-003` | Logging + Errors | feature | In-Progress (Effort 2) | Effort 1 (logging) merged; Effort 2 (error conventions, Recoverable/Fatal branch) on `feature/errors` |
 
 
 ---
@@ -54,56 +53,4 @@ This section contains detailed write-ups for each planned initiative, including 
 
 <br />
 
-## F-003: Logging + Errors
 
-### Guiding Principles
-
-- **Consistency** — one pattern for errors, one pattern for logging, everywhere
-- **Ease of use** — should not require ceremony; the right behavior should be the default behavior
-- **Structured over vague** — errors carry typed context; log output is human readable but also machine-parseable; avoid unstructured strings where possible
-- **Surface over silence** — when something goes wrong, it should be visible in a log, not just an error return that may or may not be checked
-
-### Problem
-
-No structured logging exists in the project. `main.go` has a single `fmt.Println` for usage output; nothing else reaches a log surface. Error handling across 25+ files is ad hoc: some packages define sentinel errors (`spatial`, `engine/core`), others inline `fmt.Errorf` strings with no consistency. `TurnObserver.OnError` accepts a raw `error` — there is no type information, no severity, and no structured context attached. When something goes wrong, there is no trail and no way to distinguish a recoverable data-load failure from a logic bug.
-
-### Approach
-
-Discovery decides. Expected scope: audit current error-return patterns across all packages; evaluate `log/slog` (stdlib) as the logging backend; decide on a log output strategy (file-first, with level-gated stderr fallback likely); propose error conventions — sentinel vs. typed vs. wrapped — and where each belongs. No pre-determined conclusions beyond the guiding principles above.
-
-### Unlocks
-
-- Reliable debug trail during active development and GM sessions
-- Cleaner foundation for `F-005` (TUI Rebuild) — TUI needs a log surface separate from its display output
-
-### Trigger
-
-Active — no blocking dependencies.
-
-### Status
-
-In-Progress. Effort 1 (logging) complete and merged on `feature/logging`. Effort 2 (error conventions, `isRecoverable` orchestrator branch, `MutationApplyError` consumer) in execution on `feature/errors`.
-
-<br/>
-
-## Ability Engine Redesign
-
-### Problem
-
-The ability sub-system has accumulated debt across several refactor cycles and was never given a deliberate design of its own. How abilities are dispatched, how step handlers are structured, how input is collected, and where package boundaries should sit are all open questions. Discovery should start from scratch -- audit what exists, identify the pain points, and decide what the right model looks like.
-
-### Approach
-
-Discovery decides. No pre-determined conclusions.
-
-### Unlocks
-
-- Clean foundation for `F-014` (nine A-flag abilities stubbed, awaiting dispatch)
-
-### Trigger
-
-Active -- `R-004` complete; `F-014` is the next blocked work.
-
-### Status
-
-In-Progress -- discovery complete; structural fold into action sub-engine underway on `feature/ability-engine-redesign`. The `ability/` package will be retired and its contents redistributed as appropriate.

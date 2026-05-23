@@ -1,11 +1,16 @@
 package action
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+)
+
+var (
+	ErrNoSelection = errors.New("action: no selection")
 )
 
 // Action is the contract all faction actions implement.

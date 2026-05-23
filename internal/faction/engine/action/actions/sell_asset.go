@@ -35,7 +35,7 @@ func (sa *SellAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rule
 		return fmt.Errorf("sell asset: %w", err)
 	}
 	if selected == nil {
-		return fmt.Errorf("sell asset: no asset selected")
+		return fmt.Errorf("sell asset: %w", action.ErrNoSelection)
 	}
 	sa.selectedAsset = selected
 	sa.factionID = faction.ID

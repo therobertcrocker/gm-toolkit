@@ -25,7 +25,7 @@ func informers(
 		return nil, err
 	}
 	if targetFaction == nil {
-		return nil, fmt.Errorf("informers: no target faction selected")
+		return nil, fmt.Errorf("informers: %w", action.ErrNoSelection)
 	}
 
 	attackRoll := roller.Roll(10) + statScore(faction, def.Ability.AttackerStat)

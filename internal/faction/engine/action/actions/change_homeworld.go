@@ -49,7 +49,7 @@ func (c *ChangeHomeworld) Inputs(faction *domain.Faction, factionState *state.Fa
 
 func (c *ChangeHomeworld) Resolve(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
 	if c.targetWorld == nil {
-		return fmt.Errorf("change homeworld: no target selected")
+		return fmt.Errorf("change homeworld: %w", action.ErrNoSelection)
 	}
 	crossingCost := c.rulebook.DriftCost(3) // faction-level default drift rating
 	dist, err := c.world.Distance(faction.Homeworld.RegionHex, c.targetWorld.RegionHex, crossingCost)

@@ -20,6 +20,7 @@ import (
 
 var (
 	ErrSpatialDataDirRequired = errors.New("spatial data dir is required for world engine")
+	ErrWorldEngineUnavailable = errors.New("engine: world engine unavailable")
 )
 
 // Package engine is the turn pipeline for the faction system.

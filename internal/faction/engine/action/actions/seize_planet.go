@@ -44,7 +44,7 @@ func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.Factio
 
 func (s *SeizePlanet) Resolve(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
 	if s.targetWorld == nil {
-		return fmt.Errorf("seize planet: no target world selected")
+		return fmt.Errorf("seize planet: %w", action.ErrNoSelection)
 	}
 	s.processPhase = 1
 	return nil

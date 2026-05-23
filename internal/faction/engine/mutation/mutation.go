@@ -17,8 +17,9 @@ type MutationMiss struct {
 }
 
 // MutationApplyError is returned by Apply when one or more referenced entities
-// were not found. The orchestrator decides whether to treat this as a hard turn
-// failure or a warning.
+// were not found. Fatal at the orchestrator: applyAndRecord emits one
+// structured Error-level log line per Miss and propagates the error to abort
+// the turn.
 type MutationApplyError struct {
 	Misses []MutationMiss
 }
