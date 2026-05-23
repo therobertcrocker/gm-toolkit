@@ -86,6 +86,7 @@ The action system's source-agnostic design means the AI and the GM use the same 
 | 10 | Edit Mode | Not started | Freeform state manipulation outside turn rules; see Modes above |
 | 11 | AI Decision-Making | Not started | Goal-oriented and in-character modes; see above |
 | 12 | Spatial Model | In progress | Effort 1 Phase 1 complete — standalone `internal/spatial` package: SpatialMap/Location interfaces, HybridMap with TOML loader and Dijkstra distance. Effort 2 complete — world sub-engine, SpatialIndex replacing O(n) scans, TL and P-flag enforcement in `BuyAsset` and `ExpandInfluence`. Asset movement redesign and remaining spatial phases (MaxHex, Change Homeworld distance) pending discovery. |
+| 13 | Structured Logging | Complete (Effort 1) | `internal/logging` — custom `slog.Handler`, file-per-run with `latest.log` symlink, count-based cleanup; logger plumbed through all sub-engines; cascading attrs (`version → turn → faction → phase → engine`) via orchestrator; run header, turn, and phase banner emissions; Info/Debug seeds at phase and sub-engine boundaries. Error conventions (Effort 2, `feature/errors`) deferred. |
 
 <br/>
 <br/>

@@ -1,13 +1,20 @@
 package engine
 
-import "math/rand/v2"
+import (
+	"log/slog"
+	"math/rand/v2"
+)
 
 // RandRoller is the production Roller implementation. Roll returns a value in
 // the inclusive range [1, sides] using the package-level random source.
-type RandRoller struct{}
+type RandRoller struct {
+	log *slog.Logger
+}
 
-func NewRandRoller() *RandRoller { return &RandRoller{} }
+func NewRandRoller(log *slog.Logger) *RandRoller { return &RandRoller{log: log} }
 
 func (roller *RandRoller) Roll(sides int) int {
-	return rand.IntN(sides) + 1
+	result := rand.IntN(sides) + 1
+	roller.log.Debug("roll", "die", sides, "result", result)
+	return result
 }

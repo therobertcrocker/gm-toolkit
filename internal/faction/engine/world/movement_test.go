@@ -1,6 +1,7 @@
 package world_test
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,7 @@ func regionWorldEngine(t *testing.T) *world.WorldEngine {
 			t.Fatal(err)
 		}
 	}
-	we, err := world.New(dir)
+	we, err := world.New(dir, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("regionWorldEngine: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestBuildMovementMutations_RevisionCost(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, reviseRulebook())
+	mutations, err := we.BuildMovementMutations(decisions, faction, reviseRulebook(), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

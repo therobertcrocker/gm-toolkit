@@ -1,6 +1,8 @@
 package effect
 
 import (
+	"log/slog"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -14,10 +16,11 @@ type Handler interface {
 
 type EffectsEngine struct {
 	handlers map[string]Handler
+	log      *slog.Logger
 }
 
-func New() *EffectsEngine {
-	return &EffectsEngine{handlers: make(map[string]Handler)}
+func New(log *slog.Logger) *EffectsEngine {
+	return &EffectsEngine{handlers: make(map[string]Handler), log: log}
 }
 
 func (e *EffectsEngine) Register(handler Handler) {
@@ -28,7 +31,7 @@ func (e *EffectsEngine) Register(handler Handler) {
 // that asset's definition ID, and invokes it. Assets whose definitions are
 // missing or whose def has no registered handler are silently skipped — the
 // registration set is data-driven by the rulebook (e.g. def.Transport != nil).
-func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry) {
+func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, log *slog.Logger) {
 	for _, faction := range factionState.Factions {
 		for _, asset := range faction.Assets {
 			def := rulebook.Assets[asset.DefinitionID]

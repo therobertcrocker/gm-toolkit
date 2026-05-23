@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/logging"
 )
 
 // Checkpoint constants name the pipeline phases where the orchestrator pauses
@@ -33,8 +35,10 @@ func (e *Engine) RunCycle(
 	collectors Collectors,
 	observer TurnObserver,
 ) error {
-	e.Tag.ApplyAll(factionState, e.Hooks)
-	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks)
+	logging.RunHeader(e.log, "faction-manager", "dev", factionState.CampaignID, len(factionState.Factions))
+
+	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
+	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.log.With("engine", "effect"))
 
 	for {
 		done, err := e.RunFactionTurn(factionState, cfg, collectors, observer)
@@ -59,21 +63,24 @@ func (e *Engine) RunFactionTurn(
 	collectors Collectors,
 	observer TurnObserver,
 ) (bool, error) {
-	faction, err := e.setupFactionTurn(factionState, observer)
+	turnLog := e.log.With("turn", factionState.CycleNumber)
+	faction, err := e.setupFactionTurn(factionState, observer, turnLog)
+	if err != nil {
+		return false, err
+	}
+	turnLog = turnLog.With("faction", faction.ID)
+	logging.TurnStart(turnLog, factionState.CycleNumber, faction.ID)
+
+	lock, err := e.runGoalLockPhase(faction, factionState, cfg, collectors, observer, turnLog)
 	if err != nil {
 		return false, err
 	}
 
-	lock, err := e.runGoalLockPhase(faction, factionState, cfg, collectors, observer)
-	if err != nil {
+	if err := e.runStatRaisePhase(faction, factionState, cfg, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 
-	if err := e.runStatRaisePhase(faction, factionState, cfg, collectors, observer); err != nil {
-		return false, err
-	}
-
-	if err := e.runBookkeepingPhase(faction, factionState, cfg, collectors, observer); err != nil {
+	if err := e.runBookkeepingPhase(faction, factionState, cfg, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
@@ -81,15 +88,15 @@ func (e *Engine) RunFactionTurn(
 		return false, fmt.Errorf("saving state after bookkeeping: %w", err)
 	}
 
-	if err := e.runMovementPhase(faction, factionState, cfg, collectors, observer); err != nil {
+	if err := e.runMovementPhase(faction, factionState, cfg, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 
 	if lock.Type == locks.LockSkip {
-		return e.finishFactionTurn(factionState, faction, cfg, collectors, observer)
+		return e.finishFactionTurn(factionState, faction, cfg, collectors, observer, turnLog)
 	}
 
-	if err := e.runActionPhase(faction, factionState, cfg, collectors, observer, lock); err != nil {
+	if err := e.runActionPhase(faction, factionState, cfg, collectors, observer, lock, turnLog); err != nil {
 		return false, err
 	}
 	if err := state.Save(cfg.StatePath, factionState); err != nil {
@@ -97,12 +104,13 @@ func (e *Engine) RunFactionTurn(
 		return false, fmt.Errorf("saving state after action resolution: %w", err)
 	}
 
-	return e.finishFactionTurn(factionState, faction, cfg, collectors, observer)
+	return e.finishFactionTurn(factionState, faction, cfg, collectors, observer, turnLog)
 }
 
-func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer TurnObserver) (*domain.Faction, error) {
+func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer TurnObserver, turnLog *slog.Logger) (*domain.Faction, error) {
+	turnLog.Info("turn setup")
 	if e.World != nil {
-		skipped, err := e.World.RebuildIndex(factionState)
+		skipped, err := e.World.RebuildIndex(factionState, turnLog.With("engine", "world"))
 		if err != nil {
 			observer.OnError(nil, err)
 			return nil, err
@@ -111,7 +119,7 @@ func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer Tur
 			observer.OnIndexSkipped(skipped)
 		}
 	}
-	faction, err := e.Turn.CurrentFaction(factionState)
+	faction, err := e.Turn.CurrentFaction(factionState, turnLog.With("engine", "turn"))
 	if err != nil {
 		observer.OnError(nil, err)
 		return nil, err
@@ -127,12 +135,17 @@ func (e *Engine) runGoalLockPhase(
 	cfg *config.Config,
 	collectors Collectors,
 	observer TurnObserver,
+	turnLog *slog.Logger,
 ) (locks.GoalLock, error) {
-	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook)
+	phaseLog := turnLog.With("phase", "goal_lock")
+	logging.PhaseStart(phaseLog, "goal_lock")
+	phaseLog.Info("phase begin")
+
+	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook, phaseLog.With("engine", "goal"))
 	observer.OnGoalLockApplied(faction, lock, lockMutations)
 
 	if len(lockMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, lockMutations, cfg); err != nil {
+		if err := e.applyAndRecord(factionState, faction, lockMutations, cfg, phaseLog); err != nil {
 			observer.OnError(faction, err)
 			return lock, err
 		}
@@ -145,6 +158,7 @@ func (e *Engine) runGoalLockPhase(
 		}
 	}
 
+	phaseLog.Info("phase end", "lock", lock.Type)
 	return lock, nil
 }
 
@@ -154,14 +168,19 @@ func (e *Engine) runBookkeepingPhase(
 	cfg *config.Config,
 	collectors Collectors,
 	observer TurnObserver,
+	turnLog *slog.Logger,
 ) error {
-	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks)
+	phaseLog := turnLog.With("phase", "bookkeeping")
+	logging.PhaseStart(phaseLog, "bookkeeping")
+	phaseLog.Info("phase begin")
+
+	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks, phaseLog.With("engine", "turn"))
 	if err != nil {
 		observer.OnError(faction, err)
 		return err
 	}
 	if len(bookMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, bookMutations, cfg); err != nil {
+		if err := e.applyAndRecord(factionState, faction, bookMutations, cfg, phaseLog); err != nil {
 			observer.OnError(faction, err)
 			return err
 		}
@@ -171,6 +190,7 @@ func (e *Engine) runBookkeepingPhase(
 		observer.OnError(faction, err)
 		return err
 	}
+	phaseLog.Info("phase end", "mutations", len(bookMutations))
 	return nil
 }
 
@@ -180,7 +200,12 @@ func (e *Engine) runStatRaisePhase(
 	cfg *config.Config,
 	collectors Collectors,
 	observer TurnObserver,
+	turnLog *slog.Logger,
 ) error {
+	phaseLog := turnLog.With("phase", "stat_raise")
+	logging.PhaseStart(phaseLog, "stat_raise")
+	phaseLog.Info("phase begin")
+
 	statToRaise, raiseMutations, err := prepareStatRaise(faction, collectors.Phase)
 	if err != nil {
 		observer.OnError(faction, err)
@@ -188,15 +213,17 @@ func (e *Engine) runStatRaisePhase(
 	}
 	if statToRaise == nil {
 		observer.OnStatRaiseSkipped(faction)
+		phaseLog.Info("phase end", "outcome", "skipped")
 		return nil
 	}
 	if len(raiseMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, raiseMutations, cfg); err != nil {
+		if err := e.applyAndRecord(factionState, faction, raiseMutations, cfg, phaseLog); err != nil {
 			observer.OnError(faction, err)
 			return err
 		}
 		observer.OnStatRaiseApplied(faction, statToRaise, raiseMutations)
 	}
+	phaseLog.Info("phase end", "outcome", "raised", "stat", *statToRaise)
 	return nil
 }
 
@@ -206,12 +233,18 @@ func (e *Engine) runMovementPhase(
 	cfg *config.Config,
 	collectors Collectors,
 	observer TurnObserver,
+	turnLog *slog.Logger,
 ) error {
+	phaseLog := turnLog.With("phase", "movement")
+	logging.PhaseStart(phaseLog, "movement")
+	phaseLog.Info("phase begin")
+
 	if e.World == nil {
 		return fmt.Errorf("world engine not found")
 	}
 
-	tickMutations, err := e.World.TickMovementOrders(faction, e.Rulebook)
+	worldLog := phaseLog.With("engine", "world")
+	tickMutations, err := e.World.TickMovementOrders(faction, e.Rulebook, worldLog)
 	if err != nil {
 		observer.OnError(faction, err)
 		return err
@@ -222,14 +255,14 @@ func (e *Engine) runMovementPhase(
 			observer.OnError(faction, err)
 			return err
 		}
-		if err := e.applyAndRecord(factionState, faction, tickMutations, cfg); err != nil {
+		if err := e.applyAndRecord(factionState, faction, tickMutations, cfg, phaseLog); err != nil {
 			observer.OnError(faction, err)
 			return err
 		}
 		observer.OnMovementTicked(faction, tickMutations)
 	}
 
-	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook)
+	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook, worldLog)
 	if err != nil {
 		observer.OnError(faction, err)
 		return err
@@ -240,7 +273,7 @@ func (e *Engine) runMovementPhase(
 			observer.OnError(faction, err)
 			return err
 		}
-		if err := e.applyAndRecord(factionState, faction, decisionMutations, cfg); err != nil {
+		if err := e.applyAndRecord(factionState, faction, decisionMutations, cfg, phaseLog); err != nil {
 			observer.OnError(faction, err)
 			return err
 		}
@@ -251,6 +284,7 @@ func (e *Engine) runMovementPhase(
 		observer.OnError(faction, err)
 		return err
 	}
+	phaseLog.Info("phase end", "tick_mutations", len(tickMutations), "decision_mutations", len(decisionMutations))
 	return nil
 }
 
@@ -261,8 +295,14 @@ func (e *Engine) runActionPhase(
 	collectors Collectors,
 	observer TurnObserver,
 	lock locks.GoalLock,
+	turnLog *slog.Logger,
 ) error {
-	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collectors.Action)
+	phaseLog := turnLog.With("phase", "action")
+	logging.PhaseStart(phaseLog, "action")
+	phaseLog.Info("phase begin")
+
+	actionLog := phaseLog.With("engine", "action")
+	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collectors.Action, actionLog)
 	if lock.Type == locks.LockRestrictActions {
 		available = filterAllowedActions(available, lock.AllowedActions)
 	}
@@ -274,12 +314,13 @@ func (e *Engine) runActionPhase(
 	}
 	if selectedAction == nil {
 		observer.OnFactionSkipped(faction)
+		phaseLog.Info("phase end", "outcome", "skipped")
 		return nil
 	}
 
 	observer.OnActionSelected(faction, selectedAction)
 
-	actionMutations, err := e.Action.Run(selectedAction, faction, factionState, e.Rulebook)
+	actionMutations, err := e.Action.Run(selectedAction, faction, factionState, e.Rulebook, actionLog)
 	if err != nil {
 		observer.OnError(faction, err)
 		return err
@@ -290,7 +331,7 @@ func (e *Engine) runActionPhase(
 		return fmt.Errorf("world engine not found")
 	}
 	worldIndex = e.World.Index
-	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex)
+	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
 	combined := append(actionMutations, goalMutations...)
 
 	combined, err = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
@@ -299,7 +340,7 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 
-	if err := e.applyAndRecord(factionState, faction, combined, cfg); err != nil {
+	if err := e.applyAndRecord(factionState, faction, combined, cfg, phaseLog); err != nil {
 		observer.OnError(faction, err)
 		return err
 	}
@@ -309,6 +350,7 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 
+	phaseLog.Info("phase end", "action", selectedAction.Name(), "mutations", len(combined))
 	return nil
 }
 
@@ -321,10 +363,11 @@ func (e *Engine) finishFactionTurn(
 	cfg *config.Config,
 	collectors Collectors,
 	observer TurnObserver,
+	turnLog *slog.Logger,
 ) (bool, error) {
 	observer.OnFactionTurnCompleted(faction)
 
-	cycleDone, err := e.Turn.Advance(factionState)
+	cycleDone, err := e.Turn.Advance(factionState, turnLog.With("engine", "turn"))
 	if err != nil {
 		observer.OnError(faction, err)
 		return false, err
@@ -341,6 +384,7 @@ func (e *Engine) finishFactionTurn(
 			return cycleDone, err
 		}
 	}
+	turnLog.Info("turn finished", "cycle_done", cycleDone)
 	return cycleDone, nil
 }
 
@@ -352,14 +396,15 @@ func (e *Engine) applyAndRecord(
 	faction *domain.Faction,
 	mutations []domain.Mutation,
 	cfg *config.Config,
+	phaseLog *slog.Logger,
 ) error {
 	if len(mutations) == 0 {
 		return nil
 	}
-	if err := e.Mutation.Apply(factionState, mutations); err != nil {
+	if err := e.Mutation.Apply(factionState, mutations, phaseLog.With("engine", "mutation")); err != nil {
 		return fmt.Errorf("applying mutations: %w", err)
 	}
-	if err := turn.RecordHistory(cfg.HistoryPath, factionState, faction, mutations); err != nil {
+	if err := turn.RecordHistory(cfg.HistoryPath, factionState, faction, mutations, phaseLog.With("engine", "turn")); err != nil {
 		return fmt.Errorf("recording history: %w", err)
 	}
 	return nil
@@ -441,6 +486,7 @@ func prepareMovementDecisions(
 	collector PhaseCollector,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,
+	worldLog *slog.Logger,
 ) ([]domain.Mutation, error) {
 	eligible := eligibleMovableAssets(faction, rulebook)
 	if len(eligible) == 0 {
@@ -488,7 +534,7 @@ func prepareMovementDecisions(
 		decisions[i].CargoAssetIDs = cargoIDs
 	}
 
-	return worldEngine.BuildMovementMutations(decisions, faction, rulebook)
+	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, worldLog)
 }
 
 func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Asset {

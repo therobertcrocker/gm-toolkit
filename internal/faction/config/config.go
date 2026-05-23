@@ -6,6 +6,7 @@ package config
 type Config struct {
 	FactionDataDir string
 	SpatialDataDir string
+	LogsDir        string
 	StatePath      string
 	HistoryPath    string
 	NarrativesPath string

@@ -1,6 +1,7 @@
 package world_test
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -107,7 +108,7 @@ func TestRebuildIndex_HexIndex(t *testing.T) {
 	worldAHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 2, R: 1}}
 	midFlightHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 5, R: 3}}
 
-	we := world.NewWithMap(&stubSingleWorld{id: "a", hex: worldAHex})
+	we := world.NewWithMap(&stubSingleWorld{id: "a", hex: worldAHex}, slog.New(slog.DiscardHandler))
 
 	assetX := &domain.Asset{ID: "x", Location: domain.Location{WorldID: "a", RegionHex: worldAHex}}
 	assetY := &domain.Asset{ID: "y", Location: domain.Location{WorldID: "", RegionHex: midFlightHex}}
@@ -122,7 +123,7 @@ func TestRebuildIndex_HexIndex(t *testing.T) {
 		},
 	}
 
-	skipped, err := we.RebuildIndex(factionState)
+	skipped, err := we.RebuildIndex(factionState, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -152,7 +153,7 @@ func TestRebuildIndex_HexIndex(t *testing.T) {
 }
 
 func TestTickMovementOrders_NoOrders(t *testing.T) {
-	we := world.NewWithMap(&stubMap{})
+	we := world.NewWithMap(&stubMap{}, slog.New(slog.DiscardHandler))
 	faction := &domain.Faction{
 		ID: "alpha",
 		Assets: map[string]*domain.Asset{
@@ -164,7 +165,7 @@ func TestTickMovementOrders_NoOrders(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(1))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(1), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -174,11 +175,11 @@ func TestTickMovementOrders_NoOrders(t *testing.T) {
 }
 
 func TestTickMovementOrders_MidFlight(t *testing.T) {
-	we := world.NewWithMap(&stubMap{})
+	we := world.NewWithMap(&stubMap{}, slog.New(slog.DiscardHandler))
 	dest := domain.Location{WorldID: "beta"}
 	faction := factionWithOrder(0, makePath(5), dest)
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(1))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(1), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -195,11 +196,11 @@ func TestTickMovementOrders_MidFlight(t *testing.T) {
 }
 
 func TestTickMovementOrders_Completion(t *testing.T) {
-	we := world.NewWithMap(&stubMap{})
+	we := world.NewWithMap(&stubMap{}, slog.New(slog.DiscardHandler))
 	dest := domain.Location{WorldID: "beta"}
 	faction := factionWithOrder(3, makePath(5), dest)
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(2))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(2), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -216,7 +217,7 @@ func TestTickMovementOrders_Completion(t *testing.T) {
 }
 
 func TestBuildMovementMutations_CargoManifestPassthrough(t *testing.T) {
-	we := world.NewWithMap(&stubMapWithDest{})
+	we := world.NewWithMap(&stubMapWithDest{}, slog.New(slog.DiscardHandler))
 	rb := testRulebook(1)
 	faction := &domain.Faction{
 		ID: "alpha",
@@ -241,7 +242,7 @@ func TestBuildMovementMutations_CargoManifestPassthrough(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, rb)
+	mutations, err := we.BuildMovementMutations(decisions, faction, rb, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -258,11 +259,11 @@ func TestBuildMovementMutations_CargoManifestPassthrough(t *testing.T) {
 }
 
 func TestTickMovementOrders_MultiHexPerTick(t *testing.T) {
-	we := world.NewWithMap(&stubMap{})
+	we := world.NewWithMap(&stubMap{}, slog.New(slog.DiscardHandler))
 	dest := domain.Location{WorldID: "beta"}
 	faction := factionWithOrder(0, makePath(10), dest)
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(3))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(3), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

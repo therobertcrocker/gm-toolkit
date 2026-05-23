@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log/slog"
 	"reflect"
 	"testing"
 
@@ -198,8 +199,8 @@ func TestPrepareMovementDecisions_MaxCargoViolation(t *testing.T) {
 		},
 	}
 
-	we := world.NewWithMap(&stubWorldMap{})
-	_, err := prepareMovementDecisions(faction, collector, we, rb)
+	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
+	_, err := prepareMovementDecisions(faction, collector, we, rb, slog.New(slog.DiscardHandler))
 	if err == nil {
 		t.Fatal("expected error when collector returns more cargo than MaxCargo allows, got nil")
 	}

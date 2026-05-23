@@ -1,6 +1,7 @@
 package turn
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -29,7 +30,7 @@ func TestApplyBookkeeping_ClearsHookBudgets(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 
-	if _, _, err := te.ApplyBookkeeping(s, nil); err != nil {
+	if _, _, err := te.ApplyBookkeeping(s, nil, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("ApplyBookkeeping: %v", err)
 	}
 

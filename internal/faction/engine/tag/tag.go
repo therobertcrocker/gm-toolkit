@@ -1,6 +1,8 @@
 package tag
 
 import (
+	"log/slog"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag/tags"
@@ -14,10 +16,11 @@ type Handler interface {
 
 type TagEngine struct {
 	handlers map[string]Handler
+	log      *slog.Logger
 }
 
-func New() *TagEngine {
-	e := &TagEngine{handlers: make(map[string]Handler)}
+func New(log *slog.Logger) *TagEngine {
+	e := &TagEngine{handlers: make(map[string]Handler), log: log}
 	e.Register(tags.ScavengersHandler{})
 	e.Register(tags.WarlikeHandler{})
 	e.Register(tags.FanaticalHandler{})
@@ -32,7 +35,8 @@ func (e *TagEngine) Register(handler Handler) {
 // ApplyAll walks every faction-tag in factionState and invokes the registered
 // handler for that tag ID. Tags with no registered handler are silently
 // skipped — they are data-only entries from the rulebook.
-func (e *TagEngine) ApplyAll(factionState *state.FactionState, hookRegistry *hooks.Registry) {
+func (e *TagEngine) ApplyAll(factionState *state.FactionState, hookRegistry *hooks.Registry, log *slog.Logger) {
+
 	for _, faction := range factionState.Factions {
 		for _, tag := range faction.Tags {
 			handler, ok := e.handlers[tag.ID]

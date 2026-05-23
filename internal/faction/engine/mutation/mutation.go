@@ -2,6 +2,7 @@ package mutation
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -35,16 +36,20 @@ func (e *MutationApplyError) Error() string {
 	return b.String()
 }
 
-type MutationEngine struct{}
-
-func New() *MutationEngine {
-	return &MutationEngine{}
+type MutationEngine struct {
+	log *slog.Logger
 }
 
-func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []domain.Mutation) *MutationApplyError {
+func New(log *slog.Logger) *MutationEngine {
+	return &MutationEngine{log: log}
+}
+
+func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []domain.Mutation, log *slog.Logger) *MutationApplyError {
 	var errs MutationApplyError
+	log.Info("applying mutations", "count", len(mutations))
 
 	for _, mutation := range mutations {
+		log.Debug("mutation", "type", mutation.Type())
 		switch v := mutation.(type) {
 		case domain.CoinDelta:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
@@ -359,7 +364,9 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 	}
 
 	if len(errs.Misses) == 0 {
+		log.Info("mutations applied", "count", len(mutations))
 		return nil
 	}
+	log.Info("mutations applied", "count", len(mutations), "misses", len(errs.Misses))
 	return &errs
 }

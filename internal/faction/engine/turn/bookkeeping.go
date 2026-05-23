@@ -1,6 +1,8 @@
 package turn
 
 import (
+	"log/slog"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
@@ -26,7 +28,7 @@ type AssetRef struct {
 // ApplyBookkeeping computes income and maintenance mutations for the current
 // faction and advances the turn phase to PhaseAction. Returns a zero result
 // and nil mutations if bookkeeping has already run (idempotent on resume).
-func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry *hooks.Registry) (BookkeepingResult, []domain.Mutation, error) {
+func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry *hooks.Registry, log *slog.Logger) (BookkeepingResult, []domain.Mutation, error) {
 	if !t.InProgress(factionState) {
 		return BookkeepingResult{}, nil, ErrNoTurnActive
 	}
@@ -34,7 +36,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 		return BookkeepingResult{}, nil, nil
 	}
 
-	faction, err := t.CurrentFaction(factionState)
+	faction, err := t.CurrentFaction(factionState, log)
 	if err != nil {
 		return BookkeepingResult{}, nil, err
 	}

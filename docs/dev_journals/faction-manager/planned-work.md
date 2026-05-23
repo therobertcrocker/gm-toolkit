@@ -4,13 +4,14 @@ Pre-discovery initiative tracker. Deferred items move to Planned Initiatives whe
 
 <br/>
 
-## Planned Initiatives
+## Current Initiatives
 
 Full write-ups below. Each item has been scoped enough to warrant a dedicated discovery phase.
 
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
-| `R-001` | [Ability Engine Redesign](#ability-engine-redesign) | refactor | In-Progress | Discovery complete; structural fold into action sub-engine, retire `ability/` package |
+| `F-003` | Logging + Errors | feature | In-Progress (Effort 2) | Effort 1 (logging) merged; Effort 2 (error conventions, Recoverable/Fatal branch) on `feature/errors` |
+
 
 ---
 <br/>
@@ -20,7 +21,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|--------|--------|
-| `F-003` | Logging + Errors | feature | -- | Add a structured logging layer; project-wide audit of error-handling patterns |
 | `F-005` | TUI Rebuild | feature | -- | Build a full TUI for the new engine's richer state and more complex interactions. |
 ---
 <br />
@@ -45,12 +45,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B-005` | Goal XP | bugfix | -- | Retype `Difficulty` from `string` to int or tagged sum so engine can dispatch XP |
 | `F-014` | A-flag Abilities | feature | `R-001` | Nine A-flag abilities stubbed |
 | `R-004` | Data-Driven Handlers | refactor | High Pain | Replace hardcoded goal/ability handler dispatch with TOML-defined handlers + typed primitive registry |
-| `B-007` | Reactor ApplyAll Wiring | bugfix | F-004 | `Effect.ApplyAll` and `Tag.ApplyAll` not called by orchestrator; transport and Scavengers silently no-op in production; must be wired before F-004 |
-| `B-008` | Movement Phase nil-World | bugfix | F-004 | `runMovementPhase` errors on nil World while other phases tolerate it; decide Optional or Required and apply uniformly before CLI ships |
-| `B-009` | Stat-Raise Phase Observer Gap | bugfix | F-004 | `runStatRaisePhase` skips observer + checkpoint on decline; asymmetric with `runActionPhase`'s `OnFactionSkipped`; pick canonical pattern |
-| `B-010` | Cargo Mid-Transport Orders | bugfix | -- | Cargo with `Speed > 0` eligible for independent movement order while carried; likely unintended; exclude from `eligibleMovableAssets` or document |
-| `B-011` | `liveDefendersOnWorld` Dead Code | chore | -- | Defined alongside `liveDefendersAtHex` in `attack.go`; no caller found after hex-scoping refactor; delete or document intended caller |
-
 ---
 <br />
 <br />
@@ -59,6 +53,38 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 This section contains detailed write-ups for each planned initiative, including problem statements, proposed approaches, tradeoffs, and triggers. This will be the source of truth when it comes time to start discovery work on any of these items.
 
 <br />
+
+## F-003: Logging + Errors
+
+### Guiding Principles
+
+- **Consistency** — one pattern for errors, one pattern for logging, everywhere
+- **Ease of use** — should not require ceremony; the right behavior should be the default behavior
+- **Structured over vague** — errors carry typed context; log output is human readable but also machine-parseable; avoid unstructured strings where possible
+- **Surface over silence** — when something goes wrong, it should be visible in a log, not just an error return that may or may not be checked
+
+### Problem
+
+No structured logging exists in the project. `main.go` has a single `fmt.Println` for usage output; nothing else reaches a log surface. Error handling across 25+ files is ad hoc: some packages define sentinel errors (`spatial`, `engine/core`), others inline `fmt.Errorf` strings with no consistency. `TurnObserver.OnError` accepts a raw `error` — there is no type information, no severity, and no structured context attached. When something goes wrong, there is no trail and no way to distinguish a recoverable data-load failure from a logic bug.
+
+### Approach
+
+Discovery decides. Expected scope: audit current error-return patterns across all packages; evaluate `log/slog` (stdlib) as the logging backend; decide on a log output strategy (file-first, with level-gated stderr fallback likely); propose error conventions — sentinel vs. typed vs. wrapped — and where each belongs. No pre-determined conclusions beyond the guiding principles above.
+
+### Unlocks
+
+- Reliable debug trail during active development and GM sessions
+- Cleaner foundation for `F-005` (TUI Rebuild) — TUI needs a log surface separate from its display output
+
+### Trigger
+
+Active — no blocking dependencies.
+
+### Status
+
+In-Progress. Effort 1 (logging) complete and merged on `feature/logging`. Effort 2 (error conventions, `isRecoverable` orchestrator branch, `MutationApplyError` consumer) in execution on `feature/errors`.
+
+<br/>
 
 ## Ability Engine Redesign
 

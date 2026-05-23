@@ -1,6 +1,7 @@
 package goal
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -10,11 +11,11 @@ import (
 )
 
 func TestCheckLock_NoActiveGoal(t *testing.T) {
-	ge := New()
+	ge := New(slog.New(slog.DiscardHandler))
 	faction := &domain.Faction{ID: "f1"}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	lock, mutations := ge.CheckLock(faction, factionState, &rulebook.Rulebook{})
+	lock, mutations := ge.CheckLock(faction, factionState, &rulebook.Rulebook{}, slog.New(slog.DiscardHandler))
 
 	if lock.Type != locks.LockNone {
 		t.Errorf("LockType = %v, want LockNone", lock.Type)
@@ -30,11 +31,11 @@ func TestCheckLock_NoActiveGoal(t *testing.T) {
 // is that CheckLock returns LockNone with no mutations (data-only goals
 // no-op rather than panic, mirroring how tags handle unregistered IDs).
 func TestCheckLock_DataOnlyGoal_NoHandler(t *testing.T) {
-	ge := New()
+	ge := New(slog.New(slog.DiscardHandler))
 	faction := &domain.Faction{ID: "f1", ActiveGoal: &domain.ActiveGoal{GoalID: "g1"}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	lock, mutations := ge.CheckLock(faction, factionState, &rulebook.Rulebook{})
+	lock, mutations := ge.CheckLock(faction, factionState, &rulebook.Rulebook{}, slog.New(slog.DiscardHandler))
 
 	if lock.Type != locks.LockNone {
 		t.Errorf("LockType = %v, want LockNone", lock.Type)
@@ -49,11 +50,11 @@ func TestCheckLock_DataOnlyGoal_NoHandler(t *testing.T) {
 // has no registered handler, UpdateProgress must return nil rather than
 // panicking on the missing key.
 func TestUpdateProgress_DataOnlyGoal_NoHandler(t *testing.T) {
-	ge := New()
+	ge := New(slog.New(slog.DiscardHandler))
 	faction := &domain.Faction{ID: "f1", ActiveGoal: &domain.ActiveGoal{GoalID: "g1"}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	mutations := ge.UpdateProgress("f1", nil, factionState, &rulebook.Rulebook{}, nil)
+	mutations := ge.UpdateProgress("f1", nil, factionState, &rulebook.Rulebook{}, nil, slog.New(slog.DiscardHandler))
 
 	if mutations != nil {
 		t.Errorf("mutations = %v, want nil", mutations)

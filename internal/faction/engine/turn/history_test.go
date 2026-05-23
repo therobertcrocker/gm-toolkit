@@ -2,6 +2,7 @@ package turn
 
 import (
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,7 @@ func TestRecordHistory(t *testing.T) {
 		domain.AssetRemoved{FactionID: "f1", AssetID: "a1"},
 	}
 
-	if err := RecordHistory(historyPath, factionState, faction, mutations); err != nil {
+	if err := RecordHistory(historyPath, factionState, faction, mutations, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("RecordHistory: %v", err)
 	}
 
@@ -59,10 +60,10 @@ func TestRecordHistoryAppends(t *testing.T) {
 
 	factionState := &state.FactionState{CycleNumber: 1}
 
-	if err := RecordHistory(historyPath, factionState, &domain.Faction{ID: "f1"}, nil); err != nil {
+	if err := RecordHistory(historyPath, factionState, &domain.Faction{ID: "f1"}, nil, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("RecordHistory 1: %v", err)
 	}
-	if err := RecordHistory(historyPath, factionState, &domain.Faction{ID: "f2"}, nil); err != nil {
+	if err := RecordHistory(historyPath, factionState, &domain.Faction{ID: "f2"}, nil, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("RecordHistory 2: %v", err)
 	}
 

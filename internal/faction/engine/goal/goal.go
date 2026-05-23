@@ -1,6 +1,8 @@
 package goal
 
 import (
+	"log/slog"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/goals"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
@@ -19,10 +21,11 @@ type Handler interface {
 // GoalEngine evaluates and advances faction goal state.
 type GoalEngine struct {
 	handlers map[string]Handler
+	log      *slog.Logger
 }
 
-func New() *GoalEngine {
-	engine := &GoalEngine{handlers: make(map[string]Handler)}
+func New(log *slog.Logger) *GoalEngine {
+	engine := &GoalEngine{handlers: make(map[string]Handler), log: log}
 	engine.Register(goals.MilitaryConquest{})
 	engine.Register(goals.CommercialExpansion{})
 	engine.Register(goals.IntelligenceCoup{})
@@ -44,7 +47,8 @@ func (ge *GoalEngine) Register(handler Handler) {
 
 // CheckLock evaluates the faction's active goal and returns the appropriate lock
 // state. Must be called before bookkeeping and action selection each turn.
-func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (locks.GoalLock, []domain.Mutation) {
+func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, log *slog.Logger) (locks.GoalLock, []domain.Mutation) {
+	log.Info("checking goal lock")
 	if faction.ActiveGoal == nil {
 		return locks.GoalLock{Type: locks.LockNone}, nil
 	}
@@ -53,7 +57,9 @@ func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.Fac
 		// Data-only goal: present in goals.toml, no Go handler registered. Intentional.
 		return locks.GoalLock{Type: locks.LockNone}, nil
 	}
-	return handler.CheckLock(faction, factionState, rulebook)
+	lock, mutations := handler.CheckLock(faction, factionState, rulebook)
+	log.Info("goal lock", "type", lock.Type, "mutations", len(mutations))
+	return lock, mutations
 }
 
 // UpdateProgress inspects the acting faction's mutation list for goal-relevant
@@ -66,6 +72,7 @@ func (ge *GoalEngine) UpdateProgress(
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
 	index *world.Index,
+	log *slog.Logger,
 ) []domain.Mutation {
 	actingFaction, ok := factionState.Factions[actingFactionID]
 	if !ok || actingFaction.ActiveGoal == nil {

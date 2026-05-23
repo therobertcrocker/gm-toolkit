@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -79,7 +80,7 @@ func TestChangeHomeworld_CrossRegionDistance(t *testing.T) {
 			return 1, nil
 		},
 	}
-	eng := world.NewWithMap(router)
+	eng := world.NewWithMap(router, slog.New(slog.DiscardHandler))
 	rb := testCHWRulebook()
 
 	faction := &domain.Faction{
@@ -147,7 +148,7 @@ func TestChangeHomeworld_SameRegionDistance(t *testing.T) {
 			return 1, nil
 		},
 	}
-	eng := world.NewWithMap(router)
+	eng := world.NewWithMap(router, slog.New(slog.DiscardHandler))
 	rb := testCHWRulebook()
 
 	faction := &domain.Faction{
@@ -191,7 +192,7 @@ func TestChangeHomeworld_ValidateFalseWhenNoEligibleTargets(t *testing.T) {
 
 	aHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
 	router := &testHexRouter{worlds: map[string]spatial.RegionHex{"a": aHex}}
-	eng := world.NewWithMap(router)
+	eng := world.NewWithMap(router, slog.New(slog.DiscardHandler))
 	rb := testCHWRulebook()
 
 	faction := &domain.Faction{
@@ -225,7 +226,7 @@ func TestChangeHomeworld_NoPartialStateOnUnreachableTarget(t *testing.T) {
 			return 1, nil
 		},
 	}
-	eng := world.NewWithMap(router)
+	eng := world.NewWithMap(router, slog.New(slog.DiscardHandler))
 	rb := testCHWRulebook()
 
 	faction := &domain.Faction{
@@ -270,7 +271,7 @@ func TestChangeHomeworldTargets_ExcludesWorldWithoutBase(t *testing.T) {
 	router := &testHexRouter{
 		worlds: map[string]spatial.RegionHex{"a": aHex, "b": bHex, "c": cHex, "d": dHex},
 	}
-	eng := world.NewWithMap(router)
+	eng := world.NewWithMap(router, slog.New(slog.DiscardHandler))
 	rb := testCHWRulebook()
 
 	faction := &domain.Faction{

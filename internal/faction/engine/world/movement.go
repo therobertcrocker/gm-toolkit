@@ -2,6 +2,7 @@ package world
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -23,8 +24,9 @@ type MovementDecision struct {
 	CargoAssetIDs []string
 }
 
-func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook *rulebook.Rulebook) ([]domain.Mutation, error) {
+func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook *rulebook.Rulebook, log *slog.Logger) ([]domain.Mutation, error) {
 	var mutations []domain.Mutation
+	log.Info("ticking movement orders")
 
 	for _, asset := range faction.Assets {
 		if asset.CurrentOrder == nil {
@@ -35,6 +37,7 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 			return nil, fmt.Errorf("TickMovementOrders: unknown asset definition %q", asset.DefinitionID)
 		}
 		newStepIdx := asset.CurrentOrder.StepIdx + def.Speed
+		log.Debug("ticking movement order for asset", "asset_id", asset.ID, "from_hex", asset.Location.RegionHex, "to_hex", asset.CurrentOrder.Destination.RegionHex)
 		if newStepIdx >= len(asset.CurrentOrder.Path)-1 {
 			mutations = append(mutations, domain.MovementOrderCompleted{
 				FactionID:         asset.OwnerID,
@@ -56,10 +59,11 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 		}
 	}
 
+	log.Info("movement orders ticked", "mutations", len(mutations))
 	return mutations, nil
 }
 
-func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, faction *domain.Faction, rulebook *rulebook.Rulebook) ([]domain.Mutation, error) {
+func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, faction *domain.Faction, rulebook *rulebook.Rulebook, log *slog.Logger) ([]domain.Mutation, error) {
 	var mutations []domain.Mutation
 
 	for _, decision := range decisions {

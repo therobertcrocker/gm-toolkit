@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -45,18 +46,19 @@ type Engine struct {
 	Action   *action.ActionEngine
 	Goal     *goal.GoalEngine
 	World    *world.WorldEngine
+	log      *slog.Logger
 }
 
-func New(cfg *config.Config) (*Engine, error) {
+func New(cfg *config.Config, log *slog.Logger) (*Engine, error) {
 	rb, err := rulebook.Load(cfg.FactionDataDir)
 	if err != nil {
 		return nil, err
 	}
-	eng := NewWithRulebook(rb)
+	eng := NewWithRulebook(rb, log)
 	if cfg.SpatialDataDir == "" {
 		return nil, ErrSpatialDataDirRequired
 	}
-	worldEngine, err := world.New(cfg.SpatialDataDir)
+	worldEngine, err := world.New(cfg.SpatialDataDir, log)
 	if err != nil {
 		return nil, err
 	}
@@ -65,14 +67,14 @@ func New(cfg *config.Config) (*Engine, error) {
 	return eng, nil
 }
 
-func NewWithRulebook(rulebook *rulebook.Rulebook) *Engine {
-	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(), Hooks: hooks.NewRegistry()}
-	e.Turn = turn.New(e.Rand, e.Rulebook)
-	e.Mutation = mutation.New()
-	e.Action = action.New()
-	e.Goal = goal.New()
-	e.Tag = tag.New()
-	e.Effect = effect.New()
+func NewWithRulebook(rulebook *rulebook.Rulebook, log *slog.Logger) *Engine {
+	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(log), Hooks: hooks.NewRegistry(), log: log}
+	e.Turn = turn.New(e.Rand, e.Rulebook, log)
+	e.Mutation = mutation.New(log)
+	e.Action = action.New(log)
+	e.Goal = goal.New(log)
+	e.Tag = tag.New(log)
+	e.Effect = effect.New(log)
 	for _, def := range rulebook.Assets {
 		if def.Transport != nil {
 			e.Effect.Register(effects.NewTransportHandler(def))

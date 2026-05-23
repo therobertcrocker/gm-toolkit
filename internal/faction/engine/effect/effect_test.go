@@ -1,6 +1,7 @@
 package effect_test
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -57,11 +58,11 @@ func TestEffectsEngine_RegistersTransportReactor(t *testing.T) {
 		},
 	}
 
-	e := effect.New()
+	e := effect.New(slog.New(slog.DiscardHandler))
 	e.Register(effects.NewTransportHandler(transportDef))
 
 	registry := hooks.NewRegistry()
-	e.ApplyAll(factionState, rb, registry)
+	e.ApplyAll(factionState, rb, registry, slog.New(slog.DiscardHandler))
 
 	wantSource := "transport:" + transportDefID
 

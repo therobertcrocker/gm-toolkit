@@ -1,6 +1,7 @@
 package mutation
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -25,11 +26,11 @@ func newMutationTestState() *state.FactionState {
 
 func TestMutationEngine_CoinDelta(t *testing.T) {
 	s := newMutationTestState()
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.CoinDelta{FactionID: "f1", Delta: 5},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if got := s.Factions["f1"].Coin; got != 15 {
@@ -38,7 +39,7 @@ func TestMutationEngine_CoinDelta(t *testing.T) {
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.CoinDelta{FactionID: "f1", Delta: -3},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if got := s.Factions["f1"].Coin; got != 12 {
@@ -48,11 +49,11 @@ func TestMutationEngine_CoinDelta(t *testing.T) {
 
 func TestMutationEngine_AssetRemoved(t *testing.T) {
 	s := newMutationTestState()
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.AssetRemoved{FactionID: "f1", AssetID: "a1"},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 
@@ -67,11 +68,11 @@ func TestMutationEngine_AssetRemoved(t *testing.T) {
 
 func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 	s := newMutationTestState()
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.AssetMaintainedFlag{FactionID: "f1", AssetID: "a1", Maintained: false},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if s.Factions["f1"].Assets["a1"].Maintained {
@@ -80,7 +81,7 @@ func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.AssetMaintainedFlag{FactionID: "f1", AssetID: "a2", Maintained: true},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if !s.Factions["f1"].Assets["a2"].Maintained {
@@ -90,11 +91,11 @@ func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 
 func TestMutationEngine_UnknownFactionErrors(t *testing.T) {
 	s := newMutationTestState()
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	err := me.Apply(s, []domain.Mutation{
 		domain.CoinDelta{FactionID: "missing", Delta: 100},
-	})
+	}, slog.New(slog.DiscardHandler))
 	if err == nil {
 		t.Fatal("Apply() expected error for unknown faction, got nil")
 	}
@@ -109,11 +110,11 @@ func TestMutationEngine_UnknownFactionErrors(t *testing.T) {
 func TestMutationEngine_AssetStealthCleared(t *testing.T) {
 	s := newMutationTestState()
 	s.Factions["f1"].Assets["a1"].Stealthy = true
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.AssetStealthCleared{FactionID: "f1", AssetID: "a1"},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if s.Factions["f1"].Assets["a1"].Stealthy {
@@ -131,11 +132,11 @@ func newMutationTestStateWithBase() *state.FactionState {
 
 func TestMutationEngine_BaseHPDelta(t *testing.T) {
 	s := newMutationTestStateWithBase()
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.BaseHPDelta{FactionID: "f1", BaseID: "b1", Delta: -4},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if got := s.Factions["f1"].Bases[0].CurrentHP; got != 6 {
@@ -145,11 +146,11 @@ func TestMutationEngine_BaseHPDelta(t *testing.T) {
 
 func TestMutationEngine_BaseDestroyed(t *testing.T) {
 	s := newMutationTestStateWithBase()
-	me := New()
+	me := New(slog.New(slog.DiscardHandler))
 
 	if err := me.Apply(s, []domain.Mutation{
 		domain.BaseDestroyed{FactionID: "f1", BaseID: "b1"},
-	}); err != nil {
+	}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 	if got := len(s.Factions["f1"].Bases); got != 0 {

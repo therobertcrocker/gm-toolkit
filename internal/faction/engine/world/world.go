@@ -1,6 +1,8 @@
 package world
 
 import (
+	"log/slog"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
@@ -23,21 +25,22 @@ type Index struct {
 type WorldEngine struct {
 	spatialMap HexRouter
 	Index      *Index
+	log        *slog.Logger
 }
 
-func New(dataDir string) (*WorldEngine, error) {
+func New(dataDir string, log *slog.Logger) (*WorldEngine, error) {
 	spatialMap, err := spatial.LoadRegionMap(dataDir)
 	if err != nil {
 		return nil, err
 	}
-	return NewWithMap(spatialMap), nil
+	return NewWithMap(spatialMap, log), nil
 }
 
-func NewWithMap(spatialMap HexRouter) *WorldEngine {
-	return &WorldEngine{spatialMap: spatialMap}
+func NewWithMap(spatialMap HexRouter, log *slog.Logger) *WorldEngine {
+	return &WorldEngine{spatialMap: spatialMap, log: log}
 }
 
-func (engine *WorldEngine) RebuildIndex(factionState *state.FactionState) ([]string, error) {
+func (engine *WorldEngine) RebuildIndex(factionState *state.FactionState, log *slog.Logger) ([]string, error) {
 	index := &Index{
 		AssetsByLocation: make(map[string][]*domain.Asset),
 		BasesByLocation:  make(map[string][]*domain.Base),

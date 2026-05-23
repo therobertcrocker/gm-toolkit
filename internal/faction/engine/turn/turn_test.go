@@ -1,6 +1,7 @@
 package turn
 
 import (
+	"log/slog"
 	"math/rand/v2"
 	"testing"
 
@@ -15,7 +16,7 @@ type randRoller struct{}
 func (r *randRoller) Roll(sides int) int { return rand.IntN(sides) + 1 }
 
 func newTurn() *TurnEngine {
-	return New(&randRoller{}, nil)
+	return New(&randRoller{}, nil, slog.New(slog.DiscardHandler))
 }
 
 func newTestState(factionIDs ...string) *state.FactionState {
@@ -175,7 +176,7 @@ func TestCurrentFaction_ReturnsCorrectFaction(t *testing.T) {
 	s := newTestState("alpha", "beta", "gamma")
 	_ = te.Start(s)
 
-	f, err := te.CurrentFaction(s)
+	f, err := te.CurrentFaction(s, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("CurrentFaction() error: %v", err)
 	}
@@ -188,7 +189,7 @@ func TestCurrentFaction_ReturnsCorrectFaction(t *testing.T) {
 func TestCurrentFaction_ErrorIfNoTurn(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
-	if _, err := te.CurrentFaction(s); err != ErrNoTurnActive {
+	if _, err := te.CurrentFaction(s, slog.New(slog.DiscardHandler)); err != ErrNoTurnActive {
 		t.Errorf("CurrentFaction() error = %v, want ErrNoTurnActive", err)
 	}
 }
@@ -217,11 +218,11 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 				},
 			}
 			_ = te.Start(s)
-			_, mutations, err := te.ApplyBookkeeping(s, nil)
+			_, mutations, err := te.ApplyBookkeeping(s, nil, slog.New(slog.DiscardHandler))
 			if err != nil {
 				t.Fatalf("ApplyBookkeeping() error: %v", err)
 			}
-			if err := mutation.New().Apply(s, mutations); err != nil {
+			if err := mutation.New(slog.New(slog.DiscardHandler)).Apply(s, mutations, slog.New(slog.DiscardHandler)); err != nil {
 					t.Fatalf("Apply() unexpected error: %v", err)
 				}
 			if s.Factions["f"].Coin != tt.wantIncome {
@@ -233,20 +234,20 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 
 func TestApplyBookkeeping_NoDoubleApply(t *testing.T) {
 	te := newTurn()
-	me := mutation.New()
+	me := mutation.New(slog.New(slog.DiscardHandler))
 	s := newTestState("a") // Force=4, Cunning=3, Wealth=6 → income=4
 	_ = te.Start(s)
 
-	_, mutations, _ := te.ApplyBookkeeping(s, nil)
-	if err := me.Apply(s, mutations); err != nil {
+	_, mutations, _ := te.ApplyBookkeeping(s, nil, slog.New(slog.DiscardHandler))
+	if err := me.Apply(s, mutations, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() unexpected error: %v", err)
 	}
 
-	_, secondMutations, _ := te.ApplyBookkeeping(s, nil)
+	_, secondMutations, _ := te.ApplyBookkeeping(s, nil, slog.New(slog.DiscardHandler))
 	if len(secondMutations) != 0 {
 		t.Errorf("second ApplyBookkeeping returned %d mutations, want 0", len(secondMutations))
 	}
-	if err := me.Apply(s, secondMutations); err != nil {
+	if err := me.Apply(s, secondMutations, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply() second call unexpected error: %v", err)
 	}
 
@@ -259,7 +260,7 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
 	_ = te.Start(s)
-	_, _, _ = te.ApplyBookkeeping(s, nil)
+	_, _, _ = te.ApplyBookkeeping(s, nil, slog.New(slog.DiscardHandler))
 
 	if !s.CurrentTurn.BookkeepingApplied {
 		t.Error("BookkeepingApplied: got false, want true after ApplyBookkeeping()")
@@ -269,7 +270,7 @@ func TestApplyBookkeeping_SetsFlag(t *testing.T) {
 func TestApplyBookkeeping_ErrorIfNoTurn(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
-	if _, _, err := te.ApplyBookkeeping(s, nil); err != ErrNoTurnActive {
+	if _, _, err := te.ApplyBookkeeping(s, nil, slog.New(slog.DiscardHandler)); err != ErrNoTurnActive {
 		t.Errorf("ApplyBookkeeping() error = %v, want ErrNoTurnActive", err)
 	}
 }
@@ -281,7 +282,7 @@ func TestAdvance_MovesToNextFaction(t *testing.T) {
 	s := newTestState("a", "b", "c")
 	_ = te.Start(s)
 
-	done, err := te.Advance(s)
+	done, err := te.Advance(s, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("Advance() error: %v", err)
 	}
@@ -301,8 +302,8 @@ func TestAdvance_ReturnsTrueOnCompletion(t *testing.T) {
 	s := newTestState("a", "b")
 	_ = te.Start(s)
 
-	_, _ = te.Advance(s)
-	done, err := te.Advance(s)
+	_, _ = te.Advance(s, slog.New(slog.DiscardHandler))
+	done, err := te.Advance(s, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("Advance() error: %v", err)
 	}
@@ -317,7 +318,7 @@ func TestAdvance_ReturnsTrueOnCompletion(t *testing.T) {
 func TestAdvance_ErrorIfNoTurn(t *testing.T) {
 	te := newTurn()
 	s := newTestState("a")
-	if _, err := te.Advance(s); err != ErrNoTurnActive {
+	if _, err := te.Advance(s, slog.New(slog.DiscardHandler)); err != ErrNoTurnActive {
 		t.Errorf("Advance() error = %v, want ErrNoTurnActive", err)
 	}
 }

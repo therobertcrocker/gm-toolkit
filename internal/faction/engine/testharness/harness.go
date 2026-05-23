@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -83,9 +84,10 @@ func NewHarness(t *testing.T, dataDir string) *Harness {
 	if err != nil {
 		t.Fatalf("rulebook.Load: %v", err)
 	}
-	eng := engine.NewWithRulebook(rb)
+	log := slog.New(slog.DiscardHandler)
+	eng := engine.NewWithRulebook(rb, log)
 	spatialMap := &StubSpatialMap{}
-	eng.World = world.NewWithMap(spatialMap)
+	eng.World = world.NewWithMap(spatialMap, log)
 	actions.RegisterDefaultActions(eng)
 
 	scriptedCollector := &ScriptedCollector{}

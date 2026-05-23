@@ -2,6 +2,7 @@ package turn
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -19,10 +20,11 @@ var (
 type TurnEngine struct {
 	roller   domain.Roller
 	rulebook *rulebook.Rulebook
+	log      *slog.Logger
 }
 
-func New(roller domain.Roller, rulebook *rulebook.Rulebook) *TurnEngine {
-	return &TurnEngine{roller: roller, rulebook: rulebook}
+func New(roller domain.Roller, rulebook *rulebook.Rulebook, log *slog.Logger) *TurnEngine {
+	return &TurnEngine{roller: roller, rulebook: rulebook, log: log}
 }
 
 // InProgress reports whether a turn is currently active.
@@ -52,7 +54,7 @@ func (t *TurnEngine) Start(factionState *state.FactionState) error {
 }
 
 // CurrentFaction returns the faction whose turn it currently is.
-func (t *TurnEngine) CurrentFaction(factionState *state.FactionState) (*domain.Faction, error) {
+func (t *TurnEngine) CurrentFaction(factionState *state.FactionState, log *slog.Logger) (*domain.Faction, error) {
 	if !t.InProgress(factionState) {
 		return nil, ErrNoTurnActive
 	}
@@ -65,7 +67,7 @@ func (t *TurnEngine) CurrentFaction(factionState *state.FactionState) (*domain.F
 
 // Advance marks the current faction's turn complete and moves to the next.
 // Returns true when all factions have acted.
-func (t *TurnEngine) Advance(factionState *state.FactionState) (bool, error) {
+func (t *TurnEngine) Advance(factionState *state.FactionState, log *slog.Logger) (bool, error) {
 	if !t.InProgress(factionState) {
 		return false, ErrNoTurnActive
 	}
