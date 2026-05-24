@@ -85,7 +85,7 @@ The `Type` field on a Backlog entry determines which flow the initiative will ru
 
 ## 4 — Feature Flow
 
-Feature work follows three modes in sequence: **Discovery → Plan → Execution.** Each mode is its own session (or several). Each produces a specific artifact. Boundaries between modes are strict — see section 8 for the discipline.
+Feature work follows three modes in sequence: **Discovery → Plan → Execution.** Each mode is its own session (or several). Each produces a specific artifact. Boundaries between modes are strict — see section 9 for the discipline.
 
 ### Discovery (1–2 sessions)
 
@@ -247,7 +247,50 @@ If a chore turns out to require design (e.g. "bump this dep" reveals an API chan
 
 Minimal for both. Update the dev journal only if the work warrants a note (most chores don't; most non-trivial docs work does). No senior-engineer code review pass for docs-only changes. Remove the entry from `planned-work.md`.
 
-## 8 — Session Discipline
+## 8 — Arc-Level Flow
+
+Some efforts span multiple initiatives that share a common architecture — for example, a TUI rebuild that ships as a series of layered initiatives, each adding features against the same engine boundary. These are **arcs.** An arc is not a Type — it is a *granularity*. The standard Discovery and Plan modes apply at two levels: once for the arc, once for each initiative within it.
+
+**When to use:**
+- The work clearly requires multiple shippable initiatives (not a single multi-phase initiative).
+- Cross-cutting architectural decisions need to be ratified once and bind every initiative in the arc.
+- The order in which the initiatives ship is itself a design question worth deliberation.
+
+If the work fits in one initiative — even a multi-phase one — use the Feature or Refactor Flow directly. Arcs add overhead that only pays off when cross-initiative coordination is real.
+
+### Arc-Discovery (1–2 sessions)
+
+**Goal:** ratify the cross-cutting architectural decisions that will constrain *every* initiative in the arc — framework, boundaries, conventions, extensibility patterns. Do not slice into initiatives yet; that is Arc-Plan's job.
+
+**Artifact:** `docs/initiatives/discovery/<arc-name>-arc-discovery.md`. Structurally similar to a per-initiative discovery doc, but its decisions apply to the whole arc, and its Open Questions may be routed to specific initiatives later (in Arc-Plan).
+
+**Session ends when:** the arc-discovery doc is written and Robert has signed off. Do not begin Arc-Plan in the same session.
+
+### Arc-Plan (1 session)
+
+**Goal:** define the initiatives that make up the arc, in what order, with what boundaries.
+
+**Artifact:** `docs/initiatives/implementation/<arc-name>-arc-plan.md`. Contains:
+
+- **Initiative list** — ordered, with dependencies surfaced (a DAG, not necessarily a flat sequence — some entries can parallelize).
+- **Per-initiative boundary** — what is in scope for each initiative, what is punted to a later entry.
+- **Open Question routing** — each open question from Arc-Discovery assigned to a specific initiative.
+- **Cross-arc dependencies** — engine-side prerequisites, data-layer prereqs, anything outside the arc that gates an initiative.
+- **Out-of-arc deferrals** — explicit list of work the arc does not address.
+
+**Session ends when:** the arc-plan is written and Robert has signed off. Each initiative in the arc is added to `planned-work.md` as a standard Backlog or Up-Next entry that references the arc-plan.
+
+### Initiatives within the arc
+
+Each initiative listed in the Arc-Plan goes through the standard lifecycle from section 2 and the per-Type flow from section 3.
+
+The arc-level artifacts make per-initiative Discovery and Plan *lighter*, not absent. Per-initiative Discovery does not re-litigate decisions already ratified at the arc level — it focuses on initiative-specific decisions (scope, internal slicing, the open questions Arc-Plan routed to this initiative). Per-initiative Plan inherits the arc's boundary for the initiative.
+
+### Arc completion
+
+The arc is complete when its final initiative ships. There is no separate arc pre-merge checklist — each initiative runs its own per section 4 or 5. When all initiatives are done, the arc-plan and arc-discovery doc are moved to the `completed/` subdirectories alongside per-initiative artifacts.
+
+## 9 — Session Discipline
 
 The flows in sections 4–7 work because of a small set of cross-cutting rules. These rules apply to every session regardless of which flow it serves.
 
@@ -309,7 +352,7 @@ Do not back-fill the log with decisions from Discovery or Plan unless they were 
 
 When a refactor is scoped but not yet executed, new code added in the meantime matches the existing (imperfect) pattern, not the target. Mixed state is worse than uniform pre-refactor state. See section 5.
 
-## 9 — Templates
+## 10 — Templates
 
 Templates for the two file artifacts produced by Discovery and Plan sessions:
 
