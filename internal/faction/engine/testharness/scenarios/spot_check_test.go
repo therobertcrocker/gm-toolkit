@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
@@ -26,12 +26,12 @@ func TestSpotCheck_RenderedOutput(t *testing.T) {
 		}
 
 		dir := t.TempDir()
-		cfg := &config.Config{
+		paths := &campaigns.Paths{
 			FactionDataDir: testDataDir,
 			StatePath:      filepath.Join(dir, "state.toml"),
 			HistoryPath:    filepath.Join(dir, "history.jsonl"),
 		}
-		rb, err := rulebook.Load(cfg.FactionDataDir)
+		rb, err := rulebook.Load(paths.FactionDataDir)
 		if err != nil {
 			t.Fatalf("rulebook.Load: %v", err)
 		}
@@ -46,7 +46,7 @@ func TestSpotCheck_RenderedOutput(t *testing.T) {
 				ID: id, Name: id, Scale: domain.ScaleMinor,
 				Force: 4, Cunning: 3, Wealth: 2,
 				Homeworld: domain.Location{WorldID: "Tartarus"},
-				MaxHP: 20, CurrentHP: 20,
+				MaxHP:     20, CurrentHP: 20,
 				Assets: map[string]*domain.Asset{
 					id + "-a1": {
 						ID: id + "-a1", DefinitionID: testharness.DefSecurityPersonnel,
@@ -80,7 +80,7 @@ func TestSpotCheck_RenderedOutput(t *testing.T) {
 			t.Fatalf("Turn.Start: %v", err)
 		}
 		obs := &testharness.RecordingObserver{}
-		if err := eng.RunCycle(factionState, cfg, engine.Collectors{Phase: collector, Action: collector}, obs); err != nil {
+		if err := eng.RunCycle(factionState, paths, engine.Collectors{Phase: collector, Action: collector}, obs); err != nil {
 			t.Fatalf("RunCycle: %v", err)
 		}
 

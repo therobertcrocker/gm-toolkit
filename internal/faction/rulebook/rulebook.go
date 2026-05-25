@@ -104,9 +104,9 @@ type abilityRecord struct {
 	Effect       string `toml:"effect"`
 }
 
-// loadAssets globs all *_assets.toml files in dataDir and merges them into one map.
+// loadAssets globs all *_assets.toml files in <dataDir>/assets/ and merges them into one map.
 func loadAssets(dataDir string) (map[string]*domain.AssetDefinition, error) {
-	files, err := filepath.Glob(filepath.Join(dataDir, "*_assets.toml"))
+	files, err := filepath.Glob(filepath.Join(dataDir, "assets", "*_assets.toml"))
 	if err != nil {
 		return nil, err
 	}

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
@@ -37,7 +37,7 @@ func RunDryRun(log *slog.Logger) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	cfg := &config.Config{
+	paths := &campaigns.Paths{
 		StatePath:   filepath.Join(tmpDir, "state.toml"),
 		HistoryPath: filepath.Join(tmpDir, "history.jsonl"),
 	}
@@ -54,7 +54,7 @@ func RunDryRun(log *slog.Logger) error {
 	}
 	observer := adapter.NewSmokeObserver(log)
 
-	if err := eng.RunCycle(factionState, cfg, collectors, observer); err != nil {
+	if err := eng.RunCycle(factionState, paths, collectors, observer); err != nil {
 		return fmt.Errorf("dryrun: RunCycle: %w", err)
 	}
 

@@ -61,14 +61,14 @@ func movementMutationsFor(t *testing.T, observer *testharness.RecordingObserver,
 // runs (MovementResolved fires with no mutations) and the action phase is
 // skipped.
 func TestLockSkip_MovementRuns_NoOrders(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	locked := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	locked.ActiveGoal = newLockSkipGoal()
 
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -83,7 +83,7 @@ func TestLockSkip_MovementRuns_NoOrders(t *testing.T) {
 // advances StepIdx by Speed and a MovementOrderProgressed mutation is
 // emitted; the action phase is still skipped.
 func TestLockSkip_InFlightOrderTicks(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	locked := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	locked.ActiveGoal = newLockSkipGoal()
 
@@ -112,7 +112,7 @@ func TestLockSkip_InFlightOrderTicks(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -127,7 +127,7 @@ func TestLockSkip_InFlightOrderTicks(t *testing.T) {
 		t.Errorf("alpha-asset-1 hex coord after tick: got %+v, want %+v", got, want)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	if _, ok := testharness.FindMutationByTypeAndCause(records, "movement_order_progressed", domain.CauseMovementTick); !ok {
 		t.Fatalf("history missing movement_order_progressed with cause %q", domain.CauseMovementTick)
 	}
@@ -139,7 +139,7 @@ func TestLockSkip_InFlightOrderTicks(t *testing.T) {
 // Movement Phase emits MovementOrderIssued; no CoinDelta is emitted (issuance
 // is free — only revisions cost). The action phase is still skipped.
 func TestLockSkip_NewIssueIsFree(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	locked := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	locked.ActiveGoal = newLockSkipGoal()
 
@@ -159,7 +159,7 @@ func TestLockSkip_NewIssueIsFree(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 

@@ -13,7 +13,7 @@
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
 8. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
-   2. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred decisions that arose during the work. If a feature was completed, remove it from the planned work doc.
+   2. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred items that arose during the work. If a feature was completed, remove it from the planned work doc.
 9. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 10. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 11. Three Principles of Code:
@@ -30,7 +30,7 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 | Overall design or open questions     | `docs/dev_journals/faction-manager/dev-journal-factions.md`          |
 | Feature Request or Deferred Decision | `docs/dev_journals/faction-manager/planned-work.md`                      |
 | Before making a design choice        | `docs/dev_journals/faction-manager/decisions-log.md` — use the index (see below) |
-| Architecture or system shape         | `docs/architecture-overview.md`             |
+| Architecture or system shape         | `docs/architecture-overview.md`  (NEED TO REPLACE)            |
 | Rules behavior                       | `docs/swn-faction-mechanics.md`             |
 | Creating or editing any doc          | `docs/style-guide.md`                       |
 | When implementing a feature...       | `docs/initiatives/implementation/<feature>.md`          |

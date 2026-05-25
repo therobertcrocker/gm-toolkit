@@ -14,7 +14,7 @@ import (
 // recoverable path: Action.Run returns ErrNoSelection, the turn must continue
 // (nil return) and fire TurnCompleted without firing ActionResolved.
 func TestRunFactionTurn_RecoverableErrNoSelection(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 
 	h.Collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
@@ -33,7 +33,7 @@ func TestRunFactionTurn_RecoverableErrNoSelection(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	_, err := h.Engine.RunFactionTurn(h.FactionState, h.Cfg, h.Collectors, h.Observer)
+	_, err := h.Engine.RunFactionTurn(h.FactionState, h.Paths, h.Collectors, h.Observer)
 	if err != nil {
 		t.Fatalf("RunFactionTurn returned error, want nil: %v", err)
 	}

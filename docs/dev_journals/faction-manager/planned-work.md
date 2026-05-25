@@ -36,7 +36,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
 | `F-004` | CLI Rebuild | feature | -- | -- |
-| `F-007` | Campaign-Scoped Static Data | feature | -- | -- |
 | `F-010` | Tag-Granted Assets | feature | -- | -- |
 | `F-011` | Tag Reminders | feature | -- | -- |
 | `F-012` | Spatial Map CLI | feature | -- | Generate `worlds.toml` from a user-provided template or data source |
@@ -49,6 +48,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B-005` | Goal XP | bugfix | -- | Retype `Difficulty` from `string` to int or tagged sum so engine can dispatch XP |
 | `F-014` | A-flag Abilities | feature | `R-001` | Nine A-flag abilities stubbed |
 | `R-004` | Data-Driven Handlers | refactor | High Pain | Replace hardcoded goal/ability handler dispatch with TOML-defined handlers + typed primitive registry |
+| `D-001` | Architecture Overview Doc | docs | -- | `docs/architecture-overview.md` is stale; replace with a doc reflecting the campaign-based layout and `internal/campaigns` as the upstream data layer |
 ---
 <br />
 <br />
@@ -88,7 +88,6 @@ This section contains detailed write-ups for each planned initiative, including 
 - Faction CRUD form scope — identity and stats only, or goals/assets inline at create?
 - Empty-state UX grammar (hint copy, key prompt, visual treatment) — Turn inherits the choice.
 - `Adapter.Stop()` cancellation design: `close(eventCh)` panics if the engine goroutine is still emitting. Choose a strategy (context, done channel, or guarantee engine completes before TUI exits) before wiring `Adapter.Run()`.
-- `tui.Run(nil, nil, nil, log)`: update to pass real engine/state/cfg at wiring time; current nil parameters are safe only while Foundation's TUI paths don't reach engine methods.
 
 See [`tui-rebuild-arc-plan.md`](../../initiatives/arcs/tui-rebuild/tui-rebuild-arc-plan.md) Initiative 2 for full scope and estimated commit shape.
 

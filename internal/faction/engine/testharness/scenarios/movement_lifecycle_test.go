@@ -25,7 +25,7 @@ var lifecyclePath = []spatial.RegionHex{
 
 func setupMovementHarness(t *testing.T) *testharness.Harness {
 	t.Helper()
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	h.Engine.Rulebook.Assets[testharness.DefSecurityPersonnel].Speed = 2
 	h.SpatialMap.PathFn = func(from, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
@@ -43,7 +43,7 @@ func runCycle(t *testing.T, h *testharness.Harness) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 }

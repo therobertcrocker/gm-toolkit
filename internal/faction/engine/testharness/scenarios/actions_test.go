@@ -13,7 +13,7 @@ import (
 // --- scenario 4: Buy Asset — new asset not ready until next cycle ---
 
 func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 
 	// income after bookkeeping: wealth(2)/2=1 + (force(4)+cunning(3))/4=1 → 2 Coin, enough for F1-001 (cost 2).
@@ -45,11 +45,11 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 
 	_, hasAdded := testharness.FindMutationType(records, "asset_added")
 	testharness.CheckStep(t, "asset_added mutation in history", hasAdded, "no asset_added found")
@@ -74,7 +74,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("second Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("second RunCycle: %v", err)
 	}
 
@@ -86,7 +86,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 // --- scenario 5: Expand Influence — new base placed uncontested ---
 
 func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 
 	h.Collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
@@ -105,11 +105,11 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 
 	_, hasBase := testharness.FindMutationByTypeAndCause(records, "base_added", "expand")
 	testharness.CheckStep(t, "base_added(cause=expand) in history", hasBase, "no base_added found")
@@ -130,7 +130,7 @@ func TestRunCycle_ExpandInfluence_NewBase(t *testing.T) {
 // --- scenario 6: Expand Influence — contested new base ---
 
 func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	testharness.AddAssetOnWorld(alpha, "Krylos") // gives alpha an asset on Krylos → eligible for new base there
 	h.AddFaction("beta", "Krylos", 2, 2, 2)      // beta's asset is on Krylos → will contest
@@ -168,11 +168,11 @@ func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 
 	_, hasBase := testharness.FindMutationByTypeAndCause(records, "base_added", "expand")
 	testharness.CheckStep(t, "base_added(cause=expand) in history", hasBase, "no base_added found")
@@ -187,7 +187,7 @@ func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 // --- scenario 7: Goal completed mid-cycle via MilitaryConquest ---
 
 func TestRunCycle_GoalCompleted_MilitaryConquest(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 1, 3, 2)
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
@@ -222,11 +222,11 @@ func TestRunCycle_GoalCompleted_MilitaryConquest(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 
 	_, hasCompleted := testharness.FindMutationByCause(records, "goal_completed")
 	testharness.CheckStep(t, "goal_completed mutation in history", hasCompleted, "no goal_completed mutation found")
@@ -240,7 +240,7 @@ func TestRunCycle_GoalCompleted_MilitaryConquest(t *testing.T) {
 // --- scenario 8: Bribe — rival base takes influence, attacker spends coin ---
 
 func TestRunCycle_Bribe(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	beta := h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
@@ -267,11 +267,11 @@ func TestRunCycle_Bribe(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 
 	_, hasInfluence := testharness.FindMutationByTypeAndCause(records, "influence_delta", "bribe")
 	testharness.CheckStep(t, "influence_delta(cause=bribe) in history", hasInfluence, "no bribe influence_delta found")

@@ -11,7 +11,7 @@ import (
 )
 
 func TestRunCycle_StatRaise_XPSpent(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)
 	alpha.XP = 6 // exactly covers Force 3→4: HPValueForRating(4) = 6
 
@@ -26,7 +26,7 @@ func TestRunCycle_StatRaise_XPSpent(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -35,7 +35,7 @@ func TestRunCycle_StatRaise_XPSpent(t *testing.T) {
 	testharness.CheckStep(t, "MaxHP recalculated", alpha.MaxHP == domain.CalcMaxHP(alpha),
 		fmt.Sprintf("MaxHP=%d, CalcMaxHP=%d", alpha.MaxHP, domain.CalcMaxHP(alpha)))
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 
 	_, hasXPSpent := testharness.FindMutationType(records, "xp_spent")
 	testharness.CheckStep(t, "xp_spent in history", hasXPSpent, "no xp_spent mutation found")
@@ -57,7 +57,7 @@ func TestRunCycle_StatRaise_XPSpent(t *testing.T) {
 }
 
 func TestRunCycle_StatRaise_Skip(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)
 	alpha.XP = 6
 
@@ -71,20 +71,20 @@ func TestRunCycle_StatRaise_Skip(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
 	testharness.CheckStep(t, "Force unchanged at 3", alpha.Force == 3, fmt.Sprintf("Force=%d", alpha.Force))
 	testharness.CheckStep(t, "XP unchanged at 6", alpha.XP == 6, fmt.Sprintf("XP=%d", alpha.XP))
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	_, hasXPSpent := testharness.FindMutationType(records, "xp_spent")
 	testharness.CheckStep(t, "no xp_spent in history", !hasXPSpent, "unexpected xp_spent mutation found")
 }
 
 func TestRunCycle_StatRaise_IneligibleNoPrompt(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)
 	alpha.XP = 1 // below cheapest raise: Wealth 1→2 costs HPValueForRating(2)=2
 
@@ -99,7 +99,7 @@ func TestRunCycle_StatRaise_IneligibleNoPrompt(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 

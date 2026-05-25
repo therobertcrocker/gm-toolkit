@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
@@ -50,16 +50,16 @@ type Engine struct {
 	log      *slog.Logger
 }
 
-func New(cfg *config.Config, log *slog.Logger) (*Engine, error) {
-	rb, err := rulebook.Load(cfg.FactionDataDir)
+func New(paths *campaigns.Paths, log *slog.Logger) (*Engine, error) {
+	rb, err := rulebook.Load(paths.FactionDataDir)
 	if err != nil {
 		return nil, err
 	}
 	eng := NewWithRulebook(rb, log)
-	if cfg.SpatialDataDir == "" {
+	if paths.SpatialDataDir == "" {
 		return nil, ErrSpatialDataDirRequired
 	}
-	worldEngine, err := world.New(cfg.SpatialDataDir, log)
+	worldEngine, err := world.New(paths.SpatialDataDir, log)
 	if err != nil {
 		return nil, err
 	}

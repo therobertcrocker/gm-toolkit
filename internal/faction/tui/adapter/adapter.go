@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sync/atomic"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -15,7 +15,7 @@ const eventChanBuffer = 64
 type Adapter struct {
 	engine       *engine.Engine
 	factionState *state.FactionState
-	cfg          *config.Config
+	paths        *campaigns.Paths
 
 	askCh   chan CollectorAskMsg
 	eventCh chan ObserverEventMsg
@@ -26,11 +26,11 @@ type Adapter struct {
 	log *slog.Logger
 }
 
-func New(eng *engine.Engine, factionState *state.FactionState, cfg *config.Config, log *slog.Logger) *Adapter {
+func New(eng *engine.Engine, factionState *state.FactionState, paths *campaigns.Paths, log *slog.Logger) *Adapter {
 	return &Adapter{
 		engine:       eng,
 		factionState: factionState,
-		cfg:          cfg,
+		paths:        paths,
 		askCh:        make(chan CollectorAskMsg),
 		eventCh:      make(chan ObserverEventMsg, eventChanBuffer),
 		doneCh:       make(chan EngineDoneMsg, 1),

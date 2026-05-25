@@ -13,7 +13,7 @@ import (
 // --- scenario 1: two-faction full cycle ---
 
 func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	h.AddFaction("beta", "Hadrian", 4, 3, 2)
 
@@ -33,7 +33,7 @@ func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -44,7 +44,7 @@ func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
 	}
 	testharness.AssertKinds(t, h.Observer.Kinds(), wantKinds)
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	if len(records) != 4 {
 		t.Fatalf("history records: got %d, want 4", len(records))
 	}

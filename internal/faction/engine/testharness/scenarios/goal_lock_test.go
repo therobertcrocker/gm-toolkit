@@ -13,7 +13,7 @@ import (
 // --- scenario 2: LockSkip — Change Homeworld in transit ---
 
 func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	locked := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	locked.ActiveGoal = &domain.ActiveGoal{
 		GoalID:         "G-012",
@@ -41,7 +41,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 		t.Fatalf("alpha lock mutations: got %d, want 1 (GoalTurnsTick)", len(alphaLock.Mutations))
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	rec, ok := testharness.FindMutationByCause(records, "change_homeworld_transit")
 	if !ok {
 		t.Fatalf("history missing change_homeworld_transit mutation; records=%+v", records)
@@ -95,7 +95,7 @@ func TestRunCycle_LockSkip_ChangeHomeworld(t *testing.T) {
 // --- scenario 3: LockRestrictActions — Planetary Seizure phase 1 ---
 
 func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	attacker := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	target := h.AddFaction("beta", "Tartarus", 2, 2, 2)
 	attacker.ActiveGoal = &domain.ActiveGoal{
@@ -137,7 +137,7 @@ func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestRunCycle_LockRestrictActions_PlanetarySeizurePhase1(t *testing.T) {
 		t.Errorf("ActionResolved count: got %d, want 1", resolvedCount)
 	}
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	if _, ok := testharness.FindMutationByCause(records, "attack"); !ok {
 		t.Fatalf("history missing attack mutation; records=%+v", records)
 	}

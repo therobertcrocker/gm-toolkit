@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -18,14 +18,14 @@ func TestApplyAndRecord_LogsMutationMisses(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	eng := &Engine{Mutation: mutation.New(slog.New(slog.DiscardHandler))}
 	factionState := &state.FactionState{Factions: make(map[string]*domain.Faction)}
-	cfg := &config.Config{HistoryPath: t.TempDir() + "/history.jsonl"}
+	paths := &campaigns.Paths{HistoryPath: t.TempDir() + "/history.jsonl"}
 
 	t.Run("single miss emits one Error log line", func(t *testing.T) {
 		buf.Reset()
 		mutations := []domain.Mutation{
 			domain.CoinDelta{FactionID: "ghost", Delta: 1},
 		}
-		err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost"}, mutations, cfg, log)
+		err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost"}, mutations, paths, log)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -48,7 +48,7 @@ func TestApplyAndRecord_LogsMutationMisses(t *testing.T) {
 			domain.CoinDelta{FactionID: "ghost-a", Delta: 1},
 			domain.CoinDelta{FactionID: "ghost-b", Delta: 1},
 		}
-		err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost-a"}, mutations, cfg, log)
+		err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost-a"}, mutations, paths, log)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

@@ -8,9 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
@@ -28,7 +29,7 @@ const (
 type Harness struct {
 	Engine       *engine.Engine
 	FactionState *state.FactionState
-	Cfg          *config.Config
+	Paths        *campaigns.Paths
 	Collector    *ScriptedCollector
 	Collectors   engine.Collectors
 	Observer     *RecordingObserver
@@ -72,15 +73,18 @@ func (l *stubLocation) Coords() (q, r int)           { return 0, 0 }
 func (l *stubLocation) RegionID() string             { return "" }
 func (l *stubLocation) RegionHex() spatial.RegionHex { return spatial.RegionHex{} }
 
-func NewHarness(t *testing.T, dataDir string) *Harness {
+func NewHarness(t *testing.T) *Harness {
 	t.Helper()
-	dir := t.TempDir()
-	cfg := &config.Config{
-		FactionDataDir: dataDir,
-		StatePath:      filepath.Join(dir, "state.toml"),
-		HistoryPath:    filepath.Join(dir, "history.jsonl"),
+	root := t.TempDir()
+	camp, err := campaigns.Scaffold(root, "test", "Test")
+	if err != nil {
+		t.Fatalf("scaffold: %v", err)
 	}
-	rb, err := rulebook.Load(cfg.FactionDataDir)
+	if _, err := campaigns.CopyRulebook(camp, testRulebookDir(t), false); err != nil {
+		t.Fatalf("copy rulebook: %v", err)
+	}
+	paths := camp.Paths()
+	rb, err := rulebook.Load(paths.FactionDataDir)
 	if err != nil {
 		t.Fatalf("rulebook.Load: %v", err)
 	}
@@ -94,12 +98,20 @@ func NewHarness(t *testing.T, dataDir string) *Harness {
 	return &Harness{
 		Engine:       eng,
 		FactionState: &state.FactionState{CampaignID: "test", Factions: make(map[string]*domain.Faction)},
-		Cfg:          cfg,
+		Paths:        &paths,
 		Collector:    scriptedCollector,
 		Collectors:   engine.Collectors{Phase: scriptedCollector, Action: scriptedCollector},
 		Observer:     &RecordingObserver{},
 		SpatialMap:   spatialMap,
 	}
+}
+
+// testRulebookDir locates rulebooks/swn/ relative to this source file.
+func testRulebookDir(t *testing.T) string {
+	t.Helper()
+	_, file, _, _ := runtime.Caller(0)
+	repoRoot := filepath.Join(filepath.Dir(file), "..", "..", "..", "..")
+	return filepath.Join(repoRoot, "rulebooks", "swn")
 }
 
 func (h *Harness) AddFaction(id, homeworld string, force, cunning, wealth int) *domain.Faction {

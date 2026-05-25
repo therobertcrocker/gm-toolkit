@@ -17,7 +17,7 @@ import (
 //	Cycle 2 — CheckLock: GoalTurnsTick (TurnsRemaining 2→1), LockSkip.
 //	Cycle 3 — CheckLock: GoalTurnsTick + HomeworldChanged + GoalCompleted, LockSkip.
 func TestChangeHomeworld_InitiateThenComplete(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	testharness.AddBase(alpha, "Krylos", 5)
 

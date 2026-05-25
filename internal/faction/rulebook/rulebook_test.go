@@ -8,7 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-const testDataDir = "../data"
+const testDataDir = "../../../rulebooks/swn"
 
 func TestLoad(t *testing.T) {
 	rb, err := Load(testDataDir)

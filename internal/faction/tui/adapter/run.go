@@ -6,7 +6,7 @@ import (
 
 func (a *Adapter) Run() tea.Cmd {
 	return func() tea.Msg {
-		err := a.engine.RunCycle(a.factionState, a.cfg, a.Collectors(), a.Observer())
+		err := a.engine.RunCycle(a.factionState, a.paths, a.Collectors(), a.Observer())
 		return EngineDoneMsg{Err: err}
 	}
 }

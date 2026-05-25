@@ -6,8 +6,9 @@
 bin/
 
 # Campaign data (user-specific, not versioned)
-campaign/
-campaigns/
+# Anchored to repo root — avoids matching cmd/gm-toolkit/campaign/ and internal/campaigns/
+/campaign/
+/campaigns/
 
 # Reference materials (copyrighted)
 reference/

@@ -26,7 +26,7 @@ var transportPath = []spatial.RegionHex{
 // is wired and hooks are registered before returning.
 func setupTransportHarness(t *testing.T) *testharness.Harness {
 	t.Helper()
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 
 	transportProfile := &domain.TransportProfile{
 		MaxHex:     4,

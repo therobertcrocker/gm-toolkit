@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/config"
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
@@ -32,7 +32,7 @@ const (
 // already called Turn.Start (or be resuming a turn that's still InProgress).
 func (e *Engine) RunCycle(
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 ) error {
@@ -42,7 +42,7 @@ func (e *Engine) RunCycle(
 	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.log.With("engine", "effect"))
 
 	for {
-		done, err := e.RunFactionTurn(factionState, cfg, collectors, observer)
+		done, err := e.RunFactionTurn(factionState, paths, collectors, observer)
 		if err != nil {
 			return err
 		}
@@ -60,7 +60,7 @@ func (e *Engine) RunCycle(
 // current cycle (true when the turn cursor advanced past the last faction).
 func (e *Engine) RunFactionTurn(
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 ) (bool, error) {
@@ -72,19 +72,19 @@ func (e *Engine) RunFactionTurn(
 	turnLog = turnLog.With("faction", faction.ID)
 	logging.TurnStart(turnLog, factionState.CycleNumber, faction.ID)
 
-	lock, err := e.runGoalLockPhase(faction, factionState, cfg, collectors, observer, turnLog)
+	lock, err := e.runGoalLockPhase(faction, factionState, paths, collectors, observer, turnLog)
 	if err != nil {
 		return false, err
 	}
 
-	if err := e.runStatRaisePhase(faction, factionState, cfg, collectors, observer, turnLog); err != nil {
+	if err := e.runStatRaisePhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 
-	if err := e.runBookkeepingPhase(faction, factionState, cfg, collectors, observer, turnLog); err != nil {
+	if err := e.runBookkeepingPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
-	if err := state.Save(cfg.StatePath, factionState); err != nil {
+	if err := state.Save(paths.StatePath, factionState); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			turnLog.Warn("recoverable failure", "err", err)
 			observer.OnError(faction, err)
@@ -95,18 +95,18 @@ func (e *Engine) RunFactionTurn(
 		return false, fmt.Errorf("saving state after bookkeeping: %w", err)
 	}
 
-	if err := e.runMovementPhase(faction, factionState, cfg, collectors, observer, turnLog); err != nil {
+	if err := e.runMovementPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 
 	if lock.Type == locks.LockSkip {
-		return e.finishFactionTurn(factionState, faction, cfg, collectors, observer, turnLog)
+		return e.finishFactionTurn(factionState, faction, paths, collectors, observer, turnLog)
 	}
 
-	if err := e.runActionPhase(faction, factionState, cfg, collectors, observer, lock, turnLog); err != nil {
+	if err := e.runActionPhase(faction, factionState, paths, collectors, observer, lock, turnLog); err != nil {
 		return false, err
 	}
-	if err := state.Save(cfg.StatePath, factionState); err != nil {
+	if err := state.Save(paths.StatePath, factionState); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			turnLog.Warn("recoverable failure", "err", err)
 			observer.OnError(faction, err)
@@ -117,7 +117,7 @@ func (e *Engine) RunFactionTurn(
 		return false, fmt.Errorf("saving state after action resolution: %w", err)
 	}
 
-	return e.finishFactionTurn(factionState, faction, cfg, collectors, observer, turnLog)
+	return e.finishFactionTurn(factionState, faction, paths, collectors, observer, turnLog)
 }
 
 func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer TurnObserver, turnLog *slog.Logger) (*domain.Faction, error) {
@@ -145,7 +145,7 @@ func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer Tur
 func (e *Engine) runGoalLockPhase(
 	faction *domain.Faction,
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 	turnLog *slog.Logger,
@@ -158,7 +158,7 @@ func (e *Engine) runGoalLockPhase(
 	observer.OnGoalLockApplied(faction, lock, lockMutations)
 
 	if len(lockMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, lockMutations, cfg, phaseLog); err != nil {
+		if err := e.applyAndRecord(factionState, faction, lockMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -190,7 +190,7 @@ func (e *Engine) runGoalLockPhase(
 func (e *Engine) runBookkeepingPhase(
 	faction *domain.Faction,
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 	turnLog *slog.Logger,
@@ -211,7 +211,7 @@ func (e *Engine) runBookkeepingPhase(
 		return err
 	}
 	if len(bookMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, bookMutations, cfg, phaseLog); err != nil {
+		if err := e.applyAndRecord(factionState, faction, bookMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -240,7 +240,7 @@ func (e *Engine) runBookkeepingPhase(
 func (e *Engine) runStatRaisePhase(
 	faction *domain.Faction,
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 	turnLog *slog.Logger,
@@ -266,7 +266,7 @@ func (e *Engine) runStatRaisePhase(
 		return nil
 	}
 	if len(raiseMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, raiseMutations, cfg, phaseLog); err != nil {
+		if err := e.applyAndRecord(factionState, faction, raiseMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -285,7 +285,7 @@ func (e *Engine) runStatRaisePhase(
 func (e *Engine) runMovementPhase(
 	faction *domain.Faction,
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 	turnLog *slog.Logger,
@@ -322,7 +322,7 @@ func (e *Engine) runMovementPhase(
 			observer.OnError(faction, err)
 			return err
 		}
-		if err := e.applyAndRecord(factionState, faction, tickMutations, cfg, phaseLog); err != nil {
+		if err := e.applyAndRecord(factionState, faction, tickMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -358,7 +358,7 @@ func (e *Engine) runMovementPhase(
 			observer.OnError(faction, err)
 			return err
 		}
-		if err := e.applyAndRecord(factionState, faction, decisionMutations, cfg, phaseLog); err != nil {
+		if err := e.applyAndRecord(factionState, faction, decisionMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -388,7 +388,7 @@ func (e *Engine) runMovementPhase(
 func (e *Engine) runActionPhase(
 	faction *domain.Faction,
 	factionState *state.FactionState,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 	lock locks.GoalLock,
@@ -455,7 +455,7 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 
-	if err := e.applyAndRecord(factionState, faction, combined, cfg, phaseLog); err != nil {
+	if err := e.applyAndRecord(factionState, faction, combined, paths, phaseLog); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
 			observer.OnError(faction, err)
@@ -487,7 +487,7 @@ func (e *Engine) runActionPhase(
 func (e *Engine) finishFactionTurn(
 	factionState *state.FactionState,
 	faction *domain.Faction,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
 	turnLog *slog.Logger,
@@ -505,7 +505,7 @@ func (e *Engine) finishFactionTurn(
 		observer.OnError(faction, err)
 		return false, err
 	}
-	if err := state.Save(cfg.StatePath, factionState); err != nil {
+	if err := state.Save(paths.StatePath, factionState); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			turnLog.Warn("recoverable failure", "err", err)
 			observer.OnError(faction, err)
@@ -540,7 +540,7 @@ func (e *Engine) applyAndRecord(
 	factionState *state.FactionState,
 	faction *domain.Faction,
 	mutations []domain.Mutation,
-	cfg *config.Config,
+	paths *campaigns.Paths,
 	phaseLog *slog.Logger,
 ) error {
 	if len(mutations) == 0 {
@@ -556,7 +556,7 @@ func (e *Engine) applyAndRecord(
 		}
 		return fmt.Errorf("applying mutations: %w", err)
 	}
-	if err := turn.RecordHistory(cfg.HistoryPath, factionState, faction, mutations, phaseLog.With("engine", "turn")); err != nil {
+	if err := turn.RecordHistory(paths.HistoryPath, factionState, faction, mutations, phaseLog.With("engine", "turn")); err != nil {
 		return fmt.Errorf("recording history: %w", err)
 	}
 	return nil

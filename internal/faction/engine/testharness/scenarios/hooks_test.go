@@ -35,7 +35,7 @@ func (r *coinOnDestroyReactor) OnMutations(mutations []domain.Mutation, _ *state
 }
 
 func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
-	h := testharness.NewHarness(t, testDataDir)
+	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
@@ -70,7 +70,7 @@ func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Cfg, h.Collectors, h.Observer); err != nil {
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunCycle: %v", err)
 	}
 
@@ -84,7 +84,7 @@ func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
 	testharness.CheckStep(t, "alpha Coin reflects reactor delta (+1 above bookkeeping income)", alpha.Coin == wantCoin,
 		"alpha.Coin mismatch — reactor CoinDelta may not have been applied")
 
-	records := testharness.ReadHistory(t, h.Cfg.HistoryPath)
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	_, hasRemoved := testharness.FindMutationType(records, "asset_removed")
 	testharness.CheckStep(t, "asset_removed in history", hasRemoved, "no asset_removed mutation found")
 	// reactor's CoinDelta has no Cause; bookkeeping uses Cause="bookkeeping"
