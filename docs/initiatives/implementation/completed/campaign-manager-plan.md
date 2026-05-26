@@ -980,8 +980,6 @@ internal/faction/data/goals.toml          → rulebooks/swn/goals.toml
 internal/faction/data/tags.toml           → rulebooks/swn/tags.toml
 ```
 
-Plus create empty placeholder: `rulebooks/swn/spatial/.gitkeep` (or `README.md` with a one-liner — pick whichever this repo already uses for empty-but-tracked directories; grep for `.gitkeep`).
-
 `rm -r internal/faction/data/` after the moves.
 
 ##### Task 2 — Migrate `internal/faction/engine/testharness/harness.go`
@@ -1021,7 +1019,7 @@ func testRulebookDir(t *testing.T) string {
     t.Helper()
     _, file, _, _ := runtime.Caller(0)
     repoRoot := filepath.Join(filepath.Dir(file), "..", "..", "..", "..")
-    return filepath.Join(repoRoot, "rulebooks", "swn", "factions")
+    return filepath.Join(repoRoot, "rulebooks", "swn")
 }
 ```
 

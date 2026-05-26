@@ -46,6 +46,10 @@ When docs conflict, flag the conflict before proceeding. When docs are silent on
 
 See `docs/process/session-modes.md` for the full description of Discovery / Plan / Execution modes, the initiative lifecycle, per-type flows (feature / refactor / bugfix / docs / chore), session discipline, and templates. Always read the session modes doc before starting a new initiative or session, and refer back to it as needed.
 
+**Discovery:** Start with a scaffolded doc in `docs/initiatives/discovery/<initiative-name>.md`. Use the template and fill in the sections as you go. The goal is to explore the problem space, gather information, and identify potential solutions. The output is a clear definition of the problem, a set of possible approaches, and a recommended next step (usually a Plan session).
+
+**Implementation:** Read the discovery doc, then relevant code. Ask any open questions, and then determine the Phases, Commits, Tasks. Write the implementation doc in one go at `docs/initiatives/implementation/<initiative-name>.md` using the template. The goal is to create a clear, actionable plan for implementing the feature, refactor, or bugfix. The output is a detailed implementation plan that can be executed in the next phase.
+
 ## Session Boundaries
 | Session Type | Boundary Definition |
 |--------------|---------------------|
@@ -67,7 +71,5 @@ Before each mode transition (including mid-session shifts, e.g. moving from exec
 ## Code Style
 
 - **Parameter names:** Always full words — `factionState` not `s`, `faction` not `f`, `rulebook` not `rb`.
-- **Interactive forms:** Use `huh` for wizard-style prompts and interactive forms.
-- **Output styling:** For TUI output, use `lipgloss` styles defined in `cmd/faction-manager/tui/styles.go`. For Cobra CLI output, use the `huh` package and ANSI styling.
 - **YAGNI:** Solve the concrete present problem. Don't pitch stronger guarantees (extensibility hooks, future-proofing) unless there is a real, present-day consequence of not doing so. Lead with the simplest fix that addresses the actual bug.
 - **No comments** unless the WHY is non-obvious. No docstrings. No "added for X" comments.

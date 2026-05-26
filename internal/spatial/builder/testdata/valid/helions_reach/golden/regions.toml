@@ -1,0 +1,54 @@
+[[region]]
+  id = "A"
+  name = "Coreward Reach"
+  hexes = [[1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2]]
+
+  [[region.boundary]]
+    from_q = 2
+    from_r = 3
+    to_region = "B"
+    to_q = 2
+    to_r = 4
+
+  [[region.boundary]]
+    from_q = 2
+    from_r = 3
+    to_region = "B"
+    to_q = 3
+    to_r = 3
+
+  [[region.boundary]]
+    from_q = 3
+    from_r = 2
+    to_region = "B"
+    to_q = 3
+    to_r = 3
+
+  [[region.boundary]]
+    from_q = 3
+    from_r = 2
+    to_region = "B"
+    to_q = 4
+    to_r = 2
+
+  [[region.boundary]]
+    from_q = 1
+    from_r = 1
+    to_region = "D"
+    to_q = 13
+    to_r = 1
+
+[[region]]
+  id = "B"
+  name = "Midline Sector"
+  hexes = [[2, 4], [3, 3], [3, 4], [3, 5], [4, 2], [4, 3], [4, 4], [4, 5], [5, 2], [5, 3]]
+
+[[region]]
+  id = "C"
+  name = "Outer Veil"
+  hexes = [[3, 7], [3, 8], [4, 7], [4, 8], [5, 6], [5, 7], [6, 6], [6, 8], [7, 6], [7, 7], [7, 8]]
+
+[[region]]
+  id = "D"
+  name = "Nova Cascade"
+  hexes = [[12, 1], [12, 2], [12, 3], [13, 1], [13, 2], [13, 3], [14, 1], [14, 2], [14, 3]]

@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/therobertcrocker/gm-toolkit/cmd/gm-toolkit/campaign"
+	"github.com/therobertcrocker/gm-toolkit/cmd/gm-toolkit/spatial"
 )
 
 func NewRootCmd() *cobra.Command {
@@ -13,6 +14,7 @@ func NewRootCmd() *cobra.Command {
 		Long:  "GM Toolkit bundles utilities for the GM running Stars Without Number campaigns. Run `gm-toolkit <subcommand> --help` for per-subcommand details.",
 	}
 	root.AddCommand(campaign.NewCmd())
+	root.AddCommand(spatial.NewCmd())
 	root.AddCommand(newFactionCmd())
 	return root
 }

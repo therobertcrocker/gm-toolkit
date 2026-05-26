@@ -3,6 +3,10 @@
 Pre-discovery initiative tracker. Deferred items move to Planned Initiatives when scoped -- at that point a write-up is added below and a discovery doc is written before implementation begins.
 
 > **Scheduling note (2026-05-23):** The TUI rebuild (`F-005`) is the first of a planned arc to bring the TUI to feature completeness. No new engine features will be promoted from Backlog to Up Next until that arc is complete. Bugfixes and refactors are unaffected.
+>
+> **Addendum (2026-05-25):** `F-012` (spatial-map-cli) promoted as content-authoring tooling, exempt from the engine-feature freeze. It is a prerequisite for `F-005.2` (Manage needs an authored spatial map to render).
+>
+> **Addendum (2026-05-26):** `F-012` shipped (`feature/spatial-map-cli` merged). Prerequisite for `F-005.2` is met.
 
 <br/>
 
@@ -13,6 +17,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A-005` | [TUI Rebuild](#f-005--tui-rebuild) | Arc | In-Progress | First user-facing surface against the reshaped engine; greenfield rebuild. |
+| `F-005.2` | [tui-manage](#f-0052--tui-manage) | feature | Ready for Discovery | Manage mode: faction list, detail, create, edit, delete. |
 
 
 ---
@@ -38,17 +43,17 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F-004` | CLI Rebuild | feature | -- | -- |
 | `F-010` | Tag-Granted Assets | feature | -- | -- |
 | `F-011` | Tag Reminders | feature | -- | -- |
-| `F-012` | Spatial Map CLI | feature | -- | Generate `worlds.toml` from a user-provided template or data source |
 | `R-003` | Action Preconditions | refactor | AI/planner | Lift `Action.Validate` into `Action.Preconditions []Precondition` |
 | `F-013` | Goal State Predicates | feature | AI/planner | Add `Satisfied(state) bool` alongside per-goal `progressX`; both shapes coexist |
 | `B-001` | Hardcoded IDs | bugfix | -- | `stealth_applicator` (asset) and `"G-012"` (ChangeHomeworld goal) are hardcoded; silently break if TOML IDs change |
 | `B-002` | Goal/Tag Display IDs | bugfix | -- | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only. |
 | `B-003` | `SeizePlanet` History | bugfix | -- | Currently invisible in history. `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
-| `B-004` | `UseAssetAbility` Narration | bugfix | -- | Add fallback text for asset ability narration |
+| `B-004` | `Ability` Narration | bugfix | -- | Add fallback text for asset ability narration |
 | `B-005` | Goal XP | bugfix | -- | Retype `Difficulty` from `string` to int or tagged sum so engine can dispatch XP |
 | `F-014` | A-flag Abilities | feature | `R-001` | Nine A-flag abilities stubbed |
 | `R-004` | Data-Driven Handlers | refactor | High Pain | Replace hardcoded goal/ability handler dispatch with TOML-defined handlers + typed primitive registry |
-| `D-001` | Architecture Overview Doc | docs | -- | `docs/architecture-overview.md` is stale; replace with a doc reflecting the campaign-based layout and `internal/campaigns` as the upstream data layer |
+| `R-005` | Adjacency vs. Warp Cost | refactor | Deferred from `F-012` | Split `Region.Boundary` into adjacency-edges (cost 1) and warp-edges (cost `crossingCost`); update `neighbors()` to dispatch on type. CLI gets a matching output split. |
+| `D-001` | Architecture Overview Doc | docs | -- | `docs/architecture-overview.md` does not exist. |
 ---
 <br />
 <br />
@@ -107,5 +112,7 @@ See [`tui-rebuild-arc-plan.md`](../../initiatives/arcs/tui-rebuild/tui-rebuild-a
 - Error rendering shape — where does `OnError` surface in the UI?
 
 See [`tui-rebuild-arc-plan.md`](../../initiatives/arcs/tui-rebuild/tui-rebuild-arc-plan.md) Initiative 3 for full scope and estimated commit shape.
+
+<br />
 
 

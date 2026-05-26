@@ -1,0 +1,11 @@
+# Sector: Helion's Reach
+# Regions: A=Coreward Reach, B=Midline Sector, C=Outer Veil, D=Nova Cascade
+. . . . . . . . . . . . . . . . . . .
+ . A A A . . . . . . . . D 1 D . . .
+. . A 2 A B B . . . . . . D D D . . .
+ . . A A B B B . . . . . . D D D . .
+. . . . B 3 B . . . . . . . . . . . .
+ . . . . . B B . . . . . . . . . . .
+. . . . . . . . C C C . . . . . . . .
+ . . . . . . C C 4 . C . . . . . . .
+. . . . . . . C C . C C . . . . . . .

@@ -267,7 +267,7 @@ The **Planetary Government** tag grants or denies this permission for that world
    - Hegemon: 4 assets in primary attribute + 4 assets in other attributes
    - Assets must meet attribute rating and tech level requirements
    - If the faction controls one or more worlds, add **Planetary Government** tags
-8. **Set starting Coin** — no explicit starting amount is specified in the rules; GM discretion (income begins on Turn 1)
+8. **Set starting Coin** — 0 (unless specified by GM)
 
 ---
 

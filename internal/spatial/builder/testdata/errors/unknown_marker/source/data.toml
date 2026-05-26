@@ -1,0 +1,9 @@
+[regions.A]
+name = "Region A"
+
+[[worlds]]
+id = "ghost"
+name = "Ghost"
+at = "q"
+tech_level = 5
+population = 1000

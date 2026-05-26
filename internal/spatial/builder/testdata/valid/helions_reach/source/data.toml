@@ -1,0 +1,48 @@
+# Region metadata. Every region letter that appears in the layout
+# needs an entry; the CLI errors on missing ones.
+[regions.A]
+name = "Coreward Reach"
+
+[regions.B]
+name = "Midline Sector"
+
+[regions.C]
+name = "Outer Veil"
+
+[regions.D]
+name = "Nova Cascade"
+
+# Worlds. `at` is the marker glyph (integer for 1-9, string for a-z).
+# `region` is omitted when inference is unambiguous.
+[[worlds]]
+id = "helion"
+name = "Helion"
+at = 1
+tech_level = 8
+population = 1200000
+
+[[worlds]]
+id = "anvil"
+name = "Anvil"
+at = 2
+tech_level = 6
+population = 80000
+
+[[worlds]]
+id = "bastion"
+name = "Bastion"
+at = 3
+tech_level = 5
+population = 200000
+
+[[worlds]]
+id = "veilport"
+name = "Veilport"
+at = 4
+tech_level = 7
+population = 950000
+
+# Warps. Endpoints are { region, row, col } grid coords.
+[[warps]]
+from = { region = "A", row = 1, col = 1 }
+to   = { region = "D", row = 1, col = 13 }

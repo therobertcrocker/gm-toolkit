@@ -1,0 +1,12 @@
+[regions.A]
+name = "Region A"
+
+[regions.B]
+name = "Region B"
+
+[[worlds]]
+id = "x"
+name = "X"
+at = 1
+tech_level = 5
+population = 1000

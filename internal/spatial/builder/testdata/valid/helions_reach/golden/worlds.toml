@@ -1,0 +1,35 @@
+[[world]]
+  id = "anvil"
+  name = "Anvil"
+  tech_level = 6
+  population = 80000
+  region = "A"
+  hex_q = 2
+  hex_r = 2
+
+[[world]]
+  id = "bastion"
+  name = "Bastion"
+  tech_level = 5
+  population = 200000
+  region = "B"
+  hex_q = 3
+  hex_r = 4
+
+[[world]]
+  id = "helion"
+  name = "Helion"
+  tech_level = 8
+  population = 1200000
+  region = "D"
+  hex_q = 13
+  hex_r = 1
+
+[[world]]
+  id = "veilport"
+  name = "Veilport"
+  tech_level = 7
+  population = 950000
+  region = "C"
+  hex_q = 5
+  hex_r = 7
