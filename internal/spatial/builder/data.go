@@ -27,7 +27,7 @@ type worldEntry struct {
 	Region     string  `toml:"region"`
 }
 
-type atGlyph struct{ Glyph glyph }
+type atGlyph glyph
 
 func (a *atGlyph) UnmarshalTOML(v interface{}) error {
 	switch x := v.(type) {
@@ -35,7 +35,7 @@ func (a *atGlyph) UnmarshalTOML(v interface{}) error {
 		if x < 1 || x > 9 {
 			return fmt.Errorf("'at' integer must be in [1,9], got %d", x)
 		}
-		a.Glyph = glyph('0' + byte(x))
+		*a = atGlyph('0' + byte(x))
 		return nil
 	case string:
 		if len(x) != 1 {
@@ -45,7 +45,7 @@ func (a *atGlyph) UnmarshalTOML(v interface{}) error {
 		if r < 'a' || r > 'z' {
 			return fmt.Errorf("'at' string must be 'a'-'z', got %q", x)
 		}
-		a.Glyph = glyph(r)
+		*a = atGlyph(r)
 		return nil
 	default:
 		return fmt.Errorf("'at' must be integer 1-9 or string 'a'-'z', got %T", v)

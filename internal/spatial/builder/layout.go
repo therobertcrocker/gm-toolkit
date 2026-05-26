@@ -109,8 +109,5 @@ func parseLayoutRow(line string, row, fileLine int, markers map[glyph]cell) ([]c
 		}
 		i++
 	}
-	if len(cells) == 0 {
-		return nil, layoutErrorf(fileLine, 1, "empty row")
-	}
 	return cells, nil
 }

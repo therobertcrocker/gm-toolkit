@@ -43,7 +43,7 @@ func Build(opts Options) (Summary, error) {
 	if err := selfCheck(opts.DestDir); err != nil {
 		return Summary{}, err
 	}
-	return summarize(derived, len(data.Warps)), nil
+	return summarize(derived), nil
 }
 
 func checkOutputs(opts Options) error {
@@ -68,10 +68,10 @@ func selfCheck(dstDir string) error {
 	return nil
 }
 
-func summarize(derived *derivedMap, warpCount int) Summary {
+func summarize(derived *derivedMap) Summary {
 	s := Summary{
 		WorldCount:     len(derived.Worlds),
-		WarpCount:      warpCount,
+		WarpCount:      derived.WarpCount,
 		AdjacencyCount: derived.AdjacencyCount,
 	}
 	for _, r := range derived.Regions {

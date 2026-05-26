@@ -70,7 +70,7 @@ func TestDerive_RegionInference(t *testing.T) {
 			layout: mkLayout([][]glyph{{'A', '1', 'A'}}),
 			data: mkData(
 				[]string{"A"},
-				[]worldEntry{{ID: "x", Name: "X", At: atGlyph{Glyph: '1'}}},
+				[]worldEntry{{ID: "x", Name: "X", At: atGlyph('1')}},
 				nil,
 			),
 			check: func(t *testing.T, derived *derivedMap) {
@@ -88,7 +88,7 @@ func TestDerive_RegionInference(t *testing.T) {
 			layout: mkLayout([][]glyph{{'A', '1', 'B'}}),
 			data: mkData(
 				[]string{"A", "B"},
-				[]worldEntry{{ID: "x", Name: "X", At: atGlyph{Glyph: '1'}}},
+				[]worldEntry{{ID: "x", Name: "X", At: atGlyph('1')}},
 				nil,
 			),
 			wantErr: "multiple region candidates",
@@ -100,7 +100,7 @@ func TestDerive_RegionInference(t *testing.T) {
 			}),
 			data: mkData(
 				[]string{"A"},
-				[]worldEntry{{ID: "x", Name: "X", At: atGlyph{Glyph: '1'}}},
+				[]worldEntry{{ID: "x", Name: "X", At: atGlyph('1')}},
 				nil,
 			),
 			wantErr: "no region-letter neighbors",
@@ -110,7 +110,7 @@ func TestDerive_RegionInference(t *testing.T) {
 			layout: mkLayout([][]glyph{{'A', '1', 'B'}}),
 			data: mkData(
 				[]string{"A", "B"},
-				[]worldEntry{{ID: "x", Name: "X", At: atGlyph{Glyph: '1'}, Region: "A"}},
+				[]worldEntry{{ID: "x", Name: "X", At: atGlyph('1'), Region: "A"}},
 				nil,
 			),
 			check: func(t *testing.T, derived *derivedMap) {
@@ -128,7 +128,7 @@ func TestDerive_RegionInference(t *testing.T) {
 			layout: mkLayout([][]glyph{{'A', '1', 'A'}}),
 			data: mkData(
 				[]string{"A"},
-				[]worldEntry{{ID: "x", Name: "X", At: atGlyph{Glyph: '1'}, Region: "C"}},
+				[]worldEntry{{ID: "x", Name: "X", At: atGlyph('1'), Region: "C"}},
 				nil,
 			),
 			wantErr: `region override "C" is not a declared region`,
