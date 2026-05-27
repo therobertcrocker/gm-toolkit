@@ -113,6 +113,74 @@ func HPValueForRating(rating int) int {
 	}
 }
 
+// NewFaction synthesizes a Faction from creation-time inputs. Applies SWN
+// derivations: attribute ratings from scale, MaxHP from attributes,
+// CurrentHP = MaxHP, homeworld Base of Influence at MaxHP.
+func NewFaction(
+	id, name string,
+	scale FactionScale,
+	primaryStat, secondaryStat, tertiaryStat FactionStat,
+	tags []*Tag,
+	goal *Goal,
+	homeworld Location,
+	assets []*Asset,
+	coin int,
+) *Faction {
+	primary, secondary, tertiary := RatingsFromScale(scale)
+
+	faction := &Faction{
+		ID:       id,
+		Name:     name,
+		Scale:    scale,
+		Tags:     tags,
+		Coin:     coin,
+		Homeworld: homeworld,
+		Assets:   make(map[string]*Asset, len(assets)),
+	}
+
+	for _, stat := range []struct {
+		name   FactionStat
+		rating int
+	}{
+		{primaryStat, primary},
+		{secondaryStat, secondary},
+		{tertiaryStat, tertiary},
+	} {
+		switch stat.name {
+		case StatForce:
+			faction.Force = stat.rating
+		case StatCunning:
+			faction.Cunning = stat.rating
+		case StatWealth:
+			faction.Wealth = stat.rating
+		}
+	}
+
+	faction.MaxHP = CalcMaxHP(faction)
+	faction.CurrentHP = faction.MaxHP
+
+	if goal != nil {
+		faction.ActiveGoal = &ActiveGoal{GoalID: goal.ID}
+	}
+
+	for _, asset := range assets {
+		faction.Assets[asset.ID] = asset
+	}
+
+	faction.Bases = []*Base{
+		{
+			ID:          id + "-homeworld",
+			OwnerID:     id,
+			Location:    homeworld,
+			CurrentHP:   faction.MaxHP,
+			MaxHP:       faction.MaxHP,
+			IsHomeworld: true,
+		},
+	}
+
+	return faction
+}
+
 func SortedAssets(faction *Faction) []*Asset {
 	sorted := make([]*Asset, 0, len(faction.Assets))
 	for _, asset := range faction.Assets {
