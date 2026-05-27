@@ -13,4 +13,6 @@ var (
 	ConfirmExit = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9")).Padding(1, 2)
 
 	HelpStub = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Padding(1, 2)
+
+	SaveError = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
 )

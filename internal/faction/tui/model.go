@@ -3,10 +3,14 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/adapter"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/turn"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 type Model struct {
@@ -19,13 +23,18 @@ type Model struct {
 	showHelpStub bool
 }
 
-func NewModel(adp *adapter.Adapter) Model {
-	bar := modebar.New()
+func NewModel(
+	adp *adapter.Adapter,
+	factionState *state.FactionState,
+	paths *campaigns.Paths,
+	rb *rulebook.Rulebook,
+	spatialMap *spatial.RegionMap,
+) Model {
 	return Model{
-		bar:     bar,
+		bar:     modebar.New(),
 		adapter: adp,
 		subs: map[modebar.Mode]tea.Model{
-			modebar.ModeManage: manage.New(),
+			modebar.ModeManage: manage.New(factionState, paths, rb, spatialMap),
 			modebar.ModeTurn:   turn.New(),
 		},
 	}

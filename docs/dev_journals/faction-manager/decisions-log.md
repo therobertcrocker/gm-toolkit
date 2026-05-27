@@ -44,6 +44,7 @@ A record of key decisions made during development, grouped by feature branch.
 | [feature/campaign-manager](#featurecampaign-manager) | 262–268 | cmd/gm-toolkit constructor pattern; ValidateID moved into internal/campaigns; create --path is parent dir + pre-flight checks; registry at $GM_TOOLKIT_HOME; Paths() as layout source of truth; rulebook/assets/ layout; runtime.Caller for test path resolution |
 | [feature/spatial-map-cli — pre-merge checklist](#featurespatial-map-cli--pre-merge-checklist) | 269–271 | dataErrorf empty-context prefix; same-region warp rejection; warp dedup via shared seen map |
 | [refactor/spatial-builder-design](#refactorspatial-builder-design) | 272–273 | Derivation state struct for multi-phase builder; no user-defined generics in this package |
+| [feature/tui-manage](#featuretui-manage) | 274 | Message sub-package for import-cycle avoidance |
 
 <br />
 
@@ -690,3 +691,11 @@ A record of key decisions made during development, grouped by feature branch.
 |---|----------|-----------|
 | 272 | `internal/spatial/builder/derive.go` carries the in-flight maps (`regions`, `cellRegion`, `boundariesByRegion`, `seen`, `adjacencyCount`) on a `derivation` state struct, with the pipeline phases written as methods on `*derivation`. `derive()` reads as a top-level sequence of phase calls. | The pre-refactor `derive()` was a 200-line function partitioned by `// 1.` – `// 7.` comment headers, with `seen` and `boundariesByRegion` carried implicitly across sections. Phase signatures would otherwise grow long parameter lists (`deriveBoundaries(layout, cellRegion, boundariesByRegion, seen) → count`) as the shared ledger between adjacency and warp processing has to thread through. Naming the state as a struct lets each phase be a small method and makes the cross-phase data dependency explicit. |
 | 273 | The builder package does not define generic helpers. `sortedKeys` is non-generic over `map[string]bool` for the one error-message call site; the one other keys-then-sort site (region-ID iteration in `assemble`) inlines a 4-line collect-and-sort rather than introducing a second helper. | A `[V any]` `sortedKeys` would have collapsed two call sites into one helper, but the body is five lines and the value types are known and few. Project preference is to avoid user-defined generics unless the duplication or type-explosion is real; two call sites with two known value types does not qualify. Inlining the second site is preferable to a near-duplicate helper. |
+
+<br />
+
+### feature/tui-manage
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 274 | Completion and transition message types live in `internal/faction/tui/views/manage/msgs/` (package `msgs`) rather than in `package manage` directly. | `manage` imports all sub-view packages (`list`, `detail`, `wizard`, etc.) to hold their models. If the sub-views imported `manage` for the message types, the cycle `manage → list → manage` would be rejected at compile time. The `msgs` leaf package breaks the cycle: it has no imports from `manage` or any sub-view, so both `manage` and the sub-views import `msgs` freely. The plan anticipated this resolution and prescribed a sibling sub-package if a cycle appeared. |
