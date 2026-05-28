@@ -19,10 +19,25 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
 )
+
+type globalKeys struct {
+	Tab      key.Binding
+	ShiftTab key.Binding
+	Help     key.Binding
+	Quit     key.Binding
+}
+
+var globals = globalKeys{
+	Tab:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next mode")),
+	ShiftTab: key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "prev mode")),
+	Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+	Quit:     key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+}
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {

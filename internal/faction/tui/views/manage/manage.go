@@ -152,6 +152,15 @@ func (m Model) View() string {
 }
 
 func (m Model) Help() help.KeyMap {
-	// populated in Commit 6
+	switch m.view {
+	case viewList:
+		return m.list.Help()
+	case viewDetail:
+		return m.detail.Help()
+	case viewCreate:
+		return m.create.Help()
+	case viewDeleteConfirm:
+		return m.deleteConfirm.Help()
+	}
 	return nil
 }

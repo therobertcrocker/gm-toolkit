@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
@@ -17,6 +18,7 @@ type Model struct {
 	bar     modebar.Model
 	subs    map[modebar.Mode]tea.Model
 	adapter *adapter.Adapter
+	help    help.Model
 
 	confirmExit  bool
 	priorMode    modebar.Mode
@@ -30,9 +32,12 @@ func NewModel(
 	rb *rulebook.Rulebook,
 	spatialMap *spatial.RegionMap,
 ) Model {
+	h := help.New()
+	h.ShowAll = true
 	return Model{
 		bar:     modebar.New(),
 		adapter: adp,
+		help:    h,
 		subs: map[modebar.Mode]tea.Model{
 			modebar.ModeManage: manage.New(factionState, paths, rb, spatialMap),
 			modebar.ModeTurn:   turn.New(),
