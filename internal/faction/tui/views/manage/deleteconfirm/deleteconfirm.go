@@ -48,7 +48,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	prompt := fmt.Sprintf("Delete faction %q (%s)? [y/N]", m.faction.Name, m.faction.ID)
-	return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9")).Padding(1, 2).Render(prompt)
+	return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F38BA8")).Padding(1, 2).Render(prompt)
 }
 
 func (m Model) Help() help.KeyMap { return helpKeys{m.keys} }

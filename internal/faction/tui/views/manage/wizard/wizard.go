@@ -20,12 +20,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
-type Model struct {
-	form         *huh.Form
-	rulebook     *rulebook.Rulebook
-	spatialMap   *spatial.RegionMap
-	factionState *state.FactionState
-
+// formData holds all values that huh binds to via pointer. It must be
+// heap-allocated and shared between the Model and the form so that copying
+// the Model (value semantics) does not orphan the bindings.
+type formData struct {
 	name            string
 	scale           domain.FactionScale
 	primaryStat     domain.FactionStat
@@ -37,6 +35,16 @@ type Model struct {
 	primaryAssets   []*domain.AssetDefinition
 	secondaryAssets []*domain.AssetDefinition
 	coinStr         string
+}
+
+type Model struct {
+	form         *huh.Form // phase 1: name through coin (no assets)
+	assetsForm   *huh.Form // phase 2: asset selection, built after phase 1 completes
+	phase        int       // 0 = main form, 1 = asset form
+	rulebook     *rulebook.Rulebook
+	spatialMap   *spatial.RegionMap
+	factionState *state.FactionState
+	data         *formData
 
 	confirmingDiscard bool
 	discardKeys       discardKeyMap
@@ -48,21 +56,24 @@ type discardKeyMap struct {
 }
 
 func New(rb *rulebook.Rulebook, spatialMap *spatial.RegionMap, factionState *state.FactionState) Model {
+	data := &formData{
+		scale:         domain.ScaleMinor,
+		primaryStat:   domain.StatForce,
+		secondaryStat: domain.StatCunning,
+		tertiaryStat:  domain.StatWealth,
+		coinStr:       "0",
+	}
 	m := Model{
 		rulebook:     rb,
 		spatialMap:   spatialMap,
 		factionState: factionState,
-		scale:        domain.ScaleMinor,
-		primaryStat:  domain.StatForce,
-		secondaryStat: domain.StatCunning,
-		tertiaryStat:  domain.StatWealth,
-		coinStr:      "0",
+		data:         data,
 		discardKeys: discardKeyMap{
 			Confirm: key.NewBinding(key.WithKeys("y")),
 			Cancel:  key.NewBinding(key.WithKeys("n", "esc")),
 		},
 	}
-	m.form = buildForm(&m, rb, spatialMap)
+	m.form = buildForm(data, rb, spatialMap)
 	return m
 }
 
@@ -87,9 +98,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	formModel, cmd := m.form.Update(msg)
-	m.form = formModel.(*huh.Form)
-	if m.form.State == huh.StateCompleted {
+	if m.phase == 0 {
+		formModel, cmd := m.form.Update(msg)
+		m.form = formModel.(*huh.Form)
+		if m.form.State == huh.StateCompleted {
+			m.phase = 1
+			m.assetsForm = buildAssetsForm(m.data, m.rulebook, m.spatialMap)
+			return m, m.assetsForm.Init()
+		}
+		return m, cmd
+	}
+
+	formModel, cmd := m.assetsForm.Update(msg)
+	m.assetsForm = formModel.(*huh.Form)
+	if m.assetsForm.State == huh.StateCompleted {
 		faction := m.synthesize()
 		return m, func() tea.Msg { return msgs.CreatedMsg{Faction: faction} }
 	}
@@ -98,8 +120,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.confirmingDiscard {
-		return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("11")).Padding(1, 2).
+		return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F9E2AF")).Padding(1, 2).
 			Render("Discard new faction? [y/N]")
+	}
+	if m.phase == 1 {
+		return m.assetsForm.View()
 	}
 	return m.form.View()
 }
@@ -107,31 +132,31 @@ func (m Model) View() string {
 func (m Model) Help() help.KeyMap { return wizardHelpKeys{} }
 
 func (m *Model) synthesize() *domain.Faction {
-	coin, _ := strconv.Atoi(m.coinStr)
+	coin, _ := strconv.Atoi(m.data.coinStr)
 
 	var homeworld domain.Location
-	homeworld.WorldID = m.homeworldID
-	if loc, ok := m.spatialMap.Location(m.homeworldID); ok {
+	homeworld.WorldID = m.data.homeworldID
+	if loc, ok := m.spatialMap.Location(m.data.homeworldID); ok {
 		if rl, ok := loc.(spatial.RegionLocation); ok {
 			homeworld.RegionHex = rl.RegionHex()
 		}
 	}
 
-	id := generateID(m.name, m.factionState.Factions)
+	id := generateID(m.data.name, m.factionState.Factions)
 
 	tempFaction := &domain.Faction{
 		ID:     id,
 		Assets: make(map[string]*domain.Asset),
 	}
-	allPicked := append(m.primaryAssets, m.secondaryAssets...)
+	allPicked := append(m.data.primaryAssets, m.data.secondaryAssets...)
 	assets := instantiateAssets(allPicked, homeworld, tempFaction)
 
 	return domain.NewFaction(
-		id, m.name,
-		m.scale,
-		m.primaryStat, m.secondaryStat, m.tertiaryStat,
-		m.selectedTags,
-		m.selectedGoal,
+		id, m.data.name,
+		m.data.scale,
+		m.data.primaryStat, m.data.secondaryStat, m.data.tertiaryStat,
+		m.data.selectedTags,
+		m.data.selectedGoal,
 		homeworld,
 		assets,
 		coin,
@@ -142,7 +167,7 @@ func (m *Model) synthesize() *domain.Faction {
 // Form builder
 // ---------------------------------------------------------------------------
 
-func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
 	statOptions := []huh.Option[domain.FactionStat]{
 		huh.NewOption("Force", domain.StatForce),
 		huh.NewOption("Cunning", domain.StatCunning),
@@ -152,7 +177,7 @@ func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *
 	nameGroup := huh.NewGroup(
 		huh.NewInput().
 			Title("Faction name").
-			Value(&m.name).
+			Value(&data.name).
 			Validate(func(s string) error {
 				if strings.TrimSpace(s) == "" {
 					return fmt.Errorf("name required")
@@ -169,24 +194,24 @@ func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *
 				huh.NewOption("Major", domain.ScaleMajor),
 				huh.NewOption("Hegemon", domain.ScaleHegemon),
 			).
-			Value(&m.scale),
+			Value(&data.scale),
 	)
 
 	statsGroup := huh.NewGroup(
 		huh.NewSelect[domain.FactionStat]().
 			Title("Primary attribute").
 			Options(statOptions...).
-			Value(&m.primaryStat),
+			Value(&data.primaryStat),
 		huh.NewSelect[domain.FactionStat]().
 			Title("Secondary attribute").
 			Options(statOptions...).
-			Value(&m.secondaryStat),
+			Value(&data.secondaryStat),
 		huh.NewSelect[domain.FactionStat]().
 			Title("Tertiary attribute").
 			Options(statOptions...).
-			Value(&m.tertiaryStat).
+			Value(&data.tertiaryStat).
 			Validate(func(domain.FactionStat) error {
-				if m.primaryStat == m.secondaryStat || m.primaryStat == m.tertiaryStat || m.secondaryStat == m.tertiaryStat {
+				if data.primaryStat == data.secondaryStat || data.primaryStat == data.tertiaryStat || data.secondaryStat == data.tertiaryStat {
 					return fmt.Errorf("each attribute must be distinct")
 				}
 				return nil
@@ -197,15 +222,15 @@ func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *
 		huh.NewNote().
 			Title("Max HP").
 			DescriptionFunc(func() string {
-				return fmt.Sprintf("%d HP (derived from attribute ratings)", previewMaxHP(m))
-			}, &m.scale),
+				return fmt.Sprintf("%d HP (derived from attribute ratings)", previewMaxHP(data))
+			}, &data.scale),
 	)
 
 	tagsGroup := huh.NewGroup(
 		huh.NewMultiSelect[*domain.Tag]().
 			Title("Tags (choose up to 2)").
 			Options(tagsToOptions(rb.Tags)...).
-			Value(&m.selectedTags).
+			Value(&data.selectedTags).
 			Validate(func(picked []*domain.Tag) error {
 				if len(picked) > 2 {
 					return fmt.Errorf("at most 2 tags")
@@ -218,22 +243,20 @@ func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *
 		huh.NewSelect[*domain.Goal]().
 			Title("Starting goal").
 			Options(goalsToOptions(rb.Goals)...).
-			Value(&m.selectedGoal),
+			Value(&data.selectedGoal),
 	)
 
 	homeworldGroup := huh.NewGroup(
 		huh.NewSelect[string]().
 			Title("Homeworld").
 			Options(worldsToOptions(spatialMap)...).
-			Value(&m.homeworldID),
+			Value(&data.homeworldID),
 	)
-
-	primaryAssetsGroup, secondaryAssetsGroup := buildAssetGroups(m, rb, spatialMap)
 
 	coinGroup := huh.NewGroup(
 		huh.NewInput().
 			Title("Starting Coin").
-			Value(&m.coinStr).
+			Value(&data.coinStr).
 			Validate(func(s string) error {
 				if _, err := strconv.Atoi(s); err != nil {
 					return fmt.Errorf("must be an integer")
@@ -250,10 +273,61 @@ func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *
 		tagsGroup,
 		goalGroup,
 		homeworldGroup,
-		primaryAssetsGroup,
-		secondaryAssetsGroup,
 		coinGroup,
+	).WithTheme(wizardTheme())
+}
+
+// wizardTheme renders multiselect rows as checkboxes ([✓] / [ ]) so selection
+// state is unambiguous.
+func wizardTheme() *huh.Theme {
+	theme := huh.ThemeCharm()
+	theme.Focused.SelectedPrefix = theme.Focused.SelectedPrefix.SetString("[✓] ")
+	theme.Focused.UnselectedPrefix = theme.Focused.UnselectedPrefix.SetString("[ ] ")
+	theme.Blurred.SelectedPrefix = theme.Blurred.SelectedPrefix.SetString("[✓] ")
+	theme.Blurred.UnselectedPrefix = theme.Blurred.UnselectedPrefix.SetString("[ ] ")
+	return theme
+}
+
+// buildAssetsForm constructs the asset-selection form after the main form
+// completes, so options are computed from the user's final scale/stats/homeworld.
+func buildAssetsForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+	allDefs := make([]*domain.AssetDefinition, 0, len(rb.Assets))
+	for _, def := range rb.Assets {
+		allDefs = append(allDefs, def)
+	}
+	sort.Slice(allDefs, func(i, j int) bool { return allDefs[i].Name < allDefs[j].Name })
+
+	primaryOpts := primaryAssetOptions(data, allDefs, spatialMap)
+	secondaryOpts := anyAssetOptions(data, allDefs, spatialMap)
+	primaryCount, otherCount := domain.AssetCountsFromScale(data.scale)
+
+	primaryGroup := huh.NewGroup(
+		huh.NewMultiSelect[*domain.AssetDefinition]().
+			Title(fmt.Sprintf("Starting assets — primary attribute (choose up to %d)", primaryCount)).
+			Options(primaryOpts...).
+			Value(&data.primaryAssets).
+			Validate(func(picked []*domain.AssetDefinition) error {
+				if len(picked) > primaryCount {
+					return fmt.Errorf("choose at most %d primary-attribute assets for %s scale", primaryCount, data.scale)
+				}
+				return nil
+			}),
 	)
+
+	secondaryGroup := huh.NewGroup(
+		huh.NewMultiSelect[*domain.AssetDefinition]().
+			Title(fmt.Sprintf("Starting assets — any attribute (choose up to %d)", otherCount)).
+			Options(secondaryOpts...).
+			Value(&data.secondaryAssets).
+			Validate(func(picked []*domain.AssetDefinition) error {
+				if len(picked) > otherCount {
+					return fmt.Errorf("choose at most %d any-attribute assets for %s scale", otherCount, data.scale)
+				}
+				return nil
+			}),
+	)
+
+	return huh.NewForm(primaryGroup, secondaryGroup).WithTheme(wizardTheme())
 }
 
 // ---------------------------------------------------------------------------
@@ -303,55 +377,13 @@ func worldsToOptions(spatialMap *spatial.RegionMap) []huh.Option[string] {
 // buildAssetGroups returns two huh.Group values: one for primary-attribute assets
 // (filtered to the faction's primary stat category), one for any-attribute assets.
 // Quota enforcement uses the scale-derived counts from AssetCountsFromScale.
-func buildAssetGroups(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) (*huh.Group, *huh.Group) {
-	allDefs := make([]*domain.AssetDefinition, 0, len(rb.Assets))
-	for _, def := range rb.Assets {
-		allDefs = append(allDefs, def)
-	}
-	sort.Slice(allDefs, func(i, j int) bool { return allDefs[i].Name < allDefs[j].Name })
-
-	primaryGroup := huh.NewGroup(
-		huh.NewMultiSelect[*domain.AssetDefinition]().
-			Title("Starting assets — primary attribute").
-			OptionsFunc(func() []huh.Option[*domain.AssetDefinition] {
-				return primaryAssetOptions(m, allDefs, spatialMap)
-			}, &m.primaryStat).
-			Value(&m.primaryAssets).
-			Validate(func(picked []*domain.AssetDefinition) error {
-				primaryCount, _ := domain.AssetCountsFromScale(m.scale)
-				if len(picked) > primaryCount {
-					return fmt.Errorf("choose at most %d primary-attribute assets for %s scale", primaryCount, m.scale)
-				}
-				return nil
-			}),
-	)
-
-	secondaryGroup := huh.NewGroup(
-		huh.NewMultiSelect[*domain.AssetDefinition]().
-			Title("Starting assets — any attribute").
-			OptionsFunc(func() []huh.Option[*domain.AssetDefinition] {
-				return anyAssetOptions(m, allDefs, spatialMap)
-			}, &m.homeworldID).
-			Value(&m.secondaryAssets).
-			Validate(func(picked []*domain.AssetDefinition) error {
-				_, otherCount := domain.AssetCountsFromScale(m.scale)
-				if len(picked) > otherCount {
-					return fmt.Errorf("choose at most %d any-attribute assets for %s scale", otherCount, m.scale)
-				}
-				return nil
-			}),
-	)
-
-	return primaryGroup, secondaryGroup
-}
-
-func primaryAssetOptions(m *Model, allDefs []*domain.AssetDefinition, spatialMap *spatial.RegionMap) []huh.Option[*domain.AssetDefinition] {
-	primaryRating, _, _ := domain.RatingsFromScale(m.scale)
-	techLevel := worldTechLevel(m.homeworldID, spatialMap)
+func primaryAssetOptions(data *formData, allDefs []*domain.AssetDefinition, spatialMap *spatial.RegionMap) []huh.Option[*domain.AssetDefinition] {
+	primaryRating, _, _ := domain.RatingsFromScale(data.scale)
+	techLevel := worldTechLevel(data.homeworldID, spatialMap)
 
 	var options []huh.Option[*domain.AssetDefinition]
 	for _, def := range allDefs {
-		if def.Category != m.primaryStat {
+		if def.Category != data.primaryStat {
 			continue
 		}
 		if def.MinRating > primaryRating {
@@ -368,14 +400,14 @@ func primaryAssetOptions(m *Model, allDefs []*domain.AssetDefinition, spatialMap
 	return options
 }
 
-func anyAssetOptions(m *Model, allDefs []*domain.AssetDefinition, spatialMap *spatial.RegionMap) []huh.Option[*domain.AssetDefinition] {
-	primaryRating, secondaryRating, tertiaryRating := domain.RatingsFromScale(m.scale)
-	techLevel := worldTechLevel(m.homeworldID, spatialMap)
+func anyAssetOptions(data *formData, allDefs []*domain.AssetDefinition, spatialMap *spatial.RegionMap) []huh.Option[*domain.AssetDefinition] {
+	primaryRating, secondaryRating, tertiaryRating := domain.RatingsFromScale(data.scale)
+	techLevel := worldTechLevel(data.homeworldID, spatialMap)
 
 	ratingFor := map[domain.FactionStat]int{
-		m.primaryStat:   primaryRating,
-		m.secondaryStat: secondaryRating,
-		m.tertiaryStat:  tertiaryRating,
+		data.primaryStat:   primaryRating,
+		data.secondaryStat: secondaryRating,
+		data.tertiaryStat:  tertiaryRating,
 	}
 
 	var options []huh.Option[*domain.AssetDefinition]
@@ -402,16 +434,16 @@ func worldTechLevel(worldID string, spatialMap *spatial.RegionMap) int {
 	return 5 // permissive default when world isn't resolved yet
 }
 
-func previewMaxHP(m *Model) int {
-	primary, secondary, tertiary := domain.RatingsFromScale(m.scale)
+func previewMaxHP(data *formData) int {
+	primary, secondary, tertiary := domain.RatingsFromScale(data.scale)
 	temp := &domain.Faction{}
 	for _, stat := range []struct {
 		name   domain.FactionStat
 		rating int
 	}{
-		{m.primaryStat, primary},
-		{m.secondaryStat, secondary},
-		{m.tertiaryStat, tertiary},
+		{data.primaryStat, primary},
+		{data.secondaryStat, secondary},
+		{data.tertiaryStat, tertiary},
 	} {
 		switch stat.name {
 		case domain.StatForce:
@@ -480,6 +512,7 @@ type wizardHelpKeys struct{}
 func (wizardHelpKeys) ShortHelp() []key.Binding {
 	return []key.Binding{
 		key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next field")),
+		key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle")),
 		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "advance")),
 		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "discard")),
 	}

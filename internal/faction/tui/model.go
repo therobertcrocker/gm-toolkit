@@ -15,14 +15,18 @@ import (
 )
 
 type Model struct {
-	bar     modebar.Model
-	subs    map[modebar.Mode]tea.Model
-	adapter *adapter.Adapter
-	help    help.Model
+	bar          modebar.Model
+	subs         map[modebar.Mode]tea.Model
+	adapter      *adapter.Adapter
+	help         help.Model
+	factionState *state.FactionState
+	campaignID   string
+	width        int
+	height       int
 
-	confirmExit  bool
-	priorMode    modebar.Mode
-	showHelpStub bool
+	confirmExit bool
+	priorMode   modebar.Mode
+	showHelp    bool
 }
 
 func NewModel(
@@ -33,11 +37,14 @@ func NewModel(
 	spatialMap *spatial.RegionMap,
 ) Model {
 	h := help.New()
-	h.ShowAll = true
+	h.ShowAll = false
 	return Model{
-		bar:     modebar.New(),
-		adapter: adp,
-		help:    h,
+		bar:          modebar.New(),
+		adapter:      adp,
+		help:         h,
+		showHelp:     true,
+		factionState: factionState,
+		campaignID:   factionState.CampaignID,
 		subs: map[modebar.Mode]tea.Model{
 			modebar.ModeManage: manage.New(factionState, paths, rb, spatialMap),
 			modebar.ModeTurn:   turn.New(),

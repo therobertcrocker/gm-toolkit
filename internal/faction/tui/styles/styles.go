@@ -3,16 +3,20 @@ package styles
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	ModeBarActive    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12")).Background(lipgloss.Color("0")).Padding(0, 2)
-	ModeBarInactive  = lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Padding(0, 2)
-	ModeBarDisabled  = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Padding(0, 2)
-	ModeBarSeparator = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).SetString(" │ ")
+	AppTitle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF"))
+	AppCampaign = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086"))
+	AppDivider  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086"))
 
-	Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Padding(2, 4).Italic(true)
+	ModeBarActive    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#89B4FA")).Background(lipgloss.Color("#1E1E2E")).Padding(0, 2)
+	ModeBarInactive  = lipgloss.NewStyle().Foreground(lipgloss.Color("#BAC2DE")).Padding(0, 2)
+	ModeBarDisabled  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).Padding(0, 2)
+	ModeBarSeparator = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).SetString(" │ ")
 
-	ConfirmExit = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9")).Padding(1, 2)
+	Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF")).Padding(2, 4).Italic(true)
 
-	HelpStub = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Padding(1, 2)
+	ConfirmExit = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F38BA8")).Padding(1, 2)
 
-	SaveError = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
+	HelpStub = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).Padding(1, 2)
+
+	SaveError = lipgloss.NewStyle().Foreground(lipgloss.Color("#F38BA8")).Bold(true)
 )

@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/contextstrip"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/deleteconfirm"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/detail"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/list"
@@ -44,9 +43,10 @@ type Model struct {
 	detail        detail.Model
 	create        wizard.Model
 	deleteConfirm deleteconfirm.Model
-	strip         contextstrip.Model
 
-	saveErr error
+	termWidth  int
+	termHeight int
+	saveErr    error
 }
 
 func New(
@@ -62,7 +62,6 @@ func New(
 		spatialMap:   spatialMap,
 		view:         viewList,
 		list:         list.New(factionState),
-		strip:        contextstrip.New(factionState),
 	}
 }
 
@@ -70,13 +69,30 @@ func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.termWidth = msg.Width
+		m.termHeight = msg.Height
+		m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: regionWidths(msg.Width)[Left], Height: msg.Height})
+		if m.view == viewDetail {
+			var cmd tea.Cmd
+			m.detail, cmd = m.detail.Update(msg)
+			return m, cmd
+		}
+		if m.view != viewList {
+			return m.routeForward(msg)
+		}
+		return m, nil
+
 	case msgs.CreatedMsg:
 		if err := state.CreateFaction(m.paths.StatePath, m.factionState, msg.Faction); err != nil {
 			m.saveErr = err
 			return m, nil
 		}
 		m.saveErr = nil
-		m.strip = contextstrip.New(m.factionState)
+		m.list = list.New(m.factionState)
+		if m.termWidth > 0 {
+			m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: regionWidths(m.termWidth)[Left], Height: m.termHeight})
+		}
 		m.view = backTarget[viewCreate]
 		return m, nil
 
@@ -86,7 +102,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.saveErr = nil
-		m.strip = contextstrip.New(m.factionState)
+		m.list = list.New(m.factionState)
+		if m.termWidth > 0 {
+			m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: regionWidths(m.termWidth)[Left], Height: m.termHeight})
+		}
 		m.view = viewList
 		return m, nil
 
@@ -96,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case msgs.RequestDetailMsg:
 		faction := m.factionState.Factions[msg.FactionID]
-		m.detail = detail.New(faction)
+		m.detail = detail.New(faction, m.rulebook, m.termWidth, m.termHeight)
 		m.view = viewDetail
 		return m, nil
 
@@ -133,11 +152,15 @@ func (m Model) View() string {
 	var content string
 	switch m.view {
 	case viewList:
-		content = lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			m.list.View(),
-			m.strip.View(),
-		)
+		contentH := max(m.termHeight, 1)
+		placeholder := lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).
+			Align(lipgloss.Center).AlignVertical(lipgloss.Center)
+		panels := map[Region]panel{
+			Left:   {content: m.list.View(), style: lipgloss.NewStyle()},
+			Center: {content: "—", style: placeholder},
+			Right:  {content: "—", style: placeholder},
+		}
+		content = compose(panels, regionWidths(m.termWidth), contentH)
 	case viewDetail:
 		content = m.detail.View()
 	case viewCreate:

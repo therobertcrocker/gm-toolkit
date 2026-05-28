@@ -2,83 +2,246 @@ package detail
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/msgs"
 )
 
+var (
+	titleStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF"))
+	idStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086"))
+	scaleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#A6ADC8"))
+	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#899afa"))
+	ruleStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#45475A"))
+	labelStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#9399B2"))
+	valueStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#fdf5fb"))
+	primaryStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#A6E3A1"))
+	itemStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#fdf5fb"))
+	dimStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086"))
+)
+
+const hpBarWidth = 16
+
 type keyMap struct {
+	Scroll key.Binding
 	Delete key.Binding
 	Back   key.Binding
 }
 
 type Model struct {
-	faction *domain.Faction
-	keys    keyMap
+	faction  *domain.Faction
+	rulebook *rulebook.Rulebook
+	viewport viewport.Model
+	width    int
+	height   int
+	keys     keyMap
 }
 
-func New(faction *domain.Faction) Model {
-	return Model{
-		faction: faction,
+func New(faction *domain.Faction, rb *rulebook.Rulebook, width, height int) Model {
+	m := Model{
+		faction:  faction,
+		rulebook: rb,
+		width:    width,
+		height:   height,
 		keys: keyMap{
+			Scroll: key.NewBinding(key.WithKeys("up", "down", "j", "k"), key.WithHelp("↑/↓", "scroll")),
 			Delete: key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "delete")),
 			Back:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 		},
 	}
+	m.viewport = viewport.New(width, height)
+	m.viewport.SetContent(m.renderBody())
+	return m
 }
 
 func (m Model) Init() tea.Cmd { return nil }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	if km, ok := msg.(tea.KeyMsg); ok {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height
+		m.viewport.SetContent(m.renderBody())
+		return m, nil
+	case tea.KeyMsg:
 		switch {
-		case key.Matches(km, m.keys.Delete):
+		case key.Matches(msg, m.keys.Delete):
 			return m, func() tea.Msg { return msgs.RequestDeleteMsg{Faction: m.faction} }
-		case key.Matches(km, m.keys.Back):
+		case key.Matches(msg, m.keys.Back):
 			return m, func() tea.Msg { return msgs.CancelMsg{} }
 		}
 	}
-	return m, nil
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
 }
 
 func (m Model) View() string {
 	if m.faction == nil {
 		return "(no faction)"
 	}
-	var b strings.Builder
+	return m.viewport.View()
+}
+
+func (m Model) renderBody() string {
+	if m.faction == nil {
+		return ""
+	}
 	f := m.faction
+	var b strings.Builder
 
-	fmt.Fprintf(&b, "%s  (%s)\n", f.Name, f.ID)
-	fmt.Fprintf(&b, "Scale: %s\n", f.Scale)
-	fmt.Fprintf(&b, "Force: %d  Cunning: %d  Wealth: %d\n", f.Force, f.Cunning, f.Wealth)
-	fmt.Fprintf(&b, "HP: %d/%d   Coin: %d   XP: %d\n", f.CurrentHP, f.MaxHP, f.Coin, f.XP)
-	fmt.Fprintf(&b, "Homeworld: %s\n", f.Homeworld.WorldID)
+	b.WriteString(titleStyle.Render(f.Name) + idStyle.Render("  "+f.ID) + "\n")
+	b.WriteString(scaleStyle.Render(titleCase(string(f.Scale))) + "\n\n")
+	b.WriteString(labelStyle.Render("Homeworld  ") + valueStyle.Render(f.Homeworld.WorldID) + "\n\n")
 
-	fmt.Fprintf(&b, "\nTags:\n")
+	b.WriteString(m.statRow(f) + "\n\n")
+	b.WriteString(m.metaRow(f) + "\n")
+
+	b.WriteString("\n" + m.section("TAGS") + "\n")
+	if len(f.Tags) == 0 {
+		b.WriteString("  " + dimStyle.Render("none") + "\n")
+	}
 	for _, tag := range f.Tags {
-		fmt.Fprintf(&b, "  - %s\n", tag.Name)
+		b.WriteString("  " + itemStyle.Render(tag.Name) + "\n")
+		b.WriteString(m.wrap(tag.Description, 4, lipgloss.Color("#BAC2DE")) + "\n")
+		if tag.Effect != "" {
+			b.WriteString(m.wrap("Effect: "+tag.Effect, 4, lipgloss.Color("#7F849C")) + "\n")
+		}
 	}
 
+	b.WriteString("\n" + m.section("GOAL") + "\n")
 	if f.ActiveGoal != nil {
-		fmt.Fprintf(&b, "\nActive Goal: %s (progress %d)\n", f.ActiveGoal.GoalID, f.ActiveGoal.Progress)
+		goalName := f.ActiveGoal.GoalID
+		var goalDesc string
+		if goal, ok := m.rulebook.Goals[f.ActiveGoal.GoalID]; ok {
+			goalName = goal.Name
+			goalDesc = goal.Description
+		}
+		b.WriteString("  " + itemStyle.Render(goalName) +
+			dimStyle.Render(fmt.Sprintf("   ·   progress %d", f.ActiveGoal.Progress)) + "\n")
+		if goalDesc != "" {
+			b.WriteString(m.wrap(goalDesc, 4, lipgloss.Color("#BAC2DE")) + "\n")
+		}
+	} else {
+		b.WriteString("  " + dimStyle.Render("none") + "\n")
 	}
 
-	fmt.Fprintf(&b, "\nAssets:\n")
+	b.WriteString("\n" + m.section("ASSETS") + "\n")
+	if len(f.Assets) == 0 {
+		b.WriteString("  " + dimStyle.Render("none") + "\n")
+	}
 	for _, asset := range domain.SortedAssets(f) {
-		fmt.Fprintf(&b, "  - %s\n", asset.ID)
+		name := asset.DefinitionID
+		if def, ok := m.rulebook.Assets[asset.DefinitionID]; ok {
+			name = def.Name
+		}
+		b.WriteString("  " + dimStyle.Render("• ") + itemStyle.Render(name) + "\n")
 	}
 
-	fmt.Fprintf(&b, "\nBases:\n")
+	b.WriteString("\n" + m.section("BASES") + "\n")
+	if len(f.Bases) == 0 {
+		b.WriteString("  " + dimStyle.Render("none") + "\n")
+	}
 	for _, base := range f.Bases {
-		fmt.Fprintf(&b, "  - %s\n", base.Location.WorldID)
+		b.WriteString("  " + dimStyle.Render("• ") + itemStyle.Render(base.Location.WorldID) + "\n")
 	}
 
 	return b.String()
+}
+
+func (m Model) statRow(f *domain.Faction) string {
+	stats := []struct {
+		name string
+		val  int
+	}{
+		{"Force", f.Force},
+		{"Cunning", f.Cunning},
+		{"Wealth", f.Wealth},
+	}
+	primary := f.Force
+	for _, s := range stats {
+		if s.val > primary {
+			primary = s.val
+		}
+	}
+	parts := make([]string, 0, len(stats))
+	for _, s := range stats {
+		style := valueStyle
+		if s.val == primary {
+			style = primaryStyle
+		}
+		parts = append(parts, labelStyle.Render(s.name+" ")+style.Render(strconv.Itoa(s.val)))
+	}
+	return strings.Join(parts, "    ")
+}
+
+func (m Model) metaRow(f *domain.Faction) string {
+	hp := labelStyle.Render("HP ") + hpBar(f.CurrentHP, f.MaxHP) +
+		"  " + valueStyle.Render(fmt.Sprintf("%d/%d", f.CurrentHP, f.MaxHP))
+	coin := labelStyle.Render("Coin ") + valueStyle.Render(strconv.Itoa(f.Coin))
+	xp := labelStyle.Render("XP ") + valueStyle.Render(strconv.Itoa(f.XP))
+	return hp + "\n\n" + coin + "\n" + xp
+}
+
+func hpBar(current, maximum int) string {
+	if maximum < 1 {
+		maximum = 1
+	}
+	ratio := float64(current) / float64(maximum)
+	ratio = math.Max(0, math.Min(1, ratio))
+	filled := int(math.Round(ratio * hpBarWidth))
+
+	var color lipgloss.Color
+	switch {
+	case ratio > 0.5:
+		color = lipgloss.Color("#A6E3A1")
+	case ratio > 0.25:
+		color = lipgloss.Color("#F9E2AF")
+	default:
+		color = lipgloss.Color("#F38BA8")
+	}
+	return lipgloss.NewStyle().Foreground(color).Render(strings.Repeat("█", filled)) +
+		dimStyle.Render(strings.Repeat("░", hpBarWidth-filled))
+}
+
+func (m Model) section(title string) string {
+	head := sectionStyle.Render(title)
+	ruleLen := max(m.contentWidth()-lipgloss.Width(head)-1, 0)
+	return head + " " + ruleStyle.Render(strings.Repeat("─", ruleLen))
+}
+
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func (m Model) wrap(text string, indent int, color lipgloss.Color) string {
+	return lipgloss.NewStyle().
+		Width(m.contentWidth()).
+		PaddingLeft(indent).
+		Foreground(color).
+		Render(text)
+}
+
+func (m Model) contentWidth() int {
+	if m.width > 0 {
+		return m.width
+	}
+	return 80
 }
 
 func (m Model) Help() help.KeyMap { return helpKeys{m.keys} }
@@ -86,8 +249,8 @@ func (m Model) Help() help.KeyMap { return helpKeys{m.keys} }
 type helpKeys struct{ keys keyMap }
 
 func (h helpKeys) ShortHelp() []key.Binding {
-	return []key.Binding{h.keys.Delete, h.keys.Back}
+	return []key.Binding{h.keys.Scroll, h.keys.Delete, h.keys.Back}
 }
 func (h helpKeys) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{h.keys.Delete, h.keys.Back}}
+	return [][]key.Binding{{h.keys.Scroll, h.keys.Delete, h.keys.Back}}
 }

@@ -41,6 +41,11 @@ var globals = globalKeys{
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m.resizeSubs()
+
 	case tea.KeyMsg:
 		if m.confirmExit {
 			switch msg.String() {
@@ -67,8 +72,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.confirmExit = true
 			return m, nil
 		case "?":
-			m.showHelpStub = !m.showHelpStub
-			return m, nil
+			m.showHelp = !m.showHelp
+			return m.resizeSubs()
 		}
 	}
 
@@ -83,4 +88,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) afterModeChange() (Model, tea.Cmd) {
 	return m, nil
+}
+
+// Layout budget owned by the root. The header is the title rule/line/rule plus
+// the mode bar and a blank line; the footer is the help line bracketed by two
+// rules. Sub-models are handed the remaining height and never see the chrome.
+const (
+	headerHeight = 5
+	footerHeight = 3
+)
+
+func (m Model) contentHeight() int {
+	reserved := headerHeight
+	if m.showHelp {
+		reserved += footerHeight
+	}
+	if h := m.height - reserved; h > 1 {
+		return h
+	}
+	return 1
+}
+
+// resizeSubs forwards the current content-area size to every sub-model and
+// resizes the help renderer. Called on a terminal resize and whenever the help
+// bar is toggled (which changes the content budget).
+func (m Model) resizeSubs() (Model, tea.Cmd) {
+	if w := m.width - 2; w > 1 {
+		m.help.Width = w
+	}
+	sized := tea.WindowSizeMsg{Width: m.width, Height: m.contentHeight()}
+	var cmds []tea.Cmd
+	for mode, sub := range m.subs {
+		updated, cmd := sub.Update(sized)
+		m.subs[mode] = updated
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return m, tea.Batch(cmds...)
 }

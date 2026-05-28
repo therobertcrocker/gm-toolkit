@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
@@ -14,27 +15,54 @@ import (
 func (m Model) View() string {
 	var sb strings.Builder
 
-	sb.WriteString(m.bar.View())
+	ruleWidth := m.width
+	if ruleWidth <= 0 {
+		ruleWidth = 80
+	}
+	rule := styles.AppDivider.Render(strings.Repeat("─", ruleWidth))
+
+	var infoStr string
+	if m.factionState != nil {
+		infoStr = fmt.Sprintf("  %s  ·  Cycle %d→%d  ·  %d Factions  ",
+			m.factionState.CampaignID,
+			m.factionState.CycleNumber,
+			m.factionState.CycleNumber+1,
+			len(m.factionState.Factions))
+	}
+	left := styles.AppTitle.Render("  F A C T I O N   M A N A G E R")
+	right := styles.AppCampaign.Render(infoStr)
+	gap := ruleWidth - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 1 {
+		gap = 1
+	}
+	titleLine := left + strings.Repeat(" ", gap) + right
+
+	sb.WriteString(rule + "\n")
+	sb.WriteString(titleLine + "\n")
+	sb.WriteString(rule + "\n")
+	sb.WriteString(lipgloss.PlaceHorizontal(ruleWidth, lipgloss.Center, m.bar.View()))
 	sb.WriteString("\n\n")
 
+	var content string
 	if m.confirmExit {
-		sb.WriteString(styles.ConfirmExit.Render("Quit? Press Enter to confirm, Esc to cancel."))
+		content = styles.ConfirmExit.Render("Quit? Press Enter to confirm, Esc to cancel.")
 	} else {
 		switch m.bar.Active() {
 		case modebar.ModeSpatial:
-			sb.WriteString(styles.Placeholder.Render("Spatial — reserved for F-012 (Spatial Map CLI)"))
+			content = styles.Placeholder.Render("Spatial — reserved for F-012 (Spatial Map CLI)")
 		case modebar.ModeQuit:
-			sb.WriteString(styles.ConfirmExit.Render("Quit slot active. Press Enter to confirm."))
+			content = styles.ConfirmExit.Render("Quit slot active. Press Enter to confirm.")
 		default:
 			if sub, ok := m.subs[m.bar.Active()]; ok {
-				sb.WriteString(sub.View())
+				content = sub.View()
 			} else {
-				sb.WriteString(styles.Placeholder.Render(fmt.Sprintf("Mode %v has no registered sub-model.", m.bar.Active())))
+				content = styles.Placeholder.Render(fmt.Sprintf("Mode %v has no registered sub-model.", m.bar.Active()))
 			}
 		}
 	}
+	sb.WriteString(lipgloss.NewStyle().Height(m.contentHeight()).Render(content))
 
-	if m.showHelpStub {
+	if m.showHelp {
 		var subBindings help.KeyMap = emptyKeyMap{}
 		if helper, ok := m.subs[m.bar.Active()].(Helper); ok {
 			if km := helper.Help(); km != nil {
@@ -42,8 +70,9 @@ func (m Model) View() string {
 			}
 		}
 		composed := combineKeyMaps(globalsKeyMap{}, subBindings)
-		sb.WriteString("\n\n")
-		sb.WriteString(m.help.View(composed))
+		sb.WriteString("\n" + rule + "\n")
+		sb.WriteString("  " + m.help.View(composed) + "\n")
+		sb.WriteString(rule)
 	}
 
 	return sb.String()

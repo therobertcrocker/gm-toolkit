@@ -67,7 +67,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		m.list.SetSize(msg.Width-32, msg.Height-4)
+		m.list.SetSize(msg.Width, msg.Height-7)
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
@@ -115,6 +115,6 @@ func emptyState() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
 		lipgloss.NewStyle().Render("No factions yet."),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("Press n to create one"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).Render("Press n to create one"),
 	)
 }
