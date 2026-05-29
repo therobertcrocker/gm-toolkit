@@ -2,9 +2,9 @@
 
 ## Context / Goal
 
-This plan turns [`tui-manage-discovery.md`](../discovery/tui-manage-discovery.md) into an executable sequence of commits. Manage is Initiative 2 of the [TUI Rebuild arc](../arcs/tui-rebuild/tui-rebuild-arc-plan.md). After this initiative ships, the TUI replaces hand-edited TOML for the entire faction authoring loop — list, detail, create (full SWN creation wizard), edit, delete.
+This plan turns [`tui-manage-discovery.md`](../discovery/tui-manage-discovery.md) into an executable sequence of commits. Manage is Initiative 2 of the [TUI Rebuild arc](../arcs/tui-rebuild/tui-rebuild-arc-plan.md). After this initiative ships, the TUI covers list, detail, create (full SWN creation wizard), and delete; editing existing factions remains hand-edited TOML until a follow-up initiative ships (see Decision 2 for rationale).
 
-Discovery ratified the structural decisions — router-with-sub-model-per-view, state-package CRUD ownership, completion-message pattern, context-strip placement, help-overlay shape. This plan ratifies the four open questions Discovery deferred, settles two implementation-time calls Discovery left to Plan (refresh shape, rollback semantics), and breaks the work into commits sized one-per-execution-session.
+Discovery ratified the structural decisions — router-with-sub-model-per-view, state-package CRUD ownership, completion-message pattern, context-strip placement, help-overlay shape. This plan ratifies the four open questions Discovery deferred, settles two implementation-time calls Discovery left to Plan (refresh shape, rollback semantics), splits edit into its own follow-up initiative (Decision 2), establishes the wizard → `domain.NewFaction` → state separation (Decision 12), and breaks the work into commits sized one-per-execution-session.
 
 **Related artifacts:**
 - Discovery: [`tui-manage-discovery.md`](../discovery/tui-manage-discovery.md)
@@ -16,16 +16,17 @@ Discovery ratified the structural decisions — router-with-sub-model-per-view, 
 ## Decisions Ratified in Planning
 
 1. **Create wizard walks the full SWN Faction Creation Checklist.** Resolves Discovery's "Faction CRUD form scope" open question — Robert chose the broader scope over identity-only. The wizard is a multi-step `huh.Form` covering: Scale, Attribute assignment (which stat is primary/secondary/tertiary), HP display (derived `huh.Note`), Tags (1–2 from rulebook), Starting Goal (from rulebook), Homeworld (world picker from spatial), Starting Assets (filtered by rating + tech-level, quota per scale), Starting Coin (GM discretion, numeric input). The auto-derived steps (HP, homeworld Base of Influence at max HP) appear as confirmation notes, not interactive inputs.
-2. **Edit reuses the create wizard with pre-population.** Same multi-step form, different initial draft buffer. Create starts from `domain.Faction{}` plus Scale defaults; edit starts from a deep copy of the current faction. Constructor flag determines completion message — `CreatedMsg` vs `EditSavedMsg`. One wizard package, two entry points.
-3. **Discard-confirm is internal state on edit/create models.** Resolves Discovery's "structural home" choice. Each form gains `confirmingDiscard bool`; View overlays a y/n prompt when set; Update intercepts y/n locally and emits `CancelMsg` on y. No new package, no `viewDiscardConfirm` router branch. The prompt fires unconditionally per Discovery (no "only-when-dirty" gate).
+2. **Edit deferred to a follow-up initiative.** This initiative ships list + detail + create + delete only. The original plan reused the create wizard for edit; that decision surfaced a structural conflict — the wizard's "starting assets" and "starting Coin" steps don't map onto a faction with accrued runtime state (Coin spent, assets bought/destroyed). Rather than narrow edit's scope mid-plan, edit is split into its own initiative. **UX gap acknowledged:** GMs modify existing factions by hand-editing TOML until the edit initiative ships.
+3. **Discard-confirm is internal state on the create model.** Resolves Discovery's "structural home" choice. The wizard gains `confirmingDiscard bool`; View overlays a y/n prompt when set; Update intercepts y/n locally and emits `CancelMsg` on y. No new package, no `viewDiscardConfirm` router branch. The prompt fires unconditionally per Discovery (no "only-when-dirty" gate).
 4. **Help dispatch: modes implement a `Help()` passthrough.** Resolves Discovery's "root vs. passthrough" choice. Manage's `Help() help.KeyMap` returns its active sub-model's `Help()`. Root holds a `Helper` interface; `?` handler calls `subs[m.bar.Active()].(Helper).Help()` and composes with globals. Root stays agnostic of any mode's internal view-stack shape; Turn slots in the same way.
 5. **Empty-list grammar: centered hint with key prompt.** Resolves Discovery's "empty-state UX" choice. List area renders `"No factions yet."` in normal style on one line, dimmed `"Press n to create one"` below. Turn (Initiative 3) inherits: `"No factions in roster."` + `"Press n in Manage to add one."`.
 6. **Spatial data loaded alongside rulebook in `factionRun`.** The wizard's homeworld picker needs the world list; the wizard's asset step needs each world's `TechLevel()`. `cmd/gm-toolkit/faction.go` adds `spatial.LoadRegionMap(paths.SpatialDataDir)` after the rulebook load; `tui.Run` signature expands to take a `*spatial.RegionMap`. Manage receives it via the root Model. Foundation's existing data flow (rulebook → tui.Run → root → adapter) is the template — spatial threads the same path. If `LoadRegionMap` returns an error (no spatial seeded), `factionRun` surfaces it with a `hint:` line per the existing rulebook error pattern; the seed command is TBD per the F-012 backlog item, so the hint text is left to execution-time re-grounding.
-7. **State CRUD lives in a new file: `internal/faction/state/crud.go`.** Keeps `faction_state.go`'s `Load`/`Save` contract clean; CRUD is its own concern. Functions and sentinels declared there (signatures in Shared Context). Save errors do not roll back the in-memory mutation — per Discovery's MVP framing. Inline `SaveErrorMsg` surfaces the error; user retries. Revisit only if execution surfaces brittleness.
-8. **Context strip refresh: `manage.Update` reassigns the strip after a successful CRUD message.** After `CreatedMsg` / `EditSavedMsg` / `DeletedMsg` is handled (state CRUD succeeds), `manage.Update` calls `m.strip = contextstrip.New(m.factionState)`. The strip is a stateless snapshot constructor — cheaper than a stateful `Refresh()` method, and the recompute cost (read three fields from FactionState) is trivial.
-9. **`bubbles/list` powers the list view; `bubbles/help` powers the help overlay.** Add these in the commits that first use them — list in Commit 2, help in Commit 7. No global "dependency bump" commit; tracked changes land with the consumer.
+7. **State CRUD lives in a new file: `internal/faction/state/crud.go`.** Keeps `faction_state.go`'s `Load`/`Save` contract clean; CRUD is its own concern. CRUD surface is `CreateFaction` + `DeleteFaction` only — `UpdateFaction` has no consumer until the edit initiative ships (the engine mutates Faction objects in place and calls `Save` directly); `GetFaction` is unused (callers access `fs.Factions[id]` directly with map indexing, valid since IDs flow from the list). Sentinels: `ErrFactionAlreadyExists`, `ErrFactionNotFound`, `ErrInvalidFactionID`. Save errors do not roll back the in-memory mutation — per Discovery's MVP framing. Inline `SaveErrorMsg` surfaces the error; user retries. Revisit only if execution surfaces brittleness.
+8. **Context strip refresh: `manage.Update` reassigns the strip after a successful CRUD message.** After `CreatedMsg` / `DeletedMsg` is handled (state CRUD succeeds), `manage.Update` calls `m.strip = contextstrip.New(m.factionState)`. The strip is a stateless snapshot constructor — cheaper than a stateful `Refresh()` method, and the recompute cost (read three fields from FactionState) is trivial.
+9. **`bubbles/list` powers the list view; `bubbles/help` powers the help overlay.** Add these in the commits that first use them — list in Commit 2, help in Commit 6. No global "dependency bump" commit; tracked changes land with the consumer.
 10. **List view's item shape: Name · Scale · current/max HP · Coin.** Single-column `list.Item`. Selection state and j/k/up/down scrolling inherited from `bubbles/list`. Faction `ID` shown dimmed in the detail view, not the list (factions are GM-facing; names are the working identifier).
-11. **Seven commits across four phases.** Phase 1 (state CRUD): 1 commit. Phase 2 (router + read-only views): 2 commits. Phase 3 (wizard + edit): 2 commits. Phase 4 (presentation polish): 2 commits. Arc-Plan estimated 5–8; this lands within range. The Phase 3 create-wizard commit (Commit 4) is the heaviest — flagged for execution-time re-grounding and possible mid-phase split if it grows past one session.
+11. **Six commits across four phases.** Phase 1 (state CRUD): 1 commit. Phase 2 (router + read-only views): 2 commits. Phase 3 (wizard): 1 commit. Phase 4 (presentation polish): 2 commits. Arc-Plan estimated 5–8; this lands within range. The Phase 3 create-wizard commit (Commit 4) is the heaviest — flagged for execution-time re-grounding and possible mid-phase split if it grows past one session.
+12. **Wizard collects inputs; `domain.NewFaction(...)` constructs; state persists.** Derivation logic (HP via `CalcMaxHP`, attribute ratings via `RatingsFromScale`, asset quota via `AssetCountsFromScale`, Base of Influence auto-creation at MaxHP on homeworld) lives in `domain`, not `wizard`. The wizard holds bound primitives for each form step (scale, picked stats, tags, goal, homeworld, asset picks, coin); at form completion, calls `domain.NewFaction(...)` to synthesize the `*domain.Faction`. `state.CreateFaction` is a thin persistence boundary that validates uniqueness, applies the map mutation, and saves. This keeps three roles separate: TUI = input collection, domain = rules and construction, state = persistence.
 
 ## Open Questions — To Ratify at Implementation Time
 
@@ -47,7 +48,7 @@ gm-toolkit/
 │   ├── faction/
 │   │   ├── state/
 │   │   │   ├── faction_state.go         # untouched
-│   │   │   └── crud.go                  # NEW — Create/Update/Delete/Get + sentinels
+│   │   │   └── crud.go                  # NEW — Create/Delete + sentinels
 │   │   └── tui/
 │   │       ├── tui.go                   # Run signature +spatial param
 │   │       ├── model.go                 # +spatial field; +manage.New(adapter, spatial)
@@ -60,11 +61,11 @@ gm-toolkit/
 │   │           ├── list/
 │   │           │   └── list.go          # bubbles/list + empty-state hint
 │   │           ├── detail/
-│   │           │   └── detail.go        # display all faction fields; e/d/Esc
+│   │           │   └── detail.go        # display all faction fields; d/Esc
 │   │           ├── deleteconfirm/
 │   │           │   └── deleteconfirm.go # y/n confirm
 │   │           ├── wizard/
-│   │           │   └── wizard.go        # huh multi-step form; create + edit entry points
+│   │           │   └── wizard.go        # huh multi-step form; create-only (edit deferred)
 │   │           └── contextstrip/
 │   │               └── contextstrip.go  # campaign / cycle / faction count
 │   └── spatial/                          # untouched (loader already exists)
@@ -78,7 +79,7 @@ Added incrementally with the consumer. No standalone "deps" commit.
 
 - **Commit 2** — `github.com/charmbracelet/bubbles/list` (list view).
 - **Commit 4** — no new direct deps; `huh` is already in `go.mod` from Foundation.
-- **Commit 7** — `github.com/charmbracelet/bubbles/help` and `github.com/charmbracelet/bubbles/key` (help overlay + KeyMap).
+- **Commit 6** — `github.com/charmbracelet/bubbles/help` and `github.com/charmbracelet/bubbles/key` (help overlay + KeyMap).
 
 Both `bubbles/*` packages are siblings of `bubbletea` and already in the module graph as transitive deps; `go get` to make them direct deps.
 
@@ -108,20 +109,47 @@ var (
 // is NOT rolled back (caller surfaces the error and retries).
 func CreateFaction(path string, fs *FactionState, faction *domain.Faction) error
 
-// UpdateFaction validates that faction.ID exists in fs.Factions, replaces
-// the entry, then persists. Returns ErrFactionNotFound if absent.
-func UpdateFaction(path string, fs *FactionState, faction *domain.Faction) error
-
 // DeleteFaction validates that id exists in fs.Factions, removes the entry,
 // then persists. Returns ErrFactionNotFound if absent.
 func DeleteFaction(path string, fs *FactionState, id string) error
-
-// GetFaction returns the live *domain.Faction for id (no copy). Callers that
-// intend to mutate must deep-copy first.
-func GetFaction(fs *FactionState, id string) (*domain.Faction, error)
 ```
 
 Error wrapping follows the campaign-manager pattern (`fmt.Errorf("state: <op>: %w", err)`); sentinels are checked with `errors.Is`.
+
+`UpdateFaction` is intentionally absent — no consumer exists in this initiative. The engine mutates `*domain.Faction` objects in place and calls `state.Save` at turn boundaries; the wizard is create-only; the edit initiative will add `UpdateFaction` when it ships. `GetFaction` is also absent — read access uses direct map indexing (`fs.Factions[id]`), since IDs in the TUI flow from the list (valid by construction).
+
+### `domain.NewFaction` Constructor
+
+Lives in `internal/faction/domain/faction.go`. Composes existing derivation primitives (`RatingsFromScale`, `CalcMaxHP`) and creates the Base of Influence on the homeworld at MaxHP. Wizard calls this at form completion; the returned `*domain.Faction` is what flows into `manage.CreatedMsg` and eventually `state.CreateFaction`.
+
+```go
+// NewFaction synthesizes a Faction from creation-time inputs. Applies the
+// SWN derivations (attribute ratings from scale, MaxHP from attributes,
+// CurrentHP = MaxHP, BoI at MaxHP on homeworld). XP starts at 0.
+func NewFaction(
+    id, name string,
+    scale FactionScale,
+    primaryStat, secondaryStat, tertiaryStat FactionStat,
+    tags []*Tag,
+    goal *Goal,
+    homeworld Location,
+    assets []*Asset,
+    coin int,
+) *Faction
+```
+
+Implementation outline (mechanical — primitives all exist):
+
+1. Build the `Faction` struct with `ID`, `Name`, `Scale`, `Tags`, `Coin`, `Homeworld`, `Assets` map (keyed by `Asset.ID`).
+2. Call `RatingsFromScale(scale)` → assign the three values to `Force`/`Cunning`/`Wealth` based on the picked `primaryStat`/`secondaryStat`/`tertiaryStat`.
+3. Set `MaxHP = CalcMaxHP(faction)`; `CurrentHP = MaxHP`.
+4. If `goal != nil`, set `ActiveGoal = &ActiveGoal{GoalID: goal.ID}` (zero progress).
+5. Append a `*Base` to `faction.Bases` for the homeworld with `CurrentHP = MaxHP`, `Influence = 0` (or scale-derived default at execution time), `IsHomeworld = true`.
+6. Return the faction.
+
+`Asset` instantiation (with `NextAssetID`-generated IDs) happens upstream in the wizard from picked `*AssetDefinition` values, since `NextAssetID` requires the faction-in-progress and the wizard owns asset selection UX. The constructor receives fully-formed `*Asset` slices.
+
+Faction `ID` generation lives outside `NewFaction` — see Open Question 3.
 
 ### Completion Message Types (Final Shape)
 
@@ -133,9 +161,8 @@ package manage
 import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 
 type CreatedMsg struct{ Faction *domain.Faction }
-type EditSavedMsg struct{ Faction *domain.Faction }
 type DeletedMsg struct{ ID string }
-type CancelMsg struct{} // discard from edit/create, no from deleteconfirm
+type CancelMsg struct{} // discard from create, no from deleteconfirm
 type SaveErrorMsg struct{ Err error }
 ```
 
@@ -167,7 +194,6 @@ const (
     viewList view = iota
     viewDetail
     viewCreate
-    viewEdit
     viewDeleteConfirm
 )
 
@@ -181,7 +207,6 @@ type Model struct {
     list          list.Model
     detail        detail.Model
     create        wizard.Model
-    edit          wizard.Model
     deleteConfirm deleteconfirm.Model
     strip         contextstrip.Model
 
@@ -207,7 +232,6 @@ Back-edge map (static, used by `manage.Update` when it handles `CancelMsg` / com
 var backTarget = map[view]view{
     viewDetail:        viewList,
     viewCreate:        viewList,
-    viewEdit:          viewDetail,
     viewDeleteConfirm: viewDetail,
 }
 ```
@@ -239,7 +263,6 @@ func (m Model) Help() help.KeyMap {
     case viewList:    return m.list.Help()
     case viewDetail:  return m.detail.Help()
     case viewCreate:  return m.create.Help()
-    case viewEdit:    return m.edit.Help()
     case viewDeleteConfirm: return m.deleteConfirm.Help()
     }
     return emptyKeyMap{}
@@ -250,18 +273,18 @@ Root's `?` handler (in `update.go`) checks whether the active sub satisfies `Hel
 
 ### Faction Creation Wizard — Step Inventory
 
-The `wizard.Model` holds a draft `domain.Faction` and walks `huh.NewForm(...)` groups. Step order matches the SWN checklist:
+The `wizard.Model` holds bound primitives for each step (one field per selection) and walks `huh.NewForm(...)` groups. At completion, the wizard calls `domain.NewFaction(...)` (see Shared Context § `domain.NewFaction` Constructor) to synthesize the `*domain.Faction`. No "draft" object is maintained progressively — the form binds to primitives, the constructor synthesizes at the end. Step order matches the SWN checklist:
 
 | # | Step | huh widget | Source data | Notes |
 |---|------|-----------|-------------|-------|
-| 1 | Scale | `huh.NewSelect[domain.FactionScale]` | constants in `domain` | On change, seeds Force/Cunning/Wealth defaults via `RatingsFromScale` (assignment step refines which is which). |
-| 2 | Attribute assignment | three `huh.NewSelect[domain.FactionStat]` | derived | User picks which stat is primary, secondary, tertiary. Validator: all three distinct. |
-| 3 | HP display | `huh.NewNote` | derived | Shows computed MaxHP (`CalcMaxHP`); read-only confirmation. |
+| 1 | Scale | `huh.NewSelect[domain.FactionScale]` | constants in `domain` | Picked value flows into `NewFaction` for `RatingsFromScale` lookup. |
+| 2 | Attribute assignment | three `huh.NewSelect[domain.FactionStat]` | derived | User picks which stat is primary, secondary, tertiary. Validator: all three distinct. Picks flow into `NewFaction` as `primaryStat`/`secondaryStat`/`tertiaryStat`. |
+| 3 | HP display | `huh.NewNote` | derived | Shows computed MaxHP — wizard precomputes via `RatingsFromScale` + `CalcMaxHP` on a throwaway `*Faction` for display only; the authoritative value comes from `NewFaction` at completion. |
 | 4 | Tags | `huh.NewMultiSelect[*domain.Tag]` | `rulebook.Tags` | Cap 2 via validator. |
-| 5 | Goal | `huh.NewSelect[*domain.Goal]` | `rulebook.Goals` | Sets `ActiveGoal{GoalID: goal.ID}` with zero progress. |
-| 6 | Homeworld | `huh.NewSelect[string]` (world IDs) | spatial worlds | Auto-creates Base of Influence at max HP on the picked world. |
-| 7 | Starting assets | `huh.NewMultiSelect[*domain.AssetDefinition]` (×2 groups) | `rulebook.AssetDefinitions` filtered by rating + homeworld tech_level | Quota by scale (see Open Question 2). Selected definitions instantiate as `*domain.Asset` with generated IDs. |
-| 8 | Starting Coin | `huh.NewInput` (int validator) | — | Default 0. |
+| 5 | Goal | `huh.NewSelect[*domain.Goal]` | `rulebook.Goals` | Picked goal flows into `NewFaction`; the constructor sets `ActiveGoal{GoalID: goal.ID}`. |
+| 6 | Homeworld | `huh.NewSelect[string]` (world IDs) | spatial worlds | `NewFaction` auto-creates Base of Influence at MaxHP on the picked world. |
+| 7 | Starting assets | `huh.NewMultiSelect[*domain.AssetDefinition]` (×2 groups) | `rulebook.AssetDefinitions` filtered by rating + homeworld tech_level | Quota by scale (see Open Question 2). Wizard instantiates picked definitions as `*domain.Asset` (using `NextAssetID` against the in-flight asset slice) before handing to `NewFaction`. |
+| 8 | Starting Coin | `huh.NewInput` (int validator) | — | Default 0. Parsed `int` flows into `NewFaction`. |
 
 Wizard constructor signature:
 
@@ -269,13 +292,20 @@ Wizard constructor signature:
 func New(
     rulebook *rulebook.Rulebook,
     spatialMap *spatial.RegionMap,
-    initial *domain.Faction, // nil for create; pre-populated for edit
 ) Model
 ```
 
 Internal `confirmingDiscard bool` overlays the y/n prompt on Esc; on y, emits `CancelMsg`; on n, returns to the form. The `huh.Form` is driven via standard `tea.Model` plumbing (huh forms satisfy `tea.Model`).
 
-Completion: when `wizard.Model.form.State == huh.StateCompleted`, emit `CreatedMsg{Faction: &draft}` or `EditSavedMsg{Faction: &draft}` based on the constructor's `initial == nil` test (stored as a `boolean isCreate` field).
+Completion: when `wizard.Model.form.State == huh.StateCompleted`, the wizard:
+
+1. Generates a faction ID (Open Question 3 — likely `slug(name)` with collision handling).
+2. Builds the `Location` value (`{WorldID: homeworldID, RegionHex: ...}`) from the spatial map.
+3. Instantiates picked `*AssetDefinition` values as `*Asset` (HP from definition, location = homeworld, etc.).
+4. Calls `domain.NewFaction(id, name, scale, primaryStat, secondaryStat, tertiaryStat, tags, goal, homeworld, assets, coin)`.
+5. Emits `CreatedMsg{Faction: faction}`.
+
+ID generation needs read access to `fs.Factions` for uniqueness check. Two implementation paths (pick at execution time): (a) `wizard.New` takes `*state.FactionState` as a fourth param; or (b) the wizard emits an inputs-bundle message and `manage.Update` computes the ID before calling `state.CreateFaction`. Option (a) is simpler and keeps construction in one place.
 
 ### Update Discipline (Inherited)
 
@@ -305,6 +335,7 @@ Inherited from Discovery (`tui-manage-discovery.md` § Out of Scope), restated f
 
 Out of Scope from Plan (not in Discovery's list):
 
+- **Edit faction.** Deferred to a follow-up initiative — see Decision 2. GMs hand-edit TOML to modify an existing faction until that initiative ships. The wizard-reuse path surfaced a structural conflict (starting-assets and starting-Coin steps don't apply to a faction with accrued runtime state); the cleaner shape is a dedicated edit flow scoped to identity-only fields, designed in its own discovery session.
 - **Spatial seed command** (F-012). Wizard expects spatial data to exist; missing-data error surfaces with a `hint:` line per the rulebook pattern. Seed command itself is a separate initiative.
 - **`bubbles/help` per-mode color theming.** Default Charm theme until a theming initiative ships.
 - **Wizard step-skipping or step-back navigation.** `huh.Form` supports `Group` navigation; the wizard uses default Group order without custom skip logic. Esc opens discard-confirm; there is no "back one step" key.
@@ -316,13 +347,13 @@ Out of Scope from Plan (not in Discovery's list):
 
 ### Phase 1 — State Package CRUD
 
-Adds the write-through CRUD surface the TUI consumes. Standalone, no TUI dependency. After this phase the state package exposes Create/Update/Delete/Get; nothing in the TUI uses them yet.
+Adds the write-through CRUD surface the TUI consumes. Standalone, no TUI dependency. After this phase the state package exposes Create + Delete; nothing in the TUI uses them yet.
 
 #### Commit 1 — `feat(state): faction CRUD with write-through persistence`
 
 ##### Task 1 — `internal/faction/state/crud.go` (new file)
 
-Implement the four functions and three sentinels per Shared Context § "State CRUD Function Signatures (Final Shape)". Concrete implementation sketch:
+Implement the two functions and three sentinels per Shared Context § "State CRUD Function Signatures (Final Shape)". Concrete implementation sketch:
 
 ```go
 package state
@@ -354,20 +385,6 @@ func CreateFaction(path string, fs *FactionState, faction *domain.Faction) error
     return nil
 }
 
-func UpdateFaction(path string, fs *FactionState, faction *domain.Faction) error {
-    if faction.ID == "" {
-        return ErrInvalidFactionID
-    }
-    if _, exists := fs.Factions[faction.ID]; !exists {
-        return fmt.Errorf("state: update %q: %w", faction.ID, ErrFactionNotFound)
-    }
-    fs.Factions[faction.ID] = faction
-    if err := Save(path, fs); err != nil {
-        return fmt.Errorf("state: update %q: save: %w", faction.ID, err)
-    }
-    return nil
-}
-
 func DeleteFaction(path string, fs *FactionState, id string) error {
     if id == "" {
         return ErrInvalidFactionID
@@ -381,30 +398,18 @@ func DeleteFaction(path string, fs *FactionState, id string) error {
     }
     return nil
 }
-
-func GetFaction(fs *FactionState, id string) (*domain.Faction, error) {
-    if id == "" {
-        return nil, ErrInvalidFactionID
-    }
-    faction, ok := fs.Factions[id]
-    if !ok {
-        return nil, fmt.Errorf("state: get %q: %w", id, ErrFactionNotFound)
-    }
-    return faction, nil
-}
 ```
 
 ##### Task 2 — `internal/faction/state/crud_test.go` (new file)
 
-Table-driven tests covering: create + read-back; create duplicate → `ErrFactionAlreadyExists`; update missing → `ErrFactionNotFound`; delete missing → `ErrFactionNotFound`; create empty ID → `ErrInvalidFactionID`; round-trip create → Save → Load → Get returns equivalent faction. Use `t.TempDir()` for the path. Mirrors the testing style in `faction_state.go`'s existing tests (verify shape at execution time).
+Table-driven tests covering: create + read-back via direct map access; create duplicate → `ErrFactionAlreadyExists`; delete missing → `ErrFactionNotFound`; create empty ID → `ErrInvalidFactionID`; delete empty ID → `ErrInvalidFactionID`; round-trip create → Save → Load returns equivalent faction. Use `t.TempDir()` for the path. Mirrors the testing style in `faction_state.go`'s existing tests (verify shape at execution time).
 
 ##### Commit message
 
 ```
 feat(state): faction CRUD with write-through persistence
 
-- add CreateFaction / UpdateFaction / DeleteFaction / GetFaction in
-  internal/faction/state/crud.go
+- add CreateFaction / DeleteFaction in internal/faction/state/crud.go
 - declare ErrFactionAlreadyExists / ErrFactionNotFound / ErrInvalidFactionID
   sentinels; check with errors.Is
 - each mutation validates invariants, applies in-memory, then persists via
@@ -415,7 +420,7 @@ feat(state): faction CRUD with write-through persistence
 
 ### Phase 2 — Manage Router and Read-Only Views
 
-Stands up the Manage router, the list view, the detail view, and the delete-confirm sub-view. After this phase a GM can browse and delete factions but cannot create or edit. Mutating sub-views (create wizard, edit) follow in Phase 3.
+Stands up the Manage router, the list view, the detail view, and the delete-confirm sub-view. After this phase a GM can browse and delete factions but cannot create one. The create wizard follows in Phase 3.
 
 #### Commit 2 — `feat(tui/manage): router shell, list view, empty-state hint`
 
@@ -527,14 +532,12 @@ const (
     viewList view = iota
     viewDetail
     viewCreate
-    viewEdit
     viewDeleteConfirm
 )
 
 var backTarget = map[view]view{
     viewDetail:        viewList,
     viewCreate:        viewList,
-    viewEdit:          viewDetail,
     viewDeleteConfirm: viewDetail,
 }
 
@@ -548,7 +551,6 @@ type Model struct {
     list          list.Model
     detail        detail.Model
     create        wizard.Model
-    edit          wizard.Model
     deleteConfirm deleteconfirm.Model
     strip         contextstrip.Model
 
@@ -570,7 +572,6 @@ func New(
         list:         list.New(factionState),
         detail:       detail.Model{},        // populated on transition
         create:       wizard.Model{},        // populated on transition
-        edit:         wizard.Model{},        // populated on transition
         deleteConfirm: deleteconfirm.Model{}, // populated on transition
         strip:        contextstrip.New(factionState),
     }
@@ -588,15 +589,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         }
         m.strip = contextstrip.New(m.factionState)
         m.view = backTarget[viewCreate]
-        return m, nil
-
-    case EditSavedMsg:
-        if err := state.UpdateFaction(m.paths.StatePath, m.factionState, msg.Faction); err != nil {
-            m.saveErr = err
-            return m, nil
-        }
-        m.strip = contextstrip.New(m.factionState)
-        m.view = backTarget[viewEdit]
         return m, nil
 
     case DeletedMsg:
@@ -636,7 +628,6 @@ Forward-transition messages (declared in `messages.go` alongside completion mess
 ```go
 type RequestDetailMsg struct{ FactionID string } // list → detail
 type RequestCreateMsg struct{}                    // list → create
-type RequestEditMsg struct{ Faction *domain.Faction }    // detail → edit
 type RequestDeleteMsg struct{ Faction *domain.Faction }  // detail → deleteConfirm
 ```
 
@@ -644,18 +635,14 @@ Each handled in `manage.Update`:
 
 ```go
 case RequestDetailMsg:
-    faction, _ := state.GetFaction(m.factionState, msg.FactionID)
+    faction := m.factionState.Factions[msg.FactionID]
     m.detail = detail.New(faction)
     m.view = viewDetail
     return m, nil
 case RequestCreateMsg:
-    m.create = wizard.New(m.rulebook, m.spatialMap, nil)
+    m.create = wizard.New(m.rulebook, m.spatialMap)
     m.view = viewCreate
     return m, m.create.Init()
-case RequestEditMsg:
-    m.edit = wizard.New(m.rulebook, m.spatialMap, msg.Faction)
-    m.view = viewEdit
-    return m, m.edit.Init()
 case RequestDeleteMsg:
     m.deleteConfirm = deleteconfirm.New(msg.Faction)
     m.view = viewDeleteConfirm
@@ -692,8 +679,6 @@ func (m Model) View() string {
         content = m.detail.View()
     case viewCreate:
         content = m.create.View()
-    case viewEdit:
-        content = m.edit.View()
     case viewDeleteConfirm:
         content = m.deleteConfirm.View()
     }
@@ -704,12 +689,12 @@ func (m Model) View() string {
 }
 
 func (m Model) Help() help.KeyMap {
-    // populated in Commit 7
+    // populated in Commit 6
     return nil
 }
 ```
 
-The `Help()` method exists with a `nil` return until Commit 7 wires the per-view bindings. Root's `?` handler tolerates `nil` (renders the existing stub).
+The `Help()` method exists with a `nil` return until Commit 6 wires the per-view bindings. Root's `?` handler tolerates `nil` (renders the existing stub).
 
 ##### Task 6 — Sub-view package stubs
 
@@ -718,8 +703,8 @@ Create the following files so `manage.go` compiles. Each is a minimal `tea.Model
 - `internal/faction/tui/views/manage/list/list.go` — IMPLEMENTED (full list view, this commit; see Task 7).
 - `internal/faction/tui/views/manage/detail/detail.go` — stub Model + New + Init/Update/View returning `tui.Placeholder.Render("Detail — Commit 3")`.
 - `internal/faction/tui/views/manage/deleteconfirm/deleteconfirm.go` — stub Model + `New(*domain.Faction)` + stubs returning placeholder.
-- `internal/faction/tui/views/manage/wizard/wizard.go` — stub Model + `New(*rulebook.Rulebook, *spatial.RegionMap, *domain.Faction)` + stubs returning placeholder.
-- `internal/faction/tui/views/manage/contextstrip/contextstrip.go` — stub Model + `New(*state.FactionState)` + stubs returning placeholder (`tui.Placeholder.Render("Strip — Commit 6")`).
+- `internal/faction/tui/views/manage/wizard/wizard.go` — stub Model + `New(*rulebook.Rulebook, *spatial.RegionMap)` + stubs returning placeholder.
+- `internal/faction/tui/views/manage/contextstrip/contextstrip.go` — stub Model + `New(*state.FactionState)` + stubs returning placeholder (`tui.Placeholder.Render("Strip — Commit 5")`).
 
 Each stub's `Update` returns `(m, nil)` and ignores the input. This keeps the router code path live without committing to the real shape until the dedicated commit.
 
@@ -879,7 +864,7 @@ feat(tui/manage): router shell, list view, empty-state hint
 - list view (bubbles/list) with item shape Name·Scale·HP·Coin and
   centered empty-state hint
 - scaffold stub Models for detail / deleteconfirm / wizard / contextstrip
-  packages (filled in Commits 3-6)
+  packages (filled in Commits 3-5)
 - load spatial alongside rulebook in factionRun; expand tui.Run
   signature to accept *rulebook.Rulebook and *spatial.RegionMap
 ```
@@ -892,7 +877,7 @@ Fills in the two read-only sub-views. Detail shows the full faction; `d` opens d
 
 ##### Task 1 — `internal/faction/tui/views/manage/detail/detail.go`
 
-Replaces the stub. Renders a faction's full state as a single scrollable block. `e` emits `RequestEditMsg`; `d` emits `RequestDeleteMsg`; Esc emits `CancelMsg` (which `manage.Update` routes back to list).
+Replaces the stub. Renders a faction's full state as a single scrollable block. `d` emits `RequestDeleteMsg`; Esc emits `CancelMsg` (which `manage.Update` routes back to list).
 
 ```go
 package detail
@@ -915,7 +900,6 @@ type Model struct {
 }
 
 type keyMap struct {
-    Edit   key.Binding
     Delete key.Binding
     Back   key.Binding
 }
@@ -924,7 +908,6 @@ func New(faction *domain.Faction) Model {
     return Model{
         faction: faction,
         keys: keyMap{
-            Edit:   key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
             Delete: key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "delete")),
             Back:   key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
         },
@@ -936,8 +919,6 @@ func (m Model) Init() tea.Cmd { return nil }
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
     if km, ok := msg.(tea.KeyMsg); ok {
         switch {
-        case key.Matches(km, m.keys.Edit):
-            return m, func() tea.Msg { return manage.RequestEditMsg{Faction: m.faction} }
         case key.Matches(km, m.keys.Delete):
             return m, func() tea.Msg { return manage.RequestDeleteMsg{Faction: m.faction} }
         case key.Matches(km, m.keys.Back):
@@ -957,7 +938,7 @@ func (m Model) View() string {
     fmt.Fprintf(&b, "Scale: %s\n", f.Scale)
     fmt.Fprintf(&b, "Force: %d  Cunning: %d  Wealth: %d\n", f.Force, f.Cunning, f.Wealth)
     fmt.Fprintf(&b, "HP: %d/%d   Coin: %d   XP: %d\n", f.CurrentHP, f.MaxHP, f.Coin, f.XP)
-    fmt.Fprintf(&b, "Homeworld: %s\n", f.Homeworld.ID())
+    fmt.Fprintf(&b, "Homeworld: %s\n", f.Homeworld.WorldID)
     fmt.Fprintf(&b, "\nTags:\n")
     for _, tag := range f.Tags {
         fmt.Fprintf(&b, "  - %s\n", tag.Name)
@@ -971,7 +952,7 @@ func (m Model) View() string {
     }
     fmt.Fprintf(&b, "\nBases:\n")
     for _, base := range f.Bases {
-        fmt.Fprintf(&b, "  - %s\n", base.WorldID)
+        fmt.Fprintf(&b, "  - %s\n", base.Location.WorldID)
     }
     return b.String()
 }
@@ -980,14 +961,14 @@ func (m Model) Help() help.KeyMap { return helpKeys{m.keys} }
 
 type helpKeys struct{ keys keyMap }
 func (h helpKeys) ShortHelp() []key.Binding {
-    return []key.Binding{h.keys.Edit, h.keys.Delete, h.keys.Back}
+    return []key.Binding{h.keys.Delete, h.keys.Back}
 }
 func (h helpKeys) FullHelp() [][]key.Binding {
-    return [][]key.Binding{{h.keys.Edit, h.keys.Delete, h.keys.Back}}
+    return [][]key.Binding{{h.keys.Delete, h.keys.Back}}
 }
 ```
 
-Verify `domain.Faction`'s field set at re-grounding — the Survey reported `Tags []*Tag`, `ActiveGoal *ActiveGoal`, `Assets map[string]*Asset`, `Bases []*Base`, `Homeworld Location` (interface). The render shape above assumes those exist; adjust on drift. `Location.ID()` interface method per `internal/spatial/spatial.go:10`.
+Verify `domain.Faction`'s field set at re-grounding — confirmed shape: `Tags []*Tag`, `ActiveGoal *ActiveGoal`, `Assets map[string]*Asset`, `Bases []*Base`, `Homeworld Location` (struct, not interface — fields `WorldID string` and `RegionHex spatial.RegionHex`). `Base.Location` is also a `Location` struct (per `internal/faction/domain/base.go`). Adjust on drift.
 
 ##### Task 2 — `internal/faction/tui/views/manage/deleteconfirm/deleteconfirm.go`
 
@@ -1060,25 +1041,33 @@ func (h helpKeys) FullHelp() [][]key.Binding { return [][]key.Binding{{h.keys.Co
 feat(tui/manage): detail view and delete-confirm
 
 - detail view renders Name/ID/scale/stats/HP/Coin/XP/homeworld/tags/
-  goal/assets/bases; e/d/Esc keys emit RequestEditMsg /
-  RequestDeleteMsg / CancelMsg
+  goal/assets/bases; d/Esc keys emit RequestDeleteMsg / CancelMsg
 - deleteconfirm: y/n prompt; y emits DeletedMsg, n/Esc emits CancelMsg
-- both sub-views expose Help() with their bindings (consumed in Commit 7)
+- both sub-views expose Help() with their bindings (consumed in Commit 6)
 ```
 
 ---
 
-### Phase 3 — Mutating Sub-Views (Create Wizard, Edit)
+### Phase 3 — Create Wizard
 
-After this phase the GM can author factions end-to-end. The wizard walks the SWN creation checklist; edit reuses the wizard with pre-populated values.
+After this phase the GM can author new factions via the SWN creation wizard. Edit is deferred to a follow-up initiative (see Decision 2).
 
 #### Commit 4 — `feat(tui/manage): faction creation wizard`
 
-**Flagged as the heaviest commit in the plan.** Implements the multi-step `huh.Form` covering all SWN creation steps. If the execution session surfaces complexity that warrants splitting (e.g., asset-step quota logic balloons), pause and re-plan: extract the asset step into a Commit 4b. Default is single commit.
+**Flagged as the heaviest commit in the plan.** Implements `domain.NewFaction` (the Task 0 prerequisite) and the multi-step `huh.Form` covering all SWN creation steps. If the execution session surfaces complexity that warrants splitting (e.g., asset-step quota logic balloons), pause and re-plan: extract the asset step into a Commit 4b. Default is single commit.
+
+##### Task 0 — `internal/faction/domain/faction.go` (add `NewFaction`)
+
+Add the constructor per Shared Context § "`domain.NewFaction` Constructor". Mechanical — composes primitives that already exist (`RatingsFromScale`, `CalcMaxHP`). Adds:
+
+- `NewFaction(...)` returning `*Faction` with attributes, MaxHP, CurrentHP, ActiveGoal, Assets map, Bases (including homeworld BoI) all populated.
+- A small test: pick a Minor faction with primary=Force, secondary=Cunning, tertiary=Wealth; assert returned Force/Cunning/Wealth match `RatingsFromScale(ScaleMinor)`; assert `MaxHP == CalcMaxHP(...)`; assert exactly one Base with `IsHomeworld == true` at `MaxHP` on the picked homeworld.
+
+This must land before Task 1 — the wizard's completion path imports `domain.NewFaction`.
 
 ##### Task 1 — `internal/faction/tui/views/manage/wizard/wizard.go`
 
-Replace the stub with the full wizard. Structure:
+Replace the stub with the full wizard. The wizard holds bound primitives for each step (no progressive draft); at completion, calls `domain.NewFaction(...)` to synthesize the faction. Structure:
 
 ```go
 package wizard
@@ -1095,16 +1084,28 @@ import (
 
     "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
     "github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+    "github.com/therobertcrocker/gm-toolkit/internal/faction/state"
     "github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage"
     "github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 type Model struct {
-    isCreate   bool                // true: emit CreatedMsg; false: emit EditSavedMsg
-    draft      *domain.Faction
     form       *huh.Form
     rulebook   *rulebook.Rulebook
     spatialMap *spatial.RegionMap
+    factionState *state.FactionState // for ID-uniqueness check at completion
+
+    // Bound form values — huh writes into these via Value(&...).
+    name           string
+    scale          domain.FactionScale
+    primaryStat    domain.FactionStat
+    secondaryStat  domain.FactionStat
+    tertiaryStat   domain.FactionStat
+    selectedTags   []*domain.Tag
+    selectedGoal   *domain.Goal
+    homeworldID    string
+    selectedAssets []*domain.AssetDefinition
+    coinStr        string
 
     confirmingDiscard bool
     discardKeys       discardKeyMap
@@ -1115,27 +1116,18 @@ type discardKeyMap struct {
     Cancel  key.Binding
 }
 
-// New builds the wizard. initial == nil means "create" mode; non-nil means
-// "edit" mode with the form pre-populated from a deep copy of initial.
-func New(rb *rulebook.Rulebook, spatialMap *spatial.RegionMap, initial *domain.Faction) Model {
-    isCreate := initial == nil
-    var draft *domain.Faction
-    if isCreate {
-        draft = newDraft()
-    } else {
-        draft = deepCopy(initial)
-    }
-    return Model{
-        isCreate:   isCreate,
-        draft:      draft,
-        form:       buildForm(draft, rb, spatialMap),
-        rulebook:   rb,
-        spatialMap: spatialMap,
+func New(rb *rulebook.Rulebook, spatialMap *spatial.RegionMap, fs *state.FactionState) Model {
+    m := Model{
+        rulebook:     rb,
+        spatialMap:   spatialMap,
+        factionState: fs,
         discardKeys: discardKeyMap{
             Confirm: key.NewBinding(key.WithKeys("y")),
             Cancel:  key.NewBinding(key.WithKeys("n", "esc")),
         },
     }
+    m.form = buildForm(&m, rb, spatialMap)
+    return m
 }
 
 func (m Model) Init() tea.Cmd { return m.form.Init() }
@@ -1162,12 +1154,32 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
     formAny, cmd := m.form.Update(msg)
     m.form = formAny.(*huh.Form)
     if m.form.State == huh.StateCompleted {
-        if m.isCreate {
-            return m, func() tea.Msg { return manage.CreatedMsg{Faction: m.draft} }
-        }
-        return m, func() tea.Msg { return manage.EditSavedMsg{Faction: m.draft} }
+        faction := m.synthesize()
+        return m, func() tea.Msg { return manage.CreatedMsg{Faction: faction} }
     }
     return m, cmd
+}
+
+// synthesize builds the final *domain.Faction from collected form values.
+// Calls domain.NewFaction with all derivations applied; assigns a unique ID.
+func (m Model) synthesize() *domain.Faction {
+    coin, _ := strconv.Atoi(m.coinStr)
+    id := generateID(m.name, m.factionState.Factions) // Open Question 3
+    homeworld := domain.Location{
+        WorldID:   m.homeworldID,
+        RegionHex: m.spatialMap.RegionHexFor(m.homeworldID), // verify API at re-grounding
+    }
+    assets := instantiateAssets(m.selectedAssets, homeworld) // generate Asset IDs, set Location/HP/etc.
+    return domain.NewFaction(
+        id, m.name,
+        m.scale,
+        m.primaryStat, m.secondaryStat, m.tertiaryStat,
+        m.selectedTags,
+        m.selectedGoal,
+        homeworld,
+        assets,
+        coin,
+    )
 }
 
 func (m Model) View() string {
@@ -1191,10 +1203,19 @@ func (helpKeys) ShortHelp() []key.Binding {
 func (helpKeys) FullHelp() [][]key.Binding { return [][]key.Binding{helpKeys{}.ShortHelp()} }
 ```
 
-`buildForm` constructs the multi-group `huh.Form`. Each `huh.NewGroup(...)` covers one or more SWN-checklist steps. Pseudocode per Shared Context § "Faction Creation Wizard — Step Inventory":
+`buildForm` constructs the multi-group `huh.Form`. Each `huh.NewGroup(...)` covers one or more SWN-checklist steps. The form binds directly to the wizard Model's fields; no progressive draft. Pseudocode per Shared Context § "Faction Creation Wizard — Step Inventory":
 
 ```go
-func buildForm(draft *domain.Faction, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+func buildForm(m *Model, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+    // Step 0 — Name (added during execution; not in original step inventory)
+    nameGroup := huh.NewGroup(
+        huh.NewInput().Title("Faction name").Value(&m.name).
+            Validate(func(s string) error {
+                if s == "" { return fmt.Errorf("name required") }
+                return nil
+            }),
+    )
+
     // Step 1 — Scale
     scaleGroup := huh.NewGroup(
         huh.NewSelect[domain.FactionScale]().
@@ -1204,41 +1225,35 @@ func buildForm(draft *domain.Faction, rb *rulebook.Rulebook, spatialMap *spatial
                 huh.NewOption("Major", domain.ScaleMajor),
                 huh.NewOption("Hegemon", domain.ScaleHegemon),
             ).
-            Value(&draft.Scale),
+            Value(&m.scale),
     )
 
     // Step 2 — Attribute assignment (which stat is primary/secondary/tertiary)
-    // Implementation detail: collect three FactionStat selections, then post-process
-    // to assign Force/Cunning/Wealth based on draft.Scale's primary/secondary/tertiary
-    // values (RatingsFromScale). Validator ensures all three are distinct.
-    var primary, secondary, tertiary domain.FactionStat
+    // Validator ensures all three are distinct.
     statsGroup := huh.NewGroup(
         huh.NewSelect[domain.FactionStat]().Title("Primary attribute").
-            Options(statOptions...).Value(&primary),
+            Options(statOptions...).Value(&m.primaryStat),
         huh.NewSelect[domain.FactionStat]().Title("Secondary attribute").
-            Options(statOptions...).Value(&secondary),
+            Options(statOptions...).Value(&m.secondaryStat),
         huh.NewSelect[domain.FactionStat]().Title("Tertiary attribute").
-            Options(statOptions...).Value(&tertiary),
-    ).WithHide(func() bool { return draft.Scale == "" })
+            Options(statOptions...).Value(&m.tertiaryStat),
+    ).WithHide(func() bool { return m.scale == "" })
 
-    // Step 3 — HP display (note)
+    // Step 3 — HP display (note). Precomputes for display only; authoritative
+    // MaxHP comes from domain.NewFaction at completion.
     hpGroup := huh.NewGroup(
-        huh.NewNote().Title("Max HP").Description(func() string {
-            // post-process the previous step to write Force/Cunning/Wealth into draft,
-            // then call domain.CalcMaxHP(draft) and render.
-            applyAttributes(draft, primary, secondary, tertiary)
-            return fmt.Sprintf("%d HP (auto-derived from attributes)", domain.CalcMaxHP(draft))
-        }()),
+        huh.NewNote().Title("Max HP").DescriptionFunc(func() string {
+            return fmt.Sprintf("%d HP (auto-derived from attributes)", previewMaxHP(m))
+        }, nil),
     )
 
     // Step 4 — Tags
     tagOptions := tagsToOptions(rb.Tags)
-    var selectedTags []*domain.Tag
     tagsGroup := huh.NewGroup(
         huh.NewMultiSelect[*domain.Tag]().
             Title("Tags (max 2)").
             Options(tagOptions...).
-            Value(&selectedTags).
+            Value(&m.selectedTags).
             Validate(func(t []*domain.Tag) error {
                 if len(t) > 2 { return fmt.Errorf("at most 2 tags") }
                 return nil
@@ -1247,138 +1262,86 @@ func buildForm(draft *domain.Faction, rb *rulebook.Rulebook, spatialMap *spatial
 
     // Step 5 — Starting Goal
     goalOptions := goalsToOptions(rb.Goals)
-    var selectedGoal *domain.Goal
     goalGroup := huh.NewGroup(
         huh.NewSelect[*domain.Goal]().
             Title("Starting goal").
             Options(goalOptions...).
-            Value(&selectedGoal),
+            Value(&m.selectedGoal),
     )
 
     // Step 6 — Homeworld
     worldOptions := worldsToOptions(spatialMap)
-    var homeworldID string
     homeworldGroup := huh.NewGroup(
         huh.NewSelect[string]().
             Title("Homeworld").
             Options(worldOptions...).
-            Value(&homeworldID),
+            Value(&m.homeworldID),
     )
 
     // Step 7 — Starting assets (filtered by rating + homeworld tech)
     // See Open Question 2 for two-group vs single-group shape.
-    assetGroup := buildAssetGroup(draft, rb, spatialMap, &homeworldID)
+    assetGroup := buildAssetGroup(m, rb, spatialMap)
 
     // Step 8 — Starting Coin
-    var coinStr string
     coinGroup := huh.NewGroup(
         huh.NewInput().
             Title("Starting Coin").
-            Value(&coinStr).
+            Value(&m.coinStr).
             Validate(func(s string) error {
                 if _, err := strconv.Atoi(s); err != nil { return fmt.Errorf("must be an integer") }
                 return nil
             }),
     )
 
-    form := huh.NewForm(
-        scaleGroup, statsGroup, hpGroup, tagsGroup, goalGroup, homeworldGroup, assetGroup, coinGroup,
+    return huh.NewForm(
+        nameGroup, scaleGroup, statsGroup, hpGroup, tagsGroup, goalGroup, homeworldGroup, assetGroup, coinGroup,
     )
-
-    // form.OnComplete (or post-completion in Update) writes selectedTags, selectedGoal,
-    // homeworldID, coinStr back into draft and constructs the Base of Influence at
-    // max HP on the homeworld.
-    return form
 }
 ```
 
 Key implementation details to nail at execution time:
 
-1. **The post-processing path** — `huh.Form` collects values into bound vars; the wizard's `Update` (after `form.State == huh.StateCompleted`) projects them into `draft` fields. The current sketch above intermixes projection inside `buildForm`'s closures (cleaner for live HP display) but may need to move to the completion path if `huh` doesn't support intra-form recomputation cleanly. Re-ground at execution time against `huh`'s API.
+1. **The HP-preview closure** — `previewMaxHP(m)` constructs a throwaway `*Faction` with `RatingsFromScale(m.scale)` applied to the picked stats, calls `domain.CalcMaxHP`, returns the int. Used only for display in Step 3; the authoritative MaxHP comes from `domain.NewFaction` at completion. If `huh` doesn't support dynamic descriptions in `Note`, drop Step 3 to a static message or compute on-completion only.
 2. **Asset step shape** — Open Question 2. Two `huh.MultiSelect` groups (one filtered to primary attribute, one to all) is the cleanest UX; collapse to one group with a single quota validator if `huh` makes the two-group flow awkward.
-3. **Auto-Base on homeworld** — On completion, append a `*domain.Base` to `draft.Bases` for the homeworld at `draft.MaxHP` HP. Verify `domain.Base` struct shape at re-grounding.
-4. **Faction ID generation** — Open Question 3. Recommended: derive `slug(draft.Name)` after Step 8; check uniqueness against `fs.Factions`; if collision, prompt for an explicit ID. Implementation may add a hidden Step 9 (ID input) shown only on collision.
-5. **Edit mode pre-population** — The `deepCopy(initial)` populates `draft`; the `huh.Form` constructors use `Value(&draft.Scale)` etc., so the form opens with current values selected. The Scale-derived attribute defaults must be detected ("don't reseed if draft.Scale is already set") to avoid clobbering edit-mode values.
+3. **Faction ID generation** — Open Question 3. Recommended: `slug(m.name)` with collision check against `m.factionState.Factions` inside `synthesize()`. On collision, append `-2`, `-3`, etc.; if even that becomes a user-facing concern, a hidden Step 9 (ID input) appears only on collision. Pick at execution time.
 
-##### Task 2 — `domain.Faction` constructor helper (if needed)
-
-`newDraft()` returns an empty `domain.Faction` with sane zero values:
-
-```go
-// in wizard.go or domain/faction.go — picker's call at execution time.
-func newDraft() *domain.Faction {
-    return &domain.Faction{
-        Tags:   []*domain.Tag{},
-        Assets: map[string]*domain.Asset{},
-        Bases:  []*domain.Base{},
-    }
-}
-```
-
-If `domain` gains a `NewFaction()` constructor as part of this commit, place it there and import; otherwise inline in wizard.
-
-`deepCopy(faction)` — straightforward: marshal/unmarshal via TOML round-trip, or hand-implement field-by-field. TOML round-trip is shortest; hand-implementation is faster. Execution-time call.
-
-##### Task 3 — Helper functions in `wizard.go`
+##### Task 2 — Helper functions in `wizard.go`
 
 - `tagsToOptions([]*domain.Tag) []huh.Option[*domain.Tag]`
 - `goalsToOptions([]*domain.Goal) []huh.Option[*domain.Goal]`
 - `worldsToOptions(*spatial.RegionMap) []huh.Option[string]` — iterates spatial map, returns `{Title: world.Name() + " (TL " + world.TechLevel() + ")", Value: world.ID()}` options.
-- `buildAssetGroup(draft, rb, spatialMap, *homeworldID) *huh.Group` — filters `rb.AssetDefinitions` by attribute rating and homeworld tech_level; constructs the multi-select(s) per Open Question 2.
-- `applyAttributes(draft, primary, secondary, tertiary)` — looks up scale's primary/secondary/tertiary values via `RatingsFromScale`, assigns to the named `FactionStat`s on draft. Sets `draft.MaxHP = CalcMaxHP(draft)` and `draft.CurrentHP = draft.MaxHP`.
+- `buildAssetGroup(m, rb, spatialMap) *huh.Group` — filters `rb.AssetDefinitions` by attribute rating and homeworld tech_level; writes picks into `m.selectedAssets`; constructs the multi-select(s) per Open Question 2.
+- `previewMaxHP(m *Model) int` — constructs a throwaway `*domain.Faction` with the current scale/stat picks projected via `RatingsFromScale`, returns `domain.CalcMaxHP(...)`.
+- `instantiateAssets([]*domain.AssetDefinition, domain.Location) []*domain.Asset` — converts picked definitions to fully-formed `*Asset` values (HP from definition, location = homeworld, IDs from `NextAssetID`).
+- `generateID(name string, existing map[string]*domain.Faction) string` — Open Question 3 implementation.
 
-Verify all helper data sources at re-grounding — `rulebook.Rulebook` field names (`Tags`, `Goals`, `AssetDefinitions`), `spatial.RegionMap`'s world iteration surface.
+Verify all helper data sources at re-grounding — `rulebook.Rulebook` field names (`Tags`, `Goals`, `AssetDefinitions`), `spatial.RegionMap`'s world iteration surface, `NextAssetID` signature in `internal/faction/domain/asset.go`.
+
+##### Task 3 — `manage.go` constructor call update
+
+Commit 2 scaffolded `wizard.New(m.rulebook, m.spatialMap)` in the `RequestCreateMsg` handler with a stub signature. Update the call site to pass `m.factionState` as the third arg now that the wizard needs it for ID-uniqueness checks:
+
+```go
+case RequestCreateMsg:
+    m.create = wizard.New(m.rulebook, m.spatialMap, m.factionState)
+    m.view = viewCreate
+    return m, m.create.Init()
+```
 
 ##### Commit message
 
 ```
 feat(tui/manage): faction creation wizard
 
+- add domain.NewFaction constructor — applies RatingsFromScale,
+  CalcMaxHP, BoI auto-create on homeworld; wizard calls at completion
 - multi-step huh.Form covering all SWN creation steps:
-  Scale, attribute assignment, HP (note), tags (cap 2), starting
-  goal, homeworld, starting assets (rating + tech filter, quota
-  per scale), starting Coin
-- wizard.New(rb, spatial, initial) — initial=nil for create,
-  pre-populated for edit; emits CreatedMsg or EditSavedMsg on
-  completion based on entry point
+  name, scale, attribute assignment, HP (note), tags (cap 2),
+  starting goal, homeworld, starting assets (rating + tech filter,
+  quota per scale), starting Coin
+- wizard.New(rb, spatial, fs) holds bound primitives; on completion
+  synthesizes *domain.Faction via domain.NewFaction and emits CreatedMsg
 - Esc opens internal discard-confirm overlay; y emits CancelMsg
-- on completion: auto-creates Base of Influence at max HP on
-  homeworld; derives MaxHP from attributes via CalcMaxHP
-```
-
----
-
-#### Commit 5 — `feat(tui/manage): edit form via wizard pre-population`
-
-A small commit. The wizard already accepts a non-nil `initial` faction (Commit 4); this commit wires the `RequestEditMsg` path through manage's router and addresses edge cases surfaced by edit mode.
-
-##### Task 1 — `internal/faction/tui/views/manage/manage.go`
-
-Confirm the `RequestEditMsg` case (already scaffolded in Commit 2) calls `wizard.New(m.rulebook, m.spatialMap, msg.Faction)` correctly — Commit 2's stub may need adjusting now that the wizard constructor is real.
-
-##### Task 2 — `internal/faction/tui/views/manage/wizard/wizard.go`
-
-Edit-mode polish identified during Commit 4 implementation. Likely items:
-
-- **Don't reseed stat defaults from Scale if `initial != nil` and stats are already set.** Edit mode opens with current stat values; Scale change in the form should ask whether to reseed or preserve. MVP: silently reseed (matches create behavior). Document in a `// TODO` if a richer UX is wanted.
-- **Edit-mode discard-confirm** — same overlay; emits `CancelMsg` which manage routes back to detail (per `backTarget[viewEdit] = viewDetail`).
-- **ID immutability in edit mode** — the wizard does not prompt for ID; `draft.ID = initial.ID` is preserved by `deepCopy`. Verify in execution.
-
-##### Task 3 — `internal/faction/tui/views/manage/wizard/wizard_edit_test.go` (optional)
-
-If execution-time testing is warranted: a unit test that constructs the wizard with a populated `*domain.Faction`, drives the form to completion without changing any values, and asserts the emitted `EditSavedMsg.Faction` is deep-equal to the input. Defer to execution-time call; bubbletea form tests are non-trivial.
-
-##### Commit message
-
-```
-feat(tui/manage): edit form via wizard pre-population
-
-- RequestEditMsg path constructs wizard.New with deep-copied current
-  faction; on completion emits EditSavedMsg routed through state.UpdateFaction
-- edit mode preserves ID; discard-confirm routes back to detail per
-  backTarget[viewEdit]
-- wizard reuse keeps form definition in one place; isCreate flag
-  distinguishes completion message at exit
 ```
 
 ---
@@ -1387,7 +1350,7 @@ feat(tui/manage): edit form via wizard pre-population
 
 After this phase the context strip shows campaign metadata on the list view and the help overlay renders per-view bindings.
 
-#### Commit 6 — `feat(tui/manage): context strip composed on list view`
+#### Commit 5 — `feat(tui/manage): context strip composed on list view`
 
 ##### Task 1 — `internal/faction/tui/views/manage/contextstrip/contextstrip.go`
 
@@ -1457,7 +1420,7 @@ feat(tui/manage): context strip composed on list view
 
 ---
 
-#### Commit 7 — `feat(tui): help overlay with per-view bindings`
+#### Commit 6 — `feat(tui): help overlay with per-view bindings`
 
 Replaces Foundation's `showHelpStub` fixed string with a composed `help.View` reading per-view bindings via the `Helper` interface.
 
@@ -1559,14 +1522,13 @@ func (m Model) Help() help.KeyMap {
     case viewList:    return m.list.Help()
     case viewDetail:  return m.detail.Help()
     case viewCreate:  return m.create.Help()
-    case viewEdit:    return m.edit.Help()
     case viewDeleteConfirm: return m.deleteConfirm.Help()
     }
     return nil
 }
 ```
 
-Each sub-view's `Help()` was implemented in its respective commit (2 / 3 / 4 / 5), so no per-sub-view changes needed here — only the manage passthrough and root composition.
+Each sub-view's `Help()` was implemented in its respective commit (2 / 3 / 4), so no per-sub-view changes needed here — only the manage passthrough and root composition.
 
 ##### Task 6 — `internal/faction/tui/views/turn/turn.go`
 
@@ -1594,11 +1556,11 @@ End-of-initiative verification (before pre-merge checklist):
 2. **End-to-end manual sweep against a real campaign.** With an active campaign that has rulebook + spatial seeded:
    - Launch: `gm-toolkit faction`.
    - List shows empty-state hint when no factions exist; centered "No factions yet." + "Press n to create one".
-   - Press `n` → wizard walks all 8 SWN steps to completion → returns to list, new faction visible.
-   - Press Enter on a row → detail shows all fields → `e` opens edit (wizard pre-populated) → modify name → submit → returns to detail with updated name.
+   - Press `n` → wizard walks all SWN steps (name through starting Coin) to completion → returns to list, new faction visible.
+   - Press Enter on a row → detail shows all fields (name, ID, scale, stats, HP/Coin/XP, homeworld, tags, goal, assets, bases).
    - `d` from detail opens delete-confirm → y deletes (file shrinks); n returns to detail.
    - `?` opens help with view-specific bindings; toggling between modes (Tab/Shift-Tab) updates the help overlay's per-view content.
-   - Esc from edit/create opens discard-confirm; y discards; n returns to form.
+   - Esc from create wizard opens discard-confirm; y discards; n returns to form.
    - Context strip on list view shows Campaign / Cycle / Count and updates after each CRUD.
 3. **State persistence.** Restart the binary after each CRUD; verify the change persists.
 4. **Engine smoke not regressed.** `gm-toolkit faction --dryrun` still passes (Foundation's smoke path is untouched but tui.Run signature changed — verify the dryrun entrypoint compiles against the new signature; Foundation's dryrun.go may need a small adjustment to construct a no-op spatial map if `factionRun` is no longer the only caller of `tui.Run`).
@@ -1612,7 +1574,8 @@ Per `CLAUDE.md` Collaboration item 8:
 2. Update `docs/dev_journals/faction-manager/planned-work.md`:
    - Remove F-005.2 from Current Initiatives and Up Next.
    - Add F-005.3 (tui-turn) to Up Next (trigger now met).
-   - Capture deferred items that surfaced during execution (e.g., save-error rollback if it proved brittle, wizard step-back if requested, detail scroll polish, etc.).
+   - Add a new entry for the deferred **edit-faction** initiative — identity-only scope, follow-up to this one, blocks closure of "TUI replaces hand-edited TOML" goal.
+   - Capture other deferred items that surfaced during execution (e.g., save-error rollback if it proved brittle, wizard step-back if requested, detail scroll polish, etc.).
 3. Move the discovery and plan docs to their `completed/` subdirectories.
 4. Per CLAUDE.md item 9: assess version bump (likely minor — substantive new user-visible feature) and tag accordingly.
 

@@ -160,6 +160,14 @@ func (regionMap *RegionMap) Location(id string) (Location, bool) {
 	return world, true
 }
 
+func (regionMap *RegionMap) AllWorlds() []Location {
+	worlds := make([]Location, 0, len(regionMap.worlds))
+	for _, world := range regionMap.worlds {
+		worlds = append(worlds, world)
+	}
+	return worlds
+}
+
 func (regionMap *RegionMap) RegionOfHex(hex HexCoord) (string, bool) {
 	for _, region := range regionMap.regions {
 		if region.Hexes[hex] {

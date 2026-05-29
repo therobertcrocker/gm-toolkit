@@ -17,7 +17,6 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A-005` | [TUI Rebuild](#f-005--tui-rebuild) | Arc | In-Progress | First user-facing surface against the reshaped engine; greenfield rebuild. |
-| `F-005.2` | [tui-manage](#f-0052--tui-manage) | feature | Ready for Discovery | Manage mode: faction list, detail, create, edit, delete. |
 
 
 ---
@@ -28,8 +27,7 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `F-005.2` | [tui-manage](#f-0052--tui-manage) | feature | `F-005.1` merged | Manage mode: faction list, detail, create, edit, delete. |
-| `F-005.3` | [tui-turn](#f-0053--tui-turn) | feature | `F-005.2` merged | Turn mode: setup, execution, modal overlay, Esc-cancel path. |
+| `F-005.3` | [tui-turn](#f-0053--tui-turn) | feature | `F-005.2` merged ✓ | Turn mode: setup, execution, modal overlay, Esc-cancel path. |
 
 ---
 <br />
@@ -52,8 +50,16 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B-005` | Goal XP | bugfix | -- | Retype `Difficulty` from `string` to int or tagged sum so engine can dispatch XP |
 | `F-014` | A-flag Abilities | feature | `R-001` | Nine A-flag abilities stubbed |
 | `R-004` | Data-Driven Handlers | refactor | High Pain | Replace hardcoded goal/ability handler dispatch with TOML-defined handlers + typed primitive registry |
-| `R-005` | Adjacency vs. Warp Cost | refactor | Deferred from `F-012` | Split `Region.Boundary` into adjacency-edges (cost 1) and warp-edges (cost `crossingCost`); update `neighbors()` to dispatch on type. CLI gets a matching output split. |
+| `R-005` | Adjacency vs. Warp Cost | refactor | Deferred from `F-012` | Split `Region.Boundary` into adjacency-edges (cost 1) and warp-edges (cost `crossingCost`) |
 | `D-001` | Architecture Overview Doc | docs | -- | `docs/architecture-overview.md` does not exist. |
+| `F-015` | TUI Manage: Map View | feature | -- | add a map view to the manage screen, showing the faction's homeworld and the planets it controls. |
+| `F-016` | TUI Manage: Right Panel | feature | -- | add a right-hand panel to the manage screen, showing additional faction details at a glance. |
+| `R-006` | Shared `styles.Dim` constant | refactor | -- | `#6C7086` duplicated across detail/list/manage/layout; extract one shared constant. |
+| `R-007` | Extract `rebuildList()` helper | refactor | -- | Created/Deleted branches in manage.go copy-paste the rebuild sequence; extract a shared helper. |
+| `R-008` | Reuse `world.Location` + `campaigns.ValidateID` in wizard | refactor | -- | `synthesize`/`slugify` reinvent location handling and ID validation; delegate to existing helpers. |
+| `R-009` | Remove write-only `detail.Model.height` | refactor | -- | Field is assigned but never read; dead weight in the detail model. |
+| `R-010` | Unify `WindowSizeMsg` routing in manage.go | refactor | -- | Per-view asymmetry in how size messages are forwarded; normalise to one pattern. |
+| `R-011` | Cache per-frame allocations in `compose()` / root `View()` | refactor | -- | Low priority: repeated allocations on hot path; pre-allocate or cache where safe. |
 ---
 <br />
 <br />
@@ -77,24 +83,6 @@ This section contains detailed write-ups for each planned initiative, including 
 - Restores any interactive surface to the toolkit.
 - First real consumer of the reshaped engine's external API — will surface gaps and friction before F-004 inherits them.
 - Gives mutations, narrative, and errors a structured rendering venue rather than living only in logs.
-
-<br />
-
-### F-005.2 — tui-manage
-
-**Status:** Backlog
-**Type:** Feature
-**Trigger:** `F-005.1` merged.
-**Part Of:** [A-005 — TUI Rebuild](#a-005--tui-rebuild) — Initiative 2 of 3.
-
-**Goal.** Ship the Manage mode end-to-end: faction list, detail, create, edit, delete. After this initiative the TUI replaces hand-edited TOML for the full faction authoring loop.
-
-**Open Questions (resolve in Plan).**
-- Faction CRUD form scope — identity and stats only, or goals/assets inline at create?
-- Empty-state UX grammar (hint copy, key prompt, visual treatment) — Turn inherits the choice.
-- `Adapter.Stop()` cancellation design: `close(eventCh)` panics if the engine goroutine is still emitting. Choose a strategy (context, done channel, or guarantee engine completes before TUI exits) before wiring `Adapter.Run()`.
-
-See [`tui-rebuild-arc-plan.md`](../../initiatives/arcs/tui-rebuild/tui-rebuild-arc-plan.md) Initiative 2 for full scope and estimated commit shape.
 
 <br />
 

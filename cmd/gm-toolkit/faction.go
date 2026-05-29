@@ -13,6 +13,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func newFactionCmd() *cobra.Command {
@@ -54,6 +55,11 @@ func factionRun(log *slog.Logger, campaignOverride string) error {
 		return fmt.Errorf("faction: load rulebook from %s: %w\n  hint: seed it with 'gm-toolkit campaign add-rules --rules <path>'", paths.FactionDataDir, err)
 	}
 
+	spatialMap, err := spatial.LoadRegionMap(paths.SpatialDataDir)
+	if err != nil {
+		return fmt.Errorf("faction: load spatial from %s: %w\n  hint: (spatial seed command TBD — see F-012)", paths.SpatialDataDir, err)
+	}
+
 	factionState, err := state.Load(paths.StatePath)
 	if err != nil {
 		return fmt.Errorf("faction: load state from %s: %w", paths.StatePath, err)
@@ -64,7 +70,7 @@ func factionRun(log *slog.Logger, campaignOverride string) error {
 
 	eng := engine.NewWithRulebook(rb, log)
 
-	return tui.Run(eng, factionState, &paths, log)
+	return tui.Run(eng, factionState, &paths, rb, spatialMap, log)
 }
 
 func formatActiveResolveError(err error) error {
