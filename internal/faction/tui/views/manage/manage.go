@@ -156,8 +156,7 @@ func (m Model) View() string {
 	switch m.view {
 	case viewList:
 		contentH := max(m.termHeight, 1)
-		placeholder := lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).
-			Align(lipgloss.Center).AlignVertical(lipgloss.Center)
+		placeholder := styles.Dim.Align(lipgloss.Center).AlignVertical(lipgloss.Center)
 		panels := map[Region]panel{
 			Left:   {content: m.list.View(), style: lipgloss.NewStyle()},
 			Center: {content: "—", style: placeholder},

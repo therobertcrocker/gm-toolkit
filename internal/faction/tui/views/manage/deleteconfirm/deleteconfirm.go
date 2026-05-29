@@ -5,10 +5,10 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/msgs"
 )
 
@@ -48,7 +48,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	prompt := fmt.Sprintf("Delete faction %q (%s)? [y/N]", m.faction.Name, m.faction.ID)
-	return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F38BA8")).Padding(1, 2).Render(prompt)
+	return styles.DangerPrompt.Render(prompt)
 }
 
 func (m Model) Help() help.KeyMap { return helpKeys{m.keys} }

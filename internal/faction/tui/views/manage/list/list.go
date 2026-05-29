@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/msgs"
 )
 
@@ -115,6 +116,6 @@ func emptyState() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
 		lipgloss.NewStyle().Render("No factions yet."),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).Render("Press n to create one"),
+		styles.Dim.Render("Press n to create one"),
 	)
 }

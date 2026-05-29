@@ -14,20 +14,8 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/msgs"
-)
-
-var (
-	titleStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF"))
-	idStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086"))
-	scaleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#A6ADC8"))
-	sectionStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#899afa"))
-	ruleStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#45475A"))
-	labelStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#9399B2"))
-	valueStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#fdf5fb"))
-	primaryStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#A6E3A1"))
-	itemStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#fdf5fb"))
-	dimStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086"))
 )
 
 const hpBarWidth = 16
@@ -102,22 +90,22 @@ func (m Model) renderBody() string {
 	f := m.faction
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render(f.Name) + idStyle.Render("  "+f.ID) + "\n")
-	b.WriteString(scaleStyle.Render(titleCase(string(f.Scale))) + "\n\n")
-	b.WriteString(labelStyle.Render("Homeworld  ") + valueStyle.Render(f.Homeworld.WorldID) + "\n\n")
+	b.WriteString(styles.Strong.Render(f.Name) + styles.Dim.Render("  "+f.ID) + "\n")
+	b.WriteString(styles.Subtle.Render(titleCase(string(f.Scale))) + "\n\n")
+	b.WriteString(styles.Subtle.Render("Homeworld  ") + styles.Strong.Render(f.Homeworld.WorldID) + "\n\n")
 
 	b.WriteString(m.statRow(f) + "\n\n")
 	b.WriteString(m.metaRow(f) + "\n")
 
 	b.WriteString("\n" + m.section("TAGS") + "\n")
 	if len(f.Tags) == 0 {
-		b.WriteString("  " + dimStyle.Render("none") + "\n")
+		b.WriteString("  " + styles.Dim.Render("none") + "\n")
 	}
 	for _, tag := range f.Tags {
-		b.WriteString("  " + itemStyle.Render(tag.Name) + "\n")
-		b.WriteString(m.wrap(tag.Description, 4, lipgloss.Color("#BAC2DE")) + "\n")
+		b.WriteString("  " + styles.Strong.Render(tag.Name) + "\n")
+		b.WriteString(m.wrap(tag.Description, 4, styles.Label) + "\n")
 		if tag.Effect != "" {
-			b.WriteString(m.wrap("Effect: "+tag.Effect, 4, lipgloss.Color("#7F849C")) + "\n")
+			b.WriteString(m.wrap("Effect: "+tag.Effect, 4, styles.Muted) + "\n")
 		}
 	}
 
@@ -129,33 +117,33 @@ func (m Model) renderBody() string {
 			goalName = goal.Name
 			goalDesc = goal.Description
 		}
-		b.WriteString("  " + itemStyle.Render(goalName) +
-			dimStyle.Render(fmt.Sprintf("   ·   progress %d", f.ActiveGoal.Progress)) + "\n")
+		b.WriteString("  " + styles.Strong.Render(goalName) +
+			styles.Dim.Render(fmt.Sprintf("   ·   progress %d", f.ActiveGoal.Progress)) + "\n")
 		if goalDesc != "" {
-			b.WriteString(m.wrap(goalDesc, 4, lipgloss.Color("#BAC2DE")) + "\n")
+			b.WriteString(m.wrap(goalDesc, 4, styles.Label) + "\n")
 		}
 	} else {
-		b.WriteString("  " + dimStyle.Render("none") + "\n")
+		b.WriteString("  " + styles.Dim.Render("none") + "\n")
 	}
 
 	b.WriteString("\n" + m.section("ASSETS") + "\n")
 	if len(f.Assets) == 0 {
-		b.WriteString("  " + dimStyle.Render("none") + "\n")
+		b.WriteString("  " + styles.Dim.Render("none") + "\n")
 	}
 	for _, asset := range domain.SortedAssets(f) {
 		name := asset.DefinitionID
 		if def, ok := m.rulebook.Assets[asset.DefinitionID]; ok {
 			name = def.Name
 		}
-		b.WriteString("  " + dimStyle.Render("• ") + itemStyle.Render(name) + "\n")
+		b.WriteString("  " + styles.Dim.Render("• ") + styles.Strong.Render(name) + "\n")
 	}
 
 	b.WriteString("\n" + m.section("BASES") + "\n")
 	if len(f.Bases) == 0 {
-		b.WriteString("  " + dimStyle.Render("none") + "\n")
+		b.WriteString("  " + styles.Dim.Render("none") + "\n")
 	}
 	for _, base := range f.Bases {
-		b.WriteString("  " + dimStyle.Render("• ") + itemStyle.Render(base.Location.WorldID) + "\n")
+		b.WriteString("  " + styles.Dim.Render("• ") + styles.Strong.Render(base.Location.WorldID) + "\n")
 	}
 
 	return b.String()
@@ -178,20 +166,20 @@ func (m Model) statRow(f *domain.Faction) string {
 	}
 	parts := make([]string, 0, len(stats))
 	for _, s := range stats {
-		style := valueStyle
+		statStyle := styles.Strong
 		if s.val == primary {
-			style = primaryStyle
+			statStyle = styles.AccentAlt
 		}
-		parts = append(parts, labelStyle.Render(s.name+" ")+style.Render(strconv.Itoa(s.val)))
+		parts = append(parts, styles.Subtle.Render(s.name+" ")+statStyle.Render(strconv.Itoa(s.val)))
 	}
 	return strings.Join(parts, "    ")
 }
 
 func (m Model) metaRow(f *domain.Faction) string {
-	hp := labelStyle.Render("HP ") + hpBar(f.CurrentHP, f.MaxHP) +
-		"  " + valueStyle.Render(fmt.Sprintf("%d/%d", f.CurrentHP, f.MaxHP))
-	coin := labelStyle.Render("Coin ") + valueStyle.Render(strconv.Itoa(f.Coin))
-	xp := labelStyle.Render("XP ") + valueStyle.Render(strconv.Itoa(f.XP))
+	hp := styles.Subtle.Render("HP ") + hpBar(f.CurrentHP, f.MaxHP) +
+		"  " + styles.Strong.Render(fmt.Sprintf("%d/%d", f.CurrentHP, f.MaxHP))
+	coin := styles.Subtle.Render("Coin ") + styles.Strong.Render(strconv.Itoa(f.Coin))
+	xp := styles.Subtle.Render("XP ") + styles.Strong.Render(strconv.Itoa(f.XP))
 	return hp + "\n\n" + coin + "\n" + xp
 }
 
@@ -203,23 +191,14 @@ func hpBar(current, maximum int) string {
 	ratio = math.Max(0, math.Min(1, ratio))
 	filled := int(math.Round(ratio * hpBarWidth))
 
-	var color lipgloss.Color
-	switch {
-	case ratio > 0.5:
-		color = lipgloss.Color("#A6E3A1")
-	case ratio > 0.25:
-		color = lipgloss.Color("#F9E2AF")
-	default:
-		color = lipgloss.Color("#F38BA8")
-	}
-	return lipgloss.NewStyle().Foreground(color).Render(strings.Repeat("█", filled)) +
-		dimStyle.Render(strings.Repeat("░", hpBarWidth-filled))
+	return lipgloss.NewStyle().Foreground(styles.HealthColor(ratio)).Render(strings.Repeat("█", filled)) +
+		styles.Dim.Render(strings.Repeat("░", hpBarWidth-filled))
 }
 
 func (m Model) section(title string) string {
-	head := sectionStyle.Render(title)
+	head := styles.SectionHeading.Render(title)
 	ruleLen := max(m.contentWidth()-lipgloss.Width(head)-1, 0)
-	return head + " " + ruleStyle.Render(strings.Repeat("─", ruleLen))
+	return head + " " + styles.Rule.Render(strings.Repeat("─", ruleLen))
 }
 
 func titleCase(s string) string {

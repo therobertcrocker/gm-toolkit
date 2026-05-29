@@ -10,12 +10,12 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/msgs"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
@@ -120,8 +120,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.confirmingDiscard {
-		return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#F9E2AF")).Padding(1, 2).
-			Render("Discard new faction? [y/N]")
+		return styles.WarnPrompt.Render("Discard new faction? [y/N]")
 	}
 	if m.phase == 1 {
 		return m.assetsForm.View()
@@ -274,18 +273,7 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 		goalGroup,
 		homeworldGroup,
 		coinGroup,
-	).WithTheme(wizardTheme())
-}
-
-// wizardTheme renders multiselect rows as checkboxes ([✓] / [ ]) so selection
-// state is unambiguous.
-func wizardTheme() *huh.Theme {
-	theme := huh.ThemeCharm()
-	theme.Focused.SelectedPrefix = theme.Focused.SelectedPrefix.SetString("[✓] ")
-	theme.Focused.UnselectedPrefix = theme.Focused.UnselectedPrefix.SetString("[ ] ")
-	theme.Blurred.SelectedPrefix = theme.Blurred.SelectedPrefix.SetString("[✓] ")
-	theme.Blurred.UnselectedPrefix = theme.Blurred.UnselectedPrefix.SetString("[ ] ")
-	return theme
+	).WithTheme(styles.FormTheme())
 }
 
 // buildAssetsForm constructs the asset-selection form after the main form
@@ -327,7 +315,7 @@ func buildAssetsForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.
 			}),
 	)
 
-	return huh.NewForm(primaryGroup, secondaryGroup).WithTheme(wizardTheme())
+	return huh.NewForm(primaryGroup, secondaryGroup).WithTheme(styles.FormTheme())
 }
 
 // ---------------------------------------------------------------------------

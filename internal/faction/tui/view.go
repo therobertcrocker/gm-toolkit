@@ -45,13 +45,13 @@ func (m Model) View() string {
 
 	var content string
 	if m.confirmExit {
-		content = styles.ConfirmExit.Render("Quit? Press Enter to confirm, Esc to cancel.")
+		content = styles.DangerPrompt.Render("Quit? Press Enter to confirm, Esc to cancel.")
 	} else {
 		switch m.bar.Active() {
 		case modebar.ModeSpatial:
 			content = styles.Placeholder.Render("Spatial — reserved for F-012 (Spatial Map CLI)")
 		case modebar.ModeQuit:
-			content = styles.ConfirmExit.Render("Quit slot active. Press Enter to confirm.")
+			content = styles.DangerPrompt.Render("Quit slot active. Press Enter to confirm.")
 		default:
 			if sub, ok := m.subs[m.bar.Active()]; ok {
 				content = sub.View()

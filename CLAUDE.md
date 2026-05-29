@@ -44,7 +44,7 @@ When docs conflict, flag the conflict before proceeding. When docs are silent on
 
 ## Session Modes
 
-See `docs/process/session-modes.md` for the full description of Discovery / Plan / Execution modes, the initiative lifecycle, per-type flows (feature / refactor / bugfix / docs / chore), session discipline, and templates. Always read the session modes doc before starting a new initiative or session, and refer back to it as needed.
+See `docs/process/session-modes.md` for the full description of Discovery / Plan / Execution modes, the initiative lifecycle, per-type flows (feature / refactor / bugfix / docs / chore), session discipline, and templates. Always read the session modes doc before starting a new initiative or session, and refer back to it as needed. Templates for docs are found in docs/process/templates/
 
 **Discovery:** Start with a scaffolded doc in `docs/initiatives/discovery/<initiative-name>.md`. Use the template and fill in the sections as you go. The goal is to explore the problem space, gather information, and identify potential solutions. The output is a clear definition of the problem, a set of possible approaches, and a recommended next step (usually a Plan session).
 

@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 )
 
 // Region identifies one of the columns in the manage working area. To move a
@@ -44,7 +46,7 @@ func regionWidths(termWidth int) map[Region]int {
 // compose renders each region's panel into its width at the given height and
 // joins them left-to-right with vertical separators between.
 func compose(panels map[Region]panel, widths map[Region]int, height int) string {
-	sep := lipgloss.NewStyle().Foreground(lipgloss.Color("#6C7086")).Render(
+	sep := styles.Rule.Render(
 		strings.Repeat("│\n", height-1) + "│",
 	)
 	blocks := make([]string, 0, len(regionOrder)*2-1)
