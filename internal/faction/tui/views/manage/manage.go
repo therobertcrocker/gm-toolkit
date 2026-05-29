@@ -114,7 +114,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case msgs.RequestDetailMsg:
-		faction := m.factionState.Factions[msg.FactionID]
+		faction, ok := m.factionState.Factions[msg.FactionID]
+		if !ok {
+			return m, nil
+		}
 		m.detail = detail.New(faction, m.rulebook, m.termWidth, m.termHeight)
 		m.view = viewDetail
 		return m, nil
@@ -172,6 +175,13 @@ func (m Model) View() string {
 		content += "\n\n" + styles.SaveError.Render("save error: "+m.saveErr.Error())
 	}
 	return content
+}
+
+// CapturesInput reports whether the active sub-view owns the full keyboard.
+// The creation wizard has free-text fields (name, Coin) and its own field
+// navigation, so the root must not steal q/tab/? while it is up.
+func (m Model) CapturesInput() bool {
+	return m.view == viewCreate
 }
 
 func (m Model) Help() help.KeyMap {

@@ -25,6 +25,13 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
 )
 
+// inputCapturer is implemented by sub-models that own the full keyboard while
+// active (e.g. a text-entry form). When the active sub captures input, the root
+// forwards every key to it and suppresses the global bindings below.
+type inputCapturer interface {
+	CapturesInput() bool
+}
+
 type globalKeys struct {
 	Tab      key.Binding
 	ShiftTab key.Binding
@@ -57,6 +64,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, nil
+		}
+
+		active := m.bar.Active()
+		if sub, ok := m.subs[active]; ok {
+			if capturer, isCapturer := sub.(inputCapturer); isCapturer && capturer.CapturesInput() {
+				updated, cmd := sub.Update(msg)
+				m.subs[active] = updated
+				return m, cmd
+			}
 		}
 
 		switch msg.String() {

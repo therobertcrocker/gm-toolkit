@@ -126,6 +126,10 @@ func NewFaction(
 	assets []*Asset,
 	coin int,
 ) *Faction {
+	if primaryStat == secondaryStat || primaryStat == tertiaryStat || secondaryStat == tertiaryStat {
+		panic("domain.NewFaction: primary, secondary, and tertiary stats must be distinct")
+	}
+
 	primary, secondary, tertiary := RatingsFromScale(scale)
 
 	faction := &Faction{

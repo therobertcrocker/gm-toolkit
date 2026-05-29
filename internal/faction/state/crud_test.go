@@ -92,6 +92,35 @@ func TestDeleteFaction(t *testing.T) {
 	}
 }
 
+func TestCreateFactionSaveFailureRollsBack(t *testing.T) {
+	// A directory path makes os.Create fail, so Save errors after the
+	// in-memory insert; the insert must be rolled back.
+	dirPath := t.TempDir()
+	fs := newTestState()
+
+	err := CreateFaction(dirPath, fs, minimalFaction("doomed"))
+	if err == nil {
+		t.Fatal("CreateFaction() expected save error, got nil")
+	}
+	if _, ok := fs.Factions["doomed"]; ok {
+		t.Error("Factions[\"doomed\"] present after failed create; insert not rolled back")
+	}
+}
+
+func TestDeleteFactionSaveFailureRollsBack(t *testing.T) {
+	dirPath := t.TempDir()
+	fs := newTestState()
+	fs.Factions["keep"] = minimalFaction("keep")
+
+	err := DeleteFaction(dirPath, fs, "keep")
+	if err == nil {
+		t.Fatal("DeleteFaction() expected save error, got nil")
+	}
+	if _, ok := fs.Factions["keep"]; !ok {
+		t.Error("Factions[\"keep\"] missing after failed delete; deletion not rolled back")
+	}
+}
+
 func TestCreateDeleteRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "faction_state.toml")
 	fs := newTestState()
