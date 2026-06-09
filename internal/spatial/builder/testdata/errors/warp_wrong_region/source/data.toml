@@ -1,9 +1,0 @@
-[regions.A]
-name = "Region A"
-
-[regions.B]
-name = "Region B"
-
-[[warps]]
-from = { region = "A", row = 0, col = 1 }
-to   = { region = "B", row = 0, col = 0 }

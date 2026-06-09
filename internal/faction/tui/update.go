@@ -21,8 +21,7 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // inputCapturer is implemented by sub-models that own the full keyboard while
@@ -30,6 +29,16 @@ import (
 // forwards every key to it and suppresses the global bindings below.
 type inputCapturer interface {
 	CapturesInput() bool
+}
+
+// modeLocker is implemented by sub-models that forbid switching modes while
+// busy (e.g. the turn view while a cycle is running). Tab/Shift-Tab are no-ops
+// while the active sub reports locked, so a running cycle's event/ask pumps —
+// which re-arm only from that sub's Update — are never orphaned by a switch to
+// another mode. Unlike inputCapturer this gates only mode-switch; q and ?
+// stay live.
+type modeLocker interface {
+	ModeLocked() bool
 }
 
 type globalKeys struct {
@@ -60,9 +69,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			case "esc":
 				m.confirmExit = false
-				m.bar = m.bar.SetActive(m.priorMode)
 				return m, nil
 			}
+			return m, nil
+		}
+
+		// q is global and fires even when a sub captures input.
+		if msg.String() == "q" {
+			m.confirmExit = true
 			return m, nil
 		}
 
@@ -77,18 +91,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "tab":
+			if m.modeSwitchLocked() {
+				return m, nil
+			}
 			m.bar = m.bar.Next()
 			return m.afterModeChange()
 		case "shift+tab":
+			if m.modeSwitchLocked() {
+				return m, nil
+			}
 			m.bar = m.bar.Prev()
 			return m.afterModeChange()
-		case "q":
-			m.priorMode = m.bar.Active()
-			m.bar = m.bar.SetActive(modebar.ModeQuit)
-			m.confirmExit = true
-			return m, nil
 		case "?":
-			m.showHelp = !m.showHelp
+			m.help.ShowAll = !m.help.ShowAll
 			return m.resizeSubs()
 		}
 	}
@@ -106,19 +121,24 @@ func (m Model) afterModeChange() (Model, tea.Cmd) {
 	return m, nil
 }
 
+// modeSwitchLocked reports whether the active sub-model forbids switching modes
+// right now (e.g. turn while a cycle is running).
+func (m Model) modeSwitchLocked() bool {
+	if locker, ok := m.subs[m.bar.Active()].(modeLocker); ok {
+		return locker.ModeLocked()
+	}
+	return false
+}
+
 // Layout budget owned by the root. The header is the title rule/line/rule plus
-// the mode bar and a blank line; the footer is the help line bracketed by two
-// rules. Sub-models are handed the remaining height and never see the chrome.
-const (
-	headerHeight = 5
-	footerHeight = 3
-)
+// the mode bar and a blank line. The footer (always present) is the status/help
+// bar bracketed by two rules; its height varies with compact vs. full help, so
+// it is measured from the rendered bar rather than a constant. Sub-models are
+// handed the remaining height and never see the chrome.
+const headerHeight = 5
 
 func (m Model) contentHeight() int {
-	reserved := headerHeight
-	if m.showHelp {
-		reserved += footerHeight
-	}
+	reserved := headerHeight + lipgloss.Height(m.footerView())
 	if h := m.height - reserved; h > 1 {
 		return h
 	}

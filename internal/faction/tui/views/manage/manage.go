@@ -8,6 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/layout"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/deleteconfirm"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/detail"
@@ -72,7 +73,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
-		m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: regionWidths(msg.Width)[Left], Height: msg.Height})
+		m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: layout.RegionWidths(msg.Width)[layout.Left], Height: msg.Height})
 		if m.view == viewDetail {
 			var cmd tea.Cmd
 			m.detail, cmd = m.detail.Update(msg)
@@ -91,7 +92,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.saveErr = nil
 		m.list = list.New(m.factionState)
 		if m.termWidth > 0 {
-			m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: regionWidths(m.termWidth)[Left], Height: m.termHeight})
+			m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: layout.RegionWidths(m.termWidth)[layout.Left], Height: m.termHeight})
 		}
 		m.view = backTarget[viewCreate]
 		return m, nil
@@ -104,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.saveErr = nil
 		m.list = list.New(m.factionState)
 		if m.termWidth > 0 {
-			m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: regionWidths(m.termWidth)[Left], Height: m.termHeight})
+			m.list, _ = m.list.Update(tea.WindowSizeMsg{Width: layout.RegionWidths(m.termWidth)[layout.Left], Height: m.termHeight})
 		}
 		m.view = viewList
 		return m, nil
@@ -157,12 +158,12 @@ func (m Model) View() string {
 	case viewList:
 		contentH := max(m.termHeight, 1)
 		placeholder := styles.Dim.Align(lipgloss.Center).AlignVertical(lipgloss.Center)
-		panels := map[Region]panel{
-			Left:   {content: m.list.View(), style: lipgloss.NewStyle()},
-			Center: {content: "—", style: placeholder},
-			Right:  {content: "—", style: placeholder},
+		panels := map[layout.Region]layout.Panel{
+			layout.Left:   {Content: m.list.View(), Style: lipgloss.NewStyle()},
+			layout.Center: {Content: "—", Style: placeholder},
+			layout.Right:  {Content: "—", Style: placeholder},
 		}
-		content = compose(panels, regionWidths(m.termWidth), contentH)
+		content = layout.Compose(panels, layout.RegionWidths(m.termWidth), contentH)
 	case viewDetail:
 		content = m.detail.View()
 	case viewCreate:

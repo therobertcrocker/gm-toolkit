@@ -12,7 +12,7 @@
    1. Update the decisions log (`docs/dev_journals/faction-manager/decisions-log.md`) with any new decisions or changes to existing decisions.
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
 8. Before merging a branch, do the following (step-by-step, in order):
-   1. A code-review as if you were a senior engineer reviewing a junior's PR. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
+   1. A code-review as if you were a senior engineer reviewing a junior's PR. Use /code-review skill. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred items that arose during the work. If a feature was completed, remove it from the planned work doc.
 9. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 10. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
@@ -66,7 +66,8 @@ Before each mode transition (including mid-session shifts, e.g. moving from exec
 | Discovery                                 | Opus   | Always                                                                |
 | Plan                                      | Opus   | Always                                                                |
 | Execution                                 | Sonnet | Default; suggest Opus for Refactoring Efforts or if the phase involves heavy design decisions or unusual complexity |
-| End-of-phase docs & pre-merge checklist  | Sonnet | Always — documentation and checklist tasks don't need Opus            |
+| Code review (interim or pre-merge)        | Opus   | Always — critical design review benefits from Opus reasoning          |
+| End-of-phase docs & pre-merge checklist  | Sonnet | Documentation/journal/planned-work updates don't need Opus; the code-review step within the checklist uses Opus (above) |
 
 ## Code Style
 

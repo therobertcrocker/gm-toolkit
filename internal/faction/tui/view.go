@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/chrome"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
 )
@@ -50,8 +51,6 @@ func (m Model) View() string {
 		switch m.bar.Active() {
 		case modebar.ModeSpatial:
 			content = styles.Placeholder.Render("Spatial — reserved for F-012 (Spatial Map CLI)")
-		case modebar.ModeQuit:
-			content = styles.DangerPrompt.Render("Quit slot active. Press Enter to confirm.")
 		default:
 			if sub, ok := m.subs[m.bar.Active()]; ok {
 				content = sub.View()
@@ -62,20 +61,57 @@ func (m Model) View() string {
 	}
 	sb.WriteString(lipgloss.NewStyle().Height(m.contentHeight()).Render(content))
 
-	if m.showHelp {
+	sb.WriteString(m.footerView())
+
+	return sb.String()
+}
+
+// footerView renders the always-present bottom bar: a status line from the
+// active sub-model when it has one, otherwise the help bar. View and
+// contentHeight both call this so the reserved footer height always matches
+// what's drawn.
+func (m Model) footerView() string {
+	ruleWidth := m.width
+	if ruleWidth <= 0 {
+		ruleWidth = 80
+	}
+	rule := styles.AppDivider.Render(strings.Repeat("─", ruleWidth))
+
+	var inner string
+	if text, severity, ok := activeStatusLine(m); ok {
+		inner = statusStyle(severity).Render(text)
+	} else {
 		var subBindings help.KeyMap = emptyKeyMap{}
 		if helper, ok := m.subs[m.bar.Active()].(Helper); ok {
 			if km := helper.Help(); km != nil {
 				subBindings = km
 			}
 		}
-		composed := combineKeyMaps(globalsKeyMap{}, subBindings)
-		sb.WriteString("\n" + rule + "\n")
-		sb.WriteString("  " + m.help.View(composed) + "\n")
-		sb.WriteString(rule)
+		inner = m.help.View(combineKeyMaps(globalsKeyMap{}, subBindings))
 	}
+	return "\n" + rule + "\n  " + inner + "\n" + rule
+}
 
-	return sb.String()
+// activeStatusLine returns the active sub-model's status line when it implements
+// chrome.StatusLiner and the text is non-empty.
+func activeStatusLine(m Model) (text string, severity chrome.Severity, ok bool) {
+	statusLiner, isLiner := m.subs[m.bar.Active()].(chrome.StatusLiner)
+	if !isLiner {
+		return "", 0, false
+	}
+	text, severity = statusLiner.StatusLine()
+	return text, severity, text != ""
+}
+
+func statusStyle(severity chrome.Severity) lipgloss.Style {
+	switch severity {
+	case chrome.Fatal:
+		return styles.Danger
+	case chrome.Recoverable:
+		return styles.Warning
+	default:
+		return styles.Body
+	}
 }
 
 type emptyKeyMap struct{}

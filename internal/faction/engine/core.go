@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
@@ -18,10 +18,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
-var (
-	ErrSpatialDataDirRequired = errors.New("spatial data dir is required for world engine")
-	ErrWorldEngineUnavailable = errors.New("engine: world engine unavailable")
-)
+var ErrWorldEngineUnavailable = errors.New("engine: world engine unavailable")
 
 // Package engine is the turn pipeline for the faction system.
 //
@@ -50,26 +47,8 @@ type Engine struct {
 	log      *slog.Logger
 }
 
-func New(paths *campaigns.Paths, log *slog.Logger) (*Engine, error) {
-	rb, err := rulebook.Load(paths.FactionDataDir)
-	if err != nil {
-		return nil, err
-	}
-	eng := NewWithRulebook(rb, log)
-	if paths.SpatialDataDir == "" {
-		return nil, ErrSpatialDataDirRequired
-	}
-	worldEngine, err := world.New(paths.SpatialDataDir, log)
-	if err != nil {
-		return nil, err
-	}
-	eng.World = worldEngine
-
-	return eng, nil
-}
-
-func NewWithRulebook(rulebook *rulebook.Rulebook, log *slog.Logger) *Engine {
-	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(log), Hooks: hooks.NewRegistry(), log: log}
+func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine, log *slog.Logger) *Engine {
+	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(log), Hooks: hooks.NewRegistry(), World: worldEngine, log: log}
 	e.Turn = turn.New(e.Rand, e.Rulebook, log)
 	e.Mutation = mutation.New(log)
 	e.Action = action.New(log)
@@ -81,5 +60,6 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, log *slog.Logger) *Engine {
 			e.Effect.Register(effects.NewTransportHandler(def))
 		}
 	}
+	actions.RegisterDefaultActions(e.Action, func() domain.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook)
 	return e
 }

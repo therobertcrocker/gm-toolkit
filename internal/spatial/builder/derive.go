@@ -34,23 +34,24 @@ func offsetNeighbors(coord gridCoord) []gridCoord {
 }
 
 type derivedMap struct {
-	Regions        []derivedRegion
-	Worlds         []derivedWorld
-	AdjacencyCount int
-	WarpCount      int
+	Regions   []derivedRegion
+	Worlds    []derivedWorld
+	Warps     []derivedWarp
+	WarpCount int
+	Warnings  []string
 }
 
 type derivedRegion struct {
-	ID         string
-	Name       string
-	Hexes      []spatial.HexCoord
-	Boundaries []derivedBoundary
+	ID    string
+	Name  string
+	Hexes []spatial.HexCoord
 }
 
-type derivedBoundary struct {
-	From     spatial.HexCoord
-	ToRegion string
-	To       spatial.HexCoord
+type derivedWarp struct {
+	FromRegion string
+	From       spatial.HexCoord
+	ToRegion   string
+	To         spatial.HexCoord
 }
 
 type derivedWorld struct {
@@ -67,13 +68,6 @@ type regionAcc struct {
 	hexes map[spatial.HexCoord]bool
 }
 
-type edgeKey struct {
-	fromRegion string
-	from       spatial.HexCoord
-	toRegion   string
-	to         spatial.HexCoord
-}
-
 // canonicalEdge orders an inter-region edge so the alphabetically-first region
 // owns it. Adjacency derivation and warp processing both depend on this rule
 // agreeing across phases — keep them sharing this single helper.
@@ -86,11 +80,8 @@ func canonicalEdge(aReg string, a spatial.HexCoord, bReg string, b spatial.HexCo
 
 // derivation holds the in-flight maps that the phase methods read and mutate.
 type derivation struct {
-	regions            map[string]*regionAcc
-	cellRegion         map[gridCoord]string
-	boundariesByRegion map[string][]derivedBoundary
-	seen               map[edgeKey]bool
-	adjacencyCount     int
+	regions    map[string]*regionAcc
+	cellRegion map[gridCoord]string
 }
 
 func newDerivation(data *dataFile) *derivation {
@@ -99,10 +90,8 @@ func newDerivation(data *dataFile) *derivation {
 		regions[id] = &regionAcc{name: entry.Name, hexes: make(map[spatial.HexCoord]bool)}
 	}
 	return &derivation{
-		regions:            regions,
-		cellRegion:         map[gridCoord]string{},
-		boundariesByRegion: map[string][]derivedBoundary{},
-		seen:               map[edgeKey]bool{},
+		regions:    regions,
+		cellRegion: map[gridCoord]string{},
 	}
 }
 
@@ -122,13 +111,12 @@ func derive(layout *layoutFile, data *dataFile) (*derivedMap, error) {
 		return nil, err
 	}
 
-	state.deriveBoundaries(layout)
-
-	if err := state.applyWarps(data.Warps, layout); err != nil {
+	warps, warnings, err := state.deriveWarps(layout)
+	if err != nil {
 		return nil, err
 	}
 
-	return state.assemble(worlds, len(data.Warps)), nil
+	return state.assemble(worlds, warps, warnings), nil
 }
 
 func crossCheckRegions(layout *layoutFile, data *dataFile) error {
@@ -236,85 +224,130 @@ func (state *derivation) inferWorldRegion(layout *layoutFile, world worldEntry, 
 		string(rune(world.At)), marker.Row, marker.Col, sortedKeys(candidates))
 }
 
-func (state *derivation) deriveBoundaries(layout *layoutFile) {
-	for coord, regionID := range state.cellRegion {
-		for _, neighbor := range offsetNeighbors(coord) {
-			if neighbor.Row < 0 || neighbor.Row >= len(layout.cells) {
+
+type markedHex struct {
+	region string
+	coord  spatial.HexCoord
+	grid   gridCoord
+}
+
+// deriveWarps connects every pair of marked hexes in different regions with clear
+// line-of-sight that are more than one hex apart (adjacent marks already connect
+// via a hex step). A marked hex must lie on a region boundary; a mark that reaches
+// no other region is reported as a non-fatal warning.
+func (state *derivation) deriveWarps(layout *layoutFile) ([]derivedWarp, []string, error) {
+	marks := state.collectMarks(layout)
+
+	for _, mark := range marks {
+		if !state.isBoundaryHex(mark.grid, mark.region, layout) {
+			return nil, nil, dataErrorf("",
+				"hex at (row=%d, col=%d) in region %q is marked for warp but is not on a region boundary",
+				mark.grid.Row, mark.grid.Col, mark.region)
+		}
+	}
+
+	occupied := state.occupiedHexes()
+	connected := make([]bool, len(marks))
+	var warps []derivedWarp
+
+	for i := 0; i < len(marks); i++ {
+		for j := i + 1; j < len(marks); j++ {
+			from, to := marks[i], marks[j]
+			if from.region == to.region {
 				continue
 			}
-			if neighbor.Col < 0 || neighbor.Col >= len(layout.cells[neighbor.Row]) {
+			if !lineClear(from.coord, to.coord, occupied) {
 				continue
 			}
-			otherID, ok := state.cellRegion[neighbor]
-			if !ok || otherID == regionID {
-				continue
+			connected[i] = true
+			connected[j] = true
+			if hexDistance(from.coord, to.coord) == 1 {
+				continue // adjacent: an ordinary hex step, no warp edge needed
 			}
-			ownerID, ownerCoord, neighborID, neighborCoord := canonicalEdge(regionID, axialOf(coord), otherID, axialOf(neighbor))
-			key := edgeKey{fromRegion: ownerID, from: ownerCoord, toRegion: neighborID, to: neighborCoord}
-			if state.seen[key] {
-				continue
-			}
-			state.seen[key] = true
-			state.boundariesByRegion[ownerID] = append(state.boundariesByRegion[ownerID], derivedBoundary{
-				From: ownerCoord, ToRegion: neighborID, To: neighborCoord,
+			fromRegion, fromCoord, toRegion, toCoord := canonicalEdge(from.region, from.coord, to.region, to.coord)
+			warps = append(warps, derivedWarp{
+				FromRegion: fromRegion, From: fromCoord, ToRegion: toRegion, To: toCoord,
 			})
-			state.adjacencyCount++
 		}
 	}
+
+	sort.Slice(warps, func(i, j int) bool { return warpLess(warps[i], warps[j]) })
+
+	var warnings []string
+	for i, mark := range marks {
+		if !connected[i] {
+			warnings = append(warnings, fmt.Sprintf(
+				"hex %s(%d,%d) is marked for warp but reaches no other region",
+				mark.region, mark.coord.Q, mark.coord.R))
+		}
+	}
+	return warps, warnings, nil
 }
 
-func (state *derivation) applyWarps(warps []warpEntry, layout *layoutFile) error {
-	for i, warp := range warps {
-		context := fmt.Sprintf("[[warps]] #%d", i+1)
-		if err := state.validateWarpEndpoint(layout, warp.From, context, "from"); err != nil {
-			return err
+func (state *derivation) collectMarks(layout *layoutFile) []markedHex {
+	var marks []markedHex
+	for row, rowCells := range layout.cells {
+		for col, c := range rowCells {
+			if !c.Warp {
+				continue
+			}
+			grid := gridCoord{Row: row, Col: col}
+			marks = append(marks, markedHex{
+				region: state.cellRegion[grid],
+				coord:  axialOf(grid),
+				grid:   grid,
+			})
 		}
-		if err := state.validateWarpEndpoint(layout, warp.To, context, "to"); err != nil {
-			return err
-		}
-		if warp.From.Region == warp.To.Region {
-			return dataErrorf(context, "both endpoints are in region %q; warps must cross region boundaries", warp.From.Region)
-		}
-		fromAxial := axialOf(gridCoord{Row: warp.From.Row, Col: warp.From.Col})
-		toAxial := axialOf(gridCoord{Row: warp.To.Row, Col: warp.To.Col})
-		ownerID, ownerCoord, neighborID, neighborCoord := canonicalEdge(warp.From.Region, fromAxial, warp.To.Region, toAxial)
-		key := edgeKey{fromRegion: ownerID, from: ownerCoord, toRegion: neighborID, to: neighborCoord}
-		if state.seen[key] {
-			return dataErrorf(context, "duplicate warp: hex pair already connected by a boundary or warp")
-		}
-		state.seen[key] = true
-		state.boundariesByRegion[ownerID] = append(state.boundariesByRegion[ownerID], derivedBoundary{
-			From: ownerCoord, ToRegion: neighborID, To: neighborCoord,
-		})
 	}
-	return nil
+	sort.Slice(marks, func(i, j int) bool {
+		if marks[i].region != marks[j].region {
+			return marks[i].region < marks[j].region
+		}
+		if marks[i].coord.Q != marks[j].coord.Q {
+			return marks[i].coord.Q < marks[j].coord.Q
+		}
+		return marks[i].coord.R < marks[j].coord.R
+	})
+	return marks
 }
 
-func (state *derivation) validateWarpEndpoint(layout *layoutFile, addr hexAddr, context, side string) error {
-	if addr.Row < 0 || addr.Row >= len(layout.cells) {
-		return dataErrorf(context, "%s.row=%d is out of bounds (grid has %d rows)", side, addr.Row, len(layout.cells))
+func (state *derivation) isBoundaryHex(grid gridCoord, region string, layout *layoutFile) bool {
+	for _, neighbor := range offsetNeighbors(grid) {
+		if neighbor.Row < 0 || neighbor.Row >= len(layout.cells) {
+			return true
+		}
+		if neighbor.Col < 0 || neighbor.Col >= len(layout.cells[neighbor.Row]) {
+			return true
+		}
+		if state.cellRegion[neighbor] != region {
+			return true
+		}
 	}
-	if addr.Col < 0 || addr.Col >= len(layout.cells[addr.Row]) {
-		return dataErrorf(context, "%s.col=%d is out of bounds for row %d (has %d cells)", side, addr.Col, addr.Row, len(layout.cells[addr.Row]))
-	}
-	if _, ok := state.regions[addr.Region]; !ok {
-		return dataErrorf(context, "%s.region=%q is not a declared region", side, addr.Region)
-	}
-	actual, ok := state.cellRegion[gridCoord{Row: addr.Row, Col: addr.Col}]
-	if !ok {
-		return dataErrorf(context, "%s cell at (row=%d, col=%d) is empty, not a region member", side, addr.Row, addr.Col)
-	}
-	if actual != addr.Region {
-		return dataErrorf(context, "%s cell at (row=%d, col=%d) belongs to region %q, not %q", side, addr.Row, addr.Col, actual, addr.Region)
-	}
-	return nil
+	return false
 }
 
-func (state *derivation) assemble(worlds []derivedWorld, warpCount int) *derivedMap {
-	out := &derivedMap{
-		AdjacencyCount: state.adjacencyCount,
-		WarpCount:      warpCount,
+func (state *derivation) occupiedHexes() map[spatial.HexCoord]bool {
+	occupied := map[spatial.HexCoord]bool{}
+	for _, acc := range state.regions {
+		for hex := range acc.hexes {
+			occupied[hex] = true
+		}
 	}
+	return occupied
+}
+
+func lineClear(from, to spatial.HexCoord, occupied map[spatial.HexCoord]bool) bool {
+	line := hexLine(from, to)
+	for _, hex := range line[1 : len(line)-1] {
+		if occupied[hex] {
+			return false
+		}
+	}
+	return true
+}
+
+func (state *derivation) assemble(worlds []derivedWorld, warps []derivedWarp, warnings []string) *derivedMap {
+	out := &derivedMap{Warps: warps, WarpCount: len(warps), Warnings: warnings}
 	ids := make([]string, 0, len(state.regions))
 	for id := range state.regions {
 		ids = append(ids, id)
@@ -332,25 +365,23 @@ func (state *derivation) assemble(worlds []derivedWorld, warpCount int) *derived
 			}
 			return hexes[i].R < hexes[j].R
 		})
-		boundaries := state.boundariesByRegion[id]
-		sort.Slice(boundaries, func(i, j int) bool { return boundaryLess(boundaries[i], boundaries[j]) })
-		out.Regions = append(out.Regions, derivedRegion{
-			ID: id, Name: acc.name, Hexes: hexes, Boundaries: boundaries,
-		})
+		out.Regions = append(out.Regions, derivedRegion{ID: id, Name: acc.name, Hexes: hexes})
 	}
 	sort.Slice(worlds, func(i, j int) bool { return worlds[i].ID < worlds[j].ID })
 	out.Worlds = worlds
 	return out
 }
 
-func boundaryLess(a, b derivedBoundary) bool {
+func warpLess(a, b derivedWarp) bool {
 	switch {
-	case a.ToRegion != b.ToRegion:
-		return a.ToRegion < b.ToRegion
+	case a.FromRegion != b.FromRegion:
+		return a.FromRegion < b.FromRegion
 	case a.From.Q != b.From.Q:
 		return a.From.Q < b.From.Q
 	case a.From.R != b.From.R:
 		return a.From.R < b.From.R
+	case a.ToRegion != b.ToRegion:
+		return a.ToRegion < b.ToRegion
 	case a.To.Q != b.To.Q:
 		return a.To.Q < b.To.Q
 	default:

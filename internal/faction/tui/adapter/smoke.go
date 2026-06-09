@@ -7,8 +7,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
@@ -50,6 +52,68 @@ func (s *SmokePhaseCollector) SelectTransportCargo(_ *domain.Asset, _ []*domain.
 }
 
 var _ engine.PhaseCollector = (*SmokePhaseCollector)(nil)
+
+// SmokeActionCollector satisfies action.Collector for the dry-run. The smoke
+// faction has no assets and no active goal, so only zero-prompt actions validate
+// and none of these methods are reached; they return action.ErrActionUnavailable
+// (recoverable) rather than panic if that ever changes.
+type SmokeActionCollector struct{}
+
+func NewSmokeActionCollector() *SmokeActionCollector { return &SmokeActionCollector{} }
+
+func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer { return nil }
+func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool                     { return false }
+
+func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectBuyOrder(_ map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+	return action.BuyOrder{}, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectRefitOrder(_ []action.RefitOption, _ *rulebook.Rulebook) (action.RefitOrder, error) {
+	return action.RefitOrder{}, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectAttackers(_ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {
+	return action.ExpandInfluenceOrder{}, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
+	return nil, 0, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	return "", action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectChangeHomeworldTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
+	return "", action.ErrActionUnavailable
+}
+
+var _ action.Collector = (*SmokeActionCollector)(nil)
 
 // SmokeObserver logs every engine event to slog at Info level.
 type SmokeObserver struct {

@@ -15,29 +15,24 @@ func TestNextSkipsSpatialAndWraps(t *testing.T) {
 	if m.Active() != ModeTurn {
 		t.Fatalf("after Next: got %v, want %v", m.Active(), ModeTurn)
 	}
-	// Turn -> Quit (Spatial skipped)
-	m = m.Next()
-	if m.Active() != ModeQuit {
-		t.Fatalf("after Next x2: got %v, want %v", m.Active(), ModeQuit)
-	}
-	// Quit -> Manage (wrap)
+	// Turn -> Manage (Spatial skipped, wrap)
 	m = m.Next()
 	if m.Active() != ModeManage {
-		t.Fatalf("after Next x3: got %v, want %v", m.Active(), ModeManage)
+		t.Fatalf("after Next x2: got %v, want %v", m.Active(), ModeManage)
 	}
 }
 
 func TestPrevWrapsAndSkipsSpatial(t *testing.T) {
 	m := New()
-	// Manage -> Quit (wrap)
-	m = m.Prev()
-	if m.Active() != ModeQuit {
-		t.Fatalf("after Prev: got %v, want %v", m.Active(), ModeQuit)
-	}
-	// Quit -> Turn (Spatial skipped)
+	// Manage -> Turn (wrap, Spatial skipped)
 	m = m.Prev()
 	if m.Active() != ModeTurn {
-		t.Fatalf("after Prev x2: got %v, want %v", m.Active(), ModeTurn)
+		t.Fatalf("after Prev: got %v, want %v", m.Active(), ModeTurn)
+	}
+	// Turn -> Manage
+	m = m.Prev()
+	if m.Active() != ModeManage {
+		t.Fatalf("after Prev x2: got %v, want %v", m.Active(), ModeManage)
 	}
 }
 

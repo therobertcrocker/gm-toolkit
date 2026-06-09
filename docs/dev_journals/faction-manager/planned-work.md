@@ -27,7 +27,7 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `F-005.3` | [tui-turn](#f-0053--tui-turn) | feature | `F-005.2` merged ✓ | Turn mode: setup, execution, modal overlay, Esc-cancel path. |
+| —       | *(empty — `F-005.3` shipped with `feature/tui-turn`)* | | | |
 
 ---
 <br />
@@ -56,10 +56,19 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F-016` | TUI Manage: Right Panel | feature | -- | add a right-hand panel to the manage screen, showing additional faction details at a glance. |
 | `R-006` | Shared `styles.Dim` constant | refactor | -- | `#6C7086` duplicated across detail/list/manage/layout; extract one shared constant. |
 | `R-007` | Extract `rebuildList()` helper | refactor | -- | Created/Deleted branches in manage.go copy-paste the rebuild sequence; extract a shared helper. |
-| `R-008` | Reuse `world.Location` + `campaigns.ValidateID` in wizard | refactor | -- | `synthesize`/`slugify` reinvent location handling and ID validation; delegate to existing helpers. |
+| `R-008` | `world.Location` + `campaigns.ValidateID` | refactor | -- | `synthesize`/`slugify` reinvent what helpers already do |
 | `R-009` | Remove write-only `detail.Model.height` | refactor | -- | Field is assigned but never read; dead weight in the detail model. |
 | `R-010` | Unify `WindowSizeMsg` routing in manage.go | refactor | -- | Per-view asymmetry in how size messages are forwarded; normalise to one pattern. |
 | `R-011` | Cache per-frame allocations in `compose()` / root `View()` | refactor | -- | Low priority: repeated allocations on hot path; pre-allocate or cache where safe. |
+| `R-012` | Engine construction shape | refactor | -- | review constructors so every user (TUI, CLI, tests) gets a fully-wired engine or fails fast at launch. |
+| `B-006` | Turn event stream flash | bugfix | -- | Center-pane event stream visibly redraws/flickers between collector prompts during a cycle; smooth the transition so it doesn't flash on each phase. |
+| `F-017` | Mid-cycle pause/cancel | feature | -- | A running cycle currently locks the mode bar (Tab is a no-op) and can't be paused or aborted; add safe pause/resume + cancel so the GM can step out and back without wedging the engine. |
+| `F-018` | UX Pass: Confirm-on-Choice | feature | post-tui-turn | Binding cadence principle for the TUI UX pass: every consequential choice gets a confirm/pause. First instance ships in the action-result-panel work. |
+| `R-013` | Candidate derivation boundary | refactor | next engine-action change | Collector methods should always receive engine-derived candidates; retires the adapter's `derive*`/`statRating` ports of engine eligibility logic (revisits tui-turn Decision 3). |
+| `R-014` | AskKind dispatch table | refactor | next new action | Collapse the parallel `newOverlay` + `askPhaseLabel` switches into one `map[AskKind]{label, factory}` that fails loudly on a missing entry. |
+| `R-015` | Collector reply rigor | refactor | -- | `action_collector` swallows bad reply types (`raw.(T)` zero-values); match `phase_collector`'s loud type errors, add the `SelectMovementDecisions` nil guard, drop the `phaseCollector.ask` delegation wrapper. |
+| `R-016` | Per-ask detail cards | refactor | 4th specialized card | Move per-ask knowledge out of `execution.detailView`'s `activeAsk` switch into an optional overlay interface (`DetailView() string`). |
+| `B-007` | Self-warp validation gap | bugfix | -- | `newRegionMap` accepts a hand-edited warp with `from_region == to_region`; harmless dead edge in pathfinding, but the validator should reject it. |
 ---
 <br />
 <br />
@@ -83,23 +92,6 @@ This section contains detailed write-ups for each planned initiative, including 
 - Restores any interactive surface to the toolkit.
 - First real consumer of the reshaped engine's external API — will surface gaps and friction before F-004 inherits them.
 - Gives mutations, narrative, and errors a structured rendering venue rather than living only in logs.
-
-<br />
-
-### F-005.3 — tui-turn
-
-**Status:** Backlog
-**Type:** Feature
-**Trigger:** `F-005.2` merged.
-**Part Of:** [A-005 — TUI Rebuild](#a-005--tui-rebuild) — Initiative 3 of 3.
-
-**Goal.** Ship the Turn mode end-to-end: setup view, execution view, modal overlay for collector prompts, cadence-flag toggle, and Esc-aborts-current-turn cancel path. After this initiative the GM can drive engine cycles interactively from the TUI.
-
-**Open Questions (resolve in Plan).**
-- What `Start` invokes — `RunCycle` vs `RunFactionTurn` in a loop?
-- Error rendering shape — where does `OnError` surface in the UI?
-
-See [`tui-rebuild-arc-plan.md`](../../initiatives/arcs/tui-rebuild/tui-rebuild-arc-plan.md) Initiative 3 for full scope and estimated commit shape.
 
 <br />
 

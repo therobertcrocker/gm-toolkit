@@ -14,7 +14,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -89,10 +88,8 @@ func NewHarness(t *testing.T) *Harness {
 		t.Fatalf("rulebook.Load: %v", err)
 	}
 	log := slog.New(slog.DiscardHandler)
-	eng := engine.NewWithRulebook(rb, log)
 	spatialMap := &StubSpatialMap{}
-	eng.World = world.NewWithMap(spatialMap, log)
-	actions.RegisterDefaultActions(eng)
+	eng := engine.NewWithRulebook(rb, world.NewWithMap(spatialMap, log), log)
 
 	scriptedCollector := &ScriptedCollector{}
 	return &Harness{

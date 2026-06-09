@@ -70,12 +70,17 @@ effort in a table, with a link to each per-effort plan file.
 ## Shared Context
 
 <!--
-Concepts, conventions, or constraints that span multiple phases or efforts.
-Use subsections per topic.
-
-Examples: struct shape decisions, naming conventions, test harness setup,
-mutation versioning, model discipline per phase, initiative-specific pre-merge
+Cross-cutting context with no single natural home: naming conventions, test
+harness setup, model discipline per phase, initiative-specific pre-merge
 checklist additions, package conventions.
+
+NOT for per-file implementation detail. Signatures, struct definitions, field
+lists, formatter tables, dispatch flows — all belong in the task that builds
+them (see Work Breakdown), never here. Hoisting detail up and referencing it
+back down splits one spec across two locations; the execution session reading a
+task loses locality and has to reassemble the spec. If a section here is named
+after a single commit ("Adapter contract changes (Commit 4)"), it is in the
+wrong place — move it into that commit's task.
 -->
 
 ## Out of Scope
@@ -102,9 +107,19 @@ GRANULARITY GUIDE:
 The structure below shows the full Phase → Commit → Task pattern. Trim levels as
 appropriate for the work size.
 
-KEY RULE: Each commit = one execution session. Title each commit with its
+KEY RULE 1: Each commit = one execution session. Title each commit with its
 conventional commit message so the execution session knows the deliverable shape
 going in.
+
+KEY RULE 2: Every task is self-contained and executable on its own — it IS the
+edit, not a description of one (see the per-task format below). The full
+implementation detail lives in the task as literal code: real signatures, struct
+definitions with field lists, per-kind tables — never a pointer back to a section
+above, never pseudocode the executor must flesh out. When a structure is
+genuinely shared across commits, the FIRST task that needs it defines it in full;
+later tasks cite that task precisely ("uses turn.Model, defined in Commit 5
+Task 1") rather than redefining it or referencing a floating section. The only
+back-reference allowed is a task-to-task citation.
 -->
 
 ### Phase 1 — [Title]
@@ -116,14 +131,54 @@ going in.
 ##### Task 1 — `path/to/file.go`
 
 <!--
-What changes in this file. Include signatures, struct definitions, or pseudocode
-where the design is non-obvious. The execution session reads this and writes the
-code.
+A task is the EDIT, not a description of it. The executor (human or Claude)
+applies it without interpreting prose back into code and without reading
+anything above the task. Pick the format by edit size:
+
+SURGICAL EDIT to an existing file — Find → Replace. Pull the anchor verbatim
+from the current source so it locates the spot exactly:
+
+  In `FuncName`, <one line of why this changes>.
+
+  **Find:**
+  ```go
+  <verbatim current lines, enough to be unique>
+  ```
+  **Replace with:**
+  ```go
+  <exact new lines>
+  ```
+
+NEW OR REWRITTEN file — full content. No anchor needed; there's nothing to
+locate. Give the complete file body in one block:
+
+  `path/to/file.go` (new) — full contents:
+  ```go
+  <the entire file>
+  ```
+
+Either way the code is literal: real signatures, real struct field lists, real
+per-kind tables — never "see Shared Context," never pseudocode the executor must
+flesh out. If this task defines a structure later tasks reuse, define it in full
+here; later tasks cite it by task ("uses turn.Model, defined in Commit N Task M").
 -->
 
 ##### Task 2 — `path/to/other_file.go`
 
 <!-- ... -->
+
+##### Commit message
+
+<!--
+REQUIRED per commit. The fenced conventional-commit message the execution
+session will use, so the deliverable shape is fixed going in:
+
+```
+type(scope): summary line
+
+- bullet per material change
+```
+-->
 
 #### Commit 2 — `refactor: [conventional commit message]`
 

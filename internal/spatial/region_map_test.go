@@ -20,6 +20,7 @@ func TestRegionMap_Distance(t *testing.T) {
 	cases := []struct {
 		name         string
 		regions      map[string]*Region
+		warps        []warpRecord
 		from         RegionHex
 		to           RegionHex
 		crossingCost int
@@ -71,45 +72,77 @@ func TestRegionMap_Distance(t *testing.T) {
 			wantDist:     3,
 		},
 		{
-			name: "cross-region single boundary",
+			name: "cross-region adjacent steps cost 1 not crossingCost",
 			regions: map[string]*Region{
-				"a": {
-					ID:    "a",
-					Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0}),
-					Boundaries: []BoundaryConnection{
-						{From: HexCoord{1, 0}, ToRegion: "b", To: HexCoord{0, 0}},
-					},
-				},
-				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0})},
+				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{2, 0}, HexCoord{3, 0})},
 			},
 			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "b", Coord: HexCoord{1, 0}},
+			to:           RegionHex{RegionID: "b", Coord: HexCoord{3, 0}},
 			crossingCost: 5,
-			wantDist:     7,
+			wantDist:     3,
 		},
 		{
-			name: "cross-region two boundaries chained",
+			name: "cross-region warp charges crossingCost",
 			regions: map[string]*Region{
-				"a": {
-					ID:    "a",
-					Hexes: makeHexes(HexCoord{0, 0}),
-					Boundaries: []BoundaryConnection{
-						{From: HexCoord{0, 0}, ToRegion: "b", To: HexCoord{0, 0}},
-					},
-				},
-				"b": {
-					ID:    "b",
-					Hexes: makeHexes(HexCoord{0, 0}),
-					Boundaries: []BoundaryConnection{
-						{From: HexCoord{0, 0}, ToRegion: "c", To: HexCoord{0, 0}},
-					},
-				},
-				"c": {ID: "c", Hexes: makeHexes(HexCoord{0, 0})},
+				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{50, 0})},
+			},
+			warps: []warpRecord{
+				{fromRegion: "a", from: HexCoord{0, 0}, toRegion: "b", to: HexCoord{50, 0}},
 			},
 			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "c", Coord: HexCoord{0, 0}},
+			to:           RegionHex{RegionID: "b", Coord: HexCoord{50, 0}},
+			crossingCost: 3,
+			wantDist:     3,
+		},
+		{
+			name: "cross-region warp traversal reverse direction",
+			regions: map[string]*Region{
+				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{50, 0})},
+			},
+			warps: []warpRecord{
+				{fromRegion: "a", from: HexCoord{0, 0}, toRegion: "b", to: HexCoord{50, 0}},
+			},
+			from:         RegionHex{RegionID: "b", Coord: HexCoord{50, 0}},
+			to:           RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
+			crossingCost: 3,
+			wantDist:     3,
+		},
+		{
+			name: "two warps chained",
+			regions: map[string]*Region{
+				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{10, 0})},
+				"c": {ID: "c", Hexes: makeHexes(HexCoord{20, 0})},
+			},
+			warps: []warpRecord{
+				{fromRegion: "a", from: HexCoord{0, 0}, toRegion: "b", to: HexCoord{10, 0}},
+				{fromRegion: "b", from: HexCoord{10, 0}, toRegion: "c", to: HexCoord{20, 0}},
+			},
+			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
+			to:           RegionHex{RegionID: "c", Coord: HexCoord{20, 0}},
 			crossingCost: 3,
 			wantDist:     6,
+		},
+		{
+			name: "warp shortcut beats long intra-region path",
+			regions: map[string]*Region{
+				"a": {ID: "a", Hexes: makeHexes(
+					HexCoord{0, 0}, HexCoord{1, 0}, HexCoord{2, 0},
+					HexCoord{3, 0}, HexCoord{4, 0}, HexCoord{5, 0},
+				)},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{100, 0})},
+			},
+			warps: []warpRecord{
+				{fromRegion: "a", from: HexCoord{0, 0}, toRegion: "b", to: HexCoord{100, 0}},
+				{fromRegion: "a", from: HexCoord{5, 0}, toRegion: "b", to: HexCoord{100, 0}},
+			},
+			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
+			to:           RegionHex{RegionID: "a", Coord: HexCoord{5, 0}},
+			crossingCost: 1,
+			wantDist:     2,
 		},
 		{
 			name: "negative cost is invalid",
@@ -122,51 +155,13 @@ func TestRegionMap_Distance(t *testing.T) {
 			wantErr:      ErrInvalidCost,
 		},
 		{
-			name: "bidirectional traversal against declared boundary direction",
-			regions: map[string]*Region{
-				"a": {
-					ID:    "a",
-					Hexes: makeHexes(HexCoord{0, 0}),
-					Boundaries: []BoundaryConnection{
-						{From: HexCoord{0, 0}, ToRegion: "b", To: HexCoord{0, 0}},
-					},
-				},
-				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
-			},
-			from:         RegionHex{RegionID: "b", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			crossingCost: 4,
-			wantDist:     4,
-		},
-		{
-			name: "boundary shortcut beats long intra-region path",
-			regions: map[string]*Region{
-				"a": {
-					ID: "a",
-					Hexes: makeHexes(
-						HexCoord{0, 0}, HexCoord{1, 0}, HexCoord{2, 0},
-						HexCoord{3, 0}, HexCoord{4, 0}, HexCoord{5, 0},
-					),
-					Boundaries: []BoundaryConnection{
-						{From: HexCoord{0, 0}, ToRegion: "b", To: HexCoord{0, 0}},
-						{From: HexCoord{5, 0}, ToRegion: "b", To: HexCoord{0, 0}},
-					},
-				},
-				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
-			},
-			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "a", Coord: HexCoord{5, 0}},
-			crossingCost: 1,
-			wantDist:     2,
-		},
-		{
 			name: "no path between disconnected regions",
 			regions: map[string]*Region{
 				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0})},
-				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{100, 0})},
 			},
 			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "b", Coord: HexCoord{0, 0}},
+			to:           RegionHex{RegionID: "b", Coord: HexCoord{100, 0}},
 			crossingCost: 1,
 			wantErr:      ErrNoPath,
 		},
@@ -174,7 +169,11 @@ func TestRegionMap_Distance(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			regionMap := &RegionMap{regions: testCase.regions, worlds: map[string]*World{}}
+			regionMap, err := newRegionMap(testCase.regions, testCase.warps)
+			if err != nil {
+				t.Fatalf("setup: %v", err)
+			}
+			regionMap.worlds = map[string]*World{}
 
 			got, err := regionMap.Distance(testCase.from, testCase.to, testCase.crossingCost)
 
@@ -202,6 +201,7 @@ func TestRegionMap_Path(t *testing.T) {
 	cases := []struct {
 		name         string
 		regions      map[string]*Region
+		warps        []warpRecord
 		from         RegionHex
 		to           RegionHex
 		crossingCost int
@@ -235,27 +235,21 @@ func TestRegionMap_Path(t *testing.T) {
 			wantCost: 1,
 		},
 		{
-			name: "cross-region single boundary",
+			name: "cross-region adjacent hop costs 1 not crossingCost",
 			regions: map[string]*Region{
-				"a": {
-					ID:    "a",
-					Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0}),
-					Boundaries: []BoundaryConnection{
-						{From: HexCoord{1, 0}, ToRegion: "b", To: HexCoord{0, 0}},
-					},
-				},
-				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0})},
+				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0}, HexCoord{1, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{2, 0}, HexCoord{3, 0})},
 			},
 			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "b", Coord: HexCoord{1, 0}},
+			to:           RegionHex{RegionID: "b", Coord: HexCoord{3, 0}},
 			crossingCost: 5,
 			wantPath: []RegionHex{
 				{RegionID: "a", Coord: HexCoord{0, 0}},
 				{RegionID: "a", Coord: HexCoord{1, 0}},
-				{RegionID: "b", Coord: HexCoord{0, 0}},
-				{RegionID: "b", Coord: HexCoord{1, 0}},
+				{RegionID: "b", Coord: HexCoord{2, 0}},
+				{RegionID: "b", Coord: HexCoord{3, 0}},
 			},
-			wantCost: 7,
+			wantCost: 3,
 		},
 		{
 			name: "negative cost is invalid",
@@ -271,10 +265,10 @@ func TestRegionMap_Path(t *testing.T) {
 			name: "no path between disconnected regions",
 			regions: map[string]*Region{
 				"a": {ID: "a", Hexes: makeHexes(HexCoord{0, 0})},
-				"b": {ID: "b", Hexes: makeHexes(HexCoord{0, 0})},
+				"b": {ID: "b", Hexes: makeHexes(HexCoord{100, 0})},
 			},
 			from:         RegionHex{RegionID: "a", Coord: HexCoord{0, 0}},
-			to:           RegionHex{RegionID: "b", Coord: HexCoord{0, 0}},
+			to:           RegionHex{RegionID: "b", Coord: HexCoord{100, 0}},
 			crossingCost: 1,
 			wantErr:      ErrNoPath,
 		},
@@ -282,7 +276,11 @@ func TestRegionMap_Path(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			regionMap := &RegionMap{regions: testCase.regions, worlds: map[string]*World{}}
+			regionMap, err := newRegionMap(testCase.regions, testCase.warps)
+			if err != nil {
+				t.Fatalf("setup: %v", err)
+			}
+			regionMap.worlds = map[string]*World{}
 			gotPath, gotCost, err := regionMap.Path(testCase.from, testCase.to, testCase.crossingCost)
 			if testCase.wantErr != nil {
 				if err == nil {
@@ -362,17 +360,18 @@ id    = "alpha"
 name  = "Alpha"
 hexes = [[0,0],[1,0]]
 
-  [[region.boundary]]
-  from_q    = 1
-  from_r    = 0
-  to_region = "beta"
-  to_q      = 0
-  to_r      = 0
-
 [[region]]
 id    = "beta"
 name  = "Beta"
-hexes = [[0,0]]
+hexes = [[10,0]]
+
+[[warp]]
+from_region = "alpha"
+from_q = 1
+from_r = 0
+to_region = "beta"
+to_q = 10
+to_r = 0
 `
 
 	const validWorlds = `
@@ -391,7 +390,7 @@ name       = "Frag Two"
 tech_level = 2
 population = 50
 region     = "beta"
-hex_q      = 0
+hex_q      = 10
 hex_r      = 0
 `
 
@@ -405,7 +404,7 @@ hex_r      = 0
 		verify        func(t *testing.T, regionMap *RegionMap)
 	}{
 		{
-			name:         "happy path loads regions and worlds",
+			name:         "happy path loads regions worlds and bidirectional warps",
 			regionsTOML:  validRegions,
 			worldsTOML:   validWorlds,
 			writeRegions: true,
@@ -416,6 +415,14 @@ hex_r      = 0
 				}
 				if loc, ok := regionMap.Location("f2"); !ok || loc.TechLevel() != 2 {
 					t.Errorf("Location(f2) tech_level = %d, want 2", loc.TechLevel())
+				}
+				forward := regionMap.warps[HexCoord{1, 0}]
+				if len(forward) != 1 || forward[0].toRegion != "beta" || forward[0].to != (HexCoord{10, 0}) {
+					t.Errorf("warps[(1,0)] = %v, want [{toRegion:beta to:(10,0)}]", forward)
+				}
+				reverse := regionMap.warps[HexCoord{10, 0}]
+				if len(reverse) != 1 || reverse[0].toRegion != "alpha" || reverse[0].to != (HexCoord{1, 0}) {
+					t.Errorf("warps[(10,0)] = %v, want [{toRegion:alpha to:(1,0)}]", reverse)
 				}
 			},
 		},
@@ -474,21 +481,22 @@ hex_r = 5
 			wantErrSubstr: "not within region",
 		},
 		{
-			name: "boundary From not in declaring region",
+			name: "warp From not in fromRegion",
 			regionsTOML: `[[region]]
 id = "alpha"
 hexes = [[0,0]]
 
-  [[region.boundary]]
-  from_q = 9
-  from_r = 9
-  to_region = "beta"
-  to_q = 0
-  to_r = 0
-
 [[region]]
 id = "beta"
-hexes = [[0,0]]
+hexes = [[10,0]]
+
+[[warp]]
+from_region = "alpha"
+from_q = 9
+from_r = 9
+to_region = "beta"
+to_q = 10
+to_r = 0
 `,
 			worldsTOML:    "",
 			writeRegions:  true,
@@ -496,17 +504,18 @@ hexes = [[0,0]]
 			wantErrSubstr: "From=(9,9)",
 		},
 		{
-			name: "boundary references unknown to_region",
+			name: "warp references unknown toRegion",
 			regionsTOML: `[[region]]
 id = "alpha"
 hexes = [[0,0]]
 
-  [[region.boundary]]
-  from_q = 0
-  from_r = 0
-  to_region = "ghost"
-  to_q = 0
-  to_r = 0
+[[warp]]
+from_region = "alpha"
+from_q = 0
+from_r = 0
+to_region = "ghost"
+to_q = 0
+to_r = 0
 `,
 			worldsTOML:    "",
 			writeRegions:  true,
@@ -514,21 +523,22 @@ hexes = [[0,0]]
 			wantErrSubstr: `unknown region "ghost"`,
 		},
 		{
-			name: "boundary To not in target region",
+			name: "warp To not in toRegion",
 			regionsTOML: `[[region]]
 id = "alpha"
 hexes = [[0,0]]
 
-  [[region.boundary]]
-  from_q = 0
-  from_r = 0
-  to_region = "beta"
-  to_q = 9
-  to_r = 9
-
 [[region]]
 id = "beta"
-hexes = [[0,0]]
+hexes = [[10,0]]
+
+[[warp]]
+from_region = "alpha"
+from_q = 0
+from_r = 0
+to_region = "beta"
+to_q = 9
+to_r = 9
 `,
 			worldsTOML:    "",
 			writeRegions:  true,

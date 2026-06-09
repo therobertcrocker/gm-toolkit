@@ -121,6 +121,12 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Session ends when:** the commit lands. The next commit in the plan is the next session.
 
+### Interim Effort Review (optional; multi-effort initiatives)
+
+For an initiative split into multiple efforts, an optional code review can run at an effort boundary — after an effort's commits land, before the next effort's Plan session. It is a senior-engineer review of just that effort's work (the diff since the effort began), catching structural issues while the next effort is still cheap to redirect.
+
+It is **distinct from the Pre-Merge Checklist**: the checklist still runs once at branch level after the final effort. An interim review does not trigger a merge, a dev-journal update, or a planned-work update — it is review only. Like all reviews, it runs on Opus (section 8). It is Robert's call whether a given effort boundary warrants one.
+
 ### Pre-Merge Checklist
 
 Before merging the feature branch, run the checklist in CLAUDE.md (Collaboration, item 7):
@@ -322,7 +328,8 @@ Re-grounding is most load-bearing for refactors (see section 5) but applies to a
 | Discovery | Opus | Always |
 | Plan | Opus | Always |
 | Execution | Sonnet | Default; suggest Opus when the phase involves heavy design or unusual complexity |
-| End-of-phase docs and pre-merge checklist | Sonnet | Always — doc and checklist work doesn't need Opus |
+| Code review (interim or pre-merge) | Opus | Always — critical design review benefits from Opus reasoning |
+| End-of-phase docs and pre-merge checklist | Sonnet | Doc/journal/planned-work updates don't need Opus; the code-review step within the checklist uses Opus |
 
 Surface the recommended model and prompt Robert to switch (`/model`) before each mode transition, including mid-session shifts (e.g. moving from execution into the pre-merge checklist).
 

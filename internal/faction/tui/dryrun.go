@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/adapter"
@@ -27,9 +26,7 @@ func RunDryRun(log *slog.Logger) error {
 		DriftCosts: []int{1},
 	}
 
-	eng := engine.NewWithRulebook(rb, log)
-	eng.World = adapter.NewSmokeWorldEngine(log)
-	actions.RegisterDefaultActions(eng)
+	eng := engine.NewWithRulebook(rb, adapter.NewSmokeWorldEngine(log), log)
 
 	tmpDir, err := os.MkdirTemp("", "gm-toolkit-dryrun-*")
 	if err != nil {
@@ -50,7 +47,7 @@ func RunDryRun(log *slog.Logger) error {
 
 	collectors := engine.Collectors{
 		Phase:  adapter.NewSmokePhaseCollector(log),
-		Action: adapter.NewStubActionCollector(),
+		Action: adapter.NewSmokeActionCollector(),
 	}
 	observer := adapter.NewSmokeObserver(log)
 

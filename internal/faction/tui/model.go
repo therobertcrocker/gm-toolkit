@@ -1,13 +1,15 @@
 package tui
 
 import (
+	"log/slog"
+
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/adapter"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/modebar"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/turn"
@@ -17,7 +19,6 @@ import (
 type Model struct {
 	bar          modebar.Model
 	subs         map[modebar.Mode]tea.Model
-	adapter      *adapter.Adapter
 	help         help.Model
 	factionState *state.FactionState
 	campaignID   string
@@ -25,29 +26,26 @@ type Model struct {
 	height       int
 
 	confirmExit bool
-	priorMode   modebar.Mode
-	showHelp    bool
 }
 
 func NewModel(
-	adp *adapter.Adapter,
+	eng *engine.Engine,
 	factionState *state.FactionState,
 	paths *campaigns.Paths,
 	rb *rulebook.Rulebook,
 	spatialMap *spatial.RegionMap,
+	log *slog.Logger,
 ) Model {
 	h := help.New()
 	h.ShowAll = false
 	return Model{
 		bar:          modebar.New(),
-		adapter:      adp,
 		help:         h,
-		showHelp:     true,
 		factionState: factionState,
 		campaignID:   factionState.CampaignID,
 		subs: map[modebar.Mode]tea.Model{
 			modebar.ModeManage: manage.New(factionState, paths, rb, spatialMap),
-			modebar.ModeTurn:   turn.New(),
+			modebar.ModeTurn:   turn.New(factionState, paths, eng, rb, spatialMap, log),
 		},
 	}
 }

@@ -15,6 +15,8 @@ import (
 // abort semantics for the new error category.
 var recoverableErrors = []error{
 	action.ErrNoSelection,
+	action.ErrTurnCanceled,
+	action.ErrActionUnavailable,
 }
 
 func IsRecoverable(err error) bool {

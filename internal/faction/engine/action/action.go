@@ -11,6 +11,15 @@ import (
 
 var (
 	ErrNoSelection = errors.New("action: no selection")
+	// ErrTurnCanceled is sent on an ask Reply when the GM dismisses an action
+	// prompt (Esc). Classified Recoverable, so the faction's action is skipped
+	// and the cycle continues. Lives here (not the TUI adapter) so the engine's
+	// error classifier can reference it without a TUI import.
+	ErrTurnCanceled = errors.New("action: turn canceled by user")
+	// ErrActionUnavailable is returned by the adapter's actionCollector for an
+	// action-unique prompt whose per-action commit has not landed. Recoverable +
+	// surfaced; the SelectAction disable-set keeps it unreachable in practice.
+	ErrActionUnavailable = errors.New("action: prompt not yet available")
 )
 
 // Action is the contract all faction actions implement.

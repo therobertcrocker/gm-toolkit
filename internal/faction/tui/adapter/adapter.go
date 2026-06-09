@@ -19,7 +19,6 @@ type Adapter struct {
 
 	askCh   chan CollectorAskMsg
 	eventCh chan ObserverEventMsg
-	doneCh  chan EngineDoneMsg
 
 	perFactionCadence atomic.Bool
 
@@ -33,14 +32,13 @@ func New(eng *engine.Engine, factionState *state.FactionState, paths *campaigns.
 		paths:        paths,
 		askCh:        make(chan CollectorAskMsg),
 		eventCh:      make(chan ObserverEventMsg, eventChanBuffer),
-		doneCh:       make(chan EngineDoneMsg, 1),
 		log:          log,
 	}
 }
 
 func (a *Adapter) SetPerFactionCadence(on bool) { a.perFactionCadence.Store(on) }
 
-func (a *Adapter) Action() action.Collector { return &stubActionCollector{} }
+func (a *Adapter) Action() action.Collector { return newActionCollector(a) }
 func (a *Adapter) Collectors() engine.Collectors {
 	return engine.Collectors{Phase: a.Phase(), Action: a.Action()}
 }

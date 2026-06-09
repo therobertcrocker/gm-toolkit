@@ -97,6 +97,32 @@ A . A
 `,
 			wantErr: "empty grid",
 		},
+		{
+			name:  "warp mark on region glyph sets Warp",
+			input: "A* B\n",
+			check: func(t *testing.T, layout *layoutFile) {
+				if !layout.cells[0][0].Warp {
+					t.Errorf("cells[0][0].Warp = false, want true")
+				}
+				if layout.cells[0][1].Warp {
+					t.Errorf("cells[0][1].Warp = true, want false (unmarked cell)")
+				}
+			},
+		},
+		{
+			name:  "warp mark on world glyph sets Warp",
+			input: "A 1* A\n",
+			check: func(t *testing.T, layout *layoutFile) {
+				if !layout.cells[0][1].Warp {
+					t.Errorf("cells[0][1].Warp = false, want true for world marker")
+				}
+			},
+		},
+		{
+			name:    "stray * after empty cell is separator error",
+			input:   ".* A\n",
+			wantErr: "expected single-space separator",
+		},
 	}
 
 	for _, tc := range cases {

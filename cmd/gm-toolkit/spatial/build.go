@@ -62,8 +62,10 @@ func printSummary(cmd *cobra.Command, campaignID string, s builder.Summary, dstD
 	fmt.Fprintf(out, "Built spatial map for campaign %s:\n", campaignID)
 	fmt.Fprintf(out, "  %d regions (%s)\n", len(s.Regions), strings.Join(s.Regions, ", "))
 	fmt.Fprintf(out, "  %d worlds\n", s.WorldCount)
-	fmt.Fprintf(out, "  %d adjacency boundaries\n", s.AdjacencyCount)
 	fmt.Fprintf(out, "  %d warps\n", s.WarpCount)
 	fmt.Fprintf(out, "Wrote %s/regions.toml\n", dstDir)
 	fmt.Fprintf(out, "Wrote %s/worlds.toml\n", dstDir)
+	for _, warning := range s.Warnings {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s\n", warning)
+	}
 }

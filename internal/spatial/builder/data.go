@@ -11,7 +11,6 @@ import (
 type dataFile struct {
 	Regions map[string]regionEntry `toml:"regions"`
 	Worlds  []worldEntry           `toml:"worlds"`
-	Warps   []warpEntry            `toml:"warps"`
 }
 
 type regionEntry struct {
@@ -52,16 +51,6 @@ func (a *atGlyph) UnmarshalTOML(v interface{}) error {
 	}
 }
 
-type warpEntry struct {
-	From hexAddr `toml:"from"`
-	To   hexAddr `toml:"to"`
-}
-
-type hexAddr struct {
-	Region string `toml:"region"`
-	Row    int    `toml:"row"`
-	Col    int    `toml:"col"`
-}
 
 func parseData(srcDir string) (*dataFile, error) {
 	path := filepath.Join(srcDir, "data.toml")

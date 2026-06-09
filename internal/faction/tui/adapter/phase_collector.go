@@ -13,15 +13,21 @@ type phaseCollector struct{ adapter *Adapter }
 
 func (a *Adapter) Phase() engine.PhaseCollector { return &phaseCollector{adapter: a} }
 
-// ask sends a CollectorAskMsg to the UI thread and blocks until the reply arrives.
-func (p *phaseCollector) ask(kind AskKind, faction *domain.Faction, payload any) (any, error) {
+// ask sends a CollectorAskMsg to the UI thread and blocks until the reply
+// arrives. Hoisted onto *Adapter so both the phase and action collectors share
+// the one unbuffered askCh (Discovery Decision 4).
+func (a *Adapter) ask(kind AskKind, faction *domain.Faction, payload any) (any, error) {
 	reply := make(chan any, 1)
-	p.adapter.askCh <- CollectorAskMsg{Kind: kind, Faction: faction, Payload: payload, Reply: reply}
+	a.askCh <- CollectorAskMsg{Kind: kind, Faction: faction, Payload: payload, Reply: reply}
 	received := <-reply
 	if err, ok := received.(error); ok {
 		return nil, err
 	}
 	return received, nil
+}
+
+func (p *phaseCollector) ask(kind AskKind, faction *domain.Faction, payload any) (any, error) {
+	return p.adapter.ask(kind, faction, payload)
 }
 
 func (p *phaseCollector) AwaitCheckpoint(phase string) error {
@@ -37,6 +43,9 @@ func (p *phaseCollector) SelectAction(faction *domain.Faction, available []actio
 	if err != nil {
 		return nil, err
 	}
+	if raw == nil {
+		return nil, nil // legal skip (orchestrator.go:418)
+	}
 	chosen, ok := raw.(action.Action)
 	if !ok {
 		return nil, fmt.Errorf("phase_collector.SelectAction: unexpected reply type %T", raw)
@@ -48,6 +57,9 @@ func (p *phaseCollector) SelectStatRaise(faction *domain.Faction, eligible []dom
 	raw, err := p.ask(AskSelectStatRaise, faction, SelectStatRaisePayload{Eligible: eligible})
 	if err != nil {
 		return nil, err
+	}
+	if raw == nil {
+		return nil, nil // decline the raise (accept an untyped nil, not only a typed nil)
 	}
 	chosen, ok := raw.(*domain.FactionStat)
 	if !ok {

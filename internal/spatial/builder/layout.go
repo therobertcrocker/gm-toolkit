@@ -17,6 +17,7 @@ type cell struct {
 	Glyph    glyph
 	Row      int
 	Col      int
+	Warp     bool
 	FileLine int
 	FileCol  int
 }
@@ -91,6 +92,11 @@ func parseLayoutRow(line string, row, fileLine int, markers map[glyph]cell) ([]c
 			return nil, layoutErrorf(fileLine, fileCol, "invalid glyph %q (expected '.', 'A'-'Z', '1'-'9', or 'a'-'z')", ch)
 		}
 		c := cell{Glyph: g, Row: row, Col: cellCol, FileLine: fileLine, FileCol: fileCol}
+		i++
+		if (g.isRegion() || g.isWorld()) && i < len(line) && line[i] == '*' {
+			c.Warp = true
+			i++
+		}
 		cells = append(cells, c)
 
 		if g.isWorld() {
@@ -100,7 +106,6 @@ func parseLayoutRow(line string, row, fileLine int, markers map[glyph]cell) ([]c
 			markers[g] = c
 		}
 		cellCol++
-		i++
 		if i >= len(line) {
 			break
 		}

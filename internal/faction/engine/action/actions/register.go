@@ -1,32 +1,52 @@
 package actions
 
 import (
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
-// RegisterDefaultActions wires the standard SWN faction actions into the engine.
-func RegisterDefaultActions(e *engine.Engine) {
-	e.Action.Register(func(c action.Collector) action.Action { return NewSellAsset(c) })
-	e.Action.Register(func(_ action.Collector) action.Action { return NewRepairFaction() })
-	e.Action.Register(func(c action.Collector) action.Action { return NewRepairAsset(c) })
-	e.Action.Register(func(c action.Collector) action.Action { return NewBuyAsset(c, e.Hooks, e.World) })
-	e.Action.Register(func(c action.Collector) action.Action { return NewRefitAsset(c) })
-	e.Action.Register(func(c action.Collector) action.Action { return NewAttack(c, e.Rand, e.Hooks, worldIndex(e)) })
-	e.Action.Register(func(c action.Collector) action.Action { return NewExpandInfluence(c, e.Rand, worldIndex(e), e.World) })
-	e.Action.Register(func(c action.Collector) action.Action { return NewBribe(c) })
-	e.Action.Register(func(c action.Collector) action.Action {
-		return NewUseAssetAbility(c, e.Rand)
+// RegisterDefaultActions wires the standard SWN faction actions into the action
+// engine. Dependencies are passed explicitly so this package does not import the
+// parent engine package — that keeps engine free to own registration without an
+// import cycle.
+// resolveRoller is read at factory-invocation (turn) time rather than captured
+// by value, because the roller is a swappable seam — tests replace Engine.Rand
+// with a deterministic FixedRoller after construction.
+func RegisterDefaultActions(
+	ae *action.ActionEngine,
+	resolveRoller func() domain.Roller,
+	hookRegistry *hooks.Registry,
+	worldEngine *world.WorldEngine,
+	rulebook *rulebook.Rulebook,
+) {
+	ae.Register(func(c action.Collector) action.Action { return NewSellAsset(c) })
+	ae.Register(func(_ action.Collector) action.Action { return NewRepairFaction() })
+	ae.Register(func(c action.Collector) action.Action { return NewRepairAsset(c) })
+	ae.Register(func(c action.Collector) action.Action { return NewBuyAsset(c, hookRegistry, worldEngine) })
+	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c) })
+	ae.Register(func(c action.Collector) action.Action {
+		return NewAttack(c, resolveRoller(), hookRegistry, worldIndex(worldEngine))
 	})
-	e.Action.Register(func(_ action.Collector) action.Action { return NewAbandonGoal() })
-	e.Action.Register(func(c action.Collector) action.Action { return NewSeizePlanet(c, worldIndex(e)) })
-	e.Action.Register(func(c action.Collector) action.Action { return NewChangeHomeworld(c, e.World, e.Rulebook) })
+	ae.Register(func(c action.Collector) action.Action {
+		return NewExpandInfluence(c, resolveRoller(), worldIndex(worldEngine), worldEngine)
+	})
+	ae.Register(func(c action.Collector) action.Action { return NewBribe(c) })
+	ae.Register(func(c action.Collector) action.Action {
+		return NewUseAssetAbility(c, resolveRoller())
+	})
+	ae.Register(func(_ action.Collector) action.Action { return NewAbandonGoal() })
+	ae.Register(func(c action.Collector) action.Action { return NewSeizePlanet(c, worldIndex(worldEngine)) })
+	ae.Register(func(c action.Collector) action.Action { return NewChangeHomeworld(c, worldEngine, rulebook) })
 }
 
-func worldIndex(e *engine.Engine) *world.Index {
-	if e.World == nil {
+// worldIndex returns the spatial index the world-aware actions need, tolerating
+// a World-less engine (dryrun smoke worlds, non-spatial actions).
+func worldIndex(worldEngine *world.WorldEngine) *world.Index {
+	if worldEngine == nil {
 		return nil
 	}
-	return e.World.Index
+	return worldEngine.Index
 }

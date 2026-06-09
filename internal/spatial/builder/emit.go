@@ -9,18 +9,18 @@ import (
 )
 
 type emitRegion struct {
-	ID         string         `toml:"id"`
-	Name       string         `toml:"name"`
-	Hexes      [][2]int       `toml:"hexes"`
-	Boundaries []emitBoundary `toml:"boundary"`
+	ID    string   `toml:"id"`
+	Name  string   `toml:"name"`
+	Hexes [][2]int `toml:"hexes"`
 }
 
-type emitBoundary struct {
-	FromQ    int    `toml:"from_q"`
-	FromR    int    `toml:"from_r"`
-	ToRegion string `toml:"to_region"`
-	ToQ      int    `toml:"to_q"`
-	ToR      int    `toml:"to_r"`
+type emitWarp struct {
+	FromRegion string `toml:"from_region"`
+	FromQ      int    `toml:"from_q"`
+	FromR      int    `toml:"from_r"`
+	ToRegion   string `toml:"to_region"`
+	ToQ        int    `toml:"to_q"`
+	ToR        int    `toml:"to_r"`
 }
 
 type emitWorld struct {
@@ -46,20 +46,20 @@ func emit(dstDir string, derived *derivedMap) error {
 func writeRegions(path string, derived *derivedMap) error {
 	out := struct {
 		Region []emitRegion `toml:"region"`
+		Warp   []emitWarp   `toml:"warp"`
 	}{}
 	for _, r := range derived.Regions {
 		em := emitRegion{ID: r.ID, Name: r.Name}
 		for _, h := range r.Hexes {
 			em.Hexes = append(em.Hexes, [2]int{h.Q, h.R})
 		}
-		for _, b := range r.Boundaries {
-			em.Boundaries = append(em.Boundaries, emitBoundary{
-				FromQ: b.From.Q, FromR: b.From.R,
-				ToRegion: b.ToRegion,
-				ToQ:      b.To.Q, ToR: b.To.R,
-			})
-		}
 		out.Region = append(out.Region, em)
+	}
+	for _, w := range derived.Warps {
+		out.Warp = append(out.Warp, emitWarp{
+			FromRegion: w.FromRegion, FromQ: w.From.Q, FromR: w.From.R,
+			ToRegion: w.ToRegion, ToQ: w.To.Q, ToR: w.To.R,
+		})
 	}
 	return writeTOML(path, out)
 }

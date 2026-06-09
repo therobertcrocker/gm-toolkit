@@ -15,10 +15,10 @@ type Options struct {
 }
 
 type Summary struct {
-	Regions        []string
-	WorldCount     int
-	AdjacencyCount int
-	WarpCount      int
+	Regions    []string
+	WorldCount int
+	WarpCount  int
+	Warnings   []string
 }
 
 func Build(opts Options) (Summary, error) {
@@ -70,9 +70,9 @@ func selfCheck(dstDir string) error {
 
 func summarize(derived *derivedMap) Summary {
 	s := Summary{
-		WorldCount:     len(derived.Worlds),
-		WarpCount:      derived.WarpCount,
-		AdjacencyCount: derived.AdjacencyCount,
+		WorldCount: len(derived.Worlds),
+		WarpCount:  derived.WarpCount,
+		Warnings:   derived.Warnings,
 	}
 	for _, r := range derived.Regions {
 		s.Regions = append(s.Regions, r.ID)

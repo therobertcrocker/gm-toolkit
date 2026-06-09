@@ -42,7 +42,3 @@ at = 4
 tech_level = 7
 population = 950000
 
-# Warps. Endpoints are { region, row, col } grid coords.
-[[warps]]
-from = { region = "A", row = 1, col = 1 }
-to   = { region = "D", row = 1, col = 13 }

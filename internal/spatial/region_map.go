@@ -10,17 +10,25 @@ import (
 
 type HexCoord struct{ Q, R int }
 
-type BoundaryConnection struct {
-	From     HexCoord
-	ToRegion string
-	To       HexCoord
+type Region struct {
+	ID    string
+	Name  string
+	Hexes map[HexCoord]bool
 }
 
-type Region struct {
-	ID         string
-	Name       string
-	Hexes      map[HexCoord]bool
-	Boundaries []BoundaryConnection
+// warpLink is one direction of a warp, keyed by its origin hex in RegionMap.warps.
+type warpLink struct {
+	toRegion string
+	to       HexCoord
+}
+
+// warpRecord is a warp in canonical (alpha-first) orientation, before expansion
+// into the bidirectional warps index.
+type warpRecord struct {
+	fromRegion string
+	from       HexCoord
+	toRegion   string
+	to         HexCoord
 }
 
 type World struct {
@@ -45,23 +53,25 @@ type RegionHex struct {
 }
 
 type RegionMap struct {
-	regions map[string]*Region
-	worlds  map[string]*World
+	regions  map[string]*Region
+	worlds   map[string]*World
+	hexIndex map[HexCoord]string
+	warps    map[HexCoord][]warpLink
 }
 
 type tomlRegion struct {
-	ID         string         `toml:"id"`
-	Name       string         `toml:"name"`
-	Hexes      [][2]int       `toml:"hexes"`
-	Boundaries []tomlBoundary `toml:"boundary"`
+	ID    string   `toml:"id"`
+	Name  string   `toml:"name"`
+	Hexes [][2]int `toml:"hexes"`
 }
 
-type tomlBoundary struct {
-	FromQ    int    `toml:"from_q"`
-	FromR    int    `toml:"from_r"`
-	ToRegion string `toml:"to_region"`
-	ToQ      int    `toml:"to_q"`
-	ToR      int    `toml:"to_r"`
+type tomlWarp struct {
+	FromRegion string `toml:"from_region"`
+	FromQ      int    `toml:"from_q"`
+	FromR      int    `toml:"from_r"`
+	ToRegion   string `toml:"to_region"`
+	ToQ        int    `toml:"to_q"`
+	ToR        int    `toml:"to_r"`
 }
 
 type tomlWorld struct {
@@ -76,6 +86,7 @@ type tomlWorld struct {
 
 type regionsFile struct {
 	Region []tomlRegion `toml:"region"`
+	Warp   []tomlWarp   `toml:"warp"`
 }
 
 type worldsFile struct {
@@ -94,35 +105,22 @@ func LoadRegionMap(dataDir string) (*RegionMap, error) {
 		for _, hex := range region.Hexes {
 			hexes[HexCoord{Q: hex[0], R: hex[1]}] = true
 		}
-		boundaries := make([]BoundaryConnection, 0, len(region.Boundaries))
-		for _, boundary := range region.Boundaries {
-			boundaries = append(boundaries, BoundaryConnection{
-				From:     HexCoord{Q: boundary.FromQ, R: boundary.FromR},
-				ToRegion: boundary.ToRegion,
-				To:       HexCoord{Q: boundary.ToQ, R: boundary.ToR},
-			})
-		}
-		regions[region.ID] = &Region{
-			ID:         region.ID,
-			Name:       region.Name,
-			Hexes:      hexes,
-			Boundaries: boundaries,
-		}
+		regions[region.ID] = &Region{ID: region.ID, Name: region.Name, Hexes: hexes}
 	}
 
-	for _, region := range regions {
-		for _, boundary := range region.Boundaries {
-			if !region.Hexes[boundary.From] {
-				return nil, fmt.Errorf("region %q boundary From=(%d,%d) is not in region's hexes", region.ID, boundary.From.Q, boundary.From.R)
-			}
-			target, ok := regions[boundary.ToRegion]
-			if !ok {
-				return nil, fmt.Errorf("region %q boundary references unknown region %q", region.ID, boundary.ToRegion)
-			}
-			if !target.Hexes[boundary.To] {
-				return nil, fmt.Errorf("region %q boundary To=(%d,%d) is not in region %q's hexes", region.ID, boundary.To.Q, boundary.To.R, boundary.ToRegion)
-			}
-		}
+	warpRecords := make([]warpRecord, 0, len(regionsDoc.Warp))
+	for _, warp := range regionsDoc.Warp {
+		warpRecords = append(warpRecords, warpRecord{
+			fromRegion: warp.FromRegion,
+			from:       HexCoord{Q: warp.FromQ, R: warp.FromR},
+			toRegion:   warp.ToRegion,
+			to:         HexCoord{Q: warp.ToQ, R: warp.ToR},
+		})
+	}
+
+	regionMap, err := newRegionMap(regions, warpRecords)
+	if err != nil {
+		return nil, err
 	}
 
 	var worldsDoc worldsFile
@@ -149,7 +147,40 @@ func LoadRegionMap(dataDir string) (*RegionMap, error) {
 		}
 	}
 
-	return &RegionMap{regions: regions, worlds: worlds}, nil
+	regionMap.worlds = worlds
+	return regionMap, nil
+}
+
+// newRegionMap builds the hex→region index and bidirectional warp index,
+// validating one-region-per-hex and that each warp endpoint resolves to its
+// declared region.
+func newRegionMap(regions map[string]*Region, warpRecords []warpRecord) (*RegionMap, error) {
+	hexIndex := make(map[HexCoord]string)
+	for id, region := range regions {
+		for hex := range region.Hexes {
+			if other, dup := hexIndex[hex]; dup {
+				return nil, fmt.Errorf("hex (%d,%d) is claimed by both region %q and region %q", hex.Q, hex.R, other, id)
+			}
+			hexIndex[hex] = id
+		}
+	}
+
+	warps := make(map[HexCoord][]warpLink)
+	for _, warp := range warpRecords {
+		if hexIndex[warp.from] != warp.fromRegion {
+			return nil, fmt.Errorf("warp From=(%d,%d) is not in region %q's hexes", warp.from.Q, warp.from.R, warp.fromRegion)
+		}
+		if _, ok := regions[warp.toRegion]; !ok {
+			return nil, fmt.Errorf("warp references unknown region %q", warp.toRegion)
+		}
+		if hexIndex[warp.to] != warp.toRegion {
+			return nil, fmt.Errorf("warp To=(%d,%d) is not in region %q's hexes", warp.to.Q, warp.to.R, warp.toRegion)
+		}
+		warps[warp.from] = append(warps[warp.from], warpLink{toRegion: warp.toRegion, to: warp.to})
+		warps[warp.to] = append(warps[warp.to], warpLink{toRegion: warp.fromRegion, to: warp.from})
+	}
+
+	return &RegionMap{regions: regions, hexIndex: hexIndex, warps: warps}, nil
 }
 
 func (regionMap *RegionMap) Location(id string) (Location, bool) {
@@ -169,12 +200,8 @@ func (regionMap *RegionMap) AllWorlds() []Location {
 }
 
 func (regionMap *RegionMap) RegionOfHex(hex HexCoord) (string, bool) {
-	for _, region := range regionMap.regions {
-		if region.Hexes[hex] {
-			return region.ID, true
-		}
-	}
-	return "", false
+	id, ok := regionMap.hexIndex[hex]
+	return id, ok
 }
 
 type hexNode struct {
@@ -220,30 +247,15 @@ func (priorityQ *priorityQueue) Pop() any {
 func (regionMap *RegionMap) neighbors(node hexNode, crossingCost int) []edge {
 	var edges []edge
 
-	region := regionMap.regions[node.regionID]
-
 	for _, delta := range hexNeighbors {
 		candidate := HexCoord{Q: node.coord.Q + delta.Q, R: node.coord.R + delta.R}
-		if region.Hexes[candidate] {
-			edges = append(edges, edge{to: hexNode{regionID: node.regionID, coord: candidate}, cost: 1})
+		if regionID, ok := regionMap.hexIndex[candidate]; ok {
+			edges = append(edges, edge{to: hexNode{regionID: regionID, coord: candidate}, cost: 1})
 		}
 	}
 
-	for _, boundary := range region.Boundaries {
-		if boundary.From == node.coord {
-			edges = append(edges, edge{to: hexNode{regionID: boundary.ToRegion, coord: boundary.To}, cost: crossingCost})
-		}
-	}
-
-	for _, otherRegion := range regionMap.regions {
-		if otherRegion.ID == node.regionID {
-			continue
-		}
-		for _, boundary := range otherRegion.Boundaries {
-			if boundary.ToRegion == node.regionID && boundary.To == node.coord {
-				edges = append(edges, edge{to: hexNode{regionID: otherRegion.ID, coord: boundary.From}, cost: crossingCost})
-			}
-		}
+	for _, link := range regionMap.warps[node.coord] {
+		edges = append(edges, edge{to: hexNode{regionID: link.toRegion, coord: link.to}, cost: crossingCost})
 	}
 
 	return edges

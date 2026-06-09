@@ -10,14 +10,17 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui"
+	"github.com/therobertcrocker/gm-toolkit/internal/logging"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func newFactionCmd() *cobra.Command {
 	var dryRun bool
+	var debug bool
 	var campaignOverride string
 
 	cmd := &cobra.Command{
@@ -31,15 +34,16 @@ func newFactionCmd() *cobra.Command {
 				return tui.RunDryRun(log)
 			}
 
-			return factionRun(log, campaignOverride)
+			return factionRun(debug, campaignOverride)
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dryrun", false, "run a one-faction smoke cycle and exit")
+	cmd.Flags().BoolVar(&debug, "debug", false, "write debug-level logs to the campaign log file")
 	cmd.Flags().StringVar(&campaignOverride, "campaign", "", "campaign id to use instead of the active one")
 	return cmd
 }
 
-func factionRun(log *slog.Logger, campaignOverride string) error {
+func factionRun(debug bool, campaignOverride string) error {
 	reg, err := campaigns.LoadRegistry()
 	if err != nil {
 		return fmt.Errorf("faction: %w", err)
@@ -49,6 +53,11 @@ func factionRun(log *slog.Logger, campaignOverride string) error {
 		return formatActiveResolveError(err)
 	}
 	paths := camp.Paths()
+
+	log, err := logging.New(paths.LogsDir, debug)
+	if err != nil {
+		return fmt.Errorf("faction: init logging in %s: %w", paths.LogsDir, err)
+	}
 
 	rb, err := rulebook.Load(paths.FactionDataDir)
 	if err != nil {
@@ -68,7 +77,7 @@ func factionRun(log *slog.Logger, campaignOverride string) error {
 		factionState.CampaignID = camp.ID()
 	}
 
-	eng := engine.NewWithRulebook(rb, log)
+	eng := engine.NewWithRulebook(rb, world.NewWithMap(spatialMap, log), log)
 
 	return tui.Run(eng, factionState, &paths, rb, spatialMap, log)
 }

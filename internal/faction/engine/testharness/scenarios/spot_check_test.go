@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -36,9 +35,7 @@ func TestSpotCheck_RenderedOutput(t *testing.T) {
 			t.Fatalf("rulebook.Load: %v", err)
 		}
 
-		eng := engine.NewWithRulebook(rb, log)
-		eng.World = world.NewWithMap(&testharness.StubSpatialMap{}, log)
-		actions.RegisterDefaultActions(eng)
+		eng := engine.NewWithRulebook(rb, world.NewWithMap(&testharness.StubSpatialMap{}, log), log)
 
 		factionState := &state.FactionState{CampaignID: "spot-check", Factions: make(map[string]*domain.Faction)}
 		for _, id := range []string{"alpha", "beta"} {

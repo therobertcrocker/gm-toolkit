@@ -12,7 +12,6 @@ const (
 	ModeManage Mode = iota
 	ModeTurn
 	ModeSpatial
-	ModeQuit
 )
 
 func (m Mode) String() string {
@@ -23,8 +22,6 @@ func (m Mode) String() string {
 		return "Turn"
 	case ModeSpatial:
 		return "Spatial"
-	case ModeQuit:
-		return "Quit"
 	default:
 		return "?"
 	}
@@ -46,7 +43,6 @@ func New() Model {
 			{mode: ModeManage, disabled: false},
 			{mode: ModeTurn, disabled: false},
 			{mode: ModeSpatial, disabled: true},
-			{mode: ModeQuit, disabled: false},
 		},
 		active: 0,
 	}
