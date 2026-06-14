@@ -1,5 +1,7 @@
 # Decisions Log
 
+> **ARCHIVED — 2026-06-10.** This file is a frozen historical record (294 decisions across all branches). No new entries will be appended. Durable architectural decisions will be documented in `docs/architecture/` as part of D-002 (Effort 3). For implementation-time decisions on current work, see the plan doc for the active initiative.
+
 A record of key decisions made during development, grouped by feature branch.
 
 ## Index

@@ -23,6 +23,19 @@ sub-engines, friction in the abstraction).
 Reference specific code paths, files, and line numbers where helpful.
 -->
 
+## Architecture Context
+
+<!--
+REQUIRED. List the architecture page(s) read for this initiative
+(docs/architecture/ — start at docs/architecture/architecture-overview.md)
+and pull out the Key Decisions that constrain this design. This is the push half of the push-not-pull decision system
+(session-modes.md section 10): the binding rationale lives on the page this
+section forces you to open.
+
+If no page covers the relevant subsystem yet, say so — that's a signal the
+wiki needs a page; note it in planned-work.md.
+-->
+
 ## Design Summary
 
 <!--
@@ -111,5 +124,6 @@ work that should be filed in planned-work.md as a separate Backlog entry.
 ## Reference Exemplars
 
 <!--
-Prior art, related decisions log entries, similar patterns elsewhere in the codebase.
+Prior art, Key Decisions from related architecture pages, frozen decisions-log
+entries (historical), similar patterns elsewhere in the codebase.
 -->

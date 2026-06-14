@@ -13,6 +13,11 @@ This template covers two cases:
      breakdown to a separate per-effort file at:
          docs/initiatives/implementation/<initiative-name>-effort-N-plan.md
      Each per-effort file follows the "Work Breakdown" section structure below.
+     Effort pacing (which efforts get their own Plan session) is defined in
+     session-modes.md section 8.
+
+Multi-effort DOCS initiatives use templates/docs-plan.md instead — generative
+docs discover-at-write and don't fit the Phase/Commit/Task structure.
 
 Delete these comments before writing.
 -->
@@ -33,12 +38,26 @@ the full design rationale.
 REQUIRED. Design decisions made *during* the plan session, not in Discovery.
 
 Each decision: what was decided, brief rationale, and which open question (from
-Discovery) it resolves if applicable. These become the source for any new
-decisions-log entries.
+Discovery) it resolves if applicable. Architecturally-durable decisions graduate
+to the relevant architecture page's Key Decisions at pre-merge.
 -->
 
 1. **[Decision]** — [rationale]
 2. **[Decision]** — [rationale]
+
+## Decision Record — Execution
+
+<!--
+REQUIRED once execution begins (empty at plan time). Execution-time decisions
+and reversals of planned decisions land here, logged before the commit they
+ride (CLAUDE.md, Collaboration 7.1).
+
+Contract: append AND reconcile — when execution overrides a planned decision,
+log the reversal with rationale here and fix the plan body so it doesn't lie.
+At pre-merge, architecturally-durable entries graduate to the relevant
+architecture page's Key Decisions section; the rest stay here as provenance
+when the plan ships to completed/.
+-->
 
 ---
 

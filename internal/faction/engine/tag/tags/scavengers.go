@@ -7,7 +7,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-const ScavengersTagID = "T-014"
+const ScavengersTagID = "T-016"
 
 // ScavengersReactor implements hooks.MutationReactor for the Scavengers tag.
 // Grants +1 Coin to the owning faction per asset destroyed in combat, own or rival.

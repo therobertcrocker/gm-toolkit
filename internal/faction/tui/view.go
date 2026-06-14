@@ -50,7 +50,7 @@ func (m Model) View() string {
 	} else {
 		switch m.bar.Active() {
 		case modebar.ModeSpatial:
-			content = styles.Placeholder.Render("Spatial — reserved for F-012 (Spatial Map CLI)")
+			content = styles.Placeholder.Render("Spatial — reserved (faction-utilities / edit surface)")
 		default:
 			if sub, ok := m.subs[m.bar.Active()]; ok {
 				content = sub.View()

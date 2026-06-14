@@ -72,11 +72,6 @@ func (e *Engine) RunFactionTurn(
 	turnLog = turnLog.With("faction", faction.ID)
 	logging.TurnStart(turnLog, factionState.CycleNumber, faction.ID)
 
-	lock, err := e.runGoalLockPhase(faction, factionState, paths, collectors, observer, turnLog)
-	if err != nil {
-		return false, err
-	}
-
 	if err := e.runStatRaisePhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
@@ -96,6 +91,11 @@ func (e *Engine) RunFactionTurn(
 	}
 
 	if err := e.runMovementPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
+		return false, err
+	}
+
+	lock, err := e.runGoalLockPhase(faction, factionState, paths, collectors, observer, turnLog)
+	if err != nil {
 		return false, err
 	}
 

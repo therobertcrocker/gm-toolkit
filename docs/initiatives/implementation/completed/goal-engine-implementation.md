@@ -287,7 +287,7 @@ Register in `cmd/faction-manager/commands/turn/cmd.go` (wherever actions are reg
 
 ## Phase 4 — New Actions
 
-**Goal:** `Bribe` and `SiezePlanet` registered; `BuyAsset` extended for Stealth asset detection.
+**Goal:** `Bribe` and `SeizePlanet` registered; `BuyAsset` extended for Stealth asset detection.
 
 ### Files to create
 
@@ -307,13 +307,13 @@ Add `SelectBribeTarget` to `InputCollector` interface (`internal/faction/engine/
 ```
 Validate: faction has at least one unstealthed asset on a world where a rival also has an unstealthed asset;
           faction.ActiveGoal == nil OR (ActiveGoal.GoalID == G-004 AND ActiveGoal.TargetWorld matches)
-Inputs:   SelectSiezeTarget — select target world (pre-filtered to valid worlds)
+Inputs:   SelectSeizeTarget — select target world (pre-filtered to valid worlds)
 Resolve:  set faction.ActiveGoal = &ActiveGoal{GoalID: "G-004", TargetWorld: selected, ProcessPhase: 0}
           emit no mutations — the Goal Engine manages subsequent turns
 Output:   [] (empty — goal state is set inline; Goal Engine takes over next turn)
 ```
 
-Note: `SiezePlanet.Resolve` mutates `faction.ActiveGoal` directly rather than via a mutation, because goal initiation is not something that needs to be recorded in history as a standalone mutation — the `GoalCompleted` mutation at the end of the process is the meaningful history event.
+Note: `SeizePlanet.Resolve` mutates `faction.ActiveGoal` directly rather than via a mutation, because goal initiation is not something that needs to be recorded in history as a standalone mutation — the `GoalCompleted` mutation at the end of the process is the meaningful history event.
 
 ### Files to modify
 
@@ -325,11 +325,11 @@ After emitting `AssetAdded`, check if the purchased asset is a Stealth-type Cunn
 
 Add:
 - `SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)`
-- `SelectSiezeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)`
+- `SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)`
 
 **TUI collector and input models** — follow the existing pattern in `cmd/faction-manager/tui/inputs/` for each new prompt.
 
-**Commit:** `feat: phase 4 — Bribe action, SiezePlanet action, BuyAsset Stealth extension`
+**Commit:** `feat: phase 4 — Bribe action, SeizePlanet action, BuyAsset Stealth extension`
 
 <br/>
 
