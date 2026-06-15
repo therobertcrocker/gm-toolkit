@@ -153,6 +153,7 @@ Patterns that recur across engine subsystems, each verified in source:
 | [world & movement](world-movement.md) | Per-turn spatial index and movement orders | Written |
 | [spatial](spatial.md) | Region map, hex routing, pathfinding, the map builder | Written |
 | [effect & mutation](effect-mutation.md) | Faction tags, asset effects, and the mutation apply layer | Written |
+| [ability & effect catalog](ability-catalog.md) | A/S-flag special decomposition into data-driven primitives (F.022 design) | Design |
 | [persistence & static data](persistence.md) | State/static-data TOML, campaign layout, history JSONL | Written |
 | [narrative digest](narrative-digest.md) | History → typed digest → rendered narrative | Written |
 | [logging & errors](logging-errors.md) | The custom slog handler and the recoverable-error classifier | Written |
