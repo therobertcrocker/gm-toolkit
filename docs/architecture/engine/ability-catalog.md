@@ -148,7 +148,7 @@ of these; this table reconciles with it and completes the survey.)
 | **cost-ignore** (skip a Coin loss, once/turn) | Cat 4 `AssetCostModifier` / rule | Bank `W4-004` |
 | **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` | Local Investments `W1-003` |
 | **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `AssetCostModifier` | Laboratory `W3-002`, Pretech Researchers `W5-002`, R&D Department `W6-002` |
-| **auto-permission / revoke-permission** | Cat 5 `RuleModifier` | Popular Movement `C7-001` (grant), Lobbyists `C2-001` (revoke, reactive contest) |
+| **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `C7-001` (grant), Lobbyists `C2-001` (revoke, reactive contest) |
 | **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `C2-001`, Tripwire Cells `C4-003` |
 
 **Dual-flag assets** (`A`+`S`: Informers, Seductress, Covert Shipping) resolve

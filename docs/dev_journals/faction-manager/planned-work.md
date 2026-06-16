@@ -10,7 +10,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
-| `F.022` | H.A.W.K Rulebook | `feature` | In-Progress | Author H.A.W.K's TOML from SWN as reference; handle rows 1–2 drift, collect row-3 evidence for `R.004` |
+| `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
 
 
 ---
@@ -21,7 +21,11 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| *(none)* | | | | |
+| `A.001.1` | Effect-keyed A-dispatch + SWN re-prefix | `refactor` | ready (arc entry) | Re-key `ability.Dispatch` off effect not `def.ID` (E1); rename SWN IDs `SWN-` + chase `B.001`/`G.012`/fixtures (E2); see arc-plan |
+| `A.001.2` | A-flag ability registry | `feature` | `A.001.1` | Composition pipeline target→contest\|roll→effect, data-driven; owns world-engine relocate primitive + action-spent harness; see arc-plan |
+| `A.001.3` | S-flag effect registry | `feature` | `A.001.2` (relocate) | Profiles→hook-category (transport generalized); free relocate harness + wire `GrantedMovementAbilities`; see arc-plan |
+| `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
+| `A.001.5` | H.A.W.K asset authoring | `feature` | `A.001.2`+`A.001.3` | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes; owns lore canon; see arc-plan |
 
 
 ---
@@ -65,7 +69,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.015` | Collector reply rigor | -- | `action_collector` swallows bad reply types (`raw.(T)` zero-values); match `phase_collector`'s loud type errors, add the `SelectMovementDecisions` nil guard, drop the `phaseCollector.ask` delegation wrapper. |
 | `R.016` | Per-ask detail cards | 4th specialized card | Move per-ask knowledge out of `execution.detailView`'s `activeAsk` switch into an optional overlay interface (`DetailView() string`). |
 | `R.017` | Evaluate `teatest` for UI tests | -- | TUI tests currently drive `Update` by hand and assert emitted messages; explore `charmbracelet/x/exp/teatest` as a golden-output harness for full model behavior — adopt across overlays/views or document why not. |
-| `R.018` | Ability dispatch keyed by effect | `F.022` | Re-key `ability.Dispatch` on `def.Ability.Effect` not `def.ID`; rename `informers` → `revealStealth`; abilities become mechanic-keyed like tags/goals — R.004-increment-1 |
 
 ### Bugfixes
 
@@ -100,33 +103,13 @@ This section contains detailed write-ups for each planned initiative, including 
 
 <br />
 
-## F.022 — H.A.W.K Rulebook
+## A.001 — Data-Driven Rulebook (H.A.W.K)
 
-**Problem** — The engine has only ever been exercised against SWN reference data: one rulebook's worth of goals, tags, and assets, with behavior hardcoded by ID and validated against the source material it was modeled on. There is no real campaign content. Robert's actual campaign — H.A.W.K, a standalone rulebook — exists only as intent, so the tool can't yet run the game it exists to serve, and the standing question (does hardcoded-by-ID behavior hold past a single rulebook?) stays speculative.
+**Arc** (rerouted from `F.022` feature — the ability-catalog pre-plan session settled `R.004` and tipped this from one feature into an arc). The full write-up lives in the arc artifacts: see the [arc concept](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-concept.md) for vision, problem, and why-an-arc; Arc-Discovery ratifies the cross-cutting decisions and Arc-Plan slices the constituent initiatives, which get their own rows and write-ups here as promoted. All arc artifacts live in `docs/initiatives/arcs/data-driven-rulebook/`.
 
-**Approach** — Author H.A.W.K's TOML (goals, tags, assets) in the existing rulebook format, using SWN as the reference scaffold and reflavoring as the picture of the assets sharpens — the reflavoring itself is expected to surface drift. Each element sorts into one of three rows as it is authored:
+**Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
-- **Row 1** — same mechanic, reused mechanism — pure data (`name`/`description`), no code — *in scope*
-- **Row 2** — a genuinely new mechanic — one handler via the existing data-only-skip pattern (`tag.go:42`, `goal.go:55`) — *in scope*
-- **Row 3** — drift pervasive enough to warrant data-driven handlers — **not built here**; collect the evidence (count and shape of misfits) that would trigger `R.004` as its own effort
-
-Convention: **IDs track mechanics** — reuse an ID when reusing a mechanic, mint a new one for a new mechanic. Keeps `B.002` out of scope so long as shared mechanics retain their SWN IDs. *Open for Discovery:* H.A.W.K is a standalone rulebook — whether it mints its own ID namespace even for shared mechanics (which pulls `B.002` back in) is unresolved.
-
-**Ability dispatch is the exception (`R.018`).** Unlike tags and goals, `ability.Dispatch` (`dispatch.go:47`) keys on asset ID, not mechanic — so a reused ability effect would otherwise need a per-asset map entry. `R.018` re-keys it on `def.Ability.Effect` (R.004-increment-1), making abilities mechanic-keyed like the rest; F.022's Discovery sequences it first.
-
-**Flavor is co-authored, not derived.** The mechanical sorting above is only half the initiative. The reflavoring — the names, descriptions, and fiction of every goal, tag, and asset — is a first-class collaborative pass, not a substitution run off SWN: Robert is interviewed about the campaign's flavor and the rulebook is authored together. The flavor is also an **output**: the campaign's canon (setting, factions, the fiction behind each element) is saved as a standing reference doc — durable, not an archived planning artifact — so future efforts can draw on it. *Open for Discovery:* the interview cadence (a dedicated phase up front, threaded through implementation, or both), and where the canon doc lives and how it is structured.
-
-**Rulebook convention to canonicalize (`Discovery`).** A *rulebook* is an on-disk directory, `rulebooks/<name>/` — F.022 creates the second one (`rulebooks/hawk/`). The layout is documented today only in `docs/contributing/overview.md` and frozen decision 267, not in the canonical static-data page (`persistence.md`), and stale `rulebooks/swn/factions/` references survive in completed docs. Discovery states it crisply in `persistence.md` before `rulebooks/hawk/` is created.
-
-**Unlocks** —
-
-- The tool can run the actual H.A.W.K campaign — the project's reason to exist
-- An evidence-grounded call on `R.004` — the drift tally shows whether hardcoded-by-ID is comfortable or painful, rather than guessing
-- First proof the engine holds a *non-reference* rulebook — directly relevant to Worlds Without Number, a near-identical faction system with its own drift, the next beneficiary of `R.004` should the evidence call for it
-
-**Trigger** — Promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004`.
-
-**Status** — In-Progress — next session is Discovery (`docs/initiatives/discovery/hawk-rulebook.md`, to be written).
+**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. Next: promote a dependency-free entry to Discovery — `A.001.1` (spine entry), `A.001.4` (goals/tags + `_core`), or `A.001.5`'s lore-seed effort.
 
 <br />
 
