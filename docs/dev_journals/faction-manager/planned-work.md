@@ -11,6 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
+| `A.001.1` | Effect-keyed A-dispatch + SWN re-prefix | `refactor` | In-Progress | Re-key `ability.Dispatch` off effect not `def.ID` (E1); rename SWN IDs `SWN-` + chase `B.001`/`G.012`/fixtures (E2); see write-up |
 
 
 ---
@@ -21,7 +22,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `A.001.1` | Effect-keyed A-dispatch + SWN re-prefix | `refactor` | ready (arc entry) | Re-key `ability.Dispatch` off effect not `def.ID` (E1); rename SWN IDs `SWN-` + chase `B.001`/`G.012`/fixtures (E2); see arc-plan |
 | `A.001.2` | A-flag ability registry | `feature` | `A.001.1` | Composition pipeline target→contest\|roll→effect, data-driven; owns world-engine relocate primitive + action-spent harness; see arc-plan |
 | `A.001.3` | S-flag effect registry | `feature` | `A.001.2` (relocate) | Profiles→hook-category (transport generalized); free relocate harness + wire `GrantedMovementAbilities`; see arc-plan |
 | `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
@@ -109,7 +109,23 @@ This section contains detailed write-ups for each planned initiative, including 
 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
-**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. Next: promote a dependency-free entry to Discovery — `A.001.1` (spine entry), `A.001.4` (goals/tags + `_core`), or `A.001.5`'s lore-seed effort.
+**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. `A.001.1` is promoted and in progress on `refactor/effect-keyed-a-dispatch`.
+
+<br />
+
+### A.001.1 — Effect-keyed A-dispatch + SWN re-prefix
+
+**Type** — `refactor`. The arc's spine entry (no deps); gates `A.001.2`.
+
+**Status** — In-Progress on `refactor/effect-keyed-a-dispatch`. Running as a combined Discovery+Plan session per arc-plan AP-5 (the routed open question is a binary fact-check, not a design exploration, so a standalone Discovery doc would be ceremony). Plan output: `docs/initiatives/implementation/effect-keyed-a-dispatch-plan.md`.
+
+**Boundary** (full text in the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), "A.001.1" section). Two ordered efforts:
+- **E1 (R.018) — effect-keyed dispatch.** Replace `dispatch.go`'s `map[def.ID]AbilityHandler` with dispatch keyed on the ability's effect/primitive. Re-key the one real handler (`informers` → `reveal_stealth`); the nine `confirmApplied` stubs collapse into the unknown-effect fallthrough. Pure re-key — no registry authored, no new behavior.
+- **E2 — SWN re-prefix.** Rename SWN asset IDs (`C1-001` → `SWN-C1-001`) across `rulebooks/swn/assets/`; chase the hardcoded refs (`B.001`'s `stealth_applicator`, the `G.012` goal ref); fix fixtures pinning old IDs. Sequenced after E1 so the rename never touches dispatch code.
+
+**Covers** — making A-dispatch mechanic-keyed; the dataset-wide SWN ID rename. **Punts** — the A-side composition pipeline and primitives (`A.001.2`); any contest/roll extraction beyond what re-keying strictly needs.
+
+**Routed open question** — does any already-scaffolded campaign need SWN-ID re-prefix migration? (Answered inline in the implementation plan.)
 
 <br />
 
