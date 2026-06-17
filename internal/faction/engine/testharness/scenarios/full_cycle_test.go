@@ -38,8 +38,8 @@ func TestRunCycle_TwoFactionsBothPickSellAsset(t *testing.T) {
 	}
 
 	wantKinds := []string{
-		"TurnStarted", "GoalLockApplied", "StatRaiseSkipped", "BookkeepingApplied", "MovementResolved", "ActionSelected", "ActionResolved", "TurnCompleted",
-		"TurnStarted", "GoalLockApplied", "StatRaiseSkipped", "BookkeepingApplied", "MovementResolved", "ActionSelected", "ActionResolved", "TurnCompleted",
+		"TurnStarted", "StatRaiseSkipped", "BookkeepingApplied", "MovementResolved", "GoalLockApplied", "ActionSelected", "ActionResolved", "TurnCompleted",
+		"TurnStarted", "StatRaiseSkipped", "BookkeepingApplied", "MovementResolved", "GoalLockApplied", "ActionSelected", "ActionResolved", "TurnCompleted",
 		"CycleCompleted",
 	}
 	testharness.AssertKinds(t, h.Observer.Kinds(), wantKinds)

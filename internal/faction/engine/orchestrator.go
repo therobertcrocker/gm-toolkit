@@ -52,8 +52,9 @@ func (e *Engine) RunCycle(
 	}
 }
 
-// RunFactionTurn drives one faction's turn from goal-lock check through state
-// save. Errors are reported to the observer via OnError and returned to the
+// RunFactionTurn drives one faction's turn from setup through state save:
+// stat-raise, bookkeeping, movement, goal-lock (gating the action), action.
+// Errors are reported to the observer via OnError and returned to the
 // caller; partial mutations already applied stay applied.
 //
 // The boolean return reports whether this faction's turn closed out the

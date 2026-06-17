@@ -15,7 +15,7 @@ import (
 func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-014"}}
+	alpha.Tags = []*domain.Tag{{ID: "T-016"}}
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
