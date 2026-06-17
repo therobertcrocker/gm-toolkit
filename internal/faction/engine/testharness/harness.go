@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	DefSecurityPersonnel = "F1-001"
-	DefHeavyDropAssets   = "F2-001"
+	DefSecurityPersonnel = "SWN-F1-001"
+	DefHeavyDropAssets   = "SWN-F2-001"
 )
 
 type Harness struct {

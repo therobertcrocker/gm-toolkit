@@ -59,7 +59,7 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 	ba.factionID = faction.ID
 	ba.buyOrder = order
 
-	if order.Definition.ID == "C3-002" {
+	if order.Definition.ID == "SWN-C3-002" {
 		targets := eligibleStealthTargets(faction, order.World, rulebook)
 		switch len(targets) {
 		case 0:
@@ -99,7 +99,7 @@ func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 	mutations := []domain.Mutation{
 		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost, Cause: "buy", CausedByFactionID: ba.factionID},
 	}
-	if ba.buyOrder.Definition.ID != "C3-002" {
+	if ba.buyOrder.Definition.ID != "SWN-C3-002" {
 		mutations = append([]domain.Mutation{
 			domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
 		}, mutations...)

@@ -93,6 +93,15 @@ open question is a binary fact-check, answered below, not a design exploration.
      updated to match. Candidate to graduate to an architecture `Key Decisions` entry at
      pre-merge.
 
+4. **E2 consistency re-prefix expanded to `faction_state_test.go` (Commit 2).** Plan
+   Task 5 enumerated only `dispatch_test.go` and `use_asset_ability_test.go` for the
+   Decision-6 consistency substitution, but the Verification grep expects *zero* bare
+   `[CFW][0-9]-[0-9]{3}` matches in `internal/`. Grounding found a sixth file:
+   `faction_state_test.go:36` carries `DefinitionID: "F1-001"` in an in-memory save/load
+   round-trip mock (it never loads the real rulebook, so the ID is behaviorally inert —
+   same footing as the Task-5 mocks). Re-prefixed to `SWN-F1-001` so the verification grep
+   stays clean. (Robert directed; Decision 6's rationale extended one file.)
+
 ## Out of Scope
 
 - **The A-side composition pipeline and registry** (A.001.2) — E1 re-keys dispatch, it

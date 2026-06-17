@@ -11,13 +11,13 @@ import (
 )
 
 // makeAbilityRulebook returns a minimal Rulebook with two asset definitions:
-//   - "C1-002": A-flagged, Informers opposed-test (reveal_stealth)
+//   - "SWN-C1-002": A-flagged, Informers opposed-test (reveal_stealth)
 //   - "deferred-asset": A-flagged, no ability (GM adjudication)
 func makeAbilityRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
-			"C1-002": {
-				ID:    "C1-002",
+			"SWN-C1-002": {
+				ID:    "SWN-C1-002",
 				Name:  "Informers",
 				Flags: []domain.AssetFlag{domain.FlagAction},
 				HP:    4,
@@ -56,7 +56,7 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 	if includeTarget {
 		targetAsset := &domain.Asset{
 			ID:           "t1",
-			DefinitionID: "C1-002",
+			DefinitionID: "SWN-C1-002",
 			OwnerID:      "f2",
 			Location:     domain.Location{WorldID: "Anchorage"},
 			CurrentHP:    4,
@@ -100,7 +100,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	})
 
 	t.Run("A-flagged but not Ready", func(t *testing.T) {
-		asset := &domain.Asset{ID: "a1", DefinitionID: "C1-002", Ready: false, Maintained: true}
+		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: false, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 		act := NewUseAssetAbility(nil, nil)
 		if act.Validate(faction, nil, rulebook) {
@@ -109,7 +109,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	})
 
 	t.Run("A-flagged but not Maintained", func(t *testing.T) {
-		asset := &domain.Asset{ID: "a1", DefinitionID: "C1-002", Ready: true, Maintained: false}
+		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: false}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 		act := NewUseAssetAbility(nil, nil)
 		if act.Validate(faction, nil, rulebook) {
@@ -118,7 +118,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	})
 
 	t.Run("usable A-flagged asset", func(t *testing.T) {
-		asset := &domain.Asset{ID: "a1", DefinitionID: "C1-002", Ready: true, Maintained: true}
+		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 		act := NewUseAssetAbility(nil, nil)
 		if !act.Validate(faction, nil, rulebook) {
@@ -132,7 +132,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 // Rolls: attack=8, defense=3.
 func TestUseAssetAbility_Resolve_Informers_AttackerWins(t *testing.T) {
 	rulebook := makeAbilityRulebook()
-	factionState, actingAsset := makeAbilityState("C1-002", true)
+	factionState, actingAsset := makeAbilityState("SWN-C1-002", true)
 	faction := factionState.Factions["f1"]
 	targetFaction := factionState.Factions["f2"]
 
@@ -159,7 +159,7 @@ func TestUseAssetAbility_Resolve_Informers_AttackerWins(t *testing.T) {
 // Rolls: attack=5, defense=5.
 func TestUseAssetAbility_Resolve_Informers_Tie(t *testing.T) {
 	rulebook := makeAbilityRulebook()
-	factionState, actingAsset := makeAbilityState("C1-002", true)
+	factionState, actingAsset := makeAbilityState("SWN-C1-002", true)
 	faction := factionState.Factions["f1"]
 	targetFaction := factionState.Factions["f2"]
 
@@ -179,7 +179,7 @@ func TestUseAssetAbility_Resolve_Informers_Tie(t *testing.T) {
 // Rolls: attack=2, defense=9.
 func TestUseAssetAbility_Resolve_Informers_DefenderWins(t *testing.T) {
 	rulebook := makeAbilityRulebook()
-	factionState, actingAsset := makeAbilityState("C1-002", true)
+	factionState, actingAsset := makeAbilityState("SWN-C1-002", true)
 	faction := factionState.Factions["f1"]
 	targetFaction := factionState.Factions["f2"]
 

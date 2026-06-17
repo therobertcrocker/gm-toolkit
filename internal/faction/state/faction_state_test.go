@@ -33,7 +33,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				Assets: map[string]*domain.Asset{
 					"iron-collective-asset-0": {
 						ID:           "iron-collective-asset-0",
-						DefinitionID: "F1-001",
+						DefinitionID: "SWN-F1-001",
 						OwnerID:      "iron-collective",
 						Location:     domain.Location{WorldID: "Tartarus"},
 						CurrentHP:    3,

@@ -1,7 +1,7 @@
 # Force Assets
 
 [assets.SecurityPersonnel]
-id = "F1-001"
+id = "SWN-F1-001"
 name = "Security Personnel"
 category = "Force"
 min_rating = 1
@@ -20,7 +20,7 @@ defender_stat = "Force"
 damage = "1d3+1"
 
 [assets.Hitmen]
-id = "F1-002"
+id = "SWN-F1-002"
 name = "Hitmen"
 category = "Force"
 min_rating = 1
@@ -39,7 +39,7 @@ defender_stat = "Cunning"
 damage = "1d6"
 
 [assets.MilitiaUnit]
-id = "F1-003"
+id = "SWN-F1-003"
 name = "Militia Unit"
 category = "Force"
 min_rating = 1
@@ -58,7 +58,7 @@ defender_stat = "Force"
 damage = "1d6"
 
 [assets.HeavyDropAssets]
-id = "F2-001"
+id = "SWN-F2-001"
 name = "Heavy Drop Assets"
 category = "Force"
 min_rating = 2
@@ -79,7 +79,7 @@ cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logisti
 max_cargo = 1
 
 [assets.EliteSkirmishers]
-id = "F2-002"
+id = "SWN-F2-002"
 name = "Elite Skirmishers"
 category = "Force"
 min_rating = 2
@@ -98,7 +98,7 @@ defender_stat = "Force"
 damage = "2d4"
 
 [assets.HardenedPersonnel]
-id = "F2-003"
+id = "SWN-F2-003"
 name = "Hardened Personnel"
 category = "Force"
 min_rating = 2
@@ -112,7 +112,7 @@ counter = "1d4+1"
 description = "Employees and support staff trained in defensive fighting and equipped with supply caches and hardened fallback positions."
 
 [assets.GuerrillaPopulace]
-id = "F2-004"
+id = "SWN-F2-004"
 name = "Guerrilla Populace"
 category = "Force"
 min_rating = 2
@@ -131,7 +131,7 @@ defender_stat = "Cunning"
 damage = "1d4+1"
 
 [assets.Zealots]
-id = "F3-001"
+id = "SWN-F3-001"
 name = "Zealots"
 category = "Force"
 min_rating = 3
@@ -150,7 +150,7 @@ defender_stat = "Force"
 damage = "2d6"
 
 [assets.CunningTrap]
-id = "F3-002"
+id = "SWN-F3-002"
 name = "Cunning Trap"
 category = "Force"
 min_rating = 3
@@ -164,7 +164,7 @@ counter = "1d6+3"
 description = "Covers all the myriad stratagems of war, from induced landslides to spreading local diseases."
 
 [assets.CounterintelUnit]
-id = "F3-003"
+id = "SWN-F3-003"
 name = "Counterintel Unit"
 category = "Force"
 min_rating = 3
@@ -183,7 +183,7 @@ defender_stat = "Cunning"
 damage = "1d4+1"
 
 [assets.BeachheadLanders]
-id = "F4-001"
+id = "SWN-F4-001"
 name = "Beachhead Landers"
 category = "Force"
 min_rating = 4
@@ -204,7 +204,7 @@ cargo_types = ["Facility", "Starship", "Military Unit", "Special Forces", "Tacti
 max_cargo = 10
 
 [assets.ExtendedTheater]
-id = "F4-002"
+id = "SWN-F4-002"
 name = "Extended Theater"
 category = "Force"
 min_rating = 4
@@ -225,7 +225,7 @@ cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logisti
 max_cargo = 1
 
 [assets.StrikeFleet]
-id = "F4-003"
+id = "SWN-F4-003"
 name = "Strike Fleet"
 category = "Force"
 min_rating = 4
@@ -245,7 +245,7 @@ defender_stat = "Force"
 damage = "2d6"
 
 [assets.PostechInfantry]
-id = "F4-004"
+id = "SWN-F4-004"
 name = "Postech Infantry"
 category = "Force"
 min_rating = 4
@@ -264,7 +264,7 @@ defender_stat = "Force"
 damage = "1d8"
 
 [assets.BlockadeFleet]
-id = "F5-001"
+id = "SWN-F5-001"
 name = "Blockade Fleet"
 category = "Force"
 min_rating = 5
@@ -284,7 +284,7 @@ defender_stat = "Wealth"
 damage = "1d6"
 
 [assets.PretechLogistics]
-id = "F5-002"
+id = "SWN-F5-002"
 name = "Pretech Logistics"
 category = "Force"
 min_rating = 5
@@ -298,7 +298,7 @@ counter = ""
 description = "Assets representing caches, smugglers, or internal research and salvage programs. As an action, allows the owner to buy one Force asset on that world that requires up to tech level 5 to purchase, at half again as many Coin as usual, rounded up. Only one asset can be purchased per turn."
 
 [assets.PsychicAssassins]
-id = "F5-003"
+id = "SWN-F5-003"
 name = "Psychic Assassins"
 category = "Force"
 min_rating = 5
@@ -317,7 +317,7 @@ defender_stat = "Cunning"
 damage = "2d6+2"
 
 [assets.PretechInfantry]
-id = "F6-001"
+id = "SWN-F6-001"
 name = "Pretech Infantry"
 category = "Force"
 min_rating = 6
@@ -336,7 +336,7 @@ defender_stat = "Force"
 damage = "2d8"
 
 [assets.PlanetaryDefenses]
-id = "F6-002"
+id = "SWN-F6-002"
 name = "Planetary Defenses"
 category = "Force"
 min_rating = 6
@@ -350,7 +350,7 @@ counter = "2d6+6"
 description = "Massive mag cannons and gravitic braker gun arrays designed to defend against starship bombardments and repel unauthorized landing. Planetary defenses can only defend against attacks by Starship-type assets."
 
 [assets.GravtankFormation]
-id = "F6-003"
+id = "SWN-F6-003"
 name = "Gravtank Formation"
 category = "Force"
 min_rating = 6
@@ -369,7 +369,7 @@ defender_stat = "Force"
 damage = "2d10+4"
 
 [assets.DeepStrikeLanders]
-id = "F7-001"
+id = "SWN-F7-001"
 name = "Deep Strike Landers"
 category = "Force"
 min_rating = 7
@@ -390,7 +390,7 @@ cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logisti
 max_cargo = 1
 
 [assets.IntegralProtocols]
-id = "F7-002"
+id = "SWN-F7-002"
 name = "Integral Protocols"
 category = "Force"
 min_rating = 7
@@ -404,7 +404,7 @@ counter = "2d8+2"
 description = "A complex web of braked-AI supported sensors and redundant security checks used to defeat attempts to infiltrate an area. They can defend only against attacks versus Cunning, but add an additional die to the defender's roll."
 
 [assets.SpaceMarines]
-id = "F7-003"
+id = "SWN-F7-003"
 name = "Space Marines"
 category = "Force"
 min_rating = 7
@@ -424,7 +424,7 @@ defender_stat = "Force"
 damage = "2d8+2"
 
 [assets.CapitalFleet]
-id = "F8-001"
+id = "SWN-F8-001"
 name = "Capital Fleet"
 category = "Force"
 min_rating = 8
