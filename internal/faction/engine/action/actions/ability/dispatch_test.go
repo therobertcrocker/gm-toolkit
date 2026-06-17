@@ -59,8 +59,8 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 	return actingFaction, actingAsset, def, factionState
 }
 
-// TestDispatch_Informers_AttackerWins: attack roll beats defense, stealthy target asset cleared.
-func TestDispatch_Informers_AttackerWins(t *testing.T) {
+// TestDispatch_RevealStealth_AttackerWins: attack roll beats defense, stealthy target asset cleared.
+func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 	faction, asset, def, factionState := makeDispatchFixture()
 	targetFaction := factionState.Factions["f2"]
 
@@ -85,8 +85,8 @@ func TestDispatch_Informers_AttackerWins(t *testing.T) {
 	}
 }
 
-// TestDispatch_Informers_DefenderWins: defense roll beats attack, no mutations.
-func TestDispatch_Informers_DefenderWins(t *testing.T) {
+// TestDispatch_RevealStealth_DefenderWins: defense roll beats attack, no mutations.
+func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 	faction, asset, def, factionState := makeDispatchFixture()
 	targetFaction := factionState.Factions["f2"]
 

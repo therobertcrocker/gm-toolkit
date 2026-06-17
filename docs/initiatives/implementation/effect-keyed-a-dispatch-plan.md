@@ -65,8 +65,33 @@ open question is a binary fact-check, answered below, not a design exploration.
 
 ## Decision Record — Execution
 
-*(empty at plan time — execution-time decisions and reversals land here before the
-commit they ride.)*
+1. **E1 expanded: the handler is renamed to its effect (Commit 1).** The plan said
+   "No other file changes" for Commit 1, but once dispatch keys on `def.Ability.Effect`,
+   the handler named after one asset (`informers`, the Informers asset) is misnamed — it
+   implements `reveal_stealth`, which any asset may route to. Reversal of "dispatch.go
+   only": Commit 1 also renames `informers.go` → `reveal_stealth.go`, `informers` →
+   `revealStealth`, `informersCandidates` → `revealStealthCandidates`, the error string
+   `"informers:"` → `"reveal_stealth:"`, and the `TestDispatch_Informers_*` test names →
+   `TestDispatch_RevealStealth_*`. Pure rename; no behavior change. (Robert directed,
+   full-rename scope.)
+
+2. **Plan's "both existing tests" miscount — harmless.** `dispatch_test.go` has *three*
+   tests, not two; the third (`TestDispatch_Stub_ConfirmApplied`) uses `EffectCoinDrain`,
+   absent from the new map, so it falls through to `confirmApplied` exactly as before. All
+   three pass unchanged. No code impact; noted so the plan body doesn't mislead.
+
+3. **Drive-by fix on this branch (separate `fix:` commit, out of A.001.1 scope).** Two
+   pre-existing test failures on clean HEAD, unrelated to effect-keyed dispatch, fixed at
+   Robert's request:
+   - *Scavengers:* `tags_test.go` tagged the faction `T-014` (Psychic Academy); the
+     rulebook and handler agree Scavengers is `T-016`. Stale test → `T-016`.
+   - *Turn order:* `full_cycle_test.go` and `RunFactionTurn`'s doc comment expected
+     goal-lock first; the engine runs it just before the action phase (income → movement
+     → goal-lock → action). **Confirmed engine order is canonical** (goal-lock gates the
+     action; a locked/skipped faction still collects income and resolves movement,
+     consistent with SWN's "no actions during homeworld move"). Stale test + comment
+     updated to match. Candidate to graduate to an architecture `Key Decisions` entry at
+     pre-merge.
 
 ## Out of Scope
 
