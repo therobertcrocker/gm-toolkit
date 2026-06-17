@@ -30,3 +30,6 @@ HANDOFF.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code — personal/machine-specific overrides (settings.json is tracked)
+.claude/settings.local.json

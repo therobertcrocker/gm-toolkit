@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test *)",
+      "Bash(go build *)",
+      "LSP",
+      "WebFetch(domain:mermaid.js.org)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR:-.}\" 2>/dev/null; find docs/architecture -name '*.md' | sort | sed 's#^#  - #' | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:(\"Architecture wiki — read the relevant page BEFORE any design decision or work touching system shape (push, not pull). Front door: docs/architecture/architecture-overview.md\\nAvailable pages:\\n\" + .)}}' 2>/dev/null || true",
+            "statusMessage": "Loading architecture index"
+          }
+        ]
+      }
+    ]
+  }
+}
