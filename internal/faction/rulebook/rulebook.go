@@ -237,10 +237,6 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 	switch s {
 	case "reveal_stealth":
 		return domain.EffectRevealStealth, nil
-	case "coin_drain":
-		return domain.EffectCoinDrain, nil
-	case "coin_steal":
-		return domain.EffectCoinSteal, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}

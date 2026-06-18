@@ -113,7 +113,7 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 		Name:  "Harvesters",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{
-			Effect: domain.EffectCoinDrain,
+			Effect: domain.AbilityEffectType("not_built"),
 		},
 	}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}

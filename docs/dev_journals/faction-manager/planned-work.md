@@ -11,6 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
+| `A.001.2` | A-flag ability registry | `feature` | In-Progress | Composition pipeline target→contest\|roll→effect, data-driven; owns world-engine relocate primitive + action-spent harness; see [write-up](#a0012--a-flag-ability-registry) |
 
 
 ---
@@ -21,7 +22,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `A.001.2` | A-flag ability registry | `feature` | `A.001.1` | Composition pipeline target→contest\|roll→effect, data-driven; owns world-engine relocate primitive + action-spent harness; see arc-plan |
 | `A.001.3` | S-flag effect registry | `feature` | `A.001.2` (relocate) | Profiles→hook-category (transport generalized); free relocate harness + wire `GrantedMovementAbilities`; see arc-plan |
 | `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
 | `A.001.5` | H.A.W.K asset authoring | `feature` | `A.001.2`+`A.001.3` | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes; owns lore canon; see arc-plan |
@@ -109,4 +109,20 @@ This section contains detailed write-ups for each planned initiative, including 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
 **Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`); `A.001.2` (A-flag ability registry) is the next spine increment.
+
+<br />
+
+## A.001.2 — A-flag ability registry
+
+**Initiative of arc `A.001`** (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md) for boundary; cross-cutting decisions ACD-1…ACD-9 bind from the [arc-discovery](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-discovery.md) and are not re-litigated here).
+
+**Problem** — A.001.1 re-keyed A-side dispatch onto the ability's effect, but the machinery to *compose* a special from data does not exist. `abilityRecord` is flat (`attacker_stat`/`defender_stat`/`effect`); the `Die`/`Outcomes` domain fields have no parser path; the stat-contest is hard-wired inside the `reveal_stealth` handler rather than extracted as a reusable primitive.
+
+**Approach** — Build the A-side composition pipeline (ACD-3): *target-selection → (stat-contest | die-roll + outcome-table) → effect → mutations*, keyed on the effect. Grow `abilityRecord` to carry the structured `[ability]` block (`[contest]`, `[roll]`/`outcomes`); fill or remove the dead `Die`/`Outcomes`/`[[ability.steps]]`; re-derive Monopoly's home from its mechanic. **Owns the shared `relocate-other` primitive** (ACD-4): a new instant-relocation move in the world engine (distinct from the drift-order path) plus its action-spent harness (Covert Shipping, Covert Transit Net).
+
+**Unlocks** — A.001.3's free relocate harness (consumes this primitive); the A-side spine every later A-flag effect composes against.
+
+**Trigger** — `A.001.1` (complete).
+
+**Status** — In-Progress — Discovery complete (`a-flag-ability-registry-discovery.md`, decisions D1–D8); Plan is next. On `feature/a-flag-ability-registry`.
 

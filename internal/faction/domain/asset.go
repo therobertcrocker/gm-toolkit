@@ -50,11 +50,35 @@ type AbilityEffectType string
 
 const (
 	EffectRevealStealth AbilityEffectType = "reveal_stealth"
-	EffectCoinDrain     AbilityEffectType = "coin_drain"
-	EffectCoinSteal     AbilityEffectType = "coin_steal"
 )
 
+type TargetKind string
+
+const (
+	TargetNone    TargetKind = "none"
+	TargetSelf    TargetKind = "self"
+	TargetFaction TargetKind = "faction"
+	TargetAsset   TargetKind = "asset"
+	TargetWorld   TargetKind = "world"
+)
+
+type Contest struct {
+	AttackerStat FactionStat
+	DefenderStat FactionStat
+}
+
+type RollTable struct {
+	Die      DiceRoll
+	Outcomes []AbilityOutcome
+}
+
+// AbilityDefinition is a uniform sequence of steps; a flat [ability] block parses
+// to a one-step list. The flat AttackerStat/DefenderStat/Die/Outcomes/Effect
+// fields are transitional (removed in Commit 3) — readers use Steps.
 type AbilityDefinition struct {
+	Steps []AbilityStep
+
+	// Transitional flat fields (removed in Commit 3 once dispatch reads Steps).
 	Die          *DiceRoll
 	Outcomes     []AbilityOutcome
 	AttackerStat FactionStat
@@ -62,10 +86,36 @@ type AbilityDefinition struct {
 	Effect       AbilityEffectType
 }
 
+type AbilityStep struct {
+	Effect  AbilityEffectType
+	Target  TargetKind
+	Contest *Contest
+	Roll    *RollTable
+}
+
 type AbilityOutcome struct {
-	From int
-	To   int
-	Coin int
+	From        int
+	To          int
+	Coin        int // signed: gain (positive) or loss (negative)
+	DestroySelf bool
+	Discount    int
+}
+
+// AbilityTarget is the step's resolved target, returned by the target stage and
+// carried in the StepContext handed to an effect handler.
+type AbilityTarget struct {
+	Kind    TargetKind
+	Faction *Faction
+	Asset   *Asset
+	World   string
+}
+
+// AbilityTargetCandidates bundles the selectable options for a target stage; the
+// collector reads the slice matching the step's TargetKind.
+type AbilityTargetCandidates struct {
+	Factions []*Faction
+	Assets   []*Asset
+	Worlds   []string
 }
 
 type AssetDefinition struct {
