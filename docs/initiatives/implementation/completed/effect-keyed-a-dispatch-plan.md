@@ -102,6 +102,13 @@ open question is a binary fact-check, answered below, not a design exploration.
    same footing as the Task-5 mocks). Re-prefixed to `SWN-F1-001` so the verification grep
    stays clean. (Robert directed; Decision 6's rationale extended one file.)
 
+5. **Pre-merge: graduated effect-keyed dispatch to `actions.md` Key Decisions.** The
+   R.018 re-key is the branch's load-bearing architectural change but lived only in the
+   plan; `actions.md` (which owns the dispatch site) described the ability fold without
+   stating the keying. Added a Key Decision — "A-dispatch keys on the effect, not the
+   asset ID" — there. The turn-order candidate flagged in Decision 3 needed no graduation:
+   `orchestrator.md` already documents goal-lock's adjacency to the action phase it gates.
+
 ## Out of Scope
 
 - **The A-side composition pipeline and registry** (A.001.2) — E1 re-keys dispatch, it
