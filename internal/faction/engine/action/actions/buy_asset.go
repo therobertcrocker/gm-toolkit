@@ -25,7 +25,7 @@ type BuyAsset struct {
 	buyOrder      action.BuyOrder
 	newAsset      domain.Asset
 	cost          int
-	stealthTarget string // asset ID to stealth when buying C3-002; empty if no eligible target
+	stealthTarget string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
 }
 
 func NewBuyAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.WorldEngine) *BuyAsset {
@@ -116,7 +116,7 @@ func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 }
 
 // eligibleStealthTargets returns non-stealthy Special Forces assets owned by
-// the faction on the given world — valid targets when buying C3-002 Stealth.
+// the faction on the given world — valid targets when buying SWN-C3-002 Stealth.
 func eligibleStealthTargets(faction *domain.Faction, world string, rulebook *rulebook.Rulebook) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range faction.Assets {

@@ -104,7 +104,7 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 	}
 }
 
-// TestDispatch_Stub_ConfirmApplied: W1-002 routes to confirmApplied, which calls ConfirmAbilityApplied.
+// TestDispatch_Stub_ConfirmApplied: an effect with no registered handler (CoinDrain) falls through to confirmApplied, which calls ConfirmAbilityApplied.
 func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	faction := &domain.Faction{ID: "f1"}
 	asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-W1-002", OwnerID: "f1"}

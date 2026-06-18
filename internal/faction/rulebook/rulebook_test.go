@@ -25,7 +25,7 @@ func TestLoad(t *testing.T) {
 	t.Run("asset fields correct", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("expected asset F1-001 (Security Personnel) to be present")
+			t.Fatal("expected asset SWN-F1-001 (Security Personnel) to be present")
 		}
 		if asset.Name != "Security Personnel" {
 			t.Errorf("name: got %q, want %q", asset.Name, "Security Personnel")
@@ -41,7 +41,7 @@ func TestLoad(t *testing.T) {
 	t.Run("attack profile parsed", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("asset F1-001 not found")
+			t.Fatal("asset SWN-F1-001 not found")
 		}
 		if asset.Attack == nil {
 			t.Fatal("expected attack profile, got nil")
@@ -55,7 +55,7 @@ func TestLoad(t *testing.T) {
 	t.Run("counter parsed", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("asset F1-001 not found")
+			t.Fatal("asset SWN-F1-001 not found")
 		}
 		if asset.Counter == nil {
 			t.Fatal("expected counter, got nil")
@@ -68,7 +68,7 @@ func TestLoad(t *testing.T) {
 	t.Run("nil attack and counter for non-combat asset", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-F2-001"]
 		if !ok {
-			t.Fatal("expected asset F2-001 (Heavy Drop Assets) to be present")
+			t.Fatal("expected asset SWN-F2-001 (Heavy Drop Assets) to be present")
 		}
 		if asset.Attack != nil {
 			t.Errorf("expected nil attack, got %+v", asset.Attack)
@@ -81,7 +81,7 @@ func TestLoad(t *testing.T) {
 	t.Run("nil ability for non-action asset", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("asset F1-001 not found")
+			t.Fatal("asset SWN-F1-001 not found")
 		}
 		if asset.Ability != nil {
 			t.Errorf("expected nil ability, got %+v", asset.Ability)
@@ -91,7 +91,7 @@ func TestLoad(t *testing.T) {
 	t.Run("faction_test ability parsed", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-C1-002"]
 		if !ok {
-			t.Fatal("asset C1-002 not found")
+			t.Fatal("asset SWN-C1-002 not found")
 		}
 		if asset.Ability == nil {
 			t.Fatal("expected ability, got nil")
@@ -110,7 +110,7 @@ func TestLoad(t *testing.T) {
 	t.Run("marketers has no ability section", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-W5-001"]
 		if !ok {
-			t.Fatal("asset W5-001 not found")
+			t.Fatal("asset SWN-W5-001 not found")
 		}
 		if asset.Ability != nil {
 			t.Errorf("expected nil ability, got %+v", asset.Ability)

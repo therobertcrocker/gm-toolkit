@@ -16,7 +16,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
 
-	// income after bookkeeping: wealth(2)/2=1 + (force(4)+cunning(3))/4=1 → 2 Coin, enough for F1-001 (cost 2).
+	// income after bookkeeping: wealth(2)/2=1 + (force(4)+cunning(3))/4=1 → 2 Coin, enough for SWN-F1-001 (cost 2).
 	secondCycle := false
 	h.Collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {
 		if secondCycle {
@@ -38,7 +38,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 				}
 			}
 		}
-		t.Fatal("F1-001 not in purchasable list")
+		t.Fatal("SWN-F1-001 not in purchasable list")
 		return action.BuyOrder{}, nil
 	}
 
@@ -64,7 +64,7 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 			break
 		}
 	}
-	testharness.CheckStep(t, "new asset present in faction", newAsset != nil, "no second F1-001 asset found")
+	testharness.CheckStep(t, "new asset present in faction", newAsset != nil, "no second SWN-F1-001 asset found")
 	if newAsset != nil {
 		testharness.CheckStep(t, "new asset Ready=false after purchase", !newAsset.Ready, "Ready should be false until next cycle")
 	}
