@@ -99,9 +99,30 @@ type attackRecord struct {
 }
 
 type abilityRecord struct {
-	AttackerStat string `toml:"attacker_stat"`
-	DefenderStat string `toml:"defender_stat"`
-	Effect       string `toml:"effect"`
+	AttackerStat string              `toml:"attacker_stat"`
+	DefenderStat string              `toml:"defender_stat"`
+	Effect       string              `toml:"effect"`
+	Target       string              `toml:"target"`
+	Die          string              `toml:"die"`
+	Outcomes     []outcomeRecord     `toml:"outcomes"`
+	Steps        []abilityStepRecord `toml:"steps"`
+}
+
+type abilityStepRecord struct {
+	Effect       string          `toml:"effect"`
+	Target       string          `toml:"target"`
+	AttackerStat string          `toml:"attacker_stat"`
+	DefenderStat string          `toml:"defender_stat"`
+	Die          string          `toml:"die"`
+	Outcomes     []outcomeRecord `toml:"outcomes"`
+}
+
+type outcomeRecord struct {
+	From        int  `toml:"from"`
+	To          int  `toml:"to"`
+	Coin        int  `toml:"coin"`
+	DestroySelf bool `toml:"destroy_self"`
+	Discount    int  `toml:"discount"`
 }
 
 // loadAssets globs all *_assets.toml files in <dataDir>/assets/ and merges them into one map.
@@ -208,29 +229,90 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 	if r == nil {
 		return nil, nil
 	}
-	def := &domain.AbilityDefinition{}
-	if r.AttackerStat != "" {
-		stat, err := toFactionStat(r.AttackerStat)
-		if err != nil {
-			return nil, fmt.Errorf("attacker_stat: %w", err)
+	if len(r.Steps) > 0 {
+		if r.Effect != "" || r.AttackerStat != "" || r.DefenderStat != "" || r.Die != "" {
+			return nil, fmt.Errorf("use either a flat [ability] block or [[ability.steps]], not both")
 		}
-		def.AttackerStat = stat
-	}
-	if r.DefenderStat != "" {
-		stat, err := toFactionStat(r.DefenderStat)
-		if err != nil {
-			return nil, fmt.Errorf("defender_stat: %w", err)
+		steps := make([]domain.AbilityStep, 0, len(r.Steps))
+		for i, sr := range r.Steps {
+			step, err := convertAbilityStep(sr.Effect, sr.Target, sr.AttackerStat, sr.DefenderStat, sr.Die, sr.Outcomes)
+			if err != nil {
+				return nil, fmt.Errorf("step %d: %w", i, err)
+			}
+			steps = append(steps, step)
 		}
-		def.DefenderStat = stat
+		return &domain.AbilityDefinition{Steps: steps}, nil
 	}
-	if r.Effect != "" {
-		effect, err := toAbilityEffect(r.Effect)
+	step, err := convertAbilityStep(r.Effect, r.Target, r.AttackerStat, r.DefenderStat, r.Die, r.Outcomes)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.AbilityDefinition{Steps: []domain.AbilityStep{step}}, nil
+}
+
+func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr string, outcomes []outcomeRecord) (domain.AbilityStep, error) {
+	var step domain.AbilityStep
+	if effectStr != "" {
+		effect, err := toAbilityEffect(effectStr)
 		if err != nil {
-			return nil, err
+			return domain.AbilityStep{}, err
 		}
-		def.Effect = effect
+		step.Effect = effect
 	}
-	return def, nil
+	target, err := toTargetKind(targetStr)
+	if err != nil {
+		return domain.AbilityStep{}, err
+	}
+	step.Target = target
+	if attackerStr != "" || defenderStr != "" {
+		attacker, err := toFactionStat(attackerStr)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("attacker_stat: %w", err)
+		}
+		defender, err := toFactionStat(defenderStr)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
+		}
+		step.Contest = &domain.Contest{AttackerStat: attacker, DefenderStat: defender}
+	}
+	if dieStr != "" {
+		die, err := parseDice(dieStr)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("die: %w", err)
+		}
+		roll := &domain.RollTable{Die: *die}
+		for _, o := range outcomes {
+			roll.Outcomes = append(roll.Outcomes, domain.AbilityOutcome{
+				From:        o.From,
+				To:          o.To,
+				Coin:        o.Coin,
+				DestroySelf: o.DestroySelf,
+				Discount:    o.Discount,
+			})
+		}
+		step.Roll = roll
+	}
+	if step.Contest != nil && step.Roll != nil {
+		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and roll; they are mutually exclusive")
+	}
+	return step, nil
+}
+
+func toTargetKind(s string) (domain.TargetKind, error) {
+	switch s {
+	case "", "none":
+		return domain.TargetNone, nil
+	case "self":
+		return domain.TargetSelf, nil
+	case "faction":
+		return domain.TargetFaction, nil
+	case "asset":
+		return domain.TargetAsset, nil
+	case "world":
+		return domain.TargetWorld, nil
+	default:
+		return "", fmt.Errorf("unknown target kind: %q", s)
+	}
 }
 
 func toAbilityEffect(s string) (domain.AbilityEffectType, error) {

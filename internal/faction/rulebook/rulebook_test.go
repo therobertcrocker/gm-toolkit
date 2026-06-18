@@ -96,14 +96,21 @@ func TestLoad(t *testing.T) {
 		if asset.Ability == nil {
 			t.Fatal("expected ability, got nil")
 		}
-		if asset.Ability.AttackerStat != domain.StatCunning {
-			t.Errorf("attacker_stat: got %q, want %q", asset.Ability.AttackerStat, domain.StatCunning)
+		if len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %d, want 1", len(asset.Ability.Steps))
 		}
-		if asset.Ability.DefenderStat != domain.StatCunning {
-			t.Errorf("defender_stat: got %q, want %q", asset.Ability.DefenderStat, domain.StatCunning)
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectRevealStealth {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectRevealStealth)
 		}
-		if asset.Ability.Effect != domain.EffectRevealStealth {
-			t.Errorf("effect: got %q, want %q", asset.Ability.Effect, domain.EffectRevealStealth)
+		if step.Contest == nil {
+			t.Fatal("expected a contest on the reveal step, got nil")
+		}
+		if step.Contest.AttackerStat != domain.StatCunning {
+			t.Errorf("attacker_stat: got %q, want %q", step.Contest.AttackerStat, domain.StatCunning)
+		}
+		if step.Contest.DefenderStat != domain.StatCunning {
+			t.Errorf("defender_stat: got %q, want %q", step.Contest.DefenderStat, domain.StatCunning)
 		}
 	})
 
