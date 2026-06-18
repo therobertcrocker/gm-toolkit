@@ -23,14 +23,14 @@ func (r *seqRoller) Roll(_ int) int {
 func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinition, *state.FactionState) {
 	stealthyTarget := &domain.Asset{
 		ID:           "t1",
-		DefinitionID: "C1-002",
+		DefinitionID: "SWN-C1-002",
 		OwnerID:      "f2",
 		Location:     domain.Location{WorldID: "Anchorage"},
 		Stealthy:     true,
 	}
 	actingAsset := &domain.Asset{
 		ID:           "a1",
-		DefinitionID: "C1-002",
+		DefinitionID: "SWN-C1-002",
 		OwnerID:      "f1",
 		Location:     domain.Location{WorldID: "Anchorage"},
 	}
@@ -41,7 +41,7 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 		Assets:  map[string]*domain.Asset{"t1": stealthyTarget},
 	}
 	def := &domain.AssetDefinition{
-		ID:    "C1-002",
+		ID:    "SWN-C1-002",
 		Name:  "Informers",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{
@@ -59,8 +59,8 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 	return actingFaction, actingAsset, def, factionState
 }
 
-// TestDispatch_Informers_AttackerWins: attack roll beats defense, stealthy target asset cleared.
-func TestDispatch_Informers_AttackerWins(t *testing.T) {
+// TestDispatch_RevealStealth_AttackerWins: attack roll beats defense, stealthy target asset cleared.
+func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 	faction, asset, def, factionState := makeDispatchFixture()
 	targetFaction := factionState.Factions["f2"]
 
@@ -85,8 +85,8 @@ func TestDispatch_Informers_AttackerWins(t *testing.T) {
 	}
 }
 
-// TestDispatch_Informers_DefenderWins: defense roll beats attack, no mutations.
-func TestDispatch_Informers_DefenderWins(t *testing.T) {
+// TestDispatch_RevealStealth_DefenderWins: defense roll beats attack, no mutations.
+func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 	faction, asset, def, factionState := makeDispatchFixture()
 	targetFaction := factionState.Factions["f2"]
 
@@ -104,12 +104,12 @@ func TestDispatch_Informers_DefenderWins(t *testing.T) {
 	}
 }
 
-// TestDispatch_Stub_ConfirmApplied: W1-002 routes to confirmApplied, which calls ConfirmAbilityApplied.
+// TestDispatch_Stub_ConfirmApplied: an effect with no registered handler (CoinDrain) falls through to confirmApplied, which calls ConfirmAbilityApplied.
 func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	faction := &domain.Faction{ID: "f1"}
-	asset := &domain.Asset{ID: "a1", DefinitionID: "W1-002", OwnerID: "f1"}
+	asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-W1-002", OwnerID: "f1"}
 	def := &domain.AssetDefinition{
-		ID:    "W1-002",
+		ID:    "SWN-W1-002",
 		Name:  "Harvesters",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{

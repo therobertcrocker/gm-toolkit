@@ -79,14 +79,14 @@ with composition: **target-selection → (stat-contest | die-roll) → effect**.
 
 | Effect (primitive) | Assets | Notes |
 |---|---|---|
-| **roll-table-coin** | Harvesters `W1-002`, Postech Industry `W3-001`, Venture Capital `W6-001`, Pretech Manufactory `W7-001` | pure `Die`+`Outcomes`. Manufactory's "half, round up" is a payout-formula variant of the same table |
-| **roll-table → purchase-discount** | Commodities Broker `W6-003` | roll-table whose result modifies the *next purchase cost*, not Coin directly |
-| **stat-contest → reveal-stealth** | Informers `C1-002` ✅, Seductress `C2-004` | Informers wired; Seductress also relocates one hex first (contest composed after a move) |
-| **stat-contest → coin-or-disable** | Marketers `W5-001` | success forces target to pay half an asset's cost or have it disabled |
-| **coin-drain (on attack)** | Monopoly `W4-002` | flagged `A` but reads reactive ("when it successfully attacks"); flag-vs-text mismatch flagged below |
-| **relocate-other (action-spent)** | Covert Shipping `C3-003`, Covert Transit Net `C6-002` | relocate *another* asset for Coin; the transport primitive is a *carrier* reactor, so these need a sibling shape |
-| **purchase-enabler** | Pretech Logistics `F5-002` | spend the action to buy one discounted Force asset on the world |
-| **attach / restrict-action** | Seditionists `C4-004` | pay `1d4` Coin to attach to an enemy asset, suppressing its attack |
+| **roll-table-coin** | Harvesters `SWN-W1-002`, Postech Industry `SWN-W3-001`, Venture Capital `SWN-W6-001`, Pretech Manufactory `SWN-W7-001` | pure `Die`+`Outcomes`. Manufactory's "half, round up" is a payout-formula variant of the same table |
+| **roll-table → purchase-discount** | Commodities Broker `SWN-W6-003` | roll-table whose result modifies the *next purchase cost*, not Coin directly |
+| **stat-contest → reveal-stealth** | Informers `SWN-C1-002` ✅, Seductress `SWN-C2-004` | Informers wired; Seductress also relocates one hex first (contest composed after a move) |
+| **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` | success forces target to pay half an asset's cost or have it disabled |
+| **coin-drain (on attack)** | Monopoly `SWN-W4-002` | flagged `A` but reads reactive ("when it successfully attacks"); flag-vs-text mismatch flagged below |
+| **relocate-other (action-spent)** | Covert Shipping `SWN-C3-003`, Covert Transit Net `SWN-C6-002` | relocate *another* asset for Coin; the transport primitive is a *carrier* reactor, so these need a sibling shape |
+| **purchase-enabler** | Pretech Logistics `SWN-F5-002` | spend the action to buy one discounted Force asset on the world |
+| **attach / restrict-action** | Seditionists `SWN-C4-004` | pay `1d4` Coin to attach to an enemy asset, suppressing its attack |
 
 ```mermaid
 ---
@@ -128,28 +128,28 @@ of these; this table reconciles with it and completes the survey.)
 
 | Effect | Hook category | Assets |
 |---|---|---|
-| **transport** (carrier + cargo) | Cat 3 `MutationReactor` | Heavy Drop `F2-001`, Beachhead Landers `F4-001`, Extended Theater `F4-002`, Deep Strike Landers `F7-001`, Smugglers `C1-001`, Freighter Contract `W2-001`, Shipping Combine `W4-001`, Blockade Runners `W5-003` ✅ |
-| **relocate-other (free)** | Cat 3 `MutationReactor` | Transit Web `W7-003` — same effect as the A-flag relocate, but no action |
-| **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `F3-001` |
-| **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `F5-001`, Franchise `W1-001` → `coin_steal` |
-| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Local Investments `W1-003` (purchase surcharge), and Monopoly's reactive reading → `coin_drain` |
-| **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `C1-003`, Boltholes `C5-003`, Medical Center `W4-003` |
-| **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `W7-002`, Treachery `C7-003` |
-| **passive income** (per-turn Coin) | Cat 3 `MutationReactor` (turn-start) | Party Machine `C4-001` |
-| **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` | Tripwire Cells `C4-003`, Panopticon Matrix `C8-001` |
-| **start-stealthed** | Cat 5 `RuleModifier` (on add) | Psychic Assassins `F5-003` |
-| **grant-stealth** (quality bought for another asset) | Cat 5 `RuleModifier` | Stealth `C3-002` |
-| **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `F7-002` (Cunning defense), Surveyors `W2-004` (Expand Influence), Panopticon `C8-001` (Cunning attacks/defenses) |
-| **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `C7-002` |
-| **negate-bonus** (suppress tag dice) | Cat 1 `RollModifier` | Blackmail `C2-003` |
-| **reflect-on-defense** | Cat 2 `RollResultHook` / rule | Cracked Comms `C5-002` |
-| **attack/defense restriction** | Cat 5 `TieResolver` / rule | Planetary Defenses `F6-002` (Starship-only), Lawyers `W2-002` (not vs Force) |
-| **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `C2-002` (no abilities), Transport Lockdown `C6-001` (no transport in) |
-| **cost-ignore** (skip a Coin loss, once/turn) | Cat 4 `AssetCostModifier` / rule | Bank `W4-004` |
-| **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` | Local Investments `W1-003` |
-| **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `AssetCostModifier` | Laboratory `W3-002`, Pretech Researchers `W5-002`, R&D Department `W6-002` |
-| **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `C7-001` (grant), Lobbyists `C2-001` (revoke, reactive contest) |
-| **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `C2-001`, Tripwire Cells `C4-003` |
+| **transport** (carrier + cargo) | Cat 3 `MutationReactor` | Heavy Drop `SWN-F2-001`, Beachhead Landers `SWN-F4-001`, Extended Theater `SWN-F4-002`, Deep Strike Landers `SWN-F7-001`, Smugglers `SWN-C1-001`, Freighter Contract `SWN-W2-001`, Shipping Combine `SWN-W4-001`, Blockade Runners `SWN-W5-003` ✅ |
+| **relocate-other (free)** | Cat 3 `MutationReactor` | Transit Web `SWN-W7-003` — same effect as the A-flag relocate, but no action |
+| **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` |
+| **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001`, Franchise `SWN-W1-001` → `coin_steal` |
+| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Local Investments `SWN-W1-003` (purchase surcharge), and Monopoly's reactive reading → `coin_drain` |
+| **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `SWN-C1-003`, Boltholes `SWN-C5-003`, Medical Center `SWN-W4-003` |
+| **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
+| **passive income** (per-turn Coin) | Cat 3 `MutationReactor` (turn-start) | Party Machine `SWN-C4-001` |
+| **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` | Tripwire Cells `SWN-C4-003`, Panopticon Matrix `SWN-C8-001` |
+| **start-stealthed** | Cat 5 `RuleModifier` (on add) | Psychic Assassins `SWN-F5-003` |
+| **grant-stealth** (quality bought for another asset) | Cat 5 `RuleModifier` | Stealth `SWN-C3-002` |
+| **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `SWN-F7-002` (Cunning defense), Surveyors `SWN-W2-004` (Expand Influence), Panopticon `SWN-C8-001` (Cunning attacks/defenses) |
+| **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` |
+| **negate-bonus** (suppress tag dice) | Cat 1 `RollModifier` | Blackmail `SWN-C2-003` |
+| **reflect-on-defense** | Cat 2 `RollResultHook` / rule | Cracked Comms `SWN-C5-002` |
+| **attack/defense restriction** | Cat 5 `TieResolver` / rule | Planetary Defenses `SWN-F6-002` (Starship-only), Lawyers `SWN-W2-002` (not vs Force) |
+| **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `SWN-C2-002` (no abilities), Transport Lockdown `SWN-C6-001` (no transport in) |
+| **cost-ignore** (skip a Coin loss, once/turn) | Cat 4 `AssetCostModifier` / rule | Bank `SWN-W4-004` |
+| **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` | Local Investments `SWN-W1-003` |
+| **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `AssetCostModifier` | Laboratory `SWN-W3-002`, Pretech Researchers `SWN-W5-002`, R&D Department `SWN-W6-002` |
+| **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `SWN-C7-001` (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
+| **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` |
 
 **Dual-flag assets** (`A`+`S`: Informers, Seductress, Covert Shipping) resolve
 their *active* mechanic through the abilities engine; any passive side, if it

@@ -18,23 +18,13 @@ type AbilityHandler func(
 	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error)
 
-var handlers = map[string]AbilityHandler{
-	"C1-002": informers, // Informers
-
-	// Structural stubs — real implementations land in F-014.
-	"W1-002": confirmApplied, // Harvesters
-	"W3-001": confirmApplied, // Postech Industry
-	"W7-001": confirmApplied, // Pretech Manufactory
-	"F5-002": confirmApplied, // Pretech Logistics
-	"W6-001": confirmApplied, // Venture Capital
-	"W6-003": confirmApplied, // Commodities Broker
-	"C4-004": confirmApplied, // Seditionists
-	"W5-001": confirmApplied, // Marketers
-	"W4-002": confirmApplied, // Monopoly
+var handlers = map[domain.AbilityEffectType]AbilityHandler{
+	domain.EffectRevealStealth: revealStealth,
 }
 
-// Dispatch routes an asset's ability to its registered handler.
-// Falls through to confirmApplied for unregistered IDs (defensive; should not occur post-flag-corrections).
+// Dispatch routes an asset's ability to the handler registered for its effect.
+// Assets with no ability block, or an effect with no registered handler, fall
+// through to confirmApplied (the not-yet-built effects).
 func Dispatch(
 	faction *domain.Faction,
 	asset *domain.Asset,
@@ -44,7 +34,10 @@ func Dispatch(
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
-	handler, ok := handlers[def.ID]
+	if def.Ability == nil {
+		return confirmApplied(faction, asset, def, collector, roller, factionState, rulebook)
+	}
+	handler, ok := handlers[def.Ability.Effect]
 	if !ok {
 		return confirmApplied(faction, asset, def, collector, roller, factionState, rulebook)
 	}

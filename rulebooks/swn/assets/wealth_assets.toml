@@ -1,7 +1,7 @@
 # Wealth Assets
 
 [assets.Franchise]
-id = "W1-001"
+id = "SWN-W1-001"
 name = "Franchise"
 category = "Wealth"
 min_rating = 1
@@ -20,7 +20,7 @@ defender_stat = "Wealth"
 damage = "1d4"
 
 [assets.Harvesters]
-id = "W1-002"
+id = "SWN-W1-002"
 name = "Harvesters"
 category = "Wealth"
 min_rating = 1
@@ -34,7 +34,7 @@ counter = "1d4"
 description = "Workers gathering natural resources — ore, biologicals, or other unprocessed goods. As an ability action, the owning faction rolls 1d6; on a 3 or higher, they gain 1 Coin."
 
 [assets.LocalInvestments]
-id = "W1-003"
+id = "SWN-W1-003"
 name = "Local Investments"
 category = "Wealth"
 min_rating = 1
@@ -53,7 +53,7 @@ defender_stat = "Wealth"
 damage = "1d4-1"
 
 [assets.FreighterContract]
-id = "W2-001"
+id = "SWN-W2-001"
 name = "Freighter Contract"
 category = "Wealth"
 min_rating = 2
@@ -80,7 +80,7 @@ max_cargo = 1
 exclude_categories = ["Force"]
 
 [assets.Lawyers]
-id = "W2-002"
+id = "SWN-W2-002"
 name = "Lawyers"
 category = "Wealth"
 min_rating = 2
@@ -99,7 +99,7 @@ defender_stat = "Wealth"
 damage = "2d4"
 
 [assets.UnionToughs]
-id = "W2-003"
+id = "SWN-W2-003"
 name = "Union Toughs"
 category = "Wealth"
 min_rating = 2
@@ -118,7 +118,7 @@ defender_stat = "Force"
 damage = "1d4+1"
 
 [assets.Surveyors]
-id = "W2-004"
+id = "SWN-W2-004"
 name = "Surveyors"
 category = "Wealth"
 min_rating = 2
@@ -133,7 +133,7 @@ counter = "1d4"
 description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world. As an action, a Surveyor crew can move to any world within two hexes."
 
 [assets.PostechIndustry]
-id = "W3-001"
+id = "SWN-W3-001"
 name = "Postech Industry"
 category = "Wealth"
 min_rating = 3
@@ -147,7 +147,7 @@ counter = "1d4"
 description = "Advanced manufacturing facilities. As an ability action, roll 1d6: on a 1, lose 1 Coin (if this cannot be paid, the asset is destroyed); on a 2–4, gain 1 Coin; on a 5–6, gain 2 Coin."
 
 [assets.Laboratory]
-id = "W3-002"
+id = "SWN-W3-002"
 name = "Laboratory"
 category = "Wealth"
 min_rating = 3
@@ -161,7 +161,7 @@ counter = ""
 description = "Research facilities that accelerate local technological development. Assets may be purchased on this planet as if it had Tech Level 4."
 
 [assets.Mercenaries]
-id = "W3-003"
+id = "SWN-W3-003"
 name = "Mercenaries"
 category = "Wealth"
 min_rating = 3
@@ -181,7 +181,7 @@ defender_stat = "Force"
 damage = "2d4+2"
 
 [assets.ShippingCombine]
-id = "W4-001"
+id = "SWN-W4-001"
 name = "Shipping Combine"
 category = "Wealth"
 min_rating = 4
@@ -203,7 +203,7 @@ max_cargo = 10
 exclude_categories = ["Force"]
 
 [assets.Monopoly]
-id = "W4-002"
+id = "SWN-W4-002"
 name = "Monopoly"
 category = "Wealth"
 min_rating = 4
@@ -222,7 +222,7 @@ defender_stat = "Wealth"
 damage = "1d6"
 
 [assets.MedicalCenter]
-id = "W4-003"
+id = "SWN-W4-003"
 name = "Medical Center"
 category = "Wealth"
 min_rating = 4
@@ -236,7 +236,7 @@ counter = ""
 description = "Fully-equipped medical facilities. If a Special Forces or Military Unit asset on this planet is destroyed, the faction may immediately pay half its purchase cost to restore it at 1 HP. Any Repair Asset action on this planet costs 1 fewer Coin for Special Forces and Military Units."
 
 [assets.Bank]
-id = "W4-004"
+id = "SWN-W4-004"
 name = "Bank"
 category = "Wealth"
 min_rating = 4
@@ -250,7 +250,7 @@ counter = ""
 description = "A financial institution under faction control. Once per turn, the faction can ignore one Coin cost or loss imposed by another faction. This does not require an action. Multiple Banks allow multiple losses to be ignored."
 
 [assets.Marketers]
-id = "W5-001"
+id = "SWN-W5-001"
 name = "Marketers"
 category = "Wealth"
 min_rating = 5
@@ -269,7 +269,7 @@ defender_stat = "Wealth"
 damage = "1d6"
 
 [assets.PretechResearchers]
-id = "W5-002"
+id = "SWN-W5-002"
 name = "Pretech Researchers"
 category = "Wealth"
 min_rating = 5
@@ -283,7 +283,7 @@ counter = ""
 description = "Research specialists supporting limited pretech applications. Any world with Pretech Researchers on it is treated as Tech Level 5 for the purpose of buying Cunning and Wealth assets. Pretech Researchers have a maintenance cost of 1 Coin per turn."
 
 [assets.BlockadeRunners]
-id = "W5-003"
+id = "SWN-W5-003"
 name = "Blockade Runners"
 category = "Wealth"
 min_rating = 5
@@ -304,7 +304,7 @@ cargo_types = ["Military Unit", "Special Forces"]
 max_cargo = 1
 
 [assets.VentureCapital]
-id = "W6-001"
+id = "SWN-W6-001"
 name = "Venture Capital"
 category = "Wealth"
 min_rating = 6
@@ -323,7 +323,7 @@ defender_stat = "Wealth"
 damage = "2d6"
 
 [assets.RandDDepartment]
-id = "W6-002"
+id = "SWN-W6-002"
 name = "R&D Department"
 category = "Wealth"
 min_rating = 6
@@ -337,7 +337,7 @@ counter = ""
 description = "Industrial research extending wealth-creation principles across the faction's operations. A faction with an R&D Department may treat all planets as having Tech Level 4 for the purpose of buying Wealth assets."
 
 [assets.CommoditiesBroker]
-id = "W6-003"
+id = "SWN-W6-003"
 name = "Commodities Broker"
 category = "Wealth"
 min_rating = 6
@@ -356,7 +356,7 @@ defender_stat = "Wealth"
 damage = "2d8"
 
 [assets.PretechManufactory]
-id = "W7-001"
+id = "SWN-W7-001"
 name = "Pretech Manufactory"
 category = "Wealth"
 min_rating = 7
@@ -370,7 +370,7 @@ counter = ""
 description = "Rare, functioning Mandate-era manufacturing facilities. As an action, the owning faction may roll 1d8 and gain half that many Coin, rounded up."
 
 [assets.HostileTakeover]
-id = "W7-002"
+id = "SWN-W7-002"
 name = "Hostile Takeover"
 category = "Wealth"
 min_rating = 7
@@ -389,7 +389,7 @@ defender_stat = "Wealth"
 damage = "2d10"
 
 [assets.TransitWeb]
-id = "W7-003"
+id = "SWN-W7-003"
 name = "Transit Web"
 category = "Wealth"
 min_rating = 7
@@ -408,7 +408,7 @@ defender_stat = "Cunning"
 damage = "1d12"
 
 [assets.ScavengerFleet]
-id = "W8-001"
+id = "SWN-W8-001"
 name = "Scavenger Fleet"
 category = "Wealth"
 min_rating = 8

@@ -10,7 +10,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-func informers(
+func revealStealth(
 	faction *domain.Faction,
 	asset *domain.Asset,
 	def *domain.AssetDefinition,
@@ -19,13 +19,13 @@ func informers(
 	factionState *state.FactionState,
 	_ *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
-	candidates := informersCandidates(factionState, faction.ID, asset.Location.WorldID)
+	candidates := revealStealthCandidates(factionState, faction.ID, asset.Location.WorldID)
 	targetFaction, err := collector.SelectFactionTestTarget(asset, def.Ability.Effect, candidates)
 	if err != nil {
 		return nil, err
 	}
 	if targetFaction == nil {
-		return nil, fmt.Errorf("informers: %w", action.ErrNoSelection)
+		return nil, fmt.Errorf("reveal_stealth: %w", action.ErrNoSelection)
 	}
 
 	attackRoll := roller.Roll(10) + statScore(faction, def.Ability.AttackerStat)
@@ -49,9 +49,9 @@ func informers(
 	return mutations, nil
 }
 
-// informersCandidates returns all factions other than the acting faction.
+// revealStealthCandidates returns all factions other than the acting faction.
 // For reveal_stealth, every opponent is a valid target regardless of world presence.
-func informersCandidates(factionState *state.FactionState, actingFactionID, _ string) []*domain.Faction {
+func revealStealthCandidates(factionState *state.FactionState, actingFactionID, _ string) []*domain.Faction {
 	var candidates []*domain.Faction
 	for id, faction := range factionState.Factions {
 		if id == actingFactionID {

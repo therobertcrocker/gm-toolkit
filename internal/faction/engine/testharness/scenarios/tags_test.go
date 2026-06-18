@@ -15,7 +15,7 @@ import (
 func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-014"}}
+	alpha.Tags = []*domain.Tag{{ID: "T-016"}}
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
@@ -246,7 +246,7 @@ func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
 //
 // Setup: Force=2, Cunning=3, Wealth=2, initial Coin=4.
 // Income from bookkeeping: wealth(2)/2=1 + (force(2)+cunning(3))/4=1 = 2.
-// Pre-buy Coin = 6. F2-001 (Heavy Drop Assets) base cost=4, TL4.
+// Pre-buy Coin = 6. SWN-F2-001 (Heavy Drop Assets) base cost=4, TL4.
 // Preceptor reduces cost to 3 → final Coin = 3.
 func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
 	h := testharness.NewHarness(t)
@@ -271,7 +271,7 @@ func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
 				}
 			}
 		}
-		t.Fatal("F2-001 not in purchasable list")
+		t.Fatal("SWN-F2-001 not in purchasable list")
 		return action.BuyOrder{}, nil
 	}
 
@@ -314,7 +314,7 @@ func TestPreceptorArchive_NoBonusWithoutTag(t *testing.T) {
 				}
 			}
 		}
-		t.Fatal("F2-001 not in purchasable list")
+		t.Fatal("SWN-F2-001 not in purchasable list")
 		return action.BuyOrder{}, nil
 	}
 

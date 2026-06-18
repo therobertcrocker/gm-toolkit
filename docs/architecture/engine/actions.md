@@ -141,6 +141,15 @@ can cascade to bases and faction HP.
   lives in `actions/ability/` and is reached only through the `Use Asset Ability`
   action, keeping the engine's top-level sub-engine count to the seven the
   orchestrator wires. (Frozen log 96–109; the ability-engine redesign.)
+- **A-dispatch keys on the effect, not the asset ID.** `ability.Dispatch`
+  resolves a handler from `map[AbilityEffectType]AbilityHandler` keyed on
+  `def.Ability.Effect`, not from the asset's `def.ID`. Handlers are named for the
+  effect they implement (`reveal_stealth`), so every asset that routes to an
+  effect shares one handler instead of needing a per-ID entry; an asset with no
+  ability block, or an effect with no registered handler, falls through to
+  `confirmApplied` (a no-op confirmation) rather than erroring. This removed the
+  asset-ID prefix fragility that motivated R.018 and is the seam the data-driven
+  ability registry ([ability catalog](ability-catalog.md)) builds on.
 
 ## Dependencies
 

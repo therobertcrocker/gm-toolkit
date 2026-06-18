@@ -23,9 +23,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("asset fields correct", func(t *testing.T) {
-		asset, ok := rb.Assets["F1-001"]
+		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("expected asset F1-001 (Security Personnel) to be present")
+			t.Fatal("expected asset SWN-F1-001 (Security Personnel) to be present")
 		}
 		if asset.Name != "Security Personnel" {
 			t.Errorf("name: got %q, want %q", asset.Name, "Security Personnel")
@@ -39,9 +39,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("attack profile parsed", func(t *testing.T) {
-		asset, ok := rb.Assets["F1-001"]
+		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("asset F1-001 not found")
+			t.Fatal("asset SWN-F1-001 not found")
 		}
 		if asset.Attack == nil {
 			t.Fatal("expected attack profile, got nil")
@@ -53,9 +53,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("counter parsed", func(t *testing.T) {
-		asset, ok := rb.Assets["F1-001"]
+		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("asset F1-001 not found")
+			t.Fatal("asset SWN-F1-001 not found")
 		}
 		if asset.Counter == nil {
 			t.Fatal("expected counter, got nil")
@@ -66,9 +66,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("nil attack and counter for non-combat asset", func(t *testing.T) {
-		asset, ok := rb.Assets["F2-001"]
+		asset, ok := rb.Assets["SWN-F2-001"]
 		if !ok {
-			t.Fatal("expected asset F2-001 (Heavy Drop Assets) to be present")
+			t.Fatal("expected asset SWN-F2-001 (Heavy Drop Assets) to be present")
 		}
 		if asset.Attack != nil {
 			t.Errorf("expected nil attack, got %+v", asset.Attack)
@@ -79,9 +79,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("nil ability for non-action asset", func(t *testing.T) {
-		asset, ok := rb.Assets["F1-001"]
+		asset, ok := rb.Assets["SWN-F1-001"]
 		if !ok {
-			t.Fatal("asset F1-001 not found")
+			t.Fatal("asset SWN-F1-001 not found")
 		}
 		if asset.Ability != nil {
 			t.Errorf("expected nil ability, got %+v", asset.Ability)
@@ -89,9 +89,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("faction_test ability parsed", func(t *testing.T) {
-		asset, ok := rb.Assets["C1-002"]
+		asset, ok := rb.Assets["SWN-C1-002"]
 		if !ok {
-			t.Fatal("asset C1-002 not found")
+			t.Fatal("asset SWN-C1-002 not found")
 		}
 		if asset.Ability == nil {
 			t.Fatal("expected ability, got nil")
@@ -108,9 +108,9 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("marketers has no ability section", func(t *testing.T) {
-		asset, ok := rb.Assets["W5-001"]
+		asset, ok := rb.Assets["SWN-W5-001"]
 		if !ok {
-			t.Fatal("asset W5-001 not found")
+			t.Fatal("asset SWN-W5-001 not found")
 		}
 		if asset.Ability != nil {
 			t.Errorf("expected nil ability, got %+v", asset.Ability)
@@ -122,22 +122,22 @@ func TestLoad(t *testing.T) {
 			id    string
 			speed int
 		}{
-			{"W2-001", 2}, // FreighterContract
-			{"W2-004", 2}, // Surveyors
-			{"W3-003", 1}, // Mercenaries
-			{"W4-001", 2}, // ShippingCombine
-			{"W5-003", 3}, // BlockadeRunners
-			{"W8-001", 3}, // ScavengerFleet
-			{"C1-001", 2}, // Smugglers
-			{"C2-004", 1}, // Seductress
-			{"F2-001", 1}, // HeavyDropAssets
-			{"F4-001", 1}, // BeachheadLanders
-			{"F4-002", 2}, // ExtendedTheater
-			{"F4-003", 1}, // StrikeFleet
-			{"F5-001", 1}, // BlockadeFleet
-			{"F7-001", 3}, // DeepStrikeLanders
-			{"F7-003", 1}, // SpaceMarines
-			{"F8-001", 3}, // CapitalFleet
+			{"SWN-W2-001", 2}, // FreighterContract
+			{"SWN-W2-004", 2}, // Surveyors
+			{"SWN-W3-003", 1}, // Mercenaries
+			{"SWN-W4-001", 2}, // ShippingCombine
+			{"SWN-W5-003", 3}, // BlockadeRunners
+			{"SWN-W8-001", 3}, // ScavengerFleet
+			{"SWN-C1-001", 2}, // Smugglers
+			{"SWN-C2-004", 1}, // Seductress
+			{"SWN-F2-001", 1}, // HeavyDropAssets
+			{"SWN-F4-001", 1}, // BeachheadLanders
+			{"SWN-F4-002", 2}, // ExtendedTheater
+			{"SWN-F4-003", 1}, // StrikeFleet
+			{"SWN-F5-001", 1}, // BlockadeFleet
+			{"SWN-F7-001", 3}, // DeepStrikeLanders
+			{"SWN-F7-003", 1}, // SpaceMarines
+			{"SWN-F8-001", 3}, // CapitalFleet
 		}
 		for _, tc := range cases {
 			def, ok := rb.Assets[tc.id]
@@ -149,7 +149,7 @@ func TestLoad(t *testing.T) {
 				t.Errorf("%s (%s): speed got %d, want %d", def.Name, tc.id, def.Speed, tc.speed)
 			}
 		}
-		nonMover, ok := rb.Assets["F1-001"]
+		nonMover, ok := rb.Assets["SWN-F1-001"]
 		if ok && nonMover.Speed != 0 {
 			t.Errorf("Security Personnel: expected speed 0, got %d", nonMover.Speed)
 		}
@@ -173,14 +173,14 @@ func TestLoad(t *testing.T) {
 			excludeStats []domain.FactionStat
 		}
 		cases := []transportExpect{
-			{"W2-001", 2, 1, allTypes, 1, []domain.FactionStat{domain.StatForce}},                           // FreighterContract
-			{"W4-001", 2, 1, allTypes, 10, []domain.FactionStat{domain.StatForce}},                          // ShippingCombine
-			{"W5-003", 3, 2, []domain.AssetType{domain.TypeMilitaryUnit, domain.TypeSpecialForces}, 1, nil}, // BlockadeRunners
-			{"C1-001", 2, 1, []domain.AssetType{domain.TypeSpecialForces}, 1, nil},                          // Smugglers
-			{"F2-001", 1, 1, nonStarship, 1, nil},                                                           // HeavyDropAssets
-			{"F4-001", 1, 1, allTypes, 10, nil},                                                             // BeachheadLanders
-			{"F4-002", 2, 1, nonStarship, 1, nil},                                                           // ExtendedTheater
-			{"F7-001", 3, 2, nonStarship, 1, nil},                                                           // DeepStrikeLanders
+			{"SWN-W2-001", 2, 1, allTypes, 1, []domain.FactionStat{domain.StatForce}},                           // FreighterContract
+			{"SWN-W4-001", 2, 1, allTypes, 10, []domain.FactionStat{domain.StatForce}},                          // ShippingCombine
+			{"SWN-W5-003", 3, 2, []domain.AssetType{domain.TypeMilitaryUnit, domain.TypeSpecialForces}, 1, nil}, // BlockadeRunners
+			{"SWN-C1-001", 2, 1, []domain.AssetType{domain.TypeSpecialForces}, 1, nil},                          // Smugglers
+			{"SWN-F2-001", 1, 1, nonStarship, 1, nil},                                                           // HeavyDropAssets
+			{"SWN-F4-001", 1, 1, allTypes, 10, nil},                                                             // BeachheadLanders
+			{"SWN-F4-002", 2, 1, nonStarship, 1, nil},                                                           // ExtendedTheater
+			{"SWN-F7-001", 3, 2, nonStarship, 1, nil},                                                           // DeepStrikeLanders
 		}
 		for _, tc := range cases {
 			def, ok := rb.Assets[tc.id]
@@ -224,13 +224,13 @@ func TestLoad(t *testing.T) {
 
 	t.Run("self-movers have speed and no transport", func(t *testing.T) {
 		selfMovers := []string{
-			"W2-004", // Surveyors
-			"W3-003", // Mercenaries
-			"W8-001", // ScavengerFleet
-			"C2-004", // Seductress
-			"F4-003", // StrikeFleet
-			"F7-003", // SpaceMarines
-			"F8-001", // CapitalFleet
+			"SWN-W2-004", // Surveyors
+			"SWN-W3-003", // Mercenaries
+			"SWN-W8-001", // ScavengerFleet
+			"SWN-C2-004", // Seductress
+			"SWN-F4-003", // StrikeFleet
+			"SWN-F7-003", // SpaceMarines
+			"SWN-F8-001", // CapitalFleet
 		}
 		for _, id := range selfMovers {
 			def, ok := rb.Assets[id]
@@ -248,7 +248,7 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("deferred transport assets have no transport and no ability", func(t *testing.T) {
-		deferred := []string{"C3-003", "C6-002"} // CovertShipping, CovertTransitNet
+		deferred := []string{"SWN-C3-003", "SWN-C6-002"} // CovertShipping, CovertTransitNet
 		for _, id := range deferred {
 			def, ok := rb.Assets[id]
 			if !ok {

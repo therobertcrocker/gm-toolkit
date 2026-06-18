@@ -1,7 +1,7 @@
 # Cunning Assets
 
 [assets.Smugglers]
-id = "C1-001"
+id = "SWN-C1-001"
 name = "Smugglers"
 category = "Cunning"
 min_rating = 1
@@ -27,7 +27,7 @@ cargo_types = ["Special Forces"]
 max_cargo = 1
 
 [assets.Informers]
-id = "C1-002"
+id = "SWN-C1-002"
 name = "Informers"
 category = "Cunning"
 min_rating = 1
@@ -46,7 +46,7 @@ defender_stat = "Cunning"
 effect = "reveal_stealth"
 
 [assets.FalseFront]
-id = "C1-003"
+id = "SWN-C1-003"
 name = "False Front"
 category = "Cunning"
 min_rating = 1
@@ -60,7 +60,7 @@ counter = ""
 description = "If another asset on the planet suffers enough damage to destroy it, the faction can sacrifice the False Front instead to nullify the killing blow."
 
 [assets.Lobbyists]
-id = "C2-001"
+id = "SWN-C2-001"
 name = "Lobbyists"
 category = "Cunning"
 min_rating = 2
@@ -74,7 +74,7 @@ counter = ""
 description = "When a rival faction gains governmental permission to buy or transport an asset, the Lobbyists can make an immediate Cunning vs. Cunning test; if successful, the permission is withdrawn and cannot be re-attempted until next turn."
 
 [assets.Saboteurs]
-id = "C2-002"
+id = "SWN-C2-002"
 name = "Saboteurs"
 category = "Cunning"
 min_rating = 2
@@ -93,7 +93,7 @@ defender_stat = "Cunning"
 damage = "2d4"
 
 [assets.Blackmail]
-id = "C2-003"
+id = "SWN-C2-003"
 name = "Blackmail"
 category = "Cunning"
 min_rating = 2
@@ -112,7 +112,7 @@ defender_stat = "Cunning"
 damage = "1d4+1"
 
 [assets.Seductress]
-id = "C2-004"
+id = "SWN-C2-004"
 name = "Seductress"
 category = "Cunning"
 min_rating = 2
@@ -133,7 +133,7 @@ defender_stat = "Cunning"
 effect = "reveal_stealth"
 
 [assets.Cyberninjas]
-id = "C3-001"
+id = "SWN-C3-001"
 name = "Cyberninjas"
 category = "Cunning"
 min_rating = 3
@@ -152,7 +152,7 @@ defender_stat = "Cunning"
 damage = "2d6"
 
 [assets.Stealth]
-id = "C3-002"
+id = "SWN-C3-002"
 name = "Stealth"
 category = "Cunning"
 min_rating = 3
@@ -166,7 +166,7 @@ counter = ""
 description = "Not a standard asset but a special quality purchased for another Special Forces asset on the planet. A Stealthed asset cannot be detected or attacked. If the unit normally requires government permission to land, that permission may be foregone. Stealth is lost if the asset attacks or defends."
 
 [assets.CovertShipping]
-id = "C3-003"
+id = "SWN-C3-003"
 name = "Covert Shipping"
 category = "Cunning"
 min_rating = 3
@@ -180,7 +180,7 @@ counter = ""
 description = "Any one Special Forces unit can be moved between any worlds within three hexes of the Covert Shipping at the cost of one Coin."
 
 [assets.PartyMachine]
-id = "C4-001"
+id = "SWN-C4-001"
 name = "Party Machine"
 category = "Cunning"
 min_rating = 4
@@ -199,7 +199,7 @@ defender_stat = "Cunning"
 damage = "2d6"
 
 [assets.VanguardCadres]
-id = "C4-002"
+id = "SWN-C4-002"
 name = "Vanguard Cadres"
 category = "Cunning"
 min_rating = 4
@@ -218,7 +218,7 @@ defender_stat = "Cunning"
 damage = "1d6"
 
 [assets.TripwireCells]
-id = "C4-003"
+id = "SWN-C4-003"
 name = "Tripwire Cells"
 category = "Cunning"
 min_rating = 4
@@ -232,7 +232,7 @@ counter = "1d4"
 description = "Observers alert to the arrival of stealthed units. Whenever a stealthed asset lands or is purchased on a planet with Tripwire Cells, the Cells make an immediate Cunning vs. Cunning attack against the owning faction. If successful, the asset loses its stealth."
 
 [assets.Seditionists]
-id = "C4-004"
+id = "SWN-C4-004"
 name = "Seditionists"
 category = "Cunning"
 min_rating = 4
@@ -246,7 +246,7 @@ counter = ""
 description = "For a cost of 1d4 Coins, the Seditionists can attach themselves to an enemy asset. Until they attach to a different asset or no longer share the same planet, the affected asset cannot attack. If the asset is destroyed, the Seditionists survive."
 
 [assets.OrganizationMoles]
-id = "C5-001"
+id = "SWN-C5-001"
 name = "Organization Moles"
 category = "Cunning"
 min_rating = 5
@@ -265,7 +265,7 @@ defender_stat = "Cunning"
 damage = "2d6"
 
 [assets.CrackedComms]
-id = "C5-002"
+id = "SWN-C5-002"
 name = "Cracked Comms"
 category = "Cunning"
 min_rating = 5
@@ -279,7 +279,7 @@ counter = ""
 description = "A cryptographic asset for intercepting and deciphering enemy communications. If Cracked Comms succeeds in defending against an attack, it can immediately cause the attacking asset to make an attack against itself for normal damage or counterattack results."
 
 [assets.Boltholes]
-id = "C5-003"
+id = "SWN-C5-003"
 name = "Boltholes"
 category = "Cunning"
 min_rating = 5
@@ -293,7 +293,7 @@ counter = "2d6"
 description = "If a faction Special Forces or Military Unit asset on the same planet as the Boltholes suffers damage sufficient to destroy it, it is instead set at 0 HP and rendered untouchable and unusable until repaired to full strength. If the Boltholes are destroyed first, the asset is destroyed with them."
 
 [assets.TransportLockdown]
-id = "C6-001"
+id = "SWN-C6-001"
 name = "Transport Lockdown"
 category = "Cunning"
 min_rating = 6
@@ -307,7 +307,7 @@ counter = ""
 description = "On a successful Cunning vs. Cunning attack against a rival faction, the rival faction cannot transport assets onto that planet without spending 1d4 Coins and waiting one turn."
 
 [assets.CovertTransitNet]
-id = "C6-002"
+id = "SWN-C6-002"
 name = "Covert Transit Net"
 category = "Cunning"
 min_rating = 6
@@ -321,7 +321,7 @@ counter = ""
 description = "Webs an area of space with a network of smugglers and gray-market freighter captains. As an action, any Special Forces assets can be moved between any worlds within three hexes of the Covert Transit Net."
 
 [assets.Demagogue]
-id = "C6-003"
+id = "SWN-C6-003"
 name = "Demagogue"
 category = "Cunning"
 min_rating = 6
@@ -340,7 +340,7 @@ defender_stat = "Cunning"
 damage = "2d8"
 
 [assets.PopularMovement]
-id = "C7-001"
+id = "SWN-C7-001"
 name = "Popular Movement"
 category = "Cunning"
 min_rating = 7
@@ -359,7 +359,7 @@ defender_stat = "Cunning"
 damage = "2d6"
 
 [assets.BookOfSecrets]
-id = "C7-002"
+id = "SWN-C7-002"
 name = "Book of Secrets"
 category = "Cunning"
 min_rating = 7
@@ -373,7 +373,7 @@ counter = "2d8"
 description = "Exhaustively cataloged psychometric records on important local figures. Once per turn, allows the faction to reroll one die for an action on that world or force an enemy faction to reroll one die. This reroll can only be forced once per turn."
 
 [assets.Treachery]
-id = "C7-003"
+id = "SWN-C7-003"
 name = "Treachery"
 category = "Cunning"
 min_rating = 7
@@ -387,7 +387,7 @@ counter = ""
 description = "On a successful Cunning vs. Cunning attack, the Treachery asset is lost, 5 Coins are gained, and the targeted asset switches sides to join the traitor's faction, even if the faction does not otherwise have the attributes necessary."
 
 [assets.PanopticonMatrix]
-id = "C8-001"
+id = "SWN-C8-001"
 name = "Panopticon Matrix"
 category = "Cunning"
 min_rating = 8

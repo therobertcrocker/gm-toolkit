@@ -21,7 +21,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `A.001.1` | Effect-keyed A-dispatch + SWN re-prefix | `refactor` | ready (arc entry) | Re-key `ability.Dispatch` off effect not `def.ID` (E1); rename SWN IDs `SWN-` + chase `B.001`/`G.012`/fixtures (E2); see arc-plan |
 | `A.001.2` | A-flag ability registry | `feature` | `A.001.1` | Composition pipeline target→contest\|roll→effect, data-driven; owns world-engine relocate primitive + action-spent harness; see arc-plan |
 | `A.001.3` | S-flag effect registry | `feature` | `A.001.2` (relocate) | Profiles→hook-category (transport generalized); free relocate harness + wire `GrantedMovementAbilities`; see arc-plan |
 | `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
@@ -109,7 +108,5 @@ This section contains detailed write-ups for each planned initiative, including 
 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
-**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. Next: promote a dependency-free entry to Discovery — `A.001.1` (spine entry), `A.001.4` (goals/tags + `_core`), or `A.001.5`'s lore-seed effort.
-
-<br />
+**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`); `A.001.2` (A-flag ability registry) is the next spine increment.
 
