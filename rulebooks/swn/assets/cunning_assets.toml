@@ -44,6 +44,7 @@ description = "Minions that lace a planet's underworld, watchful for intruders. 
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 effect = "reveal_stealth"
+target = "faction"
 
 [assets.FalseFront]
 id = "SWN-C1-003"
@@ -127,10 +128,10 @@ counter = ""
 description = "As an action, can travel to any world within one hex. On a successful Cunning vs. Cunning attack, does no damage but immediately reveals any other Stealthed assets of that faction on the planet. Only Special Forces units can attack a Seductress."
 
 [[assets.Seductress.ability.steps]]
-type = "faction_test"
+effect = "reveal_stealth"
+target = "faction"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
-effect = "reveal_stealth"
 
 [assets.Cyberninjas]
 id = "SWN-C3-001"

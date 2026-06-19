@@ -112,6 +112,29 @@ func TestLoad(t *testing.T) {
 		if step.Contest.DefenderStat != domain.StatCunning {
 			t.Errorf("defender_stat: got %q, want %q", step.Contest.DefenderStat, domain.StatCunning)
 		}
+		if step.Target != domain.TargetFaction {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetFaction)
+		}
+	})
+
+	t.Run("seductress reveal step parsed from [[steps]]", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C2-004"]
+		if !ok {
+			t.Fatal("asset SWN-C2-004 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectRevealStealth {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectRevealStealth)
+		}
+		if step.Target != domain.TargetFaction {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetFaction)
+		}
+		if step.Contest == nil || step.Contest.AttackerStat != domain.StatCunning {
+			t.Errorf("contest: got %+v, want Cunning vs Cunning", step.Contest)
+		}
 	})
 
 	t.Run("marketers has no ability section", func(t *testing.T) {
