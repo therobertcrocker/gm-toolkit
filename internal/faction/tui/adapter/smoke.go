@@ -67,8 +67,8 @@ func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool         
 func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
 }
-func (SmokeActionCollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
-	return nil, action.ErrActionUnavailable
+func (SmokeActionCollector) SelectAbilityTarget(_ *domain.Asset, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	return domain.AbilityTarget{}, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	return nil, action.ErrActionUnavailable

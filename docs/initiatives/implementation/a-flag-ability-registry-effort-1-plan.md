@@ -77,6 +77,18 @@ Seductress's reveal step are converted as proof. **No new effects.**
 <!-- Empty at plan time. Execution-time decisions and reversals land here, logged
 before the commit they ride. Append AND reconcile. -->
 
+- **C3 / Task 12 — re-grounding correction.** The plan's Task 12 re-grounding note
+  hypothesized `use_asset_ability_test.go` scripted the target hook via
+  `ScriptedCollector`. It does not: the file uses `MockCollector` with **three**
+  `collector.EXPECT().SelectFactionTestTarget(...)` calls (the AttackerWins, Tie,
+  and DefenderWins subtests) plus the flat-field def in `makeAbilityRulebook`. All
+  three EXPECT calls were repointed to `SelectAbilityTarget` returning
+  `domain.AbilityTarget{Kind: TargetFaction, Faction: targetFaction}`, and the def
+  moved to the step shape. No behavior change — the Tie subtest (rolls 5 vs 5) still
+  yields defender-wins under the gate's strict `attack > defense`. The plan body's
+  Task 12 stays as written (its single Find/Replace is correct); this records the
+  additional EXPECT edits it under-specified.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time

@@ -7,23 +7,29 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// AbilityHandler resolves a single asset's special ability.
-type AbilityHandler func(
-	faction *domain.Faction,
-	asset *domain.Asset,
-	def *domain.AssetDefinition,
-	collector action.Collector,
-	roller domain.Roller,
-	factionState *state.FactionState,
-	rulebook *rulebook.Rulebook,
-) ([]domain.Mutation, error)
+// StepContext carries the ambient inputs and the pipeline-resolved target into a
+// terminal effect handler. The pipeline owns target-selection and the resolution
+// gate; a handler that is called has, by halt-on-failure, already passed its gate.
+type StepContext struct {
+	Faction      *domain.Faction
+	Asset        *domain.Asset
+	Def          *domain.AssetDefinition
+	Step         domain.AbilityStep
+	Target       domain.AbilityTarget
+	FactionState *state.FactionState
+	Rulebook     *rulebook.Rulebook
+}
 
-var handlers = map[domain.AbilityEffectType]AbilityHandler{
+// EffectHandler emits the mutations for one resolved step.
+type EffectHandler func(StepContext) ([]domain.Mutation, error)
+
+var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectRevealStealth: revealStealth,
 }
 
-// Dispatch routes an asset's ability to the handler registered for its effect.
-// Assets with no ability block, or an effect with no registered handler, fall
+// Dispatch runs an asset's ability as a sequence of steps: resolve the step's
+// target, run its gate, dispatch its terminal effect, collect the mutations.
+// Assets with no ability block, or whose effect has no registered handler, fall
 // through to confirmApplied (the not-yet-built effects).
 func Dispatch(
 	faction *domain.Faction,
@@ -32,27 +38,50 @@ func Dispatch(
 	collector action.Collector,
 	roller domain.Roller,
 	factionState *state.FactionState,
-	rulebook *rulebook.Rulebook,
+	rb *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
-	if def.Ability == nil {
-		return confirmApplied(faction, asset, def, collector, roller, factionState, rulebook)
+	if def.Ability == nil || len(def.Ability.Steps) == 0 {
+		return confirmApplied(asset, def, collector)
 	}
-	handler, ok := handlers[def.Ability.Effect]
-	if !ok {
-		return confirmApplied(faction, asset, def, collector, roller, factionState, rulebook)
+	var mutations []domain.Mutation
+	for _, step := range def.Ability.Steps {
+		handler, ok := handlers[step.Effect]
+		if !ok {
+			return confirmApplied(asset, def, collector)
+		}
+		target, err := resolveTarget(step, faction, asset, factionState, collector)
+		if err != nil {
+			return nil, err
+		}
+		passed, err := passesGate(step, faction, target, roller)
+		if err != nil {
+			return nil, err
+		}
+		if !passed {
+			// deliberate: halt the chain on a failed gate, not collect-and-continue,
+			// because a missed contest fizzles the rest of the ability. Multi-step
+			// abilities must therefore author ungated steps (relocate, roll-table)
+			// before gated ones (Effort 1 Plan, Decision 1).
+			break
+		}
+		stepMutations, err := handler(StepContext{
+			Faction:      faction,
+			Asset:        asset,
+			Def:          def,
+			Step:         step,
+			Target:       target,
+			FactionState: factionState,
+			Rulebook:     rb,
+		})
+		if err != nil {
+			return nil, err
+		}
+		mutations = append(mutations, stepMutations...)
 	}
-	return handler(faction, asset, def, collector, roller, factionState, rulebook)
+	return mutations, nil
 }
 
-func confirmApplied(
-	_ *domain.Faction,
-	asset *domain.Asset,
-	def *domain.AssetDefinition,
-	collector action.Collector,
-	_ domain.Roller,
-	_ *state.FactionState,
-	_ *rulebook.Rulebook,
-) ([]domain.Mutation, error) {
+func confirmApplied(asset *domain.Asset, def *domain.AssetDefinition, collector action.Collector) ([]domain.Mutation, error) {
 	if _, err := collector.ConfirmAbilityApplied(asset, def); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -83,17 +84,22 @@ func (a *actionCollector) SelectAsset(assets []*domain.Asset, rb *rulebook.Ruleb
 
 // --- action.Collector: action-unique (recoverable-stubbed until each action's commit) ---
 
-func (a *actionCollector) SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error) {
-	raw, err := a.adapter.ask(AskSelectFactionTestTarget, nil, SelectFactionTestTargetPayload{
-		Asset:      asset,
-		Effect:     effect,
-		Candidates: candidates,
-	})
-	if err != nil {
-		return nil, err
+func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	switch step.Target {
+	case domain.TargetFaction:
+		raw, err := a.adapter.ask(AskSelectFactionTestTarget, nil, SelectFactionTestTargetPayload{
+			Asset:      asset,
+			Effect:     step.Effect,
+			Candidates: candidates.Factions,
+		})
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		chosen, _ := raw.(*domain.Faction)
+		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, nil
+	default:
+		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported yet", step.Target)
 	}
-	chosen, _ := raw.(*domain.Faction)
-	return chosen, nil
 }
 func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rb *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	targets := make([]RepairTarget, 0, len(damaged))

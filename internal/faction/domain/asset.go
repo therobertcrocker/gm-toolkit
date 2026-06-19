@@ -73,17 +73,9 @@ type RollTable struct {
 }
 
 // AbilityDefinition is a uniform sequence of steps; a flat [ability] block parses
-// to a one-step list. The flat AttackerStat/DefenderStat/Die/Outcomes/Effect
-// fields are transitional (removed in Commit 3) — readers use Steps.
+// to a one-step list.
 type AbilityDefinition struct {
 	Steps []AbilityStep
-
-	// Transitional flat fields (removed in Commit 3 once dispatch reads Steps).
-	Die          *DiceRoll
-	Outcomes     []AbilityOutcome
-	AttackerStat FactionStat
-	DefenderStat FactionStat
-	Effect       AbilityEffectType
 }
 
 type AbilityStep struct {

@@ -118,6 +118,21 @@ func (mr *MockCollectorMockRecorder) SelectAbilityAssets(faction, candidates, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAbilityAssets", reflect.TypeOf((*MockCollector)(nil).SelectAbilityAssets), faction, candidates, arg2)
 }
 
+// SelectAbilityTarget mocks base method.
+func (m *MockCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectAbilityTarget", asset, step, candidates)
+	ret0, _ := ret[0].(domain.AbilityTarget)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectAbilityTarget indicates an expected call of SelectAbilityTarget.
+func (mr *MockCollectorMockRecorder) SelectAbilityTarget(asset, step, candidates any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAbilityTarget", reflect.TypeOf((*MockCollector)(nil).SelectAbilityTarget), asset, step, candidates)
+}
+
 // SelectAsset mocks base method.
 func (m *MockCollector) SelectAsset(assets []*domain.Asset, arg1 *rulebook.Rulebook) (*domain.Asset, error) {
 	m.ctrl.T.Helper()
@@ -237,21 +252,6 @@ func (m *MockCollector) SelectExpandInfluenceOrder(faction *domain.Faction, fact
 func (mr *MockCollectorMockRecorder) SelectExpandInfluenceOrder(faction, factionState, eligibleNewBaseWorlds any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectExpandInfluenceOrder", reflect.TypeOf((*MockCollector)(nil).SelectExpandInfluenceOrder), faction, factionState, eligibleNewBaseWorlds)
-}
-
-// SelectFactionTestTarget mocks base method.
-func (m *MockCollector) SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectFactionTestTarget", asset, effect, candidates)
-	ret0, _ := ret[0].(*domain.Faction)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectFactionTestTarget indicates an expected call of SelectFactionTestTarget.
-func (mr *MockCollectorMockRecorder) SelectFactionTestTarget(asset, effect, candidates any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectFactionTestTarget", reflect.TypeOf((*MockCollector)(nil).SelectFactionTestTarget), asset, effect, candidates)
 }
 
 // SelectModifiers mocks base method.

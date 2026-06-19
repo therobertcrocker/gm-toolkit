@@ -31,7 +31,7 @@ type ScriptedCollector struct {
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectAbilityAssetsFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectMoveDestinationFn       func(*domain.Asset, []string) (string, error)
-	SelectFactionTestTargetFn     func(*domain.Asset, domain.AbilityEffectType, []*domain.Faction) (*domain.Faction, error)
+	SelectAbilityTargetFn         func(*domain.Asset, domain.AbilityStep, domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
 	ConfirmAbilityAppliedFn       func(*domain.Asset, *domain.AssetDefinition) (bool, error)
 	SelectBribeTargetFn           func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTargetFn           func(*domain.Faction, *state.FactionState) (string, error)
@@ -128,11 +128,11 @@ func (c *ScriptedCollector) SelectMoveDestination(asset *domain.Asset, worlds []
 	return "", nil
 }
 
-func (c *ScriptedCollector) SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error) {
-	if c.SelectFactionTestTargetFn != nil {
-		return c.SelectFactionTestTargetFn(asset, effect, candidates)
+func (c *ScriptedCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	if c.SelectAbilityTargetFn != nil {
+		return c.SelectAbilityTargetFn(asset, step, candidates)
 	}
-	return nil, nil
+	return domain.AbilityTarget{}, nil
 }
 
 func (c *ScriptedCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {

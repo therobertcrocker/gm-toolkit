@@ -22,9 +22,14 @@ func makeAbilityRulebook() *rulebook.Rulebook {
 				Flags: []domain.AssetFlag{domain.FlagAction},
 				HP:    4,
 				Ability: &domain.AbilityDefinition{
-					AttackerStat: domain.StatCunning,
-					DefenderStat: domain.StatCunning,
-					Effect:       domain.EffectRevealStealth,
+					Steps: []domain.AbilityStep{{
+						Effect: domain.EffectRevealStealth,
+						Target: domain.TargetFaction,
+						Contest: &domain.Contest{
+							AttackerStat: domain.StatCunning,
+							DefenderStat: domain.StatCunning,
+						},
+					}},
 				},
 			},
 			"deferred-asset": {
@@ -139,7 +144,8 @@ func TestUseAssetAbility_Resolve_Informers_AttackerWins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{8, 3}}, faction, factionState, rulebook)
 
@@ -166,7 +172,8 @@ func TestUseAssetAbility_Resolve_Informers_Tie(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{5, 5}}, faction, factionState, rulebook)
 
@@ -186,7 +193,8 @@ func TestUseAssetAbility_Resolve_Informers_DefenderWins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook)
 

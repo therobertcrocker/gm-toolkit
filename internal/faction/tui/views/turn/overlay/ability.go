@@ -42,8 +42,8 @@ func NewSelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffect
 // carries no ability effect — e.g. the structural-stub abilities).
 func abilityLabel(asset *domain.Asset, rb *rulebook.Rulebook) string {
 	name := assetName(asset, rb)
-	if def, ok := rb.Assets[asset.DefinitionID]; ok && def.Ability != nil && def.Ability.Effect != "" {
-		return fmt.Sprintf("%s · %s", name, def.Ability.Effect)
+	if def, ok := rb.Assets[asset.DefinitionID]; ok && def.Ability != nil && len(def.Ability.Steps) > 0 {
+		return fmt.Sprintf("%s · %s", name, def.Ability.Steps[0].Effect)
 	}
 	return name
 }

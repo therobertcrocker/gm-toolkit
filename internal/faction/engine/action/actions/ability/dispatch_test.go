@@ -45,9 +45,14 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 		Name:  "Informers",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{
-			AttackerStat: domain.StatCunning,
-			DefenderStat: domain.StatCunning,
-			Effect:       domain.EffectRevealStealth,
+			Steps: []domain.AbilityStep{{
+				Effect: domain.EffectRevealStealth,
+				Target: domain.TargetFaction,
+				Contest: &domain.Contest{
+					AttackerStat: domain.StatCunning,
+					DefenderStat: domain.StatCunning,
+				},
+			}},
 		},
 	}
 	factionState := &state.FactionState{
@@ -66,7 +71,8 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
 	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil)
@@ -92,7 +98,8 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
 	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil)
@@ -113,7 +120,10 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 		Name:  "Harvesters",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{
-			Effect: domain.AbilityEffectType("not_built"),
+			Steps: []domain.AbilityStep{{
+				Effect: domain.AbilityEffectType("not_built"),
+				Target: domain.TargetNone,
+			}},
 		},
 	}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
