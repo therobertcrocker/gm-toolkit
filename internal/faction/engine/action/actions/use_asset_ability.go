@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/ability"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -15,14 +16,16 @@ import (
 type UseAssetAbility struct {
 	collector      action.Collector
 	roller         domain.Roller
+	world          *world.WorldEngine
 	selectedAssets []*domain.Asset
 	mutations      []domain.Mutation
 }
 
-func NewUseAssetAbility(collector action.Collector, roller domain.Roller) *UseAssetAbility {
+func NewUseAssetAbility(collector action.Collector, roller domain.Roller, worldEngine *world.WorldEngine) *UseAssetAbility {
 	return &UseAssetAbility{
 		collector: collector,
 		roller:    roller,
+		world:     worldEngine,
 	}
 }
 
@@ -66,7 +69,7 @@ func (u *UseAssetAbility) Resolve(faction *domain.Faction, factionState *state.F
 		if !ok {
 			return fmt.Errorf("use asset ability: definition not found: %s", asset.DefinitionID)
 		}
-		mutations, err := ability.Dispatch(faction, asset, def, u.collector, u.roller, factionState, rulebook)
+		mutations, err := ability.Dispatch(faction, asset, def, u.collector, u.roller, factionState, rulebook, u.world)
 		if err != nil {
 			return fmt.Errorf("use asset ability: %w", err)
 		}

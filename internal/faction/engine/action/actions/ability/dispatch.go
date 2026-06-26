@@ -3,6 +3,7 @@ package ability
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -19,6 +20,8 @@ type StepContext struct {
 	RollResult   int // resolved by the roll stage when Step.Roll != nil; 0 otherwise
 	FactionState *state.FactionState
 	Rulebook     *rulebook.Rulebook
+	Collector    action.Collector   // for handlers with a secondary prompt (relocate)
+	WorldEngine  *world.WorldEngine // for movement effects (relocate); nil for non-spatial
 }
 
 // EffectHandler emits the mutations for one resolved step.
@@ -42,6 +45,7 @@ func Dispatch(
 	roller domain.Roller,
 	factionState *state.FactionState,
 	rb *rulebook.Rulebook,
+	worldEngine *world.WorldEngine,
 ) ([]domain.Mutation, error) {
 	if def.Ability == nil || len(def.Ability.Steps) == 0 {
 		return confirmApplied(asset, def, collector)
@@ -76,6 +80,8 @@ func Dispatch(
 			RollResult:   resolveRoll(step, roller),
 			FactionState: factionState,
 			Rulebook:     rb,
+			Collector:    collector,
+			WorldEngine:  worldEngine,
 		})
 		if err != nil {
 			return nil, err

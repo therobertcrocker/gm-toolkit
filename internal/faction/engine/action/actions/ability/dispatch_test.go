@@ -75,7 +75,7 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().ConfirmAbilityApplied(asset, def).Return(false, nil)
 
-	mutations, err := Dispatch(faction, asset, def, collector, nil, factionState, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, nil, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
