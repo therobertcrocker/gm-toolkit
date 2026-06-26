@@ -52,7 +52,38 @@ const (
 	EffectRevealStealth    AbilityEffectType = "reveal_stealth"
 	EffectCoinDelta        AbilityEffectType = "coin_delta"
 	EffectPurchaseDiscount AbilityEffectType = "purchase_discount"
+	EffectRelocate         AbilityEffectType = "relocate"
 )
+
+type RelocateScope string
+
+const (
+	RelocateSelf  RelocateScope = "self"
+	RelocateOther RelocateScope = "other"
+)
+
+// RelocateRange discriminates how far a relocate may reach (DR-1). RangeHexes uses MaxHex
+// (raw hex distance from the acting asset); RangeRegion ignores MaxHex and allows any world
+// in the acting asset's region.
+type RelocateRange string
+
+const (
+	RangeHexes  RelocateRange = "hexes"
+	RangeRegion RelocateRange = "region"
+)
+
+// RelocateParams configures a relocate step. Scope picks what moves (the acting asset vs
+// other friendly assets); Range picks hex-radius vs region reach; MaxHex is the radius for
+// RangeHexes (ignored for RangeRegion); CoinCost is charged per moved asset; AssetType
+// filters "other" candidates (empty = any); MaxAssets caps the count moved (0 = unbounded).
+type RelocateParams struct {
+	Scope     RelocateScope
+	Range     RelocateRange
+	MaxHex    int
+	CoinCost  int
+	AssetType AssetType
+	MaxAssets int
+}
 
 type TargetKind string
 
@@ -81,10 +112,11 @@ type AbilityDefinition struct {
 }
 
 type AbilityStep struct {
-	Effect  AbilityEffectType
-	Target  TargetKind
-	Contest *Contest
-	Roll    *RollTable
+	Effect   AbilityEffectType
+	Target   TargetKind
+	Contest  *Contest
+	Roll     *RollTable
+	Relocate *RelocateParams
 }
 
 type AbilityOutcome struct {

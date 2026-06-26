@@ -31,6 +31,7 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectRevealStealth:    revealStealth,
 	domain.EffectCoinDelta:        coinDelta,
 	domain.EffectPurchaseDiscount: purchaseDiscount,
+	domain.EffectRelocate:         relocate,
 }
 
 // Dispatch runs an asset's ability as a sequence of steps: resolve the step's
@@ -51,12 +52,13 @@ func Dispatch(
 		return confirmApplied(asset, def, collector)
 	}
 	var mutations []domain.Mutation
+	workingAsset := asset
 	for _, step := range def.Ability.Steps {
 		handler, ok := handlers[step.Effect]
 		if !ok {
 			return confirmApplied(asset, def, collector)
 		}
-		target, err := resolveTarget(step, faction, asset, factionState, collector)
+		target, err := resolveTarget(step, faction, workingAsset, factionState, collector)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +75,7 @@ func Dispatch(
 		}
 		stepMutations, err := handler(StepContext{
 			Faction:      faction,
-			Asset:        asset,
+			Asset:        workingAsset,
 			Def:          def,
 			Step:         step,
 			Target:       target,
@@ -87,8 +89,23 @@ func Dispatch(
 			return nil, err
 		}
 		mutations = append(mutations, stepMutations...)
+		workingAsset = applyAssetMovedView(workingAsset, stepMutations)
 	}
 	return mutations, nil
+}
+
+// applyAssetMovedView returns a location-updated copy of asset if muts contains an
+// AssetMoved targeting it, so later steps in the same ability read the post-move
+// location without writing shared state (the real AssetMoved still applies later).
+func applyAssetMovedView(asset *domain.Asset, muts []domain.Mutation) *domain.Asset {
+	for _, mutation := range muts {
+		if moved, ok := mutation.(domain.AssetMoved); ok && moved.AssetID == asset.ID {
+			clone := *asset
+			clone.Location = moved.ToLocation
+			return &clone
+		}
+	}
+	return asset
 }
 
 func confirmApplied(asset *domain.Asset, def *domain.AssetDefinition, collector action.Collector) ([]domain.Mutation, error) {

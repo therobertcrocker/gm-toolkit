@@ -106,6 +106,7 @@ type abilityRecord struct {
 	Die          string              `toml:"die"`
 	Outcomes     []outcomeRecord     `toml:"outcomes"`
 	Steps        []abilityStepRecord `toml:"steps"`
+	Relocate     *relocateRecord     `toml:"relocate"`
 }
 
 type abilityStepRecord struct {
@@ -115,6 +116,16 @@ type abilityStepRecord struct {
 	DefenderStat string          `toml:"defender_stat"`
 	Die          string          `toml:"die"`
 	Outcomes     []outcomeRecord `toml:"outcomes"`
+	Relocate     *relocateRecord `toml:"relocate"`
+}
+
+type relocateRecord struct {
+	Scope     string `toml:"scope"`
+	Range     string `toml:"range"`
+	MaxHex    int    `toml:"max_hex"`
+	CoinCost  int    `toml:"coin_cost"`
+	AssetType string `toml:"asset_type"`
+	MaxAssets int    `toml:"max_assets"`
 }
 
 type outcomeRecord struct {
@@ -235,7 +246,7 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		}
 		steps := make([]domain.AbilityStep, 0, len(r.Steps))
 		for i, sr := range r.Steps {
-			step, err := convertAbilityStep(sr.Effect, sr.Target, sr.AttackerStat, sr.DefenderStat, sr.Die, sr.Outcomes)
+			step, err := convertAbilityStep(sr.Effect, sr.Target, sr.AttackerStat, sr.DefenderStat, sr.Die, sr.Outcomes, sr.Relocate)
 			if err != nil {
 				return nil, fmt.Errorf("step %d: %w", i, err)
 			}
@@ -243,14 +254,14 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		}
 		return &domain.AbilityDefinition{Steps: steps}, nil
 	}
-	step, err := convertAbilityStep(r.Effect, r.Target, r.AttackerStat, r.DefenderStat, r.Die, r.Outcomes)
+	step, err := convertAbilityStep(r.Effect, r.Target, r.AttackerStat, r.DefenderStat, r.Die, r.Outcomes, r.Relocate)
 	if err != nil {
 		return nil, err
 	}
 	return &domain.AbilityDefinition{Steps: []domain.AbilityStep{step}}, nil
 }
 
-func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr string, outcomes []outcomeRecord) (domain.AbilityStep, error) {
+func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr string, outcomes []outcomeRecord, relocate *relocateRecord) (domain.AbilityStep, error) {
 	var step domain.AbilityStep
 	if effectStr != "" {
 		effect, err := toAbilityEffect(effectStr)
@@ -292,10 +303,57 @@ func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr s
 		}
 		step.Roll = roll
 	}
+	if relocate != nil {
+		scope, err := toRelocateScope(relocate.Scope)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		rng, err := toRelocateRange(relocate.Range)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		params := &domain.RelocateParams{
+			Scope:     scope,
+			Range:     rng,
+			MaxHex:    relocate.MaxHex,
+			CoinCost:  relocate.CoinCost,
+			MaxAssets: relocate.MaxAssets,
+		}
+		if relocate.AssetType != "" {
+			assetType, err := toAssetType(relocate.AssetType)
+			if err != nil {
+				return domain.AbilityStep{}, fmt.Errorf("relocate asset_type: %w", err)
+			}
+			params.AssetType = assetType
+		}
+		step.Relocate = params
+	}
 	if step.Contest != nil && step.Roll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and roll; they are mutually exclusive")
 	}
 	return step, nil
+}
+
+func toRelocateScope(s string) (domain.RelocateScope, error) {
+	switch s {
+	case "self":
+		return domain.RelocateSelf, nil
+	case "other":
+		return domain.RelocateOther, nil
+	default:
+		return "", fmt.Errorf("unknown relocate scope: %q", s)
+	}
+}
+
+func toRelocateRange(s string) (domain.RelocateRange, error) {
+	switch s {
+	case "", "hexes":
+		return domain.RangeHexes, nil
+	case "region":
+		return domain.RangeRegion, nil
+	default:
+		return "", fmt.Errorf("unknown relocate range: %q", s)
+	}
 }
 
 func toTargetKind(s string) (domain.TargetKind, error) {
@@ -323,6 +381,8 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectCoinDelta, nil
 	case "purchase_discount":
 		return domain.EffectPurchaseDiscount, nil
+	case "relocate":
+		return domain.EffectRelocate, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}

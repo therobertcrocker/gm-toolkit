@@ -283,6 +283,21 @@ func (mr *MockCollectorMockRecorder) SelectRefitOrder(options, arg1 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectRefitOrder", reflect.TypeOf((*MockCollector)(nil).SelectRefitOrder), options, arg1)
 }
 
+// SelectRelocateOrders mocks base method.
+func (m *MockCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectRelocateOrders", acting, candidates, candidateWorlds, maxAssets)
+	ret0, _ := ret[0].([]action.RelocateOrder)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectRelocateOrders indicates an expected call of SelectRelocateOrders.
+func (mr *MockCollectorMockRecorder) SelectRelocateOrders(acting, candidates, candidateWorlds, maxAssets any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectRelocateOrders", reflect.TypeOf((*MockCollector)(nil).SelectRelocateOrders), acting, candidates, candidateWorlds, maxAssets)
+}
+
 // SelectRepairOrders mocks base method.
 func (m *MockCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, arg2 *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	m.ctrl.T.Helper()

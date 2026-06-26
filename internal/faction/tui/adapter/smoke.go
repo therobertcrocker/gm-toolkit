@@ -72,6 +72,9 @@ func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook)
 func (SmokeActionCollector) SelectAbilityTarget(_ *domain.Asset, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 	return domain.AbilityTarget{}, action.ErrActionUnavailable
 }
+func (SmokeActionCollector) SelectRelocateOrders(_ *domain.Asset, _ []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+	return nil, action.ErrActionUnavailable
+}
 func (SmokeActionCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	return nil, action.ErrActionUnavailable
 }

@@ -13,6 +13,7 @@ import (
 type Collector interface {
 	hooks.Collector
 	SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
+	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]RelocateOrder, error)
 	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (BuyOrder, error)
@@ -40,6 +41,12 @@ type RepairOrder struct {
 type BuyOrder struct {
 	World      string
 	Definition *domain.AssetDefinition
+}
+
+// RelocateOrder describes one asset to move and the world it moves to.
+type RelocateOrder struct {
+	Asset            *domain.Asset
+	DestinationWorld string
 }
 
 // RefitOption bundles a refittable asset with valid replacement definitions.

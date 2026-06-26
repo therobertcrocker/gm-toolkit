@@ -300,6 +300,8 @@ func askPhaseLabel(kind adapter.AskKind) string {
 		return "Apply Ability?"
 	case adapter.AskSelectFactionTestTarget:
 		return "Ability Target"
+	case adapter.AskSelectRelocateOrders:
+		return "Relocate"
 	default:
 		return "Action"
 	}
@@ -513,6 +515,8 @@ func (m Model) newOverlay(msg adapter.CollectorAskMsg) overlay.Overlay {
 	case adapter.AskSelectFactionTestTarget:
 		p := msg.Payload.(adapter.SelectFactionTestTargetPayload)
 		return overlay.NewSelectFactionTestTarget(p.Asset, p.Effect, p.Candidates)
+	case adapter.AskSelectRelocateOrders:
+		return overlay.NewRelocateOrders(msg.Payload.(adapter.SelectRelocateOrdersPayload), m.rulebook)
 	case adapter.AskSelectMovementDecisions:
 		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
 	case adapter.AskSelectTransportCargo:

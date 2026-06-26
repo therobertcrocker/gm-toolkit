@@ -115,6 +115,28 @@ in `WorldsWithin`.
 `stubMapWithDest`). Each pure satisfier got `AllWorlds() []spatial.Location { return nil }`;
 `testHexRouter` got the real enumeration. Plan body (Commit 1 Task 2) reconciled below.
 
+**DR-4 — `MaxAssets` enforced by a handler guard (Robert, Commit 3 session; refines Decision 2
+and Decision 7).** Decision 2 made relocate own all selection and passed `MaxAssets` to the
+collector as the cardinality mechanism; the handler itself did not enforce it. That leaves the
+cap unprotected for any non-interactive caller (a scripted/mock collector, or a future
+automated path) and for an over-clicking GM — a Covert Shipping (`max_assets = 1`) could move
+2+ Special Forces for 2+ Coin, a rules violation the affordability check would not catch.
+Resolution: `relocate` gains a one-line backstop after the empty-selection check —
+`if params.MaxAssets > 0 && len(orders) > params.MaxAssets { error }` — mirroring the
+up-front affordability guard (Decision 7) as an engine-level invariant independent of the
+collector. The collector/overlay still drives the happy-path selection; the handler now
+*guarantees* the cap. Unit-tested (`TestRelocate_ExceedsMaxAssets`).
+
+**DR-5 — TUI overlay shape and payload (Commit 3 execution; settles the OQ "TUI relocate
+overlay fidelity").** Two adapter-side choices, both additive: (a) `SelectRelocateOrdersPayload`
+carries an adapter-built `WorldNames map[string]string`, matching every other world-picker
+payload (seize / change-homeworld / buy) rather than rendering raw world IDs — the plan's
+sketch payload omitted it. (b) The overlay (`relocateorders.go`) is one destination
+`Select[string]` per candidate asset with a `""` "— do not move —" skip option, folding asset
+multi-select and per-row destination into a single static huh form (the plan's "model on
+`repairorders.go`" steer). The cap is enforced engine-side (DR-4), so the overlay stays a
+plain composite with no cross-field limit wiring.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time

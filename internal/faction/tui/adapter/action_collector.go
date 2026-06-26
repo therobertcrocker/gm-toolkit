@@ -101,6 +101,26 @@ func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.A
 		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported yet", step.Target)
 	}
 }
+func (a *actionCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	names := make(map[string]string, len(candidateWorlds))
+	for _, worldID := range candidateWorlds {
+		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
+			names[worldID] = loc.Name()
+		}
+	}
+	raw, err := a.adapter.ask(AskSelectRelocateOrders, nil, SelectRelocateOrdersPayload{
+		Acting:          acting,
+		Candidates:      candidates,
+		CandidateWorlds: candidateWorlds,
+		WorldNames:      names,
+		MaxAssets:       maxAssets,
+	})
+	if err != nil {
+		return nil, err
+	}
+	orders, _ := raw.([]action.RelocateOrder)
+	return orders, nil
+}
 func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rb *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	targets := make([]RepairTarget, 0, len(damaged))
 	for _, asset := range damaged {

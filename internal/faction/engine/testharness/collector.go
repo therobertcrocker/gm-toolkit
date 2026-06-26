@@ -32,6 +32,7 @@ type ScriptedCollector struct {
 	SelectAbilityAssetsFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectMoveDestinationFn       func(*domain.Asset, []string) (string, error)
 	SelectAbilityTargetFn         func(*domain.Asset, domain.AbilityStep, domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
+	SelectRelocateOrdersFn        func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
 	ConfirmAbilityAppliedFn       func(*domain.Asset, *domain.AssetDefinition) (bool, error)
 	SelectBribeTargetFn           func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTargetFn           func(*domain.Faction, *state.FactionState) (string, error)
@@ -133,6 +134,13 @@ func (c *ScriptedCollector) SelectAbilityTarget(asset *domain.Asset, step domain
 		return c.SelectAbilityTargetFn(asset, step, candidates)
 	}
 	return domain.AbilityTarget{}, nil
+}
+
+func (c *ScriptedCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	if c.SelectRelocateOrdersFn != nil {
+		return c.SelectRelocateOrdersFn(acting, candidates, candidateWorlds, maxAssets)
+	}
+	return nil, nil
 }
 
 func (c *ScriptedCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
