@@ -3,8 +3,6 @@ package actions
 import (
 	"fmt"
 	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
@@ -92,15 +90,7 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 	if faction.Coin < ba.cost {
 		return fmt.Errorf("insufficient Coin: need %d, have %d", ba.cost, faction.Coin)
 	}
-	ba.newAsset = domain.Asset{
-		ID:           fmt.Sprintf("%s-%s-%d", ba.factionID, def.ID, nextAssetSuffix(faction, def)),
-		DefinitionID: def.ID,
-		OwnerID:      ba.factionID,
-		Location:     domain.Location{WorldID: ba.buyOrder.World},
-		CurrentHP:    def.HP,
-		Ready:        false,
-		Maintained:   true,
-	}
+	ba.newAsset = domain.NewPurchasedAsset(faction, def, ba.buyOrder.World)
 	return nil
 }
 
@@ -162,28 +152,6 @@ func availableWorlds(faction *domain.Faction) []string {
 	return worlds
 }
 
-// nextAssetSuffix returns the next unused numeric suffix for an asset of this
-// definition owned by this faction. Monotonic: scans for the highest existing
-// suffix matching `<factionID>-<defID>-N` and returns N+1, so IDs are never
-// reused even after a sell+buy of the same definition.
-func nextAssetSuffix(faction *domain.Faction, def *domain.AssetDefinition) int {
-	prefix := fmt.Sprintf("%s-%s-", faction.ID, def.ID)
-	highest := 0
-	for _, asset := range faction.Assets {
-		if !strings.HasPrefix(asset.ID, prefix) {
-			continue
-		}
-		n, err := strconv.Atoi(strings.TrimPrefix(asset.ID, prefix))
-		if err != nil {
-			continue
-		}
-		if n > highest {
-			highest = n
-		}
-	}
-	return highest + 1
-}
-
 // purchasableDefinitions returns definitions the faction can afford, meets the
 // minimum attribute rating for, passes tech level on fragmentID, and satisfies
 // the P-flag requirement (Planetary Government on the target world).
@@ -208,7 +176,7 @@ func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook
 			continue
 		}
 		if def.HasFlag(domain.FlagPermission) && worldEngine != nil && worldEngine.Index != nil {
-			if !factionHasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID]) {
+			if !domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID]) {
 				continue
 			}
 		}
@@ -217,11 +185,3 @@ func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook
 	return result
 }
 
-func factionHasPlanetaryGovernment(factionID string, bases []*domain.Base) bool {
-	for _, base := range bases {
-		if base.OwnerID == factionID {
-			return true
-		}
-	}
-	return false
-}

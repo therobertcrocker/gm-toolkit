@@ -53,6 +53,7 @@ const (
 	EffectCoinDelta        AbilityEffectType = "coin_delta"
 	EffectPurchaseDiscount AbilityEffectType = "purchase_discount"
 	EffectRelocate         AbilityEffectType = "relocate"
+	EffectPurchaseEnabler  AbilityEffectType = "purchase_enabler"
 )
 
 type RelocateScope string
@@ -83,6 +84,17 @@ type RelocateParams struct {
 	CoinCost  int
 	AssetType AssetType
 	MaxAssets int
+}
+
+// PurchaseParams configures a purchase_enabler step (Pretech Logistics). Category is the
+// asset category the ability may buy (Force); MaxTechLevel caps the required tech level of
+// a buyable def, ignoring the world's own tech level (the ability is precisely what buys
+// above it); CostPercent is the surcharge as a percent of the base cost, rounded up
+// (150 = "half again as much").
+type PurchaseParams struct {
+	Category     FactionStat
+	MaxTechLevel int
+	CostPercent  int
 }
 
 type TargetKind string
@@ -117,6 +129,7 @@ type AbilityStep struct {
 	Contest  *Contest
 	Roll     *RollTable
 	Relocate *RelocateParams
+	Purchase *PurchaseParams
 }
 
 type AbilityOutcome struct {
@@ -199,4 +212,31 @@ func NextAssetID(faction *Faction, definitionID string) string {
 	}
 
 	return fmt.Sprintf("%s%d", prefix, highest+1)
+}
+
+// NewPurchasedAsset builds a freshly-bought asset for a faction: a fresh ID, full HP, not
+// yet Ready (activates next turn), and Maintained. Shared by the Buy Asset action and the
+// purchase_enabler ability so the two purchase paths can't drift on the asset shape.
+func NewPurchasedAsset(faction *Faction, def *AssetDefinition, worldID string) Asset {
+	return Asset{
+		ID:           NextAssetID(faction, def.ID),
+		DefinitionID: def.ID,
+		OwnerID:      faction.ID,
+		Location:     Location{WorldID: worldID},
+		CurrentHP:    def.HP,
+		Ready:        false,
+		Maintained:   true,
+	}
+}
+
+// HasPlanetaryGovernment reports whether the faction owns a base on the world (the SWN
+// P-flag permission gate). basesOnWorld is the slice for one world (a nil slice is "no
+// bases" → false), so callers pass worldEngine.Index.BasesByLocation[worldID].
+func HasPlanetaryGovernment(factionID string, basesOnWorld []*Base) bool {
+	for _, base := range basesOnWorld {
+		if base.OwnerID == factionID {
+			return true
+		}
+	}
+	return false
 }
