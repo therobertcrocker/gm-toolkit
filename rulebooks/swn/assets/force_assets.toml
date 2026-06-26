@@ -297,6 +297,13 @@ flags = ["A"]
 counter = ""
 description = "Assets representing caches, smugglers, or internal research and salvage programs. As an action, allows the owner to buy one Force asset on that world that requires up to tech level 5 to purchase, at half again as many Coin as usual, rounded up. Only one asset can be purchased per turn."
 
+[assets.PretechLogistics.ability]
+effect = "purchase_enabler"
+[assets.PretechLogistics.ability.purchase]
+category = "Force"
+max_tech_level = 5
+cost_percent = 150
+
 [assets.PsychicAssassins]
 id = "SWN-F5-003"
 name = "Psychic Assassins"

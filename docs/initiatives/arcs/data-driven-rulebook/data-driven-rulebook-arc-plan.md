@@ -100,7 +100,10 @@ primitive through a free harness.
 
 **Covers:** the A-side spine and its effects (catalog A-flag table); the relocate
 primitive + action-spent harness; A-side latent-vocab repair.
-**Punts:** all S-side hook/profile work and the free relocate harness (A.001.3).
+**Punts:** all S-side hook/profile work and the free relocate harness (A.001.3); the two
+A-flag *restriction* abilities — Marketers `coin_or_disable` and Seditionists
+`attach`/restrict-action — whose effect is a persistent restriction enforced at a future
+attack (S-side), rerouted to A.001.3 (AP-6).
 
 ### A.001.3 — S-flag effect registry (feature) — depends A.001.2 (relocate primitive only)
 
@@ -118,7 +121,10 @@ Description}` placeholder to carry/reference the relocate parameters (Transit We
 `W7-003`). Invokes A.001.2's primitive without spending the action.
 
 **Covers:** the S-side profile→hook registration, the catalog's S-flag effects, the
-free relocate harness + movement-phase wiring.
+free relocate harness + movement-phase wiring; the two A-flag restriction abilities
+rerouted from A.001.2 (Marketers `coin_or_disable`, Seditionists `attach`/restrict-action)
+— their action-spent trigger is A-flag, but the persistent restriction they impose is
+enforced through the same attack/disable-restriction hook this initiative builds (AP-6).
 **Punts:** the A-side (A.001.2); the relocate primitive itself (consumes A.001.2's).
 
 ### A.001.4 — Goals/tags neutralization + `_core` home (feature) — no deps
@@ -278,3 +284,18 @@ relevant arch page at pre-merge).
   routed binary check, otherwise fully specified), A.001.2/.3/.4 get focused full
   Discovery, and A.001.5's session shape is deferred to its promotion (it needs the
   not-yet-formalized lore session type). See "Per-initiative session shape" above.
+- **AP-6 — A.001.2's two restriction abilities reroute to A.001.3** (from the A.001.2
+  Effort-4 Plan session). Marketers `coin_or_disable` and Seditionists
+  `attach`/restrict-action are A-flag (action-spent), so the arc-plan seated their
+  authoring in A.001.2's A-flag table. Re-grounding against the built A-side engine showed
+  both turn on a *persistent restriction* — "disabled until the price is paid", "the
+  affected asset cannot attack" — that has no resolution at action time; it is checked
+  only at a future enemy attack, which the catalog assigns to the S-side hook engine
+  (Cat 3/5, unbuilt today). Authoring an A-side flag or attachment marker that nothing
+  enforces would be a flag-nothing-reads. Both assets defer whole to A.001.3, which builds
+  the attack/disable-restriction hook; their action-spent trigger rides along there.
+  A.001.2 Effort 4 ships `purchase_enabler` (Pretech Logistics) alone. This refines the
+  catalog's "flag picks the engine" rule rather than contradicting it: for these two the
+  *trigger* is A-flag but the durable *effect* is S-side — the one place the surface
+  splits across the engine boundary. Reconcile the catalog's A-flag-table placement of
+  the two when A.001.3 builds the restriction hook.

@@ -32,6 +32,7 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectCoinDelta:        coinDelta,
 	domain.EffectPurchaseDiscount: purchaseDiscount,
 	domain.EffectRelocate:         relocate,
+	domain.EffectPurchaseEnabler:  purchaseEnabler,
 }
 
 // Dispatch runs an asset's ability as a sequence of steps: resolve the step's

@@ -376,6 +376,26 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
+	t.Run("pretech logistics purchase_enabler parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-F5-002"]
+		if !ok {
+			t.Fatal("asset SWN-F5-002 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectPurchaseEnabler {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectPurchaseEnabler)
+		}
+		if step.Purchase == nil {
+			t.Fatal("purchase params not parsed")
+		}
+		if step.Purchase.Category != domain.StatForce || step.Purchase.MaxTechLevel != 5 || step.Purchase.CostPercent != 150 {
+			t.Errorf("purchase = %+v, want {Force, 5, 150}", step.Purchase)
+		}
+	})
+
 	t.Run("goals populated", func(t *testing.T) {
 		if len(rb.Goals) == 0 {
 			t.Fatal("expected goals to be loaded, got none")

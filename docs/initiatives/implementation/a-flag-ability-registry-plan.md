@@ -87,6 +87,25 @@ before the commit they ride. Append AND reconcile. -->
   Effort-2 Work Breakdown is superseded by it. Decision 8 still stands for Effort 4 unless
   similarly revisited.
 
+- **Effort 4 gets its own Plan session and ships `purchase_enabler` alone (revisits
+  Decision 8; reroutes two assets).** Decision 8 slated Effort 4 to execute straight from
+  this overview's three-commit Work Breakdown. At Effort 4's planning Robert chose a
+  per-effort plan doc (as Effort 2 did) — re-grounding against the built A-side engine
+  surfaced that two of the three assets cannot ship here:
+  - **Marketers `coin_or_disable` and Seditionists `attach`/restrict-action reroute to
+    A.001.3.** Both turn on a *persistent restriction* ("disabled until the price is
+    paid", "the affected asset cannot attack") enforced only at a future enemy attack —
+    S-side hook territory (Cat 3/5), unbuilt and out of scope here. Marketers' contest +
+    pay-half branch is A-side, but the disable branch is inseparable from the rule, so it
+    reroutes whole. Logged in the arc plan as AP-6.
+  - **Pretech Logistics is a surcharge, not a discount.** "Half again as many Coin,
+    rounded up" = 1.5× base cost; the overview's "discounted" (and the ability-catalog's
+    `purchase-enabler` row) misread it. Corrected in the Effort-4 plan; catalog row fixed
+    at pre-merge.
+  Effort 4 therefore collapses to a single commit. Detail lives in
+  [`-effort-4-plan.md`](./a-flag-ability-registry-effort-4-plan.md); this overview's
+  Effort-4 Work Breakdown is superseded by it.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time
@@ -97,15 +116,15 @@ before the commit they ride. Append AND reconcile. -->
   later step still run? Worked case: Seductress relocates (step 1) then contests
   (step 2) — the relocate should stand even if the contest loses. Ratify the
   step-loop's collect-vs-halt rule in Effort 1.
-- **`coin_or_disable` resolution** (Marketers `W5-001`) — "pay half an asset's cost
-  or have it disabled" needs a target-asset choice and a disable representation.
-  Resolve at Effort 4 first use; check whether "disabled" reuses an existing asset
-  flag/mutation or needs a new one.
-- **`attach` / `restrict-action` representation** (Seditionists `C4-004`) — attaching
-  to an enemy asset and suppressing its attack has **no existing vocabulary**. Decide
-  in Effort 4 whether it needs a new mutation, an asset field, or an effect-engine
-  hook (it may reveal itself as S-side and reroute — flag early). This is the
-  initiative's one genuine unknown.
+- **`coin_or_disable` resolution** (Marketers `W5-001`) — **resolved at Effort 4 planning:
+  rerouted to A.001.3.** The "or disabled until paid" branch needs persistent-restriction
+  enforcement (S-side, unbuilt); it reroutes whole rather than shipping a pay-only
+  fragment. See the [Effort-4 plan](./a-flag-ability-registry-effort-4-plan.md) and
+  arc-plan AP-6.
+- **`attach` / `restrict-action` representation** (Seditionists `C4-004`) — **resolved at
+  Effort 4 planning: rerouted to A.001.3** (the anticipated S-side reroute fired). The
+  attach trigger is A-flag, but "the affected asset cannot attack" is a persistent
+  restriction enforced at a future attack — S-side hook territory. See arc-plan AP-6.
 
 ## Effort Summary
 
@@ -118,7 +137,7 @@ boundary, since 2/3/4 all build on its API.
 | 1 | Pipeline + parser foundation | Step model, generic Contest/Roll/target stages, grow `abilityRecord` + flat-sugar, generalize `AbilityOutcome`, remove dead coin enum. Convert Informers + Seductress(reveal) as proof. No new effects. | own session → [`-effort-1-plan.md`](./a-flag-ability-registry-effort-1-plan.md) |
 | 2 | Roll-table effects | `coin_delta` + `purchase_discount` handlers (Roll stage + enumerated `Outcomes`). Author Harvesters, Postech, Venture Capital, Manufactory, Commodities Broker. | own session → [`-effort-2-plan.md`](./a-flag-ability-registry-effort-2-plan.md) |
 | 3 | Relocate primitive | `WorldEngine.BuildRelocateMutations`, thread world engine into dispatch, `relocate` effect + self/other target. Author Covert Shipping, Covert Transit Net, Seductress self-step (completes Seductress end-to-end). | own session → [`-effort-3-plan.md`](./a-flag-ability-registry-effort-3-plan.md) |
-| 4 | Contest / enabler / attach | `coin_or_disable` (Marketers), `purchase_enabler` (Pretech Logistics), `attach`/restrict-action (Seditionists). | this overview (Work Breakdown) |
+| 4 | Purchase enabler | `purchase_enabler` (Pretech Logistics) only — `coin_or_disable` (Marketers) and `attach` (Seditionists) rerouted to A.001.3 (restriction enforcement is S-side). | own session → [`-effort-4-plan.md`](./a-flag-ability-registry-effort-4-plan.md) |
 
 ## Shared Context
 
@@ -165,7 +184,9 @@ dropped (Decision 5).
 ## Out of Scope
 
 All S-side work, deferred to A.001.3+: coin reactors, Monopoly (S-side `MutationReactor`
-per D1), the *free* relocate harness (Transit Web), wiring `GrantedMovementAbilities`.
+per D1), the *free* relocate harness (Transit Web), wiring `GrantedMovementAbilities`;
+Marketers `coin_or_disable` and Seditionists `attach`/restrict-action, whose restriction
+enforcement is S-side (rerouted at Effort 4 planning — arc-plan AP-6).
 Goals/tags and `_core` (A.001.4); H.A.W.K authoring (A.001.5). Speed-based
 movement-phase moves are untouched — only their misleading prose is corrected (D5).
 
@@ -221,33 +242,12 @@ Scoping outline for the Effort-3 Plan session:
   and **Seductress's self-relocate step** — completing Seductress as a live two-step
   ability (the step engine's first real multi-step consumer; add the multi-step test).
 
-### Effort 4 — Contest / enabler / attach
+### Effort 4 — Purchase enabler *(own Plan session)*
 
-Depends on Effort 1. Re-ground against the built contest/target stages before coding.
-
-#### Commit 1 — `feat: coin_or_disable contest ability`
-
-- New handler for the `coin_or_disable` effect: generic `Contest`; on success, the
-  target faction pays half a chosen asset's cost or that asset is disabled.
-- Author **Marketers** `W5-001`.
-- Ratify at first use (Open Questions): asset-target choice surface and the "disabled"
-  representation — reuse an existing flag/mutation if one fits, else introduce one.
-- Tests: contest win → pay-or-disable branch; contest loss → no effect.
-
-#### Commit 2 — `feat: purchase_enabler ability`
-
-- New handler for the `purchase_enabler` effect + `PurchaseParams`: spend the action
-  to buy one discounted Force asset on the world (world-target selection).
-- Author **Pretech Logistics** `F5-002`.
-- Tests: enabled purchase emits the expected `AssetAdded` + discounted `CoinDelta`.
-
-#### Commit 3 — `feat: attach / restrict-action ability`
-
-- New handler for the `attach` effect + `AttachParams`: pay `1d4` Coin to attach to
-  an enemy asset, suppressing its attack.
-- Author **Seditionists** `C4-004`.
-- **Genuine unknown (Open Questions):** attach + restrict-action has no existing
-  vocabulary. Decide the representation first (new mutation / asset field / effect
-  hook) — and if it resolves as passive/reactive, reroute it to S-side (A.001.3) and
-  drop this commit, noting the reroute in the Decision Record.
-- Tests: attach emits the Coin cost + the restriction representation.
+Planned in its own session and re-grounded against the built A-side engine — see
+[`-effort-4-plan.md`](./a-flag-ability-registry-effort-4-plan.md) for the executable
+single-commit (`purchase_enabler` / Pretech Logistics) task detail and the decisions
+ratified there. The three-commit outline that previously lived here is superseded:
+Marketers (`coin_or_disable`) and Seditionists (`attach`/restrict-action) rerouted to
+A.001.3 because their persistent-restriction enforcement is S-side (see Decision Record
+and arc-plan AP-6), and Pretech Logistics is a cost *surcharge*, not a discount.

@@ -117,6 +117,9 @@ func (SmokeActionCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.Factio
 func (SmokeActionCollector) SelectChangeHomeworldTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
 	return "", action.ErrActionUnavailable
 }
+func (SmokeActionCollector) SelectPurchaseEnablerAsset(_ string, _ []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+	return nil, action.ErrActionUnavailable
+}
 
 var _ action.Collector = (*SmokeActionCollector)(nil)
 

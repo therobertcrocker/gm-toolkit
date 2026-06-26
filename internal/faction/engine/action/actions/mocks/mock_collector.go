@@ -268,6 +268,21 @@ func (mr *MockCollectorMockRecorder) SelectModifiers(offers any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectModifiers", reflect.TypeOf((*MockCollector)(nil).SelectModifiers), offers)
 }
 
+// SelectPurchaseEnablerAsset mocks base method.
+func (m *MockCollector) SelectPurchaseEnablerAsset(world string, candidates []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectPurchaseEnablerAsset", world, candidates)
+	ret0, _ := ret[0].(*domain.AssetDefinition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectPurchaseEnablerAsset indicates an expected call of SelectPurchaseEnablerAsset.
+func (mr *MockCollectorMockRecorder) SelectPurchaseEnablerAsset(world, candidates any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectPurchaseEnablerAsset", reflect.TypeOf((*MockCollector)(nil).SelectPurchaseEnablerAsset), world, candidates)
+}
+
 // SelectRefitOrder mocks base method.
 func (m *MockCollector) SelectRefitOrder(options []action.RefitOption, arg1 *rulebook.Rulebook) (action.RefitOrder, error) {
 	m.ctrl.T.Helper()

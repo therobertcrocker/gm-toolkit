@@ -107,6 +107,7 @@ type abilityRecord struct {
 	Outcomes     []outcomeRecord     `toml:"outcomes"`
 	Steps        []abilityStepRecord `toml:"steps"`
 	Relocate     *relocateRecord     `toml:"relocate"`
+	Purchase     *purchaseRecord     `toml:"purchase"`
 }
 
 type abilityStepRecord struct {
@@ -117,6 +118,7 @@ type abilityStepRecord struct {
 	Die          string          `toml:"die"`
 	Outcomes     []outcomeRecord `toml:"outcomes"`
 	Relocate     *relocateRecord `toml:"relocate"`
+	Purchase     *purchaseRecord `toml:"purchase"`
 }
 
 type relocateRecord struct {
@@ -126,6 +128,12 @@ type relocateRecord struct {
 	CoinCost  int    `toml:"coin_cost"`
 	AssetType string `toml:"asset_type"`
 	MaxAssets int    `toml:"max_assets"`
+}
+
+type purchaseRecord struct {
+	Category     string `toml:"category"`
+	MaxTechLevel int    `toml:"max_tech_level"`
+	CostPercent  int    `toml:"cost_percent"`
 }
 
 type outcomeRecord struct {
@@ -246,7 +254,7 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		}
 		steps := make([]domain.AbilityStep, 0, len(r.Steps))
 		for i, sr := range r.Steps {
-			step, err := convertAbilityStep(sr.Effect, sr.Target, sr.AttackerStat, sr.DefenderStat, sr.Die, sr.Outcomes, sr.Relocate)
+			step, err := convertAbilityStep(sr.Effect, sr.Target, sr.AttackerStat, sr.DefenderStat, sr.Die, sr.Outcomes, sr.Relocate, sr.Purchase)
 			if err != nil {
 				return nil, fmt.Errorf("step %d: %w", i, err)
 			}
@@ -254,14 +262,14 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		}
 		return &domain.AbilityDefinition{Steps: steps}, nil
 	}
-	step, err := convertAbilityStep(r.Effect, r.Target, r.AttackerStat, r.DefenderStat, r.Die, r.Outcomes, r.Relocate)
+	step, err := convertAbilityStep(r.Effect, r.Target, r.AttackerStat, r.DefenderStat, r.Die, r.Outcomes, r.Relocate, r.Purchase)
 	if err != nil {
 		return nil, err
 	}
 	return &domain.AbilityDefinition{Steps: []domain.AbilityStep{step}}, nil
 }
 
-func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr string, outcomes []outcomeRecord, relocate *relocateRecord) (domain.AbilityStep, error) {
+func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr string, outcomes []outcomeRecord, relocate *relocateRecord, purchase *purchaseRecord) (domain.AbilityStep, error) {
 	var step domain.AbilityStep
 	if effectStr != "" {
 		effect, err := toAbilityEffect(effectStr)
@@ -328,6 +336,17 @@ func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr s
 		}
 		step.Relocate = params
 	}
+	if purchase != nil {
+		category, err := toFactionStat(purchase.Category)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("purchase category: %w", err)
+		}
+		step.Purchase = &domain.PurchaseParams{
+			Category:     category,
+			MaxTechLevel: purchase.MaxTechLevel,
+			CostPercent:  purchase.CostPercent,
+		}
+	}
 	if step.Contest != nil && step.Roll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and roll; they are mutually exclusive")
 	}
@@ -383,6 +402,8 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectPurchaseDiscount, nil
 	case "relocate":
 		return domain.EffectRelocate, nil
+	case "purchase_enabler":
+		return domain.EffectPurchaseEnabler, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
