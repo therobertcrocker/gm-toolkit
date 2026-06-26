@@ -50,6 +50,7 @@ type AbilityEffectType string
 
 const (
 	EffectRevealStealth AbilityEffectType = "reveal_stealth"
+	EffectCoinDelta     AbilityEffectType = "coin_delta"
 )
 
 type TargetKind string

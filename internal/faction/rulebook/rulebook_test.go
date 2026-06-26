@@ -137,6 +137,29 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
+	t.Run("venture capital coin_delta roll table parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W6-001"]
+		if !ok {
+			t.Fatal("asset SWN-W6-001 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectCoinDelta {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectCoinDelta)
+		}
+		if step.Roll == nil || step.Roll.Die.Sides != 8 {
+			t.Fatalf("roll: got %+v, want 1d8", step.Roll)
+		}
+		if len(step.Roll.Outcomes) != 4 {
+			t.Fatalf("outcomes: got %d, want 4", len(step.Roll.Outcomes))
+		}
+		if !step.Roll.Outcomes[0].DestroySelf {
+			t.Errorf("outcome[0]: want destroy_self on roll 1")
+		}
+	})
+
 	t.Run("marketers has no ability section", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-W5-001"]
 		if !ok {

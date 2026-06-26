@@ -16,6 +16,7 @@ type StepContext struct {
 	Def          *domain.AssetDefinition
 	Step         domain.AbilityStep
 	Target       domain.AbilityTarget
+	RollResult   int // resolved by the roll stage when Step.Roll != nil; 0 otherwise
 	FactionState *state.FactionState
 	Rulebook     *rulebook.Rulebook
 }
@@ -25,6 +26,7 @@ type EffectHandler func(StepContext) ([]domain.Mutation, error)
 
 var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectRevealStealth: revealStealth,
+	domain.EffectCoinDelta:     coinDelta,
 }
 
 // Dispatch runs an asset's ability as a sequence of steps: resolve the step's
@@ -70,6 +72,7 @@ func Dispatch(
 			Def:          def,
 			Step:         step,
 			Target:       target,
+			RollResult:   resolveRoll(step, roller),
 			FactionState: factionState,
 			Rulebook:     rb,
 		})

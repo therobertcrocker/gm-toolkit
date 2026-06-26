@@ -50,6 +50,27 @@ func passesGate(step domain.AbilityStep, faction *domain.Faction, target domain.
 	return attack > defense, nil
 }
 
+// resolveRoll evaluates the step's roll table, or returns 0 for a non-roll step.
+// The Contest gate and the roll table are mutually exclusive (parser-enforced), so
+// a step that reaches a handler has at most one source of randomness.
+func resolveRoll(step domain.AbilityStep, roller domain.Roller) int {
+	if step.Roll == nil {
+		return 0
+	}
+	return step.Roll.Die.Roll(roller)
+}
+
+// outcomeFor returns the first outcome whose [From,To] range contains roll. An
+// unmatched roll yields (zero, false) — the absence of a row is a zero payout.
+func outcomeFor(roll int, outcomes []domain.AbilityOutcome) (domain.AbilityOutcome, bool) {
+	for _, outcome := range outcomes {
+		if roll >= outcome.From && roll <= outcome.To {
+			return outcome, true
+		}
+	}
+	return domain.AbilityOutcome{}, false
+}
+
 // otherFactions returns every faction but the acting one, name-sorted. For a
 // faction-target ability every opponent is a valid target.
 func otherFactions(factionState *state.FactionState, actingFactionID string) []*domain.Faction {

@@ -77,6 +77,16 @@ the full A-flag table from prose (D4).
 <!-- Empty at plan time. Execution-time decisions and reversals land here, logged
 before the commit they ride. Append AND reconcile. -->
 
+- **Effort 2 gets its own Plan session (deviation from Planning Decision 8).** Decision 8
+  slated Efforts 2 and 4 to execute straight from this overview. At Effort 2's planning
+  Robert chose a per-effort plan doc instead — re-grounding against Effort 1's built API
+  surfaced two design decisions worth ratifying in writing (the roll-stage / `RollResult`
+  threading, the insolvency-vs-`DestroySelf` destroy rule, and the pending-discount carry
+  mechanism). The detail now lives in
+  [`-effort-2-plan.md`](./a-flag-ability-registry-effort-2-plan.md); this overview's
+  Effort-2 Work Breakdown is superseded by it. Decision 8 still stands for Effort 4 unless
+  similarly revisited.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time
@@ -106,7 +116,7 @@ boundary, since 2/3/4 all build on its API.
 | # | Effort | Scope | Plan |
 |---|--------|-------|------|
 | 1 | Pipeline + parser foundation | Step model, generic Contest/Roll/target stages, grow `abilityRecord` + flat-sugar, generalize `AbilityOutcome`, remove dead coin enum. Convert Informers + Seductress(reveal) as proof. No new effects. | own session → [`-effort-1-plan.md`](./a-flag-ability-registry-effort-1-plan.md) |
-| 2 | Roll-table effects | `coin_delta` + `purchase_discount` handlers (Roll stage + enumerated `Outcomes`). Author Harvesters, Postech, Venture Capital, Manufactory, Commodities Broker. | this overview (Work Breakdown) |
+| 2 | Roll-table effects | `coin_delta` + `purchase_discount` handlers (Roll stage + enumerated `Outcomes`). Author Harvesters, Postech, Venture Capital, Manufactory, Commodities Broker. | own session → [`-effort-2-plan.md`](./a-flag-ability-registry-effort-2-plan.md) |
 | 3 | Relocate primitive | `WorldEngine.BuildRelocateMutations`, thread world engine into dispatch, `relocate` effect + self/other target. Author Covert Shipping, Covert Transit Net, Seductress self-step (completes Seductress end-to-end). | own session → [`-effort-3-plan.md`](./a-flag-ability-registry-effort-3-plan.md) |
 | 4 | Contest / enabler / attach | `coin_or_disable` (Marketers), `purchase_enabler` (Pretech Logistics), `attach`/restrict-action (Seditionists). | this overview (Work Breakdown) |
 
@@ -189,35 +199,13 @@ Scoping outline for the Effort-1 Plan session:
   Seductress's reveal as a one-step list (its relocate step lands in Effort 3);
   tests via `seqRoller` + `MockCollector`.
 
-### Effort 2 — Roll-table effects
+### Effort 2 — Roll-table effects *(own Plan session)*
 
-Depends on Effort 1. Re-ground against the built `Roll`/`Outcomes` path before coding.
-
-#### Commit 1 — `feat: coin_delta roll-table ability`
-
-- New handler for the `coin_delta` effect: run the step's `Roll`, map the result
-  through `Outcomes`, emit a signed `CoinDelta` and (when `DestroySelf`) an
-  `AssetRemoved` for the acting asset.
-- Author **Harvesters** `W1-002` (`1d6`, 3+ → 1 Coin), **Postech Industry** `W3-001`,
-  **Venture Capital** `W6-001` (`1d8`: 1 → DestroySelf, 2-3 → 1, 4-7 → 2, 8 → 3),
-  **Pretech Manufactory** `W7-001` (`1d8`, `ceil(roll/2)` enumerated as 4 rows:
-  1-2→1, 3-4→2, 5-6→3, 7-8→4).
-- Tests: each roll band → expected payout; the `DestroySelf` band emits `AssetRemoved`.
-- Files: `ability/` (new handler + registry entry), `rulebooks/swn/assets/wealth_assets.toml`,
-  handler test.
-
-#### Commit 2 — `feat: purchase_discount roll-table ability`
-
-- New handler for the `purchase_discount` effect: run the step's `Roll`, read the
-  `Discount` outcome-kind, and represent a pending discount on the faction's next
-  purchase. The floor ("minimum half normal price, rounded down") is applied at
-  **purchase-application** time, not in the table.
-- Author **Commodities Broker** `W6-003` (`1d8`, `discount = roll`, 8 one-per-face
-  rows).
-- First-use detail: how a pending purchase-discount is carried to the next Buy Asset
-  (faction-state field vs. a mutation) — ratify at execution; check for an existing
-  mechanism before adding state.
-- Tests: roll → discount magnitude; floor applied on a subsequent purchase.
+Planned in its own session and re-grounded against Effort 1's built API — see
+[`-effort-2-plan.md`](./a-flag-ability-registry-effort-2-plan.md) for the executable
+Commit 1 (`coin_delta`) / Commit 2 (`purchase_discount`) task detail and the decisions
+ratified there. The scoping outline that previously lived here is superseded by that
+file (see Decision Record).
 
 ### Effort 3 — Relocate primitive *(own Plan session)*
 

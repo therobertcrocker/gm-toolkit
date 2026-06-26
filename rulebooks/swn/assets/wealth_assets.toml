@@ -33,6 +33,14 @@ flags = ["A"]
 counter = "1d4"
 description = "Workers gathering natural resources — ore, biologicals, or other unprocessed goods. As an ability action, the owning faction rolls 1d6; on a 3 or higher, they gain 1 Coin."
 
+[assets.Harvesters.ability]
+effect = "coin_delta"
+die = "1d6"
+[[assets.Harvesters.ability.outcomes]]
+from = 3
+to = 6
+coin = 1
+
 [assets.LocalInvestments]
 id = "SWN-W1-003"
 name = "Local Investments"
@@ -145,6 +153,22 @@ type = "Facility"
 flags = ["A"]
 counter = "1d4"
 description = "Advanced manufacturing facilities. As an ability action, roll 1d6: on a 1, lose 1 Coin (if this cannot be paid, the asset is destroyed); on a 2–4, gain 1 Coin; on a 5–6, gain 2 Coin."
+
+[assets.PostechIndustry.ability]
+effect = "coin_delta"
+die = "1d6"
+[[assets.PostechIndustry.ability.outcomes]]
+from = 1
+to = 1
+coin = -1
+[[assets.PostechIndustry.ability.outcomes]]
+from = 2
+to = 4
+coin = 1
+[[assets.PostechIndustry.ability.outcomes]]
+from = 5
+to = 6
+coin = 2
 
 [assets.Laboratory]
 id = "SWN-W3-002"
@@ -317,6 +341,26 @@ flags = ["A"]
 counter = "1d6"
 description = "Financial instruments that grow resources through aggressive investment. As an ability action, roll 1d8: on a 1, the asset is destroyed; on a 2–3, gain 1 Coin; on 4–7, gain 2 Coin; on an 8, gain 3 Coin."
 
+[assets.VentureCapital.ability]
+effect = "coin_delta"
+die = "1d8"
+[[assets.VentureCapital.ability.outcomes]]
+from = 1
+to = 1
+destroy_self = true
+[[assets.VentureCapital.ability.outcomes]]
+from = 2
+to = 3
+coin = 1
+[[assets.VentureCapital.ability.outcomes]]
+from = 4
+to = 7
+coin = 2
+[[assets.VentureCapital.ability.outcomes]]
+from = 8
+to = 8
+coin = 3
+
 [assets.VentureCapital.attack]
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
@@ -368,6 +412,26 @@ type = "Facility"
 flags = ["A"]
 counter = ""
 description = "Rare, functioning Mandate-era manufacturing facilities. As an action, the owning faction may roll 1d8 and gain half that many Coin, rounded up."
+
+[assets.PretechManufactory.ability]
+effect = "coin_delta"
+die = "1d8"
+[[assets.PretechManufactory.ability.outcomes]]
+from = 1
+to = 2
+coin = 1
+[[assets.PretechManufactory.ability.outcomes]]
+from = 3
+to = 4
+coin = 2
+[[assets.PretechManufactory.ability.outcomes]]
+from = 5
+to = 6
+coin = 3
+[[assets.PretechManufactory.ability.outcomes]]
+from = 7
+to = 8
+coin = 4
 
 [assets.HostileTakeover]
 id = "SWN-W7-002"
