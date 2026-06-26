@@ -46,22 +46,23 @@ type ActiveGoal struct {
 }
 
 type Faction struct {
-	ID          string            `toml:"id"`
-	Name        string            `toml:"name"`
-	Scale       FactionScale      `toml:"scale"`
-	Force       int               `toml:"force"`
-	Cunning     int               `toml:"cunning"`
-	Wealth      int               `toml:"wealth"`
-	CurrentHP   int               `toml:"current_hp"`
-	MaxHP       int               `toml:"max_hp"`
-	Coin        int               `toml:"coin"`
-	XP          int               `toml:"xp"`
-	Homeworld   Location          `toml:"homeworld"`
-	Tags        []*Tag            `toml:"tags"`
-	ActiveGoal  *ActiveGoal       `toml:"active_goal"`
-	Assets      map[string]*Asset `toml:"assets"`
-	Bases       []*Base           `toml:"bases"`
-	HookBudgets map[string]int    `toml:"hook_budgets,omitempty"`
+	ID                      string            `toml:"id"`
+	Name                    string            `toml:"name"`
+	Scale                   FactionScale      `toml:"scale"`
+	Force                   int               `toml:"force"`
+	Cunning                 int               `toml:"cunning"`
+	Wealth                  int               `toml:"wealth"`
+	CurrentHP               int               `toml:"current_hp"`
+	MaxHP                   int               `toml:"max_hp"`
+	Coin                    int               `toml:"coin"`
+	XP                      int               `toml:"xp"`
+	Homeworld               Location          `toml:"homeworld"`
+	Tags                    []*Tag            `toml:"tags"`
+	ActiveGoal              *ActiveGoal       `toml:"active_goal"`
+	Assets                  map[string]*Asset `toml:"assets"`
+	Bases                   []*Base           `toml:"bases"`
+	HookBudgets             map[string]int    `toml:"hook_budgets,omitempty"`
+	PendingPurchaseDiscount int               `toml:"pending_purchase_discount,omitempty"`
 }
 
 func RatingsFromScale(s FactionScale) (primary, secondary, tertiary int) {
@@ -133,13 +134,13 @@ func NewFaction(
 	primary, secondary, tertiary := RatingsFromScale(scale)
 
 	faction := &Faction{
-		ID:       id,
-		Name:     name,
-		Scale:    scale,
-		Tags:     tags,
-		Coin:     coin,
+		ID:        id,
+		Name:      name,
+		Scale:     scale,
+		Tags:      tags,
+		Coin:      coin,
 		Homeworld: homeworld,
-		Assets:   make(map[string]*Asset, len(assets)),
+		Assets:    make(map[string]*Asset, len(assets)),
 	}
 
 	for _, stat := range []struct {

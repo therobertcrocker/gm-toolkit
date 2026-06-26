@@ -64,6 +64,18 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.PurchaseDiscountGranted:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.PendingPurchaseDiscount = v.Amount
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.PurchaseDiscountConsumed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.PendingPurchaseDiscount = 0
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
 		case domain.AssetMaintainedFlag:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok {

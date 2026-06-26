@@ -394,6 +394,10 @@ flags = ["A"]
 counter = "1d8"
 description = "Specialists who reduce large-scale investment costs through precise market timing. As an ability action, roll 1d8; that many Coin are subtracted from the cost of the faction's next asset purchase, down to a minimum of half normal price rounded down."
 
+[assets.CommoditiesBroker.ability]
+effect = "purchase_discount"
+die = "1d8"
+
 [assets.CommoditiesBroker.attack]
 attacker_stat = "Wealth"
 defender_stat = "Wealth"

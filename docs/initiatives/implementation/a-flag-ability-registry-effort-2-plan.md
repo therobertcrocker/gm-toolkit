@@ -60,8 +60,22 @@ them.
 
 ## Decision Record — Execution
 
-<!-- Empty at plan time. Execution-time decisions and reversals land here, logged
-before the commit they ride. Append AND reconcile. -->
+<!-- Execution-time decisions and reversals land here, logged before the commit
+they ride. Append AND reconcile. -->
+
+- **Commit 2 — `purchase_discount` grants the roll directly; no Outcomes band**
+  (Robert, execution). The plan (Task 6/Task 9) routed `purchase_discount` through
+  `outcomeFor`/`outcome.Discount` and authored Commodities Broker with eight
+  identity `[[outcomes]]` rows (`from=N to=N discount=N`). Reversed: Commodities
+  Broker's discount **is** the roll (an identity map), and the resolved roll already
+  lives in `ctx.RollResult`. The `Outcomes` band only earns its place when the payout
+  *transforms* the roll (Postech's bands, Pretech's `ceil(roll/2)`); an identity map
+  needs no table. So `purchaseDiscount` grants `ctx.RollResult` directly and consults
+  no outcomes, and Commodities Broker is authored with `effect` + `die` only (empty
+  `Outcomes`). This kills eight redundant rows and keeps roll-derived payouts that
+  *don't* transform from being enumerated face-by-face. The handler still errors on a
+  nil `Step.Roll` (misauthored step) and grants nothing on a non-positive roll.
+  Plan body Tasks 6 and 9 are superseded by this entry.
 
 ---
 

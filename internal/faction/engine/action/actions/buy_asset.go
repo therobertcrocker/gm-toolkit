@@ -18,14 +18,15 @@ import (
 // BuyAsset purchases a new asset and places it on a target world.
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
 type BuyAsset struct {
-	collector     action.Collector
-	registry      *hooks.Registry
-	worldEngine   *world.WorldEngine
-	factionID     string
-	buyOrder      action.BuyOrder
-	newAsset      domain.Asset
-	cost          int
-	stealthTarget string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
+	collector        action.Collector
+	registry         *hooks.Registry
+	worldEngine      *world.WorldEngine
+	factionID        string
+	buyOrder         action.BuyOrder
+	newAsset         domain.Asset
+	cost             int
+	discountConsumed bool
+	stealthTarget    string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
 }
 
 func NewBuyAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.WorldEngine) *BuyAsset {
@@ -80,6 +81,14 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
 	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
+	if faction.PendingPurchaseDiscount > 0 {
+		floor := def.Cost / 2 // min half normal (base) price, rounded down
+		ba.cost -= faction.PendingPurchaseDiscount
+		if ba.cost < floor {
+			ba.cost = floor
+		}
+		ba.discountConsumed = true
+	}
 	if faction.Coin < ba.cost {
 		return fmt.Errorf("insufficient Coin: need %d, have %d", ba.cost, faction.Coin)
 	}
@@ -108,6 +117,13 @@ func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 		mutations = append(mutations, domain.AssetStealthApplied{
 			FactionID:         ba.factionID,
 			AssetID:           ba.stealthTarget,
+			Cause:             "buy",
+			CausedByFactionID: ba.factionID,
+		})
+	}
+	if ba.discountConsumed {
+		mutations = append(mutations, domain.PurchaseDiscountConsumed{
+			FactionID:         ba.factionID,
 			Cause:             "buy",
 			CausedByFactionID: ba.factionID,
 		})

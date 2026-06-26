@@ -49,8 +49,9 @@ type TransportProfile struct {
 type AbilityEffectType string
 
 const (
-	EffectRevealStealth AbilityEffectType = "reveal_stealth"
-	EffectCoinDelta     AbilityEffectType = "coin_delta"
+	EffectRevealStealth    AbilityEffectType = "reveal_stealth"
+	EffectCoinDelta        AbilityEffectType = "coin_delta"
+	EffectPurchaseDiscount AbilityEffectType = "purchase_discount"
 )
 
 type TargetKind string

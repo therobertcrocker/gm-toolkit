@@ -25,8 +25,9 @@ type StepContext struct {
 type EffectHandler func(StepContext) ([]domain.Mutation, error)
 
 var handlers = map[domain.AbilityEffectType]EffectHandler{
-	domain.EffectRevealStealth: revealStealth,
-	domain.EffectCoinDelta:     coinDelta,
+	domain.EffectRevealStealth:    revealStealth,
+	domain.EffectCoinDelta:        coinDelta,
+	domain.EffectPurchaseDiscount: purchaseDiscount,
 }
 
 // Dispatch runs an asset's ability as a sequence of steps: resolve the step's

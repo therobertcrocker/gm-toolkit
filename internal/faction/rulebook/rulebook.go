@@ -321,6 +321,8 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectRevealStealth, nil
 	case "coin_delta":
 		return domain.EffectCoinDelta, nil
+	case "purchase_discount":
+		return domain.EffectPurchaseDiscount, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
