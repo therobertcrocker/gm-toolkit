@@ -61,8 +61,10 @@ type SmokeActionCollector struct{}
 
 func NewSmokeActionCollector() *SmokeActionCollector { return &SmokeActionCollector{} }
 
-func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer { return nil }
-func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool                     { return false }
+func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer {
+	return nil
+}
+func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return false }
 
 func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
@@ -187,6 +189,8 @@ func (smokeHexRouter) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
 func (smokeHexRouter) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return nil, 0, spatial.ErrNotImplemented
 }
+
+func (smokeHexRouter) AllWorlds() []spatial.Location { return nil }
 
 var _ world.HexRouter = smokeHexRouter{}
 

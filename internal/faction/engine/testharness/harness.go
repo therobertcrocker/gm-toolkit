@@ -60,6 +60,8 @@ func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]s
 	return []spatial.RegionHex{from}, 1, nil
 }
 
+func (s *StubSpatialMap) AllWorlds() []spatial.Location { return nil }
+
 type stubLocation struct{ id string }
 
 var _ spatial.RegionLocation = (*stubLocation)(nil)

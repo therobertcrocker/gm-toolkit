@@ -18,6 +18,7 @@ func (s *stubMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) { return 
 func (s *stubMap) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return nil, 0, nil
 }
+func (s *stubMap) AllWorlds() []spatial.Location { return nil }
 
 type stubRegionLoc struct{ rh spatial.RegionHex }
 

@@ -64,6 +64,7 @@ func (s *stubWorldMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) { re
 func (s *stubWorldMap) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return nil, 0, nil
 }
+func (s *stubWorldMap) AllWorlds() []spatial.Location { return nil }
 
 func transportRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{

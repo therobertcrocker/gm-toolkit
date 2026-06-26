@@ -41,6 +41,14 @@ func (r *testHexRouter) Path(from, to spatial.RegionHex, _ int) ([]spatial.Regio
 	return []spatial.RegionHex{from, to}, 1, nil
 }
 
+func (r *testHexRouter) AllWorlds() []spatial.Location {
+	worlds := make([]spatial.Location, 0, len(r.worlds))
+	for id, hex := range r.worlds {
+		worlds = append(worlds, &testWorldLoc{id: id, hex: hex})
+	}
+	return worlds
+}
+
 var _ spatial.RegionLocation = (*testWorldLoc)(nil)
 
 type testWorldLoc struct {
