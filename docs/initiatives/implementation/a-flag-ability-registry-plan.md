@@ -106,6 +106,31 @@ before the commit they ride. Append AND reconcile. -->
   [`-effort-4-plan.md`](./a-flag-ability-registry-effort-4-plan.md); this overview's
   Effort-4 Work Breakdown is superseded by it.
 
+### Pre-Merge Review Fixes
+
+<!-- Branch-level fixes from the pre-merge review (a-flag-ability-registry-pre-merge-review.md).
+One entry per resolved finding. -->
+
+- **C10 — relocate overlay enforces `MaxAssets` inline; handler guard retained as
+  defense-in-depth.** The `RelocateOrders` overlay built a destination Select per candidate
+  but ignored `SelectRelocateOrdersPayload.MaxAssets`, so a GM could pick destinations for
+  more assets than the ability allows and only hit the cap at `relocate.go:64` *after* the
+  whole form was filled — failing the action and discarding the input. Fix: each Select now
+  gets a per-field `huh.Validate` (`capValidator`) that rejects a destination pick once it
+  would push the relocate count past the cap (skipped when `MaxAssets == 0`/unbounded). The
+  handler guard at `relocate.go:64` stays — the overlay is not the only collector (smoke /
+  scripted / test-harness paths bypass it), so the engine keeps the authoritative check.
+
+- **C11 — deferred to backlog `F.024`, no code change this branch.** Completing the relocate
+  form with every asset on "do not move" yields `ErrNoSelection` and reads as a failed action.
+  The right fix is a discoverable cancel/back that returns to the asset/ability picker without
+  spending the faction's action — but the action phase is linear (`SelectAction → Inputs →
+  Resolve`) with no re-prompt loop, so true back-navigation is a UX initiative, not a pre-merge
+  cleanup. The minimal "treat empty submit as a clean no-op" patch was considered and rejected:
+  a relocate that moves nothing has no gameplay meaning, and silently spending the action is
+  worse UX than the current (recoverable) error. Logged as `F.024`; relocate behaviour left
+  unchanged.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time

@@ -269,7 +269,7 @@ func (mr *MockCollectorMockRecorder) SelectModifiers(offers any) *gomock.Call {
 }
 
 // SelectPurchaseEnablerAsset mocks base method.
-func (m *MockCollector) SelectPurchaseEnablerAsset(world string, candidates []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+func (m *MockCollector) SelectPurchaseEnablerAsset(world string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SelectPurchaseEnablerAsset", world, candidates)
 	ret0, _ := ret[0].(*domain.AssetDefinition)

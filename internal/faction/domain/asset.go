@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -103,8 +104,10 @@ const (
 	TargetNone    TargetKind = "none"
 	TargetSelf    TargetKind = "self"
 	TargetFaction TargetKind = "faction"
-	TargetAsset   TargetKind = "asset"
-	TargetWorld   TargetKind = "world"
+	// deliberate: TargetAsset/TargetWorld are dormant scalar-target vocab for A.001.3
+	// (Marketers/Seditionists), not dead — don't drop without that effort.
+	TargetAsset TargetKind = "asset"
+	TargetWorld TargetKind = "world"
 )
 
 type Contest struct {
@@ -137,7 +140,6 @@ type AbilityOutcome struct {
 	To          int
 	Coin        int // signed: gain (positive) or loss (negative)
 	DestroySelf bool
-	Discount    int
 }
 
 // AbilityTarget is the step's resolved target, returned by the target stage and
@@ -153,8 +155,10 @@ type AbilityTarget struct {
 // collector reads the slice matching the step's TargetKind.
 type AbilityTargetCandidates struct {
 	Factions []*Faction
-	Assets   []*Asset
-	Worlds   []string
+	// deliberate: Assets/Worlds are dormant for A.001.3 scalar targets, not dead —
+	// don't drop without that effort. See TargetAsset/TargetWorld.
+	Assets []*Asset
+	Worlds []string
 }
 
 type AssetDefinition struct {
@@ -187,6 +191,19 @@ type Asset struct {
 	Ready        bool           `toml:"ready"`
 	Maintained   bool           `toml:"maintained"`
 	CurrentOrder *MovementOrder `toml:"current_order,omitempty"`
+}
+
+// Clone deep-copies an asset, including its CurrentOrder pointer and that order's
+// slices, so mutations applied to the copy never reach the original.
+func (asset *Asset) Clone() *Asset {
+	clone := *asset
+	if asset.CurrentOrder != nil {
+		order := *asset.CurrentOrder
+		order.Path = slices.Clone(asset.CurrentOrder.Path)
+		order.CargoAssetIDs = slices.Clone(asset.CurrentOrder.CargoAssetIDs)
+		clone.CurrentOrder = &order
+	}
+	return &clone
 }
 
 func (def *AssetDefinition) HasFlag(flag AssetFlag) bool {
@@ -239,4 +256,33 @@ func HasPlanetaryGovernment(factionID string, basesOnWorld []*Base) bool {
 		}
 	}
 	return false
+}
+
+// PurchaseTerms are the per-path inputs to CanPurchase that differ between the Buy Asset
+// action and the purchase_enabler ability: Cost is the price to test affordability against
+// (base cost for a buy, surcharged for an enabler); TechCap is the highest required tech
+// level a def may carry (the target world's tech level for a buy, the enabler's own cap for
+// an enabler); HoldsGovernment is whether the faction owns a base on the target world (the
+// P-flag gate). The shared checks themselves live in CanPurchase so the two paths can't drift.
+type PurchaseTerms struct {
+	Cost            int
+	TechCap         int
+	HoldsGovernment bool
+}
+
+// CanPurchase reports whether the faction may buy def under terms: it can afford Cost, meets
+// the def's minimum category rating, the def's required tech level is within TechCap, and it
+// holds Planetary Government when the def is P-flagged.
+func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bool {
+	switch {
+	case faction.Coin < terms.Cost:
+		return false
+	case def.MinRating > faction.StatScore(def.Category):
+		return false
+	case def.TechLevel > terms.TechCap:
+		return false
+	case def.HasFlag(FlagPermission) && !terms.HoldsGovernment:
+		return false
+	}
+	return true
 }

@@ -18,23 +18,21 @@ func coinDelta(ctx StepContext) ([]domain.Mutation, error) {
 	if !ok {
 		return nil, nil
 	}
-	var mutations []domain.Mutation
 	if outcome.DestroySelf || (outcome.Coin < 0 && ctx.Faction.Coin < -outcome.Coin) {
-		mutations = append(mutations, domain.AssetRemoved{
+		return []domain.Mutation{domain.AssetRemoved{
 			FactionID:         ctx.Faction.ID,
 			AssetID:           ctx.Asset.ID,
 			Cause:             "ability",
 			CausedByFactionID: ctx.Faction.ID,
-		})
-		return mutations, nil
+		}}, nil
 	}
 	if outcome.Coin != 0 {
-		mutations = append(mutations, domain.CoinDelta{
+		return []domain.Mutation{domain.CoinDelta{
 			FactionID:         ctx.Faction.ID,
 			Delta:             outcome.Coin,
 			CausedByFactionID: ctx.Faction.ID,
 			Cause:             "ability",
-		})
+		}}, nil
 	}
-	return mutations, nil
+	return nil, nil
 }

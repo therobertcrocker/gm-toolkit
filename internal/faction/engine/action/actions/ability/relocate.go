@@ -21,6 +21,9 @@ func relocate(ctx StepContext) ([]domain.Mutation, error) {
 		return nil, fmt.Errorf("relocate: no world engine")
 	}
 	actingHex := ctx.Asset.Location.RegionHex
+	// other-scope may target the acting asset's own world (a friendly asset there is a
+	// legal source, and the home world is a legal destination); self-scope must move off it.
+	includeOrigin := params.Scope == domain.RelocateOther
 	// DR-1: the range mode picks the enumerator; the rest of the handler is mode-agnostic.
 	var (
 		candidateWorlds []string
@@ -28,9 +31,9 @@ func relocate(ctx StepContext) ([]domain.Mutation, error) {
 	)
 	switch params.Range {
 	case domain.RangeRegion:
-		candidateWorlds, err = ctx.WorldEngine.WorldsInRegion(actingHex)
+		candidateWorlds, err = ctx.WorldEngine.WorldsInRegion(actingHex, includeOrigin)
 	default: // RangeHexes (and the zero value, for safety)
-		candidateWorlds, err = ctx.WorldEngine.WorldsWithin(actingHex, params.MaxHex)
+		candidateWorlds, err = ctx.WorldEngine.WorldsWithin(actingHex, params.MaxHex, includeOrigin)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("relocate: %w", err)

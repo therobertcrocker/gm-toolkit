@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -31,16 +32,16 @@ func enablerRulebook() *rulebook.Rulebook {
 
 func TestPurchaseEnabler_BuysSurcharged(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	var offered []*domain.AssetDefinition
+	var offered []action.PurchaseEnablerOption
 
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().
 		SelectPurchaseEnablerAsset(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ string, candidates []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+		DoAndReturn(func(_ string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
 			offered = candidates
-			for _, def := range candidates {
-				if def.ID == "F-pricey" {
-					return def, nil
+			for _, option := range candidates {
+				if option.Def.ID == "F-pricey" {
+					return option.Def, nil
 				}
 			}
 			return nil, nil
@@ -62,6 +63,13 @@ func TestPurchaseEnabler_BuysSurcharged(t *testing.T) {
 	// def (no WorldEngine, so no Planetary Government) all excluded.
 	if len(offered) != 2 {
 		t.Fatalf("offered %d candidates, want 2 (F-cheap, F-pricey); got %v", len(offered), offered)
+	}
+	// C5: the engine computes the surcharge and passes it through; the view must not
+	// recompute. Each option carries surchargedCost(def.Cost, 150).
+	for _, option := range offered {
+		if want := surchargedCost(option.Def.Cost, 150); option.Cost != want {
+			t.Errorf("option %s Cost = %d, want %d", option.Def.ID, option.Cost, want)
+		}
 	}
 
 	var added *domain.AssetAdded
@@ -87,6 +95,74 @@ func TestPurchaseEnabler_BuysSurcharged(t *testing.T) {
 	}
 }
 
+func TestPurchaseEnabler_ConsumesPendingDiscount(t *testing.T) {
+	selectPricey := func(ctrl *gomock.Controller) *mocks.MockCollector {
+		collector := mocks.NewMockCollector(ctrl)
+		collector.EXPECT().
+			SelectPurchaseEnablerAsset(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
+				for _, option := range candidates {
+					if option.Def.ID == "F-pricey" {
+						return option.Def, nil
+					}
+				}
+				return nil, nil
+			})
+		return collector
+	}
+
+	enablerCtx := func(collector action.Collector, discount int) StepContext {
+		return StepContext{
+			Faction:   &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: discount, Assets: map[string]*domain.Asset{}},
+			Asset:     &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
+			Step:      enablerStep(),
+			Rulebook:  enablerRulebook(),
+			Collector: collector,
+		}
+	}
+
+	// F-pricey surcharge = ceil(5*1.5) = 8; a 3-Coin discount nets 5. The discount is
+	// consumed (PurchaseDiscountConsumed emitted), mirroring Buy Asset.
+	t.Run("applies and consumes", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		muts, err := purchaseEnabler(enablerCtx(selectPricey(ctrl), 3))
+		if err != nil {
+			t.Fatalf("purchaseEnabler: %v", err)
+		}
+		var coin *domain.CoinDelta
+		consumed := false
+		for _, m := range muts {
+			switch v := m.(type) {
+			case domain.CoinDelta:
+				coin = &v
+			case domain.PurchaseDiscountConsumed:
+				consumed = true
+			}
+		}
+		if coin == nil || coin.Delta != -5 {
+			t.Errorf("CoinDelta = %v, want -5 (8 surcharge - 3 discount)", coin)
+		}
+		if !consumed {
+			t.Error("want PurchaseDiscountConsumed emitted")
+		}
+	})
+
+	// A discount larger than the surcharge clamps to half base price (5/2 = 2), never
+	// raising the price back up.
+	t.Run("clamps to half base floor", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		muts, err := purchaseEnabler(enablerCtx(selectPricey(ctrl), 10))
+		if err != nil {
+			t.Fatalf("purchaseEnabler: %v", err)
+		}
+		for _, m := range muts {
+			if coin, ok := m.(domain.CoinDelta); ok && coin.Delta != -2 {
+				t.Errorf("CoinDelta = %d, want -2 (floor at half base)", coin.Delta)
+			}
+		}
+	})
+}
+
 func TestPurchaseEnabler_InsufficientCoin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
@@ -106,14 +182,14 @@ func TestPurchaseEnabler_InsufficientCoin(t *testing.T) {
 
 func TestPurchaseEnabler_PermissionGate(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	var offered []*domain.AssetDefinition
+	var offered []action.PurchaseEnablerOption
 
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().
 		SelectPurchaseEnablerAsset(gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ string, candidates []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+		DoAndReturn(func(_ string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
 			offered = candidates
-			return candidates[0], nil
+			return candidates[0].Def, nil
 		}).
 		Times(2)
 

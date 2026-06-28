@@ -32,6 +32,8 @@ func resolveTarget(
 		}
 		return target, nil
 	default:
+		// deliberate: asset/world targets await A.001.3 (Marketers/Seditionists),
+		// not unbuilt-by-oversight — see domain.TargetAsset/TargetWorld.
 		return domain.AbilityTarget{}, fmt.Errorf("ability target kind %q not supported yet", step.Target)
 	}
 }
@@ -88,14 +90,5 @@ func otherFactions(factionState *state.FactionState, actingFactionID string) []*
 }
 
 func statScore(faction *domain.Faction, stat domain.FactionStat) int {
-	switch stat {
-	case domain.StatForce:
-		return faction.Force
-	case domain.StatCunning:
-		return faction.Cunning
-	case domain.StatWealth:
-		return faction.Wealth
-	default:
-		return 0
-	}
+	return faction.StatScore(stat)
 }

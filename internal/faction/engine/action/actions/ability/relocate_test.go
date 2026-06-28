@@ -34,6 +34,18 @@ func (r *relocRouter) Distance(from, to spatial.RegionHex, _ int) (int, error) {
 	return dist, nil
 }
 
+func (r *relocRouter) DistancesFrom(from spatial.RegionHex, crossingCost int) (map[spatial.RegionHex]int, error) {
+	distances := make(map[spatial.RegionHex]int, len(r.worlds))
+	for _, hex := range r.worlds {
+		dist, err := r.Distance(from, hex, crossingCost)
+		if err != nil {
+			return nil, err
+		}
+		distances[hex] = dist
+	}
+	return distances, nil
+}
+
 func (r *relocRouter) Path(from, to spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return []spatial.RegionHex{from, to}, 1, nil
 }

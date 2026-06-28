@@ -14,6 +14,7 @@ import (
 type HexRouter interface {
 	spatial.SpatialMap
 	Distance(from, to spatial.RegionHex, crossingCost int) (int, error)
+	DistancesFrom(from spatial.RegionHex, crossingCost int) (map[spatial.RegionHex]int, error)
 	Path(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error)
 	AllWorlds() []spatial.Location
 }
@@ -89,46 +90,49 @@ func (engine *WorldEngine) Distance(from, to spatial.RegionHex, crossingCost int
 }
 
 // WorldsWithin returns the IDs of every world within maxHex of the given hex,
-// name-sorted, excluding the origin hex itself. Distance is raw hex count.
-func (engine *WorldEngine) WorldsWithin(from spatial.RegionHex, maxHex int) ([]string, error) {
+// name-sorted. The origin hex itself is included only when includeOrigin is set
+// (other-scope relocate may target the home world; self-scope must move off it).
+// Distance is raw hex count.
+func (engine *WorldEngine) WorldsWithin(from spatial.RegionHex, maxHex int, includeOrigin bool) ([]string, error) {
+	// deliberate: crossingCost 0 — "within N hexes" is raw hex distance, not the
+	// drift-priced journey ChangeHomeworld uses (Effort 3 Plan, Decision 5).
+	distances, err := engine.spatialMap.DistancesFrom(from, 0)
+	if err != nil {
+		return nil, err
+	}
+	return engine.worldsMatching(func(hexLoc spatial.RegionLocation) bool {
+		dist, reachable := distances[hexLoc.RegionHex()]
+		return reachable && dist <= maxHex && (includeOrigin || dist > 0)
+	}), nil
+}
+
+// WorldsInRegion returns the IDs of every world sharing the origin hex's region,
+// name-sorted. The origin hex itself is included only when includeOrigin is set.
+// Region membership is a pure equality check — no distance math, since every hex
+// already carries its RegionID.
+func (engine *WorldEngine) WorldsInRegion(from spatial.RegionHex, includeOrigin bool) ([]string, error) {
+	return engine.worldsMatching(func(hexLoc spatial.RegionLocation) bool {
+		hex := hexLoc.RegionHex()
+		return hex.RegionID == from.RegionID && (includeOrigin || hex != from)
+	}), nil
+}
+
+// worldsMatching returns the name-sorted IDs of every world whose RegionLocation
+// satisfies pred. WorldsWithin and WorldsInRegion share this scaffolding; only the
+// per-candidate predicate (hex-distance vs region equality) differs.
+func (engine *WorldEngine) worldsMatching(pred func(spatial.RegionLocation) bool) []string {
 	var within []string
 	for _, loc := range engine.spatialMap.AllWorlds() {
 		hexLoc, ok := loc.(spatial.RegionLocation)
 		if !ok {
 			continue
 		}
-		// deliberate: crossingCost 0 — "within N hexes" is raw hex distance, not the
-		// drift-priced journey ChangeHomeworld uses (Effort 3 Plan, Decision 5).
-		dist, err := engine.spatialMap.Distance(from, hexLoc.RegionHex(), 0)
-		if err != nil {
-			continue
-		}
-		if dist > 0 && dist <= maxHex {
+		if pred(hexLoc) {
 			within = append(within, hexLoc.ID())
 		}
 	}
 	sort.Strings(within)
-	return within, nil
-}
-
-// WorldsInRegion returns the IDs of every world sharing the origin hex's region,
-// name-sorted, excluding the origin hex itself. Region membership is a pure equality
-// check — no distance math, since every hex already carries its RegionID.
-func (engine *WorldEngine) WorldsInRegion(from spatial.RegionHex) ([]string, error) {
-	var within []string
-	for _, loc := range engine.spatialMap.AllWorlds() {
-		hexLoc, ok := loc.(spatial.RegionLocation)
-		if !ok {
-			continue
-		}
-		hex := hexLoc.RegionHex()
-		if hex.RegionID != from.RegionID || hex == from {
-			continue
-		}
-		within = append(within, hexLoc.ID())
-	}
-	sort.Strings(within)
-	return within, nil
+	return within
 }
 
 // BuildRelocateMutations validates that destination is one of the caller-supplied

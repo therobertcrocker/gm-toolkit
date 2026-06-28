@@ -427,7 +427,7 @@ func deriveHomeworldTargets(faction *domain.Faction, worldEngine *world.WorldEng
 	return targets
 }
 
-func (a *actionCollector) SelectPurchaseEnablerAsset(world string, candidates []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+func (a *actionCollector) SelectPurchaseEnablerAsset(world string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
 	raw, err := a.adapter.ask(AskSelectPurchaseEnablerAsset, nil, SelectPurchaseEnablerAssetPayload{
 		World:      world,
 		Candidates: candidates,

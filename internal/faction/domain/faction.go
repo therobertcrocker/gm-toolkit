@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"maps"
 	"slices"
 	"strings"
 )
@@ -65,6 +66,42 @@ type Faction struct {
 	PendingPurchaseDiscount int               `toml:"pending_purchase_discount,omitempty"`
 }
 
+// Clone deep-copies a faction so a caller can apply mutations to the copy without
+// touching shared state: every reference-typed field gets its own copy. Update this
+// when Faction gains a reference-typed field, or the copy will alias the original.
+func (faction *Faction) Clone() *Faction {
+	clone := *faction
+	if faction.Assets != nil {
+		clone.Assets = make(map[string]*Asset, len(faction.Assets))
+		for id, asset := range faction.Assets {
+			clone.Assets[id] = asset.Clone()
+		}
+	}
+	if faction.Bases != nil {
+		clone.Bases = make([]*Base, len(faction.Bases))
+		for i, base := range faction.Bases {
+			baseCopy := *base
+			clone.Bases[i] = &baseCopy
+		}
+	}
+	if faction.Tags != nil {
+		clone.Tags = make([]*Tag, len(faction.Tags))
+		for i, tag := range faction.Tags {
+			tagCopy := *tag
+			clone.Tags[i] = &tagCopy
+		}
+	}
+	if faction.ActiveGoal != nil {
+		goalCopy := *faction.ActiveGoal
+		clone.ActiveGoal = &goalCopy
+	}
+	if faction.HookBudgets != nil {
+		clone.HookBudgets = make(map[string]int, len(faction.HookBudgets))
+		maps.Copy(clone.HookBudgets, faction.HookBudgets)
+	}
+	return &clone
+}
+
 func RatingsFromScale(s FactionScale) (primary, secondary, tertiary int) {
 	switch s {
 	case ScaleMajor:
@@ -89,6 +126,21 @@ func AssetCountsFromScale(s FactionScale) (primary, other int) {
 
 func CalcMaxHP(f *Faction) int {
 	return 4 + HPValueForRating(f.Force) + HPValueForRating(f.Cunning) + HPValueForRating(f.Wealth)
+}
+
+// StatScore returns the faction's attribute rating for an asset category's stat
+// (Force / Cunning / Wealth); an unrecognized stat scores 0.
+func (faction *Faction) StatScore(stat FactionStat) int {
+	switch stat {
+	case StatForce:
+		return faction.Force
+	case StatCunning:
+		return faction.Cunning
+	case StatWealth:
+		return faction.Wealth
+	default:
+		return 0
+	}
 }
 
 func HPValueForRating(rating int) int {

@@ -99,15 +99,8 @@ type attackRecord struct {
 }
 
 type abilityRecord struct {
-	AttackerStat string              `toml:"attacker_stat"`
-	DefenderStat string              `toml:"defender_stat"`
-	Effect       string              `toml:"effect"`
-	Target       string              `toml:"target"`
-	Die          string              `toml:"die"`
-	Outcomes     []outcomeRecord     `toml:"outcomes"`
-	Steps        []abilityStepRecord `toml:"steps"`
-	Relocate     *relocateRecord     `toml:"relocate"`
-	Purchase     *purchaseRecord     `toml:"purchase"`
+	abilityStepRecord
+	Steps []abilityStepRecord `toml:"steps"`
 }
 
 type abilityStepRecord struct {
@@ -141,7 +134,6 @@ type outcomeRecord struct {
 	To          int  `toml:"to"`
 	Coin        int  `toml:"coin"`
 	DestroySelf bool `toml:"destroy_self"`
-	Discount    int  `toml:"discount"`
 }
 
 // loadAssets globs all *_assets.toml files in <dataDir>/assets/ and merges them into one map.
@@ -254,7 +246,7 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		}
 		steps := make([]domain.AbilityStep, 0, len(r.Steps))
 		for i, sr := range r.Steps {
-			step, err := convertAbilityStep(sr.Effect, sr.Target, sr.AttackerStat, sr.DefenderStat, sr.Die, sr.Outcomes, sr.Relocate, sr.Purchase)
+			step, err := convertAbilityStep(sr)
 			if err != nil {
 				return nil, fmt.Errorf("step %d: %w", i, err)
 			}
@@ -262,56 +254,56 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		}
 		return &domain.AbilityDefinition{Steps: steps}, nil
 	}
-	step, err := convertAbilityStep(r.Effect, r.Target, r.AttackerStat, r.DefenderStat, r.Die, r.Outcomes, r.Relocate, r.Purchase)
+	step, err := convertAbilityStep(r.abilityStepRecord)
 	if err != nil {
 		return nil, err
 	}
 	return &domain.AbilityDefinition{Steps: []domain.AbilityStep{step}}, nil
 }
 
-func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr string, outcomes []outcomeRecord, relocate *relocateRecord, purchase *purchaseRecord) (domain.AbilityStep, error) {
+func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	var step domain.AbilityStep
-	if effectStr != "" {
-		effect, err := toAbilityEffect(effectStr)
+	if record.Effect != "" {
+		effect, err := toAbilityEffect(record.Effect)
 		if err != nil {
 			return domain.AbilityStep{}, err
 		}
 		step.Effect = effect
 	}
-	target, err := toTargetKind(targetStr)
+	target, err := toTargetKind(record.Target)
 	if err != nil {
 		return domain.AbilityStep{}, err
 	}
 	step.Target = target
-	if attackerStr != "" || defenderStr != "" {
-		attacker, err := toFactionStat(attackerStr)
+	if record.AttackerStat != "" || record.DefenderStat != "" {
+		attacker, err := toFactionStat(record.AttackerStat)
 		if err != nil {
 			return domain.AbilityStep{}, fmt.Errorf("attacker_stat: %w", err)
 		}
-		defender, err := toFactionStat(defenderStr)
+		defender, err := toFactionStat(record.DefenderStat)
 		if err != nil {
 			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
 		}
 		step.Contest = &domain.Contest{AttackerStat: attacker, DefenderStat: defender}
 	}
-	if dieStr != "" {
-		die, err := parseDice(dieStr)
+	if record.Die != "" {
+		die, err := parseDice(record.Die)
 		if err != nil {
 			return domain.AbilityStep{}, fmt.Errorf("die: %w", err)
 		}
 		roll := &domain.RollTable{Die: *die}
-		for _, o := range outcomes {
+		roll.Outcomes = make([]domain.AbilityOutcome, 0, len(record.Outcomes))
+		for _, o := range record.Outcomes {
 			roll.Outcomes = append(roll.Outcomes, domain.AbilityOutcome{
 				From:        o.From,
 				To:          o.To,
 				Coin:        o.Coin,
 				DestroySelf: o.DestroySelf,
-				Discount:    o.Discount,
 			})
 		}
 		step.Roll = roll
 	}
-	if relocate != nil {
+	if relocate := record.Relocate; relocate != nil {
 		scope, err := toRelocateScope(relocate.Scope)
 		if err != nil {
 			return domain.AbilityStep{}, err
@@ -336,10 +328,13 @@ func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr s
 		}
 		step.Relocate = params
 	}
-	if purchase != nil {
+	if purchase := record.Purchase; purchase != nil {
 		category, err := toFactionStat(purchase.Category)
 		if err != nil {
 			return domain.AbilityStep{}, fmt.Errorf("purchase category: %w", err)
+		}
+		if purchase.CostPercent <= 0 {
+			return domain.AbilityStep{}, fmt.Errorf("purchase cost_percent must be > 0, got %d", purchase.CostPercent)
 		}
 		step.Purchase = &domain.PurchaseParams{
 			Category:     category,
@@ -349,6 +344,9 @@ func convertAbilityStep(effectStr, targetStr, attackerStr, defenderStr, dieStr s
 	}
 	if step.Contest != nil && step.Roll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and roll; they are mutually exclusive")
+	}
+	if step.Effect == domain.EffectRevealStealth && step.Target != domain.TargetFaction {
+		return domain.AbilityStep{}, fmt.Errorf("reveal_stealth requires target = %q", "faction")
 	}
 	return step, nil
 }

@@ -194,7 +194,7 @@ type SelectRelocateOrdersPayload struct {
 }
 type SelectPurchaseEnablerAssetPayload struct {
 	World      string
-	Candidates []*domain.AssetDefinition
+	Candidates []action.PurchaseEnablerOption
 }
 
 // Per-kind payload types for ObserverEventMsg.

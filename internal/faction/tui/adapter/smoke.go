@@ -117,7 +117,7 @@ func (SmokeActionCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.Factio
 func (SmokeActionCollector) SelectChangeHomeworldTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
 	return "", action.ErrActionUnavailable
 }
-func (SmokeActionCollector) SelectPurchaseEnablerAsset(_ string, _ []*domain.AssetDefinition) (*domain.AssetDefinition, error) {
+func (SmokeActionCollector) SelectPurchaseEnablerAsset(_ string, _ []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
 	return nil, action.ErrActionUnavailable
 }
 
@@ -190,6 +190,10 @@ func (smokeHexRouter) Location(_ string) (spatial.Location, bool) { return nil, 
 
 func (smokeHexRouter) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
 	return 0, spatial.ErrNotImplemented
+}
+
+func (smokeHexRouter) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
+	return nil, spatial.ErrNotImplemented
 }
 
 func (smokeHexRouter) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {

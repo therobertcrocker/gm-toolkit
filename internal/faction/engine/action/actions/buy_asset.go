@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -80,7 +81,10 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 	def := ba.buyOrder.Definition
 	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
 	if faction.PendingPurchaseDiscount > 0 {
-		floor := def.Cost / 2 // min half normal (base) price, rounded down
+		// Floor is half base price (SWN), but never above the pre-discount cost: a
+		// cost-reducing hook may already have pushed the price below half-base, and a
+		// discount must never raise it back up.
+		floor := min(def.Cost/2, ba.cost)
 		ba.cost -= faction.PendingPurchaseDiscount
 		if ba.cost < floor {
 			ba.cost = floor
@@ -152,35 +156,30 @@ func availableWorlds(faction *domain.Faction) []string {
 	return worlds
 }
 
-// purchasableDefinitions returns definitions the faction can afford, meets the
-// minimum attribute rating for, passes tech level on fragmentID, and satisfies
-// the P-flag requirement (Planetary Government on the target world).
+// purchasableDefinitions returns the definitions the faction may buy on fragmentID via
+// domain.CanPurchase: affordable at base cost, meeting the minimum attribute rating, within
+// the world's tech level, and holding Planetary Government for P-flagged defs. An unknown
+// world imposes no tech ceiling (math.MaxInt) but cannot confer government, so P-flagged
+// defs are rejected — matching the purchase_enabler path.
 func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.WorldEngine, registry *hooks.Registry) []*domain.AssetDefinition {
-	var worldTL int
-	var worldKnown bool
+	techCap := math.MaxInt
+	holdsGovernment := false
 	if worldEngine != nil {
 		loc, ok := worldEngine.Location(fragmentID)
 		if !ok {
 			return nil
 		}
-		worldTL = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
-		worldKnown = true
+		techCap = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
+		if worldEngine.Index != nil {
+			holdsGovernment = domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID])
+		}
 	}
 
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
-		if faction.Coin < def.Cost || statScore(faction, def.Category) < def.MinRating {
-			continue
+		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: def.Cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
+			result = append(result, def)
 		}
-		if worldKnown && def.TechLevel > worldTL {
-			continue
-		}
-		if def.HasFlag(domain.FlagPermission) && worldEngine != nil && worldEngine.Index != nil {
-			if !domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID]) {
-				continue
-			}
-		}
-		result = append(result, def)
 	}
 	return result
 }

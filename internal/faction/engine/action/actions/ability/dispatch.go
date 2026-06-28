@@ -1,8 +1,11 @@
 package ability
 
 import (
+	"log/slog"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -52,18 +55,38 @@ func Dispatch(
 	if def.Ability == nil || len(def.Ability.Steps) == 0 {
 		return confirmApplied(asset, def, collector)
 	}
-	var mutations []domain.Mutation
-	workingAsset := asset
+	// Pre-flight: if any step's effect is not yet built, the whole ability is a
+	// not-yet-built no-op. Bail before executing any step, so a built early step
+	// never half-applies (moves an asset, spends Coin) only to be discarded when a
+	// later unbuilt step short-circuits to confirmApplied.
 	for _, step := range def.Ability.Steps {
-		handler, ok := handlers[step.Effect]
-		if !ok {
+		if _, ok := handlers[step.Effect]; !ok {
 			return confirmApplied(asset, def, collector)
 		}
-		target, err := resolveTarget(step, faction, workingAsset, factionState, collector)
+	}
+	var mutations []domain.Mutation
+
+	// Cross-step working view: after each step, re-project the acting faction's own
+	// post-step state (Location, Coin, …) onto a clone via the same mutation.Apply the
+	// real Output() runs — so a later step reads what an earlier step changed, without a
+	// parallel projection that could drift from the engine. The clone, not shared state,
+	// is what each step sees.
+	discardLog := slog.New(slog.DiscardHandler)
+	mutationEngine := mutation.New(discardLog)
+	workingFaction := faction.Clone()
+	workingState := &state.FactionState{Factions: map[string]*domain.Faction{faction.ID: workingFaction}}
+	workingAsset := workingFaction.Assets[asset.ID]
+	if workingAsset == nil {
+		workingAsset = asset.Clone()
+	}
+
+	for _, step := range def.Ability.Steps {
+		handler := handlers[step.Effect]
+		target, err := resolveTarget(step, workingFaction, workingAsset, factionState, collector)
 		if err != nil {
 			return nil, err
 		}
-		passed, err := passesGate(step, faction, target, roller)
+		passed, err := passesGate(step, workingFaction, target, roller)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +98,7 @@ func Dispatch(
 			break
 		}
 		stepMutations, err := handler(StepContext{
-			Faction:      faction,
+			Faction:      workingFaction,
 			Asset:        workingAsset,
 			Def:          def,
 			Step:         step,
@@ -90,23 +113,16 @@ func Dispatch(
 			return nil, err
 		}
 		mutations = append(mutations, stepMutations...)
-		workingAsset = applyAssetMovedView(workingAsset, stepMutations)
-	}
-	return mutations, nil
-}
-
-// applyAssetMovedView returns a location-updated copy of asset if muts contains an
-// AssetMoved targeting it, so later steps in the same ability read the post-move
-// location without writing shared state (the real AssetMoved still applies later).
-func applyAssetMovedView(asset *domain.Asset, muts []domain.Mutation) *domain.Asset {
-	for _, mutation := range muts {
-		if moved, ok := mutation.(domain.AssetMoved); ok && moved.AssetID == asset.ID {
-			clone := *asset
-			clone.Location = moved.ToLocation
-			return &clone
+		// deliberate: drop the projection's apply error — workingState holds only the
+		// acting faction, so any other-faction mutation (e.g. a reveal clearing a target
+		// faction's stealth) is an expected miss; a genuine miss still surfaces when
+		// Output() applies these same mutations against full state.
+		_ = mutationEngine.Apply(workingState, stepMutations, discardLog)
+		if updated, ok := workingFaction.Assets[asset.ID]; ok {
+			workingAsset = updated
 		}
 	}
-	return asset
+	return mutations, nil
 }
 
 func confirmApplied(asset *domain.Asset, def *domain.AssetDefinition, collector action.Collector) ([]domain.Mutation, error) {

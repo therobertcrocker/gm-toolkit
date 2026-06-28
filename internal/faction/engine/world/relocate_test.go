@@ -33,6 +33,18 @@ func (r *relocateRouter) Distance(from, to spatial.RegionHex, _ int) (int, error
 	return dist, nil
 }
 
+func (r *relocateRouter) DistancesFrom(from spatial.RegionHex, crossingCost int) (map[spatial.RegionHex]int, error) {
+	distances := make(map[spatial.RegionHex]int, len(r.worlds))
+	for _, hex := range r.worlds {
+		dist, err := r.Distance(from, hex, crossingCost)
+		if err != nil {
+			return nil, err
+		}
+		distances[hex] = dist
+	}
+	return distances, nil
+}
+
 func (r *relocateRouter) Path(from, to spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return []spatial.RegionHex{from, to}, 1, nil
 }
@@ -146,7 +158,7 @@ func TestWorldsWithin(t *testing.T) {
 	// origin at r1 hex 0; in-region worlds: near=1, mid=2, far=5; offregion at r2 hex 10.
 	// maxHex=3 keeps near and mid; origin (dist 0), far (dist 5), and offregion (dist 10)
 	// are all excluded. Distance ignores region, so offregion's exclusion is purely range.
-	within, err := engine.WorldsWithin(hexAt("r1", 0), 3)
+	within, err := engine.WorldsWithin(hexAt("r1", 0), 3, false)
 	if err != nil {
 		t.Fatalf("WorldsWithin: %v", err)
 	}
@@ -156,17 +168,47 @@ func TestWorldsWithin(t *testing.T) {
 	}
 }
 
+func TestWorldsWithin_IncludeOrigin(t *testing.T) {
+	engine := newRelocateEngine()
+
+	// Same fixture/range as TestWorldsWithin, but includeOrigin=true (other-scope): the
+	// origin world joins near and mid; far and offregion are still out of range.
+	within, err := engine.WorldsWithin(hexAt("r1", 0), 3, true)
+	if err != nil {
+		t.Fatalf("WorldsWithin: %v", err)
+	}
+	want := []string{"mid", "near", "origin"}
+	if !reflect.DeepEqual(within, want) {
+		t.Errorf("WorldsWithin = %v, want %v (name-sorted, origin included, out-of-range excluded)", within, want)
+	}
+}
+
 func TestWorldsInRegion(t *testing.T) {
 	engine := newRelocateEngine()
 
 	// origin at r1 hex 0; same-region worlds near/mid/far are all included regardless of
 	// hex distance; origin itself is excluded; offregion (r2) is filtered out by region.
-	within, err := engine.WorldsInRegion(hexAt("r1", 0))
+	within, err := engine.WorldsInRegion(hexAt("r1", 0), false)
 	if err != nil {
 		t.Fatalf("WorldsInRegion: %v", err)
 	}
 	want := []string{"far", "mid", "near"}
 	if !reflect.DeepEqual(within, want) {
 		t.Errorf("WorldsInRegion = %v, want %v (name-sorted, origin and other regions excluded)", within, want)
+	}
+}
+
+func TestWorldsInRegion_IncludeOrigin(t *testing.T) {
+	engine := newRelocateEngine()
+
+	// includeOrigin=true (other-scope): every r1 world including origin is returned;
+	// offregion (r2) is still filtered out by region.
+	within, err := engine.WorldsInRegion(hexAt("r1", 0), true)
+	if err != nil {
+		t.Fatalf("WorldsInRegion: %v", err)
+	}
+	want := []string{"far", "mid", "near", "origin"}
+	if !reflect.DeepEqual(within, want) {
+		t.Errorf("WorldsInRegion = %v, want %v (name-sorted, origin included, other regions excluded)", within, want)
 	}
 }

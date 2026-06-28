@@ -61,6 +61,9 @@ type stubWorldMap struct{}
 
 func (s *stubWorldMap) Location(id string) (spatial.Location, bool)         { return nil, false }
 func (s *stubWorldMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) { return 1, nil }
+func (s *stubWorldMap) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
+	return nil, nil
+}
 func (s *stubWorldMap) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return nil, 0, nil
 }

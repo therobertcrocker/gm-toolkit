@@ -53,6 +53,10 @@ func (s *StubSpatialMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
 	return 1, nil
 }
 
+func (s *StubSpatialMap) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
+	return nil, nil
+}
+
 func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error) {
 	if s.PathFn != nil {
 		return s.PathFn(from, to, crossingCost)

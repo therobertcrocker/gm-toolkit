@@ -28,36 +28,59 @@ type RelocateOrders struct {
 	form       *huh.Form
 }
 
-func NewRelocateOrders(p adapter.SelectRelocateOrdersPayload, rb *rulebook.Rulebook) RelocateOrders {
-	data := &relocateData{dests: make([]string, len(p.Candidates))}
+func NewRelocateOrders(payload adapter.SelectRelocateOrdersPayload, rb *rulebook.Rulebook) RelocateOrders {
+	data := &relocateData{dests: make([]string, len(payload.Candidates))}
 
-	worldOpts := make([]huh.Option[string], 0, len(p.CandidateWorlds)+1)
+	worldOpts := make([]huh.Option[string], 0, len(payload.CandidateWorlds)+1)
 	worldOpts = append(worldOpts, huh.NewOption("— do not move —", ""))
-	for _, worldID := range p.CandidateWorlds {
-		label := p.WorldNames[worldID]
+	for _, worldID := range payload.CandidateWorlds {
+		label := payload.WorldNames[worldID]
 		if label == "" {
 			label = worldID
 		}
 		worldOpts = append(worldOpts, huh.NewOption(label, worldID))
 	}
 
-	groups := make([]*huh.Group, 0, len(p.Candidates))
-	for i, asset := range p.Candidates {
+	groups := make([]*huh.Group, 0, len(payload.Candidates))
+	for i, asset := range payload.Candidates {
 		idx := i
 		name := asset.DefinitionID
 		if def, ok := rb.Assets[asset.DefinitionID]; ok {
 			name = def.Name
 		}
-		groups = append(groups, huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(fmt.Sprintf("%s — relocate to?", name)).
-				Options(worldOpts...).
-				Value(&data.dests[idx]),
-		))
+		sel := huh.NewSelect[string]().
+			Title(fmt.Sprintf("%s — relocate to?", name)).
+			Options(worldOpts...).
+			Value(&data.dests[idx])
+		if payload.MaxAssets > 0 {
+			sel = sel.Validate(capValidator(data, idx, payload.MaxAssets))
+		}
+		groups = append(groups, huh.NewGroup(sel))
 	}
 
 	form := huh.NewForm(groups...).WithTheme(styles.FormTheme())
-	return RelocateOrders{data: data, candidates: p.Candidates, form: form}
+	return RelocateOrders{data: data, candidates: payload.Candidates, form: form}
+}
+
+// capValidator rejects a destination pick when it would push the count of assets
+// being relocated past maxAssets. dests[idx] is already bound to the incoming value
+// by the time huh runs Validate, so the passed val is counted via the slice.
+func capValidator(data *relocateData, idx, maxAssets int) func(string) error {
+	return func(val string) error {
+		if val == "" {
+			return nil
+		}
+		count := 0
+		for i, dest := range data.dests {
+			if dest != "" || i == idx {
+				count++
+			}
+		}
+		if count > maxAssets {
+			return fmt.Errorf("at most %d asset(s) may be relocated by this ability", maxAssets)
+		}
+		return nil
+	}
 }
 
 func (o RelocateOrders) Init() tea.Cmd { return o.form.Init() }

@@ -1,6 +1,7 @@
 package ability
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -157,7 +158,7 @@ func makeSeductressFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefin
 
 // TestDispatch_Seductress_RelocateThenReveal_Wins: the two-step ability moves the
 // Seductress to "near", and the won contest reveals the target's stealthed asset at
-// that destination world — proving applyAssetMovedView threaded the post-move
+// that destination world — proving the cross-step projection threaded the post-move
 // location into the reveal step.
 func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
 	faction, asset, def, factionState, engine := makeSeductressFixture()
@@ -212,6 +213,50 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 	}
 	if _, ok := mutations[0].(domain.AssetMoved); !ok {
 		t.Errorf("mutations[0] type = %T, want AssetMoved", mutations[0])
+	}
+}
+
+// TestDispatch_CrossStep_CoinProjection: a two-step self-relocate where the faction
+// can afford exactly one move. The cross-step projection applies step 1's CoinDelta to
+// the working faction, so step 2 reads Coin 0 and fails its affordability check —
+// proving the projection threads Coin, not just Location. Without it, step 2 would read
+// the stale pre-action balance and overdraw the faction.
+func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
+	acting := &domain.Asset{
+		ID:           "a1",
+		DefinitionID: "SF",
+		OwnerID:      "f1",
+		Location:     domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)},
+	}
+	faction := &domain.Faction{ID: "f1", Coin: 1, Assets: map[string]*domain.Asset{"a1": acting}}
+	relocateStep := domain.AbilityStep{
+		Effect:   domain.EffectRelocate,
+		Target:   domain.TargetNone,
+		Relocate: &domain.RelocateParams{Scope: domain.RelocateSelf, Range: domain.RangeHexes, MaxHex: 1, CoinCost: 1},
+	}
+	def := &domain.AssetDefinition{
+		ID:      "SF",
+		Name:    "Courier",
+		Flags:   []domain.AssetFlag{domain.FlagAction},
+		Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{relocateStep, relocateStep}},
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	gomock.InOrder(
+		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil),
+		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "mid"}}, nil),
+	)
+
+	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, factionState, relocRulebook(), relocEngine())
+	if err == nil {
+		t.Fatal("Dispatch: expected insufficient-Coin error on step 2, got nil")
+	}
+	if !strings.Contains(err.Error(), "insufficient Coin") {
+		t.Errorf("Dispatch error = %q, want it to mention insufficient Coin", err.Error())
 	}
 }
 

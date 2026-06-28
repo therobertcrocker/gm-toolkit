@@ -280,6 +280,24 @@ func (regionMap *RegionMap) Distance(from, to RegionHex, crossingCost int) (int,
 	return cost, nil
 }
 
+// DistancesFrom runs a single shortest-path pass from `from`, returning the hex cost
+// to every reachable hex. Callers filtering many destinations against one origin should
+// prefer this over repeated Distance calls (one Dijkstra, not one per target).
+func (regionMap *RegionMap) DistancesFrom(from RegionHex, crossingCost int) (map[RegionHex]int, error) {
+	if crossingCost < 0 {
+		return nil, fmt.Errorf("%w: crossingCost=%d (must be non-negative)", ErrInvalidCost, crossingCost)
+	}
+	source := hexNode{regionID: from.RegionID, coord: from.Coord}
+	// deliberate: hexNode{} as target, not a real hex — its empty regionID matches no
+	// node, so dijkstra never early-returns and relaxes the whole reachable frontier.
+	dist, _ := dijkstra(regionMap, source, hexNode{}, crossingCost)
+	result := make(map[RegionHex]int, len(dist))
+	for node, cost := range dist {
+		result[RegionHex{RegionID: node.regionID, Coord: node.coord}] = cost
+	}
+	return result, nil
+}
+
 func (regionMap *RegionMap) Path(from, to RegionHex, crossingCost int) ([]RegionHex, int, error) {
 	if crossingCost < 0 {
 		return nil, 0, fmt.Errorf("%w: crossingCost=%d (must be non-negative)", ErrInvalidCost, crossingCost)
