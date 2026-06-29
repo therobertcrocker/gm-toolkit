@@ -66,7 +66,7 @@ dispatching reactor hooks (see [orchestrator](orchestrator.md)).
 ### The collector seam
 
 `collector.go` defines `action.Collector`, the prompt surface the actions call
-into. It embeds `hooks.Collector` and adds sixteen action-specific methods —
+into. It embeds `hooks.Collector` and adds eighteen action-specific methods —
 `SelectAttackers`, `SelectBuyOrder`, `SelectBribeTarget`,
 `SelectExpandInfluenceOrder`, and so on — plus the small order/option structs
 those methods exchange (`BuyOrder`, `RefitOrder`, `ExpandInfluenceOrder`, …).
@@ -88,6 +88,17 @@ gathers the A-flagged assets, then loops `ability.Dispatch` over them; each
 dispatch resolves one asset's ability into mutations that fold into the action's
 output.
 
+`Dispatch` is itself a **per-step pipeline**, not a single handler call. An
+ability is a sequence of `ability.steps`; each step runs *target-selection → gate
+(stat-contest or die-roll) → terminal effect*, and the chain **halts on a failed
+gate** so a missed contest fizzles the rest. Across steps the dispatcher threads a
+**working clone** of the acting faction, re-projecting each step's own mutations
+onto the clone via the same `mutation.Apply` the real `Output()` runs — so a later
+step reads what an earlier one changed without a parallel projection that could
+drift. A pre-flight pass bails the whole ability to a `confirmApplied` no-op if
+*any* step's effect is not yet built, so a built early step never half-applies
+before a later unbuilt one short-circuits.
+
 ## Actions catalogue
 
 The twelve standard actions wired by `RegisterDefaultActions`. "Prompts" are the
@@ -101,7 +112,7 @@ determined once selected. The rules behind the numbers live in
 | Sell Asset | Remove an asset for half its Cost back | `SelectAsset` → `AssetRemoved`, `CoinDelta` |
 | Repair Faction | Heal the faction's own HP, free | — → `FactionHPDelta` |
 | Repair Asset | Heal damaged assets; cost escalates per heal on the same asset | `SelectRepairOrders` → `AssetHPDelta`, `CoinDelta` |
-| Buy Asset | Purchase an asset onto a world, inactive until next turn | `SelectBuyOrder` (`SelectAsset` for a stealth target) → `AssetAdded`, `CoinDelta` (`AssetStealthApplied`) |
+| Buy Asset | Purchase an asset onto a world, inactive until next turn | `SelectBuyOrder` (`SelectAsset` for a stealth target) → `AssetAdded`, `CoinDelta` (`AssetStealthApplied`, `PurchaseDiscountConsumed`) |
 | Refit Asset | Swap an asset for another of its category, paying the cost difference | `SelectRefitOrder` → `AssetRemoved`, `AssetAdded`, `CoinDelta` |
 | Attack | Resolve asset combat against rivals at a world/hex; damage may redirect to a base | `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase` → `AssetHPDelta`, `AssetRemoved`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed`, `AssetStealthCleared` |
 | Expand Influence | Place or reinforce a Base of Influence; a new base draws rival free attacks | `SelectExpandInfluenceOrder`, `ConfirmRivalFreeAttack`, `SelectBaseAttackers` → `BaseAdded`, `BaseHealed`, `BaseExpanded`, `CoinDelta`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed` |
@@ -142,14 +153,31 @@ can cascade to bases and faction HP.
   action, keeping the engine's top-level sub-engine count to the seven the
   orchestrator wires. (Frozen log 96–109; the ability-engine redesign.)
 - **A-dispatch keys on the effect, not the asset ID.** `ability.Dispatch`
-  resolves a handler from `map[AbilityEffectType]AbilityHandler` keyed on
-  `def.Ability.Effect`, not from the asset's `def.ID`. Handlers are named for the
-  effect they implement (`reveal_stealth`), so every asset that routes to an
-  effect shares one handler instead of needing a per-ID entry; an asset with no
-  ability block, or an effect with no registered handler, falls through to
+  resolves a handler from `map[domain.AbilityEffectType]EffectHandler` keyed on
+  each step's `Effect`, not from the asset's `def.ID`. Handlers are named for the
+  effect they implement (`reveal_stealth`, `coin_delta`, `relocate`,
+  `purchase_discount`, `purchase_enabler`), so every asset that routes to an effect
+  shares one handler instead of needing a per-ID entry; an asset with no ability
+  block, or any step whose effect has no registered handler, falls through to
   `confirmApplied` (a no-op confirmation) rather than erroring. This removed the
   asset-ID prefix fragility that motivated R.018 and is the seam the data-driven
   ability registry ([ability catalog](ability-catalog.md)) builds on.
+- **Ability dispatch is a per-step pipeline that halts on failure.** Each
+  `ability.steps` entry runs target → gate → effect; the chain stops at the first
+  failed gate, and a working clone of the acting faction carries each step's
+  mutations forward so a later step reads what an earlier one changed. Abilities
+  must therefore author ungated steps (relocate, roll-table) before gated ones.
+  (Effort 1 Plan, Decision 1.)
+- **Effect handlers receive the world engine by parameter, not import.** Movement
+  effects (relocate, the purchase-enabler's government check) need spatial queries,
+  so `Dispatch` threads the `*world.WorldEngine` into each step's `StepContext` —
+  nil for non-spatial effects — keeping `actions/ability/` free of an `engine`
+  import the same way `RegisterDefaultActions` is.
+- **Buy Asset and the purchase-enabler share one purchase path.** Both routes build
+  the new asset through `domain.NewPurchasedAsset` and gate it through
+  `domain.CanPurchase` / `PurchaseTerms`, and both consume a
+  `PendingPurchaseDiscount` under the same half-base-price floor clamp — so the two
+  purchase surfaces cannot drift on cost, permission, or discount rules.
 
 ## Dependencies
 

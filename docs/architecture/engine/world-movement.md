@@ -50,12 +50,14 @@ campaign data degrades one entity, it doesn't abort the turn.
 ### The spatial seam
 
 The world engine never imports the map's internals. It depends on a narrow
-`HexRouter` interface — the read-only [`SpatialMap`](spatial.md) plus just
-`Distance` and `Path` over `RegionHex` — and `spatial.RegionMap` is asserted to
-satisfy it (`var _ HexRouter = (*spatial.RegionMap)(nil)`). This is the seam
-named in the [engine overview](overview.md): movement asks the map for a route
-and a cost and stays ignorant of how regions, warps, and crossing costs produce
-them.
+`HexRouter` interface — the read-only [`SpatialMap`](spatial.md) plus `Distance`,
+`DistancesFrom`, `Path`, and `AllWorlds` over `RegionHex` — and `spatial.RegionMap`
+is asserted to satisfy it (`var _ HexRouter = (*spatial.RegionMap)(nil)`). This is
+the seam named in the [engine overview](overview.md): movement asks the map for a
+route and a cost and stays ignorant of how regions, warps, and crossing costs
+produce them. `DistancesFrom` (one Dijkstra pass to every reachable hex) and
+`AllWorlds` (the full world list) are what the instant-relocation enumerators
+below ask of the map.
 
 ### Movement orders
 
@@ -149,6 +151,25 @@ flowchart TD
   classDef muted   fill:#45475a,stroke:#585b70,color:#cdd6f4
 ```
 
+### Instant relocation
+
+Abilities need a *different* move: not a multi-turn drift order but an immediate
+jump. `BuildRelocateMutations` is the world engine's second entry point — distinct
+from the drift-order `TickMovementOrders`/`BuildMovementMutations` above. It
+validates a destination against a caller-supplied `legalWorlds` list and emits an
+`AssetMoved` for the moved asset (plus a `CoinDelta` when the move costs Coin),
+settling it **this turn** with no order, no path, and no tick. The mutation's
+`Cause` is `"ability"`, distinguishing a relocate from a drift-phase move.
+
+The range geometry lives in two enumerators beside it: `WorldsWithin` returns
+every world within *N* raw hexes of an origin (one `DistancesFrom` pass at crossing
+cost 0 — raw hex distance, *not* the drift-priced journey ChangeHomeworld uses),
+and `WorldsInRegion` returns every world sharing the origin's region (a pure
+`RegionID` equality check, no distance math). Both route through a shared
+`worldsMatching` predicate helper. `BuildRelocateMutations` stays
+range-mode-agnostic — the enumerator picks the legal set, the primitive only
+validates membership and emits.
+
 ## Key Decisions
 
 - **The index is rebuilt fresh each faction turn, not mutated incrementally.** A
@@ -178,6 +199,16 @@ flowchart TD
   engine records the manifest but does not move the cargo — a
   [`TransportReactor`](effect-mutation.md) emits the cargo `AssetMoved`s — so the
   manifest and the movement stay decoupled and cargo location is recoverable.
+- **Instant relocation is a distinct entry point from drift orders.**
+  `BuildRelocateMutations` settles an asset at its destination the same turn — no
+  order, path, or tick — so an ability's move is immediate where a drift order is
+  multi-turn. The two share the world engine but not the movement phase. (Effort 3
+  Plan, Decisions 3 & 5.)
+- **Relocate reuses `AssetMoved`; it adds no new mutation.** An instant move is the
+  same state change as a cargo follow — an asset's `Location` changes — so it emits
+  the existing `AssetMoved` (with `Cause: "ability"`) rather than a parallel
+  relocate mutation, and the apply layer needs no new arm. (Effort 3 Plan,
+  Decision 4.)
 
 ## Dependencies
 

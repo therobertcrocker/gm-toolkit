@@ -70,6 +70,12 @@ sequence by walking the predecessor map back from the target and reversing it;
 zero. The package's sentinel errors (`ErrUnknownWorld`, `ErrNoPath`,
 `ErrInvalidCost`) are its whole failure vocabulary.
 
+`DistancesFrom` is a one-to-many sibling to `Distance`: a single Dijkstra pass
+from an origin that returns the cost to *every* reachable hex (a
+`map[RegionHex]int`), for callers that need the whole reachable set at once rather
+than a single pair — the [world engine](world-movement.md)'s relocate enumerators
+use it to range-filter worlds.
+
 ### The offline builder
 
 `builder/` is a separate authoring pipeline (driven by the spatial-map CLI), not
