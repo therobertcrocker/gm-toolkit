@@ -55,8 +55,9 @@ a thin wrapper over a `huh` form themed with `styles.FormTheme()`:
 - **`ConfirmOverlay`** — yes/no.
 
 Prompts that need more than a list — `buyorder`, `refitorder`, `repairorders`,
-`bribe`, `expand`, `movement`, `cargo`, `attack`, `selectaction`, the ability
-prompts — are bespoke `huh` forms in their own files (~18 overlays in all), but
+`bribe`, `expand`, `movement`, `cargo`, `attack`, `selectaction`,
+`relocateorders`, `purchaseenabler`, the ability prompts — are bespoke `huh` forms
+in their own files (~18 overlays in all), but
 follow the identical pattern: build the form in the constructor, watch for
 `huh.StateCompleted` in `Update`, emit `OverlayDoneMsg` with the collected value.
 

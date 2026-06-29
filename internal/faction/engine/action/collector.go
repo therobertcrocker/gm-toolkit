@@ -12,7 +12,9 @@ import (
 // Collector abstracts all user-input methods that action implementations may call.
 type Collector interface {
 	hooks.Collector
-	SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error)
+	SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
+	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]RelocateOrder, error)
+	SelectPurchaseEnablerAsset(world string, candidates []PurchaseEnablerOption) (*domain.AssetDefinition, error)
 	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (BuyOrder, error)
@@ -42,10 +44,24 @@ type BuyOrder struct {
 	Definition *domain.AssetDefinition
 }
 
+// RelocateOrder describes one asset to move and the world it moves to.
+type RelocateOrder struct {
+	Asset            *domain.Asset
+	DestinationWorld string
+}
+
 // RefitOption bundles a refittable asset with valid replacement definitions.
 type RefitOption struct {
 	Asset        *domain.Asset
 	Replacements []*domain.AssetDefinition
+}
+
+// PurchaseEnablerOption pairs an enabler-purchasable definition with its
+// engine-computed surcharged cost, so the selection view displays the price
+// without recomputing the surcharge.
+type PurchaseEnablerOption struct {
+	Def  *domain.AssetDefinition
+	Cost int
 }
 
 // RefitOrder describes a Refit Asset instruction.

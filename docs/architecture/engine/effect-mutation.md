@@ -135,6 +135,7 @@ is the string written to history; the rules behind the numbers live in
 
 **Economy & faction**
 - `coin_delta` — adjust a faction's Coin
+- `purchase_discount_granted` / `purchase_discount_consumed` — set / clear a faction's pending next-purchase discount (Commodities Broker grants; Buy Asset and the purchase-enabler ability consume)
 - `influence_delta` — adjust a Base's Influence
 - `faction_hp_delta` — adjust faction HP
 - `xp_awarded` / `xp_spent` — credit / debit XP
@@ -147,7 +148,7 @@ is the string written to history; the rules behind the numbers live in
 - `asset_hp_delta` — adjust an asset's HP
 - `asset_maintained_flag` — set the maintained flag
 - `asset_stealth_applied` / `asset_stealth_cleared` — toggle stealth
-- `asset_moved` — set an asset's Location (cargo follows a transport)
+- `asset_moved` — set an asset's Location (cargo follows a transport; also emitted by the relocate ability with `Cause: "ability"`)
 
 **Bases**
 - `base_added` / `base_destroyed` — place / remove a Base of Influence

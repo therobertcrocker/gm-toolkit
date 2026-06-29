@@ -36,6 +36,8 @@ const (
 	AskSelectAbilityAssets
 	AskConfirmAbilityApplied
 	AskSelectFactionTestTarget
+	AskSelectRelocateOrders
+	AskSelectPurchaseEnablerAsset
 )
 
 type CollectorAskMsg struct {
@@ -182,6 +184,17 @@ type SelectFactionTestTargetPayload struct {
 	Asset      *domain.Asset
 	Effect     domain.AbilityEffectType
 	Candidates []*domain.Faction
+}
+type SelectRelocateOrdersPayload struct {
+	Acting          *domain.Asset
+	Candidates      []*domain.Asset
+	CandidateWorlds []string
+	WorldNames      map[string]string // worldID -> display name (adapter-built)
+	MaxAssets       int               // 0 = unbounded
+}
+type SelectPurchaseEnablerAssetPayload struct {
+	World      string
+	Candidates []action.PurchaseEnablerOption
 }
 
 // Per-kind payload types for ObserverEventMsg.

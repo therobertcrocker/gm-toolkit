@@ -8,6 +8,15 @@
 > Survey verified against the SWN asset data and the dispatch source; the
 > registry it specifies is **not yet built** — this page is the input that
 > settles its shape.
+>
+> **As-built (A.001.2):** the A-side is now *partly built* — `reveal_stealth`,
+> `coin_delta`, `purchase_discount`, `relocate`, and `purchase_enabler` ship as
+> effect-keyed handlers, so the "not yet built" framing above is historical for
+> those five. This page stays the **frozen design artifact** for the F.022 arc;
+> for as-built truth see [actions](actions.md) (ability dispatch), [effect &
+> mutation](effect-mutation.md) (the mutation vocabulary), and
+> [world & movement](world-movement.md) (relocate). The S-side and the remaining
+> A-side effects (Marketers, Seditionists, Monopoly) are still future.
 
 ## Purpose
 
@@ -85,7 +94,7 @@ with composition: **target-selection → (stat-contest | die-roll) → effect**.
 | **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` | success forces target to pay half an asset's cost or have it disabled |
 | **coin-drain (on attack)** | Monopoly `SWN-W4-002` | flagged `A` but reads reactive ("when it successfully attacks"); flag-vs-text mismatch flagged below |
 | **relocate-other (action-spent)** | Covert Shipping `SWN-C3-003`, Covert Transit Net `SWN-C6-002` | relocate *another* asset for Coin; the transport primitive is a *carrier* reactor, so these need a sibling shape |
-| **purchase-enabler** | Pretech Logistics `SWN-F5-002` | spend the action to buy one discounted Force asset on the world |
+| **purchase-enabler** | Pretech Logistics `SWN-F5-002` | spend the action to buy one Force asset on the world at a **surcharge** (half again, rounded up) |
 | **attach / restrict-action** | Seditionists `SWN-C4-004` | pay `1d4` Coin to attach to an enemy asset, suppressing its attack |
 
 ```mermaid

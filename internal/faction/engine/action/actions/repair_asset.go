@@ -106,14 +106,5 @@ func (ra *RepairAsset) Output() ([]domain.Mutation, error) {
 
 // statScore returns the faction's attribute value for the given asset category.
 func statScore(faction *domain.Faction, category domain.FactionStat) int {
-	switch category {
-	case domain.StatForce:
-		return faction.Force
-	case domain.StatCunning:
-		return faction.Cunning
-	case domain.StatWealth:
-		return faction.Wealth
-	default:
-		return 0
-	}
+	return faction.StatScore(category)
 }

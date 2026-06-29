@@ -36,6 +36,28 @@ type AssetRemoved struct {
 
 func (m AssetRemoved) Type() string { return "asset_removed" }
 
+// PurchaseDiscountGranted sets a faction's pending discount on its next asset
+// purchase (Commodities Broker). It overwrites any existing pending discount —
+// the discount is scoped to the next purchase, not accumulated.
+type PurchaseDiscountGranted struct {
+	FactionID         string `json:"faction_id"`
+	Amount            int    `json:"amount"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m PurchaseDiscountGranted) Type() string { return "purchase_discount_granted" }
+
+// PurchaseDiscountConsumed clears a faction's pending purchase discount, emitted by
+// Buy Asset once the discount has been applied to a purchase.
+type PurchaseDiscountConsumed struct {
+	FactionID         string `json:"faction_id"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m PurchaseDiscountConsumed) Type() string { return "purchase_discount_consumed" }
+
 // AssetMaintainedFlag updates the Maintained flag on a specific asset.
 type AssetMaintainedFlag struct {
 	FactionID         string `json:"faction_id"`
@@ -318,12 +340,12 @@ type MovementOrderIssued struct {
 func (m MovementOrderIssued) Type() string { return "movement_order_issued" }
 
 type MovementOrderProgressed struct {
-	FactionID         string           `json:"faction_id"`
-	AssetID           string           `json:"asset_id"`
-	NewStepIdx        int              `json:"new_step_idx"`
+	FactionID         string            `json:"faction_id"`
+	AssetID           string            `json:"asset_id"`
+	NewStepIdx        int               `json:"new_step_idx"`
 	RegionHex         spatial.RegionHex `json:"region_hex"`
-	Cause             string           `json:"cause"`
-	CausedByFactionID string           `json:"caused_by_faction_id"`
+	Cause             string            `json:"cause"`
+	CausedByFactionID string            `json:"caused_by_faction_id"`
 }
 
 func (m MovementOrderProgressed) Type() string { return "movement_order_progressed" }

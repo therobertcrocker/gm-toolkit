@@ -96,14 +96,113 @@ func TestLoad(t *testing.T) {
 		if asset.Ability == nil {
 			t.Fatal("expected ability, got nil")
 		}
-		if asset.Ability.AttackerStat != domain.StatCunning {
-			t.Errorf("attacker_stat: got %q, want %q", asset.Ability.AttackerStat, domain.StatCunning)
+		if len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %d, want 1", len(asset.Ability.Steps))
 		}
-		if asset.Ability.DefenderStat != domain.StatCunning {
-			t.Errorf("defender_stat: got %q, want %q", asset.Ability.DefenderStat, domain.StatCunning)
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectRevealStealth {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectRevealStealth)
 		}
-		if asset.Ability.Effect != domain.EffectRevealStealth {
-			t.Errorf("effect: got %q, want %q", asset.Ability.Effect, domain.EffectRevealStealth)
+		if step.Contest == nil {
+			t.Fatal("expected a contest on the reveal step, got nil")
+		}
+		if step.Contest.AttackerStat != domain.StatCunning {
+			t.Errorf("attacker_stat: got %q, want %q", step.Contest.AttackerStat, domain.StatCunning)
+		}
+		if step.Contest.DefenderStat != domain.StatCunning {
+			t.Errorf("defender_stat: got %q, want %q", step.Contest.DefenderStat, domain.StatCunning)
+		}
+		if step.Target != domain.TargetFaction {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetFaction)
+		}
+	})
+
+	t.Run("seductress relocate-then-reveal steps parsed from [[steps]]", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C2-004"]
+		if !ok {
+			t.Fatal("asset SWN-C2-004 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 2 {
+			t.Fatalf("steps: got %v, want 2", asset.Ability)
+		}
+		relocateStep := asset.Ability.Steps[0]
+		if relocateStep.Effect != domain.EffectRelocate {
+			t.Errorf("step 0 effect: got %q, want %q", relocateStep.Effect, domain.EffectRelocate)
+		}
+		if relocateStep.Relocate == nil || relocateStep.Relocate.Scope != domain.RelocateSelf || relocateStep.Relocate.MaxHex != 1 {
+			t.Errorf("step 0 relocate: got %+v, want Scope=self MaxHex=1", relocateStep.Relocate)
+		}
+		if relocateStep.Relocate != nil && relocateStep.Relocate.Range != domain.RangeHexes {
+			t.Errorf("step 0 range: got %q, want %q (default)", relocateStep.Relocate.Range, domain.RangeHexes)
+		}
+		revealStep := asset.Ability.Steps[1]
+		if revealStep.Effect != domain.EffectRevealStealth {
+			t.Errorf("step 1 effect: got %q, want %q", revealStep.Effect, domain.EffectRevealStealth)
+		}
+		if revealStep.Target != domain.TargetFaction {
+			t.Errorf("step 1 target: got %q, want %q", revealStep.Target, domain.TargetFaction)
+		}
+		if revealStep.Contest == nil || revealStep.Contest.AttackerStat != domain.StatCunning {
+			t.Errorf("step 1 contest: got %+v, want Cunning vs Cunning", revealStep.Contest)
+		}
+	})
+
+	t.Run("covert shipping relocate ability parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C3-003"]
+		if !ok {
+			t.Fatal("asset SWN-C3-003 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectRelocate || step.Relocate == nil {
+			t.Fatalf("step: got effect %q relocate %+v, want relocate effect with params", step.Effect, step.Relocate)
+		}
+		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1}
+		if *step.Relocate != want {
+			t.Errorf("relocate: got %+v, want %+v", *step.Relocate, want)
+		}
+	})
+
+	t.Run("covert transit net region relocate ability parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C6-002"]
+		if !ok {
+			t.Fatal("asset SWN-C6-002 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectRelocate || step.Relocate == nil {
+			t.Fatalf("step: got effect %q relocate %+v, want relocate effect with params", step.Effect, step.Relocate)
+		}
+		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeRegion, AssetType: domain.TypeSpecialForces, MaxAssets: 0}
+		if *step.Relocate != want {
+			t.Errorf("relocate: got %+v, want %+v", *step.Relocate, want)
+		}
+	})
+
+	t.Run("venture capital coin_delta roll table parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W6-001"]
+		if !ok {
+			t.Fatal("asset SWN-W6-001 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectCoinDelta {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectCoinDelta)
+		}
+		if step.Roll == nil || step.Roll.Die.Sides != 8 {
+			t.Fatalf("roll: got %+v, want 1d8", step.Roll)
+		}
+		if len(step.Roll.Outcomes) != 4 {
+			t.Fatalf("outcomes: got %d, want 4", len(step.Roll.Outcomes))
+		}
+		if !step.Roll.Outcomes[0].DestroySelf {
+			t.Errorf("outcome[0]: want destroy_self on roll 1")
 		}
 	})
 
@@ -247,7 +346,10 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
-	t.Run("deferred transport assets have no transport and no ability", func(t *testing.T) {
+	t.Run("deferred transport assets have no transport", func(t *testing.T) {
+		// Their relocate abilities are asserted in the dedicated subtests above; here
+		// only the absence of a TransportProfile matters (relocate is instant, not a
+		// drift-order transport).
 		deferred := []string{"SWN-C3-003", "SWN-C6-002"} // CovertShipping, CovertTransitNet
 		for _, id := range deferred {
 			def, ok := rb.Assets[id]
@@ -257,9 +359,6 @@ func TestLoad(t *testing.T) {
 			}
 			if def.Transport != nil {
 				t.Errorf("%s: expected nil Transport, got %+v", id, def.Transport)
-			}
-			if def.Ability != nil {
-				t.Errorf("%s: expected nil Ability, got %+v", id, def.Ability)
 			}
 		}
 	})
@@ -274,6 +373,26 @@ func TestLoad(t *testing.T) {
 		}
 		if tag.Name != "Colonists" {
 			t.Errorf("tag name: got %q, want %q", tag.Name, "Colonists")
+		}
+	})
+
+	t.Run("pretech logistics purchase_enabler parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-F5-002"]
+		if !ok {
+			t.Fatal("asset SWN-F5-002 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("steps: got %v, want 1", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectPurchaseEnabler {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectPurchaseEnabler)
+		}
+		if step.Purchase == nil {
+			t.Fatal("purchase params not parsed")
+		}
+		if step.Purchase.Category != domain.StatForce || step.Purchase.MaxTechLevel != 5 || step.Purchase.CostPercent != 150 {
+			t.Errorf("purchase = %+v, want {Force, 5, 150}", step.Purchase)
 		}
 	})
 

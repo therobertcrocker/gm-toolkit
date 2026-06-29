@@ -15,9 +15,13 @@ type stubMap struct{}
 
 func (s *stubMap) Location(_ string) (spatial.Location, bool)          { return nil, false }
 func (s *stubMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) { return 1, nil }
+func (s *stubMap) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
+	return nil, nil
+}
 func (s *stubMap) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return nil, 0, nil
 }
+func (s *stubMap) AllWorlds() []spatial.Location { return nil }
 
 type stubRegionLoc struct{ rh spatial.RegionHex }
 

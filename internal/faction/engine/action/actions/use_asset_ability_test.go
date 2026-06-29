@@ -22,9 +22,14 @@ func makeAbilityRulebook() *rulebook.Rulebook {
 				Flags: []domain.AssetFlag{domain.FlagAction},
 				HP:    4,
 				Ability: &domain.AbilityDefinition{
-					AttackerStat: domain.StatCunning,
-					DefenderStat: domain.StatCunning,
-					Effect:       domain.EffectRevealStealth,
+					Steps: []domain.AbilityStep{{
+						Effect: domain.EffectRevealStealth,
+						Target: domain.TargetFaction,
+						Contest: &domain.Contest{
+							AttackerStat: domain.StatCunning,
+							DefenderStat: domain.StatCunning,
+						},
+					}},
 				},
 			},
 			"deferred-asset": {
@@ -72,7 +77,7 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 // runAbility drives a full Inputs→Resolve→Output cycle for UseAssetAbility.
 func runAbility(t *testing.T, collector *mocks.MockCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	t.Helper()
-	act := NewUseAssetAbility(collector, roller)
+	act := NewUseAssetAbility(collector, roller, nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -93,7 +98,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "x1", DefinitionID: "no-flag", Ready: true, Maintained: true}
 		rulebook.Assets["no-flag"] = &domain.AssetDefinition{ID: "no-flag", Flags: nil}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"x1": asset}}
-		act := NewUseAssetAbility(nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil)
 		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when no A-flagged assets")
 		}
@@ -102,7 +107,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("A-flagged but not Ready", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: false, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		act := NewUseAssetAbility(nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil)
 		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when A-flagged asset is not Ready")
 		}
@@ -111,7 +116,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("A-flagged but not Maintained", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: false}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		act := NewUseAssetAbility(nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil)
 		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when A-flagged asset is not Maintained")
 		}
@@ -120,7 +125,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("usable A-flagged asset", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		act := NewUseAssetAbility(nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil)
 		if !act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate true when A-flagged, Ready, Maintained asset exists")
 		}
@@ -139,7 +144,8 @@ func TestUseAssetAbility_Resolve_Informers_AttackerWins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{8, 3}}, faction, factionState, rulebook)
 
@@ -166,7 +172,8 @@ func TestUseAssetAbility_Resolve_Informers_Tie(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{5, 5}}, faction, factionState, rulebook)
 
@@ -186,7 +193,8 @@ func TestUseAssetAbility_Resolve_Informers_DefenderWins(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook)
 

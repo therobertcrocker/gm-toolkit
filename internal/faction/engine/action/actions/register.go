@@ -35,7 +35,7 @@ func RegisterDefaultActions(
 	})
 	ae.Register(func(c action.Collector) action.Action { return NewBribe(c) })
 	ae.Register(func(c action.Collector) action.Action {
-		return NewUseAssetAbility(c, resolveRoller())
+		return NewUseAssetAbility(c, resolveRoller(), worldEngine)
 	})
 	ae.Register(func(_ action.Collector) action.Action { return NewAbandonGoal() })
 	ae.Register(func(c action.Collector) action.Action { return NewSeizePlanet(c, worldIndex(worldEngine)) })

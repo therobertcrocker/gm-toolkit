@@ -31,7 +31,8 @@ type ScriptedCollector struct {
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectAbilityAssetsFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectMoveDestinationFn       func(*domain.Asset, []string) (string, error)
-	SelectFactionTestTargetFn     func(*domain.Asset, domain.AbilityEffectType, []*domain.Faction) (*domain.Faction, error)
+	SelectAbilityTargetFn         func(*domain.Asset, domain.AbilityStep, domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
+	SelectRelocateOrdersFn        func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
 	ConfirmAbilityAppliedFn       func(*domain.Asset, *domain.AssetDefinition) (bool, error)
 	SelectBribeTargetFn           func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTargetFn           func(*domain.Faction, *state.FactionState) (string, error)
@@ -41,7 +42,8 @@ type ScriptedCollector struct {
 	SelectStatRaiseFn             func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
 	SelectMovementDecisionsFn     func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
 	SelectTransportCargoFn        func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
-	SelectChangeHomeworldTargetFn func(*domain.Faction, *state.FactionState) (string, error)
+	SelectChangeHomeworldTargetFn      func(*domain.Faction, *state.FactionState) (string, error)
+	SelectPurchaseEnablerAssetFn       func(string, []action.PurchaseEnablerOption) (*domain.AssetDefinition, error)
 }
 
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
@@ -128,9 +130,16 @@ func (c *ScriptedCollector) SelectMoveDestination(asset *domain.Asset, worlds []
 	return "", nil
 }
 
-func (c *ScriptedCollector) SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error) {
-	if c.SelectFactionTestTargetFn != nil {
-		return c.SelectFactionTestTargetFn(asset, effect, candidates)
+func (c *ScriptedCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	if c.SelectAbilityTargetFn != nil {
+		return c.SelectAbilityTargetFn(asset, step, candidates)
+	}
+	return domain.AbilityTarget{}, nil
+}
+
+func (c *ScriptedCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	if c.SelectRelocateOrdersFn != nil {
+		return c.SelectRelocateOrdersFn(acting, candidates, candidateWorlds, maxAssets)
 	}
 	return nil, nil
 }
@@ -210,4 +219,11 @@ func (c *ScriptedCollector) SelectChangeHomeworldTarget(faction *domain.Faction,
 		return c.SelectChangeHomeworldTargetFn(faction, factionState)
 	}
 	return "", nil
+}
+
+func (c *ScriptedCollector) SelectPurchaseEnablerAsset(world string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
+	if c.SelectPurchaseEnablerAssetFn != nil {
+		return c.SelectPurchaseEnablerAssetFn(world, candidates)
+	}
+	return nil, nil
 }

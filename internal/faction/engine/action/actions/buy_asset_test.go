@@ -90,6 +90,81 @@ func TestBuyAsset_Output(t *testing.T) {
 	}
 }
 
+// TestBuyAsset_PendingDiscount: a faction's pending purchase discount reduces the
+// emitted CoinDelta, is floored at half the base cost, and is consumed by a single
+// PurchaseDiscountConsumed mutation. With no pending discount, none is emitted.
+func TestBuyAsset_PendingDiscount(t *testing.T) {
+	rulebook := makeBuyRulebook()
+	def := rulebook.Assets["cheap"] // base Cost 4, so half-base floor is 2
+
+	run := func(t *testing.T, discount int) []domain.Mutation {
+		ctrl := gomock.NewController(t)
+		faction := &domain.Faction{
+			ID: "f1", Force: 3, Coin: 10,
+			Homeworld:               domain.Location{WorldID: "Tartarus"},
+			PendingPurchaseDiscount: discount,
+		}
+		collector := mocks.NewMockCollector(ctrl)
+		collector.EXPECT().SelectBuyOrder(gomock.Any()).Return(
+			action.BuyOrder{World: "Tartarus", Definition: def}, nil,
+		)
+		act := NewBuyAsset(collector, nil, nil)
+		if err := act.Inputs(faction, nil, rulebook); err != nil {
+			t.Fatalf("Inputs: %v", err)
+		}
+		if err := act.Resolve(faction, nil, rulebook); err != nil {
+			t.Fatalf("Resolve: %v", err)
+		}
+		muts, err := act.Output()
+		if err != nil {
+			t.Fatalf("Output: %v", err)
+		}
+		return muts
+	}
+
+	inspect := func(muts []domain.Mutation) (delta int, consumed bool) {
+		for _, m := range muts {
+			switch v := m.(type) {
+			case domain.CoinDelta:
+				delta = v.Delta
+			case domain.PurchaseDiscountConsumed:
+				consumed = true
+			}
+		}
+		return delta, consumed
+	}
+
+	t.Run("discount reduces cost and is consumed", func(t *testing.T) {
+		delta, consumed := inspect(run(t, 1))
+		if delta != -3 {
+			t.Errorf("CoinDelta.Delta = %d, want -3 (base 4 - 1 discount)", delta)
+		}
+		if !consumed {
+			t.Error("expected a PurchaseDiscountConsumed mutation")
+		}
+	})
+
+	t.Run("discount floored at half base cost", func(t *testing.T) {
+		delta, consumed := inspect(run(t, 3)) // 4 - 3 = 1, clamped up to floor 2
+		if delta != -2 {
+			t.Errorf("CoinDelta.Delta = %d, want -2 (floored at half base)", delta)
+		}
+		if !consumed {
+			t.Error("expected a PurchaseDiscountConsumed mutation")
+		}
+	})
+
+	t.Run("no pending discount emits no consume", func(t *testing.T) {
+		delta, consumed := inspect(run(t, 0))
+		if delta != -4 {
+			t.Errorf("CoinDelta.Delta = %d, want -4 (no discount)", delta)
+		}
+		if consumed {
+			t.Error("expected no PurchaseDiscountConsumed when no pending discount")
+		}
+	})
+}
+
 // stubCostReducer reduces asset purchase cost by 1 Coin.
 type stubCostReducer struct{}
 

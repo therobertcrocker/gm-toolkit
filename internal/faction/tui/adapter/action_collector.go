@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -83,17 +84,42 @@ func (a *actionCollector) SelectAsset(assets []*domain.Asset, rb *rulebook.Ruleb
 
 // --- action.Collector: action-unique (recoverable-stubbed until each action's commit) ---
 
-func (a *actionCollector) SelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) (*domain.Faction, error) {
-	raw, err := a.adapter.ask(AskSelectFactionTestTarget, nil, SelectFactionTestTargetPayload{
-		Asset:      asset,
-		Effect:     effect,
-		Candidates: candidates,
+func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	switch step.Target {
+	case domain.TargetFaction:
+		raw, err := a.adapter.ask(AskSelectFactionTestTarget, nil, SelectFactionTestTargetPayload{
+			Asset:      asset,
+			Effect:     step.Effect,
+			Candidates: candidates.Factions,
+		})
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		chosen, _ := raw.(*domain.Faction)
+		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, nil
+	default:
+		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported yet", step.Target)
+	}
+}
+func (a *actionCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	names := make(map[string]string, len(candidateWorlds))
+	for _, worldID := range candidateWorlds {
+		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
+			names[worldID] = loc.Name()
+		}
+	}
+	raw, err := a.adapter.ask(AskSelectRelocateOrders, nil, SelectRelocateOrdersPayload{
+		Acting:          acting,
+		Candidates:      candidates,
+		CandidateWorlds: candidateWorlds,
+		WorldNames:      names,
+		MaxAssets:       maxAssets,
 	})
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.(*domain.Faction)
-	return chosen, nil
+	orders, _ := raw.([]action.RelocateOrder)
+	return orders, nil
 }
 func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rb *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	targets := make([]RepairTarget, 0, len(damaged))
@@ -399,6 +425,18 @@ func deriveHomeworldTargets(faction *domain.Faction, worldEngine *world.WorldEng
 	}
 	sort.Strings(targets)
 	return targets
+}
+
+func (a *actionCollector) SelectPurchaseEnablerAsset(world string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
+	raw, err := a.adapter.ask(AskSelectPurchaseEnablerAsset, nil, SelectPurchaseEnablerAssetPayload{
+		World:      world,
+		Candidates: candidates,
+	})
+	if err != nil {
+		return nil, err
+	}
+	def, _ := raw.(*domain.AssetDefinition)
+	return def, nil
 }
 
 var _ action.Collector = (*actionCollector)(nil)

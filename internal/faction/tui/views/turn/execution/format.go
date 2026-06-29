@@ -129,12 +129,18 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return "move cancelled", true
 	case domain.MovementOrderCompleted:
 		return "move completed", true
+	case domain.AssetMoved:
+		// deliberate: surface ability relocations, fold drift movement — drift's own
+		// MovementOrderCompleted line already reports the move, an ability has none.
+		if mut.Cause != "ability" {
+			return "", false
+		}
+		return fmt.Sprintf("asset %s → %s", mut.AssetID, mut.ToLocation.WorldID), true
 	default:
 		// Folded as bookkeeping noise or redundant with a surfaced line:
 		// GoalTurnsTick, GoalProgressed, GoalInitiated, GoalPhaseAdvanced,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
-		// AssetMoved, XPSpent, XPAwarded, MovementOrderProgressed,
-		// InfluenceDelta, TagAdded.
+		// XPSpent, XPAwarded, MovementOrderProgressed, InfluenceDelta, TagAdded.
 		return "", false
 	}
 }

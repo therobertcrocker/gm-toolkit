@@ -1,10 +1,13 @@
 package ability
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
@@ -45,9 +48,14 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 		Name:  "Informers",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{
-			AttackerStat: domain.StatCunning,
-			DefenderStat: domain.StatCunning,
-			Effect:       domain.EffectRevealStealth,
+			Steps: []domain.AbilityStep{{
+				Effect: domain.EffectRevealStealth,
+				Target: domain.TargetFaction,
+				Contest: &domain.Contest{
+					AttackerStat: domain.StatCunning,
+					DefenderStat: domain.StatCunning,
+				},
+			}},
 		},
 	}
 	factionState := &state.FactionState{
@@ -66,10 +74,11 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -92,15 +101,162 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectFactionTestTarget(gomock.Any(), gomock.Any(), gomock.Any()).Return(targetFaction, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations when defender wins, got %v", mutations)
+	}
+}
+
+// makeSeductressFixture builds the two-step Seductress (relocate self ≤1 hex, then
+// reveal faction) plus a world engine that places the Seductress at "origin" and a
+// target faction's stealthed asset at the destination "near" (1 hex away).
+func makeSeductressFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinition, *state.FactionState, *world.WorldEngine) {
+	seductress := &domain.Asset{
+		ID:           "a1",
+		DefinitionID: "SWN-C2-004",
+		OwnerID:      "f1",
+		Location:     domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)},
+	}
+	stealthyTarget := &domain.Asset{
+		ID:           "t1",
+		DefinitionID: "SWN-C1-002",
+		OwnerID:      "f2",
+		Location:     domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)},
+		Stealthy:     true,
+	}
+	actingFaction := &domain.Faction{ID: "f1", Cunning: 0, Assets: map[string]*domain.Asset{"a1": seductress}}
+	targetFaction := &domain.Faction{ID: "f2", Cunning: 0, Assets: map[string]*domain.Asset{"t1": stealthyTarget}}
+	def := &domain.AssetDefinition{
+		ID:    "SWN-C2-004",
+		Name:  "Seductress",
+		Flags: []domain.AssetFlag{domain.FlagAction},
+		Ability: &domain.AbilityDefinition{
+			Steps: []domain.AbilityStep{
+				{
+					Effect:   domain.EffectRelocate,
+					Target:   domain.TargetNone,
+					Relocate: &domain.RelocateParams{Scope: domain.RelocateSelf, Range: domain.RangeHexes, MaxHex: 1},
+				},
+				{
+					Effect:  domain.EffectRevealStealth,
+					Target:  domain.TargetFaction,
+					Contest: &domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+				},
+			},
+		},
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": actingFaction, "f2": targetFaction}}
+	return actingFaction, seductress, def, factionState, relocEngine()
+}
+
+// TestDispatch_Seductress_RelocateThenReveal_Wins: the two-step ability moves the
+// Seductress to "near", and the won contest reveals the target's stealthed asset at
+// that destination world — proving the cross-step projection threaded the post-move
+// location into the reveal step.
+func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
+	faction, asset, def, factionState, engine := makeSeductressFixture()
+	targetFaction := factionState.Factions["f2"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: asset, DestinationWorld: "near"}}, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
+
+	// attack=8, defense=3 — attacker wins
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil, engine)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(mutations) != 2 {
+		t.Fatalf("len(mutations) = %d, want 2 (AssetMoved + AssetStealthCleared); got %v", len(mutations), mutations)
+	}
+	moved, ok := mutations[0].(domain.AssetMoved)
+	if !ok || moved.AssetID != "a1" || moved.ToLocation.WorldID != "near" {
+		t.Fatalf("mutations[0] = %+v, want AssetMoved a1 -> near", mutations[0])
+	}
+	cleared, ok := mutations[1].(domain.AssetStealthCleared)
+	if !ok || cleared.AssetID != "t1" {
+		t.Errorf("mutations[1] = %+v, want AssetStealthCleared t1 (revealed at the destination world)", mutations[1])
+	}
+}
+
+// TestDispatch_Seductress_RelocateThenReveal_Loses: the relocate (ungated, first)
+// still applies; the lost contest halts the chain so only the AssetMoved survives —
+// proving halt-on-failure preserves the earlier ungated step.
+func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
+	faction, asset, def, factionState, engine := makeSeductressFixture()
+	targetFaction := factionState.Factions["f2"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: asset, DestinationWorld: "near"}}, nil)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
+
+	// attack=3, defense=8 — defender wins, reveal halts
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil, engine)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1 (only AssetMoved); got %v", len(mutations), mutations)
+	}
+	if _, ok := mutations[0].(domain.AssetMoved); !ok {
+		t.Errorf("mutations[0] type = %T, want AssetMoved", mutations[0])
+	}
+}
+
+// TestDispatch_CrossStep_CoinProjection: a two-step self-relocate where the faction
+// can afford exactly one move. The cross-step projection applies step 1's CoinDelta to
+// the working faction, so step 2 reads Coin 0 and fails its affordability check —
+// proving the projection threads Coin, not just Location. Without it, step 2 would read
+// the stale pre-action balance and overdraw the faction.
+func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
+	acting := &domain.Asset{
+		ID:           "a1",
+		DefinitionID: "SF",
+		OwnerID:      "f1",
+		Location:     domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)},
+	}
+	faction := &domain.Faction{ID: "f1", Coin: 1, Assets: map[string]*domain.Asset{"a1": acting}}
+	relocateStep := domain.AbilityStep{
+		Effect:   domain.EffectRelocate,
+		Target:   domain.TargetNone,
+		Relocate: &domain.RelocateParams{Scope: domain.RelocateSelf, Range: domain.RangeHexes, MaxHex: 1, CoinCost: 1},
+	}
+	def := &domain.AssetDefinition{
+		ID:      "SF",
+		Name:    "Courier",
+		Flags:   []domain.AssetFlag{domain.FlagAction},
+		Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{relocateStep, relocateStep}},
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	gomock.InOrder(
+		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil),
+		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "mid"}}, nil),
+	)
+
+	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, factionState, relocRulebook(), relocEngine())
+	if err == nil {
+		t.Fatal("Dispatch: expected insufficient-Coin error on step 2, got nil")
+	}
+	if !strings.Contains(err.Error(), "insufficient Coin") {
+		t.Errorf("Dispatch error = %q, want it to mention insufficient Coin", err.Error())
 	}
 }
 
@@ -113,7 +269,10 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 		Name:  "Harvesters",
 		Flags: []domain.AssetFlag{domain.FlagAction},
 		Ability: &domain.AbilityDefinition{
-			Effect: domain.EffectCoinDrain,
+			Steps: []domain.AbilityStep{{
+				Effect: domain.AbilityEffectType("not_built"),
+				Target: domain.TargetNone,
+			}},
 		},
 	}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
@@ -122,7 +281,7 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().ConfirmAbilityApplied(asset, def).Return(false, nil)
 
-	mutations, err := Dispatch(faction, asset, def, collector, nil, factionState, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, nil, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}

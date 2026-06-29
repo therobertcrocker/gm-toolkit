@@ -99,9 +99,41 @@ type attackRecord struct {
 }
 
 type abilityRecord struct {
-	AttackerStat string `toml:"attacker_stat"`
-	DefenderStat string `toml:"defender_stat"`
-	Effect       string `toml:"effect"`
+	abilityStepRecord
+	Steps []abilityStepRecord `toml:"steps"`
+}
+
+type abilityStepRecord struct {
+	Effect       string          `toml:"effect"`
+	Target       string          `toml:"target"`
+	AttackerStat string          `toml:"attacker_stat"`
+	DefenderStat string          `toml:"defender_stat"`
+	Die          string          `toml:"die"`
+	Outcomes     []outcomeRecord `toml:"outcomes"`
+	Relocate     *relocateRecord `toml:"relocate"`
+	Purchase     *purchaseRecord `toml:"purchase"`
+}
+
+type relocateRecord struct {
+	Scope     string `toml:"scope"`
+	Range     string `toml:"range"`
+	MaxHex    int    `toml:"max_hex"`
+	CoinCost  int    `toml:"coin_cost"`
+	AssetType string `toml:"asset_type"`
+	MaxAssets int    `toml:"max_assets"`
+}
+
+type purchaseRecord struct {
+	Category     string `toml:"category"`
+	MaxTechLevel int    `toml:"max_tech_level"`
+	CostPercent  int    `toml:"cost_percent"`
+}
+
+type outcomeRecord struct {
+	From        int  `toml:"from"`
+	To          int  `toml:"to"`
+	Coin        int  `toml:"coin"`
+	DestroySelf bool `toml:"destroy_self"`
 }
 
 // loadAssets globs all *_assets.toml files in <dataDir>/assets/ and merges them into one map.
@@ -208,39 +240,168 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 	if r == nil {
 		return nil, nil
 	}
-	def := &domain.AbilityDefinition{}
-	if r.AttackerStat != "" {
-		stat, err := toFactionStat(r.AttackerStat)
-		if err != nil {
-			return nil, fmt.Errorf("attacker_stat: %w", err)
+	if len(r.Steps) > 0 {
+		if r.Effect != "" || r.AttackerStat != "" || r.DefenderStat != "" || r.Die != "" {
+			return nil, fmt.Errorf("use either a flat [ability] block or [[ability.steps]], not both")
 		}
-		def.AttackerStat = stat
-	}
-	if r.DefenderStat != "" {
-		stat, err := toFactionStat(r.DefenderStat)
-		if err != nil {
-			return nil, fmt.Errorf("defender_stat: %w", err)
+		steps := make([]domain.AbilityStep, 0, len(r.Steps))
+		for i, sr := range r.Steps {
+			step, err := convertAbilityStep(sr)
+			if err != nil {
+				return nil, fmt.Errorf("step %d: %w", i, err)
+			}
+			steps = append(steps, step)
 		}
-		def.DefenderStat = stat
+		return &domain.AbilityDefinition{Steps: steps}, nil
 	}
-	if r.Effect != "" {
-		effect, err := toAbilityEffect(r.Effect)
+	step, err := convertAbilityStep(r.abilityStepRecord)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.AbilityDefinition{Steps: []domain.AbilityStep{step}}, nil
+}
+
+func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
+	var step domain.AbilityStep
+	if record.Effect != "" {
+		effect, err := toAbilityEffect(record.Effect)
 		if err != nil {
-			return nil, err
+			return domain.AbilityStep{}, err
 		}
-		def.Effect = effect
+		step.Effect = effect
 	}
-	return def, nil
+	target, err := toTargetKind(record.Target)
+	if err != nil {
+		return domain.AbilityStep{}, err
+	}
+	step.Target = target
+	if record.AttackerStat != "" || record.DefenderStat != "" {
+		attacker, err := toFactionStat(record.AttackerStat)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("attacker_stat: %w", err)
+		}
+		defender, err := toFactionStat(record.DefenderStat)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
+		}
+		step.Contest = &domain.Contest{AttackerStat: attacker, DefenderStat: defender}
+	}
+	if record.Die != "" {
+		die, err := parseDice(record.Die)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("die: %w", err)
+		}
+		roll := &domain.RollTable{Die: *die}
+		roll.Outcomes = make([]domain.AbilityOutcome, 0, len(record.Outcomes))
+		for _, o := range record.Outcomes {
+			roll.Outcomes = append(roll.Outcomes, domain.AbilityOutcome{
+				From:        o.From,
+				To:          o.To,
+				Coin:        o.Coin,
+				DestroySelf: o.DestroySelf,
+			})
+		}
+		step.Roll = roll
+	}
+	if relocate := record.Relocate; relocate != nil {
+		scope, err := toRelocateScope(relocate.Scope)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		rng, err := toRelocateRange(relocate.Range)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		params := &domain.RelocateParams{
+			Scope:     scope,
+			Range:     rng,
+			MaxHex:    relocate.MaxHex,
+			CoinCost:  relocate.CoinCost,
+			MaxAssets: relocate.MaxAssets,
+		}
+		if relocate.AssetType != "" {
+			assetType, err := toAssetType(relocate.AssetType)
+			if err != nil {
+				return domain.AbilityStep{}, fmt.Errorf("relocate asset_type: %w", err)
+			}
+			params.AssetType = assetType
+		}
+		step.Relocate = params
+	}
+	if purchase := record.Purchase; purchase != nil {
+		category, err := toFactionStat(purchase.Category)
+		if err != nil {
+			return domain.AbilityStep{}, fmt.Errorf("purchase category: %w", err)
+		}
+		if purchase.CostPercent <= 0 {
+			return domain.AbilityStep{}, fmt.Errorf("purchase cost_percent must be > 0, got %d", purchase.CostPercent)
+		}
+		step.Purchase = &domain.PurchaseParams{
+			Category:     category,
+			MaxTechLevel: purchase.MaxTechLevel,
+			CostPercent:  purchase.CostPercent,
+		}
+	}
+	if step.Contest != nil && step.Roll != nil {
+		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and roll; they are mutually exclusive")
+	}
+	if step.Effect == domain.EffectRevealStealth && step.Target != domain.TargetFaction {
+		return domain.AbilityStep{}, fmt.Errorf("reveal_stealth requires target = %q", "faction")
+	}
+	return step, nil
+}
+
+func toRelocateScope(s string) (domain.RelocateScope, error) {
+	switch s {
+	case "self":
+		return domain.RelocateSelf, nil
+	case "other":
+		return domain.RelocateOther, nil
+	default:
+		return "", fmt.Errorf("unknown relocate scope: %q", s)
+	}
+}
+
+func toRelocateRange(s string) (domain.RelocateRange, error) {
+	switch s {
+	case "", "hexes":
+		return domain.RangeHexes, nil
+	case "region":
+		return domain.RangeRegion, nil
+	default:
+		return "", fmt.Errorf("unknown relocate range: %q", s)
+	}
+}
+
+func toTargetKind(s string) (domain.TargetKind, error) {
+	switch s {
+	case "", "none":
+		return domain.TargetNone, nil
+	case "self":
+		return domain.TargetSelf, nil
+	case "faction":
+		return domain.TargetFaction, nil
+	case "asset":
+		return domain.TargetAsset, nil
+	case "world":
+		return domain.TargetWorld, nil
+	default:
+		return "", fmt.Errorf("unknown target kind: %q", s)
+	}
 }
 
 func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 	switch s {
 	case "reveal_stealth":
 		return domain.EffectRevealStealth, nil
-	case "coin_drain":
-		return domain.EffectCoinDrain, nil
-	case "coin_steal":
-		return domain.EffectCoinSteal, nil
+	case "coin_delta":
+		return domain.EffectCoinDelta, nil
+	case "purchase_discount":
+		return domain.EffectPurchaseDiscount, nil
+	case "relocate":
+		return domain.EffectRelocate, nil
+	case "purchase_enabler":
+		return domain.EffectPurchaseEnabler, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}

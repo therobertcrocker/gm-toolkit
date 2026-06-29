@@ -2,9 +2,8 @@ package actions
 
 import (
 	"fmt"
+	"math"
 	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
@@ -18,14 +17,15 @@ import (
 // BuyAsset purchases a new asset and places it on a target world.
 // The asset is flagged inactive (Ready: false) until the start of the next turn.
 type BuyAsset struct {
-	collector     action.Collector
-	registry      *hooks.Registry
-	worldEngine   *world.WorldEngine
-	factionID     string
-	buyOrder      action.BuyOrder
-	newAsset      domain.Asset
-	cost          int
-	stealthTarget string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
+	collector        action.Collector
+	registry         *hooks.Registry
+	worldEngine      *world.WorldEngine
+	factionID        string
+	buyOrder         action.BuyOrder
+	newAsset         domain.Asset
+	cost             int
+	discountConsumed bool
+	stealthTarget    string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
 }
 
 func NewBuyAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.WorldEngine) *BuyAsset {
@@ -80,18 +80,21 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
 	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
+	if faction.PendingPurchaseDiscount > 0 {
+		// Floor is half base price (SWN), but never above the pre-discount cost: a
+		// cost-reducing hook may already have pushed the price below half-base, and a
+		// discount must never raise it back up.
+		floor := min(def.Cost/2, ba.cost)
+		ba.cost -= faction.PendingPurchaseDiscount
+		if ba.cost < floor {
+			ba.cost = floor
+		}
+		ba.discountConsumed = true
+	}
 	if faction.Coin < ba.cost {
 		return fmt.Errorf("insufficient Coin: need %d, have %d", ba.cost, faction.Coin)
 	}
-	ba.newAsset = domain.Asset{
-		ID:           fmt.Sprintf("%s-%s-%d", ba.factionID, def.ID, nextAssetSuffix(faction, def)),
-		DefinitionID: def.ID,
-		OwnerID:      ba.factionID,
-		Location:     domain.Location{WorldID: ba.buyOrder.World},
-		CurrentHP:    def.HP,
-		Ready:        false,
-		Maintained:   true,
-	}
+	ba.newAsset = domain.NewPurchasedAsset(faction, def, ba.buyOrder.World)
 	return nil
 }
 
@@ -108,6 +111,13 @@ func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
 		mutations = append(mutations, domain.AssetStealthApplied{
 			FactionID:         ba.factionID,
 			AssetID:           ba.stealthTarget,
+			Cause:             "buy",
+			CausedByFactionID: ba.factionID,
+		})
+	}
+	if ba.discountConsumed {
+		mutations = append(mutations, domain.PurchaseDiscountConsumed{
+			FactionID:         ba.factionID,
 			Cause:             "buy",
 			CausedByFactionID: ba.factionID,
 		})
@@ -146,66 +156,31 @@ func availableWorlds(faction *domain.Faction) []string {
 	return worlds
 }
 
-// nextAssetSuffix returns the next unused numeric suffix for an asset of this
-// definition owned by this faction. Monotonic: scans for the highest existing
-// suffix matching `<factionID>-<defID>-N` and returns N+1, so IDs are never
-// reused even after a sell+buy of the same definition.
-func nextAssetSuffix(faction *domain.Faction, def *domain.AssetDefinition) int {
-	prefix := fmt.Sprintf("%s-%s-", faction.ID, def.ID)
-	highest := 0
-	for _, asset := range faction.Assets {
-		if !strings.HasPrefix(asset.ID, prefix) {
-			continue
-		}
-		n, err := strconv.Atoi(strings.TrimPrefix(asset.ID, prefix))
-		if err != nil {
-			continue
-		}
-		if n > highest {
-			highest = n
-		}
-	}
-	return highest + 1
-}
-
-// purchasableDefinitions returns definitions the faction can afford, meets the
-// minimum attribute rating for, passes tech level on fragmentID, and satisfies
-// the P-flag requirement (Planetary Government on the target world).
+// purchasableDefinitions returns the definitions the faction may buy on fragmentID via
+// domain.CanPurchase: affordable at base cost, meeting the minimum attribute rating, within
+// the world's tech level, and holding Planetary Government for P-flagged defs. An unknown
+// world imposes no tech ceiling (math.MaxInt) but cannot confer government, so P-flagged
+// defs are rejected — matching the purchase_enabler path.
 func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.WorldEngine, registry *hooks.Registry) []*domain.AssetDefinition {
-	var worldTL int
-	var worldKnown bool
+	techCap := math.MaxInt
+	holdsGovernment := false
 	if worldEngine != nil {
 		loc, ok := worldEngine.Location(fragmentID)
 		if !ok {
 			return nil
 		}
-		worldTL = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
-		worldKnown = true
+		techCap = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
+		if worldEngine.Index != nil {
+			holdsGovernment = domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID])
+		}
 	}
 
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
-		if faction.Coin < def.Cost || statScore(faction, def.Category) < def.MinRating {
-			continue
+		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: def.Cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
+			result = append(result, def)
 		}
-		if worldKnown && def.TechLevel > worldTL {
-			continue
-		}
-		if def.HasFlag(domain.FlagPermission) && worldEngine != nil && worldEngine.Index != nil {
-			if !factionHasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID]) {
-				continue
-			}
-		}
-		result = append(result, def)
 	}
 	return result
 }
 
-func factionHasPlanetaryGovernment(factionID string, bases []*domain.Base) bool {
-	for _, base := range bases {
-		if base.OwnerID == factionID {
-			return true
-		}
-	}
-	return false
-}

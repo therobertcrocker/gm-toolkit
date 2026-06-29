@@ -66,6 +66,29 @@ func TestMutationEngine_AssetRemoved(t *testing.T) {
 	}
 }
 
+func TestMutationEngine_PurchaseDiscount(t *testing.T) {
+	s := newMutationTestState()
+	me := New(slog.New(slog.DiscardHandler))
+
+	if err := me.Apply(s, []domain.Mutation{
+		domain.PurchaseDiscountGranted{FactionID: "f1", Amount: 5},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if got := s.Factions["f1"].PendingPurchaseDiscount; got != 5 {
+		t.Errorf("PendingPurchaseDiscount = %d, want 5 after grant", got)
+	}
+
+	if err := me.Apply(s, []domain.Mutation{
+		domain.PurchaseDiscountConsumed{FactionID: "f1"},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if got := s.Factions["f1"].PendingPurchaseDiscount; got != 0 {
+		t.Errorf("PendingPurchaseDiscount = %d, want 0 after consume", got)
+	}
+}
+
 func TestMutationEngine_AssetMaintainedFlag(t *testing.T) {
 	s := newMutationTestState()
 	me := New(slog.New(slog.DiscardHandler))

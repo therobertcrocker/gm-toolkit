@@ -69,7 +69,7 @@ func (ra *RefitAsset) Resolve(faction *domain.Faction, _ *state.FactionState, ru
 
 	ra.costDelta = delta
 	ra.newAsset = domain.Asset{
-		ID:           fmt.Sprintf("%s-%s-%d", ra.factionID, newDef.ID, nextAssetSuffix(faction, newDef)),
+		ID:           domain.NextAssetID(faction, newDef.ID),
 		DefinitionID: newDef.ID,
 		OwnerID:      ra.factionID,
 		Location:     ra.refitOrder.OldAsset.Location,

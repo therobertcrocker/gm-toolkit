@@ -61,13 +61,18 @@ type SmokeActionCollector struct{}
 
 func NewSmokeActionCollector() *SmokeActionCollector { return &SmokeActionCollector{} }
 
-func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer { return nil }
-func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool                     { return false }
+func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer {
+	return nil
+}
+func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return false }
 
 func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
 }
-func (SmokeActionCollector) SelectFactionTestTarget(_ *domain.Asset, _ domain.AbilityEffectType, _ []*domain.Faction) (*domain.Faction, error) {
+func (SmokeActionCollector) SelectAbilityTarget(_ *domain.Asset, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	return domain.AbilityTarget{}, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectRelocateOrders(_ *domain.Asset, _ []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
 	return nil, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectRepairOrders(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]action.RepairOrder, error) {
@@ -111,6 +116,9 @@ func (SmokeActionCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.Factio
 }
 func (SmokeActionCollector) SelectChangeHomeworldTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
 	return "", action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectPurchaseEnablerAsset(_ string, _ []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
+	return nil, action.ErrActionUnavailable
 }
 
 var _ action.Collector = (*SmokeActionCollector)(nil)
@@ -184,9 +192,15 @@ func (smokeHexRouter) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
 	return 0, spatial.ErrNotImplemented
 }
 
+func (smokeHexRouter) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
+	return nil, spatial.ErrNotImplemented
+}
+
 func (smokeHexRouter) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
 	return nil, 0, spatial.ErrNotImplemented
 }
+
+func (smokeHexRouter) AllWorlds() []spatial.Location { return nil }
 
 var _ world.HexRouter = smokeHexRouter{}
 

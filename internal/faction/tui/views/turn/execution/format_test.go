@@ -50,6 +50,7 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 		{"MovementOrderRevised", domain.MovementOrderRevised{}, "move revised"},
 		{"MovementOrderCancelled", domain.MovementOrderCancelled{}, "move cancelled"},
 		{"MovementOrderCompleted", domain.MovementOrderCompleted{}, "move completed"},
+		{"AssetMoved ability", domain.AssetMoved{AssetID: "sf-1", ToLocation: domain.Location{WorldID: "Andama"}, Cause: "ability"}, "asset sf-1 → Andama"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestFormatMutation_Folded(t *testing.T) {
 		domain.XPAwarded{},
 		domain.MovementOrderProgressed{},
 		domain.InfluenceDelta{},
-		domain.AssetMoved{},
+		domain.AssetMoved{Cause: "transport_completed"},
 		domain.TagAdded{},
 	}
 	for _, mut := range folded {
