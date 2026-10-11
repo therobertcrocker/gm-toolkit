@@ -23,6 +23,7 @@ import (
 const (
 	DefSecurityPersonnel = "SWN-F1-001"
 	DefHeavyDropAssets   = "SWN-F2-001"
+	DefPartyMachine      = "SWN-C4-001"
 )
 
 type Harness struct {
@@ -95,7 +96,10 @@ func NewHarness(t *testing.T) *Harness {
 	}
 	log := slog.New(slog.DiscardHandler)
 	spatialMap := &StubSpatialMap{}
-	eng := engine.NewWithRulebook(rb, world.NewWithMap(spatialMap, log), log)
+	eng, err := engine.NewWithRulebook(rb, world.NewWithMap(spatialMap, log), log)
+	if err != nil {
+		t.Fatalf("engine.NewWithRulebook: %v", err)
+	}
 
 	scriptedCollector := &ScriptedCollector{}
 	return &Harness{

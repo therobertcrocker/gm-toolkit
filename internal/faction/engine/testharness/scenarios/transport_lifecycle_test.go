@@ -48,7 +48,9 @@ func setupTransportHarness(t *testing.T) *testharness.Harness {
 	h.Engine.Rulebook.Assets["test-cargo"] = cargoDef
 	h.Engine.Rulebook.DriftCosts = []int{5}
 
-	h.Engine.Effect.Register(effects.NewTransportHandler(transportDef))
+	if err := h.Engine.Effect.Register(effects.NewTransportHandler(transportDef)); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
 
 	h.AddFaction("alpha", "world-a", 4, 3, 2)
 	alpha := h.FactionState.Factions["alpha"]

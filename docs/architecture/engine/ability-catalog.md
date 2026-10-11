@@ -15,8 +15,14 @@
 > those five. This page stays the **frozen design artifact** for the F.022 arc;
 > for as-built truth see [actions](actions.md) (ability dispatch), [effect &
 > mutation](effect-mutation.md) (the mutation vocabulary), and
-> [world & movement](world-movement.md) (relocate). The S-side and the remaining
-> A-side effects (Marketers, Seditionists, Monopoly) are still future.
+> [world & movement](world-movement.md) (relocate). The remaining A-side effects
+> (Marketers, Seditionists, Monopoly) are still future.
+>
+> **As-built (A.001.3 Effort 1):** the S-side model ships. An asset declares an
+> `[[effects]]` list; the effects engine keys a registrar table on the effect name
+> (`effect/registrar.go`, `effects/registrars.go`) and checks every entry against it
+> at engine construction. Party Machine's `coin_gain` is the first S-side effect; the
+> rest of the S-flag table below is still future.
 
 ## Purpose
 
@@ -59,14 +65,14 @@ half-wired. The catalog reuses and repairs it rather than inventing fresh:
 
 | Field / value | Intended use | Reality today |
 |---|---|---|
-| `AbilityDefinition.Die *DiceRoll` | roll for an outcome-table ability | **dead** — `convertAbility` never reads it |
-| `AbilityDefinition.Outcomes []AbilityOutcome{From,To,Coin}` | die-range → coin payout | **dead** — never parsed |
-| `AbilityEffectType` = `reveal_stealth` | reveal effect | **wired** (Informers only) |
-| `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | parse fine, **dispatched nowhere** |
-| `[[ability.steps]]` in Seductress TOML | multi-step ability | **silently dropped** — `abilityRecord` has no `steps` field, so Seductress's reveal no-ops today |
+| `RollTable.Die DiceRoll` | roll for an outcome-table ability | **wired** — parsed into `AbilityStep.Roll` |
+| `RollTable.Outcomes []AbilityOutcome{From,To,Coin,DestroySelf}` | die-range → coin payout | **wired** — parsed into `AbilityStep.Roll` |
+| `AbilityEffectType` = `reveal_stealth` | reveal effect | **wired** (Informers, Seductress) |
+| `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | **removed** by A.001.2 — `AbilityEffectType` has five constants, none a coin transfer. The S-side `coin_steal` is a `SpecialEffectType` (`domain/effect.go`) |
+| `[[ability.steps]]` in Seductress TOML | multi-step ability | **wired** — `abilityRecord.Steps` parses it (relocate, then reveal) |
 
-The economic cluster (below) is the clearest payoff: `Die` + `Outcomes` already
-models it, and only the parser and a handler are missing.
+A.001.2 built the parser path and handlers for every A-side row above; see
+[actions](actions.md) for the as-built ability dispatch.
 
 ---
 
@@ -129,8 +135,11 @@ flowchart LR
 ## S-flag — the effects engine (passive / reactive)
 
 The `S`-flag specials register [hooks](hooks.md) at cycle start through
-`EffectsEngine.ApplyAll`. Each effect maps to one of the **five hook
-categories**; the catalog's job on this side is to define the data shape that
+`EffectsEngine.ApplyAll`. Most effects map to one of the **five hook
+categories**, numbered as in `hooks/doc.go` (Cat 4 is the `RuleModifier` family,
+Cat 5 is `TieResolver`). Phase-event effects are the exception: a turn-start
+effect fires from a direct read of the asset's definition at the start of the
+bookkeeping phase, not from a registered hook. The catalog's job on this side is to define the data shape that
 lets a handler register the right hook from a profile, the way `transport`
 already does. (`effect-mutation.md` already names the hook category for several
 of these; this table reconciles with it and completes the survey.)
@@ -144,10 +153,10 @@ of these; this table reconciles with it and completes the survey.)
 | **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Local Investments `SWN-W1-003` (purchase surcharge), and Monopoly's reactive reading → `coin_drain` |
 | **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `SWN-C1-003`, Boltholes `SWN-C5-003`, Medical Center `SWN-W4-003` |
 | **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
-| **passive income** (per-turn Coin) | Cat 3 `MutationReactor` (turn-start) | Party Machine `SWN-C4-001` |
+| **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
 | **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` | Tripwire Cells `SWN-C4-003`, Panopticon Matrix `SWN-C8-001` |
-| **start-stealthed** | Cat 5 `RuleModifier` (on add) | Psychic Assassins `SWN-F5-003` |
-| **grant-stealth** (quality bought for another asset) | Cat 5 `RuleModifier` | Stealth `SWN-C3-002` |
+| **start-stealthed** | Cat 4 `RuleModifier` (on add) | Psychic Assassins `SWN-F5-003` |
+| **grant-stealth** (quality bought for another asset) | Cat 4 `RuleModifier` | Stealth `SWN-C3-002` |
 | **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `SWN-F7-002` (Cunning defense), Surveyors `SWN-W2-004` (Expand Influence), Panopticon `SWN-C8-001` (Cunning attacks/defenses) |
 | **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` |
 | **negate-bonus** (suppress tag dice) | Cat 1 `RollModifier` | Blackmail `SWN-C2-003` |

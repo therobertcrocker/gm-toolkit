@@ -214,6 +214,15 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "2d6"
 
+[[assets.PartyMachine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"
+[assets.PartyMachine.effects.filters]
+owner = "own"
+scope = "self"
+[assets.PartyMachine.effects.coin_gain]
+amount = "1"
+
 [assets.VanguardCadres]
 id = "SWN-C4-002"
 name = "Vanguard Cadres"

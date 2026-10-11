@@ -200,6 +200,23 @@ func (e *Engine) runBookkeepingPhase(
 	logging.PhaseStart(phaseLog, "bookkeeping")
 	phaseLog.Info("phase begin")
 
+	var startMutations []domain.Mutation
+	// deliberate: fire here, gated on BookkeepingApplied, not in turn setup, because setup re-runs on every resume and would pay a turn-start effect twice.
+	if e.Turn.InProgress(factionState) && !factionState.CurrentTurn.BookkeepingApplied {
+		startMutations = e.Effect.FireTurnStart(faction, e.Rulebook, e.Rand)
+		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
+			if !factionErrors.IsRecoverable(err) {
+				phaseLog.Error("failure", "err", err)
+				observer.OnError(faction, err)
+				return err
+			}
+			// deliberate: fall through to bookkeeping, not return, because returning here would skip this turn's income and maintenance.
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			startMutations = nil
+		}
+	}
+
 	bookResult, bookMutations, err := e.Turn.ApplyBookkeeping(factionState, e.Hooks, phaseLog.With("engine", "turn"))
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
@@ -223,7 +240,7 @@ func (e *Engine) runBookkeepingPhase(
 			return err
 		}
 	}
-	observer.OnBookkeepingApplied(faction, bookResult, bookMutations)
+	observer.OnBookkeepingApplied(faction, bookResult, append(startMutations, bookMutations...))
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)

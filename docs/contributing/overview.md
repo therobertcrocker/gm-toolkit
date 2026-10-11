@@ -24,6 +24,10 @@ A few tasks cross the boundary (adding a GM-driven action is half engine, half
 interface). Those recipes carry a **See also** link to their sibling on the other
 side; follow it rather than expecting one recipe to span both.
 
+One guide sits outside that split. **[spatial-maps.md](spatial-maps.md)** is a
+walkthrough, not a recipe set — you author a campaign's map in data rather than
+Go, so it builds one small map from nothing instead of listing files to touch.
+
 <br/>
 
 ### How to read a recipe
@@ -93,6 +97,11 @@ gm-toolkit faction          # open the faction TUI against the active campaign
 gm-toolkit campaign --help   # the full campaign command surface
 ```
 
+A fresh campaign has no spatial map — `spatial/` is scaffolded empty, and the
+canonical `regions.toml` / `worlds.toml` are *generated* from GM-authored source
+files rather than shipped. [spatial-maps.md](spatial-maps.md) walks through
+authoring one and running `gm-toolkit spatial build`.
+
 To use a campaign someone else authored, `gm-toolkit campaign register <path>`
 adds it to the registry without copying or modifying its contents.
 
@@ -131,5 +140,7 @@ holds its registration call.
 - **[engine.md](engine.md)** — engine test tooling, conventions, and six recipes
 - **[interface.md](interface.md)** — interface test tooling, conventions, and
   three recipes
+- **[spatial-maps.md](spatial-maps.md)** — authoring a campaign's spatial map:
+  the layout/data source pair, and `gm-toolkit spatial build`
 - **[Architecture wiki](../architecture/architecture-overview.md)** — what each
   subsystem *is* and why it is shaped that way (every recipe links its page)

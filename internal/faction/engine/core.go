@@ -2,7 +2,10 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
@@ -47,19 +50,27 @@ type Engine struct {
 	log      *slog.Logger
 }
 
-func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine, log *slog.Logger) *Engine {
+func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine, log *slog.Logger) (*Engine, error) {
 	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(log), Hooks: hooks.NewRegistry(), World: worldEngine, log: log}
 	e.Turn = turn.New(e.Rand, e.Rulebook, log)
 	e.Mutation = mutation.New(log)
 	e.Action = action.New(log)
 	e.Goal = goal.New(log)
 	e.Tag = tag.New(log)
-	e.Effect = effect.New(log)
-	for _, def := range rulebook.Assets {
+	e.Effect = effect.New(effects.Registrars(), log)
+	for _, defID := range slices.Sorted(maps.Keys(rulebook.Assets)) {
+		def := rulebook.Assets[defID]
 		if def.Transport != nil {
-			e.Effect.Register(effects.NewTransportHandler(def))
+			if err := e.Effect.Register(effects.NewTransportHandler(def)); err != nil {
+				return nil, fmt.Errorf("engine: %w", err)
+			}
+		}
+		if len(def.Effects) > 0 {
+			if err := e.Effect.RegisterEffectsList(def); err != nil {
+				return nil, fmt.Errorf("engine: %w", err)
+			}
 		}
 	}
 	actions.RegisterDefaultActions(e.Action, func() domain.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook)
-	return e
+	return e, nil
 }

@@ -74,17 +74,30 @@ const (
 	RangeRegion RelocateRange = "region"
 )
 
+// RelocateCostMode picks how a relocate charges CoinCost: once per moved asset, or once
+// for the whole relocation (Transit Web: "for 1 Coin, any number of assets").
+type RelocateCostMode string
+
+const (
+	RelocateCostPerAsset RelocateCostMode = "per_asset"
+	RelocateCostFlat     RelocateCostMode = "flat"
+)
+
 // RelocateParams configures a relocate step. Scope picks what moves (the acting asset vs
 // other friendly assets); Range picks hex-radius vs region reach; MaxHex is the radius for
-// RangeHexes (ignored for RangeRegion); CoinCost is charged per moved asset; AssetType
-// filters "other" candidates (empty = any); MaxAssets caps the count moved (0 = unbounded).
+// RangeHexes (ignored for RangeRegion); CoinCost is charged per CoinCostMode; AssetType
+// filters "other" candidates (empty = any), Categories narrows them by asset category
+// (empty = any) and ExcludeTypes drops types; MaxAssets caps the count moved (0 = unbounded).
 type RelocateParams struct {
-	Scope     RelocateScope
-	Range     RelocateRange
-	MaxHex    int
-	CoinCost  int
-	AssetType AssetType
-	MaxAssets int
+	Scope        RelocateScope
+	Range        RelocateRange
+	MaxHex       int
+	CoinCost     int
+	CoinCostMode RelocateCostMode
+	AssetType    AssetType
+	Categories   []FactionStat
+	ExcludeTypes []AssetType
+	MaxAssets    int
 }
 
 // PurchaseParams configures a purchase_enabler step (Pretech Logistics). Category is the
@@ -179,6 +192,7 @@ type AssetDefinition struct {
 	Description string
 	Ability     *AbilityDefinition
 	Transport   *TransportProfile
+	Effects     []EffectDefinition
 }
 
 type Asset struct {

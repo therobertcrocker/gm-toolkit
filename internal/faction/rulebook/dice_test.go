@@ -22,6 +22,7 @@ func TestParseDice(t *testing.T) {
 		{"d6", nil, true},
 		{"1d", nil, true},
 		{"1d6+", nil, true},
+		{"1d0", nil, true},
 	}
 
 	for _, tt := range tests {

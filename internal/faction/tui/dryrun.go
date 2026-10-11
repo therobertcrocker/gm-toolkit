@@ -26,7 +26,10 @@ func RunDryRun(log *slog.Logger) error {
 		DriftCosts: []int{1},
 	}
 
-	eng := engine.NewWithRulebook(rb, adapter.NewSmokeWorldEngine(log), log)
+	eng, err := engine.NewWithRulebook(rb, adapter.NewSmokeWorldEngine(log), log)
+	if err != nil {
+		return fmt.Errorf("dryrun: %w", err)
+	}
 
 	tmpDir, err := os.MkdirTemp("", "gm-toolkit-dryrun-*")
 	if err != nil {
