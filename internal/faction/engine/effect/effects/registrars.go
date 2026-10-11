@@ -7,6 +7,10 @@ import (
 
 func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 	return map[domain.SpecialEffectType]effect.Registrar{
-		domain.SpecialCoinGain: coinGainRegistrar,
+		domain.SpecialCoinGain:       coinGainRegistrar,
+		domain.SpecialCoinSteal:      coinStealRegistrar,
+		domain.SpecialSelfDamage:     selfDamageRegistrar,
+		domain.SpecialIgnoreCoinLoss: ignoreCoinLossRegistrar,
+		domain.SpecialClearStealth:   clearStealthRegistrar,
 	}
 }

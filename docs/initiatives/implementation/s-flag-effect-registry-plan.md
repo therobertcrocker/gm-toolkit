@@ -136,6 +136,88 @@ initiative extends the dispatch and then authors 19 assets against it.
 <!-- Empty at plan time. Execution-time decisions and reversals land here, logged
 before the commit they ride. Append AND reconcile. -->
 
+1. **Removing `MutationReactorsFor` moves three test files to the new accessors**
+   (Effort 2, Commit 1). The plan listed only `mutations.go` as a caller. The four
+   Cat 3 tests in `hooks/registry_test.go` and the transport registration test in
+   `effect/effect_test.go` also called it. The registry tests now check each accessor
+   alone, and a new test proves an asset-scope hook stays out of other assets and out of
+   the faction lookup. The transport test now finds its reactor at asset scope and none
+   at faction scope. The existing `mutations_test.go` cases passed a `nil` state, which
+   `allReactors` dereferences; they now build one with a `stateOf` helper. Production
+   code gets no nil guard, because every orchestrator call site has a state. Plan body
+   reconciled: Effort 2 Commit 1 Task 6.
+
+2. **Effort 2 Commit 1 carries its own arch-doc fixes** (Effort 2, Commit 1). The
+   Reconciliation Items table assigns the `hooks.md` / `effect-mutation.md` scope claims
+   to Effort 2 without naming a commit. This commit is the one that makes them true or
+   false, so it fixes them: `hooks.md` notes that Cat 3 exposes its buckets separately
+   and that `MutationReactors` runs every faction's and asset's reactors in sorted
+   order; `effect-mutation.md` says the `TransportReactor` is asset-scoped. The
+   `hooks.md:74-75` claim ("`EffectsEngine` registers asset-scoped hooks") becomes true
+   and is unchanged. Plan body reconciled: Effort 2 Commit 1 Task 7.
+
+3. **A Cat 3 reactor gets its roller at registration** (Effort 2, Commit 3).
+   `MutationReactor.OnMutations` takes no `Roller`, but `coin_steal`, `self_damage` and
+   the contest gate roll dice. `ApplyAll` takes the engine roller and
+   `RegisterContext` carries it; each reactor keeps it. `ApplyAll` runs at the start of
+   each cycle, so a test that swaps `Engine.Rand` before the run still controls the
+   dice. Rejected: a `Roller` parameter on `OnMutations`, which changes every reactor
+   for three effects. Plan body reconciled: Effort 2 Commit 3.
+
+4. **Damage mutations mark a counterattack** (Effort 2, Commit 3). Attack damage and
+   counterattack damage both emit `Cause: "attack"` with the dealing asset in
+   `CausedByAssetID`, so a reactor cannot tell them apart. Blockade Fleet and Franchise
+   would steal on a counterattack, and Zealots' two entries would both fire on every
+   hit (2d4, not 1d4). `AssetHPDelta` grows `Counter bool` (`omitempty`).
+   `BaseHPDelta` does not: a counterattack always strikes the attacking asset, and only
+   attack damage can be redirected to a Base. Rejected: a `"counterattack"` cause, which changes every reader of
+   `Cause == "attack"` (digest, Scavengers, goals); and passing the acting faction to
+   `OnMutations`, which changes every reactor.
+
+5. **A hit redirected to a Base counts as a hit** (Effort 2, Commit 3). When the
+   defender redirects damage to its Base, the attack emits `BaseHPDelta` and no
+   `AssetHPDelta`, so `own_attack_hit` would miss a successful attack. `BaseHPDelta`
+   grows `CausedByAssetID`, and the attack-hit match reads both mutation types. This
+   completes Commit 2, which covered `AssetHPDelta` only.
+
+6. **A Bank absorbing a steal does not undo the thief's gain** (Effort 2, Commit 5).
+   Robert's rules reading: Bank offsets its owner's loss only. The `coin_steal` gain to
+   the thief stands, so net Coin rises by the absorbed amount.
+
+7. **Tripwire Cells react to movement only; the purchase case moves to Effort 5**
+   (Effort 2, Commit 6). No purchase creates a stealthed asset until Effort 5's
+   `apply_stealth` (Psychic Assassins). If that route emits stealth as a separate
+   `AssetStealthApplied`, a match on `AssetAdded.Asset.Stealthy` never fires. Effort 5
+   wires the purchase case together with the producer, so the match and the mutation
+   shape are designed together. Plan body reconciled: Effort 2 Commit 6; Effort 5
+   outline.
+
+8. **`self_damage` judges lethality against the batch, not the state** (Effort 2,
+   Commit 4). A reactor sees state before the batch applies, but on a tie the batch
+   already holds the defender's counter damage to the Zealots. The reactor adds the
+   batch's `AssetHPDelta`s for the asset to its `CurrentHP` before it decides whether to
+   emit `AssetRemoved` — the reactor-side twin of `applyAssetDamage`'s tracker. When the
+   batch already removes the Zealots, the reactor emits nothing: an `AssetHPDelta` on a
+   removed asset is a mutation miss at apply time.
+
+9. **The lowest-ID Bank allocates losses for every Bank its faction owns** (Effort 2,
+   Commit 5). Each Bank's reactor sees the same batch, and siblings cannot see each
+   other's output in one dispatch round. With two Banks and two imposed losses, both
+   would absorb the first loss and none the second. Every Bank still registers a
+   reactor, but only the owner's lowest-ID Bank acts: it walks the losses in batch order
+   and assigns each to the next Bank, in ID order, whose `once_per` budget is unspent.
+   Budgets stay per asset (Planning Decision 3). Rejected: one faction-scope reactor,
+   which needs a register-once guard in a registrar that runs once per asset.
+
+10. **"Lands" means arrives from elsewhere, and the contest gate honours both rollers**
+    (Effort 2, Commit 6). Tripwire Cells match an `AssetMoved` whose `ToLocation` is
+    their world and whose `FromLocation` is not — a move into flight or within the
+    world is not a landing; a landing from flight is. The contest helper
+    (`effects/contest.go`) runs `roller = "target"` as well as `"self"`, with ties to
+    the defender as in the A-side gate: a registrar that accepts a gate must honour
+    every value of it, or wrong data runs silently. Panopticon Matrix (Effort 3) is the
+    first `target` user and reuses the helper.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time
@@ -539,7 +621,18 @@ mutation in the faction.
 Add two cases to the existing table: a reactor registered against a non-acting faction
 fires on the acting faction's mutation batch, and a reactor registered at asset scope
 fires. Assert reactor order is stable across runs by registering reactors against two
-factions whose map insertion order differs from their sorted ID order.
+factions whose map insertion order differs from their sorted ID order. The existing
+cases pass a `nil` state; give them one via a `stateOf` helper. Move the other
+`MutationReactorsFor` callers — the Cat 3 tests in `hooks/registry_test.go` and the
+transport test in `effect/effect_test.go` (now asserting asset scope) — to the new
+accessors (Decision Record 1).
+
+##### Task 7 — `docs/architecture/engine/hooks.md`, `effect-mutation.md`
+
+Note in `hooks.md` that Cat 3 exposes its buckets separately and that
+`MutationReactors` runs every faction's and asset's reactors in sorted order. Change
+`effect-mutation.md`'s transport paragraph from faction-scoped to asset-scoped
+(Decision Record 2).
 
 ##### Commit message
 
@@ -550,6 +643,7 @@ feat: cat 3 dispatch reaches every faction and asset scope
 - dispatch every faction's reactors, sorted by faction then asset ID
 - bind the transport reactor to asset scope now that it is reachable
 - cover non-acting-faction and asset-scope dispatch
+- correct the hooks and effect-mutation arch pages on reactor scope
 ```
 
 #### Commit 2 — `feat: record the causing asset on damage mutations`
@@ -674,14 +768,23 @@ feat: record the causing asset on damage mutations
 Blockade Fleet `SWN-F5-001` steals `1d4` Coin from the target faction when it lands a
 hit; Franchise `SWN-W1-001` takes a flat `1`. Both cap at once per target faction per
 turn, however many copies attack. Both are Cat 3 reactors on `own_attack_hit`, reading
-`AssetHPDelta` with `Cause == "attack"` and `CausedByAssetID` equal to the bound asset.
+`AssetHPDelta` (with `Counter == false`) or `BaseHPDelta`, with `Cause == "attack"` and
+`CausedByAssetID` equal to the bound asset.
+
+The commit opens with the plumbing the attack-hit match needs (Execution Decisions 3–5):
+`ApplyAll` takes the engine roller and `RegisterContext` carries it; `AssetHPDelta`
+grows `Counter bool`, and `BaseHPDelta` grows `CausedByAssetID`;
+`applyAssetDamage` takes a `counter` argument, and the Base-redirect branch fills
+`CausedByAssetID`. A shared `attackHits` helper in `effects` yields the target faction
+of each hit the bound asset dealt, for this commit and Commit 4.
 
 This commit also builds the **Cat 3 budget gate**, the first consumer of Planning
 Decision 3. The gate helper takes the owning faction, the effect name, the def ID and
 the target faction ID, builds the key `effect:<name>:<defID>:<targetFactionID>`, and
 reports whether the budget is spent — writing it when it is not. `once_per =
-"owner_faction"` omits the target segment; `once_per = "asset"` uses the asset instance
-ID in place of the def ID. The helper lives beside the registrars, not in `hooks`,
+"owner_faction"` omits the target segment; `once_per = "asset"` puts the asset instance
+ID in the target's place (`effect:<name>:<defID>:<assetID>`), with no target segment, so
+one Bank absorbs one loss whichever rival caused it. The helper lives beside the registrars, not in `hooks`,
 because `RollWithHooks` owns the roll-path budget and this is the non-roll path.
 
 Franchise's amount is capped at the target's balance ("the enemy faction loses 1 Coin
@@ -738,7 +841,9 @@ counterattack. Two entries, one per trigger, because the two are separate events
 engine's counterattack only fires when the defender wins (`attack.go:192-197`) — so
 "perform a counterattack" already implies a hit. The registrar emits `AssetHPDelta`
 against the Zealots themselves, plus `AssetRemoved` when the damage is lethal, matching
-`applyAssetDamage`'s inline pattern.
+`applyAssetDamage`'s inline pattern. The two entries split on the `Counter` mark
+(Execution Decision 4): `own_attack_hit` reads `Counter == false`, `own_counter_hit`
+reads `Counter == true`, so one hit fires exactly one entry.
 
 The counterattack half is what needs dispatch item 1: when Zealots counterattack, they
 belong to the *defending* faction, whose reactors did not run before Commit 1.
@@ -821,16 +926,14 @@ Tripwire Cells `SWN-C4-003` make an immediate Cunning vs. Cunning attack against
 owning faction whenever a stealthed asset lands or is purchased on their world. On
 success the asset loses its stealth.
 
-The reactor matches `AssetMoved` into the Cells' world, and `AssetAdded` on it, where the
-moved or added asset is stealthy and rival-owned. The contest gate rolls with
-`roller = "self"` — the Cells attack — and the effect emits `AssetStealthCleared` against
-the target.
+The reactor matches `AssetMoved` into the Cells' world (an in-flight move, with no
+`WorldID`, is not a landing) where the moved asset is stealthy and rival-owned. The
+contest gate rolls with `roller = "self"` — the Cells attack — and the effect emits
+`AssetStealthCleared` against the target.
 
-This needs dispatch item 1 for the movement case: a rival's stealthed asset arrives
-during the *rival's* turn, so the Cells' owner is not the acting faction. The purchase
-case is covered here through `AssetAdded` in the action-phase batch; Psychic Assassins'
-own `on_purchase` route is Effort 5 and is a different question (stealth applied at
-purchase, not stripped).
+This needs dispatch item 1: a rival's stealthed asset arrives during the *rival's* turn,
+so the Cells' owner is not the acting faction. The purchase case is deferred to Effort 5
+(Execution Decision 7): nothing purchases a stealthed asset until `apply_stealth` lands.
 
 Authored entry:
 
@@ -853,7 +956,7 @@ defender_stat = "Cunning"
 ```
 feat: clear_stealth effect on stealth arrival
 
-- clear_stealth registrar reacting to AssetMoved and AssetAdded
+- clear_stealth registrar reacting to a stealthed asset landing
 - contest gate rolled by the declaring asset
 - author Tripwire Cells
 ```
@@ -1353,6 +1456,9 @@ hook type reshaped, and the two remaining assets.
   enabler can buy. Note that `buy_asset.go:62` already hardcodes `SWN-C3-002` for a
   different stealth-on-purchase case; that asset belongs to A.001.6 and is not migrated
   here, but the new route should sit cleanly beside it rather than duplicating it.
+  **This commit also wires Tripwire Cells' purchase case** (Execution Decision 7): the
+  `clear_stealth` reactor from Effort 2 matches movement only, and must learn to see an
+  asset purchased stealthed on its world, in whatever mutation shape this route emits.
 
 Authored entries:
 

@@ -140,15 +140,19 @@ func (registry *Registry) RollResultHooksFor(factionID, assetInstanceID string) 
 	return result
 }
 
-// MutationReactorsFor returns all Cat 3 hooks matching the given faction and asset.
-func (registry *Registry) MutationReactorsFor(factionID, assetInstanceID string) []RegisteredMutationReactor {
-	var result []RegisteredMutationReactor
-	result = append(result, registry.mutationReactors[GlobalScope()]...)
-	result = append(result, registry.mutationReactors[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.mutationReactors[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
+// MutationReactorsGlobal returns the Cat 3 hooks registered at global scope.
+func (registry *Registry) MutationReactorsGlobal() []RegisteredMutationReactor {
+	return registry.mutationReactors[GlobalScope()]
+}
+
+// MutationReactorsForFaction returns the Cat 3 hooks registered against one faction.
+func (registry *Registry) MutationReactorsForFaction(factionID string) []RegisteredMutationReactor {
+	return registry.mutationReactors[FactionScope(factionID)]
+}
+
+// MutationReactorsForAsset returns the Cat 3 hooks registered against one asset instance.
+func (registry *Registry) MutationReactorsForAsset(factionID, assetInstanceID string) []RegisteredMutationReactor {
+	return registry.mutationReactors[AssetScope(factionID, assetInstanceID)]
 }
 
 // AssetCostModifiersFor returns all Cat 4 asset-cost hooks matching the given faction and asset.

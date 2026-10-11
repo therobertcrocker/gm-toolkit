@@ -67,6 +67,13 @@ accidentally drags in per-asset hooks. This ordering is the whole contract a
 dispatcher relies on: it can walk the returned slice and trust that broader-scope
 hooks act before narrower ones.
 
+Cat 3 is the exception. A reactor answers "what just happened", not a question
+asked on behalf of one faction, so its dispatcher needs every bucket, not one
+faction's slice. The registry exposes the buckets separately —
+`MutationReactorsGlobal()`, `MutationReactorsForFaction(factionID)`,
+`MutationReactorsForAsset(factionID, assetInstanceID)` — and the dispatcher
+composes them.
+
 ### Registration in, dispatch out
 
 The registry is populated once, at the start of each cycle, by the two
@@ -85,7 +92,11 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   2 reroll directives — so one call covers both roll-time families.
 - **`MutationReactors`** runs after the orchestrator applies a phase's mutations
   (movement and action phases), letting Cat 3 reactors respond to what just
-  happened.
+  happened. It runs **every** registered reactor, not only the acting
+  faction's: global, then each faction's, then each of that faction's assets,
+  sorted by faction ID and then asset ID so the emitted mutations are
+  deterministic. A defender's reactor hears what was done to it; each reactor
+  filters the batch for the events it cares about.
 - **`ResolveAssetCost` / `ResolveMaintenanceCost` / `ResolveWorldTechLevel` /
   `GrantedMovementAbilities`** are the Cat 4 query resolvers, called from
   [`buy_asset`](actions.md), [`bookkeeping`](turn-pipeline.md), the TL-gate on

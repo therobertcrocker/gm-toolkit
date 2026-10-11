@@ -77,23 +77,25 @@ func TestEffectsEngine_RegistersTransportReactor(t *testing.T) {
 	}
 
 	registry := hooks.NewRegistry()
-	e.ApplyAll(factionState, rb, registry, discardLog)
+	e.ApplyAll(factionState, rb, registry, nil, discardLog)
 
 	wantSource := "transport:" + transportDefID
 
-	// Faction alpha has a transport asset — one reactor should be registered.
-	alphaReactors := registry.MutationReactorsFor("alpha", "")
-	if len(alphaReactors) != 1 {
-		t.Fatalf("alpha: got %d MutationReactors, want 1", len(alphaReactors))
+	// The transport asset carries its own reactor, at asset scope.
+	transportReactors := registry.MutationReactorsForAsset("alpha", "transport-1")
+	if len(transportReactors) != 1 {
+		t.Fatalf("transport-1: got %d MutationReactors, want 1", len(transportReactors))
 	}
-	if got := alphaReactors[0].Source; got != wantSource {
-		t.Errorf("alpha reactor source = %q, want %q", got, wantSource)
+	if got := transportReactors[0].Source; got != wantSource {
+		t.Errorf("transport-1 reactor source = %q, want %q", got, wantSource)
+	}
+	if got := registry.MutationReactorsForFaction("alpha"); len(got) != 0 {
+		t.Errorf("alpha: got %d faction-scoped MutationReactors, want 0", len(got))
 	}
 
 	// Faction beta has no transport asset — no reactor should be registered.
-	betaReactors := registry.MutationReactorsFor("beta", "")
-	if len(betaReactors) != 0 {
-		t.Errorf("beta: got %d MutationReactors, want 0", len(betaReactors))
+	if got := registry.MutationReactorsForAsset("beta", "soldier-1"); len(got) != 0 {
+		t.Errorf("soldier-1: got %d MutationReactors, want 0", len(got))
 	}
 }
 
@@ -117,7 +119,7 @@ type recordingHandler struct {
 
 func (handler recordingHandler) AssetDefinitionID() string { return handler.defID }
 
-func (handler recordingHandler) Apply(faction *domain.Faction, asset *domain.Asset, _ *hooks.Registry) {
+func (handler recordingHandler) Apply(faction *domain.Faction, asset *domain.Asset, _ *hooks.Registry, _ domain.Roller) {
 	*handler.calls = append(*handler.calls, faction.ID+"/"+asset.ID)
 }
 
@@ -139,7 +141,7 @@ func TestApplyAll_WalksFactionsAndAssetsInIDOrder(t *testing.T) {
 	if err := e.Register(recordingHandler{defID: def.ID, calls: &calls}); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	e.ApplyAll(factionState, rb, hooks.NewRegistry(), discardLog)
+	e.ApplyAll(factionState, rb, hooks.NewRegistry(), nil, discardLog)
 
 	want := []string{
 		"alpha/alpha-1", "alpha/alpha-2", "alpha/alpha-3",
@@ -152,8 +154,13 @@ func TestApplyAll_WalksFactionsAndAssetsInIDOrder(t *testing.T) {
 	}
 }
 
+type constRoller struct{}
+
+func (constRoller) Roll(int) int { return 1 }
+
 func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 	var registered []domain.SpecialEffectType
+	var roller domain.Roller = constRoller{}
 	registrars := map[domain.SpecialEffectType]effect.Registrar{
 		domain.SpecialCoinGain: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnSelf},
@@ -165,7 +172,7 @@ func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 		domain.SpecialCoinSteal: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnAttackHit: acceptsRivalWorld},
 			Register: func(ctx effect.RegisterContext) {
-				if ctx.Faction.ID != "alpha" || ctx.Asset.ID != "alpha-1" || ctx.Def.ID != "T-001" || ctx.Registry == nil {
+				if ctx.Faction.ID != "alpha" || ctx.Asset.ID != "alpha-1" || ctx.Def.ID != "T-001" || ctx.Registry == nil || ctx.Roller != roller {
 					t.Errorf("RegisterContext = %+v", ctx)
 				}
 				registered = append(registered, ctx.Entry.Effect)
@@ -187,7 +194,7 @@ func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 	if err := e.RegisterEffectsList(def); err != nil {
 		t.Fatalf("RegisterEffectsList: %v", err)
 	}
-	e.ApplyAll(factionState, rb, hooks.NewRegistry(), discardLog)
+	e.ApplyAll(factionState, rb, hooks.NewRegistry(), roller, discardLog)
 
 	if want := []domain.SpecialEffectType{domain.SpecialCoinSteal}; !reflect.DeepEqual(registered, want) {
 		t.Errorf("registered = %v, want %v", registered, want)

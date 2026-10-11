@@ -167,7 +167,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				}
 				if redirect {
 					attack.mutations = append(attack.mutations,
-						domain.BaseHPDelta{FactionID: defenderFaction.ID, BaseID: base.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID},
+						domain.BaseHPDelta{FactionID: defenderFaction.ID, BaseID: base.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID, CausedByAssetID: attacker.ID},
 						// SWN: damage to a Base is also dealt directly to faction HP.
 						domain.FactionHPDelta{FactionID: defenderFaction.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID},
 					)
@@ -181,10 +181,10 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 						})
 					}
 				} else {
-					attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker)
+					attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker, attacker, false)
 				}
 			} else {
-				attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker)
+				attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker, attacker, false)
 			}
 		}
 
@@ -192,7 +192,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		if defenseRoll > attackRoll || (defenseRoll == attackRoll && tieOutcome != hooks.TieAttackerWins) {
 			if defenderDef.Counter != nil {
 				counterDamage := defenderDef.Counter.Roll(attack.roller)
-				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker)
+				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker, defender, true)
 			}
 		}
 	}
@@ -206,13 +206,19 @@ func (attack *AttackAction) Output() ([]domain.Mutation, error) {
 // applyAssetDamage emits AssetHPDelta and, when lethal, AssetRemoved inline.
 // factionID is the owner of the damaged asset; causedByFactionID is the attacker.
 // Updates the local tracker so subsequent re-checks see the correct effective HP.
-func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker map[string]int) {
+func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker map[string]int, causedByAsset *domain.Asset, counter bool) {
+	causedByAssetID := ""
+	if causedByAsset != nil {
+		causedByAssetID = causedByAsset.ID
+	}
 	attack.mutations = append(attack.mutations, domain.AssetHPDelta{
 		FactionID:         factionID,
 		AssetID:           asset.ID,
 		Delta:             -damage,
 		Cause:             "attack",
 		CausedByFactionID: causedByFactionID,
+		CausedByAssetID:   causedByAssetID,
+		Counter:           counter,
 	})
 	tracker[asset.ID] -= damage
 	if asset.CurrentHP+tracker[asset.ID] <= 0 {

@@ -73,8 +73,8 @@ relevant profile.
 
 Only the **transport** family is wired today — `HeavyDropAssets`,
 `BeachheadLanders`, `ExtendedTheater`, `DeepStrikeLanders`, every asset whose
-definition carries a `Transport` profile. `TransportHandler.Apply` registers a
-faction-scoped `TransportReactor` for each such asset; the reactor (a
+definition carries a `Transport` profile. `TransportHandler.Apply` registers an
+asset-scoped `TransportReactor` for each such asset; the reactor (a
 `MutationReactor`) watches the movement-order mutations for its asset and, when
 that transport moves with cargo, charges the per-issuance Coin cost and emits an
 `AssetMoved` for each cargo asset so cargo location stays in lockstep with the

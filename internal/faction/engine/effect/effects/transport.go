@@ -20,9 +20,9 @@ func NewTransportHandler(def *domain.AssetDefinition) *TransportHandler {
 
 func (handler *TransportHandler) AssetDefinitionID() string { return handler.def.ID }
 
-func (handler *TransportHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry) {
+func (handler *TransportHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, _ domain.Roller) {
 	hookRegistry.RegisterMutationReactor(
-		hooks.FactionScope(faction.ID),
+		hooks.AssetScope(faction.ID, asset.ID),
 		"transport:"+handler.def.ID,
 		&TransportReactor{
 			FactionID: faction.ID,

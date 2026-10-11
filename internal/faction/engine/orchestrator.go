@@ -39,7 +39,7 @@ func (e *Engine) RunCycle(
 	logging.RunHeader(e.log, "faction-manager", "dev", factionState.CampaignID, len(factionState.Factions))
 
 	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
-	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.log.With("engine", "effect"))
+	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.Rand, e.log.With("engine", "effect"))
 
 	for {
 		done, err := e.RunFactionTurn(factionState, paths, collectors, observer)

@@ -14,7 +14,7 @@ import (
 
 type Handler interface {
 	AssetDefinitionID() string
-	Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry)
+	Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller domain.Roller)
 }
 
 type EffectsEngine struct {
@@ -53,7 +53,7 @@ func (e *EffectsEngine) RegisterEffectsList(def *domain.AssetDefinition) error {
 // ID, so hook registration order is the same every run — looks up the handler for
 // that asset's definition ID, and invokes it. Assets whose definitions are missing
 // or whose def has no registered handler are silently skipped.
-func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, log *slog.Logger) {
+func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller, log *slog.Logger) {
 	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 		faction := factionState.Factions[factionID]
 		for _, asset := range domain.SortedAssets(faction) {
@@ -65,7 +65,7 @@ func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rul
 			if !ok {
 				continue
 			}
-			handler.Apply(faction, asset, hookRegistry)
+			handler.Apply(faction, asset, hookRegistry, roller)
 		}
 	}
 }

@@ -24,6 +24,7 @@ const (
 	DefSecurityPersonnel = "SWN-F1-001"
 	DefHeavyDropAssets   = "SWN-F2-001"
 	DefPartyMachine      = "SWN-C4-001"
+	DefFranchise         = "SWN-W1-001"
 )
 
 type Harness struct {

@@ -151,7 +151,7 @@ func TestMutationReactor_RegistrationOrderPreserved(t *testing.T) {
 	registry.RegisterMutationReactor(hooks.FactionScope("f1"), "src-A", hookA)
 	registry.RegisterMutationReactor(hooks.FactionScope("f1"), "src-B", hookB)
 
-	result := registry.MutationReactorsFor("f1", "")
+	result := registry.MutationReactorsForFaction("f1")
 	if len(result) != 2 || result[0].Source != "src-A" || result[1].Source != "src-B" {
 		t.Errorf("registration order not preserved: %v", result)
 	}
@@ -161,27 +161,48 @@ func TestMutationReactor_FactionScopeFilters(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterMutationReactor(hooks.FactionScope("f1"), "src", &stubMutationReactor{})
 
-	if got := registry.MutationReactorsFor("f2", ""); len(got) != 0 {
+	if got := registry.MutationReactorsForFaction("f2"); len(got) != 0 {
 		t.Errorf("faction A hook must not appear for faction B")
 	}
 }
 
-func TestMutationReactor_GlobalScopeMatchesAnyFaction(t *testing.T) {
+func TestMutationReactor_GlobalScopeIsSeparateFromFactionScope(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterMutationReactor(hooks.GlobalScope(), "global", &stubMutationReactor{})
 
-	for _, factionID := range []string{"f1", "f2"} {
-		if got := registry.MutationReactorsFor(factionID, ""); len(got) != 1 {
-			t.Errorf("global hook missing for faction %q", factionID)
-		}
+	if got := registry.MutationReactorsGlobal(); len(got) != 1 {
+		t.Errorf("global hook missing: got %d entries", len(got))
+	}
+	if got := registry.MutationReactorsForFaction("f1"); len(got) != 0 {
+		t.Errorf("global hook must not appear in a faction lookup")
+	}
+}
+
+func TestMutationReactor_AssetScopeFilters(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterMutationReactor(hooks.AssetScope("f1", "a1"), "src", &stubMutationReactor{})
+
+	if got := registry.MutationReactorsForAsset("f1", "a1"); len(got) != 1 {
+		t.Errorf("asset hook missing for its own asset: got %d entries", len(got))
+	}
+	if got := registry.MutationReactorsForAsset("f1", "a2"); len(got) != 0 {
+		t.Errorf("asset hook must not appear for another asset")
+	}
+	if got := registry.MutationReactorsForFaction("f1"); len(got) != 0 {
+		t.Errorf("asset hook must not appear in a faction lookup")
 	}
 }
 
 func TestMutationReactor_EmptyRegistryReturnsEmptySlice(t *testing.T) {
 	registry := hooks.NewRegistry()
-	got := registry.MutationReactorsFor("f1", "")
-	if len(got) != 0 {
-		t.Errorf("expected empty slice, got %d entries", len(got))
+	if got := registry.MutationReactorsGlobal(); len(got) != 0 {
+		t.Errorf("global: expected empty slice, got %d entries", len(got))
+	}
+	if got := registry.MutationReactorsForFaction("f1"); len(got) != 0 {
+		t.Errorf("faction: expected empty slice, got %d entries", len(got))
+	}
+	if got := registry.MutationReactorsForAsset("f1", "a1"); len(got) != 0 {
+		t.Errorf("asset: expected empty slice, got %d entries", len(got))
 	}
 }
 

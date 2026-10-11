@@ -27,12 +27,15 @@ type Accepts struct {
 	Gates   []domain.EffectGateName
 }
 
+// RegisterContext carries Roller because a Cat 3 reactor's OnMutations takes none;
+// a reactor that rolls dice keeps this one.
 type RegisterContext struct {
 	Faction  *domain.Faction
 	Asset    *domain.Asset
 	Def      *domain.AssetDefinition
 	Entry    domain.EffectDefinition
 	Registry *hooks.Registry
+	Roller   domain.Roller
 }
 
 type FireContext struct {
@@ -59,7 +62,7 @@ type effectsListHandler struct {
 
 func (handler *effectsListHandler) AssetDefinitionID() string { return handler.def.ID }
 
-func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry) {
+func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller domain.Roller) {
 	for _, entry := range handler.def.Effects {
 		if IsPhaseTrigger(entry.Trigger) {
 			continue
@@ -71,6 +74,7 @@ func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.
 			Def:      handler.def,
 			Entry:    entry,
 			Registry: hookRegistry,
+			Roller:   roller,
 		})
 	}
 }

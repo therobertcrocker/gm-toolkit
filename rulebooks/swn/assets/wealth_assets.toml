@@ -19,6 +19,17 @@ attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "1d4"
 
+[[assets.Franchise.effects]]
+trigger = "own_attack_hit"
+effect  = "coin_steal"
+[assets.Franchise.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.Franchise.effects.gates]
+once_per = "target_faction"
+[assets.Franchise.effects.coin_steal]
+amount = "1"
+
 [assets.Harvesters]
 id = "SWN-W1-002"
 name = "Harvesters"
@@ -272,6 +283,15 @@ type = "Facility"
 flags = ["S"]
 counter = ""
 description = "A financial institution under faction control. Once per turn, the faction can ignore one Coin cost or loss imposed by another faction. This does not require an action. Multiple Banks allow multiple losses to be ignored."
+
+[[assets.Bank.effects]]
+trigger = "coin_loss"
+effect  = "ignore_coin_loss"
+[assets.Bank.effects.filters]
+owner = "rival"
+scope = "faction"
+[assets.Bank.effects.gates]
+once_per = "asset"
 
 [assets.Marketers]
 id = "SWN-W5-001"

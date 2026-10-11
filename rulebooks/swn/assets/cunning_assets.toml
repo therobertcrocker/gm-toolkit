@@ -256,6 +256,18 @@ flags = ["S"]
 counter = "1d4"
 description = "Observers alert to the arrival of stealthed units. Whenever a stealthed asset lands or is purchased on a planet with Tripwire Cells, the Cells make an immediate Cunning vs. Cunning attack against the owning faction. If successful, the asset loses its stealth."
 
+[[assets.TripwireCells.effects]]
+trigger = "stealth_arrival"
+effect  = "clear_stealth"
+[assets.TripwireCells.effects.filters]
+owner    = "rival"
+scope    = "world"
+stealthy = true
+[assets.TripwireCells.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
 [assets.Seditionists]
 id = "SWN-C4-004"
 name = "Seditionists"

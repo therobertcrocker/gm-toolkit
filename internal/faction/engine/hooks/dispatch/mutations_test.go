@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -28,12 +29,37 @@ func (r *oneShotReactor) OnMutations(_ []domain.Mutation, _ *state.FactionState,
 	return r.result
 }
 
+func stateOf(factions ...*domain.Faction) *state.FactionState {
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{}}
+	for _, faction := range factions {
+		factionState.Factions[faction.ID] = faction
+	}
+	return factionState
+}
+
+func oneShotCoin(tag string) *oneShotReactor {
+	return &oneShotReactor{result: []domain.Mutation{domain.CoinDelta{FactionID: tag}}}
+}
+
+func emittedFactionIDs(t *testing.T, mutations []domain.Mutation) []string {
+	t.Helper()
+	var ids []string
+	for _, mutation := range mutations[1:] {
+		coin, ok := mutation.(domain.CoinDelta)
+		if !ok {
+			t.Fatalf("expected CoinDelta, got %T", mutation)
+		}
+		ids = append(ids, coin.FactionID)
+	}
+	return ids
+}
+
 func TestMutationReactors_Empty(t *testing.T) {
 	registry := hooks.NewRegistry()
 	faction := &domain.Faction{ID: "alpha"}
 	input := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 1}}
 
-	result, err := MutationReactors(registry, faction, input, nil, nil)
+	result, err := MutationReactors(registry, faction, input, stateOf(faction), nil)
 
 	if err != nil {
 		t.Fatalf("empty registry: unexpected error: %v", err)
@@ -51,7 +77,7 @@ func TestMutationReactors_OneReactorAddsOne(t *testing.T) {
 	registry.RegisterMutationReactor(hooks.FactionScope("alpha"), "test", reactor)
 
 	initial := []domain.Mutation{domain.CoinDelta{FactionID: "beta", Delta: 0}}
-	result, err := MutationReactors(registry, faction, initial, nil, nil)
+	result, err := MutationReactors(registry, faction, initial, stateOf(faction), nil)
 
 	if err != nil {
 		t.Fatalf("one reactor: unexpected error: %v", err)
@@ -80,7 +106,7 @@ func TestMutationReactors_Recurses(t *testing.T) {
 	registry.RegisterMutationReactor(hooks.FactionScope("alpha"), "recurse", reactor)
 
 	initial := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 0}}
-	result, err := MutationReactors(registry, faction, initial, nil, nil)
+	result, err := MutationReactors(registry, faction, initial, stateOf(faction), nil)
 
 	if err != nil {
 		t.Fatalf("recursion: unexpected error: %v", err)
@@ -105,7 +131,7 @@ func TestMutationReactors_DepthCap(t *testing.T) {
 	registry.RegisterMutationReactor(hooks.FactionScope("alpha"), "always-adds", reactor)
 
 	initial := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 0}}
-	result, err := MutationReactors(registry, faction, initial, nil, nil)
+	result, err := MutationReactors(registry, faction, initial, stateOf(faction), nil)
 
 	if err == nil {
 		t.Error("depth cap: expected error, got nil")
@@ -128,7 +154,7 @@ func TestMutationReactors_RegistrationOrder(t *testing.T) {
 	registry.RegisterMutationReactor(hooks.FactionScope("alpha"), "B", reactorB)
 
 	initial := []domain.Mutation{domain.CoinDelta{FactionID: "initial", Delta: 0}}
-	result, err := MutationReactors(registry, faction, initial, nil, nil)
+	result, err := MutationReactors(registry, faction, initial, stateOf(faction), nil)
 
 	if err != nil {
 		t.Fatalf("order: unexpected error: %v", err)
@@ -143,5 +169,75 @@ func TestMutationReactors_RegistrationOrder(t *testing.T) {
 	}
 	if coinA.FactionID != "A" || coinB.FactionID != "B" {
 		t.Errorf("order: got [%s, %s], want [A, B]", coinA.FactionID, coinB.FactionID)
+	}
+}
+
+func TestMutationReactors_NonActingFactionReacts(t *testing.T) {
+	registry := hooks.NewRegistry()
+	acting := &domain.Faction{ID: "alpha"}
+	defender := &domain.Faction{ID: "beta"}
+	registry.RegisterMutationReactor(hooks.FactionScope("beta"), "defender", oneShotCoin("beta-reacted"))
+
+	initial := []domain.Mutation{domain.CoinDelta{FactionID: "beta", Delta: -1}}
+	result, err := MutationReactors(registry, acting, initial, stateOf(acting, defender), nil)
+
+	if err != nil {
+		t.Fatalf("non-acting faction: unexpected error: %v", err)
+	}
+	got := emittedFactionIDs(t, result)
+	if len(got) != 1 || got[0] != "beta-reacted" {
+		t.Errorf("non-acting faction: emitted %v, want [beta-reacted]", got)
+	}
+}
+
+func TestMutationReactors_AssetScopeReacts(t *testing.T) {
+	registry := hooks.NewRegistry()
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{
+		"a1": {ID: "a1", OwnerID: "alpha"},
+	}}
+	registry.RegisterMutationReactor(hooks.AssetScope("alpha", "a1"), "asset", oneShotCoin("a1-reacted"))
+
+	initial := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 0}}
+	result, err := MutationReactors(registry, faction, initial, stateOf(faction), nil)
+
+	if err != nil {
+		t.Fatalf("asset scope: unexpected error: %v", err)
+	}
+	got := emittedFactionIDs(t, result)
+	if len(got) != 1 || got[0] != "a1-reacted" {
+		t.Errorf("asset scope: emitted %v, want [a1-reacted]", got)
+	}
+}
+
+func TestMutationReactors_OrderIsSortedNotRegistered(t *testing.T) {
+	want := []string{"global", "alpha", "alpha/a1", "alpha/a2", "beta", "beta/b1"}
+
+	for run := range 20 {
+		registry := hooks.NewRegistry()
+		alpha := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{
+			"a2": {ID: "a2", OwnerID: "alpha"},
+			"a1": {ID: "a1", OwnerID: "alpha"},
+		}}
+		beta := &domain.Faction{ID: "beta", Assets: map[string]*domain.Asset{
+			"b1": {ID: "b1", OwnerID: "beta"},
+		}}
+
+		// Registered in the reverse of sorted order, so registration order cannot pass for sorted.
+		registry.RegisterMutationReactor(hooks.AssetScope("beta", "b1"), "beta/b1", oneShotCoin("beta/b1"))
+		registry.RegisterMutationReactor(hooks.FactionScope("beta"), "beta", oneShotCoin("beta"))
+		registry.RegisterMutationReactor(hooks.AssetScope("alpha", "a2"), "alpha/a2", oneShotCoin("alpha/a2"))
+		registry.RegisterMutationReactor(hooks.AssetScope("alpha", "a1"), "alpha/a1", oneShotCoin("alpha/a1"))
+		registry.RegisterMutationReactor(hooks.FactionScope("alpha"), "alpha", oneShotCoin("alpha"))
+		registry.RegisterMutationReactor(hooks.GlobalScope(), "global", oneShotCoin("global"))
+
+		initial := []domain.Mutation{domain.CoinDelta{FactionID: "initial"}}
+		result, err := MutationReactors(registry, beta, initial, stateOf(beta, alpha), nil)
+		if err != nil {
+			t.Fatalf("run %d: unexpected error: %v", run, err)
+		}
+		got := emittedFactionIDs(t, result)
+		if !slices.Equal(got, want) {
+			t.Fatalf("run %d: emitted %v, want %v", run, got, want)
+		}
 	}
 }

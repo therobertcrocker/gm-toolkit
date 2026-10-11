@@ -149,6 +149,24 @@ attacker_stat = "Force"
 defender_stat = "Force"
 damage = "2d6"
 
+[[assets.Zealots.effects]]
+trigger = "own_attack_hit"
+effect  = "self_damage"
+[assets.Zealots.effects.filters]
+owner = "own"
+scope = "self"
+[assets.Zealots.effects.self_damage]
+amount = "1d4"
+
+[[assets.Zealots.effects]]
+trigger = "own_counter_hit"
+effect  = "self_damage"
+[assets.Zealots.effects.filters]
+owner = "own"
+scope = "self"
+[assets.Zealots.effects.self_damage]
+amount = "1d4"
+
 [assets.CunningTrap]
 id = "SWN-F3-002"
 name = "Cunning Trap"
@@ -276,12 +294,23 @@ speed = 1
 type = "Starship"
 flags = ["S"]
 counter = ""
-description = "A ragtag lot of corsairs, pirates, privateers, and other deniable assets. When they successfully attack an enemy faction asset, they steal 1d4 Coin from the target faction. This theft can occur to a faction only once per turn, no matter how many Blockade Fleets attack. As an action, this asset may also move itself to a world within one hex."
+description = "A ragtag lot of corsairs, pirates, privateers, and other deniable assets. When they successfully attack an enemy faction asset, they steal 1d4 Coin from the target faction. This theft can occur to a faction only once per turn, no matter how many Blockade Fleets attack."
 
 [assets.BlockadeFleet.attack]
 attacker_stat = "Force"
 defender_stat = "Wealth"
 damage = "1d6"
+
+[[assets.BlockadeFleet.effects]]
+trigger = "own_attack_hit"
+effect  = "coin_steal"
+[assets.BlockadeFleet.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.BlockadeFleet.effects.gates]
+once_per = "target_faction"
+[assets.BlockadeFleet.effects.coin_steal]
+amount = "1d4"
 
 [assets.PretechLogistics]
 id = "SWN-F5-002"
