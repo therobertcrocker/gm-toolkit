@@ -70,6 +70,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.016` | Per-ask detail cards | 4th specialized card | Move per-ask knowledge out of `execution.detailView`'s `activeAsk` switch into an optional overlay interface (`DetailView() string`). |
 | `R.017` | Evaluate `teatest` for UI tests | -- | TUI tests currently drive `Update` by hand and assert emitted messages; explore `charmbracelet/x/exp/teatest` as a golden-output harness for full model behavior — adopt across overlays/views or document why not. |
 | `R.019` | Migrate `[transport]` onto the effects list | `A.001.6` | Transport keeps its own typed profile and registration branch (`core.go:58-61`) beside the `[[effects]]` model; fold it in once the S-flag model is fully built, so one parse and dispatch path serves every S effect. |
+| `R.020` | One "asset is active" rule | next eligibility change | `Ready && Maintained` (± `CurrentHP > 0`) is inlined in `eligibility.go`, `use_asset_ability.go`, `expand_influence.go` and `FireTurnStart`, beside the effects-layer `active()`; the copies disagree on HP, so unify on one `domain` method. |
 
 ### Bugfixes
 

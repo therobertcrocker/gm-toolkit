@@ -136,10 +136,10 @@ func TestTurnStateRoundTrip(t *testing.T) {
 		CampaignID:  "test-campaign",
 		CycleNumber: 2,
 		CurrentTurn: &domain.TurnState{
-			InProgress:   true,
-			CycleNumber:  2,
-			FactionOrder: []string{"faction-b", "faction-a"},
-			CurrentIndex: 1,
+			InProgress:         true,
+			CycleNumber:        2,
+			FactionOrder:       []string{"faction-b", "faction-a"},
+			CurrentIndex:       1,
 			BookkeepingApplied: true,
 		},
 	}

@@ -218,6 +218,20 @@ before the commit they ride. Append AND reconcile. -->
     every value of it, or wrong data runs silently. Panopticon Matrix (Effort 3) is the
     first `target` user and reuses the helper.
 
+11. **Every S-side reactor checks that its asset is active when it reacts** (Effort 2,
+    follow-up fix). The rules make a new asset unable to "use special abilities until
+    the start of next turn" and an unmaintained asset "unusable". `active()` in
+    `effects` is `Ready && Maintained && CurrentHP > 0`, matching attack eligibility.
+    The check runs at reaction time, not at registration: `ApplyAll` runs at cycle
+    start, but `Ready` flips at the owner's turn start and `Maintained` in each
+    bookkeeping, so a Bank bought last cycle is registered before it is ready. Only Bank
+    and Tripwire Cells had a live gap — attack hits already require an eligible
+    attacker or defender — but all four reactors check, so no future passive effect can
+    forget it. Bank's lead and allocation use active Banks only, so an inactive
+    lowest-ID Bank hands the lead on instead of absorbing nothing for everyone. The
+    inline copies outside the effects layer stay as they are (`R.020`). Effort 3–5
+    reactors and hooks follow the same rule.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time

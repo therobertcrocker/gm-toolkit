@@ -19,7 +19,7 @@ func bankState(bankIDs ...string) *state.FactionState {
 		"aaa-other": {ID: "aaa-other", DefinitionID: "SWN-F1-001", OwnerID: "alpha"},
 	}
 	for _, id := range bankIDs {
-		assets[id] = &domain.Asset{ID: id, DefinitionID: bankDefID, OwnerID: "alpha"}
+		assets[id] = activeAsset(id, bankDefID)
 	}
 	return &state.FactionState{Factions: map[string]*domain.Faction{
 		"alpha": {ID: "alpha", Coin: 10, Assets: assets},
@@ -120,6 +120,39 @@ func TestIgnoreCoinLoss(t *testing.T) {
 			got := runReactors(bankReactors(t, factionState, domain.OncePerAsset), tc.mutations, factionState)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIgnoreCoinLoss_InactiveBankAbsorbsNothing(t *testing.T) {
+	for name, deactivate := range inactiveStates {
+		t.Run(name, func(t *testing.T) {
+			factionState := bankState("bank-1")
+			reactors := bankReactors(t, factionState, domain.OncePerAsset)
+			deactivate(factionState.Factions["alpha"].Assets["bank-1"])
+
+			if got := runReactors(reactors, []domain.Mutation{lossTo("alpha", -3, "beta")}, factionState); len(got) != 0 {
+				t.Errorf("mutations = %+v, want none", got)
+			}
+		})
+	}
+}
+
+func TestIgnoreCoinLoss_InactiveLowestBankHandsTheLeadOn(t *testing.T) {
+	for name, deactivate := range inactiveStates {
+		t.Run(name, func(t *testing.T) {
+			factionState := bankState("bank-1", "bank-2", "bank-3")
+			reactors := bankReactors(t, factionState, domain.OncePerAsset)
+			deactivate(factionState.Factions["alpha"].Assets["bank-1"])
+
+			batch := []domain.Mutation{lossTo("alpha", -1, "beta"), lossTo("alpha", -2, "beta"), lossTo("alpha", -4, "beta")}
+			got := runReactors(reactors, batch, factionState)
+			if want := []domain.Mutation{absorbed(1), absorbed(2)}; !reflect.DeepEqual(got, want) {
+				t.Errorf("mutations = %+v, want %+v: two active Banks absorb two losses", got, want)
+			}
+			if _, spent := factionState.Factions["alpha"].HookBudgets["effect:ignore_coin_loss:"+bankDefID+":bank-1"]; spent {
+				t.Error("the inactive Bank's budget was spent")
 			}
 		})
 	}

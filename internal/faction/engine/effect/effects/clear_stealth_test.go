@@ -28,12 +28,18 @@ var (
 	inFlight = domain.Location{}
 )
 
+func cellsAsset(location domain.Location) *domain.Asset {
+	cells := activeAsset("cells", "SWN-C4-003")
+	cells.Location = location
+	return cells
+}
+
 // tripwireState puts alpha's Cells (Cunning 3) on Krylos; beta (Cunning 2) owns
 // a stealthed spy and an open courier; alpha owns a stealthed agent of its own.
 func tripwireState(cellsAt domain.Location) *state.FactionState {
 	return &state.FactionState{Factions: map[string]*domain.Faction{
 		"alpha": {ID: "alpha", Cunning: 3, Assets: map[string]*domain.Asset{
-			"cells": {ID: "cells", DefinitionID: "SWN-C4-003", OwnerID: "alpha", Location: cellsAt},
+			"cells": cellsAsset(cellsAt),
 			"agent": {ID: "agent", OwnerID: "alpha", Location: tartarus, Stealthy: true},
 		}},
 		"beta": {ID: "beta", Cunning: 2, Assets: map[string]*domain.Asset{
@@ -144,6 +150,24 @@ func TestClearStealth(t *testing.T) {
 			}
 			if roller.next != len(tc.rolls) {
 				t.Errorf("rolled %d dice, want %d", roller.next, len(tc.rolls))
+			}
+		})
+	}
+}
+
+func TestClearStealth_InactiveCellsWatchNothing(t *testing.T) {
+	for name, deactivate := range inactiveStates {
+		t.Run(name, func(t *testing.T) {
+			factionState := tripwireState(krylos)
+			roller := &seqRoller{}
+			reactor := tripwireReactor(t, factionState, roller)
+			deactivate(factionState.Factions["alpha"].Assets["cells"])
+
+			if got := reactor.OnMutations([]domain.Mutation{moved("beta", "spy", tartarus, krylos)}, factionState, nil); len(got) != 0 {
+				t.Errorf("mutations = %+v, want none", got)
+			}
+			if roller.next != 0 {
+				t.Errorf("rolled %d dice, want 0", roller.next)
 			}
 		})
 	}

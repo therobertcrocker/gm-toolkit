@@ -10,11 +10,11 @@ import (
 )
 
 type Bribe struct {
-	collector       action.Collector
-	factionID       string
-	rivalFactionID  string
-	baseID          string
-	coinAmount      int
+	collector      action.Collector
+	factionID      string
+	rivalFactionID string
+	baseID         string
+	coinAmount     int
 }
 
 func NewBribe(collector action.Collector) *Bribe {

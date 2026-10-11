@@ -47,11 +47,14 @@ type coinStealReactor struct {
 }
 
 func (reactor *coinStealReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
+	owner := factionState.Factions[reactor.ownerFactionID]
+	if owner == nil || !active(owner.Assets[reactor.assetID]) {
+		return nil
+	}
 	var extra []domain.Mutation
 	for _, targetID := range hitTargets(mutations, reactor.assetID, false) {
-		owner := factionState.Factions[reactor.ownerFactionID]
 		target := factionState.Factions[targetID]
-		if owner == nil || target == nil || targetID == reactor.ownerFactionID {
+		if target == nil || targetID == reactor.ownerFactionID {
 			continue
 		}
 		// deliberate: an empty purse is checked before the budget, because a steal that takes nothing has not "happened" and must not use up the turn's one theft.

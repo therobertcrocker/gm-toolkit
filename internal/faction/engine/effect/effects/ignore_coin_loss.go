@@ -48,8 +48,8 @@ func (reactor *ignoreCoinLossReactor) OnMutations(mutations []domain.Mutation, f
 	if owner == nil {
 		return nil
 	}
-	copies := assetsOfDefinition(owner, reactor.defID)
-	// deliberate: only the lowest-ID copy reacts, for all copies, because sibling reactors cannot see each other's output in one dispatch round and would absorb the same loss twice.
+	copies := activeAssetsOfDefinition(owner, reactor.defID)
+	// deliberate: only the lowest-ID active copy reacts, for all active copies, because sibling reactors cannot see each other's output in one dispatch round and would absorb the same loss twice.
 	if len(copies) == 0 || copies[0].ID != reactor.assetID {
 		return nil
 	}
@@ -79,10 +79,10 @@ func (reactor *ignoreCoinLossReactor) OnMutations(mutations []domain.Mutation, f
 	return extra
 }
 
-func assetsOfDefinition(faction *domain.Faction, defID string) []*domain.Asset {
+func activeAssetsOfDefinition(faction *domain.Faction, defID string) []*domain.Asset {
 	var matching []*domain.Asset
 	for _, asset := range domain.SortedAssets(faction) {
-		if asset.DefinitionID == defID {
+		if asset.DefinitionID == defID && active(asset) {
 			matching = append(matching, asset)
 		}
 	}

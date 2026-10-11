@@ -68,7 +68,7 @@ type relocLoc struct {
 func (l *relocLoc) ID() string                   { return l.id }
 func (l *relocLoc) Name() string                 { return l.id }
 func (l *relocLoc) TechLevel() int               { return 5 }
-func (l *relocLoc) Population() int               { return 0 }
+func (l *relocLoc) Population() int              { return 0 }
 func (l *relocLoc) Coords() (int, int)           { return l.hex.Coord.Q, l.hex.Coord.R }
 func (l *relocLoc) RegionID() string             { return l.hex.RegionID }
 func (l *relocLoc) RegionHex() spatial.RegionHex { return l.hex }

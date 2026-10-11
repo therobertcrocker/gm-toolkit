@@ -47,7 +47,7 @@ type clearStealthReactor struct {
 
 func (reactor *clearStealthReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
 	owner := factionState.Factions[reactor.ownerFactionID]
-	if owner == nil || owner.Assets[reactor.assetID] == nil {
+	if owner == nil || !active(owner.Assets[reactor.assetID]) {
 		return nil
 	}
 	worldID := owner.Assets[reactor.assetID].Location.WorldID

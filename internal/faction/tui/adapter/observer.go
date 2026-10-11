@@ -21,10 +21,14 @@ func (o *observer) emit(kind EventKind, payload any) {
 	}
 }
 
-func (o *observer) OnFactionTurnStarted(faction *domain.Faction)   { o.emit(EvtFactionTurnStarted, faction) }
-func (o *observer) OnFactionSkipped(faction *domain.Faction)       { o.emit(EvtFactionSkipped, faction) }
-func (o *observer) OnFactionTurnCompleted(faction *domain.Faction) { o.emit(EvtFactionTurnCompleted, faction) }
-func (o *observer) OnStatRaiseSkipped(faction *domain.Faction)     { o.emit(EvtStatRaiseSkipped, faction) }
+func (o *observer) OnFactionTurnStarted(faction *domain.Faction) {
+	o.emit(EvtFactionTurnStarted, faction)
+}
+func (o *observer) OnFactionSkipped(faction *domain.Faction) { o.emit(EvtFactionSkipped, faction) }
+func (o *observer) OnFactionTurnCompleted(faction *domain.Faction) {
+	o.emit(EvtFactionTurnCompleted, faction)
+}
+func (o *observer) OnStatRaiseSkipped(faction *domain.Faction) { o.emit(EvtStatRaiseSkipped, faction) }
 
 func (o *observer) OnGoalLockApplied(faction *domain.Faction, lock locks.GoalLock, muts []domain.Mutation) {
 	o.emit(EvtGoalLockApplied, GoalLockAppliedPayload{Lock: lock, Mutations: muts})

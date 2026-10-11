@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
@@ -23,8 +23,10 @@ type item struct {
 	coin  string
 }
 
-func (i item) Title() string       { return i.name }
-func (i item) Description() string { return fmt.Sprintf("%s · HP %s · Coin %s", i.scale, i.hp, i.coin) }
+func (i item) Title() string { return i.name }
+func (i item) Description() string {
+	return fmt.Sprintf("%s · HP %s · Coin %s", i.scale, i.hp, i.coin)
+}
 func (i item) FilterValue() string { return i.name }
 
 type keyMap struct {

@@ -40,7 +40,7 @@ func zealotReactors(t *testing.T, factionState *state.FactionState) []hooks.Muta
 func zealotState() *state.FactionState {
 	return &state.FactionState{Factions: map[string]*domain.Faction{
 		"alpha": {ID: "alpha", Assets: map[string]*domain.Asset{
-			"zealots": {ID: "zealots", DefinitionID: "SWN-F3-001", OwnerID: "alpha", CurrentHP: 4},
+			"zealots": activeAsset("zealots", "SWN-F3-001"),
 		}},
 		"beta": {ID: "beta"},
 	}}
@@ -107,6 +107,20 @@ func TestSelfDamage(t *testing.T) {
 			got := runReactors(zealotReactors(t, factionState), tc.mutations, factionState)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSelfDamage_InactiveZealotsTakeNothing(t *testing.T) {
+	for name, deactivate := range inactiveStates {
+		t.Run(name, func(t *testing.T) {
+			factionState := zealotState()
+			reactors := zealotReactors(t, factionState)
+			deactivate(factionState.Factions["alpha"].Assets["zealots"])
+
+			if got := runReactors(reactors, []domain.Mutation{zealotHit(false)}, factionState); len(got) != 0 {
+				t.Errorf("mutations = %+v, want none", got)
 			}
 		})
 	}

@@ -25,8 +25,8 @@ func coinStealEntry(amount domain.DiceRoll) domain.EffectDefinition {
 func stealState(betaCoin, gammaCoin int) *state.FactionState {
 	return &state.FactionState{Factions: map[string]*domain.Faction{
 		"alpha": {ID: "alpha", Coin: 0, Assets: map[string]*domain.Asset{
-			"fr-1": {ID: "fr-1", DefinitionID: "SWN-W1-001", OwnerID: "alpha"},
-			"fr-2": {ID: "fr-2", DefinitionID: "SWN-W1-001", OwnerID: "alpha"},
+			"fr-1": activeAsset("fr-1", "SWN-W1-001"),
+			"fr-2": activeAsset("fr-2", "SWN-W1-001"),
 		}},
 		"beta":  {ID: "beta", Coin: betaCoin},
 		"gamma": {ID: "gamma", Coin: gammaCoin},
@@ -148,6 +148,20 @@ func TestCoinSteal(t *testing.T) {
 			got := runReactors(reactors, tc.mutations, factionState)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCoinSteal_InactiveAssetStealsNothing(t *testing.T) {
+	for name, deactivate := range inactiveStates {
+		t.Run(name, func(t *testing.T) {
+			factionState := stealState(5, 0)
+			reactors := stealReactors(t, factionState, coinStealEntry(domain.DiceRoll{Modifier: 1}), fixedRoller{value: 3})
+			deactivate(factionState.Factions["alpha"].Assets["fr-1"])
+
+			if got := runReactors(reactors, []domain.Mutation{attackHit("beta", "fr-1")}, factionState); len(got) != 0 {
+				t.Errorf("mutations = %+v, want none", got)
 			}
 		})
 	}

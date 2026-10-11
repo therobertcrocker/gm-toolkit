@@ -52,7 +52,7 @@ func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, facti
 		return nil
 	}
 	asset := faction.Assets[reactor.assetID]
-	if asset == nil {
+	if !active(asset) {
 		return nil
 	}
 	effectiveHP, removed := batchHP(mutations, asset)

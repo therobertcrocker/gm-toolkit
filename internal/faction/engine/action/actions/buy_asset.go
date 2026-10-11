@@ -183,4 +183,3 @@ func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook
 	}
 	return result
 }
-
