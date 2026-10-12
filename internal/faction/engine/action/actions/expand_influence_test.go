@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
@@ -35,7 +36,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		faction := &domain.Faction{ID: "f1", Coin: 0, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when coin < 1")
 		}
 	})
@@ -47,7 +48,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		base := &domain.Base{ID: "b1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 5, Assets: map[string]*domain.Asset{"a1": asset}, Bases: []*domain.Base{base}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when no expansion options available")
 		}
 	})
@@ -57,7 +58,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if !NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if !NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction has an asset on a world with no base")
 		}
 	})
@@ -75,7 +76,7 @@ func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{8}}, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &fixedRoller{values: []int{8}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -118,7 +119,7 @@ func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -158,7 +159,7 @@ func TestExpandInfluence_Reinforce_Max(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -207,7 +208,7 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 
 	// Roll sequence: factionRoll=5, rivalRoll=5 (tie → confirmed attack), attackRoll=8, defenseRoll=3, damage=4.
 	roller := &fixedRoller{values: []int{5, 5, 8, 3, 4}}
-	act := NewExpandInfluence(collector, roller, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, roller, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -236,5 +237,76 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	factionDelta, ok := mutations[3].(domain.FactionHPDelta)
 	if !ok || factionDelta.Delta != -4 || factionDelta.CausedByFactionID != "f2" {
 		t.Errorf("mutations[3] = %v, want FactionHPDelta{-4, caused by f2}", mutations[3])
+	}
+}
+
+// contextRecorder is a RollModifier that records every RollContext it sees and
+// offers nothing, so the roll and the collector are untouched.
+type contextRecorder struct {
+	contexts []hooks.RollContext
+}
+
+func (recorder *contextRecorder) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
+	recorder.contexts = append(recorder.contexts, ctx)
+	return nil
+}
+
+// TestExpandInfluence_RollsCarryContext: every roll in a contested expansion goes
+// through RollWithHooks with its phase, parties and world. Same roll sequence as
+// TestExpandInfluence_NewBase_Contested; the hook adds no dice.
+func TestExpandInfluence_RollsCarryContext(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	rulebook := makeExpandRulebook()
+
+	f1Asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
+	f2Asset := &domain.Asset{
+		ID: "a2", DefinitionID: "force-unit", OwnerID: "f2",
+		Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 8, Ready: true, Maintained: true,
+	}
+	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": f1Asset}}
+	rival := &domain.Faction{ID: "f2", Force: 0, Cunning: 0, Assets: map[string]*domain.Asset{"a2": f2Asset}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
+
+	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
+	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
+	collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
+
+	recorder := &contextRecorder{}
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
+
+	roller := &fixedRoller{values: []int{5, 5, 8, 3, 4}}
+	act := NewExpandInfluence(collector, roller, registry, indexFromState(factionState), nil)
+	if err := act.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := act.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := act.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	if len(mutations) != 4 {
+		t.Fatalf("len(mutations) = %d, want 4 (outcome unchanged by the hook); got %v", len(mutations), mutations)
+	}
+
+	want := []hooks.RollContext{
+		{Phase: hooks.PhaseFactionTest, Actor: faction, Attribute: string(domain.StatCunning)},
+		{Phase: hooks.PhaseContested, Actor: rival, Opponent: faction, Attribute: string(domain.StatCunning)},
+		{Phase: hooks.PhaseAttack, Actor: rival, Opponent: faction, Attribute: string(domain.StatForce), Asset: f2Asset},
+		{Phase: hooks.PhaseDefense, Actor: faction, Opponent: rival, Attribute: string(domain.StatCunning), OpponentAsset: f2Asset},
+	}
+	if len(recorder.contexts) != len(want) {
+		t.Fatalf("recorded %d roll contexts, want %d: %+v", len(recorder.contexts), len(want), recorder.contexts)
+	}
+	for i, expected := range want {
+		expected.World = order.World
+		expected.Action = "Expand Influence"
+		if got := recorder.contexts[i]; got != expected {
+			t.Errorf("roll %d context = %+v, want %+v", i+1, got, expected)
+		}
 	}
 }

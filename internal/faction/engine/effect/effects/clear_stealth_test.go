@@ -172,3 +172,105 @@ func TestClearStealth_InactiveCellsWatchNothing(t *testing.T) {
 		})
 	}
 }
+
+var matrixContest = &domain.EffectContest{
+	Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+	Roller:  domain.ContestRollerTarget,
+}
+
+// fireMatrix runs Panopticon Matrix's turn_start entry from alpha's "cells" asset,
+// which stands in for the Matrix: Fire reads the entry, not the asset's definition.
+func fireMatrix(factionState *state.FactionState, contest *domain.EffectContest, roller domain.Roller) []domain.Mutation {
+	alpha := factionState.Factions["alpha"]
+	stealthy := true
+	return effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{
+		Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}, Roller: roller, FactionState: factionState,
+		Entry: domain.EffectDefinition{
+			Trigger: domain.TriggerTurnStart,
+			Effect:  domain.SpecialClearStealth,
+			Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld, Stealthy: &stealthy},
+			Gates:   domain.EffectGates{Contest: contest},
+		},
+	})
+}
+
+func TestClearStealth_TurnStart(t *testing.T) {
+	cases := []struct {
+		name     string
+		matrixAt domain.Location
+		setup    func(*state.FactionState)
+		contest  *domain.EffectContest
+		rolls    []int
+		want     []domain.Mutation
+	}{
+		{
+			name:     "a stealthed rival that fails its test is unmasked",
+			matrixAt: tartarus,
+			contest:  matrixContest,
+			rolls:    []int{2, 9}, // beta 2+2=4 vs alpha 9+3=12
+			want:     []domain.Mutation{spyUnmasked},
+		},
+		{
+			name:     "a stealthed rival that passes its test keeps stealth",
+			matrixAt: tartarus,
+			contest:  matrixContest,
+			rolls:    []int{9, 2}, // beta 9+2=11 vs alpha 2+3=5
+		},
+		{
+			name:     "a tie goes to the Matrix, so the rival's test fails",
+			matrixAt: tartarus,
+			contest:  matrixContest,
+			rolls:    []int{3, 2}, // beta 3+2=5 vs alpha 2+3=5
+			want:     []domain.Mutation{spyUnmasked},
+		},
+		{
+			name:     "an open rival asset is not tested",
+			matrixAt: tartarus,
+			setup: func(factionState *state.FactionState) {
+				delete(factionState.Factions["beta"].Assets, "spy")
+				delete(factionState.Factions["alpha"].Assets, "agent")
+			},
+			contest: matrixContest,
+		},
+		{
+			name:     "the owner's own stealthed asset is not tested",
+			matrixAt: tartarus,
+			setup: func(factionState *state.FactionState) {
+				delete(factionState.Factions["beta"].Assets, "spy")
+				delete(factionState.Factions["beta"].Assets, "courier")
+			},
+			contest: matrixContest,
+		},
+		{
+			name:     "a rival on another world is not tested",
+			matrixAt: krylos,
+			contest:  matrixContest,
+		},
+		{
+			name:     "a Matrix in flight tests nothing",
+			matrixAt: inFlight,
+			contest:  matrixContest,
+		},
+		{
+			name:     "without a contest gate the rival is unmasked",
+			matrixAt: tartarus,
+			want:     []domain.Mutation{spyUnmasked},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState := tripwireState(tc.matrixAt)
+			if tc.setup != nil {
+				tc.setup(factionState)
+			}
+			roller := &seqRoller{values: tc.rolls}
+			got := fireMatrix(factionState, tc.contest, roller)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("mutations = %+v, want %+v", got, tc.want)
+			}
+			if roller.next != len(tc.rolls) {
+				t.Errorf("rolled %d dice, want %d", roller.next, len(tc.rolls))
+			}
+		})
+	}
+}

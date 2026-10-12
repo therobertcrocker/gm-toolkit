@@ -12,6 +12,13 @@ type RollModifier interface {
 	OfferModifiers(ctx RollContext, factionState *state.FactionState, rulebook *rulebook.Rulebook) []ModifierOffer
 }
 
+// RollOfferFilter removes Cat 1 offers before the collector sees them (Cat 1).
+// It runs after every RollModifier has offered, so it can strike any offer —
+// including one another faction's hook made.
+type RollOfferFilter interface {
+	FilterOffers(ctx RollContext, offers []ModifierOffer, factionState *state.FactionState) []ModifierOffer
+}
+
 // RollResultHook fires after dice are rolled and may instruct the dispatcher
 // to reroll specific dice (Cat 2). Elective directives are confirmed by the
 // collector; non-elective directives apply automatically.

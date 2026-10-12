@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -48,6 +49,7 @@ func Dispatch(
 	def *domain.AssetDefinition,
 	collector action.Collector,
 	roller domain.Roller,
+	registry *hooks.Registry,
 	factionState *state.FactionState,
 	rb *rulebook.Rulebook,
 	worldEngine *world.WorldEngine,
@@ -86,7 +88,8 @@ func Dispatch(
 		if err != nil {
 			return nil, err
 		}
-		passed, err := passesGate(step, workingFaction, target, roller)
+		// deliberate: the real faction, not workingFaction, because a roll hook's budget spent on the clone would be lost (Effort 3 plan, Decision 12).
+		passed, err := passesGate(step, faction, workingAsset, target, registry, collector, roller, factionState, rb)
 		if err != nil {
 			return nil, err
 		}

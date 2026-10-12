@@ -151,8 +151,12 @@ func TestIgnoreCoinLoss_InactiveLowestBankHandsTheLeadOn(t *testing.T) {
 			if want := []domain.Mutation{absorbed(1), absorbed(2)}; !reflect.DeepEqual(got, want) {
 				t.Errorf("mutations = %+v, want %+v: two active Banks absorb two losses", got, want)
 			}
-			if _, spent := factionState.Factions["alpha"].HookBudgets["effect:ignore_coin_loss:"+bankDefID+":bank-1"]; spent {
+			budgets := factionState.Factions["alpha"].HookBudgets
+			if _, spent := budgets["effect:ignore_coin_loss:coin_loss:"+bankDefID+":bank-1"]; spent {
 				t.Error("the inactive Bank's budget was spent")
+			}
+			if budgets["effect:ignore_coin_loss:coin_loss:"+bankDefID+":bank-2"] != 1 {
+				t.Errorf("bank-2's budget is not spent under the expected key; budgets = %v", budgets)
 			}
 		})
 	}

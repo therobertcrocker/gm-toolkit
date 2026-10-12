@@ -43,7 +43,10 @@ initiative extends the dispatch and then authors 19 assets against it.
    unpredictable point in the cycle. Keying `effect:<name>:<defID>:<targetFactionID>` on
    the owner's map keeps every budget's reset cadence tied to its owner's turn, and
    matches the rules wording — "no matter how many Franchises attack" caps the
-   attacker's repeats against one target. Resolves Open Question 5.
+   attacker's repeats against one target. Resolves Open Question 5. *Key format
+   amended by the Effort 3 plan, Decision 16:* the key carries the trigger,
+   `effect:<name>:<trigger>:<defID>[:<target-or-asset>]`, so two entries of one
+   definition (Book of Secrets) do not share a budget.
 
 4. **`RelocateParams` grows `CoinCostMode`.** Transit Web reads "For 1 Coin, any number
    of assets may be moved", but `relocate.go:67` charges `CoinCost` per moved asset. The
@@ -248,12 +251,11 @@ before the commit they ride. Append AND reconcile. -->
   world, they need Effort 4 Commit 1's world-scoped lookup; if only the owner, the
   existing buyer-scoped lookup serves. **Rules reading — Robert, before Effort 4
   Commit 3.**
-- **Panopticon Matrix — "at the beginning of every turn".** Every faction's turn, or its
-  owner's? The reading changes how often rivals test. Discovery Open Question 3. **Rules
-  reading — Robert, before Effort 3's `clear_stealth` commit.**
-- **Book of Secrets — "force an enemy faction to reroll one die".** Any roll that faction
-  makes on that world, or only a roll against the owner? Discovery Open Question 4.
-  **Rules reading — Robert, before Effort 3's `reroll` commit.**
+- ~~**Panopticon Matrix — "at the beginning of every turn".**~~ **Resolved** in the
+  Effort 3 plan, Decision 1: the owner's turn. Discovery Open Question 3.
+- ~~**Book of Secrets — "force an enemy faction to reroll one die".**~~ **Resolved** in
+  the Effort 3 plan, Decision 2: only a roll made against the owner. Discovery Open
+  Question 4.
 - **Filters serving both readings** — `filters` currently answers both "which events fire
   this" and "which assets the effect acts on". Every asset in the SWN set makes those the
   same. Deferred until an asset separates them (discovery Open Question 2), recorded so
@@ -306,10 +308,12 @@ grows `Effects []EffectDefinition`; `Transport *TransportProfile` stays alongsid
 unchanged (D-3). An `EffectDefinition` carries `Trigger`, `Effect`, `Filters`, `Gates`,
 and typed per-effect parameter pointers set iff their effect applies — mirroring
 `AbilityStep`'s `Relocate *RelocateParams` / `Purchase *PurchaseParams` shape
-(`asset.go:129`). `EffectFilters` carries `Owner`, `Scope`, `Attribute`, `Phase`,
+(`asset.go:129`). `EffectFilters` carries `Owner`, `Scope`, `Attribute`, `Phases`,
 `Action`, `AssetTypes`, `Categories`, `Stealthy *bool` — a pointer, because an absent
-filter differs from `false`. `Phase` is a string-backed `EffectRollPhase` naming a
+filter differs from `false`. Each phase is a string-backed `EffectRollPhase` naming a
 `hooks.RollPhase`, since `domain` must not import `hooks` (Effort 1 plan, Decision 17).
+`Phases` is a list since the Effort 3 plan, Decision 17 (Panopticon needs attack and
+defense).
 The effect name is a `SpecialEffectType` with `Special*` constants, beside the A-side's
 `AbilityEffectType` (Effort 1 plan, Decision 16). `EffectGates` carries `OncePer`, `NoStack`, and
 `Contest *EffectContest`, where `EffectContest` embeds the existing A-side
@@ -979,51 +983,26 @@ feat: clear_stealth effect on stealth arrival
 
 ### Effort 3 — Roll hooks *(own Plan session)*
 
-Scoping outline for the Effort-3 Plan session. This is the only effort that reaches
-outside the S side, so it re-grounds against `attack.go` and `expand_influence.go` before
-touching either.
+Planned in full in [`s-flag-effect-registry-effort-3-plan.md`](./s-flag-effect-registry-effort-3-plan.md)
+— six commits. The outline below is the summary; the effort plan is authoritative.
 
-- `feat: roll hooks consult the opponent's registered hooks` — item 3. `RollWithHooks`
-  looks up hooks for the faction it is given (`roll.go:34`, `:73`), so an opponent's hook
-  never applies to your roll. Needed by Blackmail and by Book of Secrets' forced-reroll
-  half. Decide how an opponent-sourced offer is presented to the collector, since
-  `SelectModifiers` today asks the roller which of *their* offers to take.
-- `feat: route every roll through RollWithHooks` — item 7. Today `dispatch.RollWithHooks`
-  has exactly two call sites, both in the Attack action (`attack.go:120`, `:134`). The
-  Expand Influence faction test and its rival roll (`expand_influence.go:92`, `:102`) and
-  the free attack inside it (`:182-183`) all call the roller directly. Two supporting
-  signs this is unfinished rather than intended: `PhaseFactionTest` and `PhaseContested`
-  (`types.go:11-12`) are produced at no call site, and `RollContext` carries no action
-  name (`types.go:16-23`), so a hook cannot tell which action it is in. Add `Action` to
-  `RollContext` to give the `action` filter a source.
-- `feat: bonus_die effect` — Integral Protocols `SWN-F7-002` (defence only, Cunning
-  only), Surveyors `SWN-W2-004` (Expand Influence on its world), Panopticon Matrix
-  `SWN-C8-001` (all Cunning attacks and defences on its world). Fold in the D5 prose
-  cleanup for Surveyors (Planning Decision 15).
-- `feat: remove_tag_dice effect` — Blackmail `SWN-C2-003`. Any attempt to attack or
-  defend against Blackmail loses bonus dice earned by tags, which means suppressing
-  tag-sourced `ModifierOffer`s rather than adding one. Needs the offer's source to be
-  distinguishable; `ModifierOffer.Source` and `BudgetKey` already namespace tags as
-  `tag:Warlike` (`types.go:66`).
-- `feat: reroll effect` — Book of Secrets `SWN-C7-002`. Two entries: the owner's own
-  elective reroll, and the forced enemy reroll, each with its own once-per-turn budget.
-  Open Question — the forced half's scope (any roll that faction makes on the world, or
-  only a roll against the owner).
-- `feat: clear_stealth on turn start` — Panopticon Matrix's second entry, an inverted
-  contest where the rival rolls to keep stealth. Consumes Effort 1's `turn_start` route.
-  Open Question — whose turn "every turn" means. Two limits of the as-built route
-  depend on the answer (Effort 1 interim review):
-  - `FireContext` carries only the owning `Faction`. This entry needs the rival assets
-    on the Matrix's world and the rival's Cunning for the contest, so `FireContext` must
-    grow `FactionState` (or a world index). `FireTurnStart` also walks only the acting
-    faction's assets: if "every turn" means every faction's turn, the walk itself must
-    change, not only the context.
-  - `ApplyBookkeeping` clears `HookBudgets` *after* `FireTurnStart` runs. A
-    `turn_start` entry with `once_per` would write a budget that is erased at once.
-    This entry has no `once_per`; any later one that does must move the clear or keep
-    its budget elsewhere.
+- `feat: roll hooks reach the opponent and the world's assets` — item 3. The dispatcher
+  consults the asset buckets of both sides' assets on the roll's world, never the
+  opponent's faction bucket, and spends each budget on the hook's owning faction.
+- `feat: route every roll through RollWithHooks` — item 7. Expand Influence's faction
+  test, rival rolls and free attack, and the A-side ability contest. `RollContext`
+  gains `Action` and `OpponentAsset`.
+- `feat: bonus_die effect` — Integral Protocols (die only), Surveyors (owner's
+  expansion test; D5 prose cleanup), Panopticon Matrix's die (attacks and defenses).
+  The `phase` filter becomes a list.
+- `feat: remove_tag_dice effect` — Blackmail, through a new Cat 1 `RollOfferFilter` and
+  a typed `ModifierOffer.FromTag`.
+- `feat: reroll effect` — Book of Secrets, with separate own and forced budgets; the
+  budget key gains the trigger.
+- `feat: clear_stealth on turn start` — Panopticon Matrix's stealth test at its owner's
+  turn start. `FireContext` and `FireTurnStart` gain `FactionState`.
 
-Authored entries for this effort:
+Authored entries for this effort (literal blocks live in the effort plan):
 
 ```toml
 [[assets.IntegralProtocols.effects]]
@@ -1032,7 +1011,7 @@ effect  = "bonus_die"
 [assets.IntegralProtocols.effects.filters]
 owner     = "own"
 scope     = "self"
-phase     = "defense"
+phase     = ["defense"]
 attribute = "Cunning"
 [assets.IntegralProtocols.effects.bonus_die]
 sides = 10
@@ -1044,6 +1023,7 @@ effect  = "bonus_die"
 [assets.Surveyors.effects.filters]
 owner  = "own"
 scope  = "world"
+phase  = ["faction_test"]
 action = "Expand Influence"
 [assets.Surveyors.effects.bonus_die]
 sides = 10
@@ -1055,6 +1035,7 @@ effect  = "bonus_die"
 [assets.PanopticonMatrix.effects.filters]
 owner     = "own"
 scope     = "world"
+phase     = ["attack", "defense"]
 attribute = "Cunning"
 [assets.PanopticonMatrix.effects.bonus_die]
 sides = 10
@@ -1104,8 +1085,8 @@ dice     = 1
 elective = true
 ```
 
-Omitting `phase` on Panopticon Matrix's `bonus_die` is deliberate — the rule covers both
-attacks and defences.
+Panopticon Matrix's `bonus_die` names both `attack` and `defense`, so Expand Influence
+tests and ability contests do not get its die (Effort 3 plan, Decision 5).
 
 ---
 

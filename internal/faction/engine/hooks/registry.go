@@ -15,6 +15,12 @@ type RegisteredRollResultHook struct {
 	Hook   RollResultHook
 }
 
+type RegisteredRollOfferFilter struct {
+	Scope  Scope
+	Source string
+	Hook   RollOfferFilter
+}
+
 type RegisteredMutationReactor struct {
 	Scope  Scope
 	Source string
@@ -55,6 +61,7 @@ type RegisteredTieResolver struct {
 type Registry struct {
 	rollModifiers            map[Scope][]RegisteredRollModifier
 	rollResultHooks          map[Scope][]RegisteredRollResultHook
+	rollOfferFilters         map[Scope][]RegisteredRollOfferFilter
 	mutationReactors         map[Scope][]RegisteredMutationReactor
 	assetCostModifiers       map[Scope][]RegisteredAssetCostModifier
 	maintenanceCostModifiers map[Scope][]RegisteredMaintenanceCostModifier
@@ -68,6 +75,7 @@ func NewRegistry() *Registry {
 	return &Registry{
 		rollModifiers:            make(map[Scope][]RegisteredRollModifier),
 		rollResultHooks:          make(map[Scope][]RegisteredRollResultHook),
+		rollOfferFilters:         make(map[Scope][]RegisteredRollOfferFilter),
 		mutationReactors:         make(map[Scope][]RegisteredMutationReactor),
 		assetCostModifiers:       make(map[Scope][]RegisteredAssetCostModifier),
 		maintenanceCostModifiers: make(map[Scope][]RegisteredMaintenanceCostModifier),
@@ -85,6 +93,11 @@ func (registry *Registry) RegisterRollModifier(scope Scope, source string, hook 
 // RegisterRollResultHook registers a Cat 2 hook under the given scope.
 func (registry *Registry) RegisterRollResultHook(scope Scope, source string, hook RollResultHook) {
 	registry.rollResultHooks[scope] = append(registry.rollResultHooks[scope], RegisteredRollResultHook{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterRollOfferFilter registers a Cat 1 offer filter under the given scope.
+func (registry *Registry) RegisterRollOfferFilter(scope Scope, source string, hook RollOfferFilter) {
+	registry.rollOfferFilters[scope] = append(registry.rollOfferFilters[scope], RegisteredRollOfferFilter{Scope: scope, Source: source, Hook: hook})
 }
 
 // RegisterMutationReactor registers a Cat 3 hook under the given scope.
@@ -117,27 +130,20 @@ func (registry *Registry) RegisterTieResolver(scope Scope, source string, hook T
 	registry.tieResolvers[scope] = append(registry.tieResolvers[scope], RegisteredTieResolver{Scope: scope, Source: source, Hook: hook})
 }
 
-// RollModifiersFor returns all Cat 1 hooks matching the given faction and asset,
-// in order: global, then faction-scoped, then asset-scoped.
-func (registry *Registry) RollModifiersFor(factionID, assetInstanceID string) []RegisteredRollModifier {
-	var result []RegisteredRollModifier
-	result = append(result, registry.rollModifiers[GlobalScope()]...)
-	result = append(result, registry.rollModifiers[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.rollModifiers[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
+// RollModifiersAt returns the Cat 1 hooks registered in one scope bucket. The roll
+// dispatcher decides which buckets a roll consults.
+func (registry *Registry) RollModifiersAt(scope Scope) []RegisteredRollModifier {
+	return registry.rollModifiers[scope]
 }
 
-// RollResultHooksFor returns all Cat 2 hooks matching the given faction and asset.
-func (registry *Registry) RollResultHooksFor(factionID, assetInstanceID string) []RegisteredRollResultHook {
-	var result []RegisteredRollResultHook
-	result = append(result, registry.rollResultHooks[GlobalScope()]...)
-	result = append(result, registry.rollResultHooks[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.rollResultHooks[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
+// RollResultHooksAt returns the Cat 2 hooks registered in one scope bucket.
+func (registry *Registry) RollResultHooksAt(scope Scope) []RegisteredRollResultHook {
+	return registry.rollResultHooks[scope]
+}
+
+// RollOfferFiltersAt returns the Cat 1 offer filters registered in one scope bucket.
+func (registry *Registry) RollOfferFiltersAt(scope Scope) []RegisteredRollOfferFilter {
+	return registry.rollOfferFilters[scope]
 }
 
 // MutationReactorsGlobal returns the Cat 3 hooks registered at global scope.

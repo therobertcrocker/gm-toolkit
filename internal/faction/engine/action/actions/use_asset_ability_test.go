@@ -77,7 +77,7 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 // runAbility drives a full Inputs→Resolve→Output cycle for UseAssetAbility.
 func runAbility(t *testing.T, collector *mocks.MockCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	t.Helper()
-	act := NewUseAssetAbility(collector, roller, nil)
+	act := NewUseAssetAbility(collector, roller, nil, nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "x1", DefinitionID: "no-flag", Ready: true, Maintained: true}
 		rulebook.Assets["no-flag"] = &domain.AssetDefinition{ID: "no-flag", Flags: nil}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"x1": asset}}
-		act := NewUseAssetAbility(nil, nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil, nil)
 		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when no A-flagged assets")
 		}
@@ -107,7 +107,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("A-flagged but not Ready", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: false, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		act := NewUseAssetAbility(nil, nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil, nil)
 		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when A-flagged asset is not Ready")
 		}
@@ -116,7 +116,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("A-flagged but not Maintained", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: false}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		act := NewUseAssetAbility(nil, nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil, nil)
 		if act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate false when A-flagged asset is not Maintained")
 		}
@@ -125,7 +125,7 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 	t.Run("usable A-flagged asset", func(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
-		act := NewUseAssetAbility(nil, nil, nil)
+		act := NewUseAssetAbility(nil, nil, nil, nil)
 		if !act.Validate(faction, nil, rulebook) {
 			t.Error("expected Validate true when A-flagged, Ready, Maintained asset exists")
 		}

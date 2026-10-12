@@ -73,7 +73,7 @@ func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rul
 // FireTurnStart runs every turn_start entry on faction's active assets, in asset ID
 // order, through its registrar's phase route. A direct definition read, not a hook:
 // turn start is a phase event the orchestrator raises once per turn.
-func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	for _, asset := range domain.SortedAssets(faction) {
 		if !asset.Ready || !asset.Maintained {
@@ -89,11 +89,12 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, rulebook *ruleboo
 			}
 			// deliberate: no nil check on Fire, because the rulebook is fixed after NewWithRulebook, so every definition here passed RegisterEffectsList, which rejects a phase-route entry without one.
 			mutations = append(mutations, e.registrars[entry.Effect].Fire(FireContext{
-				Faction: faction,
-				Asset:   asset,
-				Def:     def,
-				Entry:   entry,
-				Roller:  roller,
+				Faction:      faction,
+				Asset:        asset,
+				Def:          def,
+				Entry:        entry,
+				Roller:       roller,
+				FactionState: factionState,
 			})...)
 		}
 	}

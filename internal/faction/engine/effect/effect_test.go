@@ -358,7 +358,7 @@ func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 		"a-unmaintained": {ID: "a-unmaintained", DefinitionID: def.ID, Ready: true, Maintained: false},
 	}}
 
-	mutations := effect.New(registrars, discardLog).FireTurnStart(faction, rb, nil)
+	mutations := effect.New(registrars, discardLog).FireTurnStart(faction, nil, rb, nil)
 
 	var causes []string
 	for _, mutation := range mutations {
@@ -366,5 +366,32 @@ func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 	}
 	if want := []string{"a-1", "a-2"}; !reflect.DeepEqual(causes, want) {
 		t.Errorf("fired for %v, want %v", causes, want)
+	}
+}
+
+func TestFireTurnStart_PassesFactionStateToThePhaseRoute(t *testing.T) {
+	var seen *state.FactionState
+	registrars := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialCoinGain: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnSelf},
+			Fire: func(ctx effect.FireContext) []domain.Mutation {
+				seen = ctx.FactionState
+				return nil
+			},
+		},
+	}
+	def := &domain.AssetDefinition{ID: "T-001", Effects: []domain.EffectDefinition{
+		{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialCoinGain, Filters: ownSelf},
+	}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{
+		"a-1": {ID: "a-1", DefinitionID: def.ID, Ready: true, Maintained: true},
+	}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": faction}}
+
+	effect.New(registrars, discardLog).FireTurnStart(faction, factionState, rb, nil)
+
+	if seen != factionState {
+		t.Errorf("FireContext.FactionState = %p, want the state passed in (%p)", seen, factionState)
 	}
 }

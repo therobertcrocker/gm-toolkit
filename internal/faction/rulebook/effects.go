@@ -26,7 +26,7 @@ type effectFiltersRecord struct {
 	Owner     string   `toml:"owner"`
 	Scope     string   `toml:"scope"`
 	Attribute string   `toml:"attribute"`
-	Phase     string   `toml:"phase"`
+	Phase     []string `toml:"phase"`
 	Action    string   `toml:"action"`
 	AssetType []string `toml:"asset_type"`
 	Category  []string `toml:"category"`
@@ -172,12 +172,12 @@ func convertEffectFilters(record effectFiltersRecord) (domain.EffectFilters, err
 		}
 		filters.Attribute = attribute
 	}
-	if record.Phase != "" {
-		phase, err := toEnum("roll phase", record.Phase, effectRollPhases)
+	for i, value := range record.Phase {
+		phase, err := toEnum("roll phase", value, effectRollPhases)
 		if err != nil {
-			return domain.EffectFilters{}, err
+			return domain.EffectFilters{}, fmt.Errorf("filters.phase[%d]: %w", i, err)
 		}
-		filters.Phase = phase
+		filters.Phases = append(filters.Phases, phase)
 	}
 	for i, value := range record.AssetType {
 		assetType, err := toAssetType(value)

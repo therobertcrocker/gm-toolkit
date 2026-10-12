@@ -10,8 +10,10 @@ import (
 )
 
 // RollWithHooks executes a dice roll with Cat 1 (RollModifier) hooks applied
-// before rolling and Cat 2 (RollResultHook) hooks applied after. Budget gating,
-// collector selection, and elective-reroll confirmation are handled inline.
+// before rolling and Cat 2 (RollResultHook) hooks applied after. It consults the
+// buckets rollScopes lists, so an opponent's asset hooks and hooks on the roll's
+// world reach the roll. Each offer and directive is stamped with the faction that
+// registered it, and its budget is read and spent on that faction.
 func RollWithHooks(
 	ctx hooks.RollContext,
 	baseRoll domain.DiceRoll,
@@ -22,31 +24,39 @@ func RollWithHooks(
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
 ) hooks.RollResult {
-	assetInstanceID := ""
-	if ctx.Asset != nil {
-		assetInstanceID = ctx.Asset.ID
+	var scopes []hooks.Scope
+	if registry != nil {
+		scopes = rollScopes(ctx, faction)
 	}
 
-	// Cat 1: gather modifier offers, filter by budget, let collector choose.
+	// Cat 1: gather modifier offers, run offer filters, filter by budget, let collector choose.
 	var chosen []hooks.ModifierOffer
 	if registry != nil {
 		var allOffers []hooks.ModifierOffer
-		for _, registered := range registry.RollModifiersFor(faction.ID, assetInstanceID) {
-			allOffers = append(allOffers, registered.Hook.OfferModifiers(ctx, factionState, rulebook)...)
+		for _, scope := range scopes {
+			for _, registered := range registry.RollModifiersAt(scope) {
+				for _, offer := range registered.Hook.OfferModifiers(ctx, factionState, rulebook) {
+					offer.FactionID = scopeFactionID(scope, faction)
+					allOffers = append(allOffers, offer)
+				}
+			}
 		}
-		chosen = collector.SelectModifiers(offersBudgetFilter(allOffers, faction))
+		for _, scope := range scopes {
+			for _, registered := range registry.RollOfferFiltersAt(scope) {
+				allOffers = registered.Hook.FilterOffers(ctx, allOffers, factionState)
+			}
+		}
+		offers := offersBudgetFilter(allOffers, faction, factionState)
+		if len(offers) > 0 {
+			chosen = collector.SelectModifiers(offers)
+		}
 	}
 
 	// Apply chosen offers: expand the dice pool and consume budgets.
 	var rollState hooks.RollState
-	if faction.HookBudgets == nil {
-		faction.HookBudgets = make(map[string]int)
-	}
 	for _, offer := range chosen {
 		offer.Apply(&rollState)
-		if offer.BudgetKey != "" {
-			faction.HookBudgets[offer.BudgetKey]++
-		}
+		spendBudget(hookOwner(offer.FactionID, faction, factionState), offer.BudgetKey)
 	}
 
 	// Roll base dice pool then any extra dice queued by Apply.
@@ -67,40 +77,112 @@ func RollWithHooks(
 	}
 
 	// Cat 2: apply reroll directives from result hooks.
+	// deliberate: rerolls are decided right after this roll, not after both sides roll, because a split call would restructure every roll site (Effort 3 plan, Decision 15).
 	if registry == nil {
 		return result
 	}
-	for _, registered := range registry.RollResultHooksFor(faction.ID, assetInstanceID) {
-		directive := registered.Hook.OnRollResult(ctx, result, factionState, rulebook)
-		if len(directive.Indices) == 0 {
-			continue
-		}
-		if directive.BudgetKey != "" && faction.HookBudgets[directive.BudgetKey] >= 1 {
-			continue
-		}
-		if directive.Elective && !collector.ConfirmReroll(directive) {
-			continue
-		}
-		for _, idx := range directive.Indices {
-			if idx >= 0 && idx < len(result.Dice) {
-				result.Dice[idx] = roller.Roll(baseRoll.Sides)
+	for _, scope := range scopes {
+		for _, registered := range registry.RollResultHooksAt(scope) {
+			directive := registered.Hook.OnRollResult(ctx, result, factionState, rulebook)
+			if len(directive.Indices) == 0 {
+				continue
 			}
-		}
-		result.Sum = diceSum(result.Dice) + result.Modifier
-		if directive.BudgetKey != "" {
-			faction.HookBudgets[directive.BudgetKey]++
+			directive.FactionID = scopeFactionID(scope, faction)
+			owner := hookOwner(directive.FactionID, faction, factionState)
+			if budgetSpent(owner, directive.BudgetKey) {
+				continue
+			}
+			if directive.Elective && !collector.ConfirmReroll(directive) {
+				continue
+			}
+			for _, idx := range directive.Indices {
+				if idx >= 0 && idx < len(result.Dice) {
+					result.Dice[idx] = roller.Roll(baseRoll.Sides)
+				}
+			}
+			result.Sum = diceSum(result.Dice) + result.Modifier
+			spendBudget(owner, directive.BudgetKey)
 		}
 	}
 
 	return result
 }
 
-// offersBudgetFilter removes offers whose BudgetKey has already been spent
-// this turn (non-zero in faction.HookBudgets). Unlimited offers (empty key) pass through.
-func offersBudgetFilter(offers []hooks.ModifierOffer, faction *domain.Faction) []hooks.ModifierOffer {
+// rollScopes lists the registry buckets a roll consults, in order: global, the
+// roller's faction, the roller's assets, then the opponent's assets.
+// deliberate: the opponent's faction bucket is left out, not added, because tag hooks register there and assume the roll is their own faction's (Fanatical would reroll the opponent's 1s).
+func rollScopes(ctx hooks.RollContext, roller *domain.Faction) []hooks.Scope {
+	scopes := []hooks.Scope{hooks.GlobalScope(), hooks.FactionScope(roller.ID)}
+	scopes = append(scopes, assetScopes(roller, ctx.World, ctx.Asset)...)
+	if ctx.Opponent != nil {
+		scopes = append(scopes, assetScopes(ctx.Opponent, ctx.World, ctx.OpponentAsset)...)
+	}
+	return scopes
+}
+
+// assetScopes returns the asset buckets of faction's assets on world, in ID
+// order, plus named when it stands elsewhere (in flight, or a world-less roll).
+func assetScopes(faction *domain.Faction, world string, named *domain.Asset) []hooks.Scope {
+	var scopes []hooks.Scope
+	namedSeen := false
+	if world != "" {
+		for _, asset := range domain.SortedAssets(faction) {
+			if asset.Location.WorldID != world {
+				continue
+			}
+			scopes = append(scopes, hooks.AssetScope(faction.ID, asset.ID))
+			if named != nil && asset.ID == named.ID {
+				namedSeen = true
+			}
+		}
+	}
+	if named != nil && !namedSeen {
+		scopes = append(scopes, hooks.AssetScope(faction.ID, named.ID))
+	}
+	return scopes
+}
+
+// scopeFactionID names the faction a hook in scope belongs to; a global hook
+// belongs to the roller.
+func scopeFactionID(scope hooks.Scope, roller *domain.Faction) string {
+	if scope.FactionID == "" {
+		return roller.ID
+	}
+	return scope.FactionID
+}
+
+// hookOwner returns the faction whose HookBudgets a hook spends: the faction it
+// belongs to, or the roller when that faction is the roller or is not in state.
+func hookOwner(factionID string, roller *domain.Faction, factionState *state.FactionState) *domain.Faction {
+	if factionID == roller.ID || factionState == nil {
+		return roller
+	}
+	if owner := factionState.Factions[factionID]; owner != nil {
+		return owner
+	}
+	return roller
+}
+
+func budgetSpent(owner *domain.Faction, key string) bool {
+	return key != "" && owner.HookBudgets[key] >= 1
+}
+
+func spendBudget(owner *domain.Faction, key string) {
+	if key == "" {
+		return
+	}
+	if owner.HookBudgets == nil {
+		owner.HookBudgets = make(map[string]int)
+	}
+	owner.HookBudgets[key]++
+}
+
+// offersBudgetFilter removes offers whose BudgetKey has already been spent this
+// turn by the faction that made them. Unlimited offers (empty key) pass through.
+func offersBudgetFilter(offers []hooks.ModifierOffer, roller *domain.Faction, factionState *state.FactionState) []hooks.ModifierOffer {
 	var filtered []hooks.ModifierOffer
 	for _, offer := range offers {
-		if offer.BudgetKey != "" && faction.HookBudgets[offer.BudgetKey] >= 1 {
+		if budgetSpent(hookOwner(offer.FactionID, roller, factionState), offer.BudgetKey) {
 			continue
 		}
 		filtered = append(filtered, offer)

@@ -49,6 +49,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.021` | Narrative Recap Surface | -- | `digest` builder + wire `Renderer` are built and unit-tested but unwired; no command or view renders a cycle recap. Add a frontend (CLI and/or TUI) that runs LoadCycle → Build → Render. |
 | `F.023` | Region-scoped movement limits | `A.001.3` | Generalize relocate's `range = "region"` beyond the instant primitive: let speed/drift movement abilities cap reach by region membership, not just hex distance. Relocate proved the enumerator pattern (`WorldsInRegion`); the drift subsystem (`MovementOrder`/`DriftCost`/movement phase) is the harder lift deferred here. |
 | `F.024` | Collector form back-navigation | `post-tui-turn` | Cancelling a multi-step ability form (e.g. relocate destinations) spends the faction's whole action via `ErrTurnCanceled`, and confirming a completed-but-empty form surfaces a false `ErrNoSelection` failure; add a discoverable cancel/back that unwinds to the asset/ability picker (then `SelectAction`) instead of burning the turn. Needs a re-prompt loop the linear action phase lacks today. Deferred from C11 (a-flag-ability-registry pre-merge review). |
+| `F.025` | Per-faction roll confirmation | `F.020` | `RollWithHooks` asks the roll's one collector to confirm every elective directive, so a forced reroll (Book of Secrets) is confirmed by the roller's driver; route each directive to its `FactionID`'s driver once factions get separate drivers. |
 
 ### Refactors
 
@@ -86,6 +87,9 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.008` | Stale `ApplyBookkeeping` comment | -- | Doc comment claims it "advances the turn phase to `PhaseAction`", but `TurnState` has no phase field; phase order lives in the orchestrator. One-line comment fix. |
 | `B.009` | Capital Fleet missing `P` flag | -- | `SWN-F8-001` reads "permission is required to raise a Capital Fleet" but carries `flags = ["S"]`; Mercenaries `SWN-W3-003` states the same rule with `["S", "P"]`. Data error found in `A.001.3` discovery. |
 | `B.010` | Reroll uses base die sides | `A.001.3` | `roll.go:86` rerolls via `roller.Roll(baseRoll.Sides)`, so a Cat 1 die of other sides rerolls wrong. Inert today (all d10); Book of Secrets is the first real reroll user. |
+| `B.011` | TargetSelf contest gets the clone | first `TargetSelf` contest | `ability/dispatch.go:87` passes the `workingFaction` clone to `resolveTarget`, which returns it as `target.Faction` for `TargetSelf`; a self-contest's target-side roll would spend hook budgets on the clone. Latent: no asset authors it. Found in `A.001.3` Effort 3, Session 2. |
+| `B.012` | Old budget keys in saves | -- | `A.001.3` added a trigger segment to effect budget keys (`e047af7`); a mid-cycle save from before holds old keys, so one extra steal/absorb is possible that turn. Self-heals at the owner's next bookkeeping. |
+| `B.013` | Turn-start skips HP check | -- | `FireTurnStart` gates on `Ready && Maintained` but not `CurrentHP > 0`, unlike `effects.active()`; a 0-HP asset still in the map would fire. Found in `A.001.3` Effort 3, Session 4. |
 ---
 <br />
 

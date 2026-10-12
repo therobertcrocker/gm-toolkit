@@ -119,12 +119,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		attackResult := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:     hooks.PhaseAttack,
-				Actor:     faction,
-				Opponent:  defenderFaction,
-				Attribute: string(attackerDef.Attack.AttackerStat),
-				Asset:     attacker,
-				World:     attacker.Location.WorldID,
+				Phase:         hooks.PhaseAttack,
+				Actor:         faction,
+				Opponent:      defenderFaction,
+				Attribute:     string(attackerDef.Attack.AttackerStat),
+				Asset:         attacker,
+				OpponentAsset: defender,
+				World:         attacker.Location.WorldID,
+				Action:        attack.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
 			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
@@ -133,12 +135,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		defResult := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:     hooks.PhaseDefense,
-				Actor:     defenderFaction,
-				Opponent:  faction,
-				Attribute: string(attackerDef.Attack.DefenderStat),
-				Asset:     defender,
-				World:     attacker.Location.WorldID,
+				Phase:         hooks.PhaseDefense,
+				Actor:         defenderFaction,
+				Opponent:      faction,
+				Attribute:     string(attackerDef.Attack.DefenderStat),
+				Asset:         defender,
+				OpponentAsset: attacker,
+				World:         attacker.Location.WorldID,
+				Action:        attack.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
 			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,

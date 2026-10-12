@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // Registrar is one S-side effect's spec: what the effect accepts in the data, and
@@ -38,12 +39,15 @@ type RegisterContext struct {
 	Roller   domain.Roller
 }
 
+// FireContext carries FactionState because a phase effect may reach other
+// factions' assets (Panopticon Matrix tests every rival on its world).
 type FireContext struct {
-	Faction *domain.Faction
-	Asset   *domain.Asset
-	Def     *domain.AssetDefinition
-	Entry   domain.EffectDefinition
-	Roller  domain.Roller
+	Faction      *domain.Faction
+	Asset        *domain.Asset
+	Def          *domain.AssetDefinition
+	Entry        domain.EffectDefinition
+	Roller       domain.Roller
+	FactionState *state.FactionState
 }
 
 // IsPhaseTrigger reports whether trigger fires from a direct definition read at a

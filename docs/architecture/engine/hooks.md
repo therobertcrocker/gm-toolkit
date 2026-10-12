@@ -30,8 +30,8 @@ share, and it is a passive store — it never calls a hook itself.
 
 | # | Interface | Fires | Dispatched from |
 |---|-----------|-------|-----------------|
-| 1 | `RollModifier` | before a roll — offers extra dice / keep-highest | `RollWithHooks` (combat, in [actions](actions.md)) |
-| 2 | `RollResultHook` | after a roll — may reroll specific dice | `RollWithHooks` (combat) |
+| 1 | `RollModifier`, `RollOfferFilter` | before a roll — offers extra dice; filters may strike offers | `RollWithHooks` (every faction roll) |
+| 2 | `RollResultHook` | after a roll — may reroll specific dice | `RollWithHooks` (every faction roll) |
 | 3 | `MutationReactor` | after a phase's mutations — may emit more | orchestrator, after movement & action |
 | 4 | `RuleModifier` family | at a rule query — alters the answer | the query site (purchase, bookkeeping, movement) |
 | 5 | `TieResolver` | at an attack/defense tie | `ResolveTie` (combat) |
@@ -74,6 +74,10 @@ faction's slice. The registry exposes the buckets separately —
 `MutationReactorsForAsset(factionID, assetInstanceID)` — and the dispatcher
 composes them.
 
+Cat 1 and Cat 2 are also exposed per bucket (`RollModifiersAt(scope)`,
+`RollOfferFiltersAt(scope)`, `RollResultHooksAt(scope)`), and have no `…For` lookup, because the roll
+dispatcher builds its own scope list.
+
 ### Registration in, dispatch out
 
 The registry is populated once, at the start of each cycle, by the two
@@ -86,8 +90,14 @@ Dispatch is the opposite of centralized. There is no single "run all hooks"
 call; instead each category is consulted **at the pipeline point where its
 question is genuinely being asked**, by the `dispatch` sub-package:
 
-- **`RollWithHooks`** wraps every combat roll ([attack action](actions.md)).
-  It gathers Cat 1 offers, hands them to the [collector](#the-collector-seam) for
+- **`RollWithHooks`** wraps every faction roll: attack and defense, the Expand
+  Influence test, rival rolls and free attack, and the ability contest
+  ([actions](actions.md)). S-side contests (`effects/contest.go`) roll directly,
+  because a reactor has no collector. It consults global, the roller's faction, and the asset buckets of the
+  roller's and the opponent's assets on the roll's world (plus the rolling and
+  opposing assets when off-world), in asset-ID order. Never the opponent's
+  faction bucket: tag hooks assume the roll is their own. It gathers Cat 1 offers, runs Cat 1 offer filters over them (Blackmail strips tag dice —
+  `ModifierOffer.FromTag`), hands them to the [collector](#the-collector-seam) for
   selection, expands and rolls the dice pool, applies keep-highest, then runs Cat
   2 reroll directives — so one call covers both roll-time families.
 - **`MutationReactors`** runs after the orchestrator applies a phase's mutations
@@ -125,15 +135,18 @@ type Collector interface {
 ```
 
 This is the hook-level slice of the engine's [collectors-in seam](orchestrator.md):
-the dispatcher offers the full Cat 1 modifier list and the collector returns the
+the dispatcher offers the Cat 1 modifiers that survive the offer filters and budgets, and the collector returns the
 subset to apply; for each *elective* Cat 2 directive the collector confirms or
-declines. Non-elective directives apply automatically.
+declines. Non-elective directives apply automatically. `SelectModifiers` is not
+called when no offer survives the budget filter.
 
 ### Per-turn budgets
 
 A modifier or reroll may carry a `BudgetKey` (namespaced, e.g. `"tag:Warlike"`).
-Once spent it increments `faction.HookBudgets[key]`, and the dispatcher filters
-out any offer or directive whose budget is already non-zero this turn — the
+The dispatcher stamps each offer and directive with the faction that registered
+it (`FactionID`), and reads and spends the budget on that faction's
+`HookBudgets`. An opponent's effect spends its owner's budget. The dispatcher
+filters out any offer or directive whose budget is already non-zero this turn — the
 mechanism behind "once per turn" effects like Warlike's bonus attack die. An
 empty `BudgetKey` means unlimited. The budget map is reset each turn by
 [bookkeeping](turn-pipeline.md), so the gating is per-faction-turn, not
@@ -240,7 +253,7 @@ driver. The package defines the contracts; it owns no game data of its own.
 **Registered by** the tag and effect engines on the
 [effect & mutation](effect-mutation.md) page — the only writers to the registry.
 **Dispatched by** the [orchestrator](orchestrator.md) (Cat 3 reactors after
-movement and action), the [actions](actions.md) engine (Cat 1/2/5 in combat, Cat
+movement and action), the [actions](actions.md) engine (Cat 1/2 on every faction roll, Cat 5 in combat, Cat
 4 asset-cost at purchase), and the [turn pipeline](turn-pipeline.md) (Cat 4
 maintenance-cost at bookkeeping). Emitted reactions flow back through the same
 [mutation apply layer](effect-mutation.md) as every other state change.

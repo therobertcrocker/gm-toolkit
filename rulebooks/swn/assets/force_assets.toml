@@ -439,6 +439,18 @@ flags = ["S"]
 counter = "2d8+2"
 description = "A complex web of braked-AI supported sensors and redundant security checks used to defeat attempts to infiltrate an area. They can defend only against attacks versus Cunning, but add an additional die to the defender's roll."
 
+[[assets.IntegralProtocols.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.IntegralProtocols.effects.filters]
+owner     = "own"
+scope     = "self"
+phase     = ["defense"]
+attribute = "Cunning"
+[assets.IntegralProtocols.effects.bonus_die]
+sides = 10
+count = 1
+
 [assets.SpaceMarines]
 id = "SWN-F7-003"
 name = "Space Marines"

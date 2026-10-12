@@ -17,6 +17,12 @@ func (stub *stubRollModifier) OfferModifiers(_ hooks.RollContext, _ *state.Facti
 	return nil
 }
 
+type stubRollOfferFilter struct{ name string }
+
+func (stub *stubRollOfferFilter) FilterOffers(_ hooks.RollContext, offers []hooks.ModifierOffer, _ *state.FactionState) []hooks.ModifierOffer {
+	return offers
+}
+
 type stubRollResultHook struct{ name string }
 
 func (stub *stubRollResultHook) OnRollResult(_ hooks.RollContext, _ hooks.RollResult, _ *state.FactionState, _ *rulebook.Rulebook) hooks.RerollDirective {
@@ -50,7 +56,7 @@ func TestRollModifier_RegistrationOrderPreserved(t *testing.T) {
 	registry.RegisterRollModifier(hooks.FactionScope("f1"), "src-A", hookA)
 	registry.RegisterRollModifier(hooks.FactionScope("f1"), "src-B", hookB)
 
-	result := registry.RollModifiersFor("f1", "")
+	result := registry.RollModifiersAt(hooks.FactionScope("f1"))
 	if len(result) != 2 {
 		t.Fatalf("expected 2 hooks, got %d", len(result))
 	}
@@ -63,7 +69,7 @@ func TestRollModifier_FactionScopeFilters(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.FactionScope("f1"), "src", &stubRollModifier{})
 
-	if got := registry.RollModifiersFor("f2", ""); len(got) != 0 {
+	if got := registry.RollModifiersAt(hooks.FactionScope("f2")); len(got) != 0 {
 		t.Errorf("faction A hook must not appear for faction B, got %d entries", len(got))
 	}
 }
@@ -72,29 +78,50 @@ func TestRollModifier_AssetScopeFilters(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.AssetScope("f1", "asset-X"), "src", &stubRollModifier{})
 
-	if got := registry.RollModifiersFor("f1", "asset-Y"); len(got) != 0 {
+	if got := registry.RollModifiersAt(hooks.AssetScope("f1", "asset-Y")); len(got) != 0 {
 		t.Errorf("asset X hook must not appear for asset Y, got %d entries", len(got))
 	}
 }
 
-func TestRollModifier_GlobalScopeMatchesAnyFaction(t *testing.T) {
+func TestRollModifier_GlobalScopeIsSeparateFromFactionScope(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), "global", &stubRollModifier{})
 
-	for _, factionID := range []string{"f1", "f2", "f3"} {
-		if got := registry.RollModifiersFor(factionID, ""); len(got) != 1 {
-			t.Errorf("global hook missing for faction %q", factionID)
-		}
+	if got := registry.RollModifiersAt(hooks.GlobalScope()); len(got) != 1 {
+		t.Errorf("global hook missing: got %d entries", len(got))
+	}
+	if got := registry.RollModifiersAt(hooks.FactionScope("f1")); len(got) != 0 {
+		t.Errorf("global hook must not appear in a faction lookup")
 	}
 }
 
 func TestRollModifier_EmptyRegistryReturnsEmptySlice(t *testing.T) {
 	registry := hooks.NewRegistry()
-	got := registry.RollModifiersFor("f1", "asset-X")
-	if got == nil {
-		// nil is acceptable, but verifying no panic
-	}
+	got := registry.RollModifiersAt(hooks.AssetScope("f1", "asset-X"))
 	if len(got) != 0 {
+		t.Errorf("expected empty slice, got %d entries", len(got))
+	}
+}
+
+// --- Cat 1: RollOfferFilter ---
+
+func TestRollOfferFilter_RegistrationOrderPreserved(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollOfferFilter(hooks.AssetScope("f1", "asset-X"), "src-A", &stubRollOfferFilter{name: "A"})
+	registry.RegisterRollOfferFilter(hooks.AssetScope("f1", "asset-X"), "src-B", &stubRollOfferFilter{name: "B"})
+
+	result := registry.RollOfferFiltersAt(hooks.AssetScope("f1", "asset-X"))
+	if len(result) != 2 {
+		t.Fatalf("expected 2 hooks, got %d", len(result))
+	}
+	if result[0].Source != "src-A" || result[1].Source != "src-B" {
+		t.Errorf("registration order not preserved: got %v, %v", result[0].Source, result[1].Source)
+	}
+}
+
+func TestRollOfferFilter_EmptyRegistryReturnsEmptySlice(t *testing.T) {
+	registry := hooks.NewRegistry()
+	if got := registry.RollOfferFiltersAt(hooks.AssetScope("f1", "asset-X")); len(got) != 0 {
 		t.Errorf("expected empty slice, got %d entries", len(got))
 	}
 }
@@ -108,7 +135,7 @@ func TestRollResultHook_RegistrationOrderPreserved(t *testing.T) {
 	registry.RegisterRollResultHook(hooks.FactionScope("f1"), "src-A", hookA)
 	registry.RegisterRollResultHook(hooks.FactionScope("f1"), "src-B", hookB)
 
-	result := registry.RollResultHooksFor("f1", "")
+	result := registry.RollResultHooksAt(hooks.FactionScope("f1"))
 	if len(result) != 2 || result[0].Source != "src-A" || result[1].Source != "src-B" {
 		t.Errorf("registration order not preserved: %v", result)
 	}
@@ -118,25 +145,26 @@ func TestRollResultHook_FactionScopeFilters(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollResultHook(hooks.FactionScope("f1"), "src", &stubRollResultHook{})
 
-	if got := registry.RollResultHooksFor("f2", ""); len(got) != 0 {
+	if got := registry.RollResultHooksAt(hooks.FactionScope("f2")); len(got) != 0 {
 		t.Errorf("faction A hook must not appear for faction B")
 	}
 }
 
-func TestRollResultHook_GlobalScopeMatchesAnyFaction(t *testing.T) {
+func TestRollResultHook_GlobalScopeIsSeparateFromFactionScope(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollResultHook(hooks.GlobalScope(), "global", &stubRollResultHook{})
 
-	for _, factionID := range []string{"f1", "f2"} {
-		if got := registry.RollResultHooksFor(factionID, ""); len(got) != 1 {
-			t.Errorf("global hook missing for faction %q", factionID)
-		}
+	if got := registry.RollResultHooksAt(hooks.GlobalScope()); len(got) != 1 {
+		t.Errorf("global hook missing: got %d entries", len(got))
+	}
+	if got := registry.RollResultHooksAt(hooks.FactionScope("f1")); len(got) != 0 {
+		t.Errorf("global hook must not appear in a faction lookup")
 	}
 }
 
 func TestRollResultHook_EmptyRegistryReturnsEmptySlice(t *testing.T) {
 	registry := hooks.NewRegistry()
-	got := registry.RollResultHooksFor("f1", "")
+	got := registry.RollResultHooksAt(hooks.FactionScope("f1"))
 	if len(got) != 0 {
 		t.Errorf("expected empty slice, got %d entries", len(got))
 	}

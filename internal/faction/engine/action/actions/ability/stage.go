@@ -6,6 +6,9 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -38,7 +41,19 @@ func resolveTarget(
 	}
 }
 
-func passesGate(step domain.AbilityStep, faction *domain.Faction, target domain.AbilityTarget, roller domain.Roller) (bool, error) {
+// passesGate rolls the step's contest through the roll hooks. faction is the real
+// acting faction, so a budget a hook spends persists past this step.
+func passesGate(
+	step domain.AbilityStep,
+	faction *domain.Faction,
+	asset *domain.Asset,
+	target domain.AbilityTarget,
+	registry *hooks.Registry,
+	collector action.Collector,
+	roller domain.Roller,
+	factionState *state.FactionState,
+	rb *rulebook.Rulebook,
+) (bool, error) {
 	if step.Contest == nil {
 		// Ungated (self-move, roll-table) — always proceeds. Roll-table outcome
 		// resolution lands in Effort 2.
@@ -47,9 +62,38 @@ func passesGate(step domain.AbilityStep, faction *domain.Faction, target domain.
 	if target.Faction == nil {
 		return false, fmt.Errorf("contest: target faction not resolved")
 	}
-	attack := roller.Roll(10) + statScore(faction, step.Contest.AttackerStat)
-	defense := roller.Roll(10) + statScore(target.Faction, step.Contest.DefenderStat)
-	return attack > defense, nil
+	worldID := asset.Location.WorldID
+	// deliberate: a literal, not UseAssetAbility.Name(), because actions imports ability (import cycle).
+	const actionName = "Use Asset Ability"
+	attack := dispatch.RollWithHooks(
+		hooks.RollContext{
+			Phase:         hooks.PhaseFactionTest,
+			Actor:         faction,
+			Opponent:      target.Faction,
+			Attribute:     string(step.Contest.AttackerStat),
+			Asset:         asset,
+			OpponentAsset: target.Asset,
+			World:         worldID,
+			Action:        actionName,
+		},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, step.Contest.AttackerStat)},
+		registry, collector, roller, faction, factionState, rb,
+	)
+	defense := dispatch.RollWithHooks(
+		hooks.RollContext{
+			Phase:         hooks.PhaseContested,
+			Actor:         target.Faction,
+			Opponent:      faction,
+			Attribute:     string(step.Contest.DefenderStat),
+			Asset:         target.Asset,
+			OpponentAsset: asset,
+			World:         worldID,
+			Action:        actionName,
+		},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(target.Faction, step.Contest.DefenderStat)},
+		registry, collector, roller, target.Faction, factionState, rb,
+	)
+	return attack.Sum > defense.Sum, nil
 }
 
 // resolveRoll evaluates the step's roll table, or returns 0 for a non-roll step.

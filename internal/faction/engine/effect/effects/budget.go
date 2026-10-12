@@ -16,10 +16,11 @@ func spendBudget(owner *domain.Faction, key string) bool {
 	return true
 }
 
-// budgetKey names the once_per budget an entry spends. The effect name and the
-// definition ID keep two effects, or two asset kinds, from sharing a budget.
-func budgetKey(oncePer domain.OncePerKey, effectName domain.SpecialEffectType, defID, assetID, targetFactionID string) string {
-	base := "effect:" + string(effectName) + ":" + defID
+// budgetKey names the once_per budget an entry spends. The effect name, trigger
+// and definition ID keep two effects, two entries of one definition, or two asset
+// kinds from sharing a budget.
+func budgetKey(oncePer domain.OncePerKey, effectName domain.SpecialEffectType, trigger domain.EffectTrigger, defID, assetID, targetFactionID string) string {
+	base := "effect:" + string(effectName) + ":" + string(trigger) + ":" + defID
 	switch oncePer {
 	case domain.OncePerTargetFaction:
 		return base + ":" + targetFactionID

@@ -30,6 +30,7 @@ func registerCoinSteal(ctx effect.RegisterContext) {
 			ownerFactionID: ctx.Faction.ID,
 			assetID:        ctx.Asset.ID,
 			defID:          ctx.Def.ID,
+			trigger:        ctx.Entry.Trigger,
 			amount:         ctx.Entry.CoinSteal.Amount,
 			oncePer:        ctx.Entry.Gates.OncePer,
 			roller:         ctx.Roller,
@@ -41,6 +42,7 @@ type coinStealReactor struct {
 	ownerFactionID string
 	assetID        string
 	defID          string
+	trigger        domain.EffectTrigger
 	amount         domain.DiceRoll
 	oncePer        domain.OncePerKey
 	roller         domain.Roller
@@ -61,7 +63,7 @@ func (reactor *coinStealReactor) OnMutations(mutations []domain.Mutation, factio
 		if target.Coin <= 0 {
 			continue
 		}
-		if reactor.oncePer != "" && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialCoinSteal, reactor.defID, reactor.assetID, targetID)) {
+		if reactor.oncePer != "" && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialCoinSteal, reactor.trigger, reactor.defID, reactor.assetID, targetID)) {
 			continue
 		}
 		stolen := min(reactor.amount.Roll(reactor.roller), target.Coin)

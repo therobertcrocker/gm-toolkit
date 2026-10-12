@@ -125,7 +125,7 @@ type EffectFilters struct {
 	Owner      EffectOwner
 	Scope      EffectScope
 	Attribute  FactionStat
-	Phase      EffectRollPhase
+	Phases     []EffectRollPhase
 	Action     string
 	AssetTypes []AssetType
 	Categories []FactionStat
@@ -137,7 +137,7 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	if filters.Attribute != "" {
 		present = append(present, FilterAttribute)
 	}
-	if filters.Phase != "" {
+	if len(filters.Phases) > 0 {
 		present = append(present, FilterPhase)
 	}
 	if filters.Action != "" {

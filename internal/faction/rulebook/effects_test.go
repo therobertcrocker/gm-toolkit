@@ -56,7 +56,7 @@ effect  = "coin_steal"
 owner      = "rival"
 scope      = "world"
 attribute  = "Cunning"
-phase      = "defense"
+phase      = ["defense"]
 action     = "Expand Influence"
 asset_type = ["Starship"]
 category   = ["Force", "Wealth"]
@@ -111,7 +111,7 @@ scope = "self"
 				Owner:      domain.OwnerRival,
 				Scope:      domain.ScopeWorld,
 				Attribute:  domain.StatCunning,
-				Phase:      domain.RollPhaseDefense,
+				Phases:     []domain.EffectRollPhase{domain.RollPhaseDefense},
 				Action:     "Expand Influence",
 				AssetTypes: []domain.AssetType{domain.TypeStarship},
 				Categories: []domain.FactionStat{domain.StatForce, domain.StatWealth},
@@ -357,6 +357,22 @@ scope = "self"
 amount = "1"
 `,
 			wantErr: `unknown effect owner: "mine"`,
+		},
+		{
+			name: "unknown phase value",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "self"
+phase = ["defence"]
+[assets.Machine.effects.bonus_die]
+sides = 10
+count = 1
+`,
+			wantErr: "filters.phase[0]",
 		},
 		{
 			name: "contest without a roller",

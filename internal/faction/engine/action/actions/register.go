@@ -31,11 +31,11 @@ func RegisterDefaultActions(
 		return NewAttack(c, resolveRoller(), hookRegistry, worldIndex(worldEngine))
 	})
 	ae.Register(func(c action.Collector) action.Action {
-		return NewExpandInfluence(c, resolveRoller(), worldIndex(worldEngine), worldEngine)
+		return NewExpandInfluence(c, resolveRoller(), hookRegistry, worldIndex(worldEngine), worldEngine)
 	})
 	ae.Register(func(c action.Collector) action.Action { return NewBribe(c) })
 	ae.Register(func(c action.Collector) action.Action {
-		return NewUseAssetAbility(c, resolveRoller(), worldEngine)
+		return NewUseAssetAbility(c, resolveRoller(), hookRegistry, worldEngine)
 	})
 	ae.Register(func(_ action.Collector) action.Action { return NewAbandonGoal() })
 	ae.Register(func(c action.Collector) action.Action { return NewSeizePlanet(c, worldIndex(worldEngine)) })

@@ -29,6 +29,7 @@ func registerIgnoreCoinLoss(ctx effect.RegisterContext) {
 			ownerFactionID: ctx.Faction.ID,
 			assetID:        ctx.Asset.ID,
 			defID:          ctx.Def.ID,
+			trigger:        ctx.Entry.Trigger,
 			oncePer:        ctx.Entry.Gates.OncePer,
 		},
 	)
@@ -38,6 +39,7 @@ type ignoreCoinLossReactor struct {
 	ownerFactionID string
 	assetID        string
 	defID          string
+	trigger        domain.EffectTrigger
 	oncePer        domain.OncePerKey
 }
 
@@ -61,7 +63,7 @@ func (reactor *ignoreCoinLossReactor) OnMutations(mutations []domain.Mutation, f
 			continue
 		}
 		if reactor.oncePer != "" {
-			for next < len(copies) && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialIgnoreCoinLoss, reactor.defID, copies[next].ID, loss.CausedByFactionID)) {
+			for next < len(copies) && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialIgnoreCoinLoss, reactor.trigger, reactor.defID, copies[next].ID, loss.CausedByFactionID)) {
 				next++
 			}
 			if next == len(copies) {

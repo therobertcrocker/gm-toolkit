@@ -149,7 +149,19 @@ speed = 2
 type = "Special Forces"
 flags = ["S"]
 counter = "1d4"
-description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world. As an action, a Surveyor crew can move to any world within two hexes."
+description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world."
+
+[[assets.Surveyors.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.Surveyors.effects.filters]
+owner  = "own"
+scope  = "world"
+phase  = ["faction_test"]
+action = "Expand Influence"
+[assets.Surveyors.effects.bonus_die]
+sides = 10
+count = 1
 
 [assets.PostechIndustry]
 id = "SWN-W3-001"

@@ -25,7 +25,7 @@ func TestEffectFiltersUsed(t *testing.T) {
 				Owner:      domain.OwnerRival,
 				Scope:      domain.ScopeWorld,
 				Attribute:  domain.StatCunning,
-				Phase:      domain.RollPhaseDefense,
+				Phases:     []domain.EffectRollPhase{domain.RollPhaseDefense},
 				Action:     "Expand Influence",
 				AssetTypes: []domain.AssetType{domain.TypeStarship},
 				Categories: []domain.FactionStat{domain.StatForce},

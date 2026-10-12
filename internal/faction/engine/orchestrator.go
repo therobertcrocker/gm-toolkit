@@ -203,7 +203,7 @@ func (e *Engine) runBookkeepingPhase(
 	var startMutations []domain.Mutation
 	// deliberate: fire here, gated on BookkeepingApplied, not in turn setup, because setup re-runs on every resume and would pay a turn-start effect twice.
 	if e.Turn.InProgress(factionState) && !factionState.CurrentTurn.BookkeepingApplied {
-		startMutations = e.Effect.FireTurnStart(faction, e.Rulebook, e.Rand)
+		startMutations = e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)
 		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
 			if !factionErrors.IsRecoverable(err) {
 				phaseLog.Error("failure", "err", err)
