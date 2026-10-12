@@ -173,6 +173,43 @@ func TestClearStealth_InactiveCellsWatchNothing(t *testing.T) {
 	}
 }
 
+func TestClearStealth_OpenAssetIgnoredWithoutStealthyFilter(t *testing.T) {
+	unfiltered := domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld}
+
+	t.Run("stealth_arrival", func(t *testing.T) {
+		factionState := tripwireState(krylos)
+		alpha := factionState.Factions["alpha"]
+		roller := &seqRoller{}
+		registry := hooks.NewRegistry()
+		effects.Registrars()[domain.SpecialClearStealth].Register(effect.RegisterContext{
+			Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C4-003"}, Registry: registry, Roller: roller,
+			Entry: domain.EffectDefinition{Trigger: domain.TriggerStealthArrival, Effect: domain.SpecialClearStealth, Filters: unfiltered},
+		})
+		reactor := registry.MutationReactorsForAsset("alpha", "cells")[0].Hook
+
+		if got := reactor.OnMutations([]domain.Mutation{moved("beta", "courier", tartarus, krylos)}, factionState, nil); len(got) != 0 {
+			t.Errorf("mutations = %+v, want none", got)
+		}
+	})
+
+	t.Run("turn_start", func(t *testing.T) {
+		factionState := tripwireState(tartarus)
+		delete(factionState.Factions["beta"].Assets, "spy")
+		alpha := factionState.Factions["alpha"]
+		roller := &seqRoller{}
+		got := effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{
+			Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}, Roller: roller, FactionState: factionState,
+			Entry: domain.EffectDefinition{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialClearStealth, Filters: unfiltered, Gates: domain.EffectGates{Contest: matrixContest}},
+		})
+		if len(got) != 0 {
+			t.Errorf("mutations = %+v, want none", got)
+		}
+		if roller.next != 0 {
+			t.Errorf("rolled %d dice, want 0", roller.next)
+		}
+	})
+}
+
 var matrixContest = &domain.EffectContest{
 	Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
 	Roller:  domain.ContestRollerTarget,

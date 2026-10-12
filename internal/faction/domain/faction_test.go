@@ -69,6 +69,30 @@ func TestNewFaction(t *testing.T) {
 	}
 }
 
+func TestFaction_SpendBudget(t *testing.T) {
+	t.Run("a spent key reads as spent and leaves other keys unspent", func(t *testing.T) {
+		faction := &domain.Faction{ID: "f1"}
+		faction.SpendBudget("k")
+		if !faction.BudgetSpent("k") {
+			t.Error("BudgetSpent(k) = false after spend, want true")
+		}
+		if faction.BudgetSpent("other") {
+			t.Error("BudgetSpent(other) = true, want false")
+		}
+	})
+
+	t.Run("an empty key is unlimited and creates no map", func(t *testing.T) {
+		faction := &domain.Faction{ID: "f1"}
+		faction.SpendBudget("")
+		if faction.BudgetSpent("") {
+			t.Error("BudgetSpent(\"\") = true, want false")
+		}
+		if faction.HookBudgets != nil {
+			t.Errorf("HookBudgets = %v, want nil", faction.HookBudgets)
+		}
+	})
+}
+
 func TestFaction_HookBudgets_TOMLRoundTrip(t *testing.T) {
 	t.Run("nil budgets omitted and round-trip to nil", func(t *testing.T) {
 		original := &domain.Faction{ID: "f1", HookBudgets: nil}

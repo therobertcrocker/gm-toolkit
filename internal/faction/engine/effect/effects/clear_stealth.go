@@ -49,7 +49,7 @@ func fireClearStealth(ctx effect.FireContext) []domain.Mutation {
 		}
 		target := ctx.FactionState.Factions[factionID]
 		for _, asset := range domain.SortedAssets(target) {
-			if asset.Location.WorldID != worldID {
+			if asset.Location.WorldID != worldID || !asset.Stealthy {
 				continue
 			}
 			if ctx.Entry.Filters.Stealthy != nil && asset.Stealthy != *ctx.Entry.Filters.Stealthy {
@@ -107,7 +107,7 @@ func (reactor *clearStealthReactor) OnMutations(mutations []domain.Mutation, fac
 			continue
 		}
 		target := factionState.Factions[moved.FactionID]
-		if target == nil || target.Assets[moved.AssetID] == nil {
+		if target == nil || target.Assets[moved.AssetID] == nil || !target.Assets[moved.AssetID].Stealthy {
 			continue
 		}
 		if reactor.stealthy != nil && target.Assets[moved.AssetID].Stealthy != *reactor.stealthy {

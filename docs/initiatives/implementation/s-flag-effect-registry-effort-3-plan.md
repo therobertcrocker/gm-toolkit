@@ -195,6 +195,31 @@ before the commit they ride. Append AND reconcile. -->
     Effort 2 but had no ✅. Bank's hook cell becomes Cat 3 `MutationReactor`, which is
     what `ignore_coin_loss` registers. The `FireTurnStart` HP-check gap found here is
     filed as `B.013`.
+11. **`clear_stealth` skips non-stealthy assets on both routes** (interim review fix).
+    The `stealthy` filter was the only guard. An entry without it rolled contests
+    against open assets and emitted `AssetStealthCleared` for them. Both
+    `fireClearStealth` and the `stealth_arrival` reactor now skip `!Stealthy` assets.
+    The reactor path had the same gap, so it is fixed too.
+12. **Bonus dice stack per asset copy** (interim review). Two Surveyors on one world
+    give two `bonus_die` offers, so the roll is 3d10 keep-highest. Each copy grants its
+    own die. A fence-sign in `bonus_die.go` marks this.
+13. **Decision 10 is confirmed for ability contests** (interim review). An ability
+    contest stays `faction_test` / `contested`, also where the rule text calls it an
+    attack. Panopticon's `[attack, defense]` die does not apply to it.
+14. **Hook budgets are `domain.Faction` methods** (interim review fix).
+    `BudgetSpent(key)` and `SpendBudget(key)` replace the two private copies in
+    `dispatch` and `effects`. An empty key is unlimited. `effects.spendBudget` stays as
+    the check-and-spend wrapper the reactors use.
+15. **`passesGate` keeps `workingAsset`** (interim review, finding rejected). Relocate
+    steps must come before gated steps, so the contest belongs on the new world.
+    Other assets on that world do not move during an ability, so the real-state scan
+    finds them. `assetScopes` adds the moved asset through `named`, and `scope = self`
+    matches by ID. The one gap is a `scope = world` roll hook on the moved asset itself,
+    because its live location is stale. No shipped asset has one, so it is not filed.
+    The reviewer's other dropped findings: forced-reroll budgets reset in the owner's
+    bookkeeping by design (`effects/budget.go`, Planning Decision 3). Blackmail strips
+    tag bonus dice, not tag rerolls. A Base of Influence is not a `domain.Asset`, so
+    `baseAttack` has no `OpponentAsset` to set.
 
 ---
 

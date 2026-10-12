@@ -53,6 +53,7 @@ func (modifier *bonusDieModifier) OfferModifiers(ctx hooks.RollContext, factionS
 		return nil
 	}
 	params := modifier.params
+	// deliberate: one offer per asset copy, not one per definition, because each copy grants its own die (Effort 3 plan, Decision Record 12).
 	return []hooks.ModifierOffer{{
 		Source:      modifier.source,
 		Description: fmt.Sprintf("roll %d extra d%d, keep highest", params.Count, params.Sides),

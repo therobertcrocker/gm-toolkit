@@ -6,13 +6,10 @@ import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 // and spends it when it is. The budget lives on the owner's map, whatever the
 // target, so it resets in the owner's own bookkeeping.
 func spendBudget(owner *domain.Faction, key string) bool {
-	if owner.HookBudgets[key] >= 1 {
+	if owner.BudgetSpent(key) {
 		return false
 	}
-	if owner.HookBudgets == nil {
-		owner.HookBudgets = make(map[string]int)
-	}
-	owner.HookBudgets[key]++
+	owner.SpendBudget(key)
 	return true
 }
 

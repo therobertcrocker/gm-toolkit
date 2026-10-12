@@ -56,7 +56,7 @@ func RollWithHooks(
 	var rollState hooks.RollState
 	for _, offer := range chosen {
 		offer.Apply(&rollState)
-		spendBudget(hookOwner(offer.FactionID, faction, factionState), offer.BudgetKey)
+		hookOwner(offer.FactionID, faction, factionState).SpendBudget(offer.BudgetKey)
 	}
 
 	// Roll base dice pool then any extra dice queued by Apply.
@@ -89,7 +89,7 @@ func RollWithHooks(
 			}
 			directive.FactionID = scopeFactionID(scope, faction)
 			owner := hookOwner(directive.FactionID, faction, factionState)
-			if budgetSpent(owner, directive.BudgetKey) {
+			if owner.BudgetSpent(directive.BudgetKey) {
 				continue
 			}
 			if directive.Elective && !collector.ConfirmReroll(directive) {
@@ -101,7 +101,7 @@ func RollWithHooks(
 				}
 			}
 			result.Sum = diceSum(result.Dice) + result.Modifier
-			spendBudget(owner, directive.BudgetKey)
+			owner.SpendBudget(directive.BudgetKey)
 		}
 	}
 
@@ -163,26 +163,12 @@ func hookOwner(factionID string, roller *domain.Faction, factionState *state.Fac
 	return roller
 }
 
-func budgetSpent(owner *domain.Faction, key string) bool {
-	return key != "" && owner.HookBudgets[key] >= 1
-}
-
-func spendBudget(owner *domain.Faction, key string) {
-	if key == "" {
-		return
-	}
-	if owner.HookBudgets == nil {
-		owner.HookBudgets = make(map[string]int)
-	}
-	owner.HookBudgets[key]++
-}
-
 // offersBudgetFilter removes offers whose BudgetKey has already been spent this
 // turn by the faction that made them. Unlimited offers (empty key) pass through.
 func offersBudgetFilter(offers []hooks.ModifierOffer, roller *domain.Faction, factionState *state.FactionState) []hooks.ModifierOffer {
 	var filtered []hooks.ModifierOffer
 	for _, offer := range offers {
-		if budgetSpent(hookOwner(offer.FactionID, roller, factionState), offer.BudgetKey) {
+		if hookOwner(offer.FactionID, roller, factionState).BudgetSpent(offer.BudgetKey) {
 			continue
 		}
 		filtered = append(filtered, offer)
