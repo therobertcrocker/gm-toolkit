@@ -385,6 +385,17 @@ flags = ["S"]
 counter = "2d6+6"
 description = "Massive mag cannons and gravitic braker gun arrays designed to defend against starship bombardments and repel unauthorized landing. Planetary defenses can only defend against attacks by Starship-type assets."
 
+[[assets.PlanetaryDefenses.effects]]
+trigger    = "attack_eligibility_query"
+effect     = "restrict_attack"
+[assets.PlanetaryDefenses.effects.filters]
+owner      = "rival"
+scope      = "self"
+asset_type = ["Starship"]
+[assets.PlanetaryDefenses.effects.restrict_attack]
+side  = "defense"
+allow = "only_listed"
+
 [assets.GravtankFormation]
 id = "SWN-F6-003"
 name = "Gravtank Formation"
@@ -450,6 +461,17 @@ attribute = "Cunning"
 [assets.IntegralProtocols.effects.bonus_die]
 sides = 10
 count = 1
+
+[[assets.IntegralProtocols.effects]]
+trigger   = "attack_eligibility_query"
+effect    = "restrict_attack"
+[assets.IntegralProtocols.effects.filters]
+owner     = "rival"
+scope     = "self"
+attribute = "Cunning"
+[assets.IntegralProtocols.effects.restrict_attack]
+side  = "defense"
+allow = "only_listed"
 
 [assets.SpaceMarines]
 id = "SWN-F7-003"

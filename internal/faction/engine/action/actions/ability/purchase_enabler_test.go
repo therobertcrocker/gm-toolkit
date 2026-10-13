@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"go.uber.org/mock/gomock"
@@ -161,6 +162,70 @@ func TestPurchaseEnabler_ConsumesPendingDiscount(t *testing.T) {
 			}
 		}
 	})
+}
+
+// stubSurcharge raises the cost by one, as cost_surcharge does.
+type stubSurcharge struct{}
+
+func (stub *stubSurcharge) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, query *hooks.AssetCostQuery) {
+	query.Cost++
+	query.Surcharge++
+}
+
+// TestPurchaseEnabler_PaysRivalSurcharge: a rival's surcharge on the acting asset's
+// world lands on top of the enabler's own 150% price, and survives a discount.
+func TestPurchaseEnabler_PaysRivalSurcharge(t *testing.T) {
+	cases := map[string]struct {
+		discount  int
+		wantDelta int
+	}{
+		"no discount":           {discount: 0, wantDelta: -9},  // ceil(5*1.5) + 1
+		"discount floors below": {discount: 10, wantDelta: -3}, // half base 2 + 1
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			var offered []action.PurchaseEnablerOption
+			collector := mocks.NewMockCollector(ctrl)
+			collector.EXPECT().
+				SelectPurchaseEnablerAsset(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
+					offered = candidates
+					for _, option := range candidates {
+						if option.Def.ID == "F-pricey" {
+							return option.Def, nil
+						}
+					}
+					return nil, nil
+				})
+			registry := hooks.NewRegistry()
+			registry.RegisterAssetCostModifier(hooks.AssetScope("rival", "li"), "surcharge", &stubSurcharge{})
+			rivalAsset := &domain.Asset{ID: "li", OwnerID: "rival", Location: domain.Location{WorldID: "w1"}}
+			ctx := StepContext{
+				Faction:     &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: testCase.discount, Assets: map[string]*domain.Asset{}},
+				Asset:       &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
+				Step:        enablerStep(),
+				Rulebook:    enablerRulebook(),
+				Collector:   collector,
+				WorldEngine: &world.WorldEngine{Index: &world.Index{AssetsByLocation: map[string][]*domain.Asset{"w1": {rivalAsset}}}},
+				Registry:    registry,
+			}
+			muts, err := purchaseEnabler(ctx)
+			if err != nil {
+				t.Fatalf("purchaseEnabler: %v", err)
+			}
+			for _, option := range offered {
+				if want := surchargedCost(option.Def.Cost, 150) + 1; option.Cost != want {
+					t.Errorf("option %s Cost = %d, want %d", option.Def.ID, option.Cost, want)
+				}
+			}
+			for _, m := range muts {
+				if coin, ok := m.(domain.CoinDelta); ok && coin.Delta != testCase.wantDelta {
+					t.Errorf("CoinDelta = %d, want %d", coin.Delta, testCase.wantDelta)
+				}
+			}
+		})
+	}
 }
 
 func TestPurchaseEnabler_InsufficientCoin(t *testing.T) {

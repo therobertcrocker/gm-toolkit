@@ -622,6 +622,52 @@ func TestAttack_InTransitAttacker_EmptyHex_NoTarget(t *testing.T) {
 	}
 }
 
+// refuseSide is an attack-eligibility rule that refuses one side.
+type refuseSide struct{ side hooks.AttackSide }
+
+func (stub refuseSide) MayFight(query hooks.AttackEligibilityQuery) bool {
+	return query.Side != stub.side
+}
+
+// TestAttack_EligibilityRuleRemovesDefender: the only defender refuses to defend,
+// so the attacker has no target.
+func TestAttack_EligibilityRuleRemovesDefender(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, _, _ := makeAttackState(8, 8, "force-defender", false)
+	faction := factionState.Factions["f1"]
+
+	registry := hooks.NewRegistry()
+	registry.RegisterAttackEligibilityRule(hooks.AssetScope("f2", "d1"), "test", refuseSide{side: hooks.SideDefense})
+
+	ctrl := gomock.NewController(t)
+	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, registry, indexFromState(factionState))
+	if attack.Validate(faction, factionState, rulebook) {
+		t.Error("expected Validate false: the only defender refuses to defend")
+	}
+}
+
+// TestAttack_EligibilityRuleBlocksCounter: the defender wins but its rule refuses
+// to counter, so no counter damage lands. Rolls: attack=2, defense=9.
+func TestAttack_EligibilityRuleBlocksCounter(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, "force-defender", false)
+	faction := factionState.Factions["f1"]
+
+	registry := hooks.NewRegistry()
+	registry.RegisterAttackEligibilityRule(hooks.AssetScope("f2", "d1"), "test", refuseSide{side: hooks.SideCounter})
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 3}}, faction, factionState, rulebook, registry)
+
+	if len(mutations) != 0 {
+		t.Errorf("expected no mutations when the defender may not counter, got %v", mutations)
+	}
+}
+
 // stubTieResolverForAttack always returns a fixed TieOutcome.
 type stubTieResolverForAttack struct{ outcome hooks.TieOutcome }
 

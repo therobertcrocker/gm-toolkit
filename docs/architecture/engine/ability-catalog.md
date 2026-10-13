@@ -23,6 +23,13 @@
 > (`effect/registrar.go`, `effects/registrars.go`) and checks every entry against it
 > at engine construction. Party Machine's `coin_gain` is the first S-side effect; the
 > rest of the S-flag table below is still future.
+>
+> **As-built (A.001.3 Effort 4):** the Cat 4 rule queries ship. `cost_surcharge`
+> (Local Investments), `tech_level_floor` (Laboratory, Pretech Researchers, R&D
+> Department) and `restrict_attack` (Planetary Defenses, Lawyers, Integral
+> Protocols) register Cat 4 hooks. `restrict_attack` answers the new
+> `AttackEligibilityRule` query ([hooks](hooks.md)), not a tie resolver. A ✅ in the
+> S-flag table marks an authored `[[effects]]` entry.
 
 ## Purpose
 
@@ -150,7 +157,7 @@ of these; this table reconciles with it and completes the survey.)
 | **relocate-other (free)** | Cat 3 `MutationReactor` | Transit Web `SWN-W7-003` — same effect as the A-flag relocate, but no action |
 | **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` ✅ |
 | **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001` ✅, Franchise `SWN-W1-001` ✅ → `coin_steal` |
-| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Local Investments `SWN-W1-003` (purchase surcharge), and Monopoly's reactive reading → `coin_drain` |
+| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Monopoly's reactive reading → `coin_drain`. Local Investments was listed here; it ships as a purchase surcharge (row below) |
 | **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `SWN-C1-003`, Boltholes `SWN-C5-003`, Medical Center `SWN-W4-003` |
 | **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
 | **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
@@ -161,11 +168,11 @@ of these; this table reconciles with it and completes the survey.)
 | **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` ✅ |
 | **negate-bonus** (suppress tag dice) | Cat 1 `RollOfferFilter` | Blackmail `SWN-C2-003` ✅ |
 | **reflect-on-defense** | Cat 2 `RollResultHook` / rule | Cracked Comms `SWN-C5-002` |
-| **attack/defense restriction** | Cat 5 `TieResolver` / rule | Planetary Defenses `SWN-F6-002` (Starship-only), Lawyers `SWN-W2-002` (not vs Force) |
+| **attack/defense restriction** | Cat 4 `AttackEligibilityRule` → `restrict_attack` | Planetary Defenses `SWN-F6-002` ✅ (defends only vs Starship), Lawyers `SWN-W2-002` ✅ (no attack or counter vs Force), Integral Protocols `SWN-F7-002` ✅ (defends only vs Cunning attacks) |
 | **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `SWN-C2-002` (no abilities), Transport Lockdown `SWN-C6-001` (no transport in) |
 | **cost-ignore** (skip a Coin loss, once/turn) | Cat 3 `MutationReactor` | Bank `SWN-W4-004` ✅ |
-| **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` | Local Investments `SWN-W1-003` |
-| **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `AssetCostModifier` | Laboratory `SWN-W3-002`, Pretech Researchers `SWN-W5-002`, R&D Department `SWN-W6-002` |
+| **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` → `cost_surcharge` | Local Investments `SWN-W1-003` ✅ |
+| **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `WorldTechLevelModifier` → `tech_level_floor` | Laboratory `SWN-W3-002` ✅, Pretech Researchers `SWN-W5-002` ✅, R&D Department `SWN-W6-002` ✅ |
 | **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `SWN-C7-001` (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
 | **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` ✅ |
 

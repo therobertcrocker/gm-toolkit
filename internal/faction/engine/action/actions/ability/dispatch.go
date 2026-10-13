@@ -26,6 +26,7 @@ type StepContext struct {
 	Rulebook     *rulebook.Rulebook
 	Collector    action.Collector   // for handlers with a secondary prompt (relocate)
 	WorldEngine  *world.WorldEngine // for movement effects (relocate); nil for non-spatial
+	Registry     *hooks.Registry    // for purchase_enabler's asset-cost chain
 }
 
 // EffectHandler emits the mutations for one resolved step.
@@ -111,6 +112,7 @@ func Dispatch(
 			Rulebook:     rb,
 			Collector:    collector,
 			WorldEngine:  worldEngine,
+			Registry:     registry,
 		})
 		if err != nil {
 			return nil, err

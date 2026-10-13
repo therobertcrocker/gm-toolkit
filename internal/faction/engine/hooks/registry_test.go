@@ -37,8 +37,7 @@ func (stub *stubMutationReactor) OnMutations(_ []domain.Mutation, _ *state.Facti
 
 type stubAssetCostModifier struct{ name string }
 
-func (stub *stubAssetCostModifier) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, baseCost int) int {
-	return baseCost
+func (stub *stubAssetCostModifier) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, _ *hooks.AssetCostQuery) {
 }
 
 type stubTieResolver struct{ name string }

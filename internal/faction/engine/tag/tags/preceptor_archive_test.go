@@ -4,7 +4,14 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 )
+
+func costAfter(modifier *PreceptorArchiveCostModifier, buyer *domain.Faction, def *domain.AssetDefinition, cost int) int {
+	query := &hooks.AssetCostQuery{Cost: cost, Applied: map[string]bool{}}
+	modifier.ModifyAssetCost(buyer, def, "Tartarus", query)
+	return query.Cost
+}
 
 func TestPreceptorArchiveCostModifier_TL4PlusReducesCost(t *testing.T) {
 	modifier := &PreceptorArchiveCostModifier{}
@@ -21,7 +28,7 @@ func TestPreceptorArchiveCostModifier_TL4PlusReducesCost(t *testing.T) {
 	}
 	for _, tc := range cases {
 		def := &domain.AssetDefinition{TechLevel: tc.tl, Cost: tc.baseCost}
-		got := modifier.ModifyAssetCost(buyer, def, "Tartarus", tc.baseCost)
+		got := costAfter(modifier, buyer, def, tc.baseCost)
 		if got != tc.wantCost {
 			t.Errorf("TL%d baseCost=%d: got %d, want %d", tc.tl, tc.baseCost, got, tc.wantCost)
 		}
@@ -34,7 +41,7 @@ func TestPreceptorArchiveCostModifier_BelowTL4NoChange(t *testing.T) {
 
 	for _, tl := range []int{0, 1, 2, 3} {
 		def := &domain.AssetDefinition{TechLevel: tl, Cost: 4}
-		got := modifier.ModifyAssetCost(buyer, def, "Tartarus", 4)
+		got := costAfter(modifier, buyer, def, 4)
 		if got != 4 {
 			t.Errorf("TL%d: got %d, want 4 (no change)", tl, got)
 		}
@@ -46,7 +53,7 @@ func TestPreceptorArchiveCostModifier_ZeroCostNoChange(t *testing.T) {
 	buyer := &domain.Faction{}
 
 	def := &domain.AssetDefinition{TechLevel: 4, Cost: 0}
-	got := modifier.ModifyAssetCost(buyer, def, "Tartarus", 0)
+	got := costAfter(modifier, buyer, def, 0)
 	if got != 0 {
 		t.Errorf("zero cost TL4: got %d, want 0", got)
 	}

@@ -40,7 +40,7 @@ func (u *UseAssetAbility) Validate(faction *domain.Faction, _ *state.FactionStat
 		if !ok {
 			continue
 		}
-		if hasActionFlag(def) && asset.Ready && asset.Maintained {
+		if hasActionFlag(def) && asset.Active() {
 			return true
 		}
 	}
@@ -54,7 +54,7 @@ func (u *UseAssetAbility) Inputs(faction *domain.Faction, _ *state.FactionState,
 		if !ok {
 			continue
 		}
-		if hasActionFlag(def) && asset.Ready && asset.Maintained {
+		if hasActionFlag(def) && asset.Active() {
 			candidates = append(candidates, asset)
 		}
 	}

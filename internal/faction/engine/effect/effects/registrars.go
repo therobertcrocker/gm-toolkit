@@ -15,5 +15,8 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialBonusDie:       bonusDieRegistrar,
 		domain.SpecialRemoveTagDice:  removeTagDiceRegistrar,
 		domain.SpecialReroll:         rerollRegistrar,
+		domain.SpecialCostSurcharge:  costSurchargeRegistrar,
+		domain.SpecialTechLevelFloor: techLevelFloorRegistrar,
+		domain.SpecialRestrictAttack: restrictAttackRegistrar,
 	}
 }

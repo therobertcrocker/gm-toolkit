@@ -122,8 +122,17 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 		}
 	})
 
+	t.Run("A-flagged but destroyed", func(t *testing.T) {
+		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true, CurrentHP: 0}
+		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
+		act := NewUseAssetAbility(nil, nil, nil, nil)
+		if act.Validate(faction, nil, rulebook) {
+			t.Error("expected Validate false when A-flagged asset has no HP")
+		}
+	})
+
 	t.Run("usable A-flagged asset", func(t *testing.T) {
-		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true}
+		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true, CurrentHP: 1}
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 		act := NewUseAssetAbility(nil, nil, nil, nil)
 		if !act.Validate(faction, nil, rulebook) {

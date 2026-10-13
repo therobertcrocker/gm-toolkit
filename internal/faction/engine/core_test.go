@@ -23,6 +23,18 @@ func TestNewWithRulebook_ValidatesEffects(t *testing.T) {
 	}
 }
 
+// TestNewWithRulebook_ShippedRulebook catches an authored [[effects]] entry that
+// loads but fails registrar validation, which otherwise surfaces only at runtime.
+func TestNewWithRulebook_ShippedRulebook(t *testing.T) {
+	rb, err := rulebook.Load("../../../rulebooks/swn")
+	if err != nil {
+		t.Fatalf("load shipped rulebook: %v", err)
+	}
+	if _, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("construct engine from shipped rulebook: %v", err)
+	}
+}
+
 func TestNewWithRulebook_RejectsTransportAndEffectsOnOneDefinition(t *testing.T) {
 	def := &domain.AssetDefinition{
 		ID:        "T-001",

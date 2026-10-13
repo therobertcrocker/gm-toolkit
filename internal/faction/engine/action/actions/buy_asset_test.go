@@ -1,13 +1,16 @@
 package actions
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 	"go.uber.org/mock/gomock"
 )
 
@@ -168,8 +171,8 @@ func TestBuyAsset_PendingDiscount(t *testing.T) {
 // stubCostReducer reduces asset purchase cost by 1 Coin.
 type stubCostReducer struct{}
 
-func (stub *stubCostReducer) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, cost int) int {
-	return cost - 1
+func (stub *stubCostReducer) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, query *hooks.AssetCostQuery) {
+	query.Cost--
 }
 
 // TestBuyAsset_AssetCostModifier: a registered AssetCostModifier reduces the
@@ -203,5 +206,89 @@ func TestBuyAsset_AssetCostModifier(t *testing.T) {
 	coin, ok := mutations[1].(domain.CoinDelta)
 	if !ok || coin.Delta != -3 {
 		t.Errorf("CoinDelta.Delta = %v, want -3 (base 4 - 1 discount)", mutations[1])
+	}
+}
+
+// stubSurcharge raises the cost by one, as cost_surcharge does.
+type stubSurcharge struct{}
+
+func (stub *stubSurcharge) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, query *hooks.AssetCostQuery) {
+	query.Cost++
+	query.Surcharge++
+}
+
+// surchargedWorld places a rival asset carrying stubSurcharge on world "a".
+func surchargedWorld() (*world.WorldEngine, *hooks.Registry, spatial.RegionHex) {
+	worldHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
+	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
+	rivalAsset := &domain.Asset{ID: "li", OwnerID: "rival", Location: domain.Location{WorldID: "a", RegionHex: worldHex}}
+	worldEngine.Index = &world.Index{AssetsByLocation: map[string][]*domain.Asset{"a": {rivalAsset}}}
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetCostModifier(hooks.AssetScope("rival", "li"), "surcharge", &stubSurcharge{})
+	return worldEngine, registry, worldHex
+}
+
+// TestPurchasableDefinitions_PricesWithSurcharge: the menu prices a def at the cost
+// Resolve charges, so a buyer holding only the base price is not offered it.
+func TestPurchasableDefinitions_PricesWithSurcharge(t *testing.T) {
+	worldEngine, registry, worldHex := surchargedWorld()
+	rb := makeBuyRulebook()
+	for coin, wantOffered := range map[int]bool{4: false, 5: true} {
+		faction := &domain.Faction{ID: "f1", Force: 3, Coin: coin, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}}
+		offered := len(purchasableDefinitions(faction, rb, "a", worldEngine, registry)) > 0
+		if offered != wantOffered {
+			t.Errorf("Coin %d: offered = %v, want %v (base 4 + surcharge 1)", coin, offered, wantOffered)
+		}
+	}
+}
+
+// TestBuyAsset_DiscountKeepsSurcharge: base 4 + surcharge 1, discount 3. The
+// discount floors at half base (2) and the surcharge rides on top: 3.
+func TestBuyAsset_DiscountKeepsSurcharge(t *testing.T) {
+	worldEngine, registry, worldHex := surchargedWorld()
+	rb := makeBuyRulebook()
+	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 10, PendingPurchaseDiscount: 3, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}}
+	act := NewBuyAsset(nil, registry, worldEngine)
+	act.buyOrder = action.BuyOrder{World: "a", Definition: rb.Assets["cheap"]}
+	if err := act.Resolve(faction, nil, rb); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if act.cost != 3 {
+		t.Errorf("cost = %d, want 3 (floor 2 + surcharge 1)", act.cost)
+	}
+}
+
+// stubWealthFloor lifts the tech level to 6 for Wealth definitions only.
+type stubWealthFloor struct{}
+
+func (stub *stubWealthFloor) ModifyWorldTechLevel(_ *domain.Faction, def *domain.AssetDefinition, _ string, baseTL int) int {
+	if def.Category == domain.StatWealth {
+		return max(baseTL, 6)
+	}
+	return baseTL
+}
+
+// TestPurchasableDefinitions_TechCapResolvesPerDefinition: on a TL5 world, a floor
+// on the buyer's own asset that serves Wealth only offers the TL6 Wealth def and
+// not the TL6 Force def — one cap per world could not split them.
+func TestPurchasableDefinitions_TechCapResolvesPerDefinition(t *testing.T) {
+	worldHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
+	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"wealth-tl6": {ID: "wealth-tl6", Category: domain.StatWealth, Cost: 1, TechLevel: 6},
+		"force-tl6":  {ID: "force-tl6", Category: domain.StatForce, Cost: 1, TechLevel: 6},
+	}}
+	lab := &domain.Asset{ID: "lab", OwnerID: "f1", Location: domain.Location{WorldID: "a", RegionHex: worldHex}}
+	faction := &domain.Faction{ID: "f1", Coin: 5, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}, Assets: map[string]*domain.Asset{"lab": lab}}
+	registry := hooks.NewRegistry()
+	registry.RegisterWorldTechLevelModifier(hooks.AssetScope("f1", "lab"), "wealth-floor", &stubWealthFloor{})
+
+	defs := purchasableDefinitions(faction, rb, "a", worldEngine, registry)
+	if len(defs) != 1 || defs[0].ID != "wealth-tl6" {
+		var ids []string
+		for _, def := range defs {
+			ids = append(ids, def.ID)
+		}
+		t.Errorf("purchasable = %v, want [wealth-tl6]", ids)
 	}
 }

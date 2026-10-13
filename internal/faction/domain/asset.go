@@ -207,6 +207,13 @@ type Asset struct {
 	CurrentOrder *MovementOrder `toml:"current_order,omitempty"`
 }
 
+// Active reports whether the asset can act or use its special ability now: an
+// asset is not usable until the turn after purchase, while unmaintained, or once
+// destroyed.
+func (asset *Asset) Active() bool {
+	return asset.Ready && asset.Maintained && asset.CurrentHP > 0
+}
+
 // Clone deep-copies an asset, including its CurrentOrder pointer and that order's
 // slices, so mutations applied to the copy never reach the original.
 func (asset *Asset) Clone() *Asset {

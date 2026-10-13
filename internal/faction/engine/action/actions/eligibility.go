@@ -2,16 +2,18 @@ package actions
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
-	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
-// eligibleAttackers returns faction assets that may attack this turn:
-// Ready (not on purchase/refit cooldown), alive, and maintained.
+// eligibleAttackers returns faction assets that may attack this turn: the
+// active ones.
 func eligibleAttackers(faction *domain.Faction) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range faction.Assets {
-		if asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
+		if asset.Active() {
 			result = append(result, asset)
 		}
 	}
@@ -24,20 +26,36 @@ func eligibleDefendersOnWorld(attackerFactionID, worldID string, index *world.In
 	return filterOpposingDefenders(attackerFactionID, index.AssetsByLocation[worldID])
 }
 
-// eligibleDefendersAtHex returns targetable assets at a given hex coordinate:
-// owned by a different faction, non-stealthy, Ready, alive, and maintained.
-// Used when the attacker is mid-flight (empty WorldID).
-func eligibleDefendersAtHex(attackerFactionID string, hex spatial.RegionHex, index *world.Index) []*domain.Asset {
-	return filterOpposingDefenders(attackerFactionID, index.AssetsByHex[hex])
+// eligibleDefendersAtHex returns the assets at the attacker's hex that it may
+// target: owned by a different faction, non-stealthy, Ready, alive, maintained,
+// and not refused by an attack-eligibility hook. Works when the attacker is
+// mid-flight (empty WorldID).
+func eligibleDefendersAtHex(attacker *domain.Asset, attackerDef *domain.AssetDefinition, rulebook *rulebook.Rulebook, registry *hooks.Registry, index *world.Index) []*domain.Asset {
+	var result []*domain.Asset
+	for _, defender := range filterOpposingDefenders(attacker.OwnerID, index.AssetsByHex[attacker.Location.RegionHex]) {
+		defenderDef, ok := rulebook.Assets[defender.DefinitionID]
+		// deliberate: an unknown definition stays eligible, not dropped, so Resolve still reports it as an error
+		if ok && !dispatch.ResolveAttackEligibility(registry, hooks.AttackEligibilityQuery{
+			Attacker:    attacker,
+			AttackerDef: attackerDef,
+			Defender:    defender,
+			DefenderDef: defenderDef,
+			Side:        hooks.SideAttack,
+		}) {
+			continue
+		}
+		result = append(result, defender)
+	}
+	return result
 }
 
 // filterOpposingDefenders applies the defender eligibility filter to a candidate
-// slice: excludes the attacker's own assets and assets that are stealthy, not
-// Ready, destroyed, or unmaintained.
+// slice: excludes the attacker's own assets and assets that are stealthy or
+// not active.
 func filterOpposingDefenders(attackerFactionID string, candidates []*domain.Asset) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range candidates {
-		if asset.OwnerID != attackerFactionID && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
+		if asset.OwnerID != attackerFactionID && !asset.Stealthy && asset.Active() {
 			result = append(result, asset)
 		}
 	}

@@ -6,13 +6,16 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 )
 
 // purchaseEnabler resolves Pretech Logistics: spend the action to buy one asset of the
 // configured category (Force), with required tech level at or below the cap, on the
 // acting asset's world, at a surcharge (half again, rounded up). The world's own tech
-// level is ignored — the ability is precisely what lets the faction buy above it. Emits
-// AssetAdded (Ready:false) + the surcharged CoinDelta.
+// level is ignored — the ability is precisely what lets the faction buy above it. The
+// asset-cost chain then runs on the surcharged price. Emits AssetAdded (Ready:false) +
+// the CoinDelta.
 func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	params := ctx.Step.Purchase
 	if params == nil {
@@ -25,7 +28,7 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	}
 	options := make([]action.PurchaseEnablerOption, len(candidates))
 	for i, candidate := range candidates {
-		options[i] = action.PurchaseEnablerOption{Def: candidate, Cost: surchargedCost(candidate.Cost, params.CostPercent)}
+		options[i] = action.PurchaseEnablerOption{Def: candidate, Cost: enablerQuote(ctx, candidate, params).Cost}
 	}
 	def, err := ctx.Collector.SelectPurchaseEnablerAsset(worldID, options)
 	if err != nil {
@@ -34,16 +37,11 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	if def == nil {
 		return nil, fmt.Errorf("purchase_enabler: %w", action.ErrNoSelection)
 	}
-	cost := surchargedCost(def.Cost, params.CostPercent)
+	quote := enablerQuote(ctx, def, params)
+	cost := quote.Cost
 	discountConsumed := false
 	if ctx.Faction.PendingPurchaseDiscount > 0 {
-		// Floor is half base price (SWN), but never above the pre-discount cost: same
-		// clamp as Buy Asset — a discount must never raise the surcharged price back up.
-		floor := min(def.Cost/2, cost)
-		cost -= ctx.Faction.PendingPurchaseDiscount
-		if cost < floor {
-			cost = floor
-		}
+		cost = dispatch.DiscountedCost(quote, def.Cost, ctx.Faction.PendingPurchaseDiscount)
 		discountConsumed = true
 	}
 	if ctx.Faction.Coin < cost {
@@ -73,7 +71,7 @@ func eligiblePurchaseDefs(ctx StepContext, params *domain.PurchaseParams) []*dom
 			continue
 		}
 		terms := domain.PurchaseTerms{
-			Cost:            surchargedCost(def.Cost, params.CostPercent),
+			Cost:            enablerQuote(ctx, def, params).Cost,
 			TechCap:         params.MaxTechLevel,
 			HoldsGovernment: government,
 		}
@@ -93,6 +91,18 @@ func holdsGovernment(ctx StepContext, worldID string) bool {
 		return false
 	}
 	return domain.HasPlanetaryGovernment(ctx.Faction.ID, ctx.WorldEngine.Index.BasesByLocation[worldID])
+}
+
+// enablerQuote runs the asset-cost chain on the enabler's surcharged price, so the
+// same hooks that price a Buy Asset (Local Investments, Preceptor Archive) price
+// an enabler purchase on the acting asset's world.
+func enablerQuote(ctx StepContext, def *domain.AssetDefinition, params *domain.PurchaseParams) hooks.AssetCostQuery {
+	worldID := ctx.Asset.Location.WorldID
+	var onWorld []*domain.Asset
+	if ctx.WorldEngine != nil && ctx.WorldEngine.Index != nil {
+		onWorld = ctx.WorldEngine.Index.AssetsByLocation[worldID]
+	}
+	return dispatch.ResolveAssetCost(ctx.Registry, ctx.Faction, def, worldID, surchargedCost(def.Cost, params.CostPercent), onWorld)
 }
 
 // surchargedCost applies the enabler's cost surcharge: base * percent / 100, rounded up.

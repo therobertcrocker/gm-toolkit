@@ -14,11 +14,13 @@ import (
 // owner and scope read differently per trigger: an independent set per field would
 // accept a pairing the effect never supports. An entry runs through Fire when its
 // trigger is a phase event (IsPhaseTrigger) and through Register otherwise; a nil
-// function means the effect has no such route.
+// function means the effect has no such route. Validate is optional: it refuses a
+// combination of fields that Accepts, which checks each field alone, cannot express.
 type Registrar struct {
 	Triggers map[domain.EffectTrigger]Accepts
 	Register func(RegisterContext)
 	Fire     func(FireContext) []domain.Mutation
+	Validate func(domain.EffectDefinition) error
 }
 
 type Accepts struct {
@@ -112,6 +114,11 @@ func (e *EffectsEngine) validateEntry(entry domain.EffectDefinition) error {
 	for _, gate := range entry.Gates.Used() {
 		if !slices.Contains(accepts.Gates, gate) {
 			return fmt.Errorf("effect %q does not accept gate %q for trigger %q", entry.Effect, gate, entry.Trigger)
+		}
+	}
+	if registrar.Validate != nil {
+		if err := registrar.Validate(entry); err != nil {
+			return fmt.Errorf("effect %q: %w", entry.Effect, err)
 		}
 	}
 	return nil

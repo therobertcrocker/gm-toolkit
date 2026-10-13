@@ -235,22 +235,162 @@ before the commit they ride. Append AND reconcile. -->
     inline copies outside the effects layer stay as they are (`R.020`). Effort 3–5
     reactors and hooks follow the same rule.
 
+12. **Effort 4 runs as a design pass and two execution tracks** (Effort 4, start).
+    Three commits waited on open decisions, and one decision changed Commit 1's scope.
+    One design pass settled entries 13–16 first. Execution then runs Commits 1–3 (cost
+    and tech level) in one session and Commits 4–5 (attack eligibility) in another. The
+    two tracks share no code. Each commit stays its own unit. Rejected: the whole effort
+    in one session, which reaches the open decisions late and changes built attack code
+    at the end of a long context.
+
+13. **`tech_level_floor` lifts the owner's purchases only** (Effort 4, start). Robert's
+    rules reading: Laboratory and Pretech Researchers serve their owner, like R&D
+    Department. All three entries keep `owner = "own"`. Resolves the Open Question on who
+    benefits.
+
+14. **`ResolveWorldTechLevel` walks the buyer's own assets, not the world's occupants**
+    (Effort 4, start). The plan said owner-only needs no lookup change. That is false:
+    every effect registrar registers at `AssetScope`, and
+    `WorldTechLevelModifiersFor(faction.ID, "")` skips the asset bucket
+    (`registry.go:191`). The resolver gains a tail that walks `buyer.Assets` in ID order
+    and calls `WorldTechLevelModifiersForAsset`. The hook checks its own scope filter
+    (`world`: its asset stands on the purchase world; `faction`: any world) and
+    `active()`. One path serves Laboratory, Pretech Researchers and R&D Department, with
+    no signature change and no index. Rejected: registration at `FactionScope`, which
+    breaks the rule that every effect registers at asset scope. Plan body reconciled:
+    Effort 4 Commit 1.
+
+15. **`no_stack` rides on a query struct** (Effort 4, start). `ModifyAssetCost` passes
+    only an `int` down the chain, so a mark has nowhere to go. The hook now takes
+    `*hooks.AssetCostQuery` with `Cost int` and `Applied map[string]bool`. A `no_stack`
+    registrar checks and sets its effect name in `Applied`. Preceptor Archive
+    (`tags/preceptor_archive.go`) is the only implementer and moves to the new
+    signature. Rejected: a lowest-ID lead like Bank (Decision 9), which needs world
+    occupancy that the hook does not get. Plan body reconciled: Effort 4 Commit 2.
+
+16. **Attack eligibility is one Cat 4 interface with a side** (Effort 4, start). One
+    query carries the attacker, the defender and `side` (`attack`, `counter` or
+    `defense`). One map, one `Register*`, one accessor and one `Resolve*`, consulted at
+    all three sites. Lawyers covers `attack` and `counter` in one entry. Rejected: two
+    typed interfaces, which double the registry plumbing and still need a counter flag.
+    Resolves the Open Question on one interface or two. Plan body reconciled: Effort 4
+    Commit 4.
+
+17. **The tech-level hook sees the definition, and resolves per definition** (Effort 4,
+    start). Pretech Researchers and R&D Department filter on `category`, but
+    `ModifyWorldTechLevel` passes no definition, and `purchasableDefinitions` resolves
+    one `techCap` per world before its def loop (`buy_asset.go:172`). Both
+    `ModifyWorldTechLevel` and `ResolveWorldTechLevel` gain
+    `def *domain.AssetDefinition`, and the resolve call moves into the def loop. No
+    implementer exists, so nothing migrates. This matches `ModifyAssetCost`, which
+    already takes the definition. Rejected: a hook that returns a floor per category,
+    a shape that fits one effect only. Plan body reconciled: Effort 4 Commit 1.
+
+18. **The tech-level chain uses `domain.SortedAssets`** (Effort 4, Commit 1). The plan
+    collected `faction.Assets` with `maps.Values` and sorted it with a new helper.
+    `domain.SortedAssets` (`faction.go:259`) already returns a faction's assets in ID
+    order, and the Shared Context names it as the sort to use. `sortedByID` stays for the
+    world index slice, and it uses `slices.SortFunc` with `strings.Compare`, the same
+    form as `SortedAssets`, not `sort.Slice`. Re-ground for Task 4:
+    `purchasableDefinitions` is the only reader of the world tech cap on the purchase
+    path. `Resolve` does not check tech level again. The purchase-enabler cap
+    (`purchase_enabler.go:77`) comes from the ability's own `MaxTechLevel`, so it does
+    not get the per-definition call. Plan body reconciled: Effort 4 Commit 1 Tasks 1
+    and 3.
+
+19. **A Cat 4 hook reads its asset through its owner** (Effort 4, Commit 2). A Cat 4
+    hook gets no `FactionState`, so it cannot call `liveAsset`. The hook keeps the
+    owner's `*domain.Faction` from `RegisterContext` and reads `owner.Assets[assetID]`
+    at query time. `ApplyAll` passes the live `factionState.Factions` pointer, and
+    faction pointers do not change in a cycle. Mutation apply edits assets in place, so
+    `Ready`, `Maintained`, HP and location stay current. `AssetRemoved` only deletes the
+    map entry (`mutation.go:63`), so a removed asset reads as `nil` and `active()`
+    fails. `tech_level_floor` (Commit 3) uses the same read. Rejected: holding the
+    asset pointer, which keeps a removed Local Investments charging until the next
+    cycle; and `FactionState` on every Cat 4 signature, which changes Commit 1's
+    resolvers and every call site for one read. The signature change also moves three
+    test stubs (`dispatch/rules_test.go`, `hooks/registry_test.go`,
+    `actions/buy_asset_test.go`) beside Preceptor Archive. Plan body reconciled:
+    Effort 4 Commit 2.
+
+20. **A test builds the engine from the shipped rulebook** (Effort 4, Commit 3). No
+    test ran the authored `[[effects]]` entries through `validateEntry`. The loader
+    tests parse the TOML, and the construction tests use hand-built definitions. An
+    entry that loads but names an owner, scope, filter or gate its registrar does not
+    accept failed only at runtime. `TestNewWithRulebook_ShippedRulebook` (`core_test.go`)
+    loads `rulebooks/swn` and calls `NewWithRulebook`. A one-off test in Commit 2 found
+    the gap, and Robert added it to this commit, which authors three more entries. A
+    mutation check (Laboratory `owner = "rival"`) proves that it fails and names the
+    entry. In the same commit, `TestPurchasableDefinitions_TechCapResolvesPerDefinition`
+    (`buy_asset_test.go`) covers Commit 1's per-definition loop. On a TL5 world, a
+    Wealth-only floor on the buyer's own asset makes a TL6 Wealth def purchasable but
+    not a TL6 Force def. One cap per world cannot give that result. Plan body
+    reconciled: Effort 4 Commit 3.
+
+21. **The eligibility query names the striker, and a counter asks only the striker**
+    (Effort 4, Commit 4). Robert's call. `Attacker` is the asset that deals the
+    damage, so on a counterattack the original defender is `Attacker` and Lawyers
+    always finds its target in `Defender`. On `attack`, the striker's hooks answer
+    and then the target's asset hooks answer as `defense`. On `counter`, the target
+    is not asked: a counter is not a defense, and asking it would let Integral
+    Protocols block counter damage to itself. The striker is asked through
+    `AttackEligibilityRulesFor` (global, faction, asset) and the target through
+    `AttackEligibilityRulesForAsset`, so a global rule is asked once. The query
+    carries both definitions, because Planetary Defenses, Lawyers and Integral
+    Protocols filter on definition fields and a Cat 4 hook has no rulebook. So
+    `eligibleDefendersAtHex` takes the attacker asset, its definition, the rulebook
+    and the registry. A defender with an unknown definition stays eligible, so
+    `Resolve` still reports the error. `Resolve` picks defenders through the same
+    function, so one check covers `Validate`, `Inputs` and the defender choice.
+    `liveDefendersOnWorld` has no caller and does not get the check. Rejected:
+    fixed roles, where each hook must find "the other asset" from its own ID. Plan
+    body reconciled: Effort 4 Commit 4.
+
+22. **`R.020` lands on this branch, before Commit 5** (Effort 4, after Commit 4).
+    Robert's call. Its trigger, "next eligibility change", fired in Commit 4, and
+    Commit 5 adds one more `active()` reader on the attack path. The rule moves to
+    `domain.Asset.Active()`: `Ready && Maintained && CurrentHP > 0`. The method does
+    not check for nil. `effects.active()` stays as the nil guard over it, because
+    only a hook reads its asset through its owner and can see a removed asset as nil
+    (Decision Record 19). `eligibleAttackers`, `filterOpposingDefenders`,
+    `rivalAssetsOnWorld`, `UseAssetAbility` and `FireTurnStart` call the method. The
+    last two gain the HP check, which also closes `B.013`. A lethal hit removes the
+    asset in the same batch, so no live state changes; test fixtures that left
+    `CurrentHP` at zero now set it. Own `refactor:` commit, so Commit 5 stays one
+    unit. Rejected: a nil-safe `Active()` with `effects.active()` deleted, which
+    makes every caller trust a nil receiver for a case only the effects layer has.
+
+23. **Every purchase path prices through the cost chain, and a discount keeps the
+    surcharge** (Effort 4, end-of-effort review). Robert's calls. Before
+    `cost_surcharge`, every cost hook lowered the price, so code could check if a
+    buyer can pay against `def.Cost`. The surcharge broke that in three places:
+    - The Buy Asset menu (`purchasableDefinitions`) offered a def that `Resolve`
+      then refused. It now checks against `ResolveAssetCost(...).Cost`.
+    - `purchase_enabler` skipped the chain. It now runs the full chain on its 150%
+      price, so Local Investments adds +1 and Preceptor Archive now also takes
+      −1 on a TL4+ Pretech purchase. `StepContext` gains `Registry`.
+    - A pending discount floored at `min(def.Cost/2, cost)` and could remove the
+      surcharge. `AssetCostQuery` gains `Surcharge`, and `ResolveAssetCost` returns
+      the query. `dispatch.DiscountedCost` floors the price before the surcharge at
+      half base, then adds the surcharge back. Both purchase paths share it.
+
+    In the same review, `Registrar` gains an optional `Validate func(EffectDefinition)
+    error`, and `validateEntry` calls it last. `restrict_attack` uses it to refuse
+    `attribute` with `side = attack_and_counter`. On that side the striker is the
+    declaring asset, so the filter would test the asset's own profile. Rejected:
+    taking the surcharge as the change made by the rival-asset loop, which counts
+    any rival hook as a surcharge; and a pass that adds only the rival surcharge
+    for Pretech, which needs a second resolver. Plan body reconciled: Effort 4
+    Commit 2.
+
 ---
 
 ## Open Questions — To Ratify at Implementation Time
 
-- **Does `restrict_attack` need one Cat 4 interface or two?** Planetary Defenses and
-  Integral Protocols restrict what may attack *them* (defence side); Lawyers restricts
-  what it may attack and counterattack (attack side). One interface with a `side`
-  parameter, or two typed interfaces. Resolved in Effort 4, Commit 4.
-- **Who benefits from a world-scoped `tech_level_floor`?** Laboratory ("Assets may be
-  purchased on this planet as if it had Tech Level 4") and Pretech Researchers ("Any
-  world with Pretech Researchers on it is treated as Tech Level 5…") do not say whose
-  purchases they lift. R&D Department is explicit and faction-wide ("A faction with an
-  R&D Department may treat all planets…"). If the first two benefit every faction on the
-  world, they need Effort 4 Commit 1's world-scoped lookup; if only the owner, the
-  existing buyer-scoped lookup serves. **Rules reading — Robert, before Effort 4
-  Commit 3.**
+- ~~**Does `restrict_attack` need one Cat 4 interface or two?**~~ **Resolved**: one
+  interface with a `side` parameter. Decision Record 16.
+- ~~**Who benefits from a world-scoped `tech_level_floor`?**~~ **Resolved**: the owner
+  only. Decision Record 13; the lookup that follows is Decision Record 14.
 - ~~**Panopticon Matrix — "at the beginning of every turn".**~~ **Resolved** in the
   Effort 3 plan, Decision 1: the owner's turn. Discovery Open Question 3.
 - ~~**Book of Secrets — "force an enemy faction to reroll one die".**~~ **Resolved** in
@@ -420,6 +560,7 @@ effort that makes its claim true, not in a separate documentation pass.
 | `hooks.md:89-92` says the movement phase calls `GrantedMovementAbilities` | Effort 5 — correct the page when the call is wired |
 | `hooks.md:74-75` says the effects engine registers asset-scoped hooks; `effect-mutation.md` carries the same claim in its heading at line 63 while its body is correct at line 76 | Effort 2 — fixed by item 2 |
 | The catalog routes two S-flag effects to `coin_steal` and `coin_drain`; A.001.2 removed both `AbilityEffectType` values | Effort 1 — the catalog's "latent vocabulary" table is stale on the same point |
+| `hooks.md` lists the Cat 4 resolvers as cost, tech level and movement; `ResolveAttackEligibility` is a fourth, and it refuses where the others chain | **Resolved** at the Effort 4 close-out — Decision Record 21 graduated into `hooks.md` Key Decisions; resolver list and diagram fixed |
 
 ---
 
@@ -1097,18 +1238,26 @@ store nothing; each answers a question the engine already asks, or is about to a
 Commits 1 and 4 are independent of Effort 1's API. Commits 2, 3 and 5 bind to the
 registrar contract and re-ground against it first.
 
-#### Commit 1 — `feat: world-scoped cat 4 cost and tech-level lookup`
+#### Commit 1 — `feat: asset-scoped cat 4 cost and tech-level lookup`
 
 `ResolveAssetCost` reads modifiers for the buyer (`rules.go:17`), and
-`ResolveWorldTechLevel` does the same (`rules.go:45`). Local Investments belongs to a
-rival and charges the buyer, so the owner's hook is never found. This needs a
-world-scoped lookup, not just a wider audience: the question is "who has an asset on
-*this world* with something to say about this purchase", which neither the buyer's
-faction scope nor global scope expresses.
+`ResolveWorldTechLevel` does the same (`rules.go:45`). Both pass an empty asset ID, so
+neither finds a hook registered at `AssetScope` — the scope every effect registrar uses.
+The two resolvers need different reach:
+
+- **Cost** — Local Investments belongs to a rival and charges the buyer. The question
+  is "who has an asset on *this world* with something to say about this purchase",
+  which neither the buyer's faction scope nor global scope expresses. The chain walks
+  the world's occupants, skipping the buyer's own.
+- **Tech level** — every floor serves its owner only (Decision Record 13), and R&D
+  Department reaches every world. The chain walks the buyer's own assets wherever they
+  stand; each hook checks its own reach (Decision Record 14). The hook also needs the
+  definition for its `category` filter, so the cap resolves per definition (Decision
+  Record 17).
 
 ##### Task 1 — `internal/faction/engine/hooks/dispatch/rules.go`
 
-Both resolvers gain the world's occupants. The world index supplies them, so the
+`ResolveAssetCost` gains the world's occupants. The world index supplies them, so the
 signature grows one parameter rather than the caller pre-filtering.
 
 **Find:**
@@ -1153,8 +1302,10 @@ func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *doma
 // sortedByID returns assets in ID order so a world-scoped hook chain is
 // deterministic regardless of index insertion order.
 func sortedByID(assets []*domain.Asset) []*domain.Asset {
-	sorted := append([]*domain.Asset(nil), assets...)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].ID < sorted[j].ID })
+	sorted := slices.Clone(assets)
+	slices.SortFunc(sorted, func(a, b *domain.Asset) int {
+		return strings.Compare(a.ID, b.ID)
+	})
 	return sorted
 }
 ```
@@ -1179,16 +1330,47 @@ func (registry *Registry) WorldTechLevelModifiersForAsset(factionID, assetInstan
 }
 ```
 
-##### Task 3 — `internal/faction/engine/hooks/dispatch/rules.go`
+##### Task 3 — `internal/faction/engine/hooks/rule_modifier.go`, `dispatch/rules.go`
 
-Give `ResolveWorldTechLevel` the same world-scoped tail, so Commit 3 can use it if the
-rules reading calls for it (see Open Questions). Mirror the `ResolveAssetCost` shape
-exactly, including the `sortedByID` fan-out, but do **not** skip the buyer's own assets —
-a faction's own Laboratory lifts its own purchases.
+The tech-level hook gains the definition (Decision Record 17). No implementer exists, so
+only the interface and the resolver change.
+
+In `rule_modifier.go`, **Find:**
+```go
+	ModifyWorldTechLevel(faction *domain.Faction, world string, baseTL int) int
+```
+**Replace with:**
+```go
+	ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int
+```
+
+In `dispatch/rules.go`, replace `ResolveWorldTechLevel` whole:
+```go
+// ResolveWorldTechLevel runs faction's own WorldTechLevelModifiers, then those
+// registered against each asset faction owns, in asset ID order. A tech-level
+// floor serves its owner only, so a rival's assets are never asked; each
+// asset-scoped hook decides whether its reach covers world and def.
+func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int {
+	if registry == nil {
+		return baseTL
+	}
+	tl := baseTL
+	for _, registered := range registry.WorldTechLevelModifiersFor(faction.ID, "") {
+		tl = registered.Hook.ModifyWorldTechLevel(faction, def, world, tl)
+	}
+	for _, asset := range domain.SortedAssets(faction) {
+		for _, registered := range registry.WorldTechLevelModifiersForAsset(faction.ID, asset.ID) {
+			tl = registered.Hook.ModifyWorldTechLevel(faction, def, world, tl)
+		}
+	}
+	return tl
+}
+```
+Add `slices` and `strings` to the imports (Decision Record 18).
 
 ##### Task 4 — `internal/faction/engine/action/actions/buy_asset.go`
 
-Both call sites gain the world's assets from the index.
+The cost call site gains the world's assets from the index.
 
 **Find:**
 ```go
@@ -1203,25 +1385,79 @@ Both call sites gain the world's assets from the index.
 	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost, onWorld)
 ```
 
-Apply the same treatment to the `ResolveWorldTechLevel` call at `buy_asset.go:172`, which
-already sits inside a `worldEngine != nil` branch with `worldEngine.Index` checked at
-`:173` — reuse that guard rather than adding a second.
+The tech-level call in `purchasableDefinitions` moves into the def loop, so each
+candidate gets its own cap. An unknown world keeps no ceiling and asks no hook, as now.
+
+**Find:**
+```go
+	techCap := math.MaxInt
+	holdsGovernment := false
+	if worldEngine != nil {
+		loc, ok := worldEngine.Location(fragmentID)
+		if !ok {
+			return nil
+		}
+		techCap = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
+		if worldEngine.Index != nil {
+			holdsGovernment = domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID])
+		}
+	}
+
+	var result []*domain.AssetDefinition
+	for _, def := range rulebook.Assets {
+		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: def.Cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
+```
+**Replace with:**
+```go
+	worldTechLevel := math.MaxInt
+	holdsGovernment := false
+	if worldEngine != nil {
+		loc, ok := worldEngine.Location(fragmentID)
+		if !ok {
+			return nil
+		}
+		worldTechLevel = loc.TechLevel()
+		if worldEngine.Index != nil {
+			holdsGovernment = domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID])
+		}
+	}
+
+	var result []*domain.AssetDefinition
+	for _, def := range rulebook.Assets {
+		techCap := worldTechLevel
+		if worldEngine != nil {
+			techCap = dispatch.ResolveWorldTechLevel(registry, faction, def, fragmentID, worldTechLevel)
+		}
+		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: def.Cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
+```
+
+Re-ground at execution: confirm `purchasableDefinitions` is still the only reader of the
+tech cap on the purchase path. If a validate step checks tech level on its own, it takes
+the same per-def call.
 
 ##### Task 5 — `internal/faction/engine/hooks/dispatch/rules_test.go`
 
-Add a case where the cost hook is registered against a rival's asset on the world and the
-buyer's own faction has none: the surcharge must still apply. Add a case asserting the
-buyer's own assets are skipped in `ResolveAssetCost` but not in `ResolveWorldTechLevel`.
+- **Cost, rival on world:** the cost hook is registered against a rival's asset on the
+  world and the buyer has none. The surcharge applies.
+- **Cost, own asset skipped:** a cost hook on the buyer's own asset on the world does
+  not run.
+- **Tech level, own asset off world:** a tech-level hook on one of the buyer's assets on
+  another world runs. The hook, not the resolver, decides reach.
+- **Tech level, rival asset not asked:** a tech-level hook on a rival's asset does not
+  run.
+- **Tech level, def reaches the hook:** a stub hook that records its `def` sees the
+  definition passed to the resolver.
 
 ##### Commit message
 
 ```
-feat: world-scoped cat 4 cost and tech-level lookup
+feat: asset-scoped cat 4 cost and tech-level lookup
 
-- chain cost and tech-level hooks registered against assets on the world
+- chain cost hooks registered against rival assets on the world
+- chain tech-level hooks registered against the buyer's own assets
+- pass the asset definition to tech-level hooks; resolve the cap per definition
 - add asset-only registry accessors for both Cat 4 families
-- skip the buyer's own assets for cost, keep them for tech level
-- sort the world-scoped chain by asset ID for determinism
+- sort each asset-scoped chain by asset ID for determinism
 ```
 
 #### Commit 2 — `feat: cost_surcharge effect`
@@ -1235,7 +1471,42 @@ surcharge from the same effect name has already been applied in this chain.
 `no_stack` is the first gate that is a property of the *query*, not of the turn, so it
 cannot use `HookBudgets`. It is carried on the chain itself: the registrar marks its
 contribution and later copies see the mark. The mechanism lands here as `no_stack`'s only
-consumer.
+consumer (Decision Record 15).
+
+In `hooks/rule_modifier.go`, the chain state becomes a struct the hooks share:
+```go
+// AssetCostQuery is the state an asset-cost chain carries from hook to hook.
+// Surcharge is the part of Cost that surcharge hooks added, so a purchase
+// discount can floor below it without removing it. Applied holds the effect
+// names whose no_stack gate has already fired.
+type AssetCostQuery struct {
+	Cost      int
+	Surcharge int
+	Applied   map[string]bool
+}
+
+// AssetCostModifier adjusts the Coin cost of an asset purchase (Cat 4).
+type AssetCostModifier interface {
+	ModifyAssetCost(buyer *domain.Faction, def *domain.AssetDefinition, world string, query *AssetCostQuery)
+}
+```
+
+`ResolveAssetCost` builds
+`&hooks.AssetCostQuery{Cost: baseCost, Applied: map[string]bool{}}`, passes it to every
+hook in both loops, and returns the query by value. The surcharge adds to `Cost` and
+`Surcharge`. `dispatch.DiscountedCost` applies a pending discount on top. Buy Asset's
+menu, Buy Asset's `Resolve` and `purchase_enabler` all price through this chain
+(Decision Record 23). Preceptor Archive
+(`tags/preceptor_archive.go:14`) is the only implementer: it sets `query.Cost` in place
+of its return value.
+
+The registrar honours every filter and gate it accepts: `owner = "rival"` (the buyer is
+not the owner), `scope = "world"` (its asset stands on the purchase world), and
+`active()` (Decision Record 11). The resolver walks only the world's rival occupants, but
+the registrar does not rely on that. The hook reads its asset as
+`owner.Assets[assetID]` at query time, because a Cat 4 hook gets no state (Decision
+Record 19). Three test stubs implement `ModifyAssetCost` and move with Preceptor
+Archive.
 
 Authored entry:
 
@@ -1258,6 +1529,7 @@ amount = 1
 feat: cost_surcharge effect
 
 - cost_surcharge registrar as a world-scoped AssetCostModifier
+- AssetCostQuery carries the cost chain; Preceptor Archive moves to it
 - no_stack gate carried on the resolution chain, not on HookBudgets
 - author Local Investments
 ```
@@ -1270,12 +1542,22 @@ Researchers `SWN-W5-002` treats its world as Tech Level 5 for Cunning and Wealth
 only. R&D Department `SWN-W6-002` treats *all* worlds as Tech Level 4 for Wealth assets —
 `scope = "faction"`, not `"world"`, and the only entry in the initiative that uses it.
 
-The registrar is a `WorldTechLevelModifier` returning `max(current, level)` when the
-`category` filter passes. **Resolve the Open Question on who benefits before writing
-this** — the `owner` value on Laboratory and Pretech Researchers depends on it, and
-`owner = "any"` requires Commit 1's world-scoped lookup while `owner = "own"` does not.
-The entries below assume owner-only; change `owner` to `any` if the reading goes the
-other way.
+The registrar is a `WorldTechLevelModifier` returning `max(current, level)` when every
+filter passes. Each floor serves its owner only (Decision Record 13). Commit 1's resolver
+asks only the buyer's own assets, wherever they stand, so the hook decides its own reach
+(Decision Record 14):
+
+- `owner = "own"` — the querying faction owns the asset.
+- `scope = "world"` — the asset stands on the purchase world. `scope = "faction"` — any
+  world.
+- `category` — the `def` passed to the hook is in the listed categories (Decision
+  Record 17).
+- `active()` — the asset is active (Decision Record 11).
+
+The hook reads its asset through its owner, like `cost_surcharge` (Decision Record 19).
+The commit also adds `TestNewWithRulebook_ShippedRulebook`, which builds the engine
+from `rulebooks/swn` so that every authored entry passes registrar validation (Decision
+Record 20).
 
 Authored entries:
 
@@ -1318,19 +1600,28 @@ feat: tech_level_floor effect
 - tech_level_floor registrar raising the effective tech level to a floor
 - category filter narrows which asset categories the floor serves
 - author Laboratory, Pretech Researchers and R&D Department
+- build the engine from the shipped rulebook in a test
+- test that the purchase tech cap resolves per definition
 ```
 
 #### Commit 4 — `feat: attack eligibility cat 4 query`
 
 No dispatch point asks whether one asset may fight another. Eligibility is decided by
-three plain functions with no hook consulted: `attackerHasTarget` (`attack.go:230`) and
-`eligibleDefendersAtHex` (`attack.go:235`) choose who may fight, and the counterattack
-branch reads `defenderDef.Counter` directly (`attack.go:192-197`).
+three plain functions with no hook consulted: `attackerHasTarget` (`attack.go:240`) and
+`eligibleDefendersAtHex` (`eligibility.go:30`) choose who may fight, and the counterattack
+branch reads `defenderDef.Counter` directly (`attack.go:196-201`).
 
 Three assets restrict it, in three different directions. Planetary Defenses restricts who
 may attack *it*. Lawyers restricts what it may attack **and** counterattack. Integral
-Protocols restricts what it may defend against. Resolve the Open Question on one
-interface with a `side` parameter versus two typed interfaces before writing this task.
+Protocols restricts what it may defend against.
+
+One interface serves all three (Decision Record 16). The query carries the striking
+asset, the struck asset, both definitions and a `side`: `attack` from
+`eligibleDefendersAtHex` (which `attackerHasTarget` and `Resolve` both call), `counter`
+from the counterattack branch, where the original defender is the striker. The striker's
+hooks answer for `attack` and `counter`. On an attack only, the target's hooks then
+answer as `defense` (Decision Record 21). The authored `side` in Commit 5 (`defense`,
+`attack_and_counter`) names which of these a restriction answers.
 
 The new Cat 4 family member follows the pattern in `rule_modifier.go`: a named interface,
 a `Registered*` struct, a registry map, a `Register*` method, a `*For` accessor, an
@@ -1358,6 +1649,9 @@ Planetary Defenses `SWN-F6-002` may only defend against Starship-type attackers 
 assets — `category`, deny-listed, and note this corrects the discovery's filter table
 (Planning Decision 12). Integral Protocols `SWN-F7-002` may only defend against attacks
 versus Cunning — `attribute`, allow-only, matching the attack profile's `DefenderStat`.
+
+A restriction applies only while its asset is active (Decision Record 11). An inactive
+Lawyers or Planetary Defenses restricts nothing.
 
 Authored entries:
 

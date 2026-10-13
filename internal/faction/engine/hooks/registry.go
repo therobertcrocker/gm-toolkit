@@ -45,6 +45,12 @@ type RegisteredWorldTechLevelModifier struct {
 	Hook   WorldTechLevelModifier
 }
 
+type RegisteredAttackEligibilityRule struct {
+	Scope  Scope
+	Source string
+	Hook   AttackEligibilityRule
+}
+
 type RegisteredAssetMovementGranter struct {
 	Scope  Scope
 	Source string
@@ -66,6 +72,7 @@ type Registry struct {
 	assetCostModifiers       map[Scope][]RegisteredAssetCostModifier
 	maintenanceCostModifiers map[Scope][]RegisteredMaintenanceCostModifier
 	worldTechLevelModifiers  map[Scope][]RegisteredWorldTechLevelModifier
+	attackEligibilityRules   map[Scope][]RegisteredAttackEligibilityRule
 	assetMovementGranters    map[Scope][]RegisteredAssetMovementGranter
 	tieResolvers             map[Scope][]RegisteredTieResolver
 }
@@ -80,6 +87,7 @@ func NewRegistry() *Registry {
 		assetCostModifiers:       make(map[Scope][]RegisteredAssetCostModifier),
 		maintenanceCostModifiers: make(map[Scope][]RegisteredMaintenanceCostModifier),
 		worldTechLevelModifiers:  make(map[Scope][]RegisteredWorldTechLevelModifier),
+		attackEligibilityRules:   make(map[Scope][]RegisteredAttackEligibilityRule),
 		assetMovementGranters:    make(map[Scope][]RegisteredAssetMovementGranter),
 		tieResolvers:             make(map[Scope][]RegisteredTieResolver),
 	}
@@ -118,6 +126,11 @@ func (registry *Registry) RegisterMaintenanceCostModifier(scope Scope, source st
 // RegisterWorldTechLevelModifier registers a Cat 4 tech-level hook under the given scope.
 func (registry *Registry) RegisterWorldTechLevelModifier(scope Scope, source string, hook WorldTechLevelModifier) {
 	registry.worldTechLevelModifiers[scope] = append(registry.worldTechLevelModifiers[scope], RegisteredWorldTechLevelModifier{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterAttackEligibilityRule registers a Cat 4 attack-eligibility hook under the given scope.
+func (registry *Registry) RegisterAttackEligibilityRule(scope Scope, source string, hook AttackEligibilityRule) {
+	registry.attackEligibilityRules[scope] = append(registry.attackEligibilityRules[scope], RegisteredAttackEligibilityRule{Scope: scope, Source: source, Hook: hook})
 }
 
 // RegisterAssetMovementGranter registers a Cat 4 movement-granter hook under the given scope.
@@ -172,6 +185,12 @@ func (registry *Registry) AssetCostModifiersFor(factionID, assetInstanceID strin
 	return result
 }
 
+// AssetCostModifiersForAsset returns the Cat 4 asset-cost hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) AssetCostModifiersForAsset(factionID, assetInstanceID string) []RegisteredAssetCostModifier {
+	return registry.assetCostModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
 // MaintenanceCostModifiersFor returns all Cat 4 maintenance-cost hooks matching the given faction and asset.
 func (registry *Registry) MaintenanceCostModifiersFor(factionID, assetInstanceID string) []RegisteredMaintenanceCostModifier {
 	var result []RegisteredMaintenanceCostModifier
@@ -192,6 +211,29 @@ func (registry *Registry) WorldTechLevelModifiersFor(factionID, assetInstanceID 
 		result = append(result, registry.worldTechLevelModifiers[AssetScope(factionID, assetInstanceID)]...)
 	}
 	return result
+}
+
+// WorldTechLevelModifiersForAsset returns the Cat 4 tech-level hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) WorldTechLevelModifiersForAsset(factionID, assetInstanceID string) []RegisteredWorldTechLevelModifier {
+	return registry.worldTechLevelModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
+// AttackEligibilityRulesFor returns all Cat 4 attack-eligibility hooks matching the given faction and asset.
+func (registry *Registry) AttackEligibilityRulesFor(factionID, assetInstanceID string) []RegisteredAttackEligibilityRule {
+	var result []RegisteredAttackEligibilityRule
+	result = append(result, registry.attackEligibilityRules[GlobalScope()]...)
+	result = append(result, registry.attackEligibilityRules[FactionScope(factionID)]...)
+	if assetInstanceID != "" {
+		result = append(result, registry.attackEligibilityRules[AssetScope(factionID, assetInstanceID)]...)
+	}
+	return result
+}
+
+// AttackEligibilityRulesForAsset returns the Cat 4 attack-eligibility hooks
+// registered against one asset instance, without the global or faction buckets.
+func (registry *Registry) AttackEligibilityRulesForAsset(factionID, assetInstanceID string) []RegisteredAttackEligibilityRule {
+	return registry.attackEligibilityRules[AssetScope(factionID, assetInstanceID)]
 }
 
 // AssetMovementGrantersFor returns all Cat 4 movement-granter hooks matching the given faction and asset.

@@ -5,12 +5,12 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// active reports whether asset can use its special ability now: an asset is not
-// usable until the turn after purchase, while unmaintained, or once destroyed.
+// active is domain.Asset.Active with a nil guard: a hook reads its asset from
+// its owner at query time, and a removed asset reads as nil (Decision Record 19).
 // Reactors check at reaction time, not at registration, because Ready and
 // Maintained both change mid-cycle.
 func active(asset *domain.Asset) bool {
-	return asset != nil && asset.Ready && asset.Maintained && asset.CurrentHP > 0
+	return asset != nil && asset.Active()
 }
 
 // liveAsset returns the declaring asset from current state, or nil when its

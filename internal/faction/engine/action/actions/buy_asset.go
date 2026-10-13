@@ -79,16 +79,10 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
-	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
+	quote := dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost, assetsOnWorld(ba.worldEngine, ba.buyOrder.World))
+	ba.cost = quote.Cost
 	if faction.PendingPurchaseDiscount > 0 {
-		// Floor is half base price (SWN), but never above the pre-discount cost: a
-		// cost-reducing hook may already have pushed the price below half-base, and a
-		// discount must never raise it back up.
-		floor := min(def.Cost/2, ba.cost)
-		ba.cost -= faction.PendingPurchaseDiscount
-		if ba.cost < floor {
-			ba.cost = floor
-		}
+		ba.cost = dispatch.DiscountedCost(quote, def.Cost, faction.PendingPurchaseDiscount)
 		ba.discountConsumed = true
 	}
 	if faction.Coin < ba.cost {
@@ -156,28 +150,42 @@ func availableWorlds(faction *domain.Faction) []string {
 	return worlds
 }
 
+// assetsOnWorld returns the world index's assets on worldID, or nil when no index exists.
+func assetsOnWorld(worldEngine *world.WorldEngine, worldID string) []*domain.Asset {
+	if worldEngine == nil || worldEngine.Index == nil {
+		return nil
+	}
+	return worldEngine.Index.AssetsByLocation[worldID]
+}
+
 // purchasableDefinitions returns the definitions the faction may buy on fragmentID via
-// domain.CanPurchase: affordable at base cost, meeting the minimum attribute rating, within
+// domain.CanPurchase: affordable at the cost Resolve will charge, meeting the minimum attribute rating, within
 // the world's tech level, and holding Planetary Government for P-flagged defs. An unknown
 // world imposes no tech ceiling (math.MaxInt) but cannot confer government, so P-flagged
 // defs are rejected — matching the purchase_enabler path.
 func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.WorldEngine, registry *hooks.Registry) []*domain.AssetDefinition {
-	techCap := math.MaxInt
+	worldTechLevel := math.MaxInt
 	holdsGovernment := false
 	if worldEngine != nil {
 		loc, ok := worldEngine.Location(fragmentID)
 		if !ok {
 			return nil
 		}
-		techCap = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
+		worldTechLevel = loc.TechLevel()
 		if worldEngine.Index != nil {
 			holdsGovernment = domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID])
 		}
 	}
 
+	onWorld := assetsOnWorld(worldEngine, fragmentID)
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
-		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: def.Cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
+		techCap := worldTechLevel
+		if worldEngine != nil {
+			techCap = dispatch.ResolveWorldTechLevel(registry, faction, def, fragmentID, worldTechLevel)
+		}
+		cost := dispatch.ResolveAssetCost(registry, faction, def, fragmentID, def.Cost, onWorld).Cost
+		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
 			result = append(result, def)
 		}
 	}

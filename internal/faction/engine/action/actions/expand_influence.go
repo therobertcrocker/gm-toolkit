@@ -346,7 +346,7 @@ func rivalsOnWorld(factionState *state.FactionState, factionID, locationID strin
 func rivalAssetsOnWorld(rival *domain.Faction, world string) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range rival.Assets {
-		if asset.Location.WorldID == world && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
+		if asset.Location.WorldID == world && !asset.Stealthy && asset.Active() {
 			result = append(result, asset)
 		}
 	}

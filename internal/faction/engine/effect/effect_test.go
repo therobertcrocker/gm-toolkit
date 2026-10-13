@@ -352,10 +352,11 @@ func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 	}}
 	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{
-		"a-2":            {ID: "a-2", DefinitionID: def.ID, Ready: true, Maintained: true},
-		"a-1":            {ID: "a-1", DefinitionID: def.ID, Ready: true, Maintained: true},
-		"a-not-ready":    {ID: "a-not-ready", DefinitionID: def.ID, Ready: false, Maintained: true},
-		"a-unmaintained": {ID: "a-unmaintained", DefinitionID: def.ID, Ready: true, Maintained: false},
+		"a-2":            {ID: "a-2", DefinitionID: def.ID, Ready: true, Maintained: true, CurrentHP: 1},
+		"a-1":            {ID: "a-1", DefinitionID: def.ID, Ready: true, Maintained: true, CurrentHP: 1},
+		"a-not-ready":    {ID: "a-not-ready", DefinitionID: def.ID, Ready: false, Maintained: true, CurrentHP: 1},
+		"a-unmaintained": {ID: "a-unmaintained", DefinitionID: def.ID, Ready: true, Maintained: false, CurrentHP: 1},
+		"a-destroyed":    {ID: "a-destroyed", DefinitionID: def.ID, Ready: true, Maintained: true, CurrentHP: 0},
 	}}
 
 	mutations := effect.New(registrars, discardLog).FireTurnStart(faction, nil, rb, nil)
@@ -385,7 +386,7 @@ func TestFireTurnStart_PassesFactionStateToThePhaseRoute(t *testing.T) {
 	}}
 	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{
-		"a-1": {ID: "a-1", DefinitionID: def.ID, Ready: true, Maintained: true},
+		"a-1": {ID: "a-1", DefinitionID: def.ID, Ready: true, Maintained: true, CurrentHP: 1},
 	}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": faction}}
 

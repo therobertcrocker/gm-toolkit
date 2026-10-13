@@ -10,7 +10,8 @@
 //	Cat 5  TieResolver                     tie-point rule overrides                      interfaces.go
 //
 // Cat 4 is a typed family (AssetCostModifier, MaintenanceCostModifier,
-// WorldTechLevelModifier, AssetMovementGranter) rather than a single interface,
+// WorldTechLevelModifier, AttackEligibilityRule, AssetMovementGranter) rather
+// than a single interface,
 // because each question has a different typed signature and a generic interface
 // would lose compile-time safety.
 //

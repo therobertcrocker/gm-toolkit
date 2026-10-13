@@ -33,13 +33,17 @@ share, and it is a passive store — it never calls a hook itself.
 | 1 | `RollModifier`, `RollOfferFilter` | before a roll — offers extra dice; filters may strike offers | `RollWithHooks` (every faction roll) |
 | 2 | `RollResultHook` | after a roll — may reroll specific dice | `RollWithHooks` (every faction roll) |
 | 3 | `MutationReactor` | after a phase's mutations — may emit more | orchestrator, after movement & action |
-| 4 | `RuleModifier` family | at a rule query — alters the answer | the query site (purchase, bookkeeping, movement) |
+| 4 | `RuleModifier` family | at a rule query — alters the answer | the query site (purchase, bookkeeping, movement, attack targeting) |
 | 5 | `TieResolver` | at an attack/defense tie | `ResolveTie` (combat) |
 
 Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
-`MaintenanceCostModifier`, `WorldTechLevelModifier`, `AssetMovementGranter` —
-each with its own signature (`ModifyAssetCost(buyer, def, world, baseCost) int`
-and so on). They are split rather than folded into one generic
+`MaintenanceCostModifier`, `WorldTechLevelModifier`, `AttackEligibilityRule`,
+`AssetMovementGranter` — each with its own signature
+(`ModifyAssetCost(buyer, def, world, query *AssetCostQuery)`,
+`MayFight(query AttackEligibilityQuery) bool` and so on). The asset-cost hook
+edits a shared `AssetCostQuery` in place of returning an `int`, because the chain
+carries more than a number: `Applied` holds the `no_stack` marks, and `Surcharge`
+holds the part of the cost that a purchase discount must not remove. They are split rather than folded into one generic
 `Modify(any) any` precisely so the compiler keeps each question's argument and
 return types honest; see Key Decisions.
 
@@ -78,6 +82,13 @@ Cat 1 and Cat 2 are also exposed per bucket (`RollModifiersAt(scope)`,
 `RollOfferFiltersAt(scope)`, `RollResultHooksAt(scope)`), and have no `…For` lookup, because the roll
 dispatcher builds its own scope list.
 
+Three Cat 4 families also expose one asset's bucket alone —
+`AssetCostModifiersForAsset`, `WorldTechLevelModifiersForAsset` and
+`AttackEligibilityRulesForAsset`. A resolver that walks several assets uses them,
+so it asks the global and faction buckets once and not once per asset. They also
+let a resolver ask a rival's asset without that rival's faction hooks: Local
+Investments on the purchase world, or the target of an attack.
+
 ### Registration in, dispatch out
 
 The registry is populated once, at the start of each cycle, by the two
@@ -108,11 +119,24 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   deterministic. A defender's reactor hears what was done to it; each reactor
   filters the batch for the events it cares about.
 - **`ResolveAssetCost` / `ResolveMaintenanceCost` / `ResolveWorldTechLevel` /
-  `GrantedMovementAbilities`** are the Cat 4 query resolvers, called from
-  [`buy_asset`](actions.md), [`bookkeeping`](turn-pipeline.md), the TL-gate on
-  purchase, and the movement phase respectively. Each **chains** its modifiers —
-  every modifier sees the previous one's output — so two effects on the same
-  number compose instead of clobbering.
+  `GrantedMovementAbilities`** are the Cat 4 value resolvers, called from
+  [`buy_asset`](actions.md) and `purchase_enabler`, [`bookkeeping`](turn-pipeline.md),
+  the TL-gate on purchase, and the movement phase respectively. The three number
+  resolvers **chain** their modifiers — every modifier sees the previous one's
+  output — so two effects on the same number compose instead of clobbering;
+  `GrantedMovementAbilities` collects every granter's list. `ResolveAssetCost`
+  asks the buyer's own hooks, then each rival asset on the purchase world in
+  asset-ID order. `ResolveWorldTechLevel` asks the faction's hooks, then each of
+  its own assets, since a tech-level floor serves only its owner.
+- **`ResolveAttackEligibility`** is the fourth Cat 4 resolver, and it answers yes
+  or no. It is asked once per defender when the attack target list is built
+  (`eligibleDefendersAtHex`, behind `Validate`, `Inputs` and `Resolve`), and once
+  before a counterattack deals damage. `Attacker` is always the striker, so on a
+  counter the original defender is `Attacker`. The striker's global, faction and
+  asset hooks answer as the query's side. On an attack, the target's asset hooks
+  then answer as `defense`; a counter is not a defense, so the target is not
+  asked. It **refuses on the first no and does not chain**: there is no value to
+  pass along.
 - **`ResolveTie`** is consulted at a combat tie, asking the attacker's resolvers
   first and the defender's only if the attacker has none; **first registration
   wins** (ties are a binary outcome, so there is nothing to chain).
@@ -186,7 +210,8 @@ flowchart LR
     direction TB
     Roll["RollWithHooks<br>Cat 1 offers · Cat 2 rerolls"]:::process
     Tie["ResolveTie<br>Cat 5 — first wins"]:::process
-    Cat4["Cat 4 resolvers<br>cost · TL · movement — chain"]:::process
+    Cat4["Cat 4 value resolvers<br>cost · TL · movement — chain"]:::process
+    Elig["ResolveAttackEligibility<br>Cat 4 — first no refuses"]:::process
     subgraph Cat3["Cat 3 · bounded recursion (depth ≤ 5)"]
       React["MutationReactors"]:::process
       React -- "new mutations only" --> React
@@ -203,6 +228,7 @@ flowchart LR
   Registry -- "lookup by scope<br>global → faction → asset" --> Roll
   Registry --> Tie
   Registry --> Cat4
+  Registry --> Elig
   Registry --> React
 
   Budgets -. "filter spent" .-> Roll
@@ -220,7 +246,7 @@ flowchart LR
 - **Category 4 is a typed family, not a generic interface.** Each rule query
   (asset cost, maintenance, world TL, movement grants) has different argument and
   return types, so a single `Modify(any) any` would throw away compile-time
-  safety. Four small interfaces keep every call site honest. (`doc.go`; frozen
+  safety. Five small interfaces keep every call site honest. (`doc.go`; frozen
   log 158–188.)
 - **Scope is a comparable struct used directly as a map key.** Global / faction /
   asset identity collapses into one value type, so the registry is just maps and
@@ -237,7 +263,19 @@ flowchart LR
 - **Cat 4 modifiers chain; Cat 5 resolvers do not.** Cost-style answers compose
   (each modifier sees the prior result), so several effects stack. A tie is a
   single binary outcome, so the first registered resolver wins and the rest are
-  ignored.
+  ignored. Attack eligibility is also yes or no, so it does not chain either: the
+  first hook that refuses ends the fight.
+- **The eligibility query names the striker, and a counter asks only the
+  striker.** `Attacker` is the asset that deals the damage, so on a counterattack
+  the original defender is `Attacker`, and a rule such as Lawyers always finds its
+  opponent in `Defender`. On an attack the target's asset hooks also answer, as
+  `defense`. On a counter the target is not asked: a counter is not a defense,
+  and asking it would let Integral Protocols block counter damage to itself. The
+  striker is asked through `AttackEligibilityRulesFor` and the target through
+  `AttackEligibilityRulesForAsset`, so a global rule is asked once. The query
+  carries both definitions, because a Cat 4 hook has no rulebook. Rejected: fixed
+  roles, where each hook must find "the other asset" from its own ID.
+  (s-flag-effect-registry plan, Decision Record 21.)
 - **The collector seam keeps elective hooks out of the engine's hands.** Roll
   modifiers and elective rerolls are offered to the driver; the engine never
   decides them itself. This is the same source-agnostic collector contract the
@@ -254,6 +292,6 @@ driver. The package defines the contracts; it owns no game data of its own.
 [effect & mutation](effect-mutation.md) page — the only writers to the registry.
 **Dispatched by** the [orchestrator](orchestrator.md) (Cat 3 reactors after
 movement and action), the [actions](actions.md) engine (Cat 1/2 on every faction roll, Cat 5 in combat, Cat
-4 asset-cost at purchase), and the [turn pipeline](turn-pipeline.md) (Cat 4
+4 asset-cost and tech level at purchase, Cat 4 attack eligibility in combat), and the [turn pipeline](turn-pipeline.md) (Cat 4
 maintenance-cost at bookkeeping). Emitted reactions flow back through the same
 [mutation apply layer](effect-mutation.md) as every other state change.

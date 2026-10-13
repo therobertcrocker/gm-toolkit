@@ -25,8 +25,8 @@ type buyOrderData struct {
 // Select whose options derive from the chosen world via OptionsFunc (re-evaluated
 // when navigation enters the second group; eval.go:33 bindings hash). Definition
 // labels carry the sticker cost vs Coin as a budgeting cue — the engine
-// re-resolves the true cost via dispatch.ResolveAssetCost at Resolve
-// (buy_asset.go:82), so the label is informational, not authoritative.
+// re-resolves the true cost via dispatch.ResolveAssetCost in BuyAsset.Resolve,
+// so the label is informational, not authoritative.
 // Answer: action.BuyOrder. Esc cancels.
 type BuyOrder struct {
 	data *buyOrderData

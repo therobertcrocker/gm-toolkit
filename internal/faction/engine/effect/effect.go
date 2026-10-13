@@ -76,7 +76,7 @@ func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rul
 func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	for _, asset := range domain.SortedAssets(faction) {
-		if !asset.Ready || !asset.Maintained {
+		if !asset.Active() {
 			continue
 		}
 		def := rulebook.Assets[asset.DefinitionID]
