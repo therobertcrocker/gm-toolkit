@@ -96,6 +96,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `D.001` | Split pre-merge review from execution | next process session (Fable) | Review session writes triaged findings to the plan (design calls made there); execution session does fixes, then promotion, planned-work and the docs move; skip the split when no finding needs a design call |
+| `D.002` | Project & process review | next process session (Fable) | Architectural + process-cost review from the evidence pack (`project-review-evidence.md`); separate from `D.001`, which stays its own row |
 ---
 <br />
 
