@@ -12,14 +12,33 @@ This template covers two cases:
      "Work Breakdown" in the top-level file; move each effort's Phase/Commit/Task
      breakdown to a separate per-effort file at:
          docs/initiatives/implementation/<initiative-name>-effort-N-plan.md
-     Each per-effort file follows the "Work Breakdown" section structure below.
+     Each per-effort file opens with its own "In Plain Words" (scoped to the
+     effort), then follows the "Work Breakdown" section structure below.
      Effort pacing (which efforts get their own Plan session) is defined in
      session-modes.md section 8.
+
+SIZE TARGET: 1,000 lines or fewer per plan file (top-level or per-effort).
+Spend the lines on literal code in tasks, not on prose; past the target,
+split the effort.
 
 Multi-effort DOCS initiatives use templates/docs-plan.md instead — generative
 docs discover-at-write and don't fit the Phase/Commit/Task structure.
 
 Delete these comments before writing.
+-->
+
+## In Plain Words
+
+<!--
+REQUIRED. Under 15 lines. Plain words for a reader who has not read the rest of
+this plan: no project shorthand unless it is defined in the same sentence.
+
+  - What: what this plan builds.
+  - Why: the problem it solves, for the GM or for the codebase.
+  - How it fits: where it sits in the initiative, the arc and the project.
+
+Every execution session reads this section first (session-modes.md section 10,
+Re-grounding). If execution changes the what, why or fit, fix it here too.
 -->
 
 ## Context / Goal

@@ -7,7 +7,7 @@
 3. Role: mentor or co-pilot. Robert is designing, Claude is advising.
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Always use the LSP tools available to search through the existing codebase - don't use grep
-6. Always create a to-do list for any series of tasks, and make regular check-ins with Robert to confirm the next steps. Do not execute a series of tasks without explicit confirmation of the plan.
+6. Always create a to-do list for any series of tasks. Check in with Robert for design calls and scope changes. Do not stop to ask permission to start the next task of an approved plan or hand-off.
 7. Always use asd-ste100 simplified technical english
 8. Before making a commit, do the following:
    1. Log any execution-time decisions (or reversals of planned decisions) in the initiative plan's **Decision Record** section. Append and reconcile: when execution overrides a planned decision, record the reversal with rationale and fix the plan body so it doesn't lie. (The old decisions log is a frozen archive; see `session-modes.md` section 10, Decision records.)
@@ -61,21 +61,11 @@ See `docs/process/session-modes.md` for the full description of Discovery / Plan
 |--------------|---------------------|
 | Discovery    | Once the discovery doc is complete and the next steps are clear, the session is over. |
 | Plan         | Once the implementation plan is complete and the next steps are clear, the session is over. |
-| Execution    | One session per Commit. Once the commit is made, the session is over. |
+| Execution    | The hand-off sets the scope (for example, "Commits 1–3"). If the hand-off gives no scope, the scope is one commit. Once that scope is committed, the session is over. |
 
 ## Model Selection
 
-Before each mode transition (including mid-session shifts, e.g. moving from execution into the pre-merge checklist), surface the recommended model and prompt Robert to switch if needed (via `/model`).
-
-| Session type                              | Model  | Notes                                                                 |
-|-------------------------------------------|--------|-----------------------------------------------------------------------|
-| Arc-Discovery / Arc-Plan / process redesign | Fable  | Structure-setting sessions whose output constrains many future sessions (taxonomy, cross-cutting architecture, the process itself); most initiatives never need it |
-| Discovery                                 | Opus   | Always                                                                |
-| Plan                                      | Opus   | Always                                                                |
-| Execution (code)                          | Opus   | Default for code commits — the reasoning to adapt the plan, or to notice when work goes out of bounds |
-| Generative documentation                  | Opus   | Authoring real docs (architecture pages, contributor guides) — Robert does not trust Sonnet for documentation work. The split is mechanical-vs-generative, not code-vs-docs |
-| Code review (interim or pre-merge)        | Opus   | Always — critical design review benefits from Opus reasoning          |
-| End-of-phase mechanical docs & pre-merge checklist | Sonnet | *Mechanical* upkeep only — flipping a note, planned-work/journal table edits; the code-review step within the checklist uses Opus (above) |
+Opus by default. Fable for Arc-Discovery, Arc-Plan and process-redesign sessions.
 
 ## Code Style
 

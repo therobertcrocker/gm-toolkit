@@ -94,8 +94,8 @@ Every flow is a different weighting of the same three artifacts (Concept → Dis
 | Type | Concept | Discovery | Plan | Execution |
 |------|---------|-----------|------|-----------|
 | **Arc** | Standalone doc in `arcs/<arc>/` | Arc-Discovery, always | Arc-Plan (initiative slicing + DAG) | N initiatives, each running its own flow |
-| **Feature** | planned-work write-up | Always (1–2 sessions) | Overview plan; per-effort plans as needed (section 8) | One session per commit |
-| **Refactor** | planned-work write-up | Often skipped; audit-first when it fires | Pattern + unit list | One session per unit, mandatory re-grounding |
+| **Feature** | planned-work write-up | Always (1–2 sessions) | Overview plan; per-effort plans as needed (section 8) | Hand-off sets scope; default one commit per session |
+| **Refactor** | planned-work write-up | Often skipped; audit-first when it fires | Pattern + unit list | Hand-off sets scope; default one unit per session; mandatory re-grounding per unit |
 | **Bugfix** | Backlog row only | Never (diagnosis = first half of Plan) | Skipped (trivial) or lightweight (non-trivial) | Single session |
 | **Docs** | Backlog row, or write-up if initiative-sized | Skipped — generative docs discover-at-write | Skipped (single-session) or docs-initiative plan (multi-effort) | One session per effort/doc |
 | **Chore** | Backlog row only | Never | Never | Single session |
@@ -123,9 +123,9 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Session ends when:** the plan is written and Robert has signed off. Do not begin execution in the same session.
 
-### Execution (N sessions, one per commit)
+### Execution (N sessions)
 
-**Goal:** implement one commit's worth of work per session.
+**Goal:** implement the commits the hand-off names — one commit when it names none (section 10, Execution scope).
 
 **Activities:**
 - Read the implementation plan, focused on the current commit's tasks
@@ -136,7 +136,7 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Artifact:** code, plus a `wip:` commit per the git-commit cadence (squashed to one conventional commit on merge).
 
-**Session ends when:** the commit lands. The next commit in the plan is the next session.
+**Session ends when:** the last commit in the session's scope lands.
 
 ### Pre-Merge Checklist
 
@@ -147,7 +147,7 @@ Before merging the feature branch, run the checklist in CLAUDE.md (Collaboration
 3. Update planned-work doc (remove the initiative; capture deferred items that surfaced)
 4. Move the initiative's discovery and plan docs to their `completed/` subdirectories
 
-The pre-merge checklist is itself a session (or part of the final execution session) — see section 10 for model selection.
+The pre-merge checklist is itself a session (or part of the final execution session).
 
 ## 5 — Refactor Flow
 
@@ -178,9 +178,9 @@ Why: recipes drift. Each unit's current state is slightly different and changes 
 
 Phases are scoped smaller than feature phases — typically one unit per phase. This keeps each execution session focused on a single conversion, with the re-grounding step (below) bounded to that unit's code.
 
-### Execution (N sessions, one per unit, with mandatory re-grounding)
+### Execution (N sessions, mandatory re-grounding per unit)
 
-Every refactor execution session opens with a **re-grounding step:**
+Scope follows section 10, Execution scope, with one unit as the default. Every unit opens with a **re-grounding step:**
 
 1. Read the current state of the unit being converted
 2. Verify it still matches what the plan assumed
@@ -353,6 +353,10 @@ The most-violated boundary is **Plan → Execution.** When the current session's
 
 This applies to refactor and bugfix Plan sessions as well, even when the plan is short.
 
+### Execution scope
+
+The hand-off sets how many commits an execution session covers (for example, "Commits 1–3"). When the hand-off names no scope, the session covers one commit (one unit for a refactor). Inside a multi-commit session, each commit is still its own unit: re-ground, log decisions, summarize, and wait for the commit go-ahead, then start the next commit without asking.
+
 ### Plan mode is a strong signal
 
 When plan mode is active and the stated deliverable is a file (a discovery doc or implementation plan), **that file is the entire session output.** Exiting plan mode is not a handoff into implementation — it is the end of the session. Do not queue file edits, Bash commands, or follow-up work to run after exit. End the turn after the file is written.
@@ -361,6 +365,7 @@ When plan mode is active and the stated deliverable is a file (a discovery doc o
 
 Every Plan session and every Execution session must verify its inputs against the current state of the code before acting:
 
+- **Every session** — read the **In Plain Words** section of the initiative's discovery doc or plan first, so the detail is read against what, why and how it fits.
 - **Discovery and Plan sessions** — read the relevant architecture page(s) under `docs/architecture/` before designing (start at `docs/architecture/architecture-overview.md`); their `Key Decisions` sections are binding context. This is the push half of the push-not-pull decision system (see Decision records below).
 - **Plan sessions** — re-read the relevant code. The discovery doc is a snapshot; the snapshot may have decayed. Verify the plan's assumptions against the current source, not against what the discovery doc said.
 - **Execution sessions** — re-read the current code for the unit being touched. The plan was written against a snapshot that may have shifted, especially for refactors where prior phases have already changed the surrounding code. `// deliberate:` fence-signs encountered in that code are binding unless explicitly revisited with Robert.
@@ -369,16 +374,7 @@ Re-grounding is most load-bearing for refactors (see section 5) but applies to a
 
 ### Model selection
 
-| Session type | Model | Notes |
-|--------------|-------|-------|
-| Arc-Discovery / Arc-Plan / process redesign | Fable | Structure-setting sessions whose output constrains many future sessions (taxonomy, cross-cutting architecture, the process itself); most initiatives never need it |
-| Discovery | Opus | Always |
-| Plan | Opus | Always |
-| Execution | Opus | Default — the reasoning to adapt the plan, or to notice when work goes out of bounds |
-| Code review (interim or pre-merge) | Opus | Always — critical design review benefits from Opus reasoning |
-| End-of-phase docs and pre-merge checklist | Sonnet | Doc/journal/planned-work updates don't need Opus; the code-review step within the checklist uses Opus |
-
-Surface the recommended model and prompt Robert to switch (`/model`) before each mode transition, including mid-session shifts (e.g. moving from execution into the pre-merge checklist).
+Opus by default. Fable for Arc-Discovery, Arc-Plan and process-redesign sessions — structure-setting sessions whose output constrains many later sessions.
 
 ### Promotion is manual
 
@@ -433,5 +429,7 @@ Templates for the file artifacts produced by Concept, Discovery, and Plan sessio
 - **Architecture page** — [`templates/arch-page.md`](./templates/arch-page.md). Code-map header + Purpose / Shape / Key Decisions / Dependencies. Copy to `docs/architecture/<side>/<subsystem>.md` (`<side>` = `engine` or `interface`) and fill in. Landed and validated against the orchestrator pilot in D-002 Effort 3.
 
 All templates carry inline guidance (HTML comments) explaining required sections, optional sections, and how to scale the structure to the size of the work. Required sections are marked `REQUIRED`; everything else is included only when relevant.
+
+Every discovery doc and plan, arc-discovery and arc-plan included, opens with a required **In Plain Words** section: what, why and how it fits, in plain words, under 15 lines.
 
 Templates evolve as we learn what artifacts actually need. Treat them as living documents — update when a real plan or discovery surfaces a missing section or an unused one.

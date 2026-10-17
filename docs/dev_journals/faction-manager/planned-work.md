@@ -22,8 +22,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `D.003` | Written session rules match practice | `docs` | before `A.001.6` | Hand-off sets execution scope (one commit default); model table → one line; drop prompt-to-switch; `CLAUDE.md` item 6 check-ins for design/scope only; prune redundant memories; `D.002` N1 |
-| `D.004` | Plain concept header + prose budget | `docs` | before `A.001.6` | Required plain what/why/how-it-fits section (<15 lines) atop every plan and discovery doc; one plan-template line sets a per-effort size target; `D.002` N2 |
 | `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes; owns lore canon; see arc-plan |
 

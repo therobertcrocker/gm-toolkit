@@ -22,6 +22,20 @@ this template).
 Delete these comments before writing.
 -->
 
+## In Plain Words
+
+<!--
+REQUIRED. Under 15 lines. Plain words for a reader who has not read the rest of
+this plan: no project shorthand unless it is defined in the same sentence.
+
+  - What: what this initiative changes in the doc set.
+  - Why: the problem it solves for the reader.
+  - How it fits: where it sits in the project, and what it unblocks.
+
+Every execution session reads this section first (session-modes.md section 10,
+Re-grounding).
+-->
+
 ## Context / Goal
 
 <!--
