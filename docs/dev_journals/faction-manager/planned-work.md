@@ -22,6 +22,8 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
+| `D.003` | Written session rules match practice | `docs` | before `A.001.6` | Hand-off sets execution scope (one commit default); model table → one line; drop prompt-to-switch; `CLAUDE.md` item 6 check-ins for design/scope only; prune redundant memories; `D.002` N1 |
+| `D.004` | Plain concept header + prose budget | `docs` | before `A.001.6` | Required plain what/why/how-it-fits section (<15 lines) atop every plan and discovery doc; one plan-template line sets a per-effort size target; `D.002` N2 |
 | `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes; owns lore canon; see arc-plan |
 
@@ -51,6 +53,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.024` | Collector form back-navigation | `post-tui-turn` | Cancelling a multi-step ability form (e.g. relocate destinations) spends the faction's whole action via `ErrTurnCanceled`, and confirming a completed-but-empty form surfaces a false `ErrNoSelection` failure; add a discoverable cancel/back that unwinds to the asset/ability picker (then `SelectAction`) instead of burning the turn. Needs a re-prompt loop the linear action phase lacks today. Deferred from C11 (a-flag-ability-registry pre-merge review). |
 | `F.025` | Per-faction roll confirmation | `F.020` | `RollWithHooks` asks the roll's one collector to confirm every elective directive, so a forced reroll (Book of Secrets) is confirmed by the roller's driver; route each directive to its `FactionID`'s driver once factions get separate drivers. |
 | `F.026` | Show why a target is refused | `F.018` | An attack-eligibility hook (`restrict_attack`) drops a defender from the target list or cancels a counter with no reason shown; surface the refusing asset so the GM sees why a target is missing. Found in `A.001.3` Effort 4 Commit 4 review. |
+| `F.027` | TUI adapter tests | next interface initiative | `tui/adapter` (1,176 lines) is the only implementation of the engine seam and has no tests; cover collector and observer paths with the engine test harness; `D.002` N7 |
 
 ### Refactors
 
@@ -73,6 +76,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.017` | Evaluate `teatest` for UI tests | -- | TUI tests currently drive `Update` by hand and assert emitted messages; explore `charmbracelet/x/exp/teatest` as a golden-output harness for full model behavior — adopt across overlays/views or document why not. |
 | `R.019` | Migrate `[transport]` onto the effects list | `A.001.6` | Transport keeps its own typed profile and registration branch (`core.go:58-61`) beside the `[[effects]]` model; fold it in once the S-flag model is fully built, so one parse and dispatch path serves every S effect. |
 | `R.021` | Remove dead world-scoped defender filter | -- | `liveDefendersOnWorld` → `eligibleDefendersOnWorld` has no caller outside `spatial_index_test.go` and skips the attack-eligibility hooks; delete it (move its tests to `eligibleDefendersAtHex`) so no future caller bypasses `restrict_attack`. Found in `A.001.3` Effort 4 Commit 4 review. |
+| `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
 
 ### Bugfixes
 
@@ -95,8 +99,9 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
-| `D.001` | Split pre-merge review from execution | next process session (Fable) | Review session writes triaged findings to the plan (design calls made there); execution session does fixes, then promotion, planned-work and the docs move; skip the split when no finding needs a design call |
-| `D.002` | Project & process review | next process session (Fable) | Architectural + process-cost review from the evidence pack (`project-review-evidence.md`); separate from `D.001`, which stays its own row |
+| `D.001` | Split pre-merge review from execution | next process session (Fable) | Review session writes triaged findings to the plan (design calls made there); execution session does fixes, then promotion, planned-work and the docs move; skip the split when no finding needs a design call; closing step writes the hand-off as the plan's last Decision Record entry (`D.002` N4) |
+| `D.005` | Whole-tree review at arc boundaries | -- | One line in the arc flow: a whole-codebase review runs when an arc's serial spine completes; diff-scoped reviews missed `RunCycle` for 148 days; `D.002` N5 |
+| `D.006` | Fold arc concept into arc plan; stop moving discovery docs | -- | Arc concept becomes the arc plan's first section; discovery docs stay put after merge (plans still move); templates 5 → 4; `D.002` N6 |
 ---
 <br />
 
