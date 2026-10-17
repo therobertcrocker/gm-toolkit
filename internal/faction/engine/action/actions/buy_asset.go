@@ -23,6 +23,7 @@ type BuyAsset struct {
 	factionID        string
 	buyOrder         action.BuyOrder
 	newAsset         domain.Asset
+	quote            hooks.AssetCostQuery
 	cost             int
 	discountConsumed bool
 	stealthTarget    string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
@@ -79,16 +80,10 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
-	ba.cost = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost)
+	ba.quote = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost, world.AssetsOnWorld(ba.worldEngine, ba.buyOrder.World))
+	ba.cost = ba.quote.Cost
 	if faction.PendingPurchaseDiscount > 0 {
-		// Floor is half base price (SWN), but never above the pre-discount cost: a
-		// cost-reducing hook may already have pushed the price below half-base, and a
-		// discount must never raise it back up.
-		floor := min(def.Cost/2, ba.cost)
-		ba.cost -= faction.PendingPurchaseDiscount
-		if ba.cost < floor {
-			ba.cost = floor
-		}
+		ba.cost = dispatch.DiscountedCost(ba.quote, def.Cost, faction.PendingPurchaseDiscount)
 		ba.discountConsumed = true
 	}
 	if faction.Coin < ba.cost {
@@ -99,9 +94,7 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 }
 
 func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
-	mutations := []domain.Mutation{
-		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost, Cause: "buy", CausedByFactionID: ba.factionID},
-	}
+	mutations := dispatch.PurchaseCharges(ba.factionID, ba.cost, ba.quote, "buy")
 	if ba.buyOrder.Definition.ID != "SWN-C3-002" {
 		mutations = append([]domain.Mutation{
 			domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
@@ -157,30 +150,35 @@ func availableWorlds(faction *domain.Faction) []string {
 }
 
 // purchasableDefinitions returns the definitions the faction may buy on fragmentID via
-// domain.CanPurchase: affordable at base cost, meeting the minimum attribute rating, within
+// domain.CanPurchase: affordable at the cost Resolve will charge, meeting the minimum attribute rating, within
 // the world's tech level, and holding Planetary Government for P-flagged defs. An unknown
 // world imposes no tech ceiling (math.MaxInt) but cannot confer government, so P-flagged
 // defs are rejected — matching the purchase_enabler path.
 func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.WorldEngine, registry *hooks.Registry) []*domain.AssetDefinition {
-	techCap := math.MaxInt
+	worldTechLevel := math.MaxInt
 	holdsGovernment := false
 	if worldEngine != nil {
 		loc, ok := worldEngine.Location(fragmentID)
 		if !ok {
 			return nil
 		}
-		techCap = dispatch.ResolveWorldTechLevel(registry, faction, fragmentID, loc.TechLevel())
+		worldTechLevel = loc.TechLevel()
 		if worldEngine.Index != nil {
 			holdsGovernment = domain.HasPlanetaryGovernment(faction.ID, worldEngine.Index.BasesByLocation[fragmentID])
 		}
 	}
 
+	onWorld := world.AssetsOnWorld(worldEngine, fragmentID)
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
-		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: def.Cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
+		techCap := worldTechLevel
+		if worldEngine != nil {
+			techCap = dispatch.ResolveWorldTechLevel(registry, faction, def, fragmentID, worldTechLevel)
+		}
+		cost := dispatch.ResolveAssetCost(registry, faction, def, fragmentID, def.Cost, onWorld).Cost
+		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: cost, TechCap: techCap, HoldsGovernment: holdsGovernment}) {
 			result = append(result, def)
 		}
 	}
 	return result
 }
-

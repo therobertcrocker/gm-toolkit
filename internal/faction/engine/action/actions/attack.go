@@ -10,7 +10,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
-	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 // AttackAction targets rival assets with one or more of the faction's own
@@ -34,7 +33,7 @@ func (attack *AttackAction) Name() string { return "Attack" }
 
 func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, attacker := range eligibleAttackers(faction) {
-		if attackerHasTarget(attacker, faction, rulebook, attack.index) {
+		if attackerHasTarget(attacker, rulebook, attack.registry, attack.index) {
 			return true
 		}
 	}
@@ -44,7 +43,7 @@ func (attack *AttackAction) Validate(faction *domain.Faction, factionState *stat
 func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var candidates []*domain.Asset
 	for _, attacker := range eligibleAttackers(faction) {
-		if attackerHasTarget(attacker, faction, rulebook, attack.index) {
+		if attackerHasTarget(attacker, rulebook, attack.registry, attack.index) {
 			candidates = append(candidates, attacker)
 		}
 	}
@@ -77,7 +76,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			continue
 		}
 
-		defenders := liveDefendersAtHex(faction.ID, attacker.Location.RegionHex, assetHPTracker, attack.index)
+		defenders := liveDefendersAtHex(attacker, attackerDef, assetHPTracker, rulebook, attack.registry, attack.index)
 		if len(defenders) == 0 {
 			continue
 		}
@@ -119,12 +118,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		attackResult := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:     hooks.PhaseAttack,
-				Actor:     faction,
-				Opponent:  defenderFaction,
-				Attribute: string(attackerDef.Attack.AttackerStat),
-				Asset:     attacker,
-				World:     attacker.Location.WorldID,
+				Phase:         hooks.PhaseAttack,
+				Actor:         faction,
+				Opponent:      defenderFaction,
+				Attribute:     string(attackerDef.Attack.AttackerStat),
+				Asset:         attacker,
+				OpponentAsset: defender,
+				World:         attacker.Location.WorldID,
+				Action:        attack.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
 			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
@@ -133,12 +134,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		defResult := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:     hooks.PhaseDefense,
-				Actor:     defenderFaction,
-				Opponent:  faction,
-				Attribute: string(attackerDef.Attack.DefenderStat),
-				Asset:     defender,
-				World:     attacker.Location.WorldID,
+				Phase:         hooks.PhaseDefense,
+				Actor:         defenderFaction,
+				Opponent:      faction,
+				Attribute:     string(attackerDef.Attack.DefenderStat),
+				Asset:         defender,
+				OpponentAsset: attacker,
+				World:         attacker.Location.WorldID,
+				Action:        attack.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
 			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
@@ -167,7 +170,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				}
 				if redirect {
 					attack.mutations = append(attack.mutations,
-						domain.BaseHPDelta{FactionID: defenderFaction.ID, BaseID: base.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID},
+						domain.BaseHPDelta{FactionID: defenderFaction.ID, BaseID: base.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID, CausedByAssetID: attacker.ID},
 						// SWN: damage to a Base is also dealt directly to faction HP.
 						domain.FactionHPDelta{FactionID: defenderFaction.ID, Delta: -damage, Cause: "attack", CausedByFactionID: faction.ID},
 					)
@@ -181,18 +184,24 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 						})
 					}
 				} else {
-					attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker)
+					attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker, attacker, false)
 				}
 			} else {
-				attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker)
+				attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker, attacker, false)
 			}
 		}
 
 		// Counterattack damage: defender wins on tie (TieStandard/TieDefenderWins) or strictly greater.
 		if defenseRoll > attackRoll || (defenseRoll == attackRoll && tieOutcome != hooks.TieAttackerWins) {
-			if defenderDef.Counter != nil {
+			if defenderDef.Counter != nil && dispatch.ResolveAttackEligibility(attack.registry, hooks.AttackEligibilityQuery{
+				Attacker:    defender,
+				AttackerDef: defenderDef,
+				Defender:    attacker,
+				DefenderDef: attackerDef,
+				Side:        hooks.SideCounter,
+			}) {
 				counterDamage := defenderDef.Counter.Roll(attack.roller)
-				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker)
+				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker, defender, true)
 			}
 		}
 	}
@@ -206,13 +215,19 @@ func (attack *AttackAction) Output() ([]domain.Mutation, error) {
 // applyAssetDamage emits AssetHPDelta and, when lethal, AssetRemoved inline.
 // factionID is the owner of the damaged asset; causedByFactionID is the attacker.
 // Updates the local tracker so subsequent re-checks see the correct effective HP.
-func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker map[string]int) {
+func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker map[string]int, causedByAsset *domain.Asset, counter bool) {
+	causedByAssetID := ""
+	if causedByAsset != nil {
+		causedByAssetID = causedByAsset.ID
+	}
 	attack.mutations = append(attack.mutations, domain.AssetHPDelta{
 		FactionID:         factionID,
 		AssetID:           asset.ID,
 		Delta:             -damage,
 		Cause:             "attack",
 		CausedByFactionID: causedByFactionID,
+		CausedByAssetID:   causedByAssetID,
+		Counter:           counter,
 	})
 	tracker[asset.ID] -= damage
 	if asset.CurrentHP+tracker[asset.ID] <= 0 {
@@ -227,12 +242,12 @@ func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string
 
 // attackerHasTarget returns true if the attacker has a valid Attack profile and
 // at least one eligible defender on its world.
-func attackerHasTarget(attacker *domain.Asset, faction *domain.Faction, rulebook *rulebook.Rulebook, index *world.Index) bool {
+func attackerHasTarget(attacker *domain.Asset, rulebook *rulebook.Rulebook, registry *hooks.Registry, index *world.Index) bool {
 	def, ok := rulebook.Assets[attacker.DefinitionID]
 	if !ok || def.Attack == nil {
 		return false
 	}
-	return len(eligibleDefendersAtHex(faction.ID, attacker.Location.RegionHex, index)) > 0
+	return len(eligibleDefendersAtHex(attacker, def, rulebook, registry, index)) > 0
 }
 
 // liveDefendersOnWorld filters eligibleDefendersOnWorld to exclude assets
@@ -245,8 +260,8 @@ func liveDefendersOnWorld(attackerFactionID, worldID string, assetHPTracker map[
 // liveDefendersAtHex filters eligibleDefendersAtHex to exclude assets whose
 // effective HP has been driven to 0 by earlier matchups in the current Resolve
 // pass. Used when the attacker is mid-flight (empty WorldID).
-func liveDefendersAtHex(attackerFactionID string, hex spatial.RegionHex, assetHPTracker map[string]int, index *world.Index) []*domain.Asset {
-	return filterLiveDefenders(eligibleDefendersAtHex(attackerFactionID, hex, index), assetHPTracker)
+func liveDefendersAtHex(attacker *domain.Asset, attackerDef *domain.AssetDefinition, assetHPTracker map[string]int, rulebook *rulebook.Rulebook, registry *hooks.Registry, index *world.Index) []*domain.Asset {
+	return filterLiveDefenders(eligibleDefendersAtHex(attacker, attackerDef, rulebook, registry, index), assetHPTracker)
 }
 
 func filterLiveDefenders(defenders []*domain.Asset, assetHPTracker map[string]int) []*domain.Asset {

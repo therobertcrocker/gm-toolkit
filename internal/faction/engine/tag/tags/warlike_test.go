@@ -17,6 +17,9 @@ func TestWarlikeRollModifier_OffersOnForceAttack(t *testing.T) {
 	if offers[0].BudgetKey != "tag:Warlike" {
 		t.Errorf("BudgetKey: got %q, want %q", offers[0].BudgetKey, "tag:Warlike")
 	}
+	if !offers[0].FromTag {
+		t.Error("FromTag: got false, want true")
+	}
 }
 
 func TestWarlikeRollModifier_Apply_AddsDieAndSetsKeepHighest(t *testing.T) {

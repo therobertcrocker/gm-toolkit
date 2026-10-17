@@ -2,6 +2,7 @@ package ability
 
 import (
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -13,9 +14,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// relocRouter places worlds on a Q-line; hex distance = |ΔQ| ignoring region, and
-// each world carries a RegionID so the hex and region enumerators are exercised
-// independently.
+// relocRouter places worlds on a Q-line; hex distance = |ΔQ|. The full relocate
+// suite lives in engine/relocate; this copy serves the wiring and dispatch tests.
 type relocRouter struct{ worlds map[string]spatial.RegionHex }
 
 func (r *relocRouter) Location(id string) (spatial.Location, bool) {
@@ -68,7 +68,7 @@ type relocLoc struct {
 func (l *relocLoc) ID() string                   { return l.id }
 func (l *relocLoc) Name() string                 { return l.id }
 func (l *relocLoc) TechLevel() int               { return 5 }
-func (l *relocLoc) Population() int               { return 0 }
+func (l *relocLoc) Population() int              { return 0 }
 func (l *relocLoc) Coords() (int, int)           { return l.hex.Coord.Q, l.hex.Coord.R }
 func (l *relocLoc) RegionID() string             { return l.hex.RegionID }
 func (l *relocLoc) RegionHex() spatial.RegionHex { return l.hex }
@@ -89,7 +89,6 @@ func relocEngine() *world.WorldEngine {
 	}}, slog.New(slog.DiscardHandler))
 }
 
-// relocRulebook types each definition ID for eligibleRelocateAssets' AssetType filter.
 func relocRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
 		"SF": {ID: "SF", Type: domain.TypeSpecialForces},
@@ -97,7 +96,7 @@ func relocRulebook() *rulebook.Rulebook {
 	}}
 }
 
-func TestRelocate_Self_Hex(t *testing.T) {
+func TestRelocateAssets_Self_Hex(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	acting := &domain.Asset{ID: "seductress", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
 	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"seductress": acting}}
@@ -106,7 +105,7 @@ func TestRelocate_Self_Hex(t *testing.T) {
 	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil)
 
-	mutations, err := relocate(StepContext{
+	mutations, err := relocateAssets(StepContext{
 		Faction:     faction,
 		Asset:       acting,
 		Step:        domain.AbilityStep{Effect: domain.EffectRelocate, Relocate: &domain.RelocateParams{Scope: domain.RelocateSelf, Range: domain.RangeHexes, MaxHex: 1}},
@@ -115,7 +114,7 @@ func TestRelocate_Self_Hex(t *testing.T) {
 		Rulebook:    relocRulebook(),
 	})
 	if err != nil {
-		t.Fatalf("relocate: %v", err)
+		t.Fatalf("relocateAssets: %v", err)
 	}
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1 (AssetMoved, no CoinDelta)", len(mutations))
@@ -129,155 +128,14 @@ func TestRelocate_Self_Hex(t *testing.T) {
 	}
 }
 
-func TestRelocate_OtherSingle_Hex(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	shipping := &domain.Asset{ID: "cs", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
-	sfInRange := &domain.Asset{ID: "sf-near", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
-	wrongType := &domain.Asset{ID: "mu-near", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
-	sfOutOfRange := &domain.Asset{ID: "sf-far", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "far", RegionHex: relocHex("r1", 5)}}
-	faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{
-		"cs": shipping, "sf-near": sfInRange, "mu-near": wrongType, "sf-far": sfOutOfRange,
-	}}
-	step := domain.AbilityStep{Effect: domain.EffectRelocate, Relocate: &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1,
-	}}
-
-	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return([]action.RelocateOrder{{Asset: sfInRange, DestinationWorld: "mid"}}, nil)
-
-	mutations, err := relocate(StepContext{
-		Faction: faction, Asset: shipping, Step: step,
-		Collector: collector, WorldEngine: relocEngine(), Rulebook: relocRulebook(),
+func TestRelocateAssets_NilParams(t *testing.T) {
+	acting := &domain.Asset{ID: "seductress", OwnerID: "f1"}
+	_, err := relocateAssets(StepContext{
+		Faction: &domain.Faction{ID: "f1"},
+		Asset:   acting,
+		Step:    domain.AbilityStep{Effect: domain.EffectRelocate},
 	})
-	if err != nil {
-		t.Fatalf("relocate: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "no relocate params") {
+		t.Fatalf("err = %v, want the no-relocate-params error", err)
 	}
-	if len(mutations) != 2 {
-		t.Fatalf("len(mutations) = %d, want 2 (AssetMoved + CoinDelta)", len(mutations))
-	}
-	moved, ok := mutations[0].(domain.AssetMoved)
-	if !ok || moved.AssetID != "sf-near" || moved.ToLocation.WorldID != "mid" {
-		t.Fatalf("mutations[0] = %+v, want AssetMoved sf-near -> mid", mutations[0])
-	}
-	coin, ok := mutations[1].(domain.CoinDelta)
-	if !ok || coin.Delta != -1 {
-		t.Errorf("mutations[1] = %+v, want CoinDelta -1", mutations[1])
-	}
-}
-
-func TestRelocate_OtherSingle_InsufficientCoin(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	shipping := &domain.Asset{ID: "cs", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
-	sfInRange := &domain.Asset{ID: "sf-near", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
-	faction := &domain.Faction{ID: "f1", Coin: 0, Assets: map[string]*domain.Asset{"cs": shipping, "sf-near": sfInRange}}
-	step := domain.AbilityStep{Effect: domain.EffectRelocate, Relocate: &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1,
-	}}
-
-	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return([]action.RelocateOrder{{Asset: sfInRange, DestinationWorld: "mid"}}, nil)
-
-	mutations, err := relocate(StepContext{
-		Faction: faction, Asset: shipping, Step: step,
-		Collector: collector, WorldEngine: relocEngine(), Rulebook: relocRulebook(),
-	})
-	if err == nil {
-		t.Fatal("relocate: expected insufficient-Coin error, got nil")
-	}
-	if mutations != nil {
-		t.Errorf("mutations = %v, want nil on affordability failure", mutations)
-	}
-}
-
-func TestRelocate_ExceedsMaxAssets(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	shipping := &domain.Asset{ID: "cs", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
-	sf1 := &domain.Asset{ID: "sf-1", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
-	sf2 := &domain.Asset{ID: "sf-2", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "mid", RegionHex: relocHex("r1", 2)}}
-	faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"cs": shipping, "sf-1": sf1, "sf-2": sf2}}
-	step := domain.AbilityStep{Effect: domain.EffectRelocate, Relocate: &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1,
-	}}
-
-	// Collector over-selects (two orders) against a MaxAssets=1 cap; the handler guard rejects it.
-	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return([]action.RelocateOrder{{Asset: sf1, DestinationWorld: "mid"}, {Asset: sf2, DestinationWorld: "near"}}, nil)
-
-	mutations, err := relocate(StepContext{
-		Faction: faction, Asset: shipping, Step: step,
-		Collector: collector, WorldEngine: relocEngine(), Rulebook: relocRulebook(),
-	})
-	if err == nil {
-		t.Fatal("relocate: expected MaxAssets-exceeded error, got nil")
-	}
-	if mutations != nil {
-		t.Errorf("mutations = %v, want nil when the cap is exceeded", mutations)
-	}
-}
-
-func TestRelocate_OtherMulti_Region(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	net := &domain.Asset{ID: "net", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
-	sf1 := &domain.Asset{ID: "sf-1", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
-	sf2 := &domain.Asset{ID: "sf-2", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "far", RegionHex: relocHex("r1", 5)}}
-	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"net": net, "sf-1": sf1, "sf-2": sf2}}
-	step := domain.AbilityStep{Effect: domain.EffectRelocate, Relocate: &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeRegion, AssetType: domain.TypeSpecialForces, MaxAssets: 0,
-	}}
-
-	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return([]action.RelocateOrder{{Asset: sf1, DestinationWorld: "mid"}, {Asset: sf2, DestinationWorld: "near"}}, nil)
-
-	mutations, err := relocate(StepContext{
-		Faction: faction, Asset: net, Step: step,
-		Collector: collector, WorldEngine: relocEngine(), Rulebook: relocRulebook(),
-	})
-	if err != nil {
-		t.Fatalf("relocate: %v", err)
-	}
-	if len(mutations) != 2 {
-		t.Fatalf("len(mutations) = %d, want 2 (two AssetMoved, no CoinDelta)", len(mutations))
-	}
-	for i, m := range mutations {
-		if _, ok := m.(domain.AssetMoved); !ok {
-			t.Errorf("mutations[%d] type = %T, want AssetMoved", i, m)
-		}
-	}
-}
-
-// TestEligibleRelocateAssets_Filtering proves the three exclusions: wrong AssetType,
-// a world outside the range-filtered candidate set (hex out-of-range or out-of-region
-// both manifest as "not in candidateWorlds"), and the acting asset itself.
-func TestEligibleRelocateAssets_Filtering(t *testing.T) {
-	acting := &domain.Asset{ID: "cs", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "origin"}}
-	sfNear := &domain.Asset{ID: "sf-near", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near"}}
-	muNear := &domain.Asset{ID: "mu-near", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "near"}}
-	sfFar := &domain.Asset{ID: "sf-far", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "far"}}
-	sfOff := &domain.Asset{ID: "sf-off", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "offregion"}}
-	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{
-		"cs": acting, "sf-near": sfNear, "mu-near": muNear, "sf-far": sfFar, "sf-off": sfOff,
-	}}
-	ctx := StepContext{Faction: faction, Asset: acting, Rulebook: relocRulebook()}
-	params := &domain.RelocateParams{Scope: domain.RelocateOther, AssetType: domain.TypeSpecialForces}
-
-	eligible := eligibleRelocateAssets(ctx, params, []string{"mid", "near"})
-
-	if len(eligible) != 1 {
-		t.Fatalf("eligible = %v, want [sf-near] (wrong-type, out-of-range, off-region, and self all excluded)", assetIDs(eligible))
-	}
-	if eligible[0].ID != "sf-near" {
-		t.Errorf("eligible[0].ID = %q, want sf-near", eligible[0].ID)
-	}
-}
-
-func assetIDs(assets []*domain.Asset) []string {
-	ids := make([]string, len(assets))
-	for i, asset := range assets {
-		ids[i] = asset.ID
-	}
-	return ids
 }

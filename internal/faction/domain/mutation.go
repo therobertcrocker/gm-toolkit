@@ -82,12 +82,17 @@ func (m FactionHPDelta) Type() string { return "faction_hp_delta" }
 
 // AssetHPDelta adjusts an asset's CurrentHP by Delta. Resolve pre-caps the
 // delta so the applied value never exceeds the asset's definition max HP.
+// CausedByAssetID names the asset that dealt the damage when one did; it is
+// empty for damage with no asset source (bookkeeping, goal effects). Counter
+// marks counterattack damage, which otherwise reads exactly like attack damage.
 type AssetHPDelta struct {
 	FactionID         string `json:"faction_id"`
 	AssetID           string `json:"asset_id"`
 	Delta             int    `json:"delta"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
+	CausedByAssetID   string `json:"caused_by_asset_id,omitempty"`
+	Counter           bool   `json:"counter,omitempty"`
 }
 
 func (m AssetHPDelta) Type() string { return "asset_hp_delta" }
@@ -118,13 +123,15 @@ func (m AssetStealthCleared) Type() string { return "asset_stealth_cleared" }
 
 // BaseHPDelta adjusts a Base of Influence's CurrentHP by Delta. Per SWN,
 // damage to a Base is also dealt to faction HP; callers must emit an
-// accompanying FactionHPDelta with the same delta value.
+// accompanying FactionHPDelta with the same delta value. CausedByAssetID names
+// the attacking asset when the defender redirected its damage here.
 type BaseHPDelta struct {
 	FactionID         string `json:"faction_id"`
 	BaseID            string `json:"base_id"`
 	Delta             int    `json:"delta"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
+	CausedByAssetID   string `json:"caused_by_asset_id,omitempty"`
 }
 
 func (m BaseHPDelta) Type() string { return "base_hp_delta" }
@@ -188,7 +195,8 @@ type AssetMoved struct {
 func (m AssetMoved) Type() string { return "asset_moved" }
 
 // AssetStealthApplied marks an asset as stealthy. Emitted by Buy Asset when
-// a Stealth-type Cunning asset is purchased.
+// a Stealth-type Cunning asset is purchased, and by apply_stealth when an asset
+// that starts stealthed is bought.
 type AssetStealthApplied struct {
 	FactionID         string `json:"faction_id"`
 	AssetID           string `json:"asset_id"`

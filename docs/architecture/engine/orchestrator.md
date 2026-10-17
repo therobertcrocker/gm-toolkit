@@ -141,8 +141,9 @@ variation on one beat:
 
 This beat is a synthesis, not a literal invariant. Phases vary in both which
 steps they have and their order: goal-lock has no hook dispatch and notifies the
-observer *before* applying; the action phase folds goal-progress mutations into
-the action's own before dispatching. What is uniform is the recoverable-vs-fatal
+observer *before* applying; the action phase folds the `on_purchase` effects of
+every bought asset, then goal-progress mutations, into the action's own before
+dispatching. What is uniform is the recoverable-vs-fatal
 handling wrapped around every fallible step (see Key Decisions).
 
 ### The two input contracts
@@ -159,7 +160,9 @@ type Collectors struct {
 
 `PhaseCollector` is the orchestrator's own prompt surface: `AwaitCheckpoint`,
 `SelectAction`, `SelectStatRaise`, `SelectMovementDecisions`,
-`SelectTransportCargo`. `action.Collector` is a separate, richer contract passed
+`SelectTransportCargo`, `SelectRelocateOrders` (a free movement grant's prompt; it
+shares the signature of the action collector's, so both satisfy
+`relocate.OrderCollector`). `action.Collector` is a separate, richer contract passed
 down into the action sub-engine (it transitively satisfies `hooks.Collector` and
 `ability.Collector`). The orchestrator threads both but calls only `Phase`
 itself.
@@ -190,10 +193,13 @@ lands on a phase boundary, never inside one.
   sub-engine and registers its data-driven hooks in one call rather than a
   staged bootstrap. The engine owns its own wiring; callers hand it a rulebook
   and a world engine and get a ready engine back. (Resolves R-012; frozen log
-  285–294.)
+  285–294.) Construction can fail: it is the first point that knows both the
+  rulebook's `[[effects]]` data and the effect registrars, so it checks every
+  entry there and `NewWithRulebook` returns an error on bad effect data.
+  (s-flag-effect-registry plan, Planning Decision 7.)
 - **Two input contracts, split by audience.** `PhaseCollector` is the
-  orchestrator's own prompt surface (checkpoints, action/stat/movement/cargo
-  selection); `action.Collector` is a separate, richer contract threaded down
+  orchestrator's own prompt surface (checkpoints, action/stat/movement/cargo/
+  granted-relocate selection); `action.Collector` is a separate, richer contract threaded down
   into the action sub-engine, where it transitively satisfies `hooks.Collector`
   and `ability.Collector`. They are kept distinct because they serve different
   callers — the orchestrator drives `Phase`, the sub-engines consume `Action`.

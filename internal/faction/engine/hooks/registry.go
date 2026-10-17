@@ -15,6 +15,12 @@ type RegisteredRollResultHook struct {
 	Hook   RollResultHook
 }
 
+type RegisteredRollOfferFilter struct {
+	Scope  Scope
+	Source string
+	Hook   RollOfferFilter
+}
+
 type RegisteredMutationReactor struct {
 	Scope  Scope
 	Source string
@@ -39,6 +45,12 @@ type RegisteredWorldTechLevelModifier struct {
 	Hook   WorldTechLevelModifier
 }
 
+type RegisteredAttackEligibilityRule struct {
+	Scope  Scope
+	Source string
+	Hook   AttackEligibilityRule
+}
+
 type RegisteredAssetMovementGranter struct {
 	Scope  Scope
 	Source string
@@ -55,26 +67,36 @@ type RegisteredTieResolver struct {
 type Registry struct {
 	rollModifiers            map[Scope][]RegisteredRollModifier
 	rollResultHooks          map[Scope][]RegisteredRollResultHook
+	rollOfferFilters         map[Scope][]RegisteredRollOfferFilter
 	mutationReactors         map[Scope][]RegisteredMutationReactor
 	assetCostModifiers       map[Scope][]RegisteredAssetCostModifier
 	maintenanceCostModifiers map[Scope][]RegisteredMaintenanceCostModifier
 	worldTechLevelModifiers  map[Scope][]RegisteredWorldTechLevelModifier
+	attackEligibilityRules   map[Scope][]RegisteredAttackEligibilityRule
 	assetMovementGranters    map[Scope][]RegisteredAssetMovementGranter
 	tieResolvers             map[Scope][]RegisteredTieResolver
 }
 
 // NewRegistry returns an empty Registry ready for registration.
 func NewRegistry() *Registry {
-	return &Registry{
-		rollModifiers:            make(map[Scope][]RegisteredRollModifier),
-		rollResultHooks:          make(map[Scope][]RegisteredRollResultHook),
-		mutationReactors:         make(map[Scope][]RegisteredMutationReactor),
-		assetCostModifiers:       make(map[Scope][]RegisteredAssetCostModifier),
-		maintenanceCostModifiers: make(map[Scope][]RegisteredMaintenanceCostModifier),
-		worldTechLevelModifiers:  make(map[Scope][]RegisteredWorldTechLevelModifier),
-		assetMovementGranters:    make(map[Scope][]RegisteredAssetMovementGranter),
-		tieResolvers:             make(map[Scope][]RegisteredTieResolver),
-	}
+	registry := &Registry{}
+	registry.Reset()
+	return registry
+}
+
+// Reset removes every registered hook, in place.
+// deliberate: clear in place, not swap in a NewRegistry, because the actions hold this pointer from engine construction.
+func (registry *Registry) Reset() {
+	registry.rollModifiers = make(map[Scope][]RegisteredRollModifier)
+	registry.rollResultHooks = make(map[Scope][]RegisteredRollResultHook)
+	registry.rollOfferFilters = make(map[Scope][]RegisteredRollOfferFilter)
+	registry.mutationReactors = make(map[Scope][]RegisteredMutationReactor)
+	registry.assetCostModifiers = make(map[Scope][]RegisteredAssetCostModifier)
+	registry.maintenanceCostModifiers = make(map[Scope][]RegisteredMaintenanceCostModifier)
+	registry.worldTechLevelModifiers = make(map[Scope][]RegisteredWorldTechLevelModifier)
+	registry.attackEligibilityRules = make(map[Scope][]RegisteredAttackEligibilityRule)
+	registry.assetMovementGranters = make(map[Scope][]RegisteredAssetMovementGranter)
+	registry.tieResolvers = make(map[Scope][]RegisteredTieResolver)
 }
 
 // RegisterRollModifier registers a Cat 1 hook under the given scope.
@@ -85,6 +107,11 @@ func (registry *Registry) RegisterRollModifier(scope Scope, source string, hook 
 // RegisterRollResultHook registers a Cat 2 hook under the given scope.
 func (registry *Registry) RegisterRollResultHook(scope Scope, source string, hook RollResultHook) {
 	registry.rollResultHooks[scope] = append(registry.rollResultHooks[scope], RegisteredRollResultHook{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterRollOfferFilter registers a Cat 1 offer filter under the given scope.
+func (registry *Registry) RegisterRollOfferFilter(scope Scope, source string, hook RollOfferFilter) {
+	registry.rollOfferFilters[scope] = append(registry.rollOfferFilters[scope], RegisteredRollOfferFilter{Scope: scope, Source: source, Hook: hook})
 }
 
 // RegisterMutationReactor registers a Cat 3 hook under the given scope.
@@ -107,6 +134,11 @@ func (registry *Registry) RegisterWorldTechLevelModifier(scope Scope, source str
 	registry.worldTechLevelModifiers[scope] = append(registry.worldTechLevelModifiers[scope], RegisteredWorldTechLevelModifier{Scope: scope, Source: source, Hook: hook})
 }
 
+// RegisterAttackEligibilityRule registers a Cat 4 attack-eligibility hook under the given scope.
+func (registry *Registry) RegisterAttackEligibilityRule(scope Scope, source string, hook AttackEligibilityRule) {
+	registry.attackEligibilityRules[scope] = append(registry.attackEligibilityRules[scope], RegisteredAttackEligibilityRule{Scope: scope, Source: source, Hook: hook})
+}
+
 // RegisterAssetMovementGranter registers a Cat 4 movement-granter hook under the given scope.
 func (registry *Registry) RegisterAssetMovementGranter(scope Scope, source string, hook AssetMovementGranter) {
 	registry.assetMovementGranters[scope] = append(registry.assetMovementGranters[scope], RegisteredAssetMovementGranter{Scope: scope, Source: source, Hook: hook})
@@ -117,38 +149,35 @@ func (registry *Registry) RegisterTieResolver(scope Scope, source string, hook T
 	registry.tieResolvers[scope] = append(registry.tieResolvers[scope], RegisteredTieResolver{Scope: scope, Source: source, Hook: hook})
 }
 
-// RollModifiersFor returns all Cat 1 hooks matching the given faction and asset,
-// in order: global, then faction-scoped, then asset-scoped.
-func (registry *Registry) RollModifiersFor(factionID, assetInstanceID string) []RegisteredRollModifier {
-	var result []RegisteredRollModifier
-	result = append(result, registry.rollModifiers[GlobalScope()]...)
-	result = append(result, registry.rollModifiers[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.rollModifiers[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
+// RollModifiersAt returns the Cat 1 hooks registered in one scope bucket. The roll
+// dispatcher decides which buckets a roll consults.
+func (registry *Registry) RollModifiersAt(scope Scope) []RegisteredRollModifier {
+	return registry.rollModifiers[scope]
 }
 
-// RollResultHooksFor returns all Cat 2 hooks matching the given faction and asset.
-func (registry *Registry) RollResultHooksFor(factionID, assetInstanceID string) []RegisteredRollResultHook {
-	var result []RegisteredRollResultHook
-	result = append(result, registry.rollResultHooks[GlobalScope()]...)
-	result = append(result, registry.rollResultHooks[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.rollResultHooks[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
+// RollResultHooksAt returns the Cat 2 hooks registered in one scope bucket.
+func (registry *Registry) RollResultHooksAt(scope Scope) []RegisteredRollResultHook {
+	return registry.rollResultHooks[scope]
 }
 
-// MutationReactorsFor returns all Cat 3 hooks matching the given faction and asset.
-func (registry *Registry) MutationReactorsFor(factionID, assetInstanceID string) []RegisteredMutationReactor {
-	var result []RegisteredMutationReactor
-	result = append(result, registry.mutationReactors[GlobalScope()]...)
-	result = append(result, registry.mutationReactors[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.mutationReactors[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
+// RollOfferFiltersAt returns the Cat 1 offer filters registered in one scope bucket.
+func (registry *Registry) RollOfferFiltersAt(scope Scope) []RegisteredRollOfferFilter {
+	return registry.rollOfferFilters[scope]
+}
+
+// MutationReactorsGlobal returns the Cat 3 hooks registered at global scope.
+func (registry *Registry) MutationReactorsGlobal() []RegisteredMutationReactor {
+	return registry.mutationReactors[GlobalScope()]
+}
+
+// MutationReactorsForFaction returns the Cat 3 hooks registered against one faction.
+func (registry *Registry) MutationReactorsForFaction(factionID string) []RegisteredMutationReactor {
+	return registry.mutationReactors[FactionScope(factionID)]
+}
+
+// MutationReactorsForAsset returns the Cat 3 hooks registered against one asset instance.
+func (registry *Registry) MutationReactorsForAsset(factionID, assetInstanceID string) []RegisteredMutationReactor {
+	return registry.mutationReactors[AssetScope(factionID, assetInstanceID)]
 }
 
 // AssetCostModifiersFor returns all Cat 4 asset-cost hooks matching the given faction and asset.
@@ -160,6 +189,12 @@ func (registry *Registry) AssetCostModifiersFor(factionID, assetInstanceID strin
 		result = append(result, registry.assetCostModifiers[AssetScope(factionID, assetInstanceID)]...)
 	}
 	return result
+}
+
+// AssetCostModifiersForAsset returns the Cat 4 asset-cost hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) AssetCostModifiersForAsset(factionID, assetInstanceID string) []RegisteredAssetCostModifier {
+	return registry.assetCostModifiers[AssetScope(factionID, assetInstanceID)]
 }
 
 // MaintenanceCostModifiersFor returns all Cat 4 maintenance-cost hooks matching the given faction and asset.
@@ -184,6 +219,29 @@ func (registry *Registry) WorldTechLevelModifiersFor(factionID, assetInstanceID 
 	return result
 }
 
+// WorldTechLevelModifiersForAsset returns the Cat 4 tech-level hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) WorldTechLevelModifiersForAsset(factionID, assetInstanceID string) []RegisteredWorldTechLevelModifier {
+	return registry.worldTechLevelModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
+// AttackEligibilityRulesFor returns all Cat 4 attack-eligibility hooks matching the given faction and asset.
+func (registry *Registry) AttackEligibilityRulesFor(factionID, assetInstanceID string) []RegisteredAttackEligibilityRule {
+	var result []RegisteredAttackEligibilityRule
+	result = append(result, registry.attackEligibilityRules[GlobalScope()]...)
+	result = append(result, registry.attackEligibilityRules[FactionScope(factionID)]...)
+	if assetInstanceID != "" {
+		result = append(result, registry.attackEligibilityRules[AssetScope(factionID, assetInstanceID)]...)
+	}
+	return result
+}
+
+// AttackEligibilityRulesForAsset returns the Cat 4 attack-eligibility hooks
+// registered against one asset instance, without the global or faction buckets.
+func (registry *Registry) AttackEligibilityRulesForAsset(factionID, assetInstanceID string) []RegisteredAttackEligibilityRule {
+	return registry.attackEligibilityRules[AssetScope(factionID, assetInstanceID)]
+}
+
 // AssetMovementGrantersFor returns all Cat 4 movement-granter hooks matching the given faction and asset.
 func (registry *Registry) AssetMovementGrantersFor(factionID, assetInstanceID string) []RegisteredAssetMovementGranter {
 	var result []RegisteredAssetMovementGranter
@@ -193,6 +251,12 @@ func (registry *Registry) AssetMovementGrantersFor(factionID, assetInstanceID st
 		result = append(result, registry.assetMovementGranters[AssetScope(factionID, assetInstanceID)]...)
 	}
 	return result
+}
+
+// AssetMovementGrantersForAsset returns the Cat 4 movement-granter hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) AssetMovementGrantersForAsset(factionID, assetInstanceID string) []RegisteredAssetMovementGranter {
+	return registry.assetMovementGranters[AssetScope(factionID, assetInstanceID)]
 }
 
 // TieResolversFor returns all Cat 5 hooks matching the given faction and asset.

@@ -6,7 +6,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 )
 
-// PhaseCollector abstracts the four orchestrator-owned input prompts.
+// PhaseCollector abstracts the orchestrator-owned input prompts: the phase
+// checkpoints, action choice, stat raise, movement decisions, transport cargo and
+// the relocate orders of a free movement grant.
 // The GM implementation uses interactive prompts; AI and test implementations
 // use scripted or goal-driven logic.
 type PhaseCollector interface {
@@ -15,6 +17,7 @@ type PhaseCollector interface {
 	SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error)
 	SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error)
 	SelectTransportCargo(transport *domain.Asset, eligibleCargo []*domain.Asset, profile *domain.TransportProfile) ([]*domain.Asset, error)
+	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error)
 }
 
 // Collectors bundles the two input contracts the orchestrator threads through

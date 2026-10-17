@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -74,6 +75,20 @@ func (engine *WorldEngine) RebuildIndex(factionState *state.FactionState, log *s
 	}
 	engine.Index = index
 	return skipped, nil
+}
+
+// AssetsOnWorld returns a copy of the index's assets on worldID in ID order, or
+// nil when there is no world engine or no index. The index is built from maps, so
+// its own order varies run to run.
+func AssetsOnWorld(worldEngine *WorldEngine, worldID string) []*domain.Asset {
+	if worldEngine == nil || worldEngine.Index == nil {
+		return nil
+	}
+	sorted := slices.Clone(worldEngine.Index.AssetsByLocation[worldID])
+	slices.SortFunc(sorted, func(first, second *domain.Asset) int {
+		return strings.Compare(first.ID, second.ID)
+	})
+	return sorted
 }
 
 func (engine *WorldEngine) Location(id string) (spatial.RegionLocation, bool) {

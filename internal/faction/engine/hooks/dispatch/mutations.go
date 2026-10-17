@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -11,11 +12,13 @@ import (
 
 const maxHookDepth = 5
 
-// MutationReactors runs all MutationReactors registered for faction
-// (faction-scoped and global) in registration order against combined.
-// Returned mutations are appended and the process recurses until no
-// new mutations are produced. Returns an error if the recursion depth
-// exceeds maxHookDepth to prevent infinite loops.
+// MutationReactors runs every registered MutationReactor against combined —
+// global scope, then each faction's scope, then each asset's scope, in sorted
+// ID order so the emitted slice is deterministic. Reactors belonging to a
+// faction other than the acting one do run: a defender reacts to what was done
+// to it. Returned mutations are appended and the process recurses until no new
+// mutations are produced. Returns an error if the recursion depth exceeds
+// maxHookDepth to prevent infinite loops.
 func MutationReactors(
 	registry *hooks.Registry,
 	faction *domain.Faction,
@@ -24,6 +27,27 @@ func MutationReactors(
 	rulebook *rulebook.Rulebook,
 ) ([]domain.Mutation, error) {
 	return reactDispatch(registry, faction, combined, factionState, rulebook, 0)
+}
+
+// allReactors collects every registered Cat 3 hook in deterministic order:
+// global, then per faction (sorted by ID), then per asset within that faction
+// (sorted by ID).
+func allReactors(registry *hooks.Registry, factionState *state.FactionState) []hooks.RegisteredMutationReactor {
+	reactors := append([]hooks.RegisteredMutationReactor(nil), registry.MutationReactorsGlobal()...)
+
+	factionIDs := make([]string, 0, len(factionState.Factions))
+	for id := range factionState.Factions {
+		factionIDs = append(factionIDs, id)
+	}
+	sort.Strings(factionIDs)
+
+	for _, factionID := range factionIDs {
+		reactors = append(reactors, registry.MutationReactorsForFaction(factionID)...)
+		for _, asset := range domain.SortedAssets(factionState.Factions[factionID]) {
+			reactors = append(reactors, registry.MutationReactorsForAsset(factionID, asset.ID)...)
+		}
+	}
+	return reactors
 }
 
 func reactDispatch(
@@ -38,7 +62,7 @@ func reactDispatch(
 		return nil, fmt.Errorf("hook recursion depth exceeded for faction %s", faction.ID)
 	}
 
-	reactors := registry.MutationReactorsFor(faction.ID, "")
+	reactors := allReactors(registry, factionState)
 	var newMutations []domain.Mutation
 	for _, registered := range reactors {
 		extra := registered.Hook.OnMutations(combined, factionState, rulebook)

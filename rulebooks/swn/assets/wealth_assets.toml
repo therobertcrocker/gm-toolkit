@@ -19,6 +19,17 @@ attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "1d4"
 
+[[assets.Franchise.effects]]
+trigger = "own_attack_hit"
+effect  = "coin_steal"
+[assets.Franchise.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.Franchise.effects.gates]
+once_per = "target_faction"
+[assets.Franchise.effects.coin_steal]
+amount = "1"
+
 [assets.Harvesters]
 id = "SWN-W1-002"
 name = "Harvesters"
@@ -59,6 +70,17 @@ description = "Minor commercial interests spread across a local economy. Any oth
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "1d4-1"
+
+[[assets.LocalInvestments.effects]]
+trigger = "asset_cost_query"
+effect  = "cost_surcharge"
+[assets.LocalInvestments.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.LocalInvestments.effects.gates]
+no_stack = true
+[assets.LocalInvestments.effects.cost_surcharge]
+amount = 1
 
 [assets.FreighterContract]
 id = "SWN-W2-001"
@@ -106,6 +128,17 @@ attacker_stat = "Cunning"
 defender_stat = "Wealth"
 damage = "2d4"
 
+[[assets.Lawyers.effects]]
+trigger  = "attack_eligibility_query"
+effect   = "restrict_attack"
+[assets.Lawyers.effects.filters]
+owner    = "rival"
+scope    = "self"
+category = ["Force"]
+[assets.Lawyers.effects.restrict_attack]
+side  = "attack_and_counter"
+allow = "except_listed"
+
 [assets.UnionToughs]
 id = "SWN-W2-003"
 name = "Union Toughs"
@@ -138,7 +171,19 @@ speed = 2
 type = "Special Forces"
 flags = ["S"]
 counter = "1d4"
-description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world. As an action, a Surveyor crew can move to any world within two hexes."
+description = "Scouts exploring potential resource and investment options on worlds. The presence of Surveyors grants one additional die on Expand Influence actions on that world."
+
+[[assets.Surveyors.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.Surveyors.effects.filters]
+owner  = "own"
+scope  = "world"
+phase  = ["faction_test"]
+action = "Expand Influence"
+[assets.Surveyors.effects.bonus_die]
+sides = 10
+count = 1
 
 [assets.PostechIndustry]
 id = "SWN-W3-001"
@@ -183,6 +228,15 @@ type = "Facility"
 flags = ["S"]
 counter = ""
 description = "Research facilities that accelerate local technological development. Assets may be purchased on this planet as if it had Tech Level 4."
+
+[[assets.Laboratory.effects]]
+trigger = "tech_level_query"
+effect  = "tech_level_floor"
+[assets.Laboratory.effects.filters]
+owner = "own"
+scope = "world"
+[assets.Laboratory.effects.tech_level_floor]
+level = 4
 
 [assets.Mercenaries]
 id = "SWN-W3-003"
@@ -273,6 +327,15 @@ flags = ["S"]
 counter = ""
 description = "A financial institution under faction control. Once per turn, the faction can ignore one Coin cost or loss imposed by another faction. This does not require an action. Multiple Banks allow multiple losses to be ignored."
 
+[[assets.Bank.effects]]
+trigger = "coin_loss"
+effect  = "ignore_coin_loss"
+[assets.Bank.effects.filters]
+owner = "rival"
+scope = "faction"
+[assets.Bank.effects.gates]
+once_per = "asset"
+
 [assets.Marketers]
 id = "SWN-W5-001"
 name = "Marketers"
@@ -305,6 +368,16 @@ type = "Special Forces"
 flags = ["S"]
 counter = ""
 description = "Research specialists supporting limited pretech applications. Any world with Pretech Researchers on it is treated as Tech Level 5 for the purpose of buying Cunning and Wealth assets. Pretech Researchers have a maintenance cost of 1 Coin per turn."
+
+[[assets.PretechResearchers.effects]]
+trigger  = "tech_level_query"
+effect   = "tech_level_floor"
+[assets.PretechResearchers.effects.filters]
+owner    = "own"
+scope    = "world"
+category = ["Cunning", "Wealth"]
+[assets.PretechResearchers.effects.tech_level_floor]
+level = 5
 
 [assets.BlockadeRunners]
 id = "SWN-W5-003"
@@ -379,6 +452,16 @@ type = "Facility"
 flags = ["S"]
 counter = ""
 description = "Industrial research extending wealth-creation principles across the faction's operations. A faction with an R&D Department may treat all planets as having Tech Level 4 for the purpose of buying Wealth assets."
+
+[[assets.RandDDepartment.effects]]
+trigger  = "tech_level_query"
+effect   = "tech_level_floor"
+[assets.RandDDepartment.effects.filters]
+owner    = "own"
+scope    = "faction"
+category = ["Wealth"]
+[assets.RandDDepartment.effects.tech_level_floor]
+level = 4
 
 [assets.CommoditiesBroker]
 id = "SWN-W6-003"
@@ -474,6 +557,21 @@ description = "A logistics network spanning commercial shipping lanes, bribed po
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "1d12"
+
+[[assets.TransitWeb.effects]]
+trigger = "movement_options_query"
+effect  = "grant_movement"
+[assets.TransitWeb.effects.filters]
+owner = "own"
+scope = "faction"
+[assets.TransitWeb.effects.grant_movement.relocate]
+scope          = "other"
+range          = "hexes"
+max_hex        = 3
+coin_cost      = 1
+coin_cost_mode = "flat"
+categories     = ["Cunning", "Wealth"]
+exclude_types  = ["Starship"]
 
 [assets.ScavengerFleet]
 id = "SWN-W8-001"

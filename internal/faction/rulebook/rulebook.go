@@ -3,6 +3,7 @@ package rulebook
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -82,6 +83,7 @@ type assetRecord struct {
 	Attack      *attackRecord    `toml:"attack"`
 	Ability     *abilityRecord   `toml:"ability"`
 	Transport   *transportRecord `toml:"transport"`
+	Effects     []effectRecord   `toml:"effects"`
 }
 
 type transportRecord struct {
@@ -115,12 +117,15 @@ type abilityStepRecord struct {
 }
 
 type relocateRecord struct {
-	Scope     string `toml:"scope"`
-	Range     string `toml:"range"`
-	MaxHex    int    `toml:"max_hex"`
-	CoinCost  int    `toml:"coin_cost"`
-	AssetType string `toml:"asset_type"`
-	MaxAssets int    `toml:"max_assets"`
+	Scope        string   `toml:"scope"`
+	Range        string   `toml:"range"`
+	MaxHex       int      `toml:"max_hex"`
+	CoinCost     int      `toml:"coin_cost"`
+	CoinCostMode string   `toml:"coin_cost_mode"`
+	AssetType    string   `toml:"asset_type"`
+	Categories   []string `toml:"categories"`
+	ExcludeTypes []string `toml:"exclude_types"`
+	MaxAssets    int      `toml:"max_assets"`
 }
 
 type purchaseRecord struct {
@@ -149,8 +154,17 @@ func loadAssets(dataDir string) (map[string]*domain.AssetDefinition, error) {
 	result := make(map[string]*domain.AssetDefinition)
 	for _, path := range files {
 		var f assetFile
-		if _, err := toml.DecodeFile(path, &f); err != nil {
+		metadata, err := toml.DecodeFile(path, &f)
+		if err != nil {
 			return nil, fmt.Errorf("decoding %s: %w", path, err)
+		}
+		// deliberate: unknown keys fail the load, not skip, because the decoder drops them silently and a misspelt filter or gate would do nothing.
+		if undecoded := metadata.Undecoded(); len(undecoded) > 0 {
+			keys := make([]string, len(undecoded))
+			for i, key := range undecoded {
+				keys[i] = key.String()
+			}
+			return nil, fmt.Errorf("unknown keys in %s: %s", path, strings.Join(keys, ", "))
 		}
 		for _, record := range f.Assets {
 			def, err := convertAsset(record)
@@ -215,6 +229,11 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		return nil, fmt.Errorf("transport: %w", err)
 	}
 
+	effects, err := convertEffects(r.Effects)
+	if err != nil {
+		return nil, err
+	}
+
 	return &domain.AssetDefinition{
 		ID:          r.ID,
 		Name:        r.Name,
@@ -233,6 +252,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Description: r.Description,
 		Ability:     ability,
 		Transport:   transport,
+		Effects:     effects,
 	}, nil
 }
 
@@ -304,27 +324,9 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		step.Roll = roll
 	}
 	if relocate := record.Relocate; relocate != nil {
-		scope, err := toRelocateScope(relocate.Scope)
+		params, err := convertRelocate(relocate)
 		if err != nil {
 			return domain.AbilityStep{}, err
-		}
-		rng, err := toRelocateRange(relocate.Range)
-		if err != nil {
-			return domain.AbilityStep{}, err
-		}
-		params := &domain.RelocateParams{
-			Scope:     scope,
-			Range:     rng,
-			MaxHex:    relocate.MaxHex,
-			CoinCost:  relocate.CoinCost,
-			MaxAssets: relocate.MaxAssets,
-		}
-		if relocate.AssetType != "" {
-			assetType, err := toAssetType(relocate.AssetType)
-			if err != nil {
-				return domain.AbilityStep{}, fmt.Errorf("relocate asset_type: %w", err)
-			}
-			params.AssetType = assetType
 		}
 		step.Relocate = params
 	}
@@ -371,6 +373,62 @@ func toRelocateRange(s string) (domain.RelocateRange, error) {
 	default:
 		return "", fmt.Errorf("unknown relocate range: %q", s)
 	}
+}
+
+func toRelocateCostMode(s string) (domain.RelocateCostMode, error) {
+	switch s {
+	case "", "per_asset":
+		return domain.RelocateCostPerAsset, nil
+	case "flat":
+		return domain.RelocateCostFlat, nil
+	default:
+		return "", fmt.Errorf("unknown relocate coin_cost_mode: %q", s)
+	}
+}
+
+func convertRelocate(record *relocateRecord) (*domain.RelocateParams, error) {
+	scope, err := toRelocateScope(record.Scope)
+	if err != nil {
+		return nil, err
+	}
+	rng, err := toRelocateRange(record.Range)
+	if err != nil {
+		return nil, err
+	}
+	costMode, err := toRelocateCostMode(record.CoinCostMode)
+	if err != nil {
+		return nil, err
+	}
+	params := &domain.RelocateParams{
+		Scope:        scope,
+		Range:        rng,
+		MaxHex:       record.MaxHex,
+		CoinCost:     record.CoinCost,
+		CoinCostMode: costMode,
+		MaxAssets:    record.MaxAssets,
+	}
+	if record.AssetType != "" {
+		assetType, err := toAssetType(record.AssetType)
+		if err != nil {
+			return nil, fmt.Errorf("relocate asset_type: %w", err)
+		}
+		params.AssetType = assetType
+	}
+	for i, value := range record.Categories {
+		category, err := toFactionStat(value)
+		if err != nil {
+			return nil, fmt.Errorf("relocate categories[%d]: %w", i, err)
+		}
+		params.Categories = append(params.Categories, category)
+	}
+	for i, value := range record.ExcludeTypes {
+		assetType, err := toAssetType(value)
+		if err != nil {
+			return nil, fmt.Errorf("relocate exclude_types[%d]: %w", i, err)
+		}
+		params.ExcludeTypes = append(params.ExcludeTypes, assetType)
+	}
+	return params, nil
 }
 
 func toTargetKind(s string) (domain.TargetKind, error) {

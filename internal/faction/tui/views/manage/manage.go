@@ -2,8 +2,8 @@ package manage
 
 import (
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"

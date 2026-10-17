@@ -34,7 +34,9 @@ func (declineFormHelp) ShortHelp() []key.Binding {
 		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "skip")),
 	}
 }
-func (declineFormHelp) FullHelp() [][]key.Binding { return [][]key.Binding{declineFormHelp{}.ShortHelp()} }
+func (declineFormHelp) FullHelp() [][]key.Binding {
+	return [][]key.Binding{declineFormHelp{}.ShortHelp()}
+}
 
 // cancelFormHelp is the keymap for action overlays: form nav plus Esc-cancel.
 type cancelFormHelp struct{}
@@ -47,7 +49,9 @@ func (cancelFormHelp) ShortHelp() []key.Binding {
 		key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel action")),
 	}
 }
-func (cancelFormHelp) FullHelp() [][]key.Binding { return [][]key.Binding{cancelFormHelp{}.ShortHelp()} }
+func (cancelFormHelp) FullHelp() [][]key.Binding {
+	return [][]key.Binding{cancelFormHelp{}.ShortHelp()}
+}
 
 func capError(n int) error { return fmt.Errorf("at most %d", n) }
 

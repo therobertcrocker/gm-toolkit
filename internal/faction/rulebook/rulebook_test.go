@@ -1,6 +1,7 @@
 package rulebook
 
 import (
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -159,8 +160,8 @@ func TestLoad(t *testing.T) {
 		if step.Effect != domain.EffectRelocate || step.Relocate == nil {
 			t.Fatalf("step: got effect %q relocate %+v, want relocate effect with params", step.Effect, step.Relocate)
 		}
-		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1}
-		if *step.Relocate != want {
+		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, CoinCostMode: domain.RelocateCostPerAsset, AssetType: domain.TypeSpecialForces, MaxAssets: 1}
+		if !reflect.DeepEqual(*step.Relocate, want) {
 			t.Errorf("relocate: got %+v, want %+v", *step.Relocate, want)
 		}
 	})
@@ -177,8 +178,8 @@ func TestLoad(t *testing.T) {
 		if step.Effect != domain.EffectRelocate || step.Relocate == nil {
 			t.Fatalf("step: got effect %q relocate %+v, want relocate effect with params", step.Effect, step.Relocate)
 		}
-		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeRegion, AssetType: domain.TypeSpecialForces, MaxAssets: 0}
-		if *step.Relocate != want {
+		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeRegion, CoinCostMode: domain.RelocateCostPerAsset, AssetType: domain.TypeSpecialForces, MaxAssets: 0}
+		if !reflect.DeepEqual(*step.Relocate, want) {
 			t.Errorf("relocate: got %+v, want %+v", *step.Relocate, want)
 		}
 	})
@@ -393,6 +394,22 @@ func TestLoad(t *testing.T) {
 		}
 		if step.Purchase.Category != domain.StatForce || step.Purchase.MaxTechLevel != 5 || step.Purchase.CostPercent != 150 {
 			t.Errorf("purchase = %+v, want {Force, 5, 150}", step.Purchase)
+		}
+	})
+
+	t.Run("party machine coin_gain effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C4-001"]
+		if !ok {
+			t.Fatal("asset SWN-C4-001 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger:  domain.TriggerTurnStart,
+			Effect:   domain.SpecialCoinGain,
+			Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+			CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
 		}
 	})
 

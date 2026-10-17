@@ -143,6 +143,24 @@ func (faction *Faction) StatScore(stat FactionStat) int {
 	}
 }
 
+// BudgetSpent reports whether the hook budget key is spent this turn. An empty
+// key is unlimited and is never spent.
+func (faction *Faction) BudgetSpent(key string) bool {
+	return key != "" && faction.HookBudgets[key] >= 1
+}
+
+// SpendBudget marks the hook budget key as spent this turn. An empty key is a
+// no-op.
+func (faction *Faction) SpendBudget(key string) {
+	if key == "" {
+		return
+	}
+	if faction.HookBudgets == nil {
+		faction.HookBudgets = make(map[string]int)
+	}
+	faction.HookBudgets[key]++
+}
+
 func HPValueForRating(rating int) int {
 	switch rating {
 	case 1:

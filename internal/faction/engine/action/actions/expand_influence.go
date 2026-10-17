@@ -8,6 +8,8 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -19,14 +21,15 @@ import (
 type ExpandInfluence struct {
 	collector   action.Collector
 	roller      domain.Roller
+	registry    *hooks.Registry
 	index       *world.Index
 	worldEngine *world.WorldEngine
 	order       action.ExpandInfluenceOrder
 	mutations   []domain.Mutation
 }
 
-func NewExpandInfluence(collector action.Collector, roller domain.Roller, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
-	return &ExpandInfluence{collector: collector, roller: roller, index: index, worldEngine: worldEngine}
+func NewExpandInfluence(collector action.Collector, roller domain.Roller, registry *hooks.Registry, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
+	return &ExpandInfluence{collector: collector, roller: roller, registry: registry, index: index, worldEngine: worldEngine}
 }
 
 func (ei *ExpandInfluence) Name() string { return "Expand Influence" }
@@ -89,7 +92,18 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 
 	// Contested roll: faction rolls 1d10 + Cunning; each rival on the world rolls the same.
 	// Rivals that tie or beat the faction's roll may make a free attack against the new base.
-	factionRoll := ei.roller.Roll(10) + faction.Cunning
+	// deliberate: no Opponent on the faction's roll, not each rival in turn, because it is one roll compared against N rivals (Effort 3 plan, Decision 11).
+	factionRoll := dispatch.RollWithHooks(
+		hooks.RollContext{
+			Phase:     hooks.PhaseFactionTest,
+			Actor:     faction,
+			Attribute: string(domain.StatCunning),
+			World:     ei.order.World,
+			Action:    ei.Name(),
+		},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.Cunning},
+		ei.registry, ei.collector, ei.roller, faction, factionState, rulebook,
+	).Sum
 	baseHPTracker := 0
 
 	rivals := rivalsOnWorld(factionState, faction.ID, ei.order.World, ei.index)
@@ -99,7 +113,18 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		if newBase.CurrentHP+baseHPTracker <= 0 {
 			break
 		}
-		rivalRoll := ei.roller.Roll(10) + rival.Cunning
+		rivalRoll := dispatch.RollWithHooks(
+			hooks.RollContext{
+				Phase:     hooks.PhaseContested,
+				Actor:     rival,
+				Opponent:  faction,
+				Attribute: string(domain.StatCunning),
+				World:     ei.order.World,
+				Action:    ei.Name(),
+			},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: rival.Cunning},
+			ei.registry, ei.collector, ei.roller, rival, factionState, rulebook,
+		).Sum
 		if rivalRoll < factionRoll {
 			continue
 		}
@@ -110,8 +135,8 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		if !confirmed {
 			continue
 		}
-		sub := &baseAttack{collector: ei.collector, roller: ei.roller}
-		if err := sub.resolve(rival, &newBase, faction, &ei.mutations, &baseHPTracker, rulebook); err != nil {
+		sub := &baseAttack{collector: ei.collector, roller: ei.roller, registry: ei.registry, action: ei.Name()}
+		if err := sub.resolve(rival, &newBase, faction, &ei.mutations, &baseHPTracker, factionState, rulebook); err != nil {
 			return fmt.Errorf("expand influence: rival free attack: %w", err)
 		}
 	}
@@ -155,12 +180,14 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 type baseAttack struct {
 	collector action.Collector
 	roller    domain.Roller
+	registry  *hooks.Registry
+	action    string
 }
 
 // resolve runs the attack sequence for one rival against the target base.
 // baseHPTracker accumulates damage across rival attacks so re-checks see the
 // correct effective HP before mutations are applied to state.
-func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, rulebook *rulebook.Rulebook) error {
+func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	eligible := rivalAssetsOnWorld(rival, target.Location.WorldID)
 	if len(eligible) == 0 {
 		return nil
@@ -179,14 +206,39 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 		if !ok || attackerDef.Attack == nil {
 			continue
 		}
-		attackRoll := ba.roller.Roll(10) + statScore(rival, attackerDef.Attack.AttackerStat)
-		defenseRoll := ba.roller.Roll(10) + statScore(ownerFaction, domain.StatCunning)
+		worldID := target.Location.WorldID
+		attackRoll := dispatch.RollWithHooks(
+			hooks.RollContext{
+				Phase:     hooks.PhaseAttack,
+				Actor:     rival,
+				Opponent:  ownerFaction,
+				Attribute: string(attackerDef.Attack.AttackerStat),
+				Asset:     attacker,
+				World:     worldID,
+				Action:    ba.action,
+			},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(rival, attackerDef.Attack.AttackerStat)},
+			ba.registry, ba.collector, ba.roller, rival, factionState, rulebook,
+		).Sum
+		defenseRoll := dispatch.RollWithHooks(
+			hooks.RollContext{
+				Phase:         hooks.PhaseDefense,
+				Actor:         ownerFaction,
+				Opponent:      rival,
+				Attribute:     string(domain.StatCunning),
+				OpponentAsset: attacker,
+				World:         worldID,
+				Action:        ba.action,
+			},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(ownerFaction, domain.StatCunning)},
+			ba.registry, ba.collector, ba.roller, ownerFaction, factionState, rulebook,
+		).Sum
 
 		if attackRoll >= defenseRoll {
 			damage := attackerDef.Attack.Damage.Roll(ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.
-				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID},
+				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID, CausedByAssetID: attacker.ID},
 				domain.FactionHPDelta{FactionID: ownerFaction.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID},
 			)
 			*baseHPTracker -= damage
@@ -294,7 +346,7 @@ func rivalsOnWorld(factionState *state.FactionState, factionID, locationID strin
 func rivalAssetsOnWorld(rival *domain.Faction, world string) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range rival.Assets {
-		if asset.Location.WorldID == world && !asset.Stealthy && asset.Ready && asset.CurrentHP > 0 && asset.Maintained {
+		if asset.Location.WorldID == world && !asset.Stealthy && asset.Active() {
 			result = append(result, asset)
 		}
 	}

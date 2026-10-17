@@ -13,13 +13,18 @@ const (
 )
 
 // RollContext carries the full context of a roll being processed by hooks.
+// Asset is the rolling asset and OpponentAsset the asset on the other side;
+// either is nil when no asset stands there (a faction test, a Base defending).
+// Action is the action's Name().
 type RollContext struct {
-	Phase     RollPhase
-	Actor     *domain.Faction
-	Opponent  *domain.Faction
-	Attribute string
-	Asset     *domain.Asset
-	World     string
+	Phase         RollPhase
+	Actor         *domain.Faction
+	Opponent      *domain.Faction
+	Attribute     string
+	Asset         *domain.Asset
+	OpponentAsset *domain.Asset
+	World         string
+	Action        string
 }
 
 // RollResult holds the per-die breakdown of a completed roll.
@@ -60,20 +65,27 @@ func (rollState *RollState) ExtraDice() []int {
 
 // ModifierOffer is a pre-roll dice pool modification presented to the collector
 // for selection. Unchosen offers are discarded.
+// FactionID is the faction whose hook made the offer; the dispatcher sets it, and
+// spends BudgetKey on that faction's HookBudgets.
 type ModifierOffer struct {
 	Source      string
 	Description string
 	BudgetKey   string           // namespaced, e.g. "tag:Warlike"; empty = unlimited
 	Apply       func(*RollState) // expands the dice pool before rolling
+	FactionID   string
+	FromTag     bool // a tag's bonus die; Blackmail strips these
 }
 
 // RerollDirective instructs the dispatcher to reroll specific dice after the
 // initial roll. Elective directives require collector confirmation.
+// FactionID is the faction whose hook made the directive; the dispatcher sets it,
+// and spends BudgetKey on that faction's HookBudgets.
 type RerollDirective struct {
 	Source    string
 	Indices   []int  // indices into RollResult.Dice to reroll
 	BudgetKey string // namespaced; empty = unlimited
 	Elective  bool   // if true, collector must confirm before applying
+	FactionID string
 }
 
 // TieOutcome is the result of a TieResolver call.

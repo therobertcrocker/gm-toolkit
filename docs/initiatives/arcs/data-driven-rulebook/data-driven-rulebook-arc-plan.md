@@ -13,10 +13,13 @@
 > candidate list), and the [ability & effect catalog](../../../architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
-> **Status:** arc-plan, written for sign-off. Once signed off, each initiative is
-> registered in `planned-work.md` and runs its own lifecycle (session-modes section 9).
+> **Status:** signed off, and **amended once since**. The A.001.3 Discovery split the
+> S side into two initiatives and reset A.001.3's boundary (AP-7). Amendments are
+> recorded in the Decision Record and folded into the body, so this doc stays the
+> current arc shape rather than a snapshot of sign-off. Each initiative is registered in
+> `planned-work.md` and runs its own lifecycle (session-modes section 9).
 
-## The arc in five initiatives
+## The arc in six initiatives
 
 | ID | Initiative | Type | Depends on |
 |---|---|---|---|
@@ -25,10 +28,17 @@
 | **A.001.3** | S-flag effect registry | feature | A.001.2 *(relocate primitive only)* |
 | **A.001.4** | Goals/tags neutralization + `_core` home | feature | — |
 | **A.001.5** | H.A.W.K asset authoring | feature | A.001.2, A.001.3, its own lore-seed effort |
+| **A.001.6** | S-flag rule extensions | feature | A.001.3 |
+
+> **A.001.6 was added after sign-off,** by the A.001.3 Discovery session (AP-7). The
+> plan first treated the whole S side as one initiative. The asset inventory split it
+> in two.
 
 The arc is a DAG, not a line: A.001.4 and A.001.5's lore-seed effort carry no
 dependency on the registries and can run from the start; the registries themselves are
 the only strictly-serial spine (A.001.1 → A.001.2 → A.001.3's relocate slice).
+A.001.6 hangs off A.001.3 and gates nothing — it completes the SWN S-side rather than
+unlocking anything downstream.
 
 ```mermaid
 ---
@@ -44,6 +54,7 @@ flowchart TD
   R018["A.001.1<br>effect-keyed dispatch<br>+ SWN re-prefix"]:::spine
   A["A.001.2<br>A-flag registry<br>(owns relocate primitive)"]:::spine
   S["A.001.3<br>S-flag registry<br>(free relocate harness)"]:::spine
+  Rules["A.001.6<br>S-flag rule extensions<br>(gates nothing)"]:::muted
   Author["A.001.5 · E2+<br>H.A.W.K authoring passes"]:::content
   Playable(["H.A.W.K playable"]):::milestone
 
@@ -51,6 +62,7 @@ flowchart TD
   A -- "relocate primitive" --> S
   A --> Author
   S --> Author
+  S --> Rules
   Lore --> Author
   Author --> Playable
   Core --> Playable
@@ -107,25 +119,62 @@ attack (S-side), rerouted to A.001.3 (AP-6).
 
 ### A.001.3 — S-flag effect registry (feature) — depends A.001.2 (relocate primitive only)
 
-Generalize the `transport` pattern: a profile in the data registers the right hook from
-the five canonical categories (`hooks/doc.go`), the way `TransportReactor` does today.
-Hybrid data shape (ACD-5): keep typed profiles for parametric families, add a generic
-`[effect]` (`type` discriminator + fields) for the simple flag-effects. Wire the S-side
-`coin_steal`/`coin_drain` reactors and the rest of the catalog's S-flag table onto
-their categories.
+> Boundary reset by the A.001.3 Discovery (AP-7). The text below replaces the
+> sign-off version, which assumed the whole S side was one initiative. Full detail in
+> the [discovery doc](../../discovery/completed/s-flag-effect-registry-discovery.md).
+
+Build the data-driven S-side model and ship every effect that is a **hook or a rule
+query**. An S-flag ability is declared as *trigger → filters → gates → effect*; the
+engine keys its registry on the effect name, mirroring the A-side, and each registrar
+decides which hooks its effect needs. The hook category is never named in the data.
+
+**Extend the dispatch (eight items).** The hook framework is complete in its categories
+and incomplete in its reach, because transport — the one built S mechanic — is an
+attacker-side, own-turn effect that exercises none of it. Cat 3 reactors reach only the
+acting faction and never asset scope; roll hooks see only the roller's own hooks and
+fire in the Attack action alone; the Cat 4 asset-cost lookup is buyer-scoped;
+`GrantedMovementAbilities` has no caller; no hook is consulted on who may fight whom;
+and `on_purchase` needs a second dispatch route, because `ApplyAll` runs at cycle start.
 
 **Free relocate harness (ACD-4):** register an `AssetMovementGranter` from the asset's
 profile, **wire `GrantedMovementAbilities` into the movement phase** (the seam exists
 half-built and unconsumed today), and grow `MovementAbility` from its `{Name,
-Description}` placeholder to carry/reference the relocate parameters (Transit Web
-`W7-003`). Invokes A.001.2's primitive without spending the action.
+Description}` placeholder to carry the relocate parameters (Transit Web `SWN-W7-003`).
+Invokes A.001.2's primitive without spending the action, from one shared copy.
 
-**Covers:** the S-side profile→hook registration, the catalog's S-flag effects, the
-free relocate harness + movement-phase wiring; the two A-flag restriction abilities
-rerouted from A.001.2 (Marketers `coin_or_disable`, Seditionists `attach`/restrict-action)
-— their action-spent trigger is A-flag, but the persistent restriction they impose is
-enforced through the same attack/disable-restriction hook this initiative builds (AP-6).
-**Punts:** the A-side (A.001.2); the relocate primitive itself (consumes A.001.2's).
+**Covers:** the trigger/filter/gate/effect model and its loud-failure loader rules; the
+eight dispatch extensions; **19 assets** — every S-flag effect that registers a hook or
+answers a rule query, including the free relocate harness.
+**Punts:** the A-side (A.001.2); the relocate primitive itself (consumes A.001.2's);
+migrating `[transport]` onto the new model (deferred while it works — backlog refactor);
+the 14 assets that need new state, a new prompt, or a new subsystem (A.001.6). The two
+A-flag restriction abilities AP-6 rerouted here, Marketers and Seditionists, move on to
+A.001.6 with the rest of the restriction group.
+
+### A.001.6 — S-flag rule extensions (feature) — depends A.001.3
+
+The other half of the S side: the **14 assets whose effect needs game state, a prompt,
+or a subsystem the engine does not have.** Each one registers through A.001.3's model;
+what is missing is the thing the effect acts on. Six mechanisms, unequal in size:
+
+| Mechanism | Size | Assets |
+|---|---|---|
+| A change of asset owner | small | Hostile Takeover, Treachery |
+| State held on an asset (a restriction with a lifetime; unusable-until-repaired) | medium | Saboteurs, Marketers, Seditionists, Boltholes |
+| A prompt to a faction that is not acting (Cat 3 receives no collector) | medium | False Front, Medical Center, Monopoly |
+| A purchase that targets another asset | medium | Stealth |
+| A permission model for movement | large | Lobbyists, Popular Movement, Transport Lockdown |
+| Damage redirected into combat | medium | Cracked Comms |
+
+The permission model also picks up the transport bypass clauses that A.001.3 leaves
+alone: Deep Strike Landers and Blockade Runners move cargo past an objecting planetary
+government.
+
+**Covers:** the six mechanisms and the 14 assets that need them; Marketers, Seditionists
+and Monopoly, rerouted from A.001.2 by AP-6 and passed on from A.001.3.
+**Punts:** the model itself (A.001.3's). **Gates nothing** — H.A.W.K authoring can run
+before it, though a larger primitive set is available to the mechanical sort if it runs
+first.
 
 ### A.001.4 — Goals/tags neutralization + `_core` home (feature) — no deps
 
@@ -188,6 +237,10 @@ load**, not uniform:
   design questions (sub-block nesting and dead-field fate; Monopoly's home; the hybrid
   profile shapes and movement-phase wiring; the neutralization flavor line). These earn
   a genuine — if scoped — Discovery before Plan.
+- **A.001.6 — full Discovery, and a wide one.** Its six mechanisms are six separate
+  engine designs, and a permission model for movement is a subsystem the engine has
+  never had. The A.001.3 discovery **bounds** A.001.6 and deliberately does not design
+  it. Expect efforts (section 8), not a single plan.
 - **A.001.5 — does not map cleanly onto Discovery/Plan.** Its "discovery" is the
   precursor **lore-seed session** (an interview), and its execution loop (lore-gate →
   reflavor → mechanical sort → review) is already specified in the seed. The session
@@ -206,7 +259,7 @@ that owns it.
 | Whether any already-scaffolded campaign needs SWN-ID re-prefix migration | **A.001.1** |
 | Monopoly's flag-vs-text mismatch — re-derive its home from the mechanic | **A.001.2** |
 | Exact `[ability]` sub-block nesting + fate of each dead field (A-side) | **A.001.2** |
-| Exact `[effect]` sub-block nesting + fate of each dead field (S-side) | **A.001.3** |
+| Exact `[effect]` sub-block nesting + fate of each dead field (S-side) | **A.001.3** — *resolved in its Discovery:* an `[[effects]]` list of trigger / `filters` / `gates` / named param block; `[transport]` untouched, so ACD-5's hybrid stands |
 | Neutralization's flavor-vs-mechanic line + `_core` compose mechanics | **A.001.4** |
 | Precursor lore session — when it runs, how it seeds the canon | **A.001.5** (Effort 1) |
 | Custom session types (lore, ability-catalog) + `goals.md` no-op wording (process) | **Out-of-arc** (process backlog) |
@@ -222,6 +275,8 @@ context, not a separate context-reload).
 | Catalog mis-files free `relocate-other` as Cat 3 — it's a Cat 4 `AssetMovementGranter` | **A.001.3** |
 | `hooks.md` overstates the movement seam (`GrantedMovementAbilities` is unconsumed) | **A.001.3** (corrected when the call is wired) |
 | `goals.md` "intentional flavor" wording (incremental seam, not an end state) | **A.001.4** |
+| `hooks.md:74-75` says the effects engine registers asset-scoped hooks; it registers faction-scoped, and Cat 3 dispatch would not find asset-scoped hooks anyway. `effect-mutation.md` carries the same claim in a heading (line 63) while its body is correct (line 76) | **A.001.3** (found in its Discovery; fixed when Cat 3 dispatch grows asset scope) |
+| The catalog routes two S-flag effects to `coin_steal` / `coin_drain`; A.001.2 removed both `AbilityEffectType` values, so its "latent vocabulary" table is stale on the same point | **A.001.3** (found in its Discovery) |
 
 ## Cross-arc dependencies
 
@@ -235,6 +290,10 @@ Prerequisites — in-arc gates and the engine seams reached outside the registri
 - **A.001.5 passes ⟸ A.001.2 + A.001.3.** The mechanical sort reuses/extends built
   primitives; the passes can't classify against primitives that don't exist. A.001.5's
   lore-seed effort has no such gate.
+- **A.001.6 ⟸ A.001.3.** Its 14 assets register through A.001.3's model; what they need
+  is the game state, prompt, or subsystem the effect acts on. It gates nothing itself —
+  A.001.5 may run before it, with a smaller primitive set available to the mechanical
+  sort.
 - **"H.A.W.K playable" milestone ⟸ A.001.4.** A.001.4 doesn't gate authoring, but a
   playable H.A.W.K needs goals/tags composed from `_core`.
 - **Engine seam touched outside the registries:** A.001.3 wires the **movement phase**
@@ -298,4 +357,23 @@ relevant arch page at pre-merge).
   catalog's "flag picks the engine" rule rather than contradicting it: for these two the
   *trigger* is A-flag but the durable *effect* is S-side — the one place the surface
   splits across the engine boundary. Reconcile the catalog's A-flag-table placement of
-  the two when A.001.3 builds the restriction hook.
+  the two when the restriction hook is built. *(AP-7 moves that build, and these two
+  assets, from A.001.3 to A.001.6.)*
+- **AP-7 — The S side is two initiatives, A.001.3 and A.001.6, split on what an effect
+  *is*.** From the A.001.3 Discovery session. This plan sized A.001.3 by generalizing
+  the `transport` pattern. Inventorying the data changed the picture: 43 assets carry
+  the `S` flag, 8 are transport, 3 are dual-flag whose active side A.001.2 already
+  shipped, 2 need no code, and **30 are unbuilt** — 33 with the AP-6 reroutes. That is
+  not one initiative. The line that survived scrutiny is a property of the effect, not
+  of the code: **A.001.3 owns every effect that is a hook or a rule query (19 assets);
+  A.001.6 owns every effect that needs new state, a new prompt, or a new subsystem
+  (14).** Two earlier lines were tried and rejected — splitting on what the current
+  dispatch happens to reach (moves whenever the dispatch changes) and splitting on
+  whether new *state* is needed (wrong for `restrict_attack`, which stores nothing and
+  belongs with the other rule queries). The split is driven by size; nothing in A.001.6
+  is blocked by A.001.3. Two knock-on corrections to this plan: A.001.3 does **not**
+  generalize `[transport]` — it works, so it stays, and ACD-5's hybrid stands as the
+  arc-discovery wrote it; and the S-side dispatch work is larger than "wire
+  `GrantedMovementAbilities`", because roll hooks fire in the Attack action alone
+  (`RollWithHooks` has two call sites, both in `attack.go`), so widening them reaches
+  Expand Influence and the A-side contest.

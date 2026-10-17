@@ -224,7 +224,6 @@ func (state *derivation) inferWorldRegion(layout *layoutFile, world worldEntry, 
 		string(rune(world.At)), marker.Row, marker.Col, sortedKeys(candidates))
 }
 
-
 type markedHex struct {
 	region string
 	coord  spatial.HexCoord

@@ -7,7 +7,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
@@ -78,7 +80,7 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -105,12 +107,66 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations when defender wins, got %v", mutations)
+	}
+}
+
+// factionTestDie offers one budgeted extra d10, keep highest, on the acting side
+// of a contest only.
+type factionTestDie struct{}
+
+const factionTestDieKey = "test:faction-test-die"
+
+func (factionTestDie) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
+	if ctx.Phase != hooks.PhaseFactionTest {
+		return nil
+	}
+	return []hooks.ModifierOffer{{
+		Source:    "test",
+		BudgetKey: factionTestDieKey,
+		Apply: func(rollState *hooks.RollState) {
+			rollState.AddDie(10)
+			rollState.SetKeepHighest(1)
+		},
+	}}
+}
+
+// TestDispatch_ContestRollsThroughHooks: the contest's attack roll takes a hook's
+// extra die. Rolls [3, 9, 8]: attack keeps 9, defense 8, so the gate passes. Without
+// the hook, [3, 8] fails (TestDispatch_RevealStealth_DefenderWins). The offer's budget
+// is spent on the real acting faction, not the cross-step clone.
+func TestDispatch_ContestRollsThroughHooks(t *testing.T) {
+	faction, asset, def, factionState := makeDispatchFixture()
+	targetFaction := factionState.Factions["f2"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
+	collector.EXPECT().SelectModifiers(gomock.Any()).
+		DoAndReturn(func(offers []hooks.ModifierOffer) []hooks.ModifierOffer { return offers }).
+		Times(1)
+
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), factionTestDieKey, factionTestDie{})
+
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 9, 8}}, registry, factionState, nil, nil)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1 (gate passed); got %v", len(mutations), mutations)
+	}
+	if _, ok := mutations[0].(domain.AssetStealthCleared); !ok {
+		t.Errorf("mutations[0] type = %T, want AssetStealthCleared", mutations[0])
+	}
+	if spent := faction.HookBudgets[factionTestDieKey]; spent != 1 {
+		t.Errorf("real faction HookBudgets[%q] = %d, want 1", factionTestDieKey, spent)
 	}
 }
 
@@ -172,7 +228,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, factionState, nil, engine)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, nil, engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -204,7 +260,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins, reveal halts
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, factionState, nil, engine)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, nil, engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -218,9 +274,9 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 
 // TestDispatch_CrossStep_CoinProjection: a two-step self-relocate where the faction
 // can afford exactly one move. The cross-step projection applies step 1's CoinDelta to
-// the working faction, so step 2 reads Coin 0 and fails its affordability check —
-// proving the projection threads Coin, not just Location. Without it, step 2 would read
-// the stale pre-action balance and overdraw the faction.
+// the working faction, so step 2 reads Coin 0 and fails its affordability check before
+// it prompts — proving the projection threads Coin, not just Location. Without it, step
+// 2 would read the stale pre-action balance and overdraw the faction.
 func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 	acting := &domain.Asset{
 		ID:           "a1",
@@ -244,14 +300,11 @@ func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	gomock.InOrder(
-		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil),
-		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "mid"}}, nil),
-	)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil).
+		Times(1)
 
-	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, factionState, relocRulebook(), relocEngine())
+	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, nil, factionState, relocRulebook(), relocEngine())
 	if err == nil {
 		t.Fatal("Dispatch: expected insufficient-Coin error on step 2, got nil")
 	}
@@ -281,7 +334,7 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().ConfirmAbilityApplied(asset, def).Return(false, nil)
 
-	mutations, err := Dispatch(faction, asset, def, collector, nil, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, nil, nil, factionState, nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}

@@ -374,7 +374,7 @@ Re-grounding is most load-bearing for refactors (see section 5) but applies to a
 | Arc-Discovery / Arc-Plan / process redesign | Fable | Structure-setting sessions whose output constrains many future sessions (taxonomy, cross-cutting architecture, the process itself); most initiatives never need it |
 | Discovery | Opus | Always |
 | Plan | Opus | Always |
-| Execution | Sonnet | Default; suggest Opus when the phase involves heavy design or unusual complexity |
+| Execution | Opus | Default — the reasoning to adapt the plan, or to notice when work goes out of bounds |
 | Code review (interim or pre-merge) | Opus | Always — critical design review benefits from Opus reasoning |
 | End-of-phase docs and pre-merge checklist | Sonnet | Doc/journal/planned-work updates don't need Opus; the code-review step within the checklist uses Opus |
 

@@ -35,6 +35,26 @@ func TestNewPurchasedAsset(t *testing.T) {
 	}
 }
 
+func TestAsset_Active(t *testing.T) {
+	cases := []struct {
+		name  string
+		asset domain.Asset
+		want  bool
+	}{
+		{"ready, maintained, alive", domain.Asset{Ready: true, Maintained: true, CurrentHP: 1}, true},
+		{"not ready", domain.Asset{Ready: false, Maintained: true, CurrentHP: 1}, false},
+		{"unmaintained", domain.Asset{Ready: true, Maintained: false, CurrentHP: 1}, false},
+		{"destroyed", domain.Asset{Ready: true, Maintained: true, CurrentHP: 0}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.asset.Active(); got != tc.want {
+				t.Errorf("Active() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestNewPurchasedAsset_MonotonicID(t *testing.T) {
 	def := &domain.AssetDefinition{ID: "SWN-F1-001", HP: 4}
 	faction := &domain.Faction{

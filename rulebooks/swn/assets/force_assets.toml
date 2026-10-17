@@ -149,6 +149,24 @@ attacker_stat = "Force"
 defender_stat = "Force"
 damage = "2d6"
 
+[[assets.Zealots.effects]]
+trigger = "own_attack_hit"
+effect  = "self_damage"
+[assets.Zealots.effects.filters]
+owner = "own"
+scope = "self"
+[assets.Zealots.effects.self_damage]
+amount = "1d4"
+
+[[assets.Zealots.effects]]
+trigger = "own_counter_hit"
+effect  = "self_damage"
+[assets.Zealots.effects.filters]
+owner = "own"
+scope = "self"
+[assets.Zealots.effects.self_damage]
+amount = "1d4"
+
 [assets.CunningTrap]
 id = "SWN-F3-002"
 name = "Cunning Trap"
@@ -276,12 +294,23 @@ speed = 1
 type = "Starship"
 flags = ["S"]
 counter = ""
-description = "A ragtag lot of corsairs, pirates, privateers, and other deniable assets. When they successfully attack an enemy faction asset, they steal 1d4 Coin from the target faction. This theft can occur to a faction only once per turn, no matter how many Blockade Fleets attack. As an action, this asset may also move itself to a world within one hex."
+description = "A ragtag lot of corsairs, pirates, privateers, and other deniable assets. When they successfully attack an enemy faction asset, they steal 1d4 Coin from the target faction. This theft can occur to a faction only once per turn, no matter how many Blockade Fleets attack."
 
 [assets.BlockadeFleet.attack]
 attacker_stat = "Force"
 defender_stat = "Wealth"
 damage = "1d6"
+
+[[assets.BlockadeFleet.effects]]
+trigger = "own_attack_hit"
+effect  = "coin_steal"
+[assets.BlockadeFleet.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.BlockadeFleet.effects.gates]
+once_per = "target_faction"
+[assets.BlockadeFleet.effects.coin_steal]
+amount = "1d4"
 
 [assets.PretechLogistics]
 id = "SWN-F5-002"
@@ -323,6 +352,13 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "2d6+2"
 
+[[assets.PsychicAssassins.effects]]
+trigger = "on_purchase"
+effect  = "apply_stealth"
+[assets.PsychicAssassins.effects.filters]
+owner = "own"
+scope = "self"
+
 [assets.PretechInfantry]
 id = "SWN-F6-001"
 name = "Pretech Infantry"
@@ -355,6 +391,17 @@ type = "Facility"
 flags = ["S"]
 counter = "2d6+6"
 description = "Massive mag cannons and gravitic braker gun arrays designed to defend against starship bombardments and repel unauthorized landing. Planetary defenses can only defend against attacks by Starship-type assets."
+
+[[assets.PlanetaryDefenses.effects]]
+trigger    = "attack_eligibility_query"
+effect     = "restrict_attack"
+[assets.PlanetaryDefenses.effects.filters]
+owner      = "rival"
+scope      = "self"
+asset_type = ["Starship"]
+[assets.PlanetaryDefenses.effects.restrict_attack]
+side  = "defense"
+allow = "only_listed"
 
 [assets.GravtankFormation]
 id = "SWN-F6-003"
@@ -409,6 +456,29 @@ type = "Facility"
 flags = ["S"]
 counter = "2d8+2"
 description = "A complex web of braked-AI supported sensors and redundant security checks used to defeat attempts to infiltrate an area. They can defend only against attacks versus Cunning, but add an additional die to the defender's roll."
+
+[[assets.IntegralProtocols.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.IntegralProtocols.effects.filters]
+owner     = "own"
+scope     = "self"
+phase     = ["defense"]
+attribute = "Cunning"
+[assets.IntegralProtocols.effects.bonus_die]
+sides = 10
+count = 1
+
+[[assets.IntegralProtocols.effects]]
+trigger   = "attack_eligibility_query"
+effect    = "restrict_attack"
+[assets.IntegralProtocols.effects.filters]
+owner     = "rival"
+scope     = "self"
+attribute = "Cunning"
+[assets.IntegralProtocols.effects.restrict_attack]
+side  = "defense"
+allow = "only_listed"
 
 [assets.SpaceMarines]
 id = "SWN-F7-003"

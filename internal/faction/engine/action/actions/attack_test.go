@@ -185,6 +185,9 @@ func TestAttack_AttackerWins_NonLethal(t *testing.T) {
 	if delta.AssetID != "d1" || delta.Delta != -4 {
 		t.Errorf("AssetHPDelta = {%s, %d}, want {d1, -4}", delta.AssetID, delta.Delta)
 	}
+	if delta.CausedByAssetID != "a1" {
+		t.Errorf("AssetHPDelta.CausedByAssetID = %q, want %q", delta.CausedByAssetID, "a1")
+	}
 }
 
 // TestAttack_AttackerWins_Lethal: damage exceeds defender HP; AssetRemoved emitted inline.
@@ -259,6 +262,12 @@ func TestAttack_DefenderWins_WithCounter(t *testing.T) {
 	if delta.AssetID != "a1" || delta.Delta != -3 {
 		t.Errorf("AssetHPDelta = {%s, %d}, want {a1, -3}", delta.AssetID, delta.Delta)
 	}
+	if delta.CausedByAssetID != "d1" {
+		t.Errorf("AssetHPDelta.CausedByAssetID = %q, want %q", delta.CausedByAssetID, "d1")
+	}
+	if !delta.Counter {
+		t.Error("AssetHPDelta.Counter = false, want true for counterattack damage")
+	}
 }
 
 // TestAttack_Tie: equal rolls; both attack damage and counterattack apply.
@@ -279,12 +288,12 @@ func TestAttack_Tie(t *testing.T) {
 		t.Fatalf("len(mutations) = %d, want 2; got %v", len(mutations), mutations)
 	}
 	defDelta, ok := mutations[0].(domain.AssetHPDelta)
-	if !ok || defDelta.AssetID != "d1" || defDelta.Delta != -4 {
-		t.Errorf("mutations[0] = %v, want AssetHPDelta{d1, -4}", mutations[0])
+	if !ok || defDelta.AssetID != "d1" || defDelta.Delta != -4 || defDelta.CausedByAssetID != "a1" || defDelta.Counter {
+		t.Errorf("mutations[0] = %v, want AssetHPDelta{d1, -4} caused by a1, not a counter", mutations[0])
 	}
 	atkDelta, ok := mutations[1].(domain.AssetHPDelta)
-	if !ok || atkDelta.AssetID != "a1" || atkDelta.Delta != -2 {
-		t.Errorf("mutations[1] = %v, want AssetHPDelta{a1, -2}", mutations[1])
+	if !ok || atkDelta.AssetID != "a1" || atkDelta.Delta != -2 || atkDelta.CausedByAssetID != "d1" || !atkDelta.Counter {
+		t.Errorf("mutations[1] = %v, want AssetHPDelta{a1, -2} caused by d1, a counter", mutations[1])
 	}
 }
 
@@ -308,8 +317,8 @@ func TestAttack_RedirectToBase_Accepted(t *testing.T) {
 		t.Fatalf("len(mutations) = %d, want 2; got %v", len(mutations), mutations)
 	}
 	baseDelta, ok := mutations[0].(domain.BaseHPDelta)
-	if !ok || baseDelta.BaseID != "f2-base" || baseDelta.Delta != -4 {
-		t.Errorf("mutations[0] = %v, want BaseHPDelta{f2-base, -4}", mutations[0])
+	if !ok || baseDelta.BaseID != "f2-base" || baseDelta.Delta != -4 || baseDelta.CausedByAssetID != "a1" {
+		t.Errorf("mutations[0] = %v, want BaseHPDelta{f2-base, -4} caused by a1", mutations[0])
 	}
 	factionDelta, ok := mutations[1].(domain.FactionHPDelta)
 	if !ok || factionDelta.FactionID != "f2" || factionDelta.Delta != -4 {
@@ -366,8 +375,12 @@ func TestAttack_RedirectToBase_Declined(t *testing.T) {
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
 	}
-	if _, ok := mutations[0].(domain.AssetHPDelta); !ok {
-		t.Errorf("mutations[0] type = %T, want AssetHPDelta", mutations[0])
+	delta, ok := mutations[0].(domain.AssetHPDelta)
+	if !ok {
+		t.Fatalf("mutations[0] type = %T, want AssetHPDelta", mutations[0])
+	}
+	if delta.CausedByAssetID != "a1" {
+		t.Errorf("AssetHPDelta.CausedByAssetID = %q, want %q", delta.CausedByAssetID, "a1")
 	}
 }
 
@@ -609,6 +622,52 @@ func TestAttack_InTransitAttacker_EmptyHex_NoTarget(t *testing.T) {
 	}
 }
 
+// refuseSide is an attack-eligibility rule that refuses one side.
+type refuseSide struct{ side hooks.AttackSide }
+
+func (stub refuseSide) MayFight(query hooks.AttackEligibilityQuery) bool {
+	return query.Side != stub.side
+}
+
+// TestAttack_EligibilityRuleRemovesDefender: the only defender refuses to defend,
+// so the attacker has no target.
+func TestAttack_EligibilityRuleRemovesDefender(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, _, _ := makeAttackState(8, 8, "force-defender", false)
+	faction := factionState.Factions["f1"]
+
+	registry := hooks.NewRegistry()
+	registry.RegisterAttackEligibilityRule(hooks.AssetScope("f2", "d1"), "test", refuseSide{side: hooks.SideDefense})
+
+	ctrl := gomock.NewController(t)
+	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, registry, indexFromState(factionState))
+	if attack.Validate(faction, factionState, rulebook) {
+		t.Error("expected Validate false: the only defender refuses to defend")
+	}
+}
+
+// TestAttack_EligibilityRuleBlocksCounter: the defender wins but its rule refuses
+// to counter, so no counter damage lands. Rolls: attack=2, defense=9.
+func TestAttack_EligibilityRuleBlocksCounter(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, "force-defender", false)
+	faction := factionState.Factions["f1"]
+
+	registry := hooks.NewRegistry()
+	registry.RegisterAttackEligibilityRule(hooks.AssetScope("f2", "d1"), "test", refuseSide{side: hooks.SideCounter})
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 3}}, faction, factionState, rulebook, registry)
+
+	if len(mutations) != 0 {
+		t.Errorf("expected no mutations when the defender may not counter, got %v", mutations)
+	}
+}
+
 // stubTieResolverForAttack always returns a fixed TieOutcome.
 type stubTieResolverForAttack struct{ outcome hooks.TieOutcome }
 
@@ -631,7 +690,6 @@ func TestAttack_TieResolver_DefenderWins(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
-	collector.EXPECT().SelectModifiers(gomock.Any()).Return(nil).Times(2)
 
 	mutations := runAttack(t, collector, &fixedRoller{values: []int{5, 5, 3}}, faction, factionState, rulebook, registry)
 

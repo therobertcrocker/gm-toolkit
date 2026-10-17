@@ -15,8 +15,31 @@
 > those five. This page stays the **frozen design artifact** for the F.022 arc;
 > for as-built truth see [actions](actions.md) (ability dispatch), [effect &
 > mutation](effect-mutation.md) (the mutation vocabulary), and
-> [world & movement](world-movement.md) (relocate). The S-side and the remaining
-> A-side effects (Marketers, Seditionists, Monopoly) are still future.
+> [world & movement](world-movement.md) (relocate). The remaining A-side effects
+> (Marketers, Seditionists, Monopoly) are still future.
+>
+> **As-built (A.001.3 Effort 1):** the S-side model ships. An asset declares an
+> `[[effects]]` list; the effects engine keys a registrar table on the effect name
+> (`effect/registrar.go`, `effects/registrars.go`) and checks every entry against it
+> at engine construction. Party Machine's `coin_gain` is the first S-side effect; the
+> rest of the S-flag table below is still future.
+>
+> **As-built (A.001.3 Effort 4):** the Cat 4 rule queries ship. `cost_surcharge`
+> (Local Investments), `tech_level_floor` (Laboratory, Pretech Researchers, R&D
+> Department) and `restrict_attack` (Planetary Defenses, Lawyers, Integral
+> Protocols) register Cat 4 hooks. `restrict_attack` answers the new
+> `AttackEligibilityRule` query ([hooks](hooks.md)), not a tie resolver. A ✅ in the
+> S-flag table marks an authored `[[effects]]` entry.
+>
+> **As-built (A.001.3 Effort 5):** free relocate-other ships as `grant_movement`
+> (Transit Web), a Cat 4 `AssetMovementGranter` — not the Cat 3 reactor this page
+> first filed it as. The movement phase offers each grant once, after the drift
+> decisions, through the shared `engine/relocate` package that the A-side
+> `relocate` handler also calls. Start-stealthed ships as `apply_stealth` (Psychic
+> Assassins) on the new `on_purchase` phase route — not the Cat 4 `RuleModifier`
+> this page first filed it as. The action phase fires it for an asset that Buy Asset
+> or a purchase enabler adds (not a refit). Tripwire Cells' `stealth_arrival` now
+> also catches a rival asset bought stealthed on their world.
 
 ## Purpose
 
@@ -59,14 +82,14 @@ half-wired. The catalog reuses and repairs it rather than inventing fresh:
 
 | Field / value | Intended use | Reality today |
 |---|---|---|
-| `AbilityDefinition.Die *DiceRoll` | roll for an outcome-table ability | **dead** — `convertAbility` never reads it |
-| `AbilityDefinition.Outcomes []AbilityOutcome{From,To,Coin}` | die-range → coin payout | **dead** — never parsed |
-| `AbilityEffectType` = `reveal_stealth` | reveal effect | **wired** (Informers only) |
-| `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | parse fine, **dispatched nowhere** |
-| `[[ability.steps]]` in Seductress TOML | multi-step ability | **silently dropped** — `abilityRecord` has no `steps` field, so Seductress's reveal no-ops today |
+| `RollTable.Die DiceRoll` | roll for an outcome-table ability | **wired** — parsed into `AbilityStep.Roll` |
+| `RollTable.Outcomes []AbilityOutcome{From,To,Coin,DestroySelf}` | die-range → coin payout | **wired** — parsed into `AbilityStep.Roll` |
+| `AbilityEffectType` = `reveal_stealth` | reveal effect | **wired** (Informers, Seductress) |
+| `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | **removed** by A.001.2 — `AbilityEffectType` has five constants, none a coin transfer. The S-side `coin_steal` is a `SpecialEffectType` (`domain/effect.go`) |
+| `[[ability.steps]]` in Seductress TOML | multi-step ability | **wired** — `abilityRecord.Steps` parses it (relocate, then reveal) |
 
-The economic cluster (below) is the clearest payoff: `Die` + `Outcomes` already
-models it, and only the parser and a handler are missing.
+A.001.2 built the parser path and handlers for every A-side row above; see
+[actions](actions.md) for the as-built ability dispatch.
 
 ---
 
@@ -129,8 +152,11 @@ flowchart LR
 ## S-flag — the effects engine (passive / reactive)
 
 The `S`-flag specials register [hooks](hooks.md) at cycle start through
-`EffectsEngine.ApplyAll`. Each effect maps to one of the **five hook
-categories**; the catalog's job on this side is to define the data shape that
+`EffectsEngine.ApplyAll`. Most effects map to one of the **five hook
+categories**, numbered as in `hooks/doc.go` (Cat 4 is the `RuleModifier` family,
+Cat 5 is `TieResolver`). Phase-event effects are the exception: a turn-start
+effect fires from a direct read of the asset's definition at the start of the
+bookkeeping phase, not from a registered hook. The catalog's job on this side is to define the data shape that
 lets a handler register the right hook from a profile, the way `transport`
 already does. (`effect-mutation.md` already names the hook category for several
 of these; this table reconciles with it and completes the survey.)
@@ -138,27 +164,27 @@ of these; this table reconciles with it and completes the survey.)
 | Effect | Hook category | Assets |
 |---|---|---|
 | **transport** (carrier + cargo) | Cat 3 `MutationReactor` | Heavy Drop `SWN-F2-001`, Beachhead Landers `SWN-F4-001`, Extended Theater `SWN-F4-002`, Deep Strike Landers `SWN-F7-001`, Smugglers `SWN-C1-001`, Freighter Contract `SWN-W2-001`, Shipping Combine `SWN-W4-001`, Blockade Runners `SWN-W5-003` ✅ |
-| **relocate-other (free)** | Cat 3 `MutationReactor` | Transit Web `SWN-W7-003` — same effect as the A-flag relocate, but no action |
-| **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` |
-| **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001`, Franchise `SWN-W1-001` → `coin_steal` |
-| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Local Investments `SWN-W1-003` (purchase surcharge), and Monopoly's reactive reading → `coin_drain` |
+| **relocate-other (free)** | Cat 4 `AssetMovementGranter` → `grant_movement`, run by the movement phase through `engine/relocate` | Transit Web `SWN-W7-003` ✅ — same effect as the A-flag relocate, but no action |
+| **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` ✅ |
+| **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001` ✅, Franchise `SWN-W1-001` ✅ → `coin_steal` |
+| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Monopoly's reactive reading → `coin_drain`. Local Investments was listed here; it ships as a purchase surcharge (row below) |
 | **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `SWN-C1-003`, Boltholes `SWN-C5-003`, Medical Center `SWN-W4-003` |
 | **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
-| **passive income** (per-turn Coin) | Cat 3 `MutationReactor` (turn-start) | Party Machine `SWN-C4-001` |
-| **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` | Tripwire Cells `SWN-C4-003`, Panopticon Matrix `SWN-C8-001` |
-| **start-stealthed** | Cat 5 `RuleModifier` (on add) | Psychic Assassins `SWN-F5-003` |
-| **grant-stealth** (quality bought for another asset) | Cat 5 `RuleModifier` | Stealth `SWN-C3-002` |
-| **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `SWN-F7-002` (Cunning defense), Surveyors `SWN-W2-004` (Expand Influence), Panopticon `SWN-C8-001` (Cunning attacks/defenses) |
-| **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` |
-| **negate-bonus** (suppress tag dice) | Cat 1 `RollModifier` | Blackmail `SWN-C2-003` |
+| **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
+| **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` (on arrival); turn-start phase route (per turn) | Tripwire Cells `SWN-C4-003` ✅, Panopticon Matrix `SWN-C8-001` ✅ |
+| **start-stealthed** | purchase phase route (direct definition read, not a hook) | Psychic Assassins `SWN-F5-003` ✅ |
+| **grant-stealth** (quality bought for another asset) | Cat 4 `RuleModifier` | Stealth `SWN-C3-002` |
+| **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `SWN-F7-002` ✅ (Cunning defense), Surveyors `SWN-W2-004` ✅ (Expand Influence), Panopticon `SWN-C8-001` ✅ (Cunning attacks/defenses) |
+| **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` ✅ |
+| **negate-bonus** (suppress tag dice) | Cat 1 `RollOfferFilter` | Blackmail `SWN-C2-003` ✅ |
 | **reflect-on-defense** | Cat 2 `RollResultHook` / rule | Cracked Comms `SWN-C5-002` |
-| **attack/defense restriction** | Cat 5 `TieResolver` / rule | Planetary Defenses `SWN-F6-002` (Starship-only), Lawyers `SWN-W2-002` (not vs Force) |
+| **attack/defense restriction** | Cat 4 `AttackEligibilityRule` → `restrict_attack` | Planetary Defenses `SWN-F6-002` ✅ (defends only vs Starship), Lawyers `SWN-W2-002` ✅ (no attack or counter vs Force), Integral Protocols `SWN-F7-002` ✅ (defends only vs Cunning attacks) |
 | **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `SWN-C2-002` (no abilities), Transport Lockdown `SWN-C6-001` (no transport in) |
-| **cost-ignore** (skip a Coin loss, once/turn) | Cat 4 `AssetCostModifier` / rule | Bank `SWN-W4-004` |
-| **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` | Local Investments `SWN-W1-003` |
-| **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `AssetCostModifier` | Laboratory `SWN-W3-002`, Pretech Researchers `SWN-W5-002`, R&D Department `SWN-W6-002` |
+| **cost-ignore** (skip a Coin loss, once/turn) | Cat 3 `MutationReactor` | Bank `SWN-W4-004` ✅ |
+| **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` → `cost_surcharge` | Local Investments `SWN-W1-003` ✅ |
+| **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `WorldTechLevelModifier` → `tech_level_floor` | Laboratory `SWN-W3-002` ✅, Pretech Researchers `SWN-W5-002` ✅, R&D Department `SWN-W6-002` ✅ |
 | **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `SWN-C7-001` (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
-| **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` |
+| **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` ✅ |
 
 **Dual-flag assets** (`A`+`S`: Informers, Seductress, Covert Shipping) resolve
 their *active* mechanic through the abilities engine; any passive side, if it
@@ -211,7 +237,9 @@ over 13 assets; the S-side maps cleanly onto the 5 existing hook categories), so
 - **`relocate-other` is a parametric near-miss on *both* surfaces** — Covert
   Shipping/Transit Net (A) and Transit Web (S) all want a relocation the
   carrier-shaped `transport` primitive can't express. Three assets, one missing
-  primitive.
+  primitive. *As built (A.001.3 Effort 5):* both surfaces now run through one
+  shared package, `engine/relocate` — the A side as a spent ability, Transit Web
+  as a free movement grant ([world & movement](world-movement.md)).
 - **`coin_steal`/`coin_drain` are declared but dead** — the enum anticipated the
   effect; no dispatch consumes it.
 - **Seductress silently no-ops** — its `[[ability.steps]]` is dropped at parse,

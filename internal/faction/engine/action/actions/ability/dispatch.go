@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -25,6 +26,7 @@ type StepContext struct {
 	Rulebook     *rulebook.Rulebook
 	Collector    action.Collector   // for handlers with a secondary prompt (relocate)
 	WorldEngine  *world.WorldEngine // for movement effects (relocate); nil for non-spatial
+	Registry     *hooks.Registry    // for purchase_enabler's asset-cost chain
 }
 
 // EffectHandler emits the mutations for one resolved step.
@@ -34,7 +36,7 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectRevealStealth:    revealStealth,
 	domain.EffectCoinDelta:        coinDelta,
 	domain.EffectPurchaseDiscount: purchaseDiscount,
-	domain.EffectRelocate:         relocate,
+	domain.EffectRelocate:         relocateAssets,
 	domain.EffectPurchaseEnabler:  purchaseEnabler,
 }
 
@@ -48,6 +50,7 @@ func Dispatch(
 	def *domain.AssetDefinition,
 	collector action.Collector,
 	roller domain.Roller,
+	registry *hooks.Registry,
 	factionState *state.FactionState,
 	rb *rulebook.Rulebook,
 	worldEngine *world.WorldEngine,
@@ -86,7 +89,8 @@ func Dispatch(
 		if err != nil {
 			return nil, err
 		}
-		passed, err := passesGate(step, workingFaction, target, roller)
+		// deliberate: the real faction, not workingFaction, because a roll hook's budget spent on the clone would be lost (Effort 3 plan, Decision 12).
+		passed, err := passesGate(step, faction, workingAsset, target, registry, collector, roller, factionState, rb)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +112,7 @@ func Dispatch(
 			Rulebook:     rb,
 			Collector:    collector,
 			WorldEngine:  worldEngine,
+			Registry:     registry,
 		})
 		if err != nil {
 			return nil, err

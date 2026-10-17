@@ -177,7 +177,15 @@ can cascade to bases and faction HP.
   the new asset through `domain.NewPurchasedAsset` and gate it through
   `domain.CanPurchase` / `PurchaseTerms`, and both consume a
   `PendingPurchaseDiscount` under the same half-base-price floor clamp — so the two
-  purchase surfaces cannot drift on cost, permission, or discount rules.
+  purchase surfaces cannot drift on cost, permission, or discount rules. Every
+  purchase path, the Buy Asset menu included, prices through the full
+  `ResolveAssetCost` chain, never `def.Cost`: once a cost hook can raise a price
+  (`cost_surcharge`), a check against the base price offers a def that `Resolve`
+  then refuses. The discount floor applies before the surcharge, and the
+  surcharge is added back (`dispatch.DiscountedCost`), so no discount removes it.
+  Each surcharge is charged as its own `CoinDelta`, caused by the faction that
+  imposed it (`dispatch.PurchaseCharges`), so a Bank can absorb a cost a rival
+  imposed. (s-flag-effect-registry plan, Decision Records 23 and 27.)
 
 ## Dependencies
 

@@ -8,17 +8,18 @@
 4. Always follow Robert's decisions exactly. When he specifies order, structure, or behavior, implement it precisely — do not substitute own judgement.
 5. Always use the LSP tools available to search through the existing codebase - don't use grep
 6. Always create a to-do list for any series of tasks, and make regular check-ins with Robert to confirm the next steps. Do not execute a series of tasks without explicit confirmation of the plan.
-7. Before making a commit, do the following:
+7. Always use asd-ste100 simplified technical english
+8. Before making a commit, do the following:
    1. Log any execution-time decisions (or reversals of planned decisions) in the initiative plan's **Decision Record** section. Append and reconcile: when execution overrides a planned decision, record the reversal with rationale and fix the plan body so it doesn't lie. (The old decisions log is a frozen archive; see `session-modes.md` section 10, Decision records.)
    2. All file changes must be staged and committed, even if they aren't directly related to the feature at hand. Lost work is unacceptable. If you are unsure whether a change should be committed, ask.
-8. Before merging a branch, do the following (step-by-step, in order):
+9. Before merging a branch, do the following (step-by-step, in order):
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Use /code-review skill. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Promote durable decisions: graduate architecturally-significant entries from the plan's Decision Record into the relevant architecture page's `Key Decisions` section (`docs/architecture/`). Micro-decisions stay in the plan as provenance.
    3. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred items that arose during the work. If a feature was completed, remove it from the planned work doc.
    4. Move the initiative's discovery and plan docs to their `completed/` subdirectories (arc artifacts stay in `docs/initiatives/arcs/<arc-name>/`).
-9. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
-10. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
-11. Three Principles of Code:
+10. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
+11. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
+12. Three Principles of Code:
     1. **Clarity:** Code should be easy to read and understand. Prioritize readability over cleverness or brevity.
     2. **Correctness:** Code should do what it's supposed to do, and handle edge cases gracefully. Don't just solve the happy path.
     3. **Maintainability:** Code should be organized and structured in a way that makes it easy to modify and extend in the future. Avoid unnecessary complexity.
@@ -71,7 +72,7 @@ Before each mode transition (including mid-session shifts, e.g. moving from exec
 | Arc-Discovery / Arc-Plan / process redesign | Fable  | Structure-setting sessions whose output constrains many future sessions (taxonomy, cross-cutting architecture, the process itself); most initiatives never need it |
 | Discovery                                 | Opus   | Always                                                                |
 | Plan                                      | Opus   | Always                                                                |
-| Execution (code)                          | Sonnet | Default for code commits; suggest Opus for Refactoring Efforts or if the phase involves heavy design decisions or unusual complexity |
+| Execution (code)                          | Opus   | Default for code commits — the reasoning to adapt the plan, or to notice when work goes out of bounds |
 | Generative documentation                  | Opus   | Authoring real docs (architecture pages, contributor guides) — Robert does not trust Sonnet for documentation work. The split is mechanical-vs-generative, not code-vs-docs |
 | Code review (interim or pre-merge)        | Opus   | Always — critical design review benefits from Opus reasoning          |
 | End-of-phase mechanical docs & pre-merge checklist | Sonnet | *Mechanical* upkeep only — flipping a note, planned-work/journal table edits; the code-review step within the checklist uses Opus (above) |

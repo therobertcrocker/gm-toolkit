@@ -67,7 +67,7 @@ func (o SelectAction) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 	return o, cmd
 }
 
-func (o SelectAction) View() string     { return o.form.View() }
+func (o SelectAction) View() string      { return o.form.View() }
 func (o SelectAction) Help() help.KeyMap { return cancelFormHelp{} }
 
 var _ Overlay = SelectAction{}

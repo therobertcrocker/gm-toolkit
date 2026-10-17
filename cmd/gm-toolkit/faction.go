@@ -77,7 +77,10 @@ func factionRun(debug bool, campaignOverride string) error {
 		factionState.CampaignID = camp.ID()
 	}
 
-	eng := engine.NewWithRulebook(rb, world.NewWithMap(spatialMap, log), log)
+	eng, err := engine.NewWithRulebook(rb, world.NewWithMap(spatialMap, log), log)
+	if err != nil {
+		return fmt.Errorf("faction: %w", err)
+	}
 
 	return tui.Run(eng, factionState, &paths, rb, spatialMap, log)
 }

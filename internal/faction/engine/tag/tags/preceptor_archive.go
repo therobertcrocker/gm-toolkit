@@ -11,16 +11,10 @@ const PreceptorArchiveTagID = "T-013"
 // Preceptor Archive tag. Reduces the Coin cost of TL4+ asset purchases by 1.
 type PreceptorArchiveCostModifier struct{}
 
-func (modifier *PreceptorArchiveCostModifier) ModifyAssetCost(_ *domain.Faction, def *domain.AssetDefinition, _ string, baseCost int) int {
-	var newCost int
+func (modifier *PreceptorArchiveCostModifier) ModifyAssetCost(_ *domain.Faction, def *domain.AssetDefinition, _ string, query *hooks.AssetCostQuery) {
 	if def.TechLevel >= 4 {
-		newCost = baseCost - 1
-	} else {
-		newCost = baseCost
+		query.Cost = max(query.Cost-1, 0)
 	}
-
-	return max(newCost, 0)
-
 }
 
 type PreceptorArchiveHandler struct{}

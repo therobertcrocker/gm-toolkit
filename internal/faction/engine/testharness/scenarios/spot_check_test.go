@@ -35,7 +35,10 @@ func TestSpotCheck_RenderedOutput(t *testing.T) {
 			t.Fatalf("rulebook.Load: %v", err)
 		}
 
-		eng := engine.NewWithRulebook(rb, world.NewWithMap(&testharness.StubSpatialMap{}, log), log)
+		eng, err := engine.NewWithRulebook(rb, world.NewWithMap(&testharness.StubSpatialMap{}, log), log)
+		if err != nil {
+			t.Fatalf("engine.NewWithRulebook: %v", err)
+		}
 
 		factionState := &state.FactionState{CampaignID: "spot-check", Factions: make(map[string]*domain.Faction)}
 		for _, id := range []string{"alpha", "beta"} {

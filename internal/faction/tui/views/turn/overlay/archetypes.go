@@ -68,7 +68,7 @@ func (o SelectOverlay[T]) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 	return o, cmd
 }
 
-func (o SelectOverlay[T]) View() string     { return withHeader(o.header, o.form.View()) }
+func (o SelectOverlay[T]) View() string      { return withHeader(o.header, o.form.View()) }
 func (o SelectOverlay[T]) Help() help.KeyMap { return cancelFormHelp{} }
 
 // --- MultiSelectOverlay[T]: multi-select with optional cap ---
@@ -112,7 +112,7 @@ func (o MultiSelectOverlay[T]) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 	return o, cmd
 }
 
-func (o MultiSelectOverlay[T]) View() string     { return withHeader(o.header, o.form.View()) }
+func (o MultiSelectOverlay[T]) View() string      { return withHeader(o.header, o.form.View()) }
 func (o MultiSelectOverlay[T]) Help() help.KeyMap { return cancelFormHelp{} }
 
 // --- ConfirmOverlay: yes/no ---
@@ -150,7 +150,7 @@ func (o ConfirmOverlay) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 	return o, cmd
 }
 
-func (o ConfirmOverlay) View() string     { return withHeader(o.header, o.form.View()) }
+func (o ConfirmOverlay) View() string      { return withHeader(o.header, o.form.View()) }
 func (o ConfirmOverlay) Help() help.KeyMap { return cancelFormHelp{} }
 
 var (

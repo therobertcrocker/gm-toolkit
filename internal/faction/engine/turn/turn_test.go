@@ -223,8 +223,8 @@ func TestApplyBookkeeping_Income(t *testing.T) {
 				t.Fatalf("ApplyBookkeeping() error: %v", err)
 			}
 			if err := mutation.New(slog.New(slog.DiscardHandler)).Apply(s, mutations, slog.New(slog.DiscardHandler)); err != nil {
-					t.Fatalf("Apply() unexpected error: %v", err)
-				}
+				t.Fatalf("Apply() unexpected error: %v", err)
+			}
 			if s.Factions["f"].Coin != tt.wantIncome {
 				t.Errorf("Coin after income: got %d, want %d", s.Factions["f"].Coin, tt.wantIncome)
 			}

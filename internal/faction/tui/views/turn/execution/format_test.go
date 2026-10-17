@@ -16,11 +16,17 @@ import (
 // stubAction satisfies action.Action with only Name() returning a real value.
 type stubAction struct{ name string }
 
-func (s stubAction) Name() string                                                                 { return s.name }
-func (s stubAction) Validate(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool { return true }
-func (s stubAction) Inputs(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error  { return nil }
-func (s stubAction) Resolve(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error { return nil }
-func (s stubAction) Output() ([]domain.Mutation, error)                                           { return nil, nil }
+func (s stubAction) Name() string { return s.name }
+func (s stubAction) Validate(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
+	return true
+}
+func (s stubAction) Inputs(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
+	return nil
+}
+func (s stubAction) Resolve(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
+	return nil
+}
+func (s stubAction) Output() ([]domain.Mutation, error) { return nil, nil }
 
 var _ action.Action = stubAction{}
 

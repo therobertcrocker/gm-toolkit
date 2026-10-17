@@ -92,4 +92,8 @@ func (p *phaseCollector) SelectTransportCargo(transport *domain.Asset, eligibleC
 	return chosen, nil
 }
 
+func (p *phaseCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	return p.adapter.selectRelocateOrders(acting, candidates, candidateWorlds, maxAssets)
+}
+
 var _ engine.PhaseCollector = (*phaseCollector)(nil)

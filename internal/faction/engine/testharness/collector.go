@@ -42,8 +42,8 @@ type ScriptedCollector struct {
 	SelectStatRaiseFn             func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
 	SelectMovementDecisionsFn     func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
 	SelectTransportCargoFn        func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
-	SelectChangeHomeworldTargetFn      func(*domain.Faction, *state.FactionState) (string, error)
-	SelectPurchaseEnablerAssetFn       func(string, []action.PurchaseEnablerOption) (*domain.AssetDefinition, error)
+	SelectChangeHomeworldTargetFn func(*domain.Faction, *state.FactionState) (string, error)
+	SelectPurchaseEnablerAssetFn  func(string, []action.PurchaseEnablerOption) (*domain.AssetDefinition, error)
 }
 
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {

@@ -112,6 +112,13 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "1d4+1"
 
+[[assets.Blackmail.effects]]
+trigger = "enemy_roll_at_me"
+effect  = "remove_tag_dice"
+[assets.Blackmail.effects.filters]
+owner = "rival"
+scope = "self"
+
 [assets.Seductress]
 id = "SWN-C2-004"
 name = "Seductress"
@@ -214,6 +221,15 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "2d6"
 
+[[assets.PartyMachine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"
+[assets.PartyMachine.effects.filters]
+owner = "own"
+scope = "self"
+[assets.PartyMachine.effects.coin_gain]
+amount = "1"
+
 [assets.VanguardCadres]
 id = "SWN-C4-002"
 name = "Vanguard Cadres"
@@ -246,6 +262,18 @@ type = "Special Forces"
 flags = ["S"]
 counter = "1d4"
 description = "Observers alert to the arrival of stealthed units. Whenever a stealthed asset lands or is purchased on a planet with Tripwire Cells, the Cells make an immediate Cunning vs. Cunning attack against the owning faction. If successful, the asset loses its stealth."
+
+[[assets.TripwireCells.effects]]
+trigger = "stealth_arrival"
+effect  = "clear_stealth"
+[assets.TripwireCells.effects.filters]
+owner    = "rival"
+scope    = "world"
+stealthy = true
+[assets.TripwireCells.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
 
 [assets.Seditionists]
 id = "SWN-C4-004"
@@ -396,6 +424,30 @@ flags = ["S"]
 counter = "2d8"
 description = "Exhaustively cataloged psychometric records on important local figures. Once per turn, allows the faction to reroll one die for an action on that world or force an enemy faction to reroll one die. This reroll can only be forced once per turn."
 
+[[assets.BookOfSecrets.effects]]
+trigger = "own_roll"
+effect  = "reroll"
+[assets.BookOfSecrets.effects.filters]
+owner = "own"
+scope = "world"
+[assets.BookOfSecrets.effects.gates]
+once_per = "owner_faction"
+[assets.BookOfSecrets.effects.reroll]
+dice     = 1
+elective = true
+
+[[assets.BookOfSecrets.effects]]
+trigger = "enemy_roll_at_me"
+effect  = "reroll"
+[assets.BookOfSecrets.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.BookOfSecrets.effects.gates]
+once_per = "owner_faction"
+[assets.BookOfSecrets.effects.reroll]
+dice     = 1
+elective = true
+
 [assets.Treachery]
 id = "SWN-C7-003"
 name = "Treachery"
@@ -423,3 +475,27 @@ type = "Logistics Facility"
 flags = ["S"]
 counter = "1d6"
 description = "Weaves braked-AI intelligence analysts into a web of observation. Every rival Stealthed asset on the planet must succeed in a Cunning vs. Cunning test at the beginning of every turn or lose their Stealth. The owner also gains an additional die on all Cunning attacks and defenses on that planet."
+
+[[assets.PanopticonMatrix.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.PanopticonMatrix.effects.filters]
+owner     = "own"
+scope     = "world"
+phase     = ["attack", "defense"]
+attribute = "Cunning"
+[assets.PanopticonMatrix.effects.bonus_die]
+sides = 10
+count = 1
+
+[[assets.PanopticonMatrix.effects]]
+trigger = "turn_start"
+effect  = "clear_stealth"
+[assets.PanopticonMatrix.effects.filters]
+owner    = "rival"
+scope    = "world"
+stealthy = true
+[assets.PanopticonMatrix.effects.gates.contest]
+roller        = "target"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"

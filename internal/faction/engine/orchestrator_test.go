@@ -1,12 +1,22 @@
 package engine
 
 import (
+	"errors"
 	"log/slog"
 	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -34,6 +44,7 @@ func (s *stubAction) Output() ([]domain.Mutation, error) { return nil, nil }
 type minimalPhaseCollector struct {
 	movementDecisionsFn  func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
 	selectTransportCargo func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
+	selectRelocateOrders func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
 }
 
 func (c *minimalPhaseCollector) AwaitCheckpoint(_ string) error { return nil }
@@ -52,6 +63,12 @@ func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction,
 func (c *minimalPhaseCollector) SelectTransportCargo(transport *domain.Asset, eligibleCargo []*domain.Asset, profile *domain.TransportProfile) ([]*domain.Asset, error) {
 	if c.selectTransportCargo != nil {
 		return c.selectTransportCargo(transport, eligibleCargo, profile)
+	}
+	return nil, nil
+}
+func (c *minimalPhaseCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
+	if c.selectRelocateOrders != nil {
+		return c.selectRelocateOrders(acting, candidates, candidateWorlds, maxAssets)
 	}
 	return nil, nil
 }
@@ -240,5 +257,237 @@ func TestFilterAllowedActions(t *testing.T) {
 				t.Errorf("got %v, want %v", gotNames, tc.want)
 			}
 		})
+	}
+}
+
+// errorObserver satisfies TurnObserver and records only the errors it is sent.
+type errorObserver struct{ errs []error }
+
+func (o *errorObserver) OnError(_ *domain.Faction, err error) {
+	o.errs = append(o.errs, err)
+}
+
+func (o *errorObserver) OnFactionTurnStarted(_ *domain.Faction) {}
+
+func (o *errorObserver) OnFactionSkipped(_ *domain.Faction) {}
+
+func (o *errorObserver) OnGoalLockApplied(_ *domain.Faction, _ locks.GoalLock, _ []domain.Mutation) {}
+
+func (o *errorObserver) OnBookkeepingApplied(_ *domain.Faction, _ turn.BookkeepingResult, _ []domain.Mutation) {
+}
+
+func (o *errorObserver) OnActionSelected(_ *domain.Faction, _ action.Action) {}
+
+func (o *errorObserver) OnActionResolved(_ *domain.Faction, _ action.Action, _ []domain.Mutation) {}
+
+func (o *errorObserver) OnFactionTurnCompleted(_ *domain.Faction) {}
+
+func (o *errorObserver) OnCycleCompleted(_ int, _ *state.FactionState) {}
+
+func (o *errorObserver) OnStatRaiseApplied(_ *domain.Faction, _ *domain.FactionStat, _ []domain.Mutation) {
+}
+
+func (o *errorObserver) OnStatRaiseSkipped(_ *domain.Faction) {}
+
+func (o *errorObserver) OnMovementTicked(_ *domain.Faction, _ []domain.Mutation) {}
+
+func (o *errorObserver) OnMovementResolved(_ *domain.Faction, _ []domain.Mutation) {}
+
+func (o *errorObserver) OnIndexSkipped(_ []string) {}
+
+// sameHexRouter puts every world on the zero hex, so each is at distance 0 from
+// every other and in range of any relocate.
+type sameHexRouter struct{ worlds []string }
+
+func (r *sameHexRouter) Location(id string) (spatial.Location, bool) {
+	if !slices.Contains(r.worlds, id) {
+		return nil, false
+	}
+	return sameHexLoc(id), true
+}
+func (r *sameHexRouter) Distance(_, _ spatial.RegionHex, _ int) (int, error) { return 0, nil }
+func (r *sameHexRouter) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
+	return map[spatial.RegionHex]int{{}: 0}, nil
+}
+func (r *sameHexRouter) Path(_, _ spatial.RegionHex, _ int) ([]spatial.RegionHex, int, error) {
+	return nil, 0, nil
+}
+func (r *sameHexRouter) AllWorlds() []spatial.Location {
+	locations := make([]spatial.Location, 0, len(r.worlds))
+	for _, id := range r.worlds {
+		locations = append(locations, sameHexLoc(id))
+	}
+	return locations
+}
+
+type sameHexLoc string
+
+func (l sameHexLoc) ID() string                   { return string(l) }
+func (l sameHexLoc) Name() string                 { return string(l) }
+func (l sameHexLoc) TechLevel() int               { return 4 }
+func (l sameHexLoc) Population() int              { return 0 }
+func (l sameHexLoc) Coords() (int, int)           { return 0, 0 }
+func (l sameHexLoc) RegionID() string             { return "" }
+func (l sameHexLoc) RegionHex() spatial.RegionHex { return spatial.RegionHex{} }
+
+// stubMovementGranter offers the same grants whatever faction asks.
+type stubMovementGranter struct{ abilities []hooks.MovementAbility }
+
+func (stub *stubMovementGranter) GrantMovementAbilities(_ *domain.Faction) []hooks.MovementAbility {
+	return stub.abilities
+}
+
+// grantFixture builds alpha with a granting web and a facility on Krylos. The
+// web offers one flat-cost, other-scope grant of 1 Coin.
+func grantFixture(t *testing.T, coin int) (*Engine, *state.FactionState, *domain.Faction, *campaigns.Paths) {
+	t.Helper()
+	discard := slog.New(slog.DiscardHandler)
+	web := &domain.Asset{ID: "web", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}
+	facility := &domain.Asset{ID: "wf", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}
+	alpha := &domain.Faction{ID: "alpha", Coin: coin, Assets: map[string]*domain.Asset{"web": web, "wf": facility}}
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("alpha", "web"), "test", &stubMovementGranter{abilities: []hooks.MovementAbility{{
+		Source: web,
+		Relocate: domain.RelocateParams{
+			Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3,
+			CoinCost: 1, CoinCostMode: domain.RelocateCostFlat,
+		},
+	}}})
+	eng := &Engine{
+		Rulebook: &rulebook.Rulebook{},
+		Hooks:    registry,
+		World:    world.NewWithMap(&sameHexRouter{worlds: []string{"Krylos", "Tartarus"}}, discard),
+		Mutation: mutation.New(discard),
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha}}
+	paths := &campaigns.Paths{HistoryPath: t.TempDir() + "/history.jsonl"}
+	return eng, factionState, alpha, paths
+}
+
+func TestRunGrantedMovement_AppliesEachGrant(t *testing.T) {
+	eng, factionState, alpha, paths := grantFixture(t, 5)
+	collector := &minimalPhaseCollector{
+		selectRelocateOrders: func(_ *domain.Asset, candidates []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+			return []action.RelocateOrder{{Asset: candidates[0], DestinationWorld: "Tartarus"}}, nil
+		},
+	}
+	observer := &errorObserver{}
+
+	resolved, err := eng.runGrantedMovement(alpha, factionState, paths, collector, observer, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("runGrantedMovement: %v", err)
+	}
+	if got := alpha.Assets["wf"].Location.WorldID; got != "Tartarus" {
+		t.Errorf("wf on %q, want Tartarus", got)
+	}
+	if alpha.Coin != 4 {
+		t.Errorf("Coin = %d, want 4", alpha.Coin)
+	}
+	if len(resolved) != 2 {
+		t.Errorf("len(resolved) = %d, want 2 (AssetMoved + CoinDelta)", len(resolved))
+	}
+}
+
+func TestRunGrantedMovement_DeclineSkips(t *testing.T) {
+	cases := []struct {
+		name  string
+		reply error
+	}{
+		{"no orders", nil},
+		{"esc", action.ErrTurnCanceled},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eng, factionState, alpha, paths := grantFixture(t, 5)
+			collector := &minimalPhaseCollector{
+				selectRelocateOrders: func(_ *domain.Asset, _ []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+					return nil, tc.reply
+				},
+			}
+
+			resolved, err := eng.runGrantedMovement(alpha, factionState, paths, collector, &errorObserver{}, slog.New(slog.DiscardHandler))
+			if err != nil {
+				t.Fatalf("runGrantedMovement: %v, want a skipped grant", err)
+			}
+			if len(resolved) != 0 || alpha.Coin != 5 {
+				t.Errorf("resolved = %v, Coin = %d; want nothing applied", resolved, alpha.Coin)
+			}
+		})
+	}
+}
+
+func TestRunGrantedMovement_UnaffordableSkipsWithoutPrompt(t *testing.T) {
+	eng, factionState, alpha, paths := grantFixture(t, 0)
+	prompted := false
+	collector := &minimalPhaseCollector{
+		selectRelocateOrders: func(_ *domain.Asset, _ []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+			prompted = true
+			return nil, nil
+		},
+	}
+	observer := &errorObserver{}
+
+	resolved, err := eng.runGrantedMovement(alpha, factionState, paths, collector, observer, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("runGrantedMovement: %v, want a skipped grant", err)
+	}
+	if prompted {
+		t.Error("collector prompted for a grant the faction cannot pay for")
+	}
+	if len(observer.errs) != 1 || !errors.Is(observer.errs[0], relocate.ErrInsufficientCoin) {
+		t.Errorf("observer errors = %v, want one ErrInsufficientCoin", observer.errs)
+	}
+	if len(resolved) != 0 {
+		t.Errorf("resolved = %v, want none", resolved)
+	}
+}
+
+func TestRunGrantedMovement_CargoLoadedThisPhaseIsNotOffered(t *testing.T) {
+	eng, factionState, alpha, paths := grantFixture(t, 5)
+	alpha.Assets["cargo"] = &domain.Asset{ID: "cargo", OwnerID: "alpha"} // in transit: no WorldID
+	var offered []string
+	collector := &minimalPhaseCollector{
+		selectRelocateOrders: func(_ *domain.Asset, candidates []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+			for _, candidate := range candidates {
+				offered = append(offered, candidate.ID)
+			}
+			return nil, nil
+		},
+	}
+
+	if _, err := eng.runGrantedMovement(alpha, factionState, paths, collector, &errorObserver{}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("runGrantedMovement: %v", err)
+	}
+	if !slices.Equal(offered, []string{"wf"}) {
+		t.Errorf("offered = %v, want [wf] (cargo in transit is not a candidate)", offered)
+	}
+}
+
+func TestFirePurchaseEffects_CausesWhitelisted(t *testing.T) {
+	assassins := &domain.AssetDefinition{ID: "SWN-F5-003", Effects: []domain.EffectDefinition{{
+		Trigger: domain.TriggerOnPurchase,
+		Effect:  domain.SpecialApplyStealth,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+	}}}
+	eng := &Engine{
+		Rulebook: &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{assassins.ID: assassins}},
+		Effect:   effect.New(effects.Registrars(), slog.New(slog.DiscardHandler)),
+	}
+	alpha := &domain.Faction{ID: "alpha"}
+	added := func(assetID, cause string) domain.AssetAdded {
+		return domain.AssetAdded{FactionID: "alpha", Asset: domain.Asset{ID: assetID, DefinitionID: assassins.ID}, Cause: cause, CausedByFactionID: "alpha"}
+	}
+	actionMutations := []domain.Mutation{
+		added("bought", "buy"),
+		added("enabled", "ability"),
+		added("refitted", "refit"),
+	}
+
+	var stealthed []string
+	for _, mutation := range eng.firePurchaseEffects(alpha, actionMutations, nil) {
+		stealthed = append(stealthed, mutation.(domain.AssetStealthApplied).AssetID)
+	}
+	if want := []string{"bought", "enabled"}; !slices.Equal(stealthed, want) {
+		t.Errorf("stealthed %v, want %v (a refit is not a purchase)", stealthed, want)
 	}
 }

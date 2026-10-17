@@ -51,7 +51,6 @@ func (a *atGlyph) UnmarshalTOML(v interface{}) error {
 	}
 }
 
-
 func parseData(srcDir string) (*dataFile, error) {
 	path := filepath.Join(srcDir, "data.toml")
 	if _, err := os.Stat(path); err != nil {
