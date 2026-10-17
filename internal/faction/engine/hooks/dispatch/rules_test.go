@@ -99,8 +99,8 @@ func TestDiscountedCost(t *testing.T) {
 		{"discount above half base floors at half base", hooks.AssetCostQuery{Cost: 4}, 4, 3, 2},
 		{"small discount subtracts", hooks.AssetCostQuery{Cost: 6}, 6, 1, 5},
 		{"floor never above a hook-reduced price", hooks.AssetCostQuery{Cost: 1}, 4, 3, 1},
-		{"surcharge survives a floored discount", hooks.AssetCostQuery{Cost: 5, Surcharge: 1}, 4, 3, 3},
-		{"surcharge survives a small discount", hooks.AssetCostQuery{Cost: 7, Surcharge: 1}, 6, 1, 6},
+		{"surcharge survives a floored discount", hooks.AssetCostQuery{Cost: 5, Surcharges: []hooks.Surcharge{{FactionID: "rival", Amount: 1}}}, 4, 3, 3},
+		{"surcharge survives a small discount", hooks.AssetCostQuery{Cost: 7, Surcharges: []hooks.Surcharge{{FactionID: "rival", Amount: 1}}}, 6, 1, 6},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {

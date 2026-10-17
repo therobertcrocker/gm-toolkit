@@ -23,6 +23,7 @@ type BuyAsset struct {
 	factionID        string
 	buyOrder         action.BuyOrder
 	newAsset         domain.Asset
+	quote            hooks.AssetCostQuery
 	cost             int
 	discountConsumed bool
 	stealthTarget    string // asset ID to stealth when buying SWN-C3-002; empty if no eligible target
@@ -79,10 +80,10 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 
 func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
-	quote := dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost, assetsOnWorld(ba.worldEngine, ba.buyOrder.World))
-	ba.cost = quote.Cost
+	ba.quote = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost, world.AssetsOnWorld(ba.worldEngine, ba.buyOrder.World))
+	ba.cost = ba.quote.Cost
 	if faction.PendingPurchaseDiscount > 0 {
-		ba.cost = dispatch.DiscountedCost(quote, def.Cost, faction.PendingPurchaseDiscount)
+		ba.cost = dispatch.DiscountedCost(ba.quote, def.Cost, faction.PendingPurchaseDiscount)
 		ba.discountConsumed = true
 	}
 	if faction.Coin < ba.cost {
@@ -93,9 +94,7 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 }
 
 func (ba *BuyAsset) Output() ([]domain.Mutation, error) {
-	mutations := []domain.Mutation{
-		domain.CoinDelta{FactionID: ba.factionID, Delta: -ba.cost, Cause: "buy", CausedByFactionID: ba.factionID},
-	}
+	mutations := dispatch.PurchaseCharges(ba.factionID, ba.cost, ba.quote, "buy")
 	if ba.buyOrder.Definition.ID != "SWN-C3-002" {
 		mutations = append([]domain.Mutation{
 			domain.AssetAdded{FactionID: ba.factionID, Asset: ba.newAsset, Cause: "buy", CausedByFactionID: ba.factionID},
@@ -150,14 +149,6 @@ func availableWorlds(faction *domain.Faction) []string {
 	return worlds
 }
 
-// assetsOnWorld returns the world index's assets on worldID, or nil when no index exists.
-func assetsOnWorld(worldEngine *world.WorldEngine, worldID string) []*domain.Asset {
-	if worldEngine == nil || worldEngine.Index == nil {
-		return nil
-	}
-	return worldEngine.Index.AssetsByLocation[worldID]
-}
-
 // purchasableDefinitions returns the definitions the faction may buy on fragmentID via
 // domain.CanPurchase: affordable at the cost Resolve will charge, meeting the minimum attribute rating, within
 // the world's tech level, and holding Planetary Government for P-flagged defs. An unknown
@@ -177,7 +168,7 @@ func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook
 		}
 	}
 
-	onWorld := assetsOnWorld(worldEngine, fragmentID)
+	onWorld := world.AssetsOnWorld(worldEngine, fragmentID)
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
 		techCap := worldTechLevel

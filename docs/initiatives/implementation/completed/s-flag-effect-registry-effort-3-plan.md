@@ -22,7 +22,7 @@ only the Attack action calls it. Effort 3 closes dispatch items 3 and 7 and ship
 
 - Overview plan: [`s-flag-effect-registry-plan.md`](./s-flag-effect-registry-plan.md)
   (Effort 3 row, Planning Decisions 3, 14 and 15, Shared Context).
-- Discovery: [`s-flag-effect-registry-discovery.md`](../discovery/s-flag-effect-registry-discovery.md)
+- Discovery: [`s-flag-effect-registry-discovery.md`](../../discovery/completed/s-flag-effect-registry-discovery.md)
   (dispatch items 3 and 7; Open Questions 3 and 4).
 - Builds on Effort 1's registrar contract (`effect/registrar.go`) and Effort 2's
   budget helpers (`effects/budget.go`), `active()` rule (Effort 2 Decision Record 11)
@@ -1860,7 +1860,8 @@ func budgetKey(oncePer domain.OncePerKey, effectName domain.SpecialEffectType, t
 
 ##### Task 2 — `internal/faction/engine/effect/effects/coin_steal.go`
 
-The reactor stores its trigger.
+The reactor stores its trigger. (*Superseded by the overview plan's Decision Record
+26:* the reactor now reads its entries from the rulebook and keeps no trigger.)
 
 **Find:**
 ```go

@@ -188,12 +188,64 @@ is the string written to history; the rules behind the numbers live in
   every dispatch site. This is the same consumer-owned-registration pattern as the
   action factories, and it is what lets the hook framework grow without the
   orchestrator knowing which tags or effects exist.
-- **Framework first, handlers incremental.** The event-hooks effort shipped all
-  five hook categories plus registry and dispatch, but only a proof-of-life
-  handler per category — four tags, one asset feature. The data-only skip makes
-  the partial state safe: unimplemented tags and `S`-flag features are inert
-  rulebook data, not errors, so handlers can land one at a time without touching
-  the orchestrator. (Frozen log 158–188, 227–235.)
+- **The S side has two routes: hooks at cycle start, and a direct definition read
+  at phase events.** Turn start is a phase event, not a mutation, and a bought
+  asset has no hooks until the next cycle, so a Cat 3 reactor is the wrong shape
+  for both. `FireTurnStart` and `FirePurchase` read the definition and run the
+  registrar's `Fire`. This refines the rule above, but does not break it: the
+  orchestrator still owns each call site, and the effects engine resolves a phase
+  event that the orchestrator raises. Turn start fires at the start of the
+  bookkeeping phase, gated on `BookkeepingApplied`, because turn setup re-runs on
+  every resume and would pay twice. Purchase fires from one scan of the action
+  batch, which covers Buy Asset and the purchase enabler with no effects engine in
+  either action. The scan whitelists the causes `buy` and `ability`, so a refit or
+  a new `AssetAdded` emitter fires nothing until someone decides it is a purchase.
+  (s-flag-effect-registry plan, Planning Decision 5; Effort 1 plan, Decisions 5
+  and 7; Effort 5 plan, Decisions 10 and 11.)
+- **An S effect is data keyed on its effect name, and the registrar picks the
+  hook category.** The `[[effects]]` data never names a hook category. Each
+  registrar is a spec struct: the owners, scopes, filters and gates it accepts,
+  keyed per trigger, plus a hook route (`Register`) and a phase route (`Fire`).
+  The sets are keyed per trigger because one field set per kind would accept a
+  pairing the effect never supports (`reroll` on `own_roll` with
+  `owner = "rival"`). The contract lives in `effect` and the implementations in
+  `effects`; the table is injected into `effect.New`, so `effect` never imports
+  its implementations. Rejected: an interface with `Accepted*()` methods, which
+  forces a no-op route on every single-route effect. (Effort 1 plan, Decision 1
+  and Decision Record 10.)
+- **Framework first, handlers incremental — but a known S effect with no
+  registrar fails loud.** The event-hooks effort shipped all five hook categories
+  plus registry and dispatch, but only a proof-of-life handler per category —
+  four tags, one asset feature. The data-only skip makes the partial state safe:
+  unimplemented tags are inert rulebook data, not errors, so handlers can land
+  one at a time without touching the orchestrator. (Frozen log 158–188, 227–235.)
+  The S side's effects list is stricter. An asset with no effects list is still
+  inert, but an entry that names an effect the engine cannot run is wrong data,
+  not absent data. Engine construction checks every entry against its registrar
+  (the loader cannot, because `rulebook` must not import `effects`), so
+  `NewWithRulebook` returns an error. `Register` also rejects a second handler
+  for one definition, so a transport profile and an effects list on one
+  definition cannot overwrite each other silently. (s-flag-effect-registry plan,
+  Planning Decisions 6 and 7; Effort 1 plan, Decisions 4 and 8.)
+- **Reactors append; they never cancel.** `OnMutations` returns mutations to add
+  and has no power to suppress one. An effect that "ignores" a loss (Bank) emits a
+  compensating gain against it, so the history shows both the loss and the
+  absorption — the honest record of what happened at the table. A purchase
+  surcharge is charged as its own loss, caused by the faction that imposed it,
+  so the same reactor absorbs "a Coin cost imposed by another faction" without
+  a second route. (s-flag-effect-registry plan, Planning Decision 10 and
+  Decision Record 27.)
+- **Damage mutations name the striking asset and mark a counterattack.**
+  `AssetHPDelta` and `BaseHPDelta` carry `CausedByAssetID`, so a reactor can tell
+  whether *its* asset landed a hit. A hit redirected to a Base still counts, and
+  so does a rival's free attack on a new Base during Expand Influence
+  (`Cause: "expand"`).
+  `AssetHPDelta` also carries `Counter`, so a counterattack does not fire
+  `own_attack_hit`. `BaseHPDelta` needs no flag: a counter always strikes the
+  attacking asset, never a Base. Rejected: a `"counterattack"` cause, which
+  changes every reader of `Cause == "attack"` (digest, Scavengers, goals).
+  (s-flag-effect-registry plan, Planning Decision 9 and Decision Records 4, 5
+  and 25.)
 - **Passive and active asset specialness are split.** `S`-flag features register
   reactive hooks through the effect engine; `A`-flag abilities are resolved by the
   [actions](actions.md) ability dispatch. The effect engine deliberately owns only

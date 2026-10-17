@@ -2,11 +2,11 @@
 
 > Initiative of arc `A.001` (data-driven-rulebook). Cross-cutting decisions
 > ACD-1…ACD-9 are ratified in the
-> [arc-discovery](../arcs/data-driven-rulebook/data-driven-rulebook-arc-discovery.md)
+> [arc-discovery](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-discovery.md)
 > and bind here without re-litigation. Boundary set by the
-> [arc-plan](../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), A.001.3.
+> [arc-plan](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), A.001.3.
 > Mechanical decomposition input: the
-> [ability & effect catalog](../../architecture/engine/ability-catalog.md) (ACD-8).
+> [ability & effect catalog](../../../architecture/engine/ability-catalog.md) (ACD-8).
 >
 > **This doc scopes two initiatives, not one.** The arc-plan treated A.001.3 as a
 > single initiative. The asset inventory below shows two bodies of work of very
@@ -42,16 +42,16 @@ the faction's action. 43 SWN assets carry the flag. One mechanic is implemented.
 
 Pages read for re-grounding (their `Key Decisions` are binding context):
 
-- [hooks](../../architecture/engine/hooks.md) — the five categories, the scope lookup,
+- [hooks](../../../architecture/engine/hooks.md) — the five categories, the scope lookup,
   and the distributed-dispatch decision. This initiative extends the dispatch, so the
   page's claims were checked line by line against source (see Current-State Survey).
-- [effect-mutation](../../architecture/engine/effect-mutation.md) — the `EffectsEngine`
+- [effect-mutation](../../../architecture/engine/effect-mutation.md) — the `EffectsEngine`
   registrar, the data-only skip, and the mutation vocabulary every effect emits.
-- [actions](../../architecture/engine/actions.md) — the combat roll path that Cat 1,
+- [actions](../../../architecture/engine/actions.md) — the combat roll path that Cat 1,
   Cat 2 and Cat 5 hooks are dispatched from.
-- [world-movement](../../architecture/engine/world-movement.md) — the movement phase
+- [world-movement](../../../architecture/engine/world-movement.md) — the movement phase
   and the relocate primitive built by A.001.2.
-- [ability & effect catalog](../../architecture/engine/ability-catalog.md) — the S-flag
+- [ability & effect catalog](../../../architecture/engine/ability-catalog.md) — the S-flag
   survey (ACD-8, binding as an inventory; its hook-category labels are corrected here).
 
 The binding decisions these pull in: **the rule layer registers hooks, it never

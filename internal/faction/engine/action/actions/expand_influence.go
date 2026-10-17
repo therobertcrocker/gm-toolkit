@@ -238,7 +238,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			damage := attackerDef.Attack.Damage.Roll(ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.
-				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID},
+				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID, CausedByAssetID: attacker.ID},
 				domain.FactionHPDelta{FactionID: ownerFaction.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID},
 			)
 			*baseHPTracker -= damage

@@ -82,6 +82,36 @@ func TestAttackHitEffect_FranchiseStealsFromTheTarget(t *testing.T) {
 		"alpha.HookBudgets has no spent coin_steal entry for beta")
 }
 
+func TestRunCycle_SecondCycleOnOneEngineRegistersEachHookOnce(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
+	h.AddFaction("beta", "Krylos", 2, 2, 2)
+	franchise := &domain.Asset{
+		ID:           "alpha-franchise",
+		DefinitionID: testharness.DefFranchise,
+		OwnerID:      alpha.ID,
+		Location:     alpha.Homeworld,
+		CurrentHP:    3,
+		Ready:        true,
+		Maintained:   true,
+	}
+	alpha.Assets[franchise.ID] = franchise
+	h.Collector.SelectActionFn = skipAction
+
+	for cycle := 1; cycle <= 2; cycle++ {
+		if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+			t.Fatalf("Turn.Start (cycle %d): %v", cycle, err)
+		}
+		if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+			t.Fatalf("RunCycle (cycle %d): %v", cycle, err)
+		}
+	}
+
+	reactors := h.Engine.Hooks.MutationReactorsForAsset(alpha.ID, franchise.ID)
+	testharness.CheckStep(t, "the Franchise has one reactor after two cycles", len(reactors) == 1,
+		fmt.Sprintf("got %d reactors; RunCycle registered the hook again without a reset", len(reactors)))
+}
+
 func TestEffects_SurveyorsAddDieToOwnersExpansion(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)

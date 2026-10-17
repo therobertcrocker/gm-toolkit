@@ -56,6 +56,6 @@ func (modifier *costSurchargeModifier) ModifyAssetCost(buyer *domain.Faction, _ 
 	}
 
 	query.Cost += modifier.amount
-	query.Surcharge += modifier.amount
+	query.Surcharges = append(query.Surcharges, hooks.Surcharge{FactionID: modifier.owner.ID, Amount: modifier.amount})
 	query.Applied[key] = true
 }

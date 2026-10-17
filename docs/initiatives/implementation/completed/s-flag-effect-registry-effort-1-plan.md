@@ -12,11 +12,11 @@ the bookkeeping phase. Party Machine `SWN-C4-001` (`coin_gain`) is the proof.
   (Effort 1 row in the Effort Summary; scoping outline in Work Breakdown; Planning
   Decisions 5, 6, 7, 11, 13 and the Shared Context domain-shape contract are this
   effort's mandate).
-- Discovery: [`s-flag-effect-registry-discovery.md`](../discovery/s-flag-effect-registry-discovery.md)
+- Discovery: [`s-flag-effect-registry-discovery.md`](../../discovery/completed/s-flag-effect-registry-discovery.md)
   (D-1…D-6 bind here).
-- Architecture: [effect & mutation](../../architecture/engine/effect-mutation.md) (the
-  effects engine and its Key Decisions), [hooks](../../architecture/engine/hooks.md),
-  [ability & effect catalog](../../architecture/engine/ability-catalog.md).
+- Architecture: [effect & mutation](../../../architecture/engine/effect-mutation.md) (the
+  effects engine and its Key Decisions), [hooks](../../../architecture/engine/hooks.md),
+  [ability & effect catalog](../../../architecture/engine/ability-catalog.md).
 
 ## Decisions Ratified in Planning
 

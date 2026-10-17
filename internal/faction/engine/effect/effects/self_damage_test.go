@@ -80,6 +80,13 @@ func TestSelfDamage(t *testing.T) {
 			want: []domain.Mutation{zealotDamage(-3)},
 		},
 		{
+			name: "a free attack on a new Base during Expand Influence costs the Zealots",
+			mutations: []domain.Mutation{
+				domain.BaseHPDelta{FactionID: "beta", BaseID: "beta-base", Delta: -5, Cause: "expand", CausedByFactionID: "alpha", CausedByAssetID: "zealots"},
+			},
+			want: []domain.Mutation{zealotDamage(-3)},
+		},
+		{
 			name: "a hit by another asset costs nothing",
 			mutations: []domain.Mutation{
 				domain.AssetHPDelta{FactionID: "beta", AssetID: "beta-x", Delta: -5, Cause: "attack", CausedByFactionID: "alpha", CausedByAssetID: "someone-else"},

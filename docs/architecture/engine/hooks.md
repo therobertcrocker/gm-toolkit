@@ -42,8 +42,10 @@ Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
 (`ModifyAssetCost(buyer, def, world, query *AssetCostQuery)`,
 `MayFight(query AttackEligibilityQuery) bool` and so on). The asset-cost hook
 edits a shared `AssetCostQuery` in place of returning an `int`, because the chain
-carries more than a number: `Applied` holds the `no_stack` marks, and `Surcharge`
-holds the part of the cost that a purchase discount must not remove. They are split rather than folded into one generic
+carries more than a number: `Applied` holds the `no_stack` marks, and `Surcharges`
+holds the parts of the cost that a purchase discount must not remove, each with
+the faction that imposed it (`dispatch.PurchaseCharges` charges each one as its
+own `CoinDelta`, caused by that faction). They are split rather than folded into one generic
 `Modify(any) any` precisely so the compiler keeps each question's argument and
 return types honest; see Key Decisions.
 
@@ -91,7 +93,8 @@ Investments on the purchase world, or the target of an attack.
 
 ### Registration in, dispatch out
 
-The registry is populated once, at the start of each cycle, by the two
+The registry is cleared (`Registry.Reset`) and populated once, at the start of
+each cycle, by the two
 registrars on the [effect & mutation](effect-mutation.md) page: `TagEngine`
 registers faction-scoped hooks from the tags a faction holds, `EffectsEngine`
 registers asset-scoped hooks from each asset's `S`-flag features. Nothing else
@@ -249,10 +252,15 @@ flowchart LR
 ## Key Decisions
 
 - **Category 4 is a typed family, not a generic interface.** Each rule query
-  (asset cost, maintenance, world TL, movement grants) has different argument and
-  return types, so a single `Modify(any) any` would throw away compile-time
-  safety. Five small interfaces keep every call site honest. (`doc.go`; frozen
-  log 158–188.)
+  (asset cost, maintenance, world TL, attack eligibility, movement grants) has
+  different argument and return types, so a single `Modify(any) any` would throw
+  away compile-time safety. Five small interfaces keep every call site honest.
+  (`doc.go`; frozen log 158–188.)
+- **The registry is cleared in place at the start of every cycle.** The TUI runs
+  every cycle on one engine, so registering again without a reset adds another
+  copy of every hook each cycle. The maps are cleared in place, not replaced,
+  because the actions hold the registry pointer from engine construction.
+  (s-flag-effect-registry plan, Decision Record 24.)
 - **Scope is a comparable struct used directly as a map key.** Global / faction /
   asset identity collapses into one value type, so the registry is just maps and
   lookup is a fixed global→faction→asset walk — no per-category routing logic.
@@ -285,6 +293,67 @@ flowchart LR
   modifiers and elective rerolls are offered to the driver; the engine never
   decides them itself. This is the same source-agnostic collector contract the
   rest of the engine uses, narrowed to two methods.
+- **Elective rerolls keep per-roll timing.** Cat 2 runs right after each roll, so
+  an attacker decides on a reroll before the defense is rolled. Deciding after
+  both rolls would split `RollWithHooks` into roll and post-roll calls at every
+  call site, and Expand Influence compares one roll against N. A fence-sign at
+  the dispatcher marks it. (s-flag Effort 3 plan, Decision 15.)
+- **Every S effect registers at asset scope, and checks that its asset is active
+  when it fires.** One scope rule means one lookup shape for every effect, and an
+  effect always knows the asset that declared it. The check runs at fire time,
+  not at registration, because `ApplyAll` runs at cycle start while `Ready` flips
+  at the owner's turn start and `Maintained` in each bookkeeping. The rule is
+  `domain.Asset.Active()` (`Ready && Maintained && CurrentHP > 0`, the same test
+  as attack eligibility). A Cat 4 hook gets no `FactionState`, so it keeps its
+  owner from registration and reads `owner.Assets[assetID]` at query time; a
+  removed asset reads as nil and fails `effects.active()`. Rejected: holding the
+  asset pointer, which keeps a removed asset in effect until the next cycle.
+  (s-flag-effect-registry plan, Decision Records 11, 14, 19 and 22.)
+- **A rule query that serves its owner walks the owner's own asset buckets.**
+  `ResolveWorldTechLevel` and `dispatch.GrantedMovementAbilities` walk global, then the
+  faction, then each of the faction's own assets in ID order. This keeps the
+  asset-scope rule above without an index, and a grant never leaks to another
+  faction. The movement query is per faction (`GrantMovementAbilities(faction)`),
+  and each `MovementAbility` names its `Source` asset, because one Transit Web
+  moves many *other* assets. Asset cost differs on purpose: it also walks rival
+  assets on the purchase world, because a surcharge is a rival's effect.
+  Rejected: registration at faction scope. (s-flag-effect-registry plan,
+  Decision Record 14; Effort 5 plan, Decision 1.)
+- **A budget lives on its owner's `HookBudgets`, keyed by effect, trigger,
+  definition and (when `once_per` asks) target or asset.** `HookBudgets` is
+  cleared in each faction's own bookkeeping, so a budget written to another
+  faction's map would reset at an unpredictable point in the cycle. On the roll
+  path the dispatcher stamps the owning faction (`FactionID`) on every offer and
+  directive, never the hook, so a forced reroll spends the effect owner's budget,
+  not the roller's. The trigger is in the key so two entries of one definition
+  (Book of Secrets) do not share a budget. (s-flag-effect-registry plan, Planning
+  Decision 3; Effort 3 plan, Decisions 8 and 16.)
+- **The roll dispatcher reads asset buckets on the roll's world from both sides,
+  but never the opponent's faction bucket.** An S effect such as Book of Secrets
+  or Panopticon Matrix acts on a roll made by or against its owner on its world,
+  so the dispatcher gathers both sides' asset buckets there, plus the rolling and
+  opposing assets when they stand elsewhere. Tag hooks register at faction scope
+  and assume the roll is their own faction's (Fanatical rerolls every 1 without
+  checking the actor), so the opponent's faction bucket stays out. Each S roll
+  hook checks its owner relation against `ctx.Actor` / `ctx.Opponent` itself.
+  (s-flag Effort 3 plan, Decision 7.)
+- **Reactors in one dispatch round cannot see each other's output, so a shared
+  limit needs a lead.** Every reactor in a round reads the same input batch and
+  the state from before it. When several reactors draw on one limit — Banks on the
+  owner's budgets, thieves on the target's Coin — each would decide alone and
+  together overrun it. So only the owner's lowest-ID active asset with the effect
+  reacts, for all of them: it walks the batch in order and tracks what is left.
+  Bank leads per definition; `coin_steal` leads across definitions, reading
+  each thief's entries from the rulebook. Rejected: letting each reactor see
+  its earlier siblings' output, which changes the input of every reactor.
+  (s-flag-effect-registry plan, Decision Records 9 and 26.)
+- **A Cat 3 reactor gets its roller at registration.** `OnMutations` takes no
+  `Roller`, but some reactors roll dice (`coin_steal`, `self_damage`, the contest
+  gate). `RegisterContext` carries the engine roller, and `ApplyAll` runs at the
+  start of each cycle, so a test that swaps `Engine.Rand` before the run still
+  controls the dice. Rejected: a `Roller` parameter on `OnMutations`, which
+  changes every reactor for three effects. (s-flag-effect-registry plan, Decision
+  Record 3.)
 
 ## Dependencies
 

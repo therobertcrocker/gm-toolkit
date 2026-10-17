@@ -2,6 +2,7 @@ package actions
 
 import (
 	"log/slog"
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -214,7 +215,7 @@ type stubSurcharge struct{}
 
 func (stub *stubSurcharge) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, query *hooks.AssetCostQuery) {
 	query.Cost++
-	query.Surcharge++
+	query.Surcharges = append(query.Surcharges, hooks.Surcharge{FactionID: "rival", Amount: 1})
 }
 
 // surchargedWorld places a rival asset carrying stubSurcharge on world "a".
@@ -255,6 +256,37 @@ func TestBuyAsset_DiscountKeepsSurcharge(t *testing.T) {
 	}
 	if act.cost != 3 {
 		t.Errorf("cost = %d, want 3 (floor 2 + surcharge 1)", act.cost)
+	}
+}
+
+// TestBuyAsset_SurchargeIsItsOwnCharge: the surcharge is charged apart from the
+// price and caused by the rival that imposed it, so a Bank can absorb it.
+func TestBuyAsset_SurchargeIsItsOwnCharge(t *testing.T) {
+	worldEngine, registry, worldHex := surchargedWorld()
+	rb := makeBuyRulebook()
+	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 10, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}}
+	act := NewBuyAsset(nil, registry, worldEngine)
+	act.factionID = faction.ID
+	act.buyOrder = action.BuyOrder{World: "a", Definition: rb.Assets["cheap"]}
+	if err := act.Resolve(faction, nil, rb); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := act.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	var charges []domain.CoinDelta
+	for _, mutation := range mutations {
+		if coin, ok := mutation.(domain.CoinDelta); ok {
+			charges = append(charges, coin)
+		}
+	}
+	want := []domain.CoinDelta{
+		{FactionID: "f1", Delta: -4, Cause: "buy", CausedByFactionID: "f1"},
+		{FactionID: "f1", Delta: -1, Cause: "cost_surcharge", CausedByFactionID: "rival"},
+	}
+	if !reflect.DeepEqual(charges, want) {
+		t.Errorf("charges = %+v, want %+v", charges, want)
 	}
 }
 

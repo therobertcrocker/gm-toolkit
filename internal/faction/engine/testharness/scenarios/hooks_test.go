@@ -70,8 +70,12 @@ func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
-		t.Fatalf("RunCycle: %v", err)
+	// deliberate: drive RunFactionTurn, not RunCycle, because RunCycle resets the registry and would drop the stub.
+	for done := false; !done; {
+		var err error
+		if done, err = h.Engine.RunFactionTurn(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+			t.Fatalf("RunFactionTurn: %v", err)
+		}
 	}
 
 	testharness.CheckStep(t, "beta asset destroyed", len(h.FactionState.Factions["beta"].Assets) == 0,

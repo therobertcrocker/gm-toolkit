@@ -76,6 +76,15 @@ func TestIgnoreCoinLoss(t *testing.T) {
 			want:      []domain.Mutation{absorbed(3)},
 		},
 		{
+			name:  "a purchase surcharge another faction imposed is paid back, the price is not",
+			banks: []string{"bank-1"},
+			mutations: []domain.Mutation{
+				domain.CoinDelta{FactionID: "alpha", Delta: -4, Cause: "buy", CausedByFactionID: "alpha"},
+				domain.CoinDelta{FactionID: "alpha", Delta: -1, Cause: "cost_surcharge", CausedByFactionID: "beta"},
+			},
+			want: []domain.Mutation{absorbed(1)},
+		},
+		{
 			name:      "a loss the owner imposed on itself is not absorbed",
 			banks:     []string{"bank-1"},
 			mutations: []domain.Mutation{lossTo("alpha", -3, "alpha")},

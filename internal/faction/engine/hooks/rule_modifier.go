@@ -10,13 +10,27 @@ type MovementAbility struct {
 }
 
 // AssetCostQuery is the state an asset-cost chain carries from hook to hook.
-// Surcharge is the part of Cost that surcharge hooks added, so a purchase
-// discount can floor below it without removing it. Applied holds the effect
-// names whose no_stack gate has already fired.
+// Surcharges are the parts of Cost that surcharge hooks added, in chain order:
+// a purchase discount floors below them without removing them, and each is
+// charged as its own Coin loss, caused by the faction that imposed it. Applied
+// holds the effect names whose no_stack gate has already fired.
 type AssetCostQuery struct {
-	Cost      int
-	Surcharge int
-	Applied   map[string]bool
+	Cost       int
+	Surcharges []Surcharge
+	Applied    map[string]bool
+}
+
+type Surcharge struct {
+	FactionID string
+	Amount    int
+}
+
+func (query AssetCostQuery) SurchargeTotal() int {
+	total := 0
+	for _, surcharge := range query.Surcharges {
+		total += surcharge.Amount
+	}
+	return total
 }
 
 // AssetCostModifier adjusts the Coin cost of an asset purchase (Cat 4).

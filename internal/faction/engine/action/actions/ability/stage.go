@@ -52,7 +52,7 @@ func passesGate(
 	collector action.Collector,
 	roller domain.Roller,
 	factionState *state.FactionState,
-	rb *rulebook.Rulebook,
+	rulebook *rulebook.Rulebook,
 ) (bool, error) {
 	if step.Contest == nil {
 		// Ungated (self-move, roll-table) — always proceeds. Roll-table outcome
@@ -77,7 +77,7 @@ func passesGate(
 			Action:        actionName,
 		},
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, step.Contest.AttackerStat)},
-		registry, collector, roller, faction, factionState, rb,
+		registry, collector, roller, faction, factionState, rulebook,
 	)
 	defense := dispatch.RollWithHooks(
 		hooks.RollContext{
@@ -91,7 +91,7 @@ func passesGate(
 			Action:        actionName,
 		},
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(target.Faction, step.Contest.DefenderStat)},
-		registry, collector, roller, target.Faction, factionState, rb,
+		registry, collector, roller, target.Faction, factionState, rulebook,
 	)
 	return attack.Sum > defense.Sum, nil
 }

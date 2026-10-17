@@ -121,7 +121,7 @@ attack (S-side), rerouted to A.001.3 (AP-6).
 
 > Boundary reset by the A.001.3 Discovery (AP-7). The text below replaces the
 > sign-off version, which assumed the whole S side was one initiative. Full detail in
-> the [discovery doc](../../discovery/s-flag-effect-registry-discovery.md).
+> the [discovery doc](../../discovery/completed/s-flag-effect-registry-discovery.md).
 
 Build the data-driven S-side model and ship every effect that is a **hook or a rule
 query**. An S-flag ability is declared as *trigger → filters → gates → effect*; the

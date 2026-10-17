@@ -1,6 +1,7 @@
 package effects_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -81,8 +82,9 @@ func TestCostSurcharge_RecordsSurchargeOnQuery(t *testing.T) {
 	factionState := surchargeState(localInvestments("li1"))
 	registry := registerSurcharges(factionState, costSurchargeEntry(true))
 	quote := dispatch.ResolveAssetCost(registry, factionState.Factions["beta"], &domain.AssetDefinition{ID: "bought"}, "Tartarus", 5, onWorld(factionState))
-	if quote.Surcharge != 1 {
-		t.Errorf("surcharge = %d, want 1", quote.Surcharge)
+	want := []hooks.Surcharge{{FactionID: "alpha", Amount: 1}}
+	if !reflect.DeepEqual(quote.Surcharges, want) {
+		t.Errorf("surcharges = %+v, want %+v", quote.Surcharges, want)
 	}
 }
 

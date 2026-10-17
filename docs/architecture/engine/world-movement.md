@@ -245,6 +245,26 @@ runner skips the grant.
   the existing `AssetMoved` (with `Cause: "ability"`) rather than a parallel
   relocate mutation, and the apply layer needs no new arm. (Effort 3 Plan,
   Decision 4.)
+- **One relocate orchestration serves both harnesses, behind a one-method
+  collector.** `engine/relocate` holds the single copy of enumerate → filter →
+  prompt → build. The action-spent harness (`ability`) and the free harness (the
+  movement phase) both call `relocate.Run`, and both of their collectors satisfy
+  `relocate.OrderCollector`, so the prompt is shared too, not just the pure parts.
+  `relocate` imports `action` (for `RelocateOrder`); `world` does not, so there is
+  no cycle. `Run` reports "nothing to do" with sentinels (`ErrNoCandidates`,
+  `ErrInsufficientCoin`, `action.ErrNoSelection`), and each harness decides what
+  they mean: the action-spent harness surfaces them as errors, and the free
+  harness skips the grant. Esc (`ErrTurnCanceled`) also declines only that
+  grant, because the decision batch has already applied and the phase must still
+  resolve. Rejected: exporting the code from `ability` and importing it in the
+  orchestrator, which makes the engine depend on an action sub-package.
+  (s-flag-effect-registry plan, Planning Decision 2; Effort 5 plan, Decisions 2
+  and 3, Decision Record 2.)
+- **Relocate skips an asset that has a `CurrentOrder`.** An asset that leaves on
+  a drift order keeps its origin `WorldID` until the next tick. A relocate would
+  move it while its order keeps running from the old path. The guard matches
+  `eligibleCargoForTransport` and covers both harnesses, so it also closes the
+  gap on the A side. (s-flag Effort 5 plan, Decision 4.)
 
 ## Dependencies
 

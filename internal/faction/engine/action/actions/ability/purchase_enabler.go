@@ -8,6 +8,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 )
 
 // purchaseEnabler resolves Pretech Logistics: spend the action to buy one asset of the
@@ -50,8 +51,8 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	newAsset := domain.NewPurchasedAsset(ctx.Faction, def, worldID)
 	mutations := []domain.Mutation{
 		domain.AssetAdded{FactionID: ctx.Faction.ID, Asset: newAsset, Cause: "ability", CausedByFactionID: ctx.Faction.ID},
-		domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: -cost, Cause: "ability", CausedByFactionID: ctx.Faction.ID},
 	}
+	mutations = append(mutations, dispatch.PurchaseCharges(ctx.Faction.ID, cost, quote, "ability")...)
 	if discountConsumed {
 		mutations = append(mutations, domain.PurchaseDiscountConsumed{FactionID: ctx.Faction.ID, Cause: "ability", CausedByFactionID: ctx.Faction.ID})
 	}
@@ -98,11 +99,7 @@ func holdsGovernment(ctx StepContext, worldID string) bool {
 // an enabler purchase on the acting asset's world.
 func enablerQuote(ctx StepContext, def *domain.AssetDefinition, params *domain.PurchaseParams) hooks.AssetCostQuery {
 	worldID := ctx.Asset.Location.WorldID
-	var onWorld []*domain.Asset
-	if ctx.WorldEngine != nil && ctx.WorldEngine.Index != nil {
-		onWorld = ctx.WorldEngine.Index.AssetsByLocation[worldID]
-	}
-	return dispatch.ResolveAssetCost(ctx.Registry, ctx.Faction, def, worldID, surchargedCost(def.Cost, params.CostPercent), onWorld)
+	return dispatch.ResolveAssetCost(ctx.Registry, ctx.Faction, def, worldID, surchargedCost(def.Cost, params.CostPercent), world.AssetsOnWorld(ctx.WorldEngine, worldID))
 }
 
 // surchargedCost applies the enabler's cost surcharge: base * percent / 100, rounded up.

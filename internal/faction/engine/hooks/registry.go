@@ -79,18 +79,24 @@ type Registry struct {
 
 // NewRegistry returns an empty Registry ready for registration.
 func NewRegistry() *Registry {
-	return &Registry{
-		rollModifiers:            make(map[Scope][]RegisteredRollModifier),
-		rollResultHooks:          make(map[Scope][]RegisteredRollResultHook),
-		rollOfferFilters:         make(map[Scope][]RegisteredRollOfferFilter),
-		mutationReactors:         make(map[Scope][]RegisteredMutationReactor),
-		assetCostModifiers:       make(map[Scope][]RegisteredAssetCostModifier),
-		maintenanceCostModifiers: make(map[Scope][]RegisteredMaintenanceCostModifier),
-		worldTechLevelModifiers:  make(map[Scope][]RegisteredWorldTechLevelModifier),
-		attackEligibilityRules:   make(map[Scope][]RegisteredAttackEligibilityRule),
-		assetMovementGranters:    make(map[Scope][]RegisteredAssetMovementGranter),
-		tieResolvers:             make(map[Scope][]RegisteredTieResolver),
-	}
+	registry := &Registry{}
+	registry.Reset()
+	return registry
+}
+
+// Reset removes every registered hook, in place.
+// deliberate: clear in place, not swap in a NewRegistry, because the actions hold this pointer from engine construction.
+func (registry *Registry) Reset() {
+	registry.rollModifiers = make(map[Scope][]RegisteredRollModifier)
+	registry.rollResultHooks = make(map[Scope][]RegisteredRollResultHook)
+	registry.rollOfferFilters = make(map[Scope][]RegisteredRollOfferFilter)
+	registry.mutationReactors = make(map[Scope][]RegisteredMutationReactor)
+	registry.assetCostModifiers = make(map[Scope][]RegisteredAssetCostModifier)
+	registry.maintenanceCostModifiers = make(map[Scope][]RegisteredMaintenanceCostModifier)
+	registry.worldTechLevelModifiers = make(map[Scope][]RegisteredWorldTechLevelModifier)
+	registry.attackEligibilityRules = make(map[Scope][]RegisteredAttackEligibilityRule)
+	registry.assetMovementGranters = make(map[Scope][]RegisteredAssetMovementGranter)
+	registry.tieResolvers = make(map[Scope][]RegisteredTieResolver)
 }
 
 // RegisterRollModifier registers a Cat 1 hook under the given scope.

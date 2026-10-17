@@ -24,7 +24,7 @@ Effort 5 closes dispatch items 5 and 6 and ships `grant_movement` and `apply_ste
 - Overview plan: [`s-flag-effect-registry-plan.md`](./s-flag-effect-registry-plan.md)
   (Effort 5 row and outline, Planning Decisions 2, 4 and 5, Decision Record 7 and 11,
   Reconciliation Items).
-- Discovery: [`s-flag-effect-registry-discovery.md`](../discovery/s-flag-effect-registry-discovery.md)
+- Discovery: [`s-flag-effect-registry-discovery.md`](../../discovery/completed/s-flag-effect-registry-discovery.md)
   (dispatch items 5 and 6; Open Question 1).
 - Builds on Effort 1's registrar contract (`effect/registrar.go`): the `Fire` route,
   `IsPhaseTrigger` (it already lists `on_purchase`), and `FireTurnStart` as the model

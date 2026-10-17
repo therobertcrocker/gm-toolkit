@@ -40,6 +40,8 @@ func (e *Engine) RunCycle(
 ) error {
 	logging.RunHeader(e.log, "faction-manager", "dev", factionState.CampaignID, len(factionState.Factions))
 
+	// deliberate: reset before registering, because the TUI runs every cycle on one engine and each ApplyAll would add another copy of every hook.
+	e.Hooks.Reset()
 	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
 	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.Rand, e.log.With("engine", "effect"))
 

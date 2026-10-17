@@ -169,7 +169,7 @@ type stubSurcharge struct{}
 
 func (stub *stubSurcharge) ModifyAssetCost(_ *domain.Faction, _ *domain.AssetDefinition, _ string, query *hooks.AssetCostQuery) {
 	query.Cost++
-	query.Surcharge++
+	query.Surcharges = append(query.Surcharges, hooks.Surcharge{FactionID: "rival", Amount: 1})
 }
 
 // TestPurchaseEnabler_PaysRivalSurcharge: a rival's surcharge on the acting asset's
@@ -219,10 +219,21 @@ func TestPurchaseEnabler_PaysRivalSurcharge(t *testing.T) {
 					t.Errorf("option %s Cost = %d, want %d", option.Def.ID, option.Cost, want)
 				}
 			}
+			total := 0
+			var surcharge *domain.CoinDelta
 			for _, m := range muts {
-				if coin, ok := m.(domain.CoinDelta); ok && coin.Delta != testCase.wantDelta {
-					t.Errorf("CoinDelta = %d, want %d", coin.Delta, testCase.wantDelta)
+				if coin, ok := m.(domain.CoinDelta); ok {
+					total += coin.Delta
+					if coin.CausedByFactionID == "rival" {
+						surcharge = &coin
+					}
 				}
+			}
+			if total != testCase.wantDelta {
+				t.Errorf("total charged = %d, want %d", total, testCase.wantDelta)
+			}
+			if surcharge == nil || surcharge.Delta != -1 || surcharge.Cause != "cost_surcharge" {
+				t.Errorf("surcharge charge = %+v, want its own -1 cost_surcharge caused by the rival", surcharge)
 			}
 		})
 	}

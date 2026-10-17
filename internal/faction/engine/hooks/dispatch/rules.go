@@ -1,9 +1,6 @@
 package dispatch
 
 import (
-	"slices"
-	"strings"
-
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -13,7 +10,8 @@ import (
 // against every asset standing on world — including a rival's, because a cost
 // hook may belong to a faction other than the buyer (Local Investments). Hooks
 // run in registration order, chaining outputs so each sees the previous result.
-// onWorld is the world index's asset slice for world; a nil slice adds nothing.
+// onWorld is the assets on world in ID order (world.AssetsOnWorld), so the chain
+// is the same every run; a nil slice adds nothing.
 func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *domain.AssetDefinition, world string, baseCost int, onWorld []*domain.Asset) hooks.AssetCostQuery {
 	query := &hooks.AssetCostQuery{Cost: baseCost, Applied: map[string]bool{}}
 	if registry == nil {
@@ -22,7 +20,7 @@ func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *doma
 	for _, registered := range registry.AssetCostModifiersFor(buyer.ID, "") {
 		registered.Hook.ModifyAssetCost(buyer, def, world, query)
 	}
-	for _, asset := range sortedByID(onWorld) {
+	for _, asset := range onWorld {
 		if asset.OwnerID == buyer.ID {
 			continue
 		}
@@ -37,19 +35,23 @@ func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *doma
 // floor is half the base price, never above the pre-discount price, and the
 // surcharge rides on top so no discount removes it.
 func DiscountedCost(quote hooks.AssetCostQuery, baseCost, discount int) int {
-	beforeSurcharge := quote.Cost - quote.Surcharge
+	surcharge := quote.SurchargeTotal()
+	beforeSurcharge := quote.Cost - surcharge
 	floor := min(baseCost/2, beforeSurcharge)
-	return max(beforeSurcharge-discount, floor) + quote.Surcharge
+	return max(beforeSurcharge-discount, floor) + surcharge
 }
 
-// sortedByID returns assets in ID order so a world-scoped hook chain is
-// deterministic regardless of index insertion order.
-func sortedByID(assets []*domain.Asset) []*domain.Asset {
-	sorted := slices.Clone(assets)
-	slices.SortFunc(sorted, func(first, second *domain.Asset) int {
-		return strings.Compare(first.ID, second.ID)
-	})
-	return sorted
+// PurchaseCharges splits a purchase's cost into the buyer's own charge and one
+// charge per surcharge, caused by the faction that imposed it, so a reactor such
+// as Bank can tell a cost a rival imposed from the price itself.
+func PurchaseCharges(buyerID string, cost int, quote hooks.AssetCostQuery, cause string) []domain.Mutation {
+	charges := []domain.Mutation{
+		domain.CoinDelta{FactionID: buyerID, Delta: -(cost - quote.SurchargeTotal()), Cause: cause, CausedByFactionID: buyerID},
+	}
+	for _, surcharge := range quote.Surcharges {
+		charges = append(charges, domain.CoinDelta{FactionID: buyerID, Delta: -surcharge.Amount, Cause: string(domain.SpecialCostSurcharge), CausedByFactionID: surcharge.FactionID})
+	}
+	return charges
 }
 
 // ResolveMaintenanceCost runs all registered MaintenanceCostModifiers for

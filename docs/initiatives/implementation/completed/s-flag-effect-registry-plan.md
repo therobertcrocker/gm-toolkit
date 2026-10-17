@@ -3,7 +3,7 @@
 ## Context / Goal
 
 Build the data-driven S-side model the
-[discovery](../discovery/s-flag-effect-registry-discovery.md) designed —
+[discovery](../../discovery/completed/s-flag-effect-registry-discovery.md) designed —
 *trigger → filters → gates → effect*, keyed on the effect name — and ship every S-flag
 effect that is a hook or a rule query. The engine registers effects from an asset's
 `[[effects]]` list; each registrar reads its typed parameters and decides which hooks
@@ -13,10 +13,10 @@ The hook framework is complete in its categories and incomplete in its reach, be
 transport is an attacker-side, own-turn mechanic that exercises none of it. This
 initiative extends the dispatch and then authors 19 assets against it.
 
-- Arc: [data-driven-rulebook](../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md),
+- Arc: [data-driven-rulebook](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md),
   initiative A.001.3 (boundary reset by AP-7). Cross-cutting ACD-1…ACD-9 bind here
   without re-litigation.
-- Mechanical input: the [ability & effect catalog](../../architecture/engine/ability-catalog.md) (ACD-8).
+- Mechanical input: the [ability & effect catalog](../../../architecture/engine/ability-catalog.md) (ACD-8).
 - Consumes A.001.2's relocate primitive (ACD-4) for the free harness only.
 - This is a **multi-effort** initiative (session-modes section 8). This file is the
   overview plan. Efforts 1, 3 and 5 get their own Plan session; Efforts 2 and 4 execute
@@ -291,7 +291,8 @@ before the commit they ride. Append AND reconcile. -->
     `domain.SortedAssets` (`faction.go:259`) already returns a faction's assets in ID
     order, and the Shared Context names it as the sort to use. `sortedByID` stays for the
     world index slice, and it uses `slices.SortFunc` with `strings.Compare`, the same
-    form as `SortedAssets`, not `sort.Slice`. Re-ground for Task 4:
+    form as `SortedAssets`, not `sort.Slice`. *Reversed by Decision Record 28:* the
+    sort moved into `world.AssetsOnWorld` and `sortedByID` is removed. Re-ground for Task 4:
     `purchasableDefinitions` is the only reader of the world tech cap on the purchase
     path. `Resolve` does not check tech level again. The purchase-enabler cap
     (`purchase_enabler.go:77`) comes from the ability's own `MaxTechLevel`, so it does
@@ -382,6 +383,64 @@ before the commit they ride. Append AND reconcile. -->
     any rival hook as a surcharge; and a pass that adds only the rival surcharge
     for Pretech, which needs a second resolver. Plan body reconciled: Effort 4
     Commit 2.
+
+    *Amended by Decision Record 27:* `AssetCostQuery.Surcharge int` became
+    `Surcharges []hooks.Surcharge`, each with the faction that imposed it.
+
+24. **`RunCycle` clears the hook registry before it registers** (pre-merge review).
+    The TUI runs every cycle on one `Engine`, and `RunCycle` called both
+    `ApplyAll`s with no reset, so from the second cycle each hook ran once per
+    cycle played: Zealots took 2d4, Transit Web was offered twice. The bug dates
+    from `f09e4cc` (tags and transport), but this branch's 19 assets widen it.
+    `hooks.Registry.Reset()` clears the maps in place, because
+    `RegisterDefaultActions` holds the registry pointer from construction.
+    `TestMutationReactorDispatch_CoinOnAssetDestroyed` registered a stub on the
+    engine's registry and then called `RunCycle`; it now drives
+    `RunFactionTurn`. Rejected: `e.Hooks = hooks.NewRegistry()`, which leaves the
+    actions on the old registry.
+
+25. **A rival's free attack during Expand Influence is an attack hit** (pre-merge
+    review). Robert's rules reading. The free attack on a new Base emitted
+    `BaseHPDelta{Cause: "expand"}` with no `CausedByAssetID`, so Zealots,
+    Blockade Fleet and Franchise never fired on it. The mutation now carries the
+    attacking asset, and the hit match accepts cause `expand` on `BaseHPDelta`.
+
+26. **One lead thief steals for every `coin_steal` asset its owner has** (pre-merge
+    review). Each reactor capped its steal at the target's Coin before the batch,
+    so a Franchise and a Blockade Fleet hitting one target in one Attack could
+    take more than it had, and Coin went negative. Decision Record 9's lead now
+    spans definitions: only the owner's lowest-ID active asset with a `coin_steal`
+    entry reacts. It walks the batch's hits in order, reads each thief's entries
+    from the rulebook, tracks what each target has left, and spends each entry's
+    own budget. An empty purse still leaves the budget unspent. `hitTargets`
+    becomes a filter over a new `hits`, which returns the striker with each hit.
+    Rejected: each reactor sees its earlier siblings' output (changes every
+    reactor's input); a Coin floor in `Apply` (the history would record a loss
+    larger than the one taken).
+
+27. **A purchase surcharge is its own Coin loss, caused by the faction that
+    imposed it** (pre-merge review). Bank reads "ignore one Coin cost or loss
+    imposed by another faction", but the Local Investments surcharge was folded
+    into the buyer's own `CoinDelta`, so Bank never saw it. `AssetCostQuery`
+    records `Surcharges []hooks.Surcharge` (faction and amount, in chain order),
+    and `dispatch.PurchaseCharges` emits the buyer's own charge plus one
+    `CoinDelta{Cause: "cost_surcharge"}` per surcharge. Both purchase paths use
+    it, and Bank absorbs the surcharge unchanged. The buyer must still afford the
+    surcharge up front and then gets it back. Rejected: Bank as a Cat 4 cost
+    modifier, which needs a budget spend at `Resolve` and not on every menu query.
+
+28. **Review cleanups** (pre-merge review). `passesGate`'s `rb` parameter is
+    renamed `rulebook`. The nil-safe world-occupant lookup moves to
+    `world.AssetsOnWorld`, which `actions` and `ability` both call, and which now
+    returns the assets in ID order. `ResolveAssetCost` drops its own sort, so the
+    Buy Asset menu sorts once per world, not once per definition. This reverses
+    Decision Record 18's note that `sortedByID` stays: it is removed.
+
+Review findings rejected, with reason: Bank absorbing a steal creates Coin
+(Decision Record 6); Book of Secrets' two budgets (Effort 3 plan, Decision 3); a
+non-sentinel `relocate.Run` error aborts the cycle (it is a collector-contract
+violation, and fail-loud matches the rest of the engine); Cat 4 hooks should get
+`FactionState` (Decision Record 19).
 
 ---
 
@@ -1273,7 +1332,8 @@ func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *doma
 	return cost
 }
 ```
-**Replace with:**
+**Replace with** (*superseded by Decision Record 28:* the sort moved into
+`world.AssetsOnWorld`, and `sortedByID` is removed):
 ```go
 // ResolveAssetCost runs the buyer's own AssetCostModifiers, then those registered
 // against every asset standing on world — including a rival's, because a cost
@@ -1473,7 +1533,8 @@ cannot use `HookBudgets`. It is carried on the chain itself: the registrar marks
 contribution and later copies see the mark. The mechanism lands here as `no_stack`'s only
 consumer (Decision Record 15).
 
-In `hooks/rule_modifier.go`, the chain state becomes a struct the hooks share:
+In `hooks/rule_modifier.go`, the chain state becomes a struct the hooks share
+(*superseded by Decision Record 27:* `Surcharge int` is now `Surcharges []Surcharge`):
 ```go
 // AssetCostQuery is the state an asset-cost chain carries from hook to hook.
 // Surcharge is the part of Cost that surcharge hooks added, so a purchase
