@@ -30,6 +30,16 @@
 > Protocols) register Cat 4 hooks. `restrict_attack` answers the new
 > `AttackEligibilityRule` query ([hooks](hooks.md)), not a tie resolver. A ✅ in the
 > S-flag table marks an authored `[[effects]]` entry.
+>
+> **As-built (A.001.3 Effort 5):** free relocate-other ships as `grant_movement`
+> (Transit Web), a Cat 4 `AssetMovementGranter` — not the Cat 3 reactor this page
+> first filed it as. The movement phase offers each grant once, after the drift
+> decisions, through the shared `engine/relocate` package that the A-side
+> `relocate` handler also calls. Start-stealthed ships as `apply_stealth` (Psychic
+> Assassins) on the new `on_purchase` phase route — not the Cat 4 `RuleModifier`
+> this page first filed it as. The action phase fires it for an asset that Buy Asset
+> or a purchase enabler adds (not a refit). Tripwire Cells' `stealth_arrival` now
+> also catches a rival asset bought stealthed on their world.
 
 ## Purpose
 
@@ -154,7 +164,7 @@ of these; this table reconciles with it and completes the survey.)
 | Effect | Hook category | Assets |
 |---|---|---|
 | **transport** (carrier + cargo) | Cat 3 `MutationReactor` | Heavy Drop `SWN-F2-001`, Beachhead Landers `SWN-F4-001`, Extended Theater `SWN-F4-002`, Deep Strike Landers `SWN-F7-001`, Smugglers `SWN-C1-001`, Freighter Contract `SWN-W2-001`, Shipping Combine `SWN-W4-001`, Blockade Runners `SWN-W5-003` ✅ |
-| **relocate-other (free)** | Cat 3 `MutationReactor` | Transit Web `SWN-W7-003` — same effect as the A-flag relocate, but no action |
+| **relocate-other (free)** | Cat 4 `AssetMovementGranter` → `grant_movement`, run by the movement phase through `engine/relocate` | Transit Web `SWN-W7-003` ✅ — same effect as the A-flag relocate, but no action |
 | **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` ✅ |
 | **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001` ✅, Franchise `SWN-W1-001` ✅ → `coin_steal` |
 | **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Monopoly's reactive reading → `coin_drain`. Local Investments was listed here; it ships as a purchase surcharge (row below) |
@@ -162,7 +172,7 @@ of these; this table reconciles with it and completes the survey.)
 | **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
 | **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
 | **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` (on arrival); turn-start phase route (per turn) | Tripwire Cells `SWN-C4-003` ✅, Panopticon Matrix `SWN-C8-001` ✅ |
-| **start-stealthed** | Cat 4 `RuleModifier` (on add) | Psychic Assassins `SWN-F5-003` |
+| **start-stealthed** | purchase phase route (direct definition read, not a hook) | Psychic Assassins `SWN-F5-003` ✅ |
 | **grant-stealth** (quality bought for another asset) | Cat 4 `RuleModifier` | Stealth `SWN-C3-002` |
 | **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `SWN-F7-002` ✅ (Cunning defense), Surveyors `SWN-W2-004` ✅ (Expand Influence), Panopticon `SWN-C8-001` ✅ (Cunning attacks/defenses) |
 | **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` ✅ |
@@ -227,7 +237,9 @@ over 13 assets; the S-side maps cleanly onto the 5 existing hook categories), so
 - **`relocate-other` is a parametric near-miss on *both* surfaces** — Covert
   Shipping/Transit Net (A) and Transit Web (S) all want a relocation the
   carrier-shaped `transport` primitive can't express. Three assets, one missing
-  primitive.
+  primitive. *As built (A.001.3 Effort 5):* both surfaces now run through one
+  shared package, `engine/relocate` — the A side as a spent ability, Transit Web
+  as a free movement grant ([world & movement](world-movement.md)).
 - **`coin_steal`/`coin_drain` are declared but dead** — the enum anticipated the
   effect; no dispatch consumes it.
 - **Seductress silently no-ops** — its `[[ability.steps]]` is dropped at parse,

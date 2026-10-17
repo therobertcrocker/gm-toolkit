@@ -370,6 +370,45 @@ func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 	}
 }
 
+func TestFirePurchase_FiresOnPurchaseEntriesOnly(t *testing.T) {
+	coinPerTrigger := func(ctx effect.FireContext) []domain.Mutation {
+		return []domain.Mutation{domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: 1, Cause: string(ctx.Entry.Trigger)}}
+	}
+	registrars := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialApplyStealth: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnSelf},
+			Fire:     coinPerTrigger,
+		},
+		domain.SpecialCoinGain: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnSelf},
+			Fire:     coinPerTrigger,
+		},
+	}
+	def := &domain.AssetDefinition{ID: "T-001", Effects: []domain.EffectDefinition{
+		{Trigger: domain.TriggerOnPurchase, Effect: domain.SpecialApplyStealth, Filters: ownSelf},
+		{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialCoinGain, Filters: ownSelf},
+	}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}
+	faction := &domain.Faction{ID: "alpha"}
+	engine := effect.New(registrars, discardLog)
+
+	t.Run("only the purchase entry fires", func(t *testing.T) {
+		bought := &domain.Asset{ID: "a-1", DefinitionID: def.ID, Ready: false, CurrentHP: 1}
+		got := engine.FirePurchase(faction, bought, nil, rb, nil)
+		want := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "on_purchase"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("mutations = %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("an unknown definition fires nothing", func(t *testing.T) {
+		unknown := &domain.Asset{ID: "a-2", DefinitionID: "T-404"}
+		if got := engine.FirePurchase(faction, unknown, nil, rb, nil); got != nil {
+			t.Errorf("mutations = %+v, want nil", got)
+		}
+	})
+}
+
 func TestFireTurnStart_PassesFactionStateToThePhaseRoute(t *testing.T) {
 	var seen *state.FactionState
 	registrars := map[domain.SpecialEffectType]effect.Registrar{

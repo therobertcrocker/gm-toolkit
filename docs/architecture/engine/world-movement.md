@@ -79,25 +79,37 @@ the current `StepIdx`, the `DriftRating` that priced the route, and the
   and carries the old order's cargo forward via `MovementOrderRevised`; **Cancel**
   emits `MovementOrderCancelled`, stranding the asset at its current `Location`.
 
-### The two-dispatch movement phase
+### The movement phase
 
-`runMovementPhase` runs the two entry points in a fixed order and dispatches
-reactor [hooks](hooks.md) after *each*:
+`runMovementPhase` runs its steps in a fixed order and dispatches reactor
+[hooks](hooks.md) after *each* mutation batch:
 
 1. **Tick first.** `TickMovementOrders` advances open orders; its mutations go
    through `MutationReactors` then `applyAndRecord`, and the driver is notified
    via `OnMovementTicked`.
 2. **Then decisions.** `prepareMovementDecisions` collects new GM orders;
    *their* mutations go through their own `MutationReactors` pass, then
-   `applyAndRecord`, then `OnMovementResolved`.
-3. **Checkpoint.** The phase ends at `AwaitCheckpoint(CheckpointMovement)`, a
+   `applyAndRecord`.
+3. **Then granted moves.** `runGrantedMovement` asks
+   `GrantedMovementAbilities` for the faction's free movement grants (Cat 4
+   `AssetMovementGranter`) and offers each grant once through
+   `relocate.Run`. Each grant is its own batch — `MutationReactors`, then
+   `applyAndRecord` — so the next grant sees the Coin and locations the last
+   one changed. A grant with nothing in range, one the faction cannot pay for, or
+   one the GM declines (no orders, or Esc) is skipped; an unaffordable grant is
+   also reported through `OnError`. The driver then gets one
+   `OnMovementResolved` carrying the decision mutations and every grant's.
+4. **Checkpoint.** The phase ends at `AwaitCheckpoint(CheckpointMovement)`, a
    pause point for the driver.
 
 Tick-before-decisions is load-bearing: an asset that *completes* its transit
 this tick is settled before the GM is asked what to do with it, so the decision
-menu reflects the post-tick world. Dispatching reactors twice — once per
-mutation batch — is what lets a transport's cargo-follow reaction fire on the
-tick's progress mutations *and* on a freshly issued order.
+menu reflects the post-tick world. Dispatching reactors per batch is what lets a
+transport's cargo-follow reaction fire on the tick's progress mutations *and* on
+a freshly issued order. Grants-after-decisions is load-bearing too: a transport
+order puts its cargo in transit (no `WorldID`) only when its batch applies, so by
+the time a grant runs, cargo loaded this phase is out of range and cannot be moved
+twice.
 
 ### Eligibility and cargo
 
@@ -138,12 +150,19 @@ flowchart TD
   end
   subgraph Decisions["② Decisions — collect new GM orders"]
     direction LR
-    Prepare["prepareMovementDecisions"]:::process --> DReact["MutationReactors"]:::cond --> DApply["applyAndRecord"]:::core --> DNotify["OnMovementResolved"]:::process
+    Prepare["prepareMovementDecisions"]:::process --> DReact["MutationReactors"]:::cond --> DApply["applyAndRecord"]:::core
   end
+  subgraph Grants["③ Granted moves — one batch per grant"]
+    direction LR
+    Grant["runGrantedMovement<br>relocate.Run"]:::process --> GReact["MutationReactors"]:::cond --> GApply["applyAndRecord"]:::core
+  end
+  Resolved["OnMovementResolved<br>decisions + grants"]:::process
   Checkpoint[/"AwaitCheckpoint<br>CheckpointMovement"/]:::muted
 
   TNotify -- "then decisions<br>(tick settles first)" --> Prepare
-  DNotify --> Checkpoint
+  DApply -- "then grants<br>(cargo already in transit)" --> Grant
+  GApply --> Resolved
+  Resolved --> Checkpoint
 
   classDef process fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e
   classDef core    fill:#cba6f7,stroke:#a47fd6,color:#1e1e2e
@@ -170,6 +189,19 @@ and `WorldsInRegion` returns every world sharing the origin's region (a pure
 range-mode-agnostic — the enumerator picks the legal set, the primitive only
 validates membership and emits.
 
+The orchestration around these lives in one shared package, `engine/relocate`.
+`relocate.Run` picks the enumerator by range mode, gathers the movable candidates
+(the acting asset for self-scope; for other-scope, the faction's in-range assets
+that pass the type, category and excluded-type filters and have no movement order),
+prompts through a one-method `OrderCollector`, checks Coin, and calls
+`BuildRelocateMutations` per order. Under the `flat` cost mode only the first order
+carries the cost. Two harnesses call it: a spent `relocate` ability in the action
+phase (the action collector prompts), and a free movement grant in the movement
+phase (the phase collector prompts). `Run` reports "nothing to do" as sentinels —
+`ErrNoCandidates`, `ErrInsufficientCoin`, `action.ErrNoSelection` — and each
+harness decides what they mean: the ability surfaces them as errors, the grant
+runner skips the grant.
+
 ## Key Decisions
 
 - **The index is rebuilt fresh each faction turn, not mutated incrementally.** A
@@ -189,9 +221,11 @@ validates membership and emits.
 - **Tick before decisions.** Open orders advance before the GM is prompted, so
   completed transits are already settled when the decision menu is built. (Own
   completed doc: `asset-movement-redesign-tick-decision-ordering`.)
-- **The movement phase dispatches reactors twice.** Tick mutations and decision
+- **The movement phase dispatches reactors per batch.** Tick mutations and decision
   mutations each get their own `MutationReactors` pass, so reactive effects fire
-  on both transit progress and newly issued orders. (Frozen log 227–235.)
+  on both transit progress and newly issued orders. (Frozen log 227–235.) Each
+  granted move is a further batch with its own pass (S-flag Effort 5 Plan,
+  Decision 6).
 - **Revision costs 1 Coin and re-paths from the current hex.** Changing a live
   order is a real in-game action with a price, and it re-routes from where the
   asset actually is, not its original origin.
@@ -202,8 +236,10 @@ validates membership and emits.
 - **Instant relocation is a distinct entry point from drift orders.**
   `BuildRelocateMutations` settles an asset at its destination the same turn — no
   order, path, or tick — so an ability's move is immediate where a drift order is
-  multi-turn. The two share the world engine but not the movement phase. (Effort 3
-  Plan, Decisions 3 & 5.)
+  multi-turn. The two share the world engine but not a step: a free movement grant
+  runs in the movement phase, but as an instant relocate after the drift decisions,
+  never as an order. (Effort 3 Plan, Decisions 3 & 5; S-flag Effort 5 Plan,
+  Decision 6.)
 - **Relocate reuses `AssetMoved`; it adds no new mutation.** An instant move is the
   same state change as a cargo follow — an asset's `Location` changes — so it emits
   the existing `AssetMoved` (with `Cause: "ability"`) rather than a parallel

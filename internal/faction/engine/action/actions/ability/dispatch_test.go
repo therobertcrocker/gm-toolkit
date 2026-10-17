@@ -274,9 +274,9 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 
 // TestDispatch_CrossStep_CoinProjection: a two-step self-relocate where the faction
 // can afford exactly one move. The cross-step projection applies step 1's CoinDelta to
-// the working faction, so step 2 reads Coin 0 and fails its affordability check —
-// proving the projection threads Coin, not just Location. Without it, step 2 would read
-// the stale pre-action balance and overdraw the faction.
+// the working faction, so step 2 reads Coin 0 and fails its affordability check before
+// it prompts — proving the projection threads Coin, not just Location. Without it, step
+// 2 would read the stale pre-action balance and overdraw the faction.
 func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 	acting := &domain.Asset{
 		ID:           "a1",
@@ -300,12 +300,9 @@ func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	gomock.InOrder(
-		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil),
-		collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "mid"}}, nil),
-	)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil).
+		Times(1)
 
 	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, nil, factionState, relocRulebook(), relocEngine())
 	if err == nil {

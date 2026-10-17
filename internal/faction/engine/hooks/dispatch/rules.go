@@ -113,16 +113,22 @@ func ResolveAttackEligibility(registry *hooks.Registry, query hooks.AttackEligib
 	return true
 }
 
-// GrantedMovementAbilities collects extra movement abilities granted to asset
-// by all registered AssetMovementGranters (global + faction-scoped +
-// asset-scoped). Returns nil when registry is nil or no granters match.
-func GrantedMovementAbilities(registry *hooks.Registry, asset *domain.Asset) []hooks.MovementAbility {
+// GrantedMovementAbilities collects the free movement offered to faction: its
+// global and faction granters, then those registered against each asset it owns,
+// in asset ID order. A grant serves its owner only, so a rival's assets are never
+// asked. Returns nil when registry is nil or no granter offers anything.
+func GrantedMovementAbilities(registry *hooks.Registry, faction *domain.Faction) []hooks.MovementAbility {
 	if registry == nil {
 		return nil
 	}
 	var abilities []hooks.MovementAbility
-	for _, registered := range registry.AssetMovementGrantersFor(asset.OwnerID, asset.ID) {
-		abilities = append(abilities, registered.Hook.GrantMovementAbilities(asset)...)
+	for _, registered := range registry.AssetMovementGrantersFor(faction.ID, "") {
+		abilities = append(abilities, registered.Hook.GrantMovementAbilities(faction)...)
+	}
+	for _, asset := range domain.SortedAssets(faction) {
+		for _, registered := range registry.AssetMovementGrantersForAsset(faction.ID, asset.ID) {
+			abilities = append(abilities, registered.Hook.GrantMovementAbilities(faction)...)
+		}
 	}
 	return abilities
 }

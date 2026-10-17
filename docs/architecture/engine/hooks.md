@@ -126,8 +126,13 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   output — so two effects on the same number compose instead of clobbering;
   `GrantedMovementAbilities` collects every granter's list. `ResolveAssetCost`
   asks the buyer's own hooks, then each rival asset on the purchase world in
-  asset-ID order. `ResolveWorldTechLevel` asks the faction's hooks, then each of
-  its own assets, since a tech-level floor serves only its owner.
+  asset-ID order. `ResolveWorldTechLevel` and `GrantedMovementAbilities` ask the
+  faction's hooks, then each of its own assets in asset-ID order, since a
+  tech-level floor or a movement grant serves only its owner. A grant is a
+  `MovementAbility` — the granting asset (`Source`, the range origin) and its
+  `RelocateParams`. The movement phase runs each grant once, through the shared
+  `engine/relocate` package, after the drift decisions apply (see
+  [world & movement](world-movement.md)).
 - **`ResolveAttackEligibility`** is the fourth Cat 4 resolver, and it answers yes
   or no. It is asked once per defender when the attack target list is built
   (`eligibleDefendersAtHex`, behind `Validate`, `Inputs` and `Resolve`), and once

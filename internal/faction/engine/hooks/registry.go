@@ -247,6 +247,12 @@ func (registry *Registry) AssetMovementGrantersFor(factionID, assetInstanceID st
 	return result
 }
 
+// AssetMovementGrantersForAsset returns the Cat 4 movement-granter hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) AssetMovementGrantersForAsset(factionID, assetInstanceID string) []RegisteredAssetMovementGranter {
+	return registry.assetMovementGranters[AssetScope(factionID, assetInstanceID)]
+}
+
 // TieResolversFor returns all Cat 5 hooks matching the given faction and asset.
 func (registry *Registry) TieResolversFor(factionID, assetInstanceID string) []RegisteredTieResolver {
 	var result []RegisteredTieResolver

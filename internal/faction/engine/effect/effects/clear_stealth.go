@@ -13,9 +13,9 @@ import (
 
 // clearStealthRegistrar reads owner = "rival" as "the affected asset is a
 // rival's", and scope = "world" as "it stands on (stealth_arrival: lands on) the
-// declaring asset's world". stealth_arrival is a reactor; turn_start tests every
-// such asset when the owner's turn begins. Arrival by purchase is Effort 5's, with
-// the route that makes a purchase stealthy.
+// declaring asset's world". stealth_arrival is a reactor that covers a stealthed
+// landing and a stealthed purchase; turn_start tests every such asset when the
+// owner's turn begins.
 var clearStealthRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerStealthArrival: {
@@ -102,26 +102,54 @@ func (reactor *clearStealthReactor) OnMutations(mutations []domain.Mutation, fac
 	}
 	var extra []domain.Mutation
 	for _, mutation := range mutations {
-		moved, ok := mutation.(domain.AssetMoved)
-		if !ok || moved.ToLocation.WorldID != worldID || moved.FromLocation.WorldID == worldID || moved.FactionID == owner.ID {
+		factionID, assetID, ok := stealthArrival(mutation, mutations, factionState, worldID)
+		if !ok || factionID == owner.ID {
 			continue
 		}
-		target := factionState.Factions[moved.FactionID]
-		if target == nil || target.Assets[moved.AssetID] == nil || !target.Assets[moved.AssetID].Stealthy {
+		target := factionState.Factions[factionID]
+		if target == nil {
 			continue
 		}
-		if reactor.stealthy != nil && target.Assets[moved.AssetID].Stealthy != *reactor.stealthy {
+		// deliberate: compare true, not the state's flag, because a bought asset is stealthed by this batch and is not in state yet.
+		if reactor.stealthy != nil && !*reactor.stealthy {
 			continue
 		}
 		if reactor.contest != nil && !contestPasses(*reactor.contest, owner, target, reactor.roller) {
 			continue
 		}
 		extra = append(extra, domain.AssetStealthCleared{
-			FactionID:         target.ID,
-			AssetID:           moved.AssetID,
+			FactionID:         factionID,
+			AssetID:           assetID,
 			Cause:             string(domain.SpecialClearStealth),
 			CausedByFactionID: owner.ID,
 		})
 	}
 	return extra
+}
+
+// stealthArrival reports the asset a mutation brings onto worldID stealthed. A
+// landing is an AssetMoved into the world from elsewhere by an asset already
+// stealthy (Decision Record 10). A purchase is an AssetStealthApplied whose asset
+// the same batch adds on the world; a stealth applied to an asset already there is
+// not an arrival.
+func stealthArrival(mutation domain.Mutation, batch []domain.Mutation, factionState *state.FactionState, worldID string) (string, string, bool) {
+	switch m := mutation.(type) {
+	case domain.AssetMoved:
+		if m.ToLocation.WorldID != worldID || m.FromLocation.WorldID == worldID {
+			return "", "", false
+		}
+		faction := factionState.Factions[m.FactionID]
+		if faction == nil || faction.Assets[m.AssetID] == nil || !faction.Assets[m.AssetID].Stealthy {
+			return "", "", false
+		}
+		return m.FactionID, m.AssetID, true
+	case domain.AssetStealthApplied:
+		for _, other := range batch {
+			added, ok := other.(domain.AssetAdded)
+			if ok && added.FactionID == m.FactionID && added.Asset.ID == m.AssetID && added.Asset.Location.WorldID == worldID {
+				return m.FactionID, m.AssetID, true
+			}
+		}
+	}
+	return "", "", false
 }

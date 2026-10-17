@@ -195,7 +195,8 @@ type AssetMoved struct {
 func (m AssetMoved) Type() string { return "asset_moved" }
 
 // AssetStealthApplied marks an asset as stealthy. Emitted by Buy Asset when
-// a Stealth-type Cunning asset is purchased.
+// a Stealth-type Cunning asset is purchased, and by apply_stealth when an asset
+// that starts stealthed is bought.
 type AssetStealthApplied struct {
 	FactionID         string `json:"faction_id"`
 	AssetID           string `json:"asset_id"`

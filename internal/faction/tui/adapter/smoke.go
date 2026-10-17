@@ -51,6 +51,10 @@ func (s *SmokePhaseCollector) SelectTransportCargo(_ *domain.Asset, _ []*domain.
 	return nil, nil
 }
 
+func (s *SmokePhaseCollector) SelectRelocateOrders(_ *domain.Asset, _ []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+	return nil, nil
+}
+
 var _ engine.PhaseCollector = (*SmokePhaseCollector)(nil)
 
 // SmokeActionCollector satisfies action.Collector for the dry-run. The smoke

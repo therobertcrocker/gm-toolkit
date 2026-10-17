@@ -1707,8 +1707,15 @@ feat: restrict_attack effect
 
 ### Effort 5 — Movement and purchase *(own Plan session)*
 
-Scoping outline for the Effort-5 Plan session. Two dispatch items, one new package, one
-hook type reshaped, and the two remaining assets.
+Planned in full in [`s-flag-effect-registry-effort-5-plan.md`](./s-flag-effect-registry-effort-5-plan.md)
+— five commits. The outline below was the scoping input; the effort plan is
+authoritative. Where they differ, the effort plan wins: the movement grant is
+faction-level (Decision 1), granted moves run after the decision batch applies
+(Decision 6), and the purchase route fires from an orchestrator scan, not from each
+purchase path (Decision 10).
+
+Two dispatch items, one new package, one hook type reshaped, and the two remaining
+assets.
 
 - `refactor: extract the shared relocate orchestration` — Planning Decision 2. A new
   `relocate` package holding enumerate → filter → prompt → build, taking a one-method

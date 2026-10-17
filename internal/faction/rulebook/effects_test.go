@@ -463,18 +463,6 @@ amount = "1d0"
 `,
 			wantErr: "sides must be > 0",
 		},
-		{
-			name: "effort-5 relocate fields on an action-spent ability",
-			body: `
-[assets.Machine.ability]
-effect = "relocate"
-[assets.Machine.ability.relocate]
-scope      = "other"
-max_hex    = 3
-categories = ["Wealth"]
-`,
-			wantErr: "not supported on an [ability]",
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -486,6 +474,37 @@ categories = ["Wealth"]
 				t.Errorf("error %q does not contain %q", err.Error(), tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestConvertAbilityStep_RelocateCarriesEffortFiveFields(t *testing.T) {
+	assets, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+effect = "relocate"
+[assets.Machine.ability.relocate]
+scope          = "other"
+max_hex        = 3
+coin_cost      = 1
+coin_cost_mode = "flat"
+categories     = ["Wealth"]
+exclude_types  = ["Starship"]
+`)
+	if err != nil {
+		t.Fatalf("loadAssets: %v", err)
+	}
+	steps := assets["T-001"].Ability.Steps
+	if len(steps) != 1 || steps[0].Relocate == nil {
+		t.Fatalf("steps = %+v, want one relocate step", steps)
+	}
+	relocate := steps[0].Relocate
+	if !reflect.DeepEqual(relocate.Categories, []domain.FactionStat{domain.StatWealth}) {
+		t.Errorf("Categories = %v, want [Wealth]", relocate.Categories)
+	}
+	if !reflect.DeepEqual(relocate.ExcludeTypes, []domain.AssetType{domain.TypeStarship}) {
+		t.Errorf("ExcludeTypes = %v, want [Starship]", relocate.ExcludeTypes)
+	}
+	if relocate.CoinCostMode != domain.RelocateCostFlat {
+		t.Errorf("CoinCostMode = %q, want %q", relocate.CoinCostMode, domain.RelocateCostFlat)
 	}
 }
 

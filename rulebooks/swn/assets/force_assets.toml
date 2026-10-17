@@ -352,6 +352,13 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "2d6+2"
 
+[[assets.PsychicAssassins.effects]]
+trigger = "on_purchase"
+effect  = "apply_stealth"
+[assets.PsychicAssassins.effects.filters]
+owner = "own"
+scope = "self"
+
 [assets.PretechInfantry]
 id = "SWN-F6-001"
 name = "Pretech Infantry"

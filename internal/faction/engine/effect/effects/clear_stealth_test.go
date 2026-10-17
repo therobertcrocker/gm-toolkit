@@ -155,6 +155,61 @@ func TestClearStealth(t *testing.T) {
 	}
 }
 
+// stealthedPurchase is the batch an on_purchase apply_stealth leaves: the asset is
+// added, then stealthed. Neither has applied, so the asset is not in state.
+func stealthedPurchase(factionID, assetID string, at domain.Location) []domain.Mutation {
+	return []domain.Mutation{
+		domain.AssetAdded{FactionID: factionID, Asset: domain.Asset{ID: assetID, OwnerID: factionID, Location: at}, Cause: "buy", CausedByFactionID: factionID},
+		domain.AssetStealthApplied{FactionID: factionID, AssetID: assetID, Cause: "apply_stealth", CausedByFactionID: factionID},
+	}
+}
+
+func TestClearStealth_Purchase(t *testing.T) {
+	cases := []struct {
+		name    string
+		cellsAt domain.Location
+		rolls   []int
+		batch   []domain.Mutation
+		want    []domain.Mutation
+	}{
+		{
+			name:    "a rival bought stealthed on the Cells' world loses its stealth when the Cells win",
+			cellsAt: krylos,
+			rolls:   []int{6, 2}, // 6+3=9 vs 2+2=4
+			batch:   stealthedPurchase("beta", "assassins", krylos),
+			want:    []domain.Mutation{domain.AssetStealthCleared{FactionID: "beta", AssetID: "assassins", Cause: "clear_stealth", CausedByFactionID: "alpha"}},
+		},
+		{
+			name:    "a purchase on another world is ignored",
+			cellsAt: krylos,
+			batch:   stealthedPurchase("beta", "assassins", tartarus),
+		},
+		{
+			name:    "stealth applied to an asset already on the world is not an arrival",
+			cellsAt: tartarus,
+			batch:   []domain.Mutation{domain.AssetStealthApplied{FactionID: "beta", AssetID: "courier", Cause: "buy", CausedByFactionID: "beta"}},
+		},
+		{
+			name:    "the owner's own purchase is ignored",
+			cellsAt: krylos,
+			batch:   stealthedPurchase("alpha", "assassins", krylos),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState := tripwireState(tc.cellsAt)
+			roller := &seqRoller{values: tc.rolls}
+			got := tripwireReactor(t, factionState, roller).OnMutations(tc.batch, factionState, nil)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("mutations = %+v, want %+v", got, tc.want)
+			}
+			if roller.next != len(tc.rolls) {
+				t.Errorf("rolled %d dice, want %d", roller.next, len(tc.rolls))
+			}
+		})
+	}
+}
+
 func TestClearStealth_InactiveCellsWatchNothing(t *testing.T) {
 	for name, deactivate := range inactiveStates {
 		t.Run(name, func(t *testing.T) {

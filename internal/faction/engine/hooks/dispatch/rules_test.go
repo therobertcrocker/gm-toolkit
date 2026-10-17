@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -301,5 +302,49 @@ func TestResolveAttackEligibility_GlobalAndFactionRulesAskedOnce(t *testing.T) {
 	}
 	if len(targetFaction.asked) != 0 {
 		t.Errorf("target's faction rule asked as %v, want not asked: the target answers through its asset only", targetFaction.asked)
+	}
+}
+
+// stubMovementGranter records each ask and offers one grant whose Source names it.
+type stubMovementGranter struct {
+	name  string
+	asked *[]string
+}
+
+func (stub *stubMovementGranter) GrantMovementAbilities(_ *domain.Faction) []hooks.MovementAbility {
+	*stub.asked = append(*stub.asked, stub.name)
+	return []hooks.MovementAbility{{Source: &domain.Asset{ID: stub.name}}}
+}
+
+func TestGrantedMovementAbilities_WalksFactionThenAssets(t *testing.T) {
+	registry := hooks.NewRegistry()
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{
+		"a": {ID: "a", OwnerID: "f1"},
+		"b": {ID: "b", OwnerID: "f1"},
+	}}
+	var asked []string
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "b"), "b", &stubMovementGranter{name: "b", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "a"), "a", &stubMovementGranter{name: "a", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.FactionScope("f1"), "faction", &stubMovementGranter{name: "faction", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("rival", "r1"), "rival", &stubMovementGranter{name: "rival", asked: &asked})
+
+	abilities := GrantedMovementAbilities(registry, faction)
+
+	var sources []string
+	for _, ability := range abilities {
+		sources = append(sources, ability.Source.ID)
+	}
+	want := []string{"faction", "a", "b"}
+	if !slices.Equal(sources, want) {
+		t.Errorf("grant sources = %v, want %v (faction, then own assets in ID order)", sources, want)
+	}
+	if slices.Contains(asked, "rival") {
+		t.Errorf("asked = %v: a rival's asset granter must not be asked", asked)
+	}
+}
+
+func TestGrantedMovementAbilities_NilRegistry(t *testing.T) {
+	if got := GrantedMovementAbilities(nil, &domain.Faction{ID: "f1"}); got != nil {
+		t.Errorf("GrantedMovementAbilities(nil) = %v, want nil", got)
 	}
 }

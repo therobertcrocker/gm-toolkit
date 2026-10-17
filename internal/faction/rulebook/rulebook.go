@@ -328,10 +328,6 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		if err != nil {
 			return domain.AbilityStep{}, err
 		}
-		// deliberate: reject, not ignore, because the action-spent relocate handler does not read these fields yet.
-		if len(params.Categories) > 0 || len(params.ExcludeTypes) > 0 || params.CoinCostMode == domain.RelocateCostFlat {
-			return domain.AbilityStep{}, fmt.Errorf("relocate categories, exclude_types and coin_cost_mode = %q are not supported on an [ability]", domain.RelocateCostFlat)
-		}
 		step.Relocate = params
 	}
 	if purchase := record.Purchase; purchase != nil {

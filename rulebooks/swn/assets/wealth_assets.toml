@@ -558,6 +558,21 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "1d12"
 
+[[assets.TransitWeb.effects]]
+trigger = "movement_options_query"
+effect  = "grant_movement"
+[assets.TransitWeb.effects.filters]
+owner = "own"
+scope = "faction"
+[assets.TransitWeb.effects.grant_movement.relocate]
+scope          = "other"
+range          = "hexes"
+max_hex        = 3
+coin_cost      = 1
+coin_cost_mode = "flat"
+categories     = ["Cunning", "Wealth"]
+exclude_types  = ["Starship"]
+
 [assets.ScavengerFleet]
 id = "SWN-W8-001"
 name = "Scavenger Fleet"

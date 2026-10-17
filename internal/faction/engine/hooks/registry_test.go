@@ -46,6 +46,12 @@ func (stub *stubTieResolver) ResolveTie(_ hooks.RollContext, _ *state.FactionSta
 	return hooks.TieStandard
 }
 
+type stubAssetMovementGranter struct{ name string }
+
+func (stub *stubAssetMovementGranter) GrantMovementAbilities(_ *domain.Faction) []hooks.MovementAbility {
+	return nil
+}
+
 // --- Cat 1: RollModifier ---
 
 func TestRollModifier_RegistrationOrderPreserved(t *testing.T) {
@@ -319,5 +325,20 @@ func TestTieResolver_EmptyRegistryReturnsEmptySlice(t *testing.T) {
 	got := registry.TieResolversFor("f1", "")
 	if len(got) != 0 {
 		t.Errorf("expected empty slice, got %d entries", len(got))
+	}
+}
+
+// --- Cat 4: AssetMovementGranter ---
+
+func TestAssetMovementGranter_ForAssetReturnsOnlyThatBucket(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetMovementGranter(hooks.GlobalScope(), "global", &stubAssetMovementGranter{})
+	registry.RegisterAssetMovementGranter(hooks.FactionScope("f1"), "faction", &stubAssetMovementGranter{})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubAssetMovementGranter{})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "asset-Y"), "asset-Y", &stubAssetMovementGranter{})
+
+	got := registry.AssetMovementGrantersForAsset("f1", "asset-X")
+	if len(got) != 1 || got[0].Source != "asset-X" {
+		t.Errorf("AssetMovementGrantersForAsset = %v, want only the asset-X hook", got)
 	}
 }

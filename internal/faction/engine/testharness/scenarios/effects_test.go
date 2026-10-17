@@ -1,6 +1,9 @@
 package scenarios
 
 import (
+	"encoding/json"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -227,4 +230,168 @@ func TestTurnStartEffect_ResumedTurnDoesNotPayTwice(t *testing.T) {
 
 	testharness.CheckStep(t, "no payout on a turn whose bookkeeping already ran", alpha.Coin == initialCoin,
 		"alpha.Coin changed on a resumed turn")
+}
+
+func addActiveAsset(faction *domain.Faction, suffix, defID, world string) *domain.Asset {
+	asset := &domain.Asset{
+		ID:           faction.ID + "-" + suffix,
+		DefinitionID: defID,
+		OwnerID:      faction.ID,
+		Location:     domain.Location{WorldID: world},
+		CurrentHP:    5,
+		Ready:        true,
+		Maintained:   true,
+	}
+	faction.Assets[asset.ID] = asset
+	return asset
+}
+
+// countByTypeAndCause counts history mutations of mutType whose payload carries cause.
+func countByTypeAndCause(records []domain.EventRecord, mutType, cause string) int {
+	count := 0
+	for _, record := range records {
+		for _, mutation := range record.Mutations {
+			if mutation.Type != mutType {
+				continue
+			}
+			var fields struct {
+				Cause string `json:"cause"`
+			}
+			if err := json.Unmarshal(mutation.Payload, &fields); err == nil && fields.Cause == cause {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func TestEffects_TransitWebMovesForOneCoin(t *testing.T) {
+	h := testharness.NewHarness(t)
+	h.SpatialMap.Worlds = []string{"Krylos", "Tartarus"}
+	alpha := h.AddFaction("alpha", "Tartarus", 4, 4, 7) // AddFaction adds a Security Personnel (Force Military Unit)
+	alpha.Coin = 10
+	addActiveAsset(alpha, "web", testharness.DefTransitWeb, "Tartarus")
+	franchise := addActiveAsset(alpha, "franchise", testharness.DefFranchise, "Tartarus")
+	partyMachine := addActiveAsset(alpha, "party-machine", testharness.DefPartyMachine, "Tartarus")
+	h.Collector.SelectActionFn = skipAction
+
+	coinAtPrompt := -1
+	var offered []string
+	h.Collector.SelectRelocateOrdersFn = func(_ *domain.Asset, candidates []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+		coinAtPrompt = alpha.Coin
+		var orders []action.RelocateOrder
+		for _, candidate := range candidates {
+			offered = append(offered, candidate.ID)
+			orders = append(orders, action.RelocateOrder{Asset: candidate, DestinationWorld: "Krylos"})
+		}
+		return orders, nil
+	}
+
+	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	testharness.CheckStep(t, "offered exactly the Franchise and the Party Machine",
+		slices.Equal(offered, []string{franchise.ID, partyMachine.ID}),
+		fmt.Sprintf("offered = %v (the Web itself, and the Force asset, must not be offered)", offered))
+	testharness.CheckStep(t, "both assets are on Krylos",
+		franchise.Location.WorldID == "Krylos" && partyMachine.Location.WorldID == "Krylos",
+		fmt.Sprintf("franchise on %q, party machine on %q", franchise.Location.WorldID, partyMachine.Location.WorldID))
+	testharness.CheckStep(t, "alpha paid exactly 1 Coin for the move", coinAtPrompt-alpha.Coin == 1,
+		fmt.Sprintf("Coin at prompt %d, after the turn %d", coinAtPrompt, alpha.Coin))
+
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
+	moves := countByTypeAndCause(records, "asset_moved", "ability")
+	testharness.CheckStep(t, "one asset_moved per moved asset in history", moves == 2,
+		fmt.Sprintf("asset_moved(cause=ability) = %d, want 2", moves))
+}
+
+// scriptPsychicAssassinsPurchase makes the faction's action a Buy Asset of Psychic
+// Assassins on its homeworld; every other faction skips its action.
+func scriptPsychicAssassinsPurchase(t *testing.T, h *testharness.Harness, buyer *domain.Faction) {
+	t.Helper()
+	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != buyer.ID {
+			return nil, nil
+		}
+		for _, candidate := range available {
+			if candidate.Name() == "Buy Asset" {
+				return candidate, nil
+			}
+		}
+		t.Fatal("Buy Asset not available")
+		return nil, nil
+	}
+	h.Collector.SelectBuyOrderFn = func(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+		for _, def := range purchasablePerWorld[buyer.Homeworld.WorldID] {
+			if def.ID == testharness.DefPsychicAssassins {
+				return action.BuyOrder{World: buyer.Homeworld.WorldID, Definition: def}, nil
+			}
+		}
+		t.Fatal("Psychic Assassins not purchasable on the homeworld")
+		return action.BuyOrder{}, nil
+	}
+}
+
+func findByDefinition(faction *domain.Faction, defID string) *domain.Asset {
+	for _, asset := range domain.SortedAssets(faction) {
+		if asset.DefinitionID == defID {
+			return asset
+		}
+	}
+	return nil
+}
+
+func TestEffects_PsychicAssassinsBoughtStealthed(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 5, 3, 2)
+	alpha.Coin = 20
+	scriptPsychicAssassinsPurchase(t, h, alpha)
+
+	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	assassins := findByDefinition(alpha, testharness.DefPsychicAssassins)
+	if assassins == nil {
+		t.Fatal("no Psychic Assassins in alpha's roster")
+	}
+	testharness.CheckStep(t, "the Assassins are stealthed", assassins.Stealthy, "bought Psychic Assassins are not stealthy")
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
+	_, found := testharness.FindMutationByTypeAndCause(records, "asset_stealth_applied", "apply_stealth")
+	testharness.CheckStep(t, "asset_stealth_applied(cause=apply_stealth) in history", found, "no asset_stealth_applied found")
+}
+
+func TestEffects_TripwireCellsCatchAStealthedPurchase(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 5, 3, 2)
+	alpha.Coin = 20
+	beta := h.AddFaction("beta", "Krylos", 2, 4, 2)
+	addActiveAsset(beta, "cells", testharness.DefTripwireCells, "Tartarus")
+	scriptPsychicAssassinsPurchase(t, h, alpha)
+
+	// The Cells' contest: beta 10+cunning(4) = 14 vs alpha 1+cunning(3) = 4, so beta wins.
+	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1}}
+	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	h.FactionState.CurrentTurn.FactionOrder = []string{"alpha", "beta"}
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	assassins := findByDefinition(alpha, testharness.DefPsychicAssassins)
+	if assassins == nil {
+		t.Fatal("no Psychic Assassins in alpha's roster")
+	}
+	testharness.CheckStep(t, "the Cells unmask the Assassins", !assassins.Stealthy, "the Assassins kept their stealth")
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
+	_, found := testharness.FindMutationByTypeAndCause(records, "asset_stealth_cleared", "clear_stealth")
+	testharness.CheckStep(t, "asset_stealth_cleared(cause=clear_stealth) in history", found, "no asset_stealth_cleared found")
 }

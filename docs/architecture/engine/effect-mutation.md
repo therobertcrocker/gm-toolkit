@@ -71,7 +71,7 @@ are registered the same *data-driven* way by the orchestrator at construction:
 `NewWithRulebook` registers one handler per asset definition that declares the
 relevant profile.
 
-Only the **transport** family is wired today — `HeavyDropAssets`,
+The **transport** family registers from its own profile — `HeavyDropAssets`,
 `BeachheadLanders`, `ExtendedTheater`, `DeepStrikeLanders`, every asset whose
 definition carries a `Transport` profile. `TransportHandler.Apply` registers an
 asset-scoped `TransportReactor` for each such asset; the reactor (a
@@ -81,13 +81,18 @@ that transport moves with cargo, charges the per-issuance Coin cost and emits an
 transport. That last point is deliberate — it keeps cargo recoverable if the
 transport is destroyed mid-flight.
 
-Every other `S`-flag feature is defined in asset data and still waiting for a
-handler: Zealots take self-damage on a successful attack (a `MutationReactor`),
-Blockade Fleet steals Coin on a hit (a once-per-turn `MutationReactor`), Integral
-Protocols add a defense die against Cunning (a `RollModifier`), Psychic Assassins
-enter play already stealthy (a `RuleModifier`), Planetary Defenses may only defend
-against Starship-type assets (a `TieResolver`/rule alteration). The shapes are all
-known and have homes; the engine just hasn't grown the handlers yet.
+Every other `S`-flag feature is an `[[effects]]` list in asset data. The effects
+engine keys a registrar on each entry's effect name (`effect/registrar.go`,
+`effects/registrars.go`) and checks every entry against it at construction. Most
+entries register hooks in `ApplyAll`, as transport does. Two triggers are **phase
+routes** instead: a direct definition read that the orchestrator raises, not a
+hook. `turn_start` fires from the bookkeeping phase (`FireTurnStart`).
+`on_purchase` fires from the action phase (`FirePurchase`): after the action
+runs, the phase scans its batch for `AssetAdded` with cause `buy` or `ability`
+(not `refit`), and fires each bought asset's entries before goal progress and
+the reactors. So Psychic Assassins enter play stealthed, and Tripwire Cells see
+them arrive. The [ability catalog](ability-catalog.md) tracks which features
+ship.
 
 ### The apply layer: the mutation vocabulary
 

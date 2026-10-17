@@ -2,11 +2,11 @@ package hooks
 
 import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 
-// MovementAbility describes an extra movement capability granted by a tag or
-// asset effect.
+// MovementAbility is a free relocation a granter offers its faction this turn.
+// Source is the granting asset; range is measured from it.
 type MovementAbility struct {
-	Name        string
-	Description string
+	Source   *domain.Asset
+	Relocate domain.RelocateParams
 }
 
 // AssetCostQuery is the state an asset-cost chain carries from hook to hook.
@@ -61,8 +61,9 @@ type AttackEligibilityRule interface {
 	MayFight(query AttackEligibilityQuery) bool
 }
 
-// AssetMovementGranter reports additional movement abilities conferred on an
-// asset by a tag or special effect (Cat 4).
+// AssetMovementGranter reports the free movement a tag or special effect offers
+// faction this turn (Cat 4). A granter asked for a faction it does not serve
+// returns nothing.
 type AssetMovementGranter interface {
-	GrantMovementAbilities(asset *domain.Asset) []MovementAbility
+	GrantMovementAbilities(faction *domain.Faction) []MovementAbility
 }

@@ -23,10 +23,13 @@ import (
 const (
 	DefSecurityPersonnel = "SWN-F1-001"
 	DefHeavyDropAssets   = "SWN-F2-001"
+	DefPsychicAssassins  = "SWN-F5-003"
 	DefPartyMachine      = "SWN-C4-001"
+	DefTripwireCells     = "SWN-C4-003"
 	DefPanopticonMatrix  = "SWN-C8-001"
 	DefFranchise         = "SWN-W1-001"
 	DefSurveyors         = "SWN-W2-004"
+	DefTransitWeb        = "SWN-W7-003"
 )
 
 type Harness struct {
@@ -45,6 +48,9 @@ type Harness struct {
 // can script multi-hex paths.
 type StubSpatialMap struct {
 	PathFn func(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error)
+	// Worlds, when set, are the worlds AllWorlds returns. Every stub location shares the
+	// zero hex, so each one is at distance 0 from every other and in range of any relocate.
+	Worlds []string
 }
 
 var _ world.HexRouter = (*StubSpatialMap)(nil)
@@ -58,7 +64,10 @@ func (s *StubSpatialMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
 }
 
 func (s *StubSpatialMap) DistancesFrom(_ spatial.RegionHex, _ int) (map[spatial.RegionHex]int, error) {
-	return nil, nil
+	if len(s.Worlds) == 0 {
+		return nil, nil
+	}
+	return map[spatial.RegionHex]int{{}: 0}, nil
 }
 
 func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]spatial.RegionHex, int, error) {
@@ -68,7 +77,13 @@ func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]s
 	return []spatial.RegionHex{from}, 1, nil
 }
 
-func (s *StubSpatialMap) AllWorlds() []spatial.Location { return nil }
+func (s *StubSpatialMap) AllWorlds() []spatial.Location {
+	locations := make([]spatial.Location, 0, len(s.Worlds))
+	for _, id := range s.Worlds {
+		locations = append(locations, &stubLocation{id: id})
+	}
+	return locations
+}
 
 type stubLocation struct{ id string }
 

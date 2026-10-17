@@ -100,3 +100,30 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *sta
 	}
 	return mutations
 }
+
+// FirePurchase runs every on_purchase entry of a just-bought asset through its
+// registrar's phase route. A direct definition read, not a hook: the asset was
+// bought mid-turn, so it has no hooks until the next cycle. No active check: a
+// bought asset is never ready, and its purchase effect is part of what was bought.
+func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
+	def := rulebook.Assets[asset.DefinitionID]
+	if def == nil {
+		return nil
+	}
+	var mutations []domain.Mutation
+	for _, entry := range def.Effects {
+		if entry.Trigger != domain.TriggerOnPurchase {
+			continue
+		}
+		// deliberate: no nil check on Fire, because RegisterEffectsList rejects a phase-route entry without one.
+		mutations = append(mutations, e.registrars[entry.Effect].Fire(FireContext{
+			Faction:      faction,
+			Asset:        asset,
+			Def:          def,
+			Entry:        entry,
+			Roller:       roller,
+			FactionState: factionState,
+		})...)
+	}
+	return mutations
+}

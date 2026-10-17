@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -10,6 +11,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	factionErrors "github.com/therobertcrocker/gm-toolkit/internal/faction/errors"
@@ -388,7 +390,19 @@ func (e *Engine) runMovementPhase(
 		}
 	}
 
-	observer.OnMovementResolved(faction, decisionMutations)
+	grantedMutations, err := e.runGrantedMovement(faction, factionState, paths, collectors.Phase, observer, phaseLog)
+	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
+		observer.OnError(faction, err)
+		return err
+	}
+
+	observer.OnMovementResolved(faction, append(decisionMutations, grantedMutations...))
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointMovement); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -399,7 +413,7 @@ func (e *Engine) runMovementPhase(
 		observer.OnError(faction, err)
 		return err
 	}
-	phaseLog.Info("phase end", "tick_mutations", len(tickMutations), "decision_mutations", len(decisionMutations))
+	phaseLog.Info("phase end", "tick_mutations", len(tickMutations), "decision_mutations", len(decisionMutations), "granted_mutations", len(grantedMutations))
 	return nil
 }
 
@@ -458,6 +472,7 @@ func (e *Engine) runActionPhase(
 		return ErrWorldEngineUnavailable
 	}
 	worldIndex = e.World.Index
+	actionMutations = append(actionMutations, e.firePurchaseEffects(faction, actionMutations, factionState)...)
 	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
 	combined := append(actionMutations, goalMutations...)
 
@@ -583,6 +598,22 @@ func (e *Engine) applyAndRecord(
 // filterAllowedActions narrows a list of available actions to those whose
 // Name() appears in allowed. Used when a goal lock restricts the action set
 // (e.g. Planetary Seizure Phase 1 → Attack only).
+// firePurchaseEffects runs the on_purchase effects of every asset the action
+// bought, in batch order. The asset is the copy the AssetAdded carries, because
+// it is not in state until the batch applies.
+func (e *Engine) firePurchaseEffects(faction *domain.Faction, actionMutations []domain.Mutation, factionState *state.FactionState) []domain.Mutation {
+	var mutations []domain.Mutation
+	for _, mutation := range actionMutations {
+		added, ok := mutation.(domain.AssetAdded)
+		// deliberate: whitelist the purchase causes, not exclude refit, so a new AssetAdded emitter fires nothing until it is judged a purchase.
+		if !ok || (added.Cause != "buy" && added.Cause != "ability") {
+			continue
+		}
+		mutations = append(mutations, e.Effect.FirePurchase(faction, &added.Asset, factionState, e.Rulebook, e.Rand)...)
+	}
+	return mutations
+}
+
 func filterAllowedActions(available []action.Action, allowed []string) []action.Action {
 	if len(allowed) == 0 {
 		return nil
@@ -739,4 +770,52 @@ func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset,
 
 func isCoLocated(a, b domain.Location) bool {
 	return a.WorldID == b.WorldID && a.RegionHex == b.RegionHex
+}
+
+// runGrantedMovement offers each free movement grant once, after the drift
+// decisions apply: cargo loaded this phase is already in transit, so no grant can
+// move it a second time. Each grant is its own batch, so the next grant sees the
+// Coin and locations the last one changed. A grant with nothing to move, that the
+// faction cannot pay for, or that the GM declines is skipped.
+func (e *Engine) runGrantedMovement(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	paths *campaigns.Paths,
+	collector PhaseCollector,
+	observer TurnObserver,
+	phaseLog *slog.Logger,
+) ([]domain.Mutation, error) {
+	var resolved []domain.Mutation
+	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, faction) {
+		params := grant.Relocate
+		mutations, err := relocate.Run(relocate.Request{
+			Faction:   faction,
+			Acting:    grant.Source,
+			Params:    &params,
+			World:     e.World,
+			Rulebook:  e.Rulebook,
+			Collector: collector,
+		})
+		if errors.Is(err, relocate.ErrInsufficientCoin) {
+			phaseLog.Warn("granted movement skipped", "source", grant.Source.ID, "err", err)
+			observer.OnError(faction, err)
+			continue
+		}
+		// deliberate: Esc declines this grant, not the turn, because the decision batch has already applied and must still resolve.
+		if errors.Is(err, relocate.ErrNoCandidates) || errors.Is(err, action.ErrNoSelection) || errors.Is(err, action.ErrTurnCanceled) {
+			continue
+		}
+		if err != nil {
+			return resolved, fmt.Errorf("granted movement from %q: %w", grant.Source.ID, err)
+		}
+		mutations, err = dispatch.MutationReactors(e.Hooks, faction, mutations, factionState, e.Rulebook)
+		if err != nil {
+			return resolved, err
+		}
+		if err := e.applyAndRecord(factionState, faction, mutations, paths, phaseLog); err != nil {
+			return resolved, err
+		}
+		resolved = append(resolved, mutations...)
+	}
+	return resolved, nil
 }

@@ -36,7 +36,7 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectRevealStealth:    revealStealth,
 	domain.EffectCoinDelta:        coinDelta,
 	domain.EffectPurchaseDiscount: purchaseDiscount,
-	domain.EffectRelocate:         relocate,
+	domain.EffectRelocate:         relocateAssets,
 	domain.EffectPurchaseEnabler:  purchaseEnabler,
 }
 
