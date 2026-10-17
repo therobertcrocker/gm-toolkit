@@ -1,8 +1,8 @@
 # Evidence Pack — Project & Process Review
 
 > **Purpose:** facts for the `D.002` review (Fable). Facts only, no judgements. Every
-> number names the command or file that produced it. Plan and rules:
-> [project-review-prep-handoff.md](project-review-prep-handoff.md).
+> number names the command or file that produced it. Read by the review:
+> [project-review-discovery.md](project-review-discovery.md).
 > Gathered 2026-10-17, at `v1.13.0` (`main` = `cb11c74`).
 
 **Limits that apply to every section:**
