@@ -11,6 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
+| `A.001.6` | S-flag rule extensions | `feature` | In-Progress | The 14 SWN S-flag assets that need new state, a new prompt, or a new subsystem; registers through A.001.3's model; wide Discovery; see arc-plan |
 
 
 ---
@@ -23,7 +24,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 |---------|------|------|---------|--------|
 | `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes; owns lore canon; see arc-plan |
-| `A.001.6` | S-flag rule extensions | `feature` | ready | The 14 SWN S-flag assets that need new state, a new prompt, or a new subsystem; registers through A.001.3's model; wide Discovery; see arc-plan |
 
 
 ---
@@ -118,5 +118,32 @@ This section contains detailed write-ups for each planned initiative, including 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
 **Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `[[effects]]` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. `A.001.4` and `A.001.5` are ready; `A.001.6` (S-flag rule extensions) is unblocked.
+
+<br />
+
+## A.001.6 — S-flag Rule Extensions
+
+**Feature**, constituent of arc `A.001`. Added to the arc by the `A.001.3` Discovery (AP-7), which split the S side in two. Full boundary in the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), section "A.001.6 — S-flag rule extensions".
+
+**Problem** — `A.001.3` built the S-side model (*trigger → filters → gates → effect*) and shipped every effect that is a hook or a rule query: 19 assets. 14 SWN S-flag assets remain inert. Each one can register through the model, but its effect acts on something the engine does not have: game state, a prompt, or a subsystem.
+
+**Approach** — Six mechanisms, unequal in size. Each is a separate engine design:
+
+- **Change of asset owner** (small): Hostile Takeover, Treachery.
+- **State held on an asset** — a restriction with a lifetime, or unusable-until-repaired (medium): Saboteurs, Marketers, Seditionists, Boltholes.
+- **A prompt to a faction that is not acting** — Cat 3 receives no collector (medium): False Front, Medical Center, Monopoly.
+- **A purchase that targets another asset** (medium): Stealth.
+- **A permission model for movement** (large): Lobbyists, Popular Movement, Transport Lockdown. It also takes the transport bypass clauses `A.001.3` left alone (Deep Strike Landers, Blockade Runners).
+- **Damage redirected into combat** (medium): Cracked Comms.
+
+Marketers, Seditionists and Monopoly were rerouted from `A.001.2` (AP-6) and passed on by `A.001.3`. The arc-plan expects a full, wide Discovery and a multi-effort plan.
+
+**Related items** — `R.019` (migrate `[transport]` onto the effects list) triggers on this initiative. `B.009` (Capital Fleet missing `P` flag) belongs to the permission work. The `A.001.3` plan defers one model question to the first asset that needs it: `filters` answers both "which events fire this" and "which assets the effect acts on".
+
+**Unlocks** — The complete SWN S side: every S-flag asset runs as data. A larger primitive set for the `A.001.5` mechanical sort, if this initiative runs first. Gates nothing.
+
+**Trigger** — `A.001.3` complete (met).
+
+**Status** — In-Progress — promoted 2026-10-17. Discovery not started.
 
 
