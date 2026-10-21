@@ -114,9 +114,10 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   `ModifierOffer.FromTag`), hands them to the [collector](#the-collector-seam) for
   selection, expands and rolls the dice pool, applies keep-highest, then runs Cat
   2 reroll directives — so one call covers both roll-time families.
-- **`MutationReactors`** runs after the orchestrator applies a phase's mutations
-  (movement and action phases), letting Cat 3 reactors respond to what just
-  happened. It runs **every** registered reactor, not only the acting
+- **`MutationReactors`** runs on a phase's emitted mutations before the
+  orchestrator applies them (movement and action phases), letting Cat 3 reactors
+  respond to what is about to happen. Their output joins the batch, which
+  `applyAndRecord` then applies in one pass. It runs **every** registered reactor, not only the acting
   faction's: global, then each faction's, then each of that faction's assets,
   sorted by faction ID and then asset ID so the emitted mutations are
   deterministic. A defender's reactor hears what was done to it; each reactor
