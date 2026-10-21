@@ -203,7 +203,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			break
 		}
 		attackerDef, ok := rulebook.Assets[attacker.DefinitionID]
-		if !ok || attackerDef.Attack == nil {
+		if !ok || attackerDef.Attack == nil || attackerDef.Attack.Damage == nil {
 			continue
 		}
 		worldID := target.Location.WorldID

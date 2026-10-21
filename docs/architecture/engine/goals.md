@@ -71,6 +71,8 @@ looks up the about-to-be-destroyed rival assets in state to read their category;
 if the destructive mutations had already applied, the assets would be gone and
 the kills uncountable. The orchestrator therefore folds `UpdateProgress`'s output
 into the action's mutations and applies the combined batch in one pass.
+`UpdateProgress` reads the batch after `dispatch.MutationReactors`, so a reactor's
+capture or removal counts as progress; reactors do not see goal output.
 
 ### Worked example — Planetary Seizure
 

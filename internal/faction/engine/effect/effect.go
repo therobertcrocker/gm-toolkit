@@ -57,17 +57,23 @@ func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rul
 	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 		faction := factionState.Factions[factionID]
 		for _, asset := range domain.SortedAssets(faction) {
-			def := rulebook.Assets[asset.DefinitionID]
-			if def == nil {
-				continue
-			}
-			handler, ok := e.handlers[def.ID]
-			if !ok {
-				continue
-			}
-			handler.Apply(faction, asset, hookRegistry, roller)
+			e.ApplyAsset(faction, asset, rulebook, hookRegistry, roller)
 		}
 	}
+}
+
+// ApplyAsset registers one asset's hooks under faction. A missing definition or
+// handler registers nothing.
+func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) {
+	def := rulebook.Assets[asset.DefinitionID]
+	if def == nil {
+		return
+	}
+	handler, ok := e.handlers[def.ID]
+	if !ok {
+		return
+	}
+	handler.Apply(faction, asset, hookRegistry, roller)
 }
 
 // FireTurnStart runs every turn_start entry on faction's active assets, in asset ID

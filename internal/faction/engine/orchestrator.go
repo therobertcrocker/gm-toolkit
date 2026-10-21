@@ -40,7 +40,10 @@ func (e *Engine) RunCycle(
 ) error {
 	logging.RunHeader(e.log, "faction-manager", "dev", factionState.CampaignID, len(factionState.Factions))
 
-	e.primeHooks(factionState)
+	// deliberate: reset before registering, because the TUI runs every cycle on one engine and each ApplyAll would add another copy of every hook.
+	e.Hooks.Reset()
+	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
+	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.Rand, e.log.With("engine", "effect"))
 
 	for {
 		done, err := e.RunFactionTurn(factionState, paths, collectors, observer)
@@ -53,19 +56,22 @@ func (e *Engine) RunCycle(
 	}
 }
 
-// primeHooks registers every tag and effect hook from current state.
-func (e *Engine) primeHooks(factionState *state.FactionState) {
-	// deliberate: reset before registering, because the TUI runs every cycle on one engine and each ApplyAll would add another copy of every hook.
-	e.Hooks.Reset()
-	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
-	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.Rand, e.log.With("engine", "effect"))
-}
-
-func changesOwner(mutations []domain.Mutation) bool {
-	return slices.ContainsFunc(mutations, func(mutation domain.Mutation) bool {
-		_, ok := mutation.(domain.AssetOwnerChanged)
-		return ok
-	})
+// registerCapturedAssets moves each asset that changed owner in mutations to its
+// new owner's hook bucket.
+func (e *Engine) registerCapturedAssets(factionState *state.FactionState, mutations []domain.Mutation) {
+	for _, mutation := range mutations {
+		changed, ok := mutation.(domain.AssetOwnerChanged)
+		if !ok {
+			continue
+		}
+		// deliberate: clear the old bucket, not leave it, because a recapture in the same cycle would register the asset there a second time and its hooks would fire twice (Decision Record 13).
+		e.Hooks.ClearAsset(changed.FactionID, changed.AssetID)
+		owner := factionState.Factions[changed.ToFactionID]
+		if owner == nil || owner.Assets[changed.AssetID] == nil {
+			continue
+		}
+		e.Effect.ApplyAsset(owner, owner.Assets[changed.AssetID], e.Rulebook, e.Hooks, e.Rand)
+	}
 }
 
 // RunFactionTurn drives one faction's turn from setup through state save:
@@ -487,10 +493,8 @@ func (e *Engine) runActionPhase(
 	}
 	worldIndex = e.World.Index
 	actionMutations = append(actionMutations, e.firePurchaseEffects(faction, actionMutations, factionState)...)
-	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
-	combined := append(actionMutations, goalMutations...)
 
-	combined, err = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
+	combined, err := dispatch.MutationReactors(e.Hooks, faction, actionMutations, factionState, e.Rulebook)
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -501,6 +505,8 @@ func (e *Engine) runActionPhase(
 		observer.OnError(faction, err)
 		return err
 	}
+	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
+	combined = append(combined, e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))...)
 
 	if err := e.applyAndRecord(factionState, faction, combined, paths, phaseLog); err != nil {
 		if factionErrors.IsRecoverable(err) {
@@ -512,10 +518,8 @@ func (e *Engine) runActionPhase(
 		observer.OnError(faction, err)
 		return err
 	}
-	if changesOwner(combined) {
-		// deliberate: re-register now, not at the next cycle, because a captured asset's hooks are keyed under its old owner and nothing would find them (Decision 9).
-		e.primeHooks(factionState)
-	}
+	// deliberate: register the captured asset now, not at the next cycle, and only that asset, not every hook, because its hooks are keyed under its old owner, and a full re-prime would also wake hooks bought this cycle (Decision 9).
+	e.registerCapturedAssets(factionState, combined)
 	observer.OnActionResolved(faction, selectedAction, combined)
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointActionResult); err != nil {
 		if factionErrors.IsRecoverable(err) {

@@ -342,3 +342,32 @@ func TestAssetMovementGranter_ForAssetReturnsOnlyThatBucket(t *testing.T) {
 		t.Errorf("AssetMovementGrantersForAsset = %v, want only the asset-X hook", got)
 	}
 }
+
+// --- ClearAsset ---
+
+func TestClearAsset_RemovesOnlyThatAssetsBucket(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubRollModifier{})
+	registry.RegisterMutationReactor(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubMutationReactor{})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubAssetMovementGranter{})
+	registry.RegisterMutationReactor(hooks.AssetScope("f1", "asset-Y"), "asset-Y", &stubMutationReactor{})
+	registry.RegisterMutationReactor(hooks.AssetScope("f2", "asset-X"), "f2-asset-X", &stubMutationReactor{})
+	registry.RegisterMutationReactor(hooks.FactionScope("f1"), "faction", &stubMutationReactor{})
+
+	registry.ClearAsset("f1", "asset-X")
+
+	if got := registry.RollModifiersAt(hooks.AssetScope("f1", "asset-X")); len(got) != 0 {
+		t.Errorf("roll modifiers under f1/asset-X = %v, want none", got)
+	}
+	if got := registry.MutationReactorsForAsset("f1", "asset-X"); len(got) != 0 {
+		t.Errorf("reactors under f1/asset-X = %v, want none", got)
+	}
+	if got := registry.AssetMovementGrantersForAsset("f1", "asset-X"); len(got) != 0 {
+		t.Errorf("movement granters under f1/asset-X = %v, want none", got)
+	}
+	if len(registry.MutationReactorsForAsset("f1", "asset-Y")) != 1 ||
+		len(registry.MutationReactorsForAsset("f2", "asset-X")) != 1 ||
+		len(registry.MutationReactorsForFaction("f1")) != 1 {
+		t.Error("ClearAsset removed a hook outside f1/asset-X")
+	}
+}

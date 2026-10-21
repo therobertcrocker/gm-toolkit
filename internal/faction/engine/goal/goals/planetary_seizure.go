@@ -18,7 +18,7 @@ func (PlanetarySeizure) CheckLock(faction *domain.Faction, factionState *state.F
 		return locks.GoalLock{Type: locks.LockNone}, nil
 	}
 	if goal.ProcessPhase == 1 {
-		// deliberate: re-check presence here, not only in UpdateProgress, because a rival can leave, or be taken by a reactor such as capture_target, where UpdateProgress cannot see it, and the Attack-only lock would then hold forever.
+		// deliberate: re-check presence here, not only in UpdateProgress, because a rival can leave on its own turn, where UpdateProgress cannot see it, and the Attack-only lock would then hold forever.
 		if !rivalPresentOn(goal.TargetWorld.WorldID, faction.ID, factionState, nil) {
 			return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{phaseOneCleared(faction.ID, goal.GoalID)}
 		}

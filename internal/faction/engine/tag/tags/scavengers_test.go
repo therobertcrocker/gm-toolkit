@@ -40,6 +40,19 @@ func TestScavengersReactor_OwnAssetDestroyed(t *testing.T) {
 	}
 }
 
+// A Cracked Comms counterstrike kill is combat too (Effort 1 Decision Record 14).
+func TestScavengersReactor_CounterstrikeKill(t *testing.T) {
+	reactor := &tags.ScavengersReactor{FactionID: "f1"}
+	mutations := []domain.Mutation{
+		domain.AssetRemoved{FactionID: "f2", AssetID: "a1", Cause: "counterstrike", CausedByFactionID: "f1"},
+	}
+
+	result := reactor.OnMutations(mutations, nil, nil)
+	if len(result) != 1 {
+		t.Fatalf("got %d mutations, want 1 (a counterstrike kill should trigger Scavengers)", len(result))
+	}
+}
+
 func TestScavengersReactor_IgnoresNonCombatRemoval(t *testing.T) {
 	reactor := &tags.ScavengersReactor{FactionID: "f1"}
 	mutations := []domain.Mutation{

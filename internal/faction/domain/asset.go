@@ -265,6 +265,7 @@ func (def *AssetDefinition) HasFlag(flag AssetFlag) bool {
 
 func NextAssetID(factions map[string]*Faction, faction *Faction, definitionID string) string {
 	prefix := fmt.Sprintf("%s-%s-", faction.ID, definitionID)
+	// deliberate: scan the owner on its own, not only through factions, because a map without the owner would reuse a live ID.
 	highest := highestSuffix(faction, prefix)
 	// deliberate: scan every faction, not only the owner, because a captured asset keeps its ID in its new owner's map (D-9).
 	for _, holder := range factions {

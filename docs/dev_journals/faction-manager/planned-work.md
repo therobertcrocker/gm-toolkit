@@ -93,6 +93,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.011` | TargetSelf contest gets the clone | first `TargetSelf` contest | `ability/dispatch.go:87` passes the `workingFaction` clone to `resolveTarget`, which returns it as `target.Faction` for `TargetSelf`; a self-contest's target-side roll would spend hook budgets on the clone. Latent: no asset authors it. Found in `A.001.3` Effort 3, Session 2. |
 | `B.012` | Old budget keys in saves | -- | `A.001.3` added a trigger segment to effect budget keys (`e047af7`); a mid-cycle save from before holds old keys, so one extra steal/absorb is possible that turn. Self-heals at the owner's next bookkeeping. |
 | `B.013` | Peaceable Kingdom misses a missed attack | -- | `peaceable_kingdom.go:20-36` detects an Attack from damage or attacker stealth-loss mutations; a miss by an unstealthed attacker emits neither, so the goal ("do not take an Attack action") does not reset. Found in `A.001.6` Effort 1, Commit 6. |
+| `B.014` | Capture misses a sibling-removed target | first Treachery hit on a self-damage defender | `capture_target.go` cannot see a sibling reactor's output in its round, so a target that removes itself (Zealots' `self_damage`) still gets `AssetOwnerChanged`; the owner change then misses and the turn aborts. Fence-signed; found in `A.001.6` Effort 1 interim review. |
 
 ### Docs
 

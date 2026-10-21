@@ -99,6 +99,21 @@ func (registry *Registry) Reset() {
 	registry.tieResolvers = make(map[Scope][]RegisteredTieResolver)
 }
 
+// ClearAsset removes every hook registered under one asset's scope.
+func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
+	scope := AssetScope(factionID, assetInstanceID)
+	delete(registry.rollModifiers, scope)
+	delete(registry.rollResultHooks, scope)
+	delete(registry.rollOfferFilters, scope)
+	delete(registry.mutationReactors, scope)
+	delete(registry.assetCostModifiers, scope)
+	delete(registry.maintenanceCostModifiers, scope)
+	delete(registry.worldTechLevelModifiers, scope)
+	delete(registry.attackEligibilityRules, scope)
+	delete(registry.assetMovementGranters, scope)
+	delete(registry.tieResolvers, scope)
+}
+
 // RegisterRollModifier registers a Cat 1 hook under the given scope.
 func (registry *Registry) RegisterRollModifier(scope Scope, source string, hook RollModifier) {
 	registry.rollModifiers[scope] = append(registry.rollModifiers[scope], RegisteredRollModifier{Scope: scope, Source: source, Hook: hook})

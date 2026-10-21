@@ -3,6 +3,7 @@ package digest
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -450,7 +451,9 @@ func Build(
 					getOrCreateBeat(beats, m.FactionID, factionState)
 					seenFactionIDs[m.FactionID] = struct{}{}
 					ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAttack, factionState)
-					ce.Conditions = append(ce.Conditions, m.Condition.Kind)
+					if !slices.Contains(ce.Conditions, m.Condition.Kind) {
+						ce.Conditions = append(ce.Conditions, m.Condition.Kind)
+					}
 				}
 
 			case "asset_condition_cleared":

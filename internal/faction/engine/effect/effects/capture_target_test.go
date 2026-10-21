@@ -8,16 +8,17 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // treacheryReactors registers Treachery's capture_target entry on alpha's
-// "treachery", as the SWN data declares it.
-func treacheryReactors(t *testing.T, factionState *state.FactionState) []hooks.MutationReactor {
+// assetID, as the SWN data declares it.
+func treacheryReactors(t *testing.T, factionState *state.FactionState, assetID string) []hooks.MutationReactor {
 	t.Helper()
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
-	asset := alpha.Assets["treachery"]
+	asset := alpha.Assets[assetID]
 	effects.Registrars()[domain.SpecialCaptureTarget].Register(effect.RegisterContext{
 		Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-C7-003"}, Registry: registry, Roller: fixedRoller{value: 1},
 		Entry: domain.EffectDefinition{
@@ -99,7 +100,7 @@ func TestCaptureTarget(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			factionState := treacheryState()
-			got := runReactors(treacheryReactors(t, factionState), tc.mutations, factionState)
+			got := runReactors(treacheryReactors(t, factionState, "treachery"), tc.mutations, factionState)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
@@ -111,11 +112,51 @@ func TestCaptureTarget_InactiveTreacheryTakesNothing(t *testing.T) {
 	for name, deactivate := range inactiveStates {
 		t.Run(name, func(t *testing.T) {
 			factionState := treacheryState()
-			reactors := treacheryReactors(t, factionState)
+			reactors := treacheryReactors(t, factionState, "treachery")
 			deactivate(factionState.Factions["alpha"].Assets["treachery"])
 
 			if got := runReactors(reactors, []domain.Mutation{treacheryHit("treachery", false)}, factionState); len(got) != 0 {
 				t.Errorf("mutations = %+v, want none", got)
+			}
+		})
+	}
+}
+
+// TestCaptureTarget_FirstCaptureWins: two strikers hit one target in a batch. The
+// later Treachery fizzles, not spent, only when an earlier active capturer took
+// the target (Effort 1 Decision Record 11).
+func TestCaptureTarget_FirstCaptureWins(t *testing.T) {
+	captureBook := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"SWN-C7-003": {ID: "SWN-C7-003", Effects: []domain.EffectDefinition{{Trigger: domain.TriggerOwnAttackHit, Effect: domain.SpecialCaptureTarget}}},
+		"SWN-F1-001": {ID: "SWN-F1-001"},
+	}}
+	secondCaptures := []domain.Mutation{
+		domain.AssetRemoved{FactionID: "alpha", AssetID: "second", Cause: "capture_target", CausedByFactionID: "alpha"},
+		treacheryCoin,
+		treacheryCapture,
+	}
+	cases := []struct {
+		name            string
+		firstDefinition string
+		firstInactive   bool
+		want            []domain.Mutation
+	}{
+		{name: "an earlier Treachery took the target", firstDefinition: "SWN-C7-003"},
+		{name: "an earlier plain hit does not block", firstDefinition: "SWN-F1-001", want: secondCaptures},
+		{name: "an earlier inactive Treachery does not block", firstDefinition: "SWN-C7-003", firstInactive: true, want: secondCaptures},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState := treacheryState()
+			alpha := factionState.Factions["alpha"]
+			alpha.Assets["first"] = activeAsset("first", tc.firstDefinition)
+			alpha.Assets["second"] = activeAsset("second", "SWN-C7-003")
+			alpha.Assets["first"].Ready = !tc.firstInactive
+			mutations := []domain.Mutation{treacheryHit("first", false), treacheryHit("second", false)}
+
+			got := runReactorsWith(treacheryReactors(t, factionState, "second"), mutations, factionState, captureBook)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
 		})
 	}

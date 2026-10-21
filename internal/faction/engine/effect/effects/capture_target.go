@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -40,17 +42,22 @@ type captureTargetReactor struct {
 	roller    domain.Roller
 }
 
-func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
+func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	self := liveAsset(factionState, reactor.factionID, reactor.assetID)
 	if !active(self) {
 		return nil
 	}
-	for _, found := range hits(mutations, false) {
+	allHits := hits(mutations, false)
+	for index, found := range allHits {
 		if found.strikerID != reactor.assetID || found.targetAssetID == "" {
 			continue
 		}
 		target := liveAsset(factionState, found.targetFactionID, found.targetAssetID)
 		if target == nil {
+			return nil
+		}
+		// deliberate: fizzle, not spend, when an earlier capture took the target, because sibling reactors see only the original batch and a second owner change would miss (Effort 1 Decision Record 11).
+		if capturedEarlier(allHits, index, reactor.factionID, factionState, rulebook) {
 			return nil
 		}
 		// deliberate: fizzle when the batch removes the target, not capture, because the owner change applies after the removal and would miss. A removal from a sibling reactor this round (Zealots) is not visible here and still misses.
@@ -69,4 +76,28 @@ func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, fa
 		)
 	}
 	return nil
+}
+
+// capturedEarlier reports whether a hit before index in allHits, on the same
+// target, came from another of factionID's assets that captures on a hit.
+func capturedEarlier(allHits []hit, index int, factionID string, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
+	target := allHits[index].targetAssetID
+	for _, earlier := range allHits[:index] {
+		if earlier.targetAssetID != target {
+			continue
+		}
+		striker := liveAsset(factionState, factionID, earlier.strikerID)
+		if !active(striker) {
+			continue
+		}
+		def := rulebook.Assets[striker.DefinitionID]
+		if def != nil && slices.ContainsFunc(def.Effects, capturesOnHit) {
+			return true
+		}
+	}
+	return false
+}
+
+func capturesOnHit(entry domain.EffectDefinition) bool {
+	return entry.Trigger == domain.TriggerOwnAttackHit && entry.Effect == domain.SpecialCaptureTarget
 }

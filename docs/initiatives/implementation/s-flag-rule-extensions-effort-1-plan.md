@@ -88,7 +88,8 @@ or open question it closes.
    reactor through its owner's assets in state. Without this, a captured transport has
    no reactor for the rest of the cycle, and a completed order strands its cargo in
    space. Budgets live on factions, so nothing resets. Reverses the discovery's
-   "captured effects stay quiet until the next cycle".
+   "captured effects stay quiet until the next cycle". Narrowed in execution: only the
+   captured asset registers (Decision Record 13).
 10. **`buildCargoMoved` addresses each cargo `AssetMoved` to the cargo's current
     owner,** found by ID (`domain.AssetOwner`; IDs are unique after Decision 3). A
     mixed-owner manifest then never misses. Rejected: an owner per manifest entry
@@ -189,7 +190,55 @@ or open question it closes.
     defender. Added: a `TestAttack_Counterstrike` case for Decision Record 9, and
     `TestRenderCrossEvent_Counterstruck` in `wire_renderer_test.go` for the new clause.
     The attack tests are one table, `TestAttack_Counterstrike`, which also checks how
-    many rolls each case uses.
+    many rolls each case uses. Goals only: the tags were not checked; see Decision
+    Record 14.
+
+**Interim effort review** (`b8eb92c..HEAD`, ten findings; review only, fixes made in
+the same session).
+
+11. **The first capture of a target wins; a later Treachery fizzles.** Robert's call.
+    Two Treachery assets that hit one target each emitted `AssetOwnerChanged`, because
+    sibling reactors see only the original batch; the second missed and aborted the
+    turn. `capturedEarlier` now yields when an earlier hit on the same target came from
+    an active asset of the same faction with a `capture_target` hit entry. The later
+    Treachery is not spent and gains no Coin, because the target is already friendly.
+    Rejected: one reactor per faction (it breaks the hooks.md Key Decision "Every S
+    effect registers at asset scope"); spend the second one and pay its Coin. The
+    sibling-removal case (Zealots) stays open as `B.014`.
+12. **`Goal.UpdateProgress` runs after `MutationReactors`, not before.** Robert's call.
+    Before, goals could not see a capture, so Planetary Seizure cleared phase 1 only
+    at the next `CheckLock`, one turn later than a kill. Audit of all 13 goals: no
+    reactor emits `FactionHPDelta`, `BaseHPDelta`, `InfluenceDelta`, `BaseAdded` or
+    `AssetStealthApplied`; the kill and Peaceable Kingdom readers filter on
+    `Cause == "attack"`; Blood the Enemy skips own-asset damage. Only Planetary
+    Seizure changes, as intended. No reactor reads goal output. Goals still run before
+    apply (goals.md Key Decision). The `CheckLock` re-check stays, for a rival that
+    leaves on its own turn.
+13. **A capture registers only the captured asset, not every hook.** Robert's call;
+    narrows Decision 9. A full re-prime mid-cycle also woke hooks of assets bought
+    earlier in the cycle. `registerCapturedAssets` clears the asset's bucket under its
+    old owner (new `Registry.ClearAsset`), then `EffectsEngine.ApplyAsset` (also used
+    by `ApplyAll`) registers it under the new owner. The clear is needed: registration
+    appends, so a recapture in the same cycle would file the asset twice under its
+    first owner, and both copies would fire. Rejected: leave the old bucket (found in
+    the self-review before commit). Every asset-scope lookup in `dispatch` also builds
+    the scope from a faction's current assets or from `asset.OwnerID`, so an old bucket
+    is unreached even before the clear. `primeHooks` went back inline in `RunCycle`.
+    Tests: the capture scenario checks the old bucket is empty and that the spent
+    Treachery's bucket stays (a full re-prime would empty it);
+    `TestClearAsset_RemovesOnlyThatAssetsBucket`; and
+    `TestRollWithHooks_CapturedAssetOldBucketDoesNotFire` for the roll lookup.
+14. **Scavengers pays for a counterstrike kill.** Robert's rules call: a kill by
+    Cracked Comms is "destroyed in combat". `ScavengersReactor` also matches
+    `Cause == "counterstrike"`. Amends Decision Record 10, which checked goals only.
+15. **Mechanical findings.** Fixed: the base-attack loop in `expand_influence.go` also
+    skips a nil `Damage` (a collector could return an asset outside the filtered
+    list); the digest adds a condition kind to a cross event once. Not changed:
+    `NextAssetID`'s separate owner scan, which the review called redundant. Removing it
+    failed `TestNewPurchasedAsset_MonotonicID`: a map without the owner would reuse a
+    live ID. It stays, with a fence-sign. Not changed: the `rb` and `m Model` names.
+    They follow the overlay package (nine files) and the Bubble Tea receiver
+    convention; a rename belongs to the whole package.
 
 ---
 
@@ -926,6 +975,10 @@ func phaseOneCleared(factionID, goalID string) domain.GoalPhaseAdvanced {
 ```
 
 ##### Task 7 — `internal/faction/engine/orchestrator.go`
+
+Superseded in the interim review: the source now registers only the captured asset
+(`registerCapturedAssets`, Decision Record 13), and goals read the batch after the
+reactors (Decision Record 12). The steps below are the Commit 3 record.
 
 In `RunCycle`, **find:**
 ```go
