@@ -41,6 +41,16 @@ func TestRefitAsset_Validate(t *testing.T) {
 		}
 	})
 
+	t.Run("sheltered asset cannot be refit", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"},
+			Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}}
+		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+		if NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+			t.Error("expected false when the only asset is sheltered")
+		}
+	})
+
 	t.Run("valid refit exists", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}

@@ -63,6 +63,46 @@ func TestAsset_ActiveAndTargetable(t *testing.T) {
 	}
 }
 
+func TestAsset_Hidden(t *testing.T) {
+	cases := []struct {
+		name  string
+		asset domain.Asset
+		want  bool
+	}{
+		{"in the open", domain.Asset{}, false},
+		{"stealthed", domain.Asset{Stealthy: true}, true},
+		{"sheltered", domain.Asset{Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}}, true},
+		{"disabled", domain.Asset{Conditions: []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}}}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.asset.Hidden(); got != tc.want {
+				t.Errorf("Hidden() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRemovesOrMoves(t *testing.T) {
+	cases := []struct {
+		name      string
+		mutations []domain.Mutation
+		want      bool
+	}{
+		{"removed", []domain.Mutation{domain.AssetRemoved{AssetID: "a1"}}, true},
+		{"moved to another faction", []domain.Mutation{domain.AssetOwnerChanged{AssetID: "a1", ToFactionID: "f2"}}, true},
+		{"only damaged", []domain.Mutation{domain.AssetHPDelta{AssetID: "a1", Delta: -9}}, false},
+		{"another asset removed", []domain.Mutation{domain.AssetRemoved{AssetID: "a2"}}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := domain.RemovesOrMoves(tc.mutations, "a1"); got != tc.want {
+				t.Errorf("RemovesOrMoves = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestNewPurchasedAsset_MonotonicID(t *testing.T) {
 	def := &domain.AssetDefinition{ID: "SWN-F1-001", HP: 4}
 	faction := &domain.Faction{

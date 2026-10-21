@@ -100,7 +100,7 @@ their effect at the table.
     and Seditionists candidates, the Monopoly target test and its loss list. It stays
     put: drift eligibility, transport cargo and relocate candidates skip it. Planetary
     Seizure does not count it as a rival present, and a shelter in the batch clears it
-    as a kill does.
+    as a kill does. The owner cannot refit or sell it (Decision Record 5).
 12. **Repair Asset clears `sheltered` when a repair reaches full HP.** Robert's call.
     One writer, in the repair's own batch, which works even when the Boltholes are
     disabled. Resolves the overview OQ "when `sheltered` clears". Rejected: a Boltholes
@@ -167,6 +167,29 @@ their effect at the table.
    `TestHostileTakeoverSeizesAndPaysTheNewOwner`: the next cycle's `coin_gain` pays
    alpha, not beta. The registry move for a captured asset with a hook is already
    tested by the Effort 1 capture scenario.
+5. **A sheltered asset cannot be refit or sold.** Interim review. Robert's call. Refit
+   adds the new asset at full HP, so a refit would skip the repair that Boltholes asks
+   for. A sale is also blocked: the asset is frozen until a repair brings it to full
+   HP. `validRefitReplacements` returns nothing for it, and `sellableAssets` leaves it
+   out of Validate and the pick list. This extends Decision 11.
+6. **The Boltholes loss reactor also reads shelters in the batch.** Interim review.
+   Reactors run before the batch applies, so an asset that this Boltholes sheltered
+   earlier in the same Attack had no condition in state yet, and survived the
+   Boltholes' death. The reactor now also matches an `AssetConditionApplied` from this
+   Boltholes in the batch.
+7. **A spent hook budget is not rolled back when an action aborts: deferred.**
+   Interim review. Robert's call. A Medical Center restore spends its once-per budget
+   during Resolve; if a later prompt in the same Attack is canceled, the action is
+   dropped but the budget stays spent. Cat 1 rerolls (`dispatch/roll.go`) have the
+   same gap, so this predates the effort. Fix all categories centrally later
+   (snapshot the budgets before `Run`, restore on error). File it in
+   `planned-work.md` at pre-merge.
+8. **Review cleanups.** Interim review. `Asset.Hidden()` (stealthed or sheltered)
+   replaces the two-condition test at the three rival-visibility sites.
+   `domain.RemovesOrMoves` replaces `dispatch.leftInBatch` and
+   `capture_target.ownerChanged`, and the Boltholes reactor's removal skip.
+   `overlay.NoCancelConfirm` is the one Esc-ignoring confirm, which replaces the
+   `ConfirmPayment` and `ConfirmSacrifice` types.
 
 ---
 

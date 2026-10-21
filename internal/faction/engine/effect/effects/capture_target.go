@@ -61,12 +61,12 @@ func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, fa
 			return nil
 		}
 		// deliberate: fizzle when the batch removes the target, not capture, because the owner change applies after the removal and would miss. A removal from a sibling reactor this round (Zealots) is not visible here and still misses.
-		// deliberate: fizzle when the batch leaves the target at 0 HP, not capture, because a later kill that Boltholes took shelters it, and a sheltered asset is untouchable (Effort 2 Decision 16).
-		if hp, removed := batchHP(mutations, target); removed || hp <= 0 {
+		// deliberate: fizzle when the batch already moves the target, because Hostile Takeover's capture in the action comes first and a second owner change would miss (Effort 1 Decision Record 11).
+		if domain.RemovesOrMoves(mutations, target.ID) {
 			return nil
 		}
-		// deliberate: fizzle when the batch already moves the target, because Hostile Takeover's capture in the action comes first and a second owner change would miss (Effort 1 Decision Record 11).
-		if ownerChanged(mutations, target.ID) {
+		// deliberate: fizzle when the batch leaves the target at 0 HP, not capture, because a later kill that Boltholes took shelters it, and a sheltered asset is untouchable (Effort 2 Decision 16).
+		if hp, _ := batchHP(mutations, target); hp <= 0 {
 			return nil
 		}
 		cause := string(domain.SpecialCaptureTarget)
@@ -105,12 +105,4 @@ func capturedEarlier(allHits []hit, index int, factionID string, factionState *s
 
 func capturesOnHit(entry domain.EffectDefinition) bool {
 	return entry.Trigger == domain.TriggerOwnAttackHit && entry.Effect == domain.SpecialCaptureTarget
-}
-
-// ownerChanged reports whether mutations move assetID to another faction.
-func ownerChanged(mutations []domain.Mutation, assetID string) bool {
-	return slices.ContainsFunc(mutations, func(mutation domain.Mutation) bool {
-		changed, ok := mutation.(domain.AssetOwnerChanged)
-		return ok && changed.AssetID == assetID
-	})
 }

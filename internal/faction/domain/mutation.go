@@ -422,3 +422,21 @@ type AssetOwnerChanged struct {
 }
 
 func (m AssetOwnerChanged) Type() string { return "asset_owner_changed" }
+
+// RemovesOrMoves reports whether mutations remove assetID or move it to another
+// faction.
+func RemovesOrMoves(mutations []Mutation, assetID string) bool {
+	for _, mutation := range mutations {
+		switch m := mutation.(type) {
+		case AssetRemoved:
+			if m.AssetID == assetID {
+				return true
+			}
+		case AssetOwnerChanged:
+			if m.AssetID == assetID {
+				return true
+			}
+		}
+	}
+	return false
+}

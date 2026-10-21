@@ -156,11 +156,14 @@ func TestShelterAsset_LossTakesShelteredAssets(t *testing.T) {
 	}
 	muLost := domain.AssetRemoved{FactionID: "alpha", AssetID: "mu", Cause: "attack", CausedByFactionID: "beta"}
 	g1Lost := domain.AssetRemoved{FactionID: "gamma", AssetID: "g1", Cause: "attack", CausedByFactionID: "beta"}
+	muShelteredByOther := muSheltered
+	muShelteredByOther.Condition.SourceAssetID = "bolt2"
 	cases := []struct {
-		name        string
-		mutations   []domain.Mutation
-		disableBolt bool
-		want        []domain.Mutation
+		name          string
+		mutations     []domain.Mutation
+		disableBolt   bool
+		muUnsheltered bool
+		want          []domain.Mutation
 	}{
 		{name: "a combat kill drags every sheltered asset", mutations: []domain.Mutation{boltKilled("attack")}, want: []domain.Mutation{muLost, g1Lost}},
 		{name: "a sale drags nothing", mutations: []domain.Mutation{boltKilled("sell")}},
@@ -170,11 +173,25 @@ func TestShelterAsset_LossTakesShelteredAssets(t *testing.T) {
 			want:      []domain.Mutation{g1Lost},
 		},
 		{name: "a disabled Boltholes still drags", mutations: []domain.Mutation{boltKilled("attack")}, disableBolt: true, want: []domain.Mutation{muLost, g1Lost}},
+		{
+			name:          "an asset sheltered earlier in the batch is dragged",
+			mutations:     []domain.Mutation{muSheltered, boltKilled("attack")},
+			muUnsheltered: true,
+			want:          []domain.Mutation{muLost, g1Lost},
+		},
+		{
+			name:          "an asset another Boltholes sheltered in the batch is not dragged",
+			mutations:     []domain.Mutation{muShelteredByOther, boltKilled("attack")},
+			muUnsheltered: true,
+			want:          []domain.Mutation{g1Lost},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			factionState := boltholesState()
-			factionState.Factions["alpha"].Assets["mu"].Conditions = sheltered
+			if !tc.muUnsheltered {
+				factionState.Factions["alpha"].Assets["mu"].Conditions = sheltered
+			}
 			g1 := placedOn(activeAsset("g1", "SWN-F1-001"), "anchorage")
 			g1.OwnerID = "gamma"
 			g1.Conditions = sheltered

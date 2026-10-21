@@ -84,10 +84,10 @@ func (reactor *shelterLossReactor) OnMutations(mutations []domain.Mutation, fact
 		// deliberate: every faction, not only the Boltholes' owner, because a capture moves the Boltholes but not the assets it shelters.
 		for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 			for _, asset := range domain.SortedAssets(factionState.Factions[factionID]) {
-				if !slices.ContainsFunc(asset.Conditions, sheltered.Is) {
+				if !slices.ContainsFunc(asset.Conditions, sheltered.Is) && !appliedInBatch(mutations, asset.ID, sheltered) {
 					continue
 				}
-				if _, gone := batchHP(mutations, asset); gone {
+				if domain.RemovesOrMoves(mutations, asset.ID) {
 					continue
 				}
 				// deliberate: copy the Boltholes removal's cause, not one of its own, because a combat kill of the Boltholes is also a combat kill of each asset it held (Effort 2 Decision 13).
@@ -97,4 +97,14 @@ func (reactor *shelterLossReactor) OnMutations(mutations []domain.Mutation, fact
 		return extra
 	}
 	return nil
+}
+
+// appliedInBatch reports whether mutations apply condition to assetID. Reactors
+// run before the batch applies, so an asset this Boltholes sheltered earlier in
+// the same action does not yet carry the condition in state.
+func appliedInBatch(mutations []domain.Mutation, assetID string, condition domain.Condition) bool {
+	return slices.ContainsFunc(mutations, func(mutation domain.Mutation) bool {
+		applied, ok := mutation.(domain.AssetConditionApplied)
+		return ok && applied.AssetID == assetID && condition.Is(applied.Condition)
+	})
 }

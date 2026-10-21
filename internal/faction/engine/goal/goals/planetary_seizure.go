@@ -92,7 +92,7 @@ func rivalPresentOn(world, seizerID string, factionState *state.FactionState, cl
 			continue
 		}
 		for _, asset := range faction.Assets {
-			if asset.Location.WorldID == world && !asset.Stealthy && !asset.HasCondition(domain.ConditionSheltered) && !cleared[asset.ID] {
+			if asset.Location.WorldID == world && !asset.Hidden() && !cleared[asset.ID] {
 				return true
 			}
 		}

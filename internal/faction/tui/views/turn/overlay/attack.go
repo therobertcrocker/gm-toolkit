@@ -3,8 +3,6 @@ package overlay
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/help"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -60,31 +58,14 @@ func NewConfirmCounterstrike(defenderFaction *domain.Faction, source, attacker *
 	return NewConfirm(title, header, "Turn it", "Let it pass")
 }
 
-// ConfirmSacrifice asks the owner whether to give up one asset to save another from
-// a killing blow (False Front). Esc does nothing: the decline is an explicit option,
-// and a cancel would drop the attacker's whole action (Effort 3 Decision Record 7).
-type ConfirmSacrifice struct {
-	ConfirmOverlay
-}
-
-// NewConfirmSacrifice's header names the faction asked, which is often not the
-// acting one. Answer: bool.
-func NewConfirmSacrifice(offer hooks.SacrificeOffer, rb *rulebook.Rulebook) ConfirmSacrifice {
+// NewConfirmSacrifice asks the owner whether to give up one asset to save another
+// from a killing blow (False Front). Its header names the faction asked, which is
+// often not the acting one. Esc does nothing. Answer: bool.
+func NewConfirmSacrifice(offer hooks.SacrificeOffer, rb *rulebook.Rulebook) NoCancelConfirm {
 	title := fmt.Sprintf("Sacrifice %s to save %s?", assetName(offer.Sacrifice, rb), assetName(offer.Saves, rb))
 	header := fmt.Sprintf("Asked of %s", offer.Owner.Name)
-	return ConfirmSacrifice{NewConfirm(title, header, "Sacrifice", "Let it fall")}
+	return NoCancelConfirm{NewConfirm(title, header, "Sacrifice", "Let it fall")}
 }
-
-func (o ConfirmSacrifice) Update(msg tea.Msg) (Overlay, tea.Cmd) {
-	if k, ok := msg.(tea.KeyMsg); ok && k.String() == "esc" {
-		return o, nil
-	}
-	updated, cmd := o.ConfirmOverlay.Update(msg)
-	o.ConfirmOverlay = updated.(ConfirmOverlay)
-	return o, cmd
-}
-
-func (o ConfirmSacrifice) Help() help.KeyMap { return formHelp{} }
 
 // attackerLabel renders "<name> · <stat> · dmg NdM(±K)" for a committable attacker.
 func attackerLabel(asset *domain.Asset, rb *rulebook.Rulebook) string {

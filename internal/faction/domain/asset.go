@@ -260,6 +260,12 @@ func (asset *Asset) Targetable() bool {
 	return asset.Ready && asset.Maintained && asset.CurrentHP > 0 && !asset.HasCondition(ConditionSheltered)
 }
 
+// Hidden reports whether rivals cannot find the asset: it is stealthed, or
+// sheltered by Boltholes.
+func (asset *Asset) Hidden() bool {
+	return asset.Stealthy || asset.HasCondition(ConditionSheltered)
+}
+
 // Clone deep-copies an asset, including its CurrentOrder pointer and that order's
 // slices, so mutations applied to the copy never reach the original.
 func (asset *Asset) Clone() *Asset {

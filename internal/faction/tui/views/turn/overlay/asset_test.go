@@ -37,8 +37,8 @@ func TestConfirmPaymentIgnoresEsc(t *testing.T) {
 		if cmd != nil {
 			t.Errorf("%s: Esc produced a command (%T), want none", reason, cmd())
 		}
-		if _, ok := updated.(ConfirmPayment); !ok {
-			t.Errorf("%s: Update returned %T, want ConfirmPayment", reason, updated)
+		if _, ok := updated.(NoCancelConfirm); !ok {
+			t.Errorf("%s: Update returned %T, want NoCancelConfirm", reason, updated)
 		}
 	}
 }
@@ -58,7 +58,7 @@ func TestConfirmSacrificeIgnoresEsc(t *testing.T) {
 	if cmd != nil {
 		t.Errorf("Esc produced a command (%T), want none", cmd())
 	}
-	if _, ok := updated.(ConfirmSacrifice); !ok {
-		t.Errorf("Update returned %T, want ConfirmSacrifice", updated)
+	if _, ok := updated.(NoCancelConfirm); !ok {
+		t.Errorf("Update returned %T, want NoCancelConfirm", updated)
 	}
 }

@@ -192,7 +192,7 @@ func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, ac
 		}
 		for _, candidate := range domain.SortedAssets(factionState.Factions[id]) {
 			// deliberate: skip a sheltered asset, not offer it, because Boltholes make it untouchable to every ability, not only to Attack (Effort 2 Decision 11).
-			if candidate.Location.WorldID != world || candidate.Stealthy || candidate.HasCondition(domain.ConditionSheltered) {
+			if candidate.Location.WorldID != world || candidate.Hidden() {
 				continue
 			}
 			if rule == nil || rule(candidate, acting) {
@@ -232,7 +232,7 @@ var factionTargetRules = map[domain.AbilityEffectType]func(candidate *domain.Fac
 	domain.EffectLevyCoin: func(candidate *domain.Faction, acting *domain.Asset) bool {
 		world := acting.Location.WorldID
 		return world != "" && slices.ContainsFunc(domain.SortedAssets(candidate), func(asset *domain.Asset) bool {
-			return asset.Location.WorldID == world && !asset.Stealthy && !asset.HasCondition(domain.ConditionSheltered)
+			return asset.Location.WorldID == world && !asset.Hidden()
 		})
 	},
 }

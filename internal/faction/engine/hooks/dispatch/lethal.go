@@ -65,28 +65,11 @@ func offersFrom(registered []hooks.RegisteredLethalInterceptor, ctx hooks.Lethal
 	var offers []*hooks.Interception
 	for _, interceptor := range registered {
 		offer := interceptor.Hook.OfferInterception(ctx)
-		if offer != nil && !leftInBatch(ctx.Batch, offer.Source.ID) {
+		if offer != nil && !domain.RemovesOrMoves(ctx.Batch, offer.Source.ID) {
 			offers = append(offers, offer)
 		}
 	}
 	return offers
-}
-
-// leftInBatch reports whether batch removes assetID or moves it to another faction.
-func leftInBatch(batch []domain.Mutation, assetID string) bool {
-	for _, mutation := range batch {
-		switch m := mutation.(type) {
-		case domain.AssetRemoved:
-			if m.AssetID == assetID {
-				return true
-			}
-		case domain.AssetOwnerChanged:
-			if m.AssetID == assetID {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // takeInterception reports whether offer takes the hit. An automatic offer always
