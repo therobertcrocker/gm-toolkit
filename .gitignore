@@ -25,7 +25,7 @@ reference/
 # notes, etc
 scratch.txt
 scratch/
-HANDOFF.md
+docs/initiatives/implementation/*-handoff.md
 
 # OS
 .DS_Store

@@ -3,23 +3,39 @@
 <!--
 COPY THIS FILE TO: docs/initiatives/implementation/<initiative-name>-plan.md
 
-This template covers two cases:
+LEVELS (session-modes.md section 4, Work breakdown levels):
+  Initiative → Effort → Phase → Commit → Task. One phase = one execution
+  session.
 
-  1. Single-file plans for small to medium initiatives — keep everything below in
-     one file.
+This template covers three file shapes:
 
-  2. Top-level + per-effort plans for large initiatives — keep the sections above
-     "Work Breakdown" in the top-level file; move each effort's Phase/Commit/Task
-     breakdown to a separate per-effort file at:
+  1. Single-file plan (one effort): every section below, with phases in
+     Work Breakdown. The overview and the effort plan are the same file.
+
+  2. Overview plan (multi-effort): every section above Work Breakdown, plus
+     the Effort Summary. Work Breakdown holds one "### Effort N" section per
+     effort: its scope, and whether it gets its own Plan session. Effort
+     pacing is defined in session-modes.md section 8.
+
+  3. Effort plan (multi-effort):
          docs/initiatives/implementation/<initiative-name>-effort-N-plan.md
-     Each per-effort file opens with its own "In Plain Words" (scoped to the
-     effort), then follows the "Work Breakdown" section structure below.
-     Effort pacing (which efforts get their own Plan session) is defined in
-     session-modes.md section 8.
+     Same sections as a single-file plan, scoped to the effort: its own
+     In Plain Words, Decisions Ratified, Decision Record, Shared Context,
+     Out of Scope, then phases in Work Breakdown. It cites the overview's
+     decisions; it does not repeat them.
 
-SIZE TARGET: 1,000 lines or fewer per plan file (top-level or per-effort).
-Spend the lines on literal code in tasks, not on prose; past the target,
-split the effort.
+SIZE: two budgets, for single-file and effort plans. The overview has none.
+  - Front matter (every line above Work Breakdown): about 400. Every phase
+    session reads it again. Past it, the effort carries too many decisions:
+    split the effort.
+  - Each phase: about 800 lines, from the phase heading to the next one.
+    Past it, split the phase.
+Spend lines on literal code in tasks, not on prose. Commits have no line
+budget; split them only at real seams (KEY RULE 1). Past a budget, split, or
+record why not in one line under Decisions Ratified in Planning.
+
+  awk '/^## Work Breakdown/{print NR-1, "front matter"; exit}' <plan-file>
+  awk '/^### Phase/{if(h)print n,h;h=$0;n=0;next} h{n++} END{print n,h}' <plan-file>
 
 Multi-effort DOCS initiatives use templates/docs-plan.md instead — generative
 docs discover-at-write and don't fit the Phase/Commit/Task structure.
@@ -137,17 +153,15 @@ REQUIRED. The actual sequence of work, structured at whichever granularity fits.
 
 GRANULARITY GUIDE:
   - Small refactor or bugfix:    Steps only.
-  - Medium initiative:           Commits only (each commit = one execution session).
-  - Large initiative (one file): Phases → Commits → Tasks.
-  - Large initiative (split):    Effort Summary above; this section lives in the
-                                 per-effort plan files instead.
+  - Single-file or effort plan:  Phases → Commits → Tasks. Work that fits one
+                                 session is one phase; keep the phase heading.
+  - Overview plan:               "### Effort N" sections (file shape 2 above).
 
-The structure below shows the full Phase → Commit → Task pattern. Trim levels as
-appropriate for the work size.
-
-KEY RULE 1: Each commit = one execution session. Title each commit with its
-conventional commit message so the execution session knows the deliverable shape
-going in.
+KEY RULE 1: Each phase = one execution session. Size each phase to the phase
+budget above, typically 2–3 commits. Split phases and commits only at real seams:
+a green-build point, a type-system or cross-package boundary, or a behavior
+change. Title each commit with its conventional commit message so the execution
+session knows the deliverable shape going in.
 
 KEY RULE 2: Every task is self-contained and executable on its own — it IS the
 edit, not a description of one (see the per-task format below). The full
@@ -162,7 +176,7 @@ back-reference allowed is a task-to-task citation.
 
 ### Phase 1 — [Title]
 
-<!-- Phase-level goal in 1–2 sentences. -->
+<!-- Phase-level goal in 1–2 sentences. One phase = one execution session. -->
 
 #### Commit 1 — `feat: [conventional commit message]`
 

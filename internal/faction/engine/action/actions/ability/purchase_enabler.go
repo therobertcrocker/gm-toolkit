@@ -48,7 +48,7 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	if ctx.Faction.Coin < cost {
 		return nil, fmt.Errorf("purchase_enabler: insufficient Coin: need %d, have %d", cost, ctx.Faction.Coin)
 	}
-	newAsset := domain.NewPurchasedAsset(ctx.Faction, def, worldID)
+	newAsset := domain.NewPurchasedAsset(ctx.FactionState.Factions, ctx.Faction, def, worldID)
 	mutations := []domain.Mutation{
 		domain.AssetAdded{FactionID: ctx.Faction.ID, Asset: newAsset, Cause: "ability", CausedByFactionID: ctx.Faction.ID},
 	}

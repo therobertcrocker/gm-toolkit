@@ -3,6 +3,7 @@ package actions
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -15,12 +16,14 @@ import (
 // resolveRoller is read at factory-invocation (turn) time rather than captured
 // by value, because the roller is a swappable seam — tests replace Engine.Rand
 // with a deterministic FixedRoller after construction.
+// The Attack action raises the matchup route itself, so it takes the effects engine.
 func RegisterDefaultActions(
 	ae *action.ActionEngine,
 	resolveRoller func() domain.Roller,
 	hookRegistry *hooks.Registry,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,
+	effectsEngine *effect.EffectsEngine,
 ) {
 	ae.Register(func(c action.Collector) action.Action { return NewSellAsset(c) })
 	ae.Register(func(_ action.Collector) action.Action { return NewRepairFaction() })
@@ -28,7 +31,7 @@ func RegisterDefaultActions(
 	ae.Register(func(c action.Collector) action.Action { return NewBuyAsset(c, hookRegistry, worldEngine) })
 	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c) })
 	ae.Register(func(c action.Collector) action.Action {
-		return NewAttack(c, resolveRoller(), hookRegistry, worldIndex(worldEngine))
+		return NewAttack(c, resolveRoller(), hookRegistry, worldIndex(worldEngine), effectsEngine)
 	})
 	ae.Register(func(c action.Collector) action.Action {
 		return NewExpandInfluence(c, resolveRoller(), hookRegistry, worldIndex(worldEngine), worldEngine)

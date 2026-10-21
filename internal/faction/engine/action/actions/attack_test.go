@@ -1,11 +1,15 @@
 package actions
 
 import (
+	"log/slog"
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -41,7 +45,7 @@ func makeAttackRulebook() *rulebook.Rulebook {
 				Attack: &domain.AttackProfile{
 					AttackerStat: domain.StatForce,
 					DefenderStat: domain.StatForce,
-					Damage:       domain.DiceRoll{NumDice: 1, Sides: 6},
+					Damage:       &domain.DiceRoll{NumDice: 1, Sides: 6},
 				},
 			},
 			"force-defender": {
@@ -107,7 +111,7 @@ func makeAttackState(attackerHP, defenderHP int, defenderDefID string, includeBa
 // cycle and returns the resulting mutation list.
 func runAttack(t *testing.T, collector action.Collector, roller *fixedRoller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, registry *hooks.Registry) []domain.Mutation {
 	t.Helper()
-	attack := NewAttack(collector, roller, registry, indexFromState(factionState))
+	attack := NewAttack(collector, roller, registry, indexFromState(factionState), nil)
 	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -129,7 +133,7 @@ func TestAttack_Validate(t *testing.T) {
 		attackerAsset.Ready = false // on cooldown — ineligible
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when attacker is not Ready")
 		}
@@ -144,7 +148,7 @@ func TestAttack_Validate(t *testing.T) {
 		}
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
 		if attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate false when no rivals on attacker's hex")
 		}
@@ -154,7 +158,7 @@ func TestAttack_Validate(t *testing.T) {
 		factionState, _, _ := makeAttackState(8, 8, "force-defender", false)
 		faction := factionState.Factions["f1"]
 		ctrl := gomock.NewController(t)
-		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState))
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
 		if !attack.Validate(faction, factionState, rulebook) {
 			t.Error("expected Validate true")
 		}
@@ -187,6 +191,41 @@ func TestAttack_AttackerWins_NonLethal(t *testing.T) {
 	}
 	if delta.CausedByAssetID != "a1" {
 		t.Errorf("AssetHPDelta.CausedByAssetID = %q, want %q", delta.CausedByAssetID, "a1")
+	}
+}
+
+// TestAttack_SpecialHit: an attacker with no Damage wins; the hit lands as a
+// zero-damage AssetHPDelta and the redirect prompt is not offered, even with a
+// defender Base on the world (no ConfirmRedirectToBase EXPECT).
+// Rolls: attack=8, defense=3.
+func TestAttack_SpecialHit(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	rulebook.Assets["special-attacker"] = &domain.AssetDefinition{
+		ID:     "special-attacker",
+		Name:   "Treachery",
+		HP:     2,
+		Attack: &domain.AttackProfile{AttackerStat: domain.StatForce, DefenderStat: domain.StatForce},
+	}
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 10, "force-defender-nocounter", true)
+	attackerAsset.DefinitionID = "special-attacker"
+	faction := factionState.Factions["f1"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{8, 3}}, faction, factionState, rulebook, nil)
+
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
+	}
+	delta, ok := mutations[0].(domain.AssetHPDelta)
+	if !ok {
+		t.Fatalf("mutations[0] type = %T, want AssetHPDelta", mutations[0])
+	}
+	if delta.AssetID != "d1" || delta.Delta != 0 || delta.CausedByAssetID != "a1" {
+		t.Errorf("AssetHPDelta = {%s, %d, by %s}, want {d1, 0, by a1}", delta.AssetID, delta.Delta, delta.CausedByAssetID)
 	}
 }
 
@@ -508,7 +547,7 @@ func TestAttack_InTransitDefender_Targeted(t *testing.T) {
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	attack := NewAttack(collector, &fixedRoller{values: []int{8, 3, 4}}, nil, idx)
+	attack := NewAttack(collector, &fixedRoller{values: []int{8, 3, 4}}, nil, idx, nil)
 	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -568,7 +607,7 @@ func TestAttack_OnWorldAttacker_TargetsInTransitDefenderAtSameHex(t *testing.T) 
 	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
 	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
 
-	attack := NewAttack(collector, &fixedRoller{values: []int{8, 3, 4}}, nil, idx)
+	attack := NewAttack(collector, &fixedRoller{values: []int{8, 3, 4}}, nil, idx, nil)
 	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -616,7 +655,7 @@ func TestAttack_InTransitAttacker_EmptyHex_NoTarget(t *testing.T) {
 	rulebook := makeAttackRulebook()
 	faction := factionState.Factions["f1"]
 	ctrl := gomock.NewController(t)
-	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, idx)
+	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, idx, nil)
 	if attack.Validate(faction, factionState, rulebook) {
 		t.Error("expected Validate false: in-transit attacker at empty hex has no target")
 	}
@@ -640,7 +679,7 @@ func TestAttack_EligibilityRuleRemovesDefender(t *testing.T) {
 	registry.RegisterAttackEligibilityRule(hooks.AssetScope("f2", "d1"), "test", refuseSide{side: hooks.SideDefense})
 
 	ctrl := gomock.NewController(t)
-	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, registry, indexFromState(factionState))
+	attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, registry, indexFromState(factionState), nil)
 	if attack.Validate(faction, factionState, rulebook) {
 		t.Error("expected Validate false: the only defender refuses to defend")
 	}
@@ -701,5 +740,130 @@ func TestAttack_TieResolver_DefenderWins(t *testing.T) {
 	delta, ok := mutations[0].(domain.AssetHPDelta)
 	if !ok || delta.AssetID != "a1" || delta.Delta != -3 {
 		t.Errorf("mutations[0] = %v, want AssetHPDelta{a1, -3}", mutations[0])
+	}
+}
+
+// TestAttack_Counterstrike: d1 is Cracked Comms ("comms", no counter). The
+// attacker a1 rolls 1d6 damage and has no counter; "special-attacker" has
+// neither. Stats are zero, so each roll is the raw value.
+func TestAttack_Counterstrike(t *testing.T) {
+	selfHit := func(delta int) domain.AssetHPDelta {
+		return domain.AssetHPDelta{FactionID: "f1", AssetID: "a1", Delta: delta, Cause: "counterstrike", CausedByFactionID: "f2", CausedByAssetID: "d1"}
+	}
+	confirmTrue, confirmFalse := true, false
+	cases := []struct {
+		name           string
+		attackerHP     int
+		attackerDefID  string
+		tieDefenderWin bool
+		rolls          []int
+		confirm        *bool // nil: ConfirmCounterstrike must not be called
+		want           []domain.Mutation
+		wantRollsUsed  int
+	}{
+		{
+			name:       "an outright defense win, confirmed: the self-attack hits",
+			attackerHP: 8, attackerDefID: "force-attacker",
+			rolls:         []int{2, 9, 8, 3, 5}, // attack 2 vs defense 9; self 8 vs 3, damage 5
+			confirm:       &confirmTrue,
+			want:          []domain.Mutation{selfHit(-5)},
+			wantRollsUsed: 5,
+		},
+		{
+			name:       "a lethal self-hit removes the attacker",
+			attackerHP: 4, attackerDefID: "force-attacker",
+			rolls:   []int{2, 9, 8, 3, 5},
+			confirm: &confirmTrue,
+			want: []domain.Mutation{selfHit(-5),
+				domain.AssetRemoved{FactionID: "f1", AssetID: "a1", Cause: "counterstrike", CausedByFactionID: "f2"}},
+			wantRollsUsed: 5,
+		},
+		{
+			name:       "a self-attack miss with no counter deals nothing",
+			attackerHP: 8, attackerDefID: "force-attacker",
+			rolls:         []int{2, 9, 3, 8},
+			confirm:       &confirmTrue,
+			wantRollsUsed: 4,
+		},
+		{
+			name:       "declined: no self rolls",
+			attackerHP: 8, attackerDefID: "force-attacker",
+			rolls:         []int{2, 9},
+			confirm:       &confirmFalse,
+			wantRollsUsed: 2,
+		},
+		{
+			name:       "a standard tie is not a successful defense (Decision 13)",
+			attackerHP: 8, attackerDefID: "force-attacker",
+			rolls:         []int{5, 5, 3}, // tie: the attack lands for 3
+			want:          []domain.Mutation{domain.AssetHPDelta{FactionID: "f2", AssetID: "d1", Delta: -3, Cause: "attack", CausedByFactionID: "f1", CausedByAssetID: "a1"}},
+			wantRollsUsed: 3,
+		},
+		{
+			name:       "a tie the resolver gives the defender is an outright win",
+			attackerHP: 8, attackerDefID: "force-attacker", tieDefenderWin: true,
+			rolls:         []int{5, 5},
+			confirm:       &confirmFalse,
+			wantRollsUsed: 2,
+		},
+		{
+			name:       "no prompt when the attacker has no damage and no counter (Decision Record 9)",
+			attackerHP: 8, attackerDefID: "special-attacker",
+			rolls:         []int{2, 9},
+			wantRollsUsed: 2,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rulebook := makeAttackRulebook()
+			rulebook.Assets["special-attacker"] = &domain.AssetDefinition{
+				ID: "special-attacker", HP: 8,
+				Attack: &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+			}
+			comms := &domain.AssetDefinition{ID: "comms", HP: 8, Effects: []domain.EffectDefinition{{
+				Trigger: domain.TriggerOwnDefenseWin,
+				Effect:  domain.SpecialCounterstrike,
+				Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+			}}}
+			rulebook.Assets[comms.ID] = comms
+			effectsEngine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+			if err := effectsEngine.RegisterEffectsList(comms); err != nil {
+				t.Fatalf("RegisterEffectsList: %v", err)
+			}
+
+			factionState, attackerAsset, defenderAsset := makeAttackState(tc.attackerHP, 8, comms.ID, false)
+			attackerAsset.DefinitionID = tc.attackerDefID
+			faction := factionState.Factions["f1"]
+			var registry *hooks.Registry
+			if tc.tieDefenderWin {
+				registry = hooks.NewRegistry()
+				registry.RegisterTieResolver(hooks.GlobalScope(), "fanatical", &stubTieResolverForAttack{outcome: hooks.TieDefenderWins})
+			}
+
+			ctrl := gomock.NewController(t)
+			collector := mocks.NewMockCollector(ctrl)
+			collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+			collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+			if tc.confirm != nil {
+				collector.EXPECT().ConfirmCounterstrike(factionState.Factions["f2"], defenderAsset, attackerAsset).Return(*tc.confirm, nil)
+			}
+
+			roller := &fixedRoller{values: tc.rolls}
+			attack := NewAttack(collector, roller, registry, indexFromState(factionState), effectsEngine)
+			if err := attack.Inputs(faction, factionState, rulebook); err != nil {
+				t.Fatalf("Inputs: %v", err)
+			}
+			if err := attack.Resolve(faction, factionState, rulebook); err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			mutations, _ := attack.Output()
+
+			if !reflect.DeepEqual(mutations, tc.want) {
+				t.Errorf("mutations = %+v, want %+v", mutations, tc.want)
+			}
+			if roller.index != tc.wantRollsUsed {
+				t.Errorf("rolls used = %d, want %d", roller.index, tc.wantRollsUsed)
+			}
+		})
 	}
 }

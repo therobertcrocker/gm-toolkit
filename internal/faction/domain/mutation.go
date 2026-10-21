@@ -387,3 +387,38 @@ type MovementOrderCompleted struct {
 }
 
 func (m MovementOrderCompleted) Type() string { return "movement_order_completed" }
+
+// AssetConditionApplied puts a condition on an asset, replacing one with the same
+// kind and source.
+type AssetConditionApplied struct {
+	FactionID         string    `json:"faction_id"`
+	AssetID           string    `json:"asset_id"`
+	Condition         Condition `json:"condition"`
+	Cause             string    `json:"cause"`
+	CausedByFactionID string    `json:"caused_by_faction_id"`
+}
+
+func (m AssetConditionApplied) Type() string { return "asset_condition_applied" }
+
+// AssetConditionCleared removes the condition with Condition's kind and source.
+type AssetConditionCleared struct {
+	FactionID         string    `json:"faction_id"`
+	AssetID           string    `json:"asset_id"`
+	Condition         Condition `json:"condition"`
+	Cause             string    `json:"cause"`
+	CausedByFactionID string    `json:"caused_by_faction_id"`
+}
+
+func (m AssetConditionCleared) Type() string { return "asset_condition_cleared" }
+
+// AssetOwnerChanged moves an asset from FactionID to ToFactionID. The asset keeps
+// its ID, its order and its conditions.
+type AssetOwnerChanged struct {
+	FactionID         string `json:"faction_id"`
+	AssetID           string `json:"asset_id"`
+	ToFactionID       string `json:"to_faction_id"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m AssetOwnerChanged) Type() string { return "asset_owner_changed" }

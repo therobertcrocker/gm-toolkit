@@ -9,6 +9,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
 
@@ -49,11 +50,12 @@ func TestPurchaseEnabler_BuysSurcharged(t *testing.T) {
 		})
 
 	ctx := StepContext{
-		Faction:   &domain.Faction{ID: "f1", Force: 5, Coin: 20, Assets: map[string]*domain.Asset{}},
-		Asset:     &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
-		Step:      enablerStep(),
-		Rulebook:  enablerRulebook(),
-		Collector: collector,
+		Faction:      &domain.Faction{ID: "f1", Force: 5, Coin: 20, Assets: map[string]*domain.Asset{}},
+		Asset:        &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
+		Step:         enablerStep(),
+		FactionState: &state.FactionState{},
+		Rulebook:     enablerRulebook(),
+		Collector:    collector,
 	}
 	muts, err := purchaseEnabler(ctx)
 	if err != nil {
@@ -114,11 +116,12 @@ func TestPurchaseEnabler_ConsumesPendingDiscount(t *testing.T) {
 
 	enablerCtx := func(collector action.Collector, discount int) StepContext {
 		return StepContext{
-			Faction:   &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: discount, Assets: map[string]*domain.Asset{}},
-			Asset:     &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
-			Step:      enablerStep(),
-			Rulebook:  enablerRulebook(),
-			Collector: collector,
+			Faction:      &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: discount, Assets: map[string]*domain.Asset{}},
+			Asset:        &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
+			Step:         enablerStep(),
+			FactionState: &state.FactionState{},
+			Rulebook:     enablerRulebook(),
+			Collector:    collector,
 		}
 	}
 
@@ -204,11 +207,12 @@ func TestPurchaseEnabler_PaysRivalSurcharge(t *testing.T) {
 			ctx := StepContext{
 				Faction:     &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: testCase.discount, Assets: map[string]*domain.Asset{}},
 				Asset:       &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
-				Step:        enablerStep(),
-				Rulebook:    enablerRulebook(),
-				Collector:   collector,
-				WorldEngine: &world.WorldEngine{Index: &world.Index{AssetsByLocation: map[string][]*domain.Asset{"w1": {rivalAsset}}}},
-				Registry:    registry,
+				Step:         enablerStep(),
+				FactionState: &state.FactionState{},
+				Rulebook:     enablerRulebook(),
+				Collector:    collector,
+				WorldEngine:  &world.WorldEngine{Index: &world.Index{AssetsByLocation: map[string][]*domain.Asset{"w1": {rivalAsset}}}},
+				Registry:     registry,
 			}
 			muts, err := purchaseEnabler(ctx)
 			if err != nil {
@@ -271,12 +275,13 @@ func TestPurchaseEnabler_PermissionGate(t *testing.T) {
 
 	// A base owned by the acting faction on w1 = Planetary Government, unlocking F-perm.
 	ctx := StepContext{
-		Faction:     &domain.Faction{ID: "f1", Force: 5, Coin: 20, Assets: map[string]*domain.Asset{}},
-		Asset:       &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
-		Step:        enablerStep(),
-		Rulebook:    enablerRulebook(),
-		Collector:   collector,
-		WorldEngine: &world.WorldEngine{Index: &world.Index{BasesByLocation: map[string][]*domain.Base{"w1": {{OwnerID: "f1"}}}}},
+		Faction:      &domain.Faction{ID: "f1", Force: 5, Coin: 20, Assets: map[string]*domain.Asset{}},
+		Asset:        &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
+		Step:         enablerStep(),
+		FactionState: &state.FactionState{},
+		Rulebook:     enablerRulebook(),
+		Collector:    collector,
+		WorldEngine:  &world.WorldEngine{Index: &world.Index{BasesByLocation: map[string][]*domain.Base{"w1": {{OwnerID: "f1"}}}}},
 	}
 	if _, err := purchaseEnabler(ctx); err != nil {
 		t.Fatalf("purchaseEnabler with gov: %v", err)

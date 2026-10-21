@@ -26,6 +26,7 @@ type ScriptedCollector struct {
 	SelectAttackersFn             func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectDefenderFn              func(*domain.Asset, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBaseFn       func(*domain.Faction, *domain.Base, int) (bool, error)
+	ConfirmCounterstrikeFn        func(*domain.Faction, *domain.Asset, *domain.Asset) (bool, error)
 	SelectExpandInfluenceOrderFn  func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn      func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
@@ -91,6 +92,13 @@ func (c *ScriptedCollector) SelectDefender(attacker *domain.Asset, eligible []*d
 func (c *ScriptedCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	if c.ConfirmRedirectToBaseFn != nil {
 		return c.ConfirmRedirectToBaseFn(defenderFaction, base, damage)
+	}
+	return false, nil
+}
+
+func (c *ScriptedCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source *domain.Asset, attacker *domain.Asset) (bool, error) {
+	if c.ConfirmCounterstrikeFn != nil {
+		return c.ConfirmCounterstrikeFn(defenderFaction, source, attacker)
 	}
 	return false, nil
 }

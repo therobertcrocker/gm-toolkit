@@ -11,6 +11,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 	"go.uber.org/mock/gomock"
 )
@@ -67,7 +68,7 @@ func TestBuyAsset_Output(t *testing.T) {
 	if err := act.Inputs(faction, nil, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
-	if err := act.Resolve(faction, nil, rulebook); err != nil {
+	if err := act.Resolve(faction, &state.FactionState{}, rulebook); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	mutations, err := act.Output()
@@ -116,7 +117,7 @@ func TestBuyAsset_PendingDiscount(t *testing.T) {
 		if err := act.Inputs(faction, nil, rulebook); err != nil {
 			t.Fatalf("Inputs: %v", err)
 		}
-		if err := act.Resolve(faction, nil, rulebook); err != nil {
+		if err := act.Resolve(faction, &state.FactionState{}, rulebook); err != nil {
 			t.Fatalf("Resolve: %v", err)
 		}
 		muts, err := act.Output()
@@ -196,7 +197,7 @@ func TestBuyAsset_AssetCostModifier(t *testing.T) {
 	if err := act.Inputs(faction, nil, rb); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
-	if err := act.Resolve(faction, nil, rb); err != nil {
+	if err := act.Resolve(faction, &state.FactionState{}, rb); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	mutations, err := act.Output()
@@ -251,7 +252,7 @@ func TestBuyAsset_DiscountKeepsSurcharge(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 10, PendingPurchaseDiscount: 3, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}}
 	act := NewBuyAsset(nil, registry, worldEngine)
 	act.buyOrder = action.BuyOrder{World: "a", Definition: rb.Assets["cheap"]}
-	if err := act.Resolve(faction, nil, rb); err != nil {
+	if err := act.Resolve(faction, &state.FactionState{}, rb); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	if act.cost != 3 {
@@ -268,7 +269,7 @@ func TestBuyAsset_SurchargeIsItsOwnCharge(t *testing.T) {
 	act := NewBuyAsset(nil, registry, worldEngine)
 	act.factionID = faction.ID
 	act.buyOrder = action.BuyOrder{World: "a", Definition: rb.Assets["cheap"]}
-	if err := act.Resolve(faction, nil, rb); err != nil {
+	if err := act.Resolve(faction, &state.FactionState{}, rb); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	mutations, err := act.Output()

@@ -1,6 +1,10 @@
 package narrative
 
-import "math/rand"
+import (
+	"math/rand"
+
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+)
 
 func pick(rng *rand.Rand, pool []string) string {
 	return pool[rng.Intn(len(pool))]
@@ -134,4 +138,15 @@ var crossAbilityTemplates = []string{
 var quietTailTemplates = []string{
 	"No major action reported from: {factions}.",
 	"The following factions remained quiet this cycle: {factions}.",
+}
+
+var conditionClauses = map[domain.ConditionKind]string{
+	domain.ConditionNoAbility: "{defender} cannot use asset abilities there until {attacker}'s next turn.",
+}
+
+const counterstruckClause = "{defender}'s countermeasures turned the attack back on {attacker}."
+
+var crossNoDamageTemplates = []string{
+	"{attacker} moved against {defender}, but dealt no damage.",
+	"{attacker} struck at {defender} — no damage recorded.",
 }

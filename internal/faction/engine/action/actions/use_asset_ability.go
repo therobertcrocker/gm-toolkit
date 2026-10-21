@@ -35,30 +35,11 @@ func NewUseAssetAbility(collector action.Collector, roller domain.Roller, regist
 func (u *UseAssetAbility) Name() string { return "Use Asset Ability" }
 
 func (u *UseAssetAbility) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
-	for _, asset := range faction.Assets {
-		def, ok := rulebook.Assets[asset.DefinitionID]
-		if !ok {
-			continue
-		}
-		if hasActionFlag(def) && asset.Active() {
-			return true
-		}
-	}
-	return false
+	return len(abilityCandidates(faction, rulebook)) > 0
 }
 
 func (u *UseAssetAbility) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
-	var candidates []*domain.Asset
-	for _, asset := range faction.Assets {
-		def, ok := rulebook.Assets[asset.DefinitionID]
-		if !ok {
-			continue
-		}
-		if hasActionFlag(def) && asset.Active() {
-			candidates = append(candidates, asset)
-		}
-	}
-	selected, err := u.collector.SelectAbilityAssets(faction, candidates, rulebook)
+	selected, err := u.collector.SelectAbilityAssets(faction, abilityCandidates(faction, rulebook), rulebook)
 	if err != nil {
 		return fmt.Errorf("use asset ability: %w", err)
 	}
@@ -92,4 +73,17 @@ func hasActionFlag(def *domain.AssetDefinition) bool {
 		}
 	}
 	return false
+}
+
+// abilityCandidates returns the faction's assets that may use their ability now,
+// in ID order.
+func abilityCandidates(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Asset {
+	var candidates []*domain.Asset
+	for _, asset := range domain.SortedAssets(faction) {
+		def, ok := rulebook.Assets[asset.DefinitionID]
+		if ok && hasActionFlag(def) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) {
+			candidates = append(candidates, asset)
+		}
+	}
+	return candidates
 }

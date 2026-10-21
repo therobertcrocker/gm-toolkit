@@ -167,7 +167,7 @@ func Build(
 					return CycleDigest{}, err
 				}
 				switch m.Cause {
-				case "sell":
+				case "sell", "capture_target":
 					beat.Losses = append(beat.Losses, AssetMove{
 						AssetID:   m.AssetID,
 						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
@@ -201,6 +201,14 @@ func Build(
 							ce.AttackerAssetDestroyed = true
 						}
 					}
+				case "counterstrike":
+					ce := getOrCreateCross(crossMap, record.FactionID, m.CausedByFactionID, CrossAttack, factionState)
+					ce.AttackerAsset = AssetMove{
+						AssetID:   m.AssetID,
+						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+						Cause:     m.Cause,
+					}
+					ce.AttackerAssetDestroyed = true
 				case "bookkeeping":
 					// dropped — asset attrition is noise
 				}
@@ -244,6 +252,10 @@ func Build(
 						seenFactionIDs[m.FactionID] = struct{}{}
 						ce.DamageToDefender -= m.Delta
 					}
+				case "counterstrike":
+					ce := getOrCreateCross(crossMap, record.FactionID, m.CausedByFactionID, CrossAttack, factionState)
+					ce.DamageToAttacker -= m.Delta
+					ce.Counterstruck = true
 				}
 
 			case "asset_moved":
@@ -428,6 +440,34 @@ func Build(
 					bribe.baseID = m.BaseID
 					bribe.location = resolveBaseLocation(m.FactionID, m.BaseID, factionState)
 				}
+
+			case "asset_condition_applied":
+				var m domain.AssetConditionApplied
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				if m.FactionID != record.FactionID {
+					getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAttack, factionState)
+					ce.Conditions = append(ce.Conditions, m.Condition.Kind)
+				}
+
+			case "asset_condition_cleared":
+				// dropped — expiry is bookkeeping
+
+			case "asset_owner_changed":
+				var m domain.AssetOwnerChanged
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				name := resolveAssetName(m.ToFactionID, m.AssetID, factionState, rulebook)
+				loser := getOrCreateBeat(beats, m.FactionID, factionState)
+				winner := getOrCreateBeat(beats, m.ToFactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				seenFactionIDs[m.ToFactionID] = struct{}{}
+				loser.Losses = append(loser.Losses, AssetMove{AssetID: m.AssetID, AssetName: name, Cause: "captured"})
+				winner.Acquisitions = append(winner.Acquisitions, AssetMove{AssetID: m.AssetID, AssetName: name, Cause: "captured"})
 
 			case "goal_initiated":
 				// dropped — bookkeeping only

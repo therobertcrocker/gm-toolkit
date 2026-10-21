@@ -298,6 +298,23 @@ effect  = "coin_gain"` + filters,
 			wantErr: `effect "coin_gain" requires a [coin_gain] block`,
 		},
 		{
+			name: "capture_target missing its block",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_attack_hit"
+effect  = "capture_target"` + filters,
+			wantErr: `effect "capture_target" requires a [capture_target] block`,
+		},
+		{
+			name: "no-damage attack with no own_attack_hit effect",
+			body: `
+[assets.Machine.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+`,
+			wantErr: "attack has no damage and no own_attack_hit effect",
+		},
+		{
 			name: "missing amount",
 			body: `
 [[assets.Machine.effects]]

@@ -266,3 +266,14 @@ func SortedAssets(faction *Faction) []*Asset {
 	})
 	return sorted
 }
+
+// AssetOwner returns the faction that holds assetID, or nil. Asset IDs are unique
+// across factions (NextAssetID), so at most one matches.
+func AssetOwner(factions map[string]*Faction, assetID string) *Faction {
+	for _, faction := range factions {
+		if _, ok := faction.Assets[assetID]; ok {
+			return faction
+		}
+	}
+	return nil
+}

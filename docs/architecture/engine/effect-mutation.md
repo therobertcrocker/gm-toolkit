@@ -91,7 +91,9 @@ hook. `turn_start` fires from the bookkeeping phase (`FireTurnStart`).
 runs, the phase scans its batch for `AssetAdded` with cause `buy` or `ability`
 (not `refit`), and fires each bought asset's entries before goal progress and
 the reactors. So Psychic Assassins enter play stealthed, and Tripwire Cells see
-them arrive. The [ability catalog](ability-catalog.md) tracks which features
+them arrive. A third route, `own_attack` and `own_defense_win`, is raised by the
+Attack action at each matchup (`FireMatchup`), because Cracked Comms needs a
+prompt and a full roll inside the matchup. The [ability catalog](ability-catalog.md) tracks which features
 ship.
 
 ### The apply layer: the mutation vocabulary
@@ -153,6 +155,8 @@ is the string written to history; the rules behind the numbers live in
 - `asset_hp_delta` — adjust an asset's HP
 - `asset_maintained_flag` — set the maintained flag
 - `asset_stealth_applied` / `asset_stealth_cleared` — toggle stealth
+- `asset_condition_applied` / `asset_condition_cleared` — add / drop a condition, keyed on kind and source asset (Saboteurs' `no_ability`)
+- `asset_owner_changed` — move one asset to another faction with its ID and order; its cargo keeps its old owner (Treachery)
 - `asset_moved` — set an asset's Location (cargo follows a transport; also emitted by the relocate ability with `Cause: "ability"`)
 
 **Bases**
@@ -193,8 +197,8 @@ is the string written to history; the rules behind the numbers live in
   asset has no hooks until the next cycle, so a Cat 3 reactor is the wrong shape
   for both. `FireTurnStart` and `FirePurchase` read the definition and run the
   registrar's `Fire`. This refines the rule above, but does not break it: the
-  orchestrator still owns each call site, and the effects engine resolves a phase
-  event that the orchestrator raises. Turn start fires at the start of the
+  orchestrator, or the action that owns the event, raises each route, and the
+  effects engine resolves it (A.001.6 overview Decision 21). Turn start fires at the start of the
   bookkeeping phase, gated on `BookkeepingApplied`, because turn setup re-runs on
   every resume and would pay twice. Purchase fires from one scan of the action
   batch, which covers Buy Asset and the purchase enabler with no effects engine in

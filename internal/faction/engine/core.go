@@ -71,6 +71,6 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine
 			}
 		}
 	}
-	actions.RegisterDefaultActions(e.Action, func() domain.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook)
+	actions.RegisterDefaultActions(e.Action, func() domain.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook, e.Effect)
 	return e, nil
 }

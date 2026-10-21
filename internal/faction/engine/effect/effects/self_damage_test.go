@@ -93,6 +93,12 @@ func TestSelfDamage(t *testing.T) {
 			},
 		},
 		{
+			name: "a counterstrike that names the Zealots is not a hit (F6)",
+			mutations: []domain.Mutation{
+				domain.AssetHPDelta{FactionID: "beta", AssetID: "beta-x", Delta: -5, Cause: "counterstrike", CausedByFactionID: "alpha", CausedByAssetID: "zealots"},
+			},
+		},
+		{
 			name: "damage already in the batch makes the self-damage lethal",
 			mutations: []domain.Mutation{
 				zealotHit(false),

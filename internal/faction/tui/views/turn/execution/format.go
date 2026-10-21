@@ -96,6 +96,12 @@ func formatMutation(m domain.Mutation) (string, bool) {
 	case domain.FactionHPDelta:
 		return fmt.Sprintf("HP %+d", mut.Delta), true
 	case domain.AssetHPDelta:
+		switch {
+		case mut.Delta == 0:
+			return fmt.Sprintf("asset %s hit (no damage)", mut.AssetID), true
+		case mut.Cause == string(domain.SpecialCounterstrike):
+			return fmt.Sprintf("asset %s HP %+d (counterstrike)", mut.AssetID, mut.Delta), true
+		}
 		return fmt.Sprintf("asset %s HP %+d", mut.AssetID, mut.Delta), true
 	case domain.BaseHPDelta:
 		return fmt.Sprintf("base %s HP %+d", mut.BaseID, mut.Delta), true
@@ -107,6 +113,12 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("Coin %+d", mut.Delta), true
 	case domain.AssetAdded:
 		return fmt.Sprintf("+asset %s", mut.Asset.DefinitionID), true
+	case domain.AssetConditionApplied:
+		return fmt.Sprintf("asset %s +%s", mut.AssetID, mut.Condition.Kind), true
+	case domain.AssetConditionCleared:
+		return fmt.Sprintf("asset %s -%s", mut.AssetID, mut.Condition.Kind), true
+	case domain.AssetOwnerChanged:
+		return fmt.Sprintf("asset %s captured by %s", mut.AssetID, mut.ToFactionID), true
 	case domain.AssetRemoved:
 		return fmt.Sprintf("-asset %s", mut.AssetID), true
 	case domain.BaseAdded:

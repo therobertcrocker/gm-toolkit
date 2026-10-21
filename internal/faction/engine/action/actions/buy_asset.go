@@ -78,7 +78,7 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ruleb
 	return nil
 }
 
-func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
+func (ba *BuyAsset) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	def := ba.buyOrder.Definition
 	ba.quote = dispatch.ResolveAssetCost(ba.registry, faction, def, ba.buyOrder.World, def.Cost, world.AssetsOnWorld(ba.worldEngine, ba.buyOrder.World))
 	ba.cost = ba.quote.Cost
@@ -89,7 +89,7 @@ func (ba *BuyAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rule
 	if faction.Coin < ba.cost {
 		return fmt.Errorf("insufficient Coin: need %d, have %d", ba.cost, faction.Coin)
 	}
-	ba.newAsset = domain.NewPurchasedAsset(faction, def, ba.buyOrder.World)
+	ba.newAsset = domain.NewPurchasedAsset(factionState.Factions, faction, def, ba.buyOrder.World)
 	return nil
 }
 

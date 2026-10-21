@@ -448,7 +448,7 @@ func previewMaxHP(data *formData) int {
 func instantiateAssets(defs []*domain.AssetDefinition, homeworld domain.Location, tempFaction *domain.Faction) []*domain.Asset {
 	assets := make([]*domain.Asset, 0, len(defs))
 	for _, def := range defs {
-		id := domain.NextAssetID(tempFaction, def.ID)
+		id := domain.NextAssetID(map[string]*domain.Faction{tempFaction.ID: tempFaction}, tempFaction, def.ID)
 		asset := &domain.Asset{
 			ID:           id,
 			DefinitionID: def.ID,

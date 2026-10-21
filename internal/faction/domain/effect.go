@@ -18,6 +18,9 @@ const (
 	SpecialCostSurcharge  SpecialEffectType = "cost_surcharge"
 	SpecialGrantMovement  SpecialEffectType = "grant_movement"
 	SpecialRestrictAttack SpecialEffectType = "restrict_attack"
+	SpecialCaptureTarget  SpecialEffectType = "capture_target"
+	SpecialBlockAbility   SpecialEffectType = "block_ability"
+	SpecialCounterstrike  SpecialEffectType = "counterstrike"
 )
 
 type EffectTrigger string
@@ -35,6 +38,8 @@ const (
 	TriggerAssetCostQuery         EffectTrigger = "asset_cost_query"
 	TriggerMovementOptionsQuery   EffectTrigger = "movement_options_query"
 	TriggerAttackEligibilityQuery EffectTrigger = "attack_eligibility_query"
+	TriggerOwnAttack              EffectTrigger = "own_attack"
+	TriggerOwnDefenseWin          EffectTrigger = "own_defense_win"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -219,6 +224,10 @@ type GrantMovementParams struct {
 	Relocate RelocateParams
 }
 
+type CaptureTargetParams struct {
+	Coin DiceRoll
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -236,4 +245,5 @@ type EffectDefinition struct {
 	CostSurcharge  *CostSurchargeParams
 	RestrictAttack *RestrictAttackParams
 	GrantMovement  *GrantMovementParams
+	CaptureTarget  *CaptureTargetParams
 }

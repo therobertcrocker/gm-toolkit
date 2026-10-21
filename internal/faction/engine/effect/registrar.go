@@ -12,14 +12,16 @@ import (
 // Registrar is one S-side effect's spec: what the effect accepts in the data, and
 // the code that runs it. Triggers keys the accepted sets on the trigger, because
 // owner and scope read differently per trigger: an independent set per field would
-// accept a pairing the effect never supports. An entry runs through Fire when its
-// trigger is a phase event (IsPhaseTrigger) and through Register otherwise; a nil
-// function means the effect has no such route. Validate is optional: it refuses a
+// accept a pairing the effect never supports. An entry runs through Matchup when its
+// trigger fires inside the Attack action (IsMatchupTrigger), through Fire when it is
+// a phase event (IsPhaseTrigger), and through Register otherwise; a nil function
+// means the effect has no such route. Validate is optional: it refuses a
 // combination of fields that Accepts, which checks each field alone, cannot express.
 type Registrar struct {
 	Triggers map[domain.EffectTrigger]Accepts
 	Register func(RegisterContext)
 	Fire     func(FireContext) []domain.Mutation
+	Matchup  func(MatchupContext) MatchupOutcome
 	Validate func(domain.EffectDefinition) error
 }
 
@@ -52,6 +54,31 @@ type FireContext struct {
 	FactionState *state.FactionState
 }
 
+// MatchupContext is one matchup of the Attack action, seen from the declaring
+// asset: its attacker for own_attack, its defender for own_defense_win.
+type MatchupContext struct {
+	Faction       *domain.Faction
+	Asset         *domain.Asset
+	Def           *domain.AssetDefinition
+	Entry         domain.EffectDefinition
+	Opponent      *domain.Faction
+	OpponentAsset *domain.Asset
+	FactionState  *state.FactionState
+}
+
+// MatchupOutcome carries the route's mutations and the decisions the Attack
+// action carries out itself, because they need its rolls, prompts and HP tracker.
+type MatchupOutcome struct {
+	Mutations     []domain.Mutation
+	Counterstrike bool
+}
+
+// IsMatchupTrigger reports whether trigger fires from the Attack action at each
+// matchup: a direct definition read the action raises (overview Decision 21).
+func IsMatchupTrigger(trigger domain.EffectTrigger) bool {
+	return trigger == domain.TriggerOwnAttack || trigger == domain.TriggerOwnDefenseWin
+}
+
 // IsPhaseTrigger reports whether trigger fires from a direct definition read at a
 // phase event, not from a hook registered at cycle start. Turn start is a phase
 // event, not a mutation; a purchased asset has no hooks until the next cycle.
@@ -70,7 +97,7 @@ func (handler *effectsListHandler) AssetDefinitionID() string { return handler.d
 
 func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller domain.Roller) {
 	for _, entry := range handler.def.Effects {
-		if IsPhaseTrigger(entry.Trigger) {
+		if IsPhaseTrigger(entry.Trigger) || IsMatchupTrigger(entry.Trigger) {
 			continue
 		}
 		// deliberate: no nil check on Register, because RegisterEffectsList rejects a hook-route entry without one.
@@ -94,11 +121,19 @@ func (e *EffectsEngine) validateEntry(entry domain.EffectDefinition) error {
 	if !ok {
 		return fmt.Errorf("effect %q does not accept trigger %q", entry.Effect, entry.Trigger)
 	}
-	if IsPhaseTrigger(entry.Trigger) && registrar.Fire == nil {
-		return fmt.Errorf("effect %q has no phase route for trigger %q", entry.Effect, entry.Trigger)
-	}
-	if !IsPhaseTrigger(entry.Trigger) && registrar.Register == nil {
-		return fmt.Errorf("effect %q has no hook route for trigger %q", entry.Effect, entry.Trigger)
+	switch {
+	case IsMatchupTrigger(entry.Trigger):
+		if registrar.Matchup == nil {
+			return fmt.Errorf("effect %q has no matchup route for trigger %q", entry.Effect, entry.Trigger)
+		}
+	case IsPhaseTrigger(entry.Trigger):
+		if registrar.Fire == nil {
+			return fmt.Errorf("effect %q has no phase route for trigger %q", entry.Effect, entry.Trigger)
+		}
+	default:
+		if registrar.Register == nil {
+			return fmt.Errorf("effect %q has no hook route for trigger %q", entry.Effect, entry.Trigger)
+		}
 	}
 	if !slices.Contains(accepts.Owners, entry.Filters.Owner) {
 		return fmt.Errorf("effect %q does not accept owner %q for trigger %q", entry.Effect, entry.Filters.Owner, entry.Trigger)

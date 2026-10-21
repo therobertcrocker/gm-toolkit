@@ -127,3 +127,21 @@ func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asse
 	}
 	return mutations
 }
+
+// FireMatchup runs the declaring asset's entries for trigger through each
+// registrar's matchup route. A direct definition read, raised by the Attack
+// action, which owns the matchup.
+func (e *EffectsEngine) FireMatchup(trigger domain.EffectTrigger, ctx MatchupContext) MatchupOutcome {
+	var outcome MatchupOutcome
+	for _, entry := range ctx.Def.Effects {
+		if entry.Trigger != trigger {
+			continue
+		}
+		ctx.Entry = entry
+		// deliberate: no nil check on Matchup, because RegisterEffectsList rejects a matchup-route entry without one.
+		result := e.registrars[entry.Effect].Matchup(ctx)
+		outcome.Mutations = append(outcome.Mutations, result.Mutations...)
+		outcome.Counterstrike = outcome.Counterstrike || result.Counterstrike
+	}
+	return outcome
+}

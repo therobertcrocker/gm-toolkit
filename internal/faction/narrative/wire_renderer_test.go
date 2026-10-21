@@ -2,10 +2,13 @@ package narrative
 
 import (
 	"flag"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/narrative/digest"
 )
 
@@ -149,5 +152,42 @@ func TestWireRendererGolden(t *testing.T) {
 				t.Errorf("golden mismatch for %s\nwant:\n%s\ngot:\n%s", tc.name, want, got)
 			}
 		})
+	}
+}
+
+func TestRenderCrossEvent_NoDamageWithCondition(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:             digest.CrossAttack,
+		Attacker:         digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:         digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		DamageToDefender: 0,
+		Conditions:       []domain.ConditionKind{domain.ConditionNoAbility},
+	}
+
+	for seed := range int64(len(crossNoDamageTemplates)) * 4 {
+		got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(seed)))
+		if !strings.Contains(got, "no damage") {
+			t.Errorf("seed %d: %q does not use a no-damage template", seed, got)
+		}
+		wantClause := " Free Worlds League cannot use asset abilities there until Iron Hegemony's next turn."
+		if !strings.HasSuffix(got, wantClause) {
+			t.Errorf("seed %d: %q does not end with the no_ability clause", seed, got)
+		}
+	}
+}
+
+func TestRenderCrossEvent_Counterstruck(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:             digest.CrossAttack,
+		Attacker:         digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:         digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		DamageToAttacker: 5,
+		Counterstruck:    true,
+	}
+
+	got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(1)))
+	wantClause := " Free Worlds League's countermeasures turned the attack back on Iron Hegemony."
+	if !strings.HasSuffix(got, wantClause) {
+		t.Errorf("%q does not end with the counterstruck clause", got)
 	}
 }

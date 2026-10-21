@@ -144,13 +144,20 @@ func renderAcquisition(move digest.AssetMove, factionName string, rng *rand.Rand
 	if move.From != "" {
 		result += fmt.Sprintf(" (upgraded from %s)", move.From)
 	}
+	if move.Cause == "captured" {
+		result += " (captured)"
+	}
 	return result
 }
 
 func renderLoss(move digest.AssetMove, factionName string, rng *rand.Rand) string {
 	tmpl := pick(rng, lossTemplates)
 	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
-	return strings.ReplaceAll(result, "{asset}", move.AssetName)
+	result = strings.ReplaceAll(result, "{asset}", move.AssetName)
+	if move.Cause == "captured" {
+		result += " (captured)"
+	}
+	return result
 }
 
 func renderMovement(move digest.AssetMove, factionName string, rng *rand.Rand) string {
@@ -208,12 +215,26 @@ func renderStealthOp(stealth digest.StealthEvent, factionName string, rng *rand.
 func renderCrossEvent(ce digest.CrossEvent, rng *rand.Rand) string {
 	switch ce.Kind {
 	case digest.CrossAttack:
-		tmpl := pick(rng, crossAttackTemplates)
-		result := strings.ReplaceAll(tmpl, "{attacker}", ce.Attacker.Name)
+		templates := crossAttackTemplates
+		if ce.DamageToDefender == 0 && ce.BaseHit == nil && !ce.DefenderAssetDestroyed {
+			templates = crossNoDamageTemplates
+		}
+		result := strings.ReplaceAll(pick(rng, templates), "{attacker}", ce.Attacker.Name)
 		result = strings.ReplaceAll(result, "{defender}", ce.Defender.Name)
 		result = strings.ReplaceAll(result, "{attacker_asset}", ce.AttackerAsset.AssetName)
 		result = strings.ReplaceAll(result, "{defender_asset}", ce.DefenderAsset.AssetName)
-		return strings.ReplaceAll(result, "{damage}", fmt.Sprintf("%d", ce.DamageToDefender))
+		result = strings.ReplaceAll(result, "{damage}", fmt.Sprintf("%d", ce.DamageToDefender))
+		for _, kind := range ce.Conditions {
+			if clause, ok := conditionClauses[kind]; ok {
+				clause = strings.ReplaceAll(clause, "{attacker}", ce.Attacker.Name)
+				result += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
+			}
+		}
+		if ce.Counterstruck {
+			clause := strings.ReplaceAll(counterstruckClause, "{attacker}", ce.Attacker.Name)
+			result += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
+		}
+		return result
 	case digest.CrossAbilityStrike:
 		tmpl := pick(rng, crossAbilityTemplates)
 		result := strings.ReplaceAll(tmpl, "{attacker}", ce.Attacker.Name)

@@ -13,7 +13,7 @@ func TestNewPurchasedAsset(t *testing.T) {
 	}
 	def := &domain.AssetDefinition{ID: "SWN-F1-001", HP: 6, Cost: 4}
 
-	asset := domain.NewPurchasedAsset(faction, def, "world-a")
+	asset := domain.NewPurchasedAsset(nil, faction, def, "world-a")
 
 	if asset.DefinitionID != def.ID {
 		t.Errorf("DefinitionID = %q, want %q", asset.DefinitionID, def.ID)
@@ -64,9 +64,25 @@ func TestNewPurchasedAsset_MonotonicID(t *testing.T) {
 			"f1-SWN-F1-001-2": {ID: "f1-SWN-F1-001-2"},
 		},
 	}
-	asset := domain.NewPurchasedAsset(faction, def, "w1")
+	asset := domain.NewPurchasedAsset(nil, faction, def, "w1")
 	if asset.ID != "f1-SWN-F1-001-3" {
 		t.Errorf("ID = %q, want %q", asset.ID, "f1-SWN-F1-001-3")
+	}
+}
+
+func TestNextAssetID_ScansEveryFaction(t *testing.T) {
+	owner := &domain.Faction{
+		ID:     "f1",
+		Assets: map[string]*domain.Asset{"f1-SWN-F1-001-1": {ID: "f1-SWN-F1-001-1"}},
+	}
+	captor := &domain.Faction{
+		ID:     "f2",
+		Assets: map[string]*domain.Asset{"f1-SWN-F1-001-3": {ID: "f1-SWN-F1-001-3"}},
+	}
+	factions := map[string]*domain.Faction{"f1": owner, "f2": captor}
+
+	if got := domain.NextAssetID(factions, owner, "SWN-F1-001"); got != "f1-SWN-F1-001-4" {
+		t.Errorf("NextAssetID = %q, want %q (a captured asset still holds its suffix)", got, "f1-SWN-F1-001-4")
 	}
 }
 
@@ -85,5 +101,31 @@ func TestHasPlanetaryGovernment(t *testing.T) {
 	}
 	if !domain.HasPlanetaryGovernment("f1", []*domain.Base{rival, owned}) {
 		t.Error("want true when faction base is present among rivals")
+	}
+}
+
+func TestAsset_CloneCopiesConditions(t *testing.T) {
+	original := &domain.Asset{ID: "a1", Conditions: []domain.Condition{{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1"}}}
+
+	clone := original.Clone()
+	clone.Conditions[0].Kind = "changed"
+
+	if got := original.Conditions[0].Kind; got != domain.ConditionNoAbility {
+		t.Errorf("original Conditions[0].Kind = %q, want %q (clone must not share the slice)", got, domain.ConditionNoAbility)
+	}
+}
+
+func TestAsset_HasCondition(t *testing.T) {
+	asset := &domain.Asset{ID: "a1"}
+	if asset.HasCondition(domain.ConditionNoAbility) {
+		t.Error("HasCondition(no_ability) = true on an asset with no conditions")
+	}
+
+	asset.Conditions = []domain.Condition{{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1"}}
+	if !asset.HasCondition(domain.ConditionNoAbility) {
+		t.Error("HasCondition(no_ability) = false on an asset that carries it")
+	}
+	if asset.HasCondition("other") {
+		t.Error("HasCondition(other) = true; only no_ability is present")
 	}
 }

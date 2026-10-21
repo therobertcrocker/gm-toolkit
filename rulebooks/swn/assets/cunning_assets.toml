@@ -93,6 +93,13 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "2d4"
 
+[[assets.Saboteurs.effects]]
+trigger = "own_attack"
+effect  = "block_ability"
+[assets.Saboteurs.effects.filters]
+owner = "own"
+scope = "self"
+
 [assets.Blackmail]
 id = "SWN-C2-003"
 name = "Blackmail"
@@ -322,6 +329,13 @@ flags = ["S"]
 counter = ""
 description = "A cryptographic asset for intercepting and deciphering enemy communications. If Cracked Comms succeeds in defending against an attack, it can immediately cause the attacking asset to make an attack against itself for normal damage or counterattack results."
 
+[[assets.CrackedComms.effects]]
+trigger = "own_defense_win"
+effect  = "counterstrike"
+[assets.CrackedComms.effects.filters]
+owner = "own"
+scope = "self"
+
 [assets.Boltholes]
 id = "SWN-C5-003"
 name = "Boltholes"
@@ -461,6 +475,19 @@ type = "Tactic"
 flags = ["S"]
 counter = ""
 description = "On a successful Cunning vs. Cunning attack, the Treachery asset is lost, 5 Coins are gained, and the targeted asset switches sides to join the traitor's faction, even if the faction does not otherwise have the attributes necessary."
+
+[assets.Treachery.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[[assets.Treachery.effects]]
+trigger = "own_attack_hit"
+effect  = "capture_target"
+[assets.Treachery.effects.filters]
+owner = "own"
+scope = "self"
+[assets.Treachery.effects.capture_target]
+amount = "5"
 
 [assets.PanopticonMatrix]
 id = "SWN-C8-001"

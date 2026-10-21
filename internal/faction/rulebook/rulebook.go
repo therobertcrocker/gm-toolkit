@@ -3,6 +3,7 @@ package rulebook
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -215,7 +216,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		attack = &domain.AttackProfile{
 			AttackerStat: attackerStat,
 			DefenderStat: defenderStat,
-			Damage:       *damage,
+			Damage:       damage,
 		}
 	}
 
@@ -232,6 +233,12 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 	effects, err := convertEffects(r.Effects)
 	if err != nil {
 		return nil, err
+	}
+	// deliberate: a no-damage attack needs a hit rule, not a silent load, because an omitted damage line would otherwise hit for nothing and do nothing.
+	if attack != nil && attack.Damage == nil && !slices.ContainsFunc(effects, func(entry domain.EffectDefinition) bool {
+		return entry.Trigger == domain.TriggerOwnAttackHit
+	}) {
+		return nil, fmt.Errorf("attack has no damage and no own_attack_hit effect")
 	}
 
 	return &domain.AssetDefinition{

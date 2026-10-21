@@ -231,6 +231,18 @@ func (a *actionCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction,
 	confirmed, _ := raw.(bool)
 	return confirmed, nil
 }
+func (a *actionCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source *domain.Asset, attacker *domain.Asset) (bool, error) {
+	raw, err := a.adapter.ask(AskConfirmCounterstrike, defenderFaction, ConfirmCounterstrikePayload{
+		DefenderFaction: defenderFaction,
+		Source:          source,
+		Attacker:        attacker,
+	})
+	if err != nil {
+		return false, err
+	}
+	confirmed, _ := raw.(bool)
+	return confirmed, nil
+}
 func (a *actionCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
 	names := make(map[string]string, len(eligibleNewBaseWorlds))
 	for _, worldID := range eligibleNewBaseWorlds {

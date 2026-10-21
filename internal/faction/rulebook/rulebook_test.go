@@ -48,8 +48,27 @@ func TestLoad(t *testing.T) {
 			t.Fatal("expected attack profile, got nil")
 		}
 		d := asset.Attack.Damage
+		if d == nil {
+			t.Fatal("expected damage, got nil")
+		}
 		if d.NumDice != 1 || d.Sides != 3 || d.Modifier != 1 {
 			t.Errorf("damage: got %+v, want 1d3+1", d)
+		}
+	})
+
+	t.Run("special attack: Treachery", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C7-003"]
+		if !ok {
+			t.Fatal("asset SWN-C7-003 (Treachery) not found")
+		}
+		if asset.Attack == nil || asset.Attack.Damage != nil {
+			t.Fatalf("attack: got %+v, want a profile with nil Damage", asset.Attack)
+		}
+		if len(asset.Effects) != 1 || asset.Effects[0].Effect != domain.SpecialCaptureTarget {
+			t.Fatalf("effects: got %+v, want one capture_target entry", asset.Effects)
+		}
+		if capture := asset.Effects[0].CaptureTarget; capture == nil || capture.Coin.Modifier != 5 {
+			t.Errorf("capture_target: got %+v, want Coin modifier 5", capture)
 		}
 	})
 

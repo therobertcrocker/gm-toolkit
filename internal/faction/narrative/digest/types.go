@@ -1,5 +1,7 @@
 package digest
 
+import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+
 type CycleDigest struct {
 	Cycle          int
 	ActiveFactions []FactionBeat
@@ -104,6 +106,8 @@ type CrossEvent struct {
 	BaseHit                *BaseHitDetail
 	CoinDrained            int
 	StealthBroken          bool
+	Conditions             []domain.ConditionKind
+	Counterstruck          bool
 }
 
 type BaseHitDetail struct {

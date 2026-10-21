@@ -20,5 +20,8 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialRestrictAttack: restrictAttackRegistrar,
 		domain.SpecialGrantMovement:  grantMovementRegistrar,
 		domain.SpecialApplyStealth:   applyStealthRegistrar,
+		domain.SpecialCaptureTarget:  captureTargetRegistrar,
+		domain.SpecialBlockAbility:   blockAbilityRegistrar,
+		domain.SpecialCounterstrike:  counterstrikeRegistrar,
 	}
 }

@@ -595,6 +595,34 @@ func TestCrossAttackerAssetDestroyed(t *testing.T) {
 	}
 }
 
+func TestCrossCounterstrike(t *testing.T) {
+	factionState := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "faction-a", AssetID: "a-asset-1", Delta: -5, Cause: "counterstrike",
+				CausedByFactionID: "faction-b", CausedByAssetID: "b-comms",
+			}),
+			mutRec(t, "asset_removed", domain.AssetRemoved{
+				FactionID: "faction-a", AssetID: "a-asset-1", Cause: "counterstrike",
+				CausedByFactionID: "faction-b",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "faction-a" || crossEvent.Defender.ID != "faction-b" || crossEvent.Kind != CrossAttack {
+		t.Errorf("cross event = %+v, want CrossAttack faction-a -> faction-b", crossEvent)
+	}
+	if !crossEvent.Counterstruck || crossEvent.DamageToAttacker != 5 || !crossEvent.AttackerAssetDestroyed {
+		t.Errorf("cross event = %+v, want Counterstruck, DamageToAttacker 5, AttackerAssetDestroyed", crossEvent)
+	}
+}
+
 func TestCrossBaseHit(t *testing.T) {
 	fs := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Bravo"})
 	fs.Factions["faction-b"].Bases = []*domain.Base{{ID: "base-b1", Location: domain.Location{WorldID: "Anvil"}}}
@@ -849,4 +877,36 @@ func TestUnknownMutationTypeAddsNote(t *testing.T) {
 	// A note is added but the beat may still be quiet (notes don't make it active).
 	// What matters is no panic and the note is recorded.
 	_ = beat
+}
+
+func TestConditionAppliedJoinsCrossAttack(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	condition := domain.Condition{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1", ExpiresAtTurnOf: "f1"}
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: condition, Cause: "attack", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_condition_cleared", domain.AssetConditionCleared{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: condition, Cause: "condition_expired", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAttack {
+		t.Errorf("cross event = %+v, want CrossAttack f1 -> f2", crossEvent)
+	}
+	if len(crossEvent.Conditions) != 1 || crossEvent.Conditions[0] != domain.ConditionNoAbility {
+		t.Errorf("Conditions = %v, want [no_ability]", crossEvent.Conditions)
+	}
+	for _, factionID := range []string{"f1", "f2"} {
+		if beat := findBeat(cycleDigest, factionID); beat != nil && len(beat.Notes) != 0 {
+			t.Errorf("%s Notes = %v, want none (the cleared condition is a dropped case)", factionID, beat.Notes)
+		}
+	}
 }

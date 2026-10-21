@@ -139,6 +139,16 @@ func TestUseAssetAbility_Validate(t *testing.T) {
 			t.Error("expected Validate true when A-flagged, Ready, Maintained asset exists")
 		}
 	})
+
+	t.Run("A-flagged but sabotaged", func(t *testing.T) {
+		asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-C1-002", Ready: true, Maintained: true, CurrentHP: 1,
+			Conditions: []domain.Condition{{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1", ExpiresAtTurnOf: "f2"}}}
+		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
+		act := NewUseAssetAbility(nil, nil, nil, nil)
+		if act.Validate(faction, nil, rulebook) {
+			t.Error("expected Validate false when the only A-flagged asset carries no_ability")
+		}
+	})
 }
 
 // TestUseAssetAbility_Resolve_Informers_AttackerWins: attacker roll > defense roll.

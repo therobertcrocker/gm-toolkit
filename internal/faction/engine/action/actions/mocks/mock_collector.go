@@ -59,6 +59,21 @@ func (mr *MockCollectorMockRecorder) ConfirmAbilityApplied(asset, def any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmAbilityApplied", reflect.TypeOf((*MockCollector)(nil).ConfirmAbilityApplied), asset, def)
 }
 
+// ConfirmCounterstrike mocks base method.
+func (m *MockCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source, attacker *domain.Asset) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmCounterstrike", defenderFaction, source, attacker)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmCounterstrike indicates an expected call of ConfirmCounterstrike.
+func (mr *MockCollectorMockRecorder) ConfirmCounterstrike(defenderFaction, source, attacker any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmCounterstrike", reflect.TypeOf((*MockCollector)(nil).ConfirmCounterstrike), defenderFaction, source, attacker)
+}
+
 // ConfirmRedirectToBase mocks base method.
 func (m *MockCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	m.ctrl.T.Helper()

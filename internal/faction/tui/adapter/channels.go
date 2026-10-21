@@ -38,6 +38,9 @@ const (
 	AskSelectFactionTestTarget
 	AskSelectRelocateOrders
 	AskSelectPurchaseEnablerAsset
+	AskConfirmCounterstrike
+	// AskKindCount counts the kinds above; keep it last.
+	AskKindCount
 )
 
 type CollectorAskMsg struct {
@@ -148,6 +151,11 @@ type ConfirmRedirectToBasePayload struct {
 	DefenderFaction *domain.Faction
 	Base            *domain.Base
 	Damage          int
+}
+type ConfirmCounterstrikePayload struct {
+	DefenderFaction *domain.Faction
+	Source          *domain.Asset
+	Attacker        *domain.Asset
 }
 
 // ReinforceTarget is a per-base, adapter-pre-derived reinforce cap. CanHeal/CanMax

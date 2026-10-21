@@ -97,6 +97,9 @@ func (SmokeActionCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _
 func (SmokeActionCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {
 	return false, action.ErrActionUnavailable
 }
+func (SmokeActionCollector) ConfirmCounterstrike(_ *domain.Faction, _ *domain.Asset, _ *domain.Asset) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
 func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {
 	return action.ExpandInfluenceOrder{}, action.ErrActionUnavailable
 }

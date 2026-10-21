@@ -36,7 +36,9 @@ type DiceRoll struct {
 type AttackProfile struct {
 	AttackerStat FactionStat
 	DefenderStat FactionStat
-	Damage       DiceRoll
+	// Damage is nil for a special attack, which hits for no damage and leaves
+	// its effect to the asset's own_attack_hit entries.
+	Damage *DiceRoll
 }
 
 type TransportProfile struct {
@@ -195,6 +197,25 @@ type AssetDefinition struct {
 	Effects     []EffectDefinition
 }
 
+type ConditionKind string
+
+const ConditionNoAbility ConditionKind = "no_ability"
+
+// Condition is a lasting restriction one asset puts on another. The code that
+// reads a kind decides what it blocks. ExpiresAtTurnOf names the faction whose
+// turn start clears it; empty means the kind ends some other way.
+type Condition struct {
+	Kind            ConditionKind `toml:"kind" json:"kind"`
+	SourceAssetID   string        `toml:"source_asset_id" json:"source_asset_id"`
+	ExpiresAtTurnOf string        `toml:"expires_at_turn_of,omitempty" json:"expires_at_turn_of,omitempty"`
+}
+
+// Is reports whether condition and other are one condition: the same kind from
+// the same source.
+func (condition Condition) Is(other Condition) bool {
+	return condition.Kind == other.Kind && condition.SourceAssetID == other.SourceAssetID
+}
+
 type Asset struct {
 	ID           string         `toml:"id"`
 	DefinitionID string         `toml:"definition_id"`
@@ -205,6 +226,11 @@ type Asset struct {
 	Ready        bool           `toml:"ready"`
 	Maintained   bool           `toml:"maintained"`
 	CurrentOrder *MovementOrder `toml:"current_order,omitempty"`
+	Conditions   []Condition    `toml:"conditions,omitempty"`
+}
+
+func (asset *Asset) HasCondition(kind ConditionKind) bool {
+	return slices.ContainsFunc(asset.Conditions, func(condition Condition) bool { return condition.Kind == kind })
 }
 
 // Active reports whether the asset can act or use its special ability now: an
@@ -218,6 +244,7 @@ func (asset *Asset) Active() bool {
 // slices, so mutations applied to the copy never reach the original.
 func (asset *Asset) Clone() *Asset {
 	clone := *asset
+	clone.Conditions = slices.Clone(asset.Conditions)
 	if asset.CurrentOrder != nil {
 		order := *asset.CurrentOrder
 		order.Path = slices.Clone(asset.CurrentOrder.Path)
@@ -236,8 +263,17 @@ func (def *AssetDefinition) HasFlag(flag AssetFlag) bool {
 	return false
 }
 
-func NextAssetID(faction *Faction, definitionID string) string {
+func NextAssetID(factions map[string]*Faction, faction *Faction, definitionID string) string {
 	prefix := fmt.Sprintf("%s-%s-", faction.ID, definitionID)
+	highest := highestSuffix(faction, prefix)
+	// deliberate: scan every faction, not only the owner, because a captured asset keeps its ID in its new owner's map (D-9).
+	for _, holder := range factions {
+		highest = max(highest, highestSuffix(holder, prefix))
+	}
+	return fmt.Sprintf("%s%d", prefix, highest+1)
+}
+
+func highestSuffix(faction *Faction, prefix string) int {
 	highest := 0
 	for id := range faction.Assets {
 		if !strings.HasPrefix(id, prefix) {
@@ -248,16 +284,15 @@ func NextAssetID(faction *Faction, definitionID string) string {
 			highest = n
 		}
 	}
-
-	return fmt.Sprintf("%s%d", prefix, highest+1)
+	return highest
 }
 
 // NewPurchasedAsset builds a freshly-bought asset for a faction: a fresh ID, full HP, not
 // yet Ready (activates next turn), and Maintained. Shared by the Buy Asset action and the
 // purchase_enabler ability so the two purchase paths can't drift on the asset shape.
-func NewPurchasedAsset(faction *Faction, def *AssetDefinition, worldID string) Asset {
+func NewPurchasedAsset(factions map[string]*Faction, faction *Faction, def *AssetDefinition, worldID string) Asset {
 	return Asset{
-		ID:           NextAssetID(faction, def.ID),
+		ID:           NextAssetID(factions, faction, def.ID),
 		DefinitionID: def.ID,
 		OwnerID:      faction.ID,
 		Location:     Location{WorldID: worldID},

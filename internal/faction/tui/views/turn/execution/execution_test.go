@@ -152,3 +152,11 @@ func TestModel_CapturesInputFalseWithoutOverlay(t *testing.T) {
 type errForTest string
 
 func (e errForTest) Error() string { return string(e) }
+
+func TestAskEntriesCoverEveryKind(t *testing.T) {
+	for kind := range adapter.AskKindCount {
+		if _, ok := askEntries[kind]; !ok {
+			t.Errorf("askEntries has no row for AskKind %d", kind)
+		}
+	}
+}

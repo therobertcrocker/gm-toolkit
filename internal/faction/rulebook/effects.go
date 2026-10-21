@@ -20,6 +20,7 @@ type effectRecord struct {
 	CostSurcharge  *costSurchargeRecord  `toml:"cost_surcharge"`
 	RestrictAttack *restrictAttackRecord `toml:"restrict_attack"`
 	GrantMovement  *grantMovementRecord  `toml:"grant_movement"`
+	CaptureTarget  *amountRecord         `toml:"capture_target"`
 }
 
 type effectFiltersRecord struct {
@@ -82,14 +83,15 @@ var (
 		domain.TriggerOwnCounterHit, domain.TriggerOwnRoll, domain.TriggerEnemyRollAtMe,
 		domain.TriggerStealthArrival, domain.TriggerCoinLoss, domain.TriggerTechLevelQuery,
 		domain.TriggerAssetCostQuery, domain.TriggerMovementOptionsQuery,
-		domain.TriggerAttackEligibilityQuery,
+		domain.TriggerAttackEligibilityQuery, domain.TriggerOwnAttack, domain.TriggerOwnDefenseWin,
 	}
 	specialEffects = []domain.SpecialEffectType{
 		domain.SpecialCoinGain, domain.SpecialCoinSteal, domain.SpecialIgnoreCoinLoss,
 		domain.SpecialSelfDamage, domain.SpecialApplyStealth, domain.SpecialClearStealth,
 		domain.SpecialBonusDie, domain.SpecialRemoveTagDice, domain.SpecialReroll,
 		domain.SpecialTechLevelFloor, domain.SpecialCostSurcharge, domain.SpecialGrantMovement,
-		domain.SpecialRestrictAttack,
+		domain.SpecialRestrictAttack, domain.SpecialCaptureTarget, domain.SpecialBlockAbility,
+		domain.SpecialCounterstrike,
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
 	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction}
@@ -260,6 +262,9 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	if record.GrantMovement != nil {
 		present = append(present, domain.SpecialGrantMovement)
 	}
+	if record.CaptureTarget != nil {
+		present = append(present, domain.SpecialCaptureTarget)
+	}
 	return present
 }
 
@@ -343,6 +348,12 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return fmt.Errorf("grant_movement: %w", err)
 		}
 		definition.GrantMovement = &domain.GrantMovementParams{Relocate: *relocate}
+	case domain.SpecialCaptureTarget:
+		coin, err := convertAmount(definition.Effect, record.CaptureTarget)
+		if err != nil {
+			return err
+		}
+		definition.CaptureTarget = &domain.CaptureTargetParams{Coin: coin}
 	}
 	return nil
 }

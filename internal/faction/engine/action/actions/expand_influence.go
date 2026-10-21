@@ -188,7 +188,7 @@ type baseAttack struct {
 // baseHPTracker accumulates damage across rival attacks so re-checks see the
 // correct effective HP before mutations are applied to state.
 func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
-	eligible := rivalAssetsOnWorld(rival, target.Location.WorldID)
+	eligible := damagingAttackers(rivalAssetsOnWorld(rival, target.Location.WorldID), rulebook)
 	if len(eligible) == 0 {
 		return nil
 	}
@@ -248,6 +248,19 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 		}
 	}
 	return nil
+}
+
+// damagingAttackers keeps the assets whose attack deals damage. A special attack
+// does nothing to a Base, and its hit would fire own_attack_hit with no asset hit.
+func damagingAttackers(assets []*domain.Asset, rulebook *rulebook.Rulebook) []*domain.Asset {
+	var result []*domain.Asset
+	for _, asset := range assets {
+		def, ok := rulebook.Assets[asset.DefinitionID]
+		if ok && def.Attack != nil && def.Attack.Damage != nil {
+			result = append(result, asset)
+		}
+	}
+	return result
 }
 
 // eligibleNewBaseWorlds returns worlds where the faction can place a new base,

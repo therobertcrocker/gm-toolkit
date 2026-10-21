@@ -7,6 +7,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
 
@@ -67,7 +68,7 @@ func TestRefitAsset_Output(t *testing.T) {
 	if err := act.Inputs(faction, nil, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
-	if err := act.Resolve(faction, nil, rulebook); err != nil {
+	if err := act.Resolve(faction, &state.FactionState{}, rulebook); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	mutations, err := act.Output()

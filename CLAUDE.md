@@ -61,7 +61,7 @@ See `docs/process/session-modes.md` for the full description of Discovery / Plan
 |--------------|---------------------|
 | Discovery    | Once the discovery doc is complete and the next steps are clear, the session is over. |
 | Plan         | Once the implementation plan is complete and the next steps are clear, the session is over. |
-| Execution    | The hand-off sets the scope (for example, "Commits 1–3"). If the hand-off gives no scope, the scope is one commit. Once that scope is committed, the session is over. |
+| Execution    | One phase is one session. The hand-off sets the scope (for example, "Phase 2, Commits 3–4"). If the hand-off gives no scope, the scope is one phase. Once that scope is committed, the session is over. |
 
 ## Model Selection
 

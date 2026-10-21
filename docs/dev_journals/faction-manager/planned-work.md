@@ -92,6 +92,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.010` | Reroll uses base die sides | first non-d10 Cat 1 die | `roll.go:86` rerolls via `roller.Roll(baseRoll.Sides)`, so a Cat 1 die of other sides rerolls wrong. Inert today (all d10); Book of Secrets is the first real reroll user. |
 | `B.011` | TargetSelf contest gets the clone | first `TargetSelf` contest | `ability/dispatch.go:87` passes the `workingFaction` clone to `resolveTarget`, which returns it as `target.Faction` for `TargetSelf`; a self-contest's target-side roll would spend hook budgets on the clone. Latent: no asset authors it. Found in `A.001.3` Effort 3, Session 2. |
 | `B.012` | Old budget keys in saves | -- | `A.001.3` added a trigger segment to effect budget keys (`e047af7`); a mid-cycle save from before holds old keys, so one extra steal/absorb is possible that turn. Self-heals at the owner's next bookkeeping. |
+| `B.013` | Peaceable Kingdom misses a missed attack | -- | `peaceable_kingdom.go:20-36` detects an Attack from damage or attacker stealth-loss mutations; a miss by an unstealthed attacker emits neither, so the goal ("do not take an Attack action") does not reset. Found in `A.001.6` Effort 1, Commit 6. |
 
 ### Docs
 
@@ -154,6 +155,6 @@ Marketers, Seditionists and Monopoly were rerouted from `A.001.2` (AP-6) and pas
 
 **Trigger** — `A.001.3` complete (met).
 
-**Status** — In-Progress — promoted 2026-10-17. Discovery not started.
+**Status** — In-Progress — promoted 2026-10-17. Discovery complete 2026-10-19 ([discovery doc](../../initiatives/discovery/s-flag-rule-extensions-discovery.md)). Overview plan complete and signed off in an approval review 2026-10-20 ([plan](../../initiatives/implementation/s-flag-rule-extensions-plan.md)); Effort 1 Plan session next. Effort 5's Plan session waits on one played cycle of Effort 4.
 
 

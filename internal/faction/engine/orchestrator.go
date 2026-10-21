@@ -40,10 +40,7 @@ func (e *Engine) RunCycle(
 ) error {
 	logging.RunHeader(e.log, "faction-manager", "dev", factionState.CampaignID, len(factionState.Factions))
 
-	// deliberate: reset before registering, because the TUI runs every cycle on one engine and each ApplyAll would add another copy of every hook.
-	e.Hooks.Reset()
-	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
-	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.Rand, e.log.With("engine", "effect"))
+	e.primeHooks(factionState)
 
 	for {
 		done, err := e.RunFactionTurn(factionState, paths, collectors, observer)
@@ -54,6 +51,21 @@ func (e *Engine) RunCycle(
 			return nil
 		}
 	}
+}
+
+// primeHooks registers every tag and effect hook from current state.
+func (e *Engine) primeHooks(factionState *state.FactionState) {
+	// deliberate: reset before registering, because the TUI runs every cycle on one engine and each ApplyAll would add another copy of every hook.
+	e.Hooks.Reset()
+	e.Tag.ApplyAll(factionState, e.Hooks, e.log.With("engine", "tag"))
+	e.Effect.ApplyAll(factionState, e.Rulebook, e.Hooks, e.Rand, e.log.With("engine", "effect"))
+}
+
+func changesOwner(mutations []domain.Mutation) bool {
+	return slices.ContainsFunc(mutations, func(mutation domain.Mutation) bool {
+		_, ok := mutation.(domain.AssetOwnerChanged)
+		return ok
+	})
 }
 
 // RunFactionTurn drives one faction's turn from setup through state save:
@@ -207,7 +219,7 @@ func (e *Engine) runBookkeepingPhase(
 	var startMutations []domain.Mutation
 	// deliberate: fire here, gated on BookkeepingApplied, not in turn setup, because setup re-runs on every resume and would pay a turn-start effect twice.
 	if e.Turn.InProgress(factionState) && !factionState.CurrentTurn.BookkeepingApplied {
-		startMutations = e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)
+		startMutations = append(turn.ExpireConditions(factionState, faction.ID), e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)...)
 		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
 			if !factionErrors.IsRecoverable(err) {
 				phaseLog.Error("failure", "err", err)
@@ -499,6 +511,10 @@ func (e *Engine) runActionPhase(
 		phaseLog.Error("failure", "err", err)
 		observer.OnError(faction, err)
 		return err
+	}
+	if changesOwner(combined) {
+		// deliberate: re-register now, not at the next cycle, because a captured asset's hooks are keyed under its old owner and nothing would find them (Decision 9).
+		e.primeHooks(factionState)
 	}
 	observer.OnActionResolved(faction, selectedAction, combined)
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointActionResult); err != nil {

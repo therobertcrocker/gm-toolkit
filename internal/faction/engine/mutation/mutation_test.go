@@ -180,3 +180,103 @@ func TestMutationEngine_BaseDestroyed(t *testing.T) {
 		t.Errorf("len(Bases) = %d, want 0 after BaseDestroyed", got)
 	}
 }
+
+func TestMutationEngine_AssetCondition(t *testing.T) {
+	factionState := newMutationTestState()
+	engine := New(slog.New(slog.DiscardHandler))
+	fromSab1 := domain.Condition{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1", ExpiresAtTurnOf: "f2"}
+	fromSab2 := domain.Condition{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-2", ExpiresAtTurnOf: "f2"}
+	apply := func(mutation domain.Mutation) {
+		t.Helper()
+		if err := engine.Apply(factionState, []domain.Mutation{mutation}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply(%s) unexpected error: %v", mutation.Type(), err)
+		}
+	}
+	conditions := func() []domain.Condition { return factionState.Factions["f1"].Assets["a1"].Conditions }
+
+	apply(domain.AssetConditionApplied{FactionID: "f1", AssetID: "a1", Condition: fromSab1})
+	apply(domain.AssetConditionApplied{FactionID: "f1", AssetID: "a1", Condition: fromSab1})
+	if got := len(conditions()); got != 1 {
+		t.Fatalf("after re-applying one source: len(Conditions) = %d, want 1", got)
+	}
+
+	apply(domain.AssetConditionApplied{FactionID: "f1", AssetID: "a1", Condition: fromSab2})
+	if got := len(conditions()); got != 2 {
+		t.Fatalf("after a second source: len(Conditions) = %d, want 2", got)
+	}
+
+	apply(domain.AssetConditionCleared{FactionID: "f1", AssetID: "a1", Condition: fromSab1})
+	if got := conditions(); len(got) != 1 || got[0].SourceAssetID != "sab-2" {
+		t.Fatalf("after clearing sab-1: Conditions = %+v, want only sab-2", got)
+	}
+
+	err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetConditionApplied{FactionID: "f1", AssetID: "ghost", Condition: fromSab1},
+	}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != "ghost" {
+		t.Fatalf("Apply on missing asset: err = %v, want one miss with EntityID ghost", err)
+	}
+}
+
+func newOwnerChangeTestState() *state.FactionState {
+	factionState := newMutationTestState()
+	asset := factionState.Factions["f1"].Assets["a1"]
+	asset.OwnerID = "f1"
+	asset.CurrentOrder = &domain.MovementOrder{AssetID: "a1", StepIdx: 2}
+	asset.Conditions = []domain.Condition{{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1"}}
+	factionState.Factions["f2"] = &domain.Faction{ID: "f2", Name: "Faction Two"}
+	return factionState
+}
+
+func TestMutationEngine_AssetOwnerChanged(t *testing.T) {
+	factionState := newOwnerChangeTestState()
+	engine := New(slog.New(slog.DiscardHandler))
+
+	if err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetOwnerChanged{FactionID: "f1", AssetID: "a1", ToFactionID: "f2"},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if _, ok := factionState.Factions["f1"].Assets["a1"]; ok {
+		t.Error("a1 still in f1 after the owner change")
+	}
+	asset, ok := factionState.Factions["f2"].Assets["a1"]
+	if !ok {
+		t.Fatal("a1 not in f2 after the owner change")
+	}
+	if asset.ID != "a1" || asset.OwnerID != "f2" {
+		t.Errorf("asset = {ID: %q, OwnerID: %q}, want {a1, f2}", asset.ID, asset.OwnerID)
+	}
+	if asset.CurrentOrder == nil || asset.CurrentOrder.StepIdx != 2 {
+		t.Errorf("CurrentOrder = %+v, want the order carried over at StepIdx 2", asset.CurrentOrder)
+	}
+	if !asset.HasCondition(domain.ConditionNoAbility) {
+		t.Error("condition lost in the owner change")
+	}
+
+	err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetOwnerChanged{FactionID: "f2", AssetID: "a1", ToFactionID: "ghost"},
+	}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].FactionID != "ghost" || err.Misses[0].EntityID != "" {
+		t.Fatalf("Apply to unknown faction: err = %v, want one faction miss on ghost", err)
+	}
+}
+
+func TestMutationEngine_OwnerChangeAppliesLast(t *testing.T) {
+	factionState := newOwnerChangeTestState()
+	engine := New(slog.New(slog.DiscardHandler))
+
+	if err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetOwnerChanged{FactionID: "f1", AssetID: "a1", ToFactionID: "f2"},
+		domain.AssetHPDelta{FactionID: "f1", AssetID: "a1", Delta: -2},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v (the HP delta addressed to the old owner must land first)", err)
+	}
+	asset, ok := factionState.Factions["f2"].Assets["a1"]
+	if !ok {
+		t.Fatal("a1 not in f2 after the batch")
+	}
+	if asset.CurrentHP != -2 {
+		t.Errorf("CurrentHP = %d, want -2", asset.CurrentHP)
+	}
+}

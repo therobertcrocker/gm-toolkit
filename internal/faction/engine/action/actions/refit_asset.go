@@ -55,7 +55,7 @@ func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rul
 	return nil
 }
 
-func (ra *RefitAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
+func (ra *RefitAsset) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	oldDef, ok := rulebook.Assets[ra.refitOrder.OldAsset.DefinitionID]
 	if !ok {
 		return fmt.Errorf("asset definition not found: %s", ra.refitOrder.OldAsset.DefinitionID)
@@ -69,7 +69,7 @@ func (ra *RefitAsset) Resolve(faction *domain.Faction, _ *state.FactionState, ru
 
 	ra.costDelta = delta
 	ra.newAsset = domain.Asset{
-		ID:           domain.NextAssetID(faction, newDef.ID),
+		ID:           domain.NextAssetID(factionState.Factions, faction, newDef.ID),
 		DefinitionID: newDef.ID,
 		OwnerID:      ra.factionID,
 		Location:     ra.refitOrder.OldAsset.Location,
