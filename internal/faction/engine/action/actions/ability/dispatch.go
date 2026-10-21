@@ -95,7 +95,8 @@ func Dispatch(
 	}
 	workingAsset := workingFaction.Assets[asset.ID]
 	if workingAsset == nil {
-		workingAsset = asset.Clone()
+		// deliberate: fizzle, not act from real state, because an asset missing from the view was removed by an earlier asset in this action.
+		return nil, nil
 	}
 	discardLog := slog.New(slog.DiscardHandler)
 	mutationEngine := mutation.New(discardLog)

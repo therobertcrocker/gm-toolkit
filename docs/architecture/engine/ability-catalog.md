@@ -43,7 +43,8 @@
 >
 > **As-built (A.001.6 Effort 3):** the three AP-6 assets ship as A-side abilities
 > whose lasting effect is asset state. Marketers is `disable_asset` (a contest, then
-> the target pays half the listed cost or takes `disabled`); Seditionists is
+> the target pays `HalfPrice()`, half the listed cost with a 1-Coin minimum, or takes
+> `disabled`); Seditionists is
 > `block_attack` (1d4 Coin; `no_attack` checked when read); Monopoly is `levy_coin`
 > (an action, by the book's text: 1 Coin, or an asset of the target's choice). Asset
 > targets are built (`TargetAsset`); the pay question is `hooks.PaymentCollector`.
@@ -121,8 +122,8 @@ with composition: **target-selection → (stat-contest | die-roll) → effect**.
 | **roll-table-coin** | Harvesters `SWN-W1-002`, Postech Industry `SWN-W3-001`, Venture Capital `SWN-W6-001`, Pretech Manufactory `SWN-W7-001` | pure `Die`+`Outcomes`. Manufactory's "half, round up" is a payout-formula variant of the same table |
 | **roll-table → purchase-discount** | Commodities Broker `SWN-W6-003` | roll-table whose result modifies the *next purchase cost*, not Coin directly |
 | **stat-contest → reveal-stealth** | Informers `SWN-C1-002` ✅, Seductress `SWN-C2-004` | Informers wired; Seductress also relocates one hex first (contest composed after a move) |
-| **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` ✅ | success forces target to pay half an asset's cost or have it disabled |
-| **coin-drain (on attack)** | Monopoly `SWN-W4-002` ✅ | an action by the book's text (levy_coin); the reactive TOML reading is retired |
+| **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` ✅ | success forces target to pay half an asset's cost (at least 1 Coin) or have it disabled |
+| **levy (pay-or-lose)** | Monopoly `SWN-W4-002` ✅ | an action by the book's text (levy_coin); the reactive TOML reading is retired |
 | **relocate-other (action-spent)** | Covert Shipping `SWN-C3-003`, Covert Transit Net `SWN-C6-002` | relocate *another* asset for Coin; the transport primitive is a *carrier* reactor, so these need a sibling shape |
 | **purchase-enabler** | Pretech Logistics `SWN-F5-002` | spend the action to buy one Force asset on the world at a **surcharge** (half again, rounded up) |
 | **attach / restrict-action** | Seditionists `SWN-C4-004` ✅ | pay `1d4` Coin to attach to an enemy asset, suppressing its attack |

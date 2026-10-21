@@ -121,6 +121,23 @@ func TestAsset_CloneCopiesConditions(t *testing.T) {
 	}
 }
 
+func TestAssetDefinition_HalfPrice(t *testing.T) {
+	cases := []struct {
+		cost int
+		want int
+	}{
+		{cost: 10, want: 5},
+		{cost: 7, want: 3},
+		{cost: 1, want: 1},
+	}
+	for _, tc := range cases {
+		def := &domain.AssetDefinition{Cost: tc.cost}
+		if got := def.HalfPrice(); got != tc.want {
+			t.Errorf("HalfPrice() with Cost %d = %d, want %d", tc.cost, got, tc.want)
+		}
+	}
+}
+
 func TestAsset_HasCondition(t *testing.T) {
 	asset := &domain.Asset{ID: "a1"}
 	if asset.HasCondition(domain.ConditionNoAbility) {

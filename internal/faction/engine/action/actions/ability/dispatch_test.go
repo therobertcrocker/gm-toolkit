@@ -39,7 +39,7 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 		OwnerID:      "f1",
 		Location:     domain.Location{WorldID: "Anchorage"},
 	}
-	actingFaction := &domain.Faction{ID: "f1", Cunning: 0}
+	actingFaction := &domain.Faction{ID: "f1", Cunning: 0, Assets: map[string]*domain.Asset{"a1": actingAsset}}
 	targetFaction := &domain.Faction{
 		ID:      "f2",
 		Cunning: 0,
@@ -187,6 +187,72 @@ func TestDispatch_ContestRollsThroughHooks(t *testing.T) {
 	}
 	if spent := faction.HookBudgets[factionTestDieKey]; spent != 1 {
 		t.Errorf("real faction HookBudgets[%q] = %d, want 1", factionTestDieKey, spent)
+	}
+}
+
+// defenseDie offers one budgeted extra d10, keep highest, on the defending side of
+// a contest only.
+type defenseDie struct{}
+
+const defenseDieKey = "test:defense-die"
+
+func (defenseDie) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
+	if ctx.Phase != hooks.PhaseContested {
+		return nil
+	}
+	return []hooks.ModifierOffer{{
+		Source:    "test",
+		BudgetKey: defenseDieKey,
+		Apply: func(rollState *hooks.RollState) {
+			rollState.AddDie(10)
+			rollState.SetKeepHighest(1)
+		},
+	}}
+}
+
+// TestDispatch_DefenseBudgetSpentOnRealDefender: the collector picks the view's
+// copy of f2, as it does in play, and the defense hook's budget is still spent on
+// the real f2 (Effort 3 Decision 3).
+func TestDispatch_DefenseBudgetSpentOnRealDefender(t *testing.T) {
+	faction, asset, def, factionState := makeDispatchFixture()
+	view := NewView(factionState)
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: view.Factions["f2"]}, nil)
+	collector.EXPECT().SelectModifiers(gomock.Any()).
+		DoAndReturn(func(offers []hooks.ModifierOffer) []hooks.ModifierOffer { return offers }).
+		Times(1)
+
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), defenseDieKey, defenseDie{})
+
+	if _, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3, 9}}, registry, factionState, view, nil, nil); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if spent := factionState.Factions["f2"].HookBudgets[defenseDieKey]; spent != 1 {
+		t.Errorf("real f2 HookBudgets[%q] = %d, want 1", defenseDieKey, spent)
+	}
+	if spent := view.Factions["f2"].HookBudgets[defenseDieKey]; spent != 0 {
+		t.Errorf("view f2 HookBudgets[%q] = %d, want 0", defenseDieKey, spent)
+	}
+}
+
+// TestDispatch_RemovedActingAssetFizzles: an acting asset that an earlier asset in
+// the action removed from the view does nothing.
+func TestDispatch_RemovedActingAssetFizzles(t *testing.T) {
+	faction, asset, def, factionState := makeDispatchFixture()
+	view := NewView(factionState)
+	delete(view.Factions["f1"].Assets, asset.ID)
+
+	collector := mocks.NewMockCollector(gomock.NewController(t))
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, view, nil, nil)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(mutations) != 0 {
+		t.Errorf("mutations = %v, want none", mutations)
 	}
 }
 

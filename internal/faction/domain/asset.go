@@ -198,6 +198,13 @@ type AssetDefinition struct {
 	Effects     []EffectDefinition
 }
 
+// HalfPrice is half the listed cost, rounded down, but at least 1 Coin: the price
+// to keep or bring back an asset (Marketers, the turn-start lift). A sale does not
+// use it; a sale is worth Cost / 2 with no floor.
+func (def *AssetDefinition) HalfPrice() int {
+	return max(1, def.Cost/2)
+}
+
 type ConditionKind string
 
 const (

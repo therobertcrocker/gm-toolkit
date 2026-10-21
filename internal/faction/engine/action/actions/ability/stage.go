@@ -26,17 +26,17 @@ func resolveTarget(
 	factionState *state.FactionState,
 	collector action.Collector,
 ) (domain.AbilityTarget, error) {
+	candidates, picks := stepCandidates(step, faction.ID, asset, factionState)
+	if picks && len(candidates.Factions)+len(candidates.Assets) == 0 {
+		return domain.AbilityTarget{}, errNoTargets
+	}
 	switch step.Target {
 	case domain.TargetNone:
 		return domain.AbilityTarget{Kind: domain.TargetNone}, nil
 	case domain.TargetSelf:
 		return domain.AbilityTarget{Kind: domain.TargetSelf, Asset: asset, Faction: faction}, nil
 	case domain.TargetFaction:
-		candidates := factionCandidates(step.Effect, faction.ID, asset, factionState)
-		if len(candidates) == 0 {
-			return domain.AbilityTarget{}, errNoTargets
-		}
-		target, err := collector.SelectAbilityTarget(asset, step, domain.AbilityTargetCandidates{Factions: candidates})
+		target, err := collector.SelectAbilityTarget(asset, step, candidates)
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
@@ -45,11 +45,7 @@ func resolveTarget(
 		}
 		return target, nil
 	case domain.TargetAsset:
-		candidates := assetCandidates(step.Effect, faction.ID, asset, factionState)
-		if len(candidates) == 0 {
-			return domain.AbilityTarget{}, errNoTargets
-		}
-		target, err := collector.SelectAbilityTarget(asset, step, domain.AbilityTargetCandidates{Assets: candidates})
+		target, err := collector.SelectAbilityTarget(asset, step, candidates)
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
@@ -213,14 +209,20 @@ func HasTargets(faction *domain.Faction, asset *domain.Asset, def *domain.AssetD
 		return true
 	}
 	// deliberate: only the first step, not every step, because a later step's candidates depend on what earlier steps change (Seductress moves before it reveals).
-	step := def.Ability.Steps[0]
+	candidates, picks := stepCandidates(def.Ability.Steps[0], faction.ID, asset, factionState)
+	return !picks || len(candidates.Factions)+len(candidates.Assets) > 0
+}
+
+// stepCandidates returns the candidates for a step that picks a faction or an
+// asset. picks is false for a step that picks neither.
+func stepCandidates(step domain.AbilityStep, actingFactionID string, acting *domain.Asset, factionState *state.FactionState) (candidates domain.AbilityTargetCandidates, picks bool) {
 	switch step.Target {
-	case domain.TargetAsset:
-		return len(assetCandidates(step.Effect, faction.ID, asset, factionState)) > 0
 	case domain.TargetFaction:
-		return len(factionCandidates(step.Effect, faction.ID, asset, factionState)) > 0
+		return domain.AbilityTargetCandidates{Factions: factionCandidates(step.Effect, actingFactionID, acting, factionState)}, true
+	case domain.TargetAsset:
+		return domain.AbilityTargetCandidates{Assets: assetCandidates(step.Effect, actingFactionID, acting, factionState)}, true
 	}
-	return true
+	return domain.AbilityTargetCandidates{}, false
 }
 
 // factionTargetRules narrows a step's faction candidates by its effect. An effect

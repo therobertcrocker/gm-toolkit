@@ -35,8 +35,8 @@ func ExpireConditions(factionState *state.FactionState, factionID string) []doma
 }
 
 // OfferConditionLifts asks faction, for each of its disabled assets in ID order,
-// whether to pay half the asset's listed cost, rounded down, to lift the
-// condition. A price it cannot pay, after earlier lifts, is not offered.
+// whether to pay the asset's half price to lift the condition. A price it cannot
+// pay, after earlier lifts, is not offered.
 func OfferConditionLifts(faction *domain.Faction, rulebook *rulebook.Rulebook, collector hooks.PaymentCollector) ([]domain.Mutation, error) {
 	coin := faction.Coin
 	var mutations []domain.Mutation
@@ -49,7 +49,7 @@ func OfferConditionLifts(faction *domain.Faction, rulebook *rulebook.Rulebook, c
 			if !ok {
 				return nil, fmt.Errorf("offer condition lifts: definition not found: %s", asset.DefinitionID)
 			}
-			price := def.Cost / 2
+			price := def.HalfPrice()
 			if price > coin {
 				continue
 			}

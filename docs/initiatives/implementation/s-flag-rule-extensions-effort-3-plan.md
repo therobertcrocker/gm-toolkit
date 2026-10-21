@@ -74,10 +74,11 @@ Re-grounding against the code found four gaps (F1–F4); a side agent found a fi
    effect to a test; Commit 5 adds `factionTargetRules` the same way. An acting asset in
    transit (no world) has no candidates. Rejected: candidate filters in TOML (a new
    part of the step model for two effects).
-7. **Marketers' price is the definition's listed `Cost / 2`.** The book's "half the
-   asset's purchase cost, rounded down". Not the `ResolveAssetCost` chain, whose
-   surcharges apply to a buyer, not to this price. A price of 0 (a 1-Coin asset) does
-   nothing and asks nothing. An asset already disabled is not a candidate (overview
+7. **Marketers' price is the definition's `HalfPrice()`: the listed `Cost / 2`, at
+   least 1 Coin.** The book's "half the asset's purchase cost, rounded down", with a
+   1-Coin minimum (Decision Record 6). Not the `ResolveAssetCost` chain, whose
+   surcharges apply to a buyer, not to this price. A 1-Coin asset costs 1 to keep or to
+   bring back. An asset already disabled is not a candidate (overview
    lean). The payment is `Cause: "ability"`, caused by the Marketers' faction, so a
    Bank can absorb it (a loss "imposed by another faction"). Resolves the overview OQ
    "Marketers aimed at an asset already disabled".
@@ -169,6 +170,37 @@ Re-grounding against the code found four gaps (F1–F4); a side agent found a fi
    `formHelp` (the `StatRaise` pattern). Tasks 3, 5 and 9 are updated to match.
    Rejected: fizzle this Monopoly (Esc lets the target escape the levy); cancel the
    whole action (the plan; undoes earlier assets after a rival may have paid).
+6. **The half price has a 1-Coin minimum, in one helper.** Interim review. A 1-Coin
+   asset was a Marketers candidate whose price was 0: the action and the contest were
+   spent for nothing. Robert's call: the price is at least 1 Coin.
+   `domain.AssetDefinition.HalfPrice()` (`max(1, Cost/2)`) is the one place for it.
+   `disableAsset` and `turn.OfferConditionLifts` read it, and Effort 2's Medical
+   Center restore will too. A sale keeps `Cost / 2` with no floor. Reverses Decision
+   7's "a price of 0 does nothing and asks nothing". Decision 7, Tasks 4 and 7 and the
+   Commit 3 tests are updated to match. Rejected: drop 1-Coin assets from the
+   candidates (the book does not exempt them); keep the no-op.
+7. **The pay prompt ignores Esc.** Interim review. `ConfirmPayment` used the plain
+   confirm overlay, so Esc gave `ErrTurnCanceled`. On the Marketers prompt that
+   dropped the acting faction's whole action, the earlier assets' results too (the
+   case Decision Record 5 fixed for the loss pick). At turn start it dropped every
+   lift still to offer. `overlay.ConfirmPayment` wraps the confirm overlay, swallows
+   Esc and shows `formHelp`, like `SelectAssetToLose`. Decline is an explicit option.
+8. **A Bank does not stop the Monopoly owner's gain.** Interim review. A Bank absorbs
+   the target's 1-Coin loss (it is caused by another faction), but the owner's +1
+   still applies, so the levy makes 1 Coin. Robert's call: accept it. It matches
+   `coin_steal`, whose thief also gains when a Bank absorbs the loss. Fence-signed in
+   `levyCoin`. Rejected: credit the owner only when the loss stands (it needs the
+   reactor result inside the handler, and `coin_steal` would then differ).
+9. **Review guards and tidy-ups.** Interim review. No change to behavior in play:
+   - `Dispatch` fizzles an acting asset that is missing from the view (an earlier
+     asset in the action removed it), not act from real state. The dispatch test
+     fixture now puts the acting asset in its own faction, as real state does.
+   - `levyCoin` refuses a loss pick that is not on the Monopoly's world (by ID,
+     because the collector answers with the view's copies).
+   - `stepCandidates` builds a step's faction or asset candidates once, for both
+     `resolveTarget` and `HasTargets`.
+   - New tests: the defense hook's budget is spent on the real defender, and a
+     canceled lift prompt lifts nothing and the turn goes on.
 
 ---
 
@@ -865,20 +897,16 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 )
 
-// disableAsset is Marketers: the target faction pays half the target asset's
-// listed cost, rounded down, or the asset is disabled until that price is paid.
-// A faction that cannot pay takes the condition with no prompt.
+// disableAsset is Marketers: the target faction pays the target asset's half
+// price, or the asset is disabled until that price is paid. A faction that cannot
+// pay takes the condition with no prompt.
 func disableAsset(ctx StepContext) ([]domain.Mutation, error) {
 	targetFaction, target := ctx.Target.Faction, ctx.Target.Asset
 	def, ok := ctx.Rulebook.Assets[target.DefinitionID]
 	if !ok {
 		return nil, fmt.Errorf("disable_asset: definition not found: %s", target.DefinitionID)
 	}
-	price := def.Cost / 2
-	if price == 0 {
-		// deliberate: a zero price does nothing, not a prompt, because paying 0 is always possible (Effort 3 Decision 7).
-		return nil, nil
-	}
+	price := def.HalfPrice()
 	if targetFaction.Coin >= price {
 		paid, err := ctx.Collector.ConfirmPayment(hooks.PaymentOffer{
 			Payer:  targetFaction,
@@ -940,8 +968,8 @@ In `convertAbilityStep`, after the `reveal_stealth` check add:
 Add `"fmt"`, `hooks` and `rulebook` to the imports and append:
 ```go
 // OfferConditionLifts asks faction, for each of its disabled assets in ID order,
-// whether to pay half the asset's listed cost, rounded down, to lift the
-// condition. A price it cannot pay, after earlier lifts, is not offered.
+// whether to pay the asset's half price to lift the condition. A price it cannot
+// pay, after earlier lifts, is not offered.
 func OfferConditionLifts(faction *domain.Faction, rulebook *rulebook.Rulebook, collector hooks.PaymentCollector) ([]domain.Mutation, error) {
 	coin := faction.Coin
 	var mutations []domain.Mutation
@@ -954,7 +982,7 @@ func OfferConditionLifts(faction *domain.Faction, rulebook *rulebook.Rulebook, c
 			if !ok {
 				return nil, fmt.Errorf("offer condition lifts: definition not found: %s", asset.DefinitionID)
 			}
-			price := def.Cost / 2
+			price := def.HalfPrice()
 			if price > coin {
 				continue
 			}
@@ -1112,7 +1140,8 @@ func conditionText(ce digest.CrossEvent) string {
   - target faction `Coin: 9`, pays → one `CoinDelta{f2, -5, "ability", f1}`.
   - declines → `AssetConditionApplied{f2, b2, {disabled, a1}}`.
   - `Coin: 4` → no `ConfirmPayment` call; the condition.
-  - a cost-1 target → no mutation, no prompt.
+  - a cost-1 target, pays → one `CoinDelta{f2, -1, "ability", f1}` (the 1-Coin
+    minimum, Decision Record 6).
   - contest lost → no prompt, no mutation.
   - `TestAssetCandidates` gains: an already-disabled rival asset is not a Marketers
     candidate.

@@ -106,6 +106,18 @@ func TestDispatch_LevyCoin(t *testing.T) {
 			t.Errorf("err = %v, want a non-sentinel error", err)
 		}
 	})
+
+	t.Run("an asset off the world is refused", func(t *testing.T) {
+		faction, acting, def, factionState, rulebook := makeMonopolyFixture(0)
+		collector := mocks.NewMockCollector(gomock.NewController(t))
+		selectF2(collector)
+		collector.EXPECT().SelectAssetToLose(gomock.Any(), gomock.Any(), gomock.Any()).Return(factionState.Factions["f2"].Assets["b3"], nil)
+
+		mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
+		if err == nil {
+			t.Errorf("err = nil, mutations = %+v; want an error for b3 on Hadrian", mutations)
+		}
+	})
 }
 
 func TestFactionCandidates(t *testing.T) {

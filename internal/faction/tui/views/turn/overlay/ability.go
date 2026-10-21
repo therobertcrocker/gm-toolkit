@@ -3,6 +3,8 @@ package overlay
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/help"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -63,13 +65,31 @@ func NewSelectAbilityAssetTarget(asset *domain.Asset, effect domain.AbilityEffec
 	return NewSelect[*domain.Asset]("Target which asset?", fmt.Sprintf("%s · %s", assetName(asset, rb), effect), opts)
 }
 
-// NewConfirmPayment asks the paying faction whether to pay. The header names the
-// faction asked, because it is often not the acting one. Answer: bool.
-func NewConfirmPayment(offer hooks.PaymentOffer, rb *rulebook.Rulebook) ConfirmOverlay {
+// ConfirmPayment asks the paying faction whether to pay. Esc does nothing: the
+// decline is an explicit option, and a cancel would drop the acting faction's
+// whole action, or every lift still to offer (Effort 3 Decision Record 7).
+type ConfirmPayment struct {
+	ConfirmOverlay
+}
+
+// NewConfirmPayment's header names the faction asked, because it is often not the
+// acting one. Answer: bool.
+func NewConfirmPayment(offer hooks.PaymentOffer, rb *rulebook.Rulebook) ConfirmPayment {
 	name := assetName(offer.Asset, rb)
 	header := fmt.Sprintf("Asked of %s", offer.Payer.Name)
 	if offer.Reason == hooks.PaymentLiftDisable {
-		return NewConfirm(fmt.Sprintf("Pay %d Coin to bring %s back into use?", offer.Amount, name), header, "Pay", "Leave it disabled")
+		return ConfirmPayment{NewConfirm(fmt.Sprintf("Pay %d Coin to bring %s back into use?", offer.Amount, name), header, "Pay", "Leave it disabled")}
 	}
-	return NewConfirm(fmt.Sprintf("Pay %d Coin, or %s is disabled?", offer.Amount, name), header, "Pay", "Take the disable")
+	return ConfirmPayment{NewConfirm(fmt.Sprintf("Pay %d Coin, or %s is disabled?", offer.Amount, name), header, "Pay", "Take the disable")}
 }
+
+func (o ConfirmPayment) Update(msg tea.Msg) (Overlay, tea.Cmd) {
+	if k, ok := msg.(tea.KeyMsg); ok && k.String() == "esc" {
+		return o, nil
+	}
+	updated, cmd := o.ConfirmOverlay.Update(msg)
+	o.ConfirmOverlay = updated.(ConfirmOverlay)
+	return o, cmd
+}
+
+func (o ConfirmPayment) Help() help.KeyMap { return formHelp{} }

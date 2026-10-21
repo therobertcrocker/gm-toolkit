@@ -73,8 +73,9 @@ func TestDispatch_DisableAsset(t *testing.T) {
 			want: []domain.Mutation{disabled},
 		},
 		{
-			name:        "a price of 0 does nothing and asks nothing (Effort 3 Decision 7)",
-			targetDefID: "cost-1", coin: 9, rolls: []int{8, 3},
+			name:        "a 1-Coin asset's price is the 1-Coin minimum (Effort 3 Decision Record 6)",
+			targetDefID: "cost-1", coin: 9, rolls: []int{8, 3}, answer: &pay,
+			want: []domain.Mutation{domain.CoinDelta{FactionID: "f2", Delta: -1, Cause: "ability", CausedByFactionID: "f1"}},
 		},
 		{
 			name:        "a lost contest asks nothing",
@@ -91,10 +92,11 @@ func TestDispatch_DisableAsset(t *testing.T) {
 					return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: candidates.Assets[0]}, nil
 				})
 			if tc.answer != nil {
+				wantAmount := rulebook.Assets[tc.targetDefID].HalfPrice()
 				collector.EXPECT().ConfirmPayment(gomock.Any()).
 					DoAndReturn(func(offer hooks.PaymentOffer) (bool, error) {
-						if offer.Payer.ID != "f2" || offer.Asset.ID != "b2" || offer.Amount != 5 || offer.Reason != hooks.PaymentAvoidDisable {
-							t.Errorf("offer = {%s, %s, %d, %s}, want {f2, b2, 5, avoid_disable}", offer.Payer.ID, offer.Asset.ID, offer.Amount, offer.Reason)
+						if offer.Payer.ID != "f2" || offer.Asset.ID != "b2" || offer.Amount != wantAmount || offer.Reason != hooks.PaymentAvoidDisable {
+							t.Errorf("offer = {%s, %s, %d, %s}, want {f2, b2, %d, avoid_disable}", offer.Payer.ID, offer.Asset.ID, offer.Amount, offer.Reason, wantAmount)
 						}
 						return *tc.answer, nil
 					})

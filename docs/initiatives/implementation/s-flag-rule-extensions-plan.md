@@ -152,7 +152,8 @@ and a modeled world government with one permission request.
     reserved for this work). `AbilityTarget.Faction` is set to the asset's owner, so
     `passesGate` runs unchanged. Two new `AbilityEffectType`s: `disable_asset`
     (Marketers; contest gate; the handler prompts the target faction to pay half the
-    purchase cost, rounded down, or take `disabled`; a faction that cannot pay takes the
+    purchase cost, rounded down, at least 1 Coin (Effort 3 Decision Record 6), or take
+    `disabled`; a faction that cannot pay takes the
     condition with no prompt) and `block_attack` (Seditionists; no gate; the handler
     rolls 1d4, charges it, clears this source's `no_attack` from its old target and
     attaches it to the new one). Rejected: one generic `apply_condition` effect with a
@@ -220,7 +221,9 @@ and a modeled world government with one permission request.
     pay-to-lift (the bookkeeping step, Decision 4) and Medical Center's restore (inside
     the action, Effort 2) all ask one faction whether to pay one amount. The interface is
     embedded in both `PhaseCollector` and `action.Collector`, the D-41 pattern. The
-    Effort 3 plan names the method; Effort 2 reuses it.
+    Effort 3 plan names the method; Effort 2 reuses it. All three use one price,
+    `AssetDefinition.HalfPrice()`: half the listed cost, rounded down, at least 1 Coin
+    (Effort 3 Decision Record 6).
 
 20. **`B.001` is narrowed, not closed.** It lists two hard-coded IDs. This initiative
     removes `stealth_applicator`'s (`SWN-C3-002` in `buy_asset.go`). The `"G.012"` check

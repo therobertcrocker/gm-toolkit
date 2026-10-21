@@ -2,6 +2,7 @@ package ability
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
@@ -14,6 +15,7 @@ const levyAmount = 1
 func levyCoin(ctx StepContext) ([]domain.Mutation, error) {
 	target := ctx.Target.Faction
 	if target.Coin >= levyAmount {
+		// deliberate: the owner gains the Coin even when a Bank absorbs the target's loss, not only when the loss stands, as coin_steal does (Robert's call, Effort 3 Decision Record 8).
 		return []domain.Mutation{
 			domain.CoinDelta{FactionID: target.ID, Delta: -levyAmount, Cause: "ability", CausedByFactionID: ctx.Faction.ID},
 			domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: levyAmount, Cause: "ability", CausedByFactionID: ctx.Faction.ID},
@@ -32,6 +34,9 @@ func levyCoin(ctx StepContext) ([]domain.Mutation, error) {
 	if lost == nil {
 		// deliberate: a plain error, not ErrNoSelection, because the book gives the target no way out of the loss (Effort 3 Decision Record 5).
 		return nil, fmt.Errorf("levy_coin: %s must choose an asset to lose", target.ID)
+	}
+	if !slices.ContainsFunc(onWorld, func(asset *domain.Asset) bool { return asset.ID == lost.ID }) {
+		return nil, fmt.Errorf("levy_coin: %s chose %s, which is not on %s", target.ID, lost.ID, ctx.Asset.Location.WorldID)
 	}
 	return []domain.Mutation{domain.AssetRemoved{
 		FactionID:         target.ID,
