@@ -182,8 +182,9 @@ their effect at the table.
    during Resolve; if a later prompt in the same Attack is canceled, the action is
    dropped but the budget stays spent. Cat 1 rerolls (`dispatch/roll.go`) have the
    same gap, so this predates the effort. Fix all categories centrally later
-   (snapshot the budgets before `Run`, restore on error). File it in
-   `planned-work.md` at pre-merge.
+   (snapshot the budgets before `Run`, restore on error). Filed as `B.016`, with the
+   repair-price item from Out of Scope as `B.017`, right after the review (Robert's
+   call) and not at pre-merge.
 8. **Review cleanups.** Interim review. `Asset.Hidden()` (stealthed or sheltered)
    replaces the two-condition test at the three rival-visibility sites.
    `domain.RemovesOrMoves` replaces `dispatch.leftInBatch` and
@@ -220,8 +221,8 @@ their effect at the table.
 
 - **The repair overlay's price.** `overlay/repairorders.go` shows `n(n+1)/2` per asset,
   without Medical Center's discount, and `RepairAsset.Validate` still needs 1 Coin
-  when a discounted repair would be free. The engine charges the right amount. A
-  candidate backlog item.
+  when a discounted repair would be free. The engine charges the right amount. Filed
+  as `B.017`.
 - **Medical Center for a loss that is not damage** (Monopoly, maintenance, a sale):
   Cat 6 is damage only (D-1, Decision 7).
 - **The digest's empty `{defender_asset}`** on a hit that destroys nothing (Effort 1
