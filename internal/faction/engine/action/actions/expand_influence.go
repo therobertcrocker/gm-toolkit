@@ -188,7 +188,7 @@ type baseAttack struct {
 // baseHPTracker accumulates damage across rival attacks so re-checks see the
 // correct effective HP before mutations are applied to state.
 func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerFaction *domain.Faction, mutations *[]domain.Mutation, baseHPTracker *int, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
-	eligible := damagingAttackers(rivalAssetsOnWorld(rival, target.Location.WorldID), rulebook)
+	eligible := damagingAttackers(rivalAssetsOnWorld(rival, target.Location.WorldID, factionState), rulebook)
 	if len(eligible) == 0 {
 		return nil
 	}
@@ -356,10 +356,10 @@ func rivalsOnWorld(factionState *state.FactionState, factionID, locationID strin
 
 }
 
-func rivalAssetsOnWorld(rival *domain.Faction, world string) []*domain.Asset {
+func rivalAssetsOnWorld(rival *domain.Faction, world string, factionState *state.FactionState) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range rival.Assets {
-		if asset.Location.WorldID == world && !asset.Stealthy && asset.Active() {
+		if asset.Location.WorldID == world && !asset.Stealthy && asset.Active() && !domain.AttackBlocked(factionState.Factions, asset) {
 			result = append(result, asset)
 		}
 	}

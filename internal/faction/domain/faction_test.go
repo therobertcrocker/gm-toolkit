@@ -139,3 +139,75 @@ func TestFaction_HookBudgets_TOMLRoundTrip(t *testing.T) {
 		}
 	})
 }
+
+func TestAttackBlocked(t *testing.T) {
+	// f1's Seditionists s1 and f2's b2 share Anchorage; b2 holds s1's no_attack.
+	makeFactions := func() (map[string]*domain.Faction, *domain.Asset) {
+		source := &domain.Asset{ID: "s1", OwnerID: "f1", Location: domain.Location{WorldID: "Anchorage"}, Ready: true, Maintained: true, CurrentHP: 8}
+		target := &domain.Asset{
+			ID:         "b2",
+			OwnerID:    "f2",
+			Location:   domain.Location{WorldID: "Anchorage"},
+			Conditions: []domain.Condition{{Kind: domain.ConditionNoAttack, SourceAssetID: "s1"}},
+		}
+		return map[string]*domain.Faction{
+			"f1": {ID: "f1", Assets: map[string]*domain.Asset{"s1": source}},
+			"f2": {ID: "f2", Assets: map[string]*domain.Asset{"b2": target}},
+		}, target
+	}
+	cases := []struct {
+		name  string
+		setup func(factions map[string]*domain.Faction, target *domain.Asset)
+		want  bool
+	}{
+		{
+			name:  "the source shares the world and has another owner",
+			setup: func(map[string]*domain.Faction, *domain.Asset) {},
+			want:  true,
+		},
+		{
+			name:  "the source is gone",
+			setup: func(factions map[string]*domain.Faction, _ *domain.Asset) { delete(factions["f1"].Assets, "s1") },
+		},
+		{
+			name: "the source is on another world",
+			setup: func(factions map[string]*domain.Faction, _ *domain.Asset) {
+				factions["f1"].Assets["s1"].Location.WorldID = "Hadrian"
+			},
+		},
+		{
+			name: "both are in transit (no world)",
+			setup: func(factions map[string]*domain.Faction, target *domain.Asset) {
+				factions["f1"].Assets["s1"].Location.WorldID = ""
+				target.Location.WorldID = ""
+			},
+		},
+		{
+			name: "the source is captured into the target's faction",
+			setup: func(factions map[string]*domain.Faction, _ *domain.Asset) {
+				source := factions["f1"].Assets["s1"]
+				delete(factions["f1"].Assets, "s1")
+				source.OwnerID = "f2"
+				factions["f2"].Assets["s1"] = source
+			},
+		},
+		{
+			name: "a disabled, unready source still holds the block",
+			setup: func(factions map[string]*domain.Faction, _ *domain.Asset) {
+				source := factions["f1"].Assets["s1"]
+				source.Ready = false
+				source.Conditions = []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m9"}}
+			},
+			want: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factions, target := makeFactions()
+			tc.setup(factions, target)
+			if got := domain.AttackBlocked(factions, target); got != tc.want {
+				t.Errorf("AttackBlocked = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

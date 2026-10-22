@@ -82,6 +82,15 @@ func (a *actionCollector) SelectAsset(assets []*domain.Asset, rb *rulebook.Ruleb
 	return chosen, nil
 }
 
+func (a *actionCollector) SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, rb *rulebook.Rulebook) (*domain.Asset, error) {
+	raw, err := a.adapter.ask(AskSelectAssetToLose, faction, SelectAssetToLosePayload{Faction: faction, Assets: assets})
+	if err != nil {
+		return nil, err
+	}
+	chosen, _ := raw.(*domain.Asset)
+	return chosen, nil
+}
+
 // --- action.Collector: action-unique (recoverable-stubbed until each action's commit) ---
 
 func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
@@ -97,6 +106,18 @@ func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.A
 		}
 		chosen, _ := raw.(*domain.Faction)
 		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, nil
+	case domain.TargetAsset:
+		raw, err := a.adapter.ask(AskSelectAbilityAssetTarget, nil, SelectAbilityAssetTargetPayload{
+			Asset:      asset,
+			Effect:     step.Effect,
+			Candidates: candidates.Assets,
+			OwnerNames: a.adapter.ownerNames(candidates.Assets),
+		})
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		chosen, _ := raw.(*domain.Asset)
+		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: chosen}, nil
 	default:
 		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported yet", step.Target)
 	}
@@ -242,6 +263,20 @@ func (a *actionCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, 
 	}
 	confirmed, _ := raw.(bool)
 	return confirmed, nil
+}
+func (a *actionCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	return a.adapter.confirmPayment(offer)
+}
+
+// confirmPayment asks the paying faction. The action collector (Marketers) and the
+// phase collector (the turn-start lift) share it.
+func (a *Adapter) confirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	raw, err := a.ask(AskConfirmPayment, offer.Payer, ConfirmPaymentPayload{Offer: offer})
+	if err != nil {
+		return false, err
+	}
+	paid, _ := raw.(bool)
+	return paid, nil
 }
 func (a *actionCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
 	names := make(map[string]string, len(eligibleNewBaseWorlds))

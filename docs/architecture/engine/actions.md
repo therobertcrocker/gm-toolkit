@@ -91,11 +91,12 @@ output.
 `Dispatch` is itself a **per-step pipeline**, not a single handler call. An
 ability is a sequence of `ability.steps`; each step runs *target-selection → gate
 (stat-contest or die-roll) → terminal effect*, and the chain **halts on a failed
-gate** so a missed contest fizzles the rest. Across steps the dispatcher threads a
-**working clone** of the acting faction, re-projecting each step's own mutations
-onto the clone via the same `mutation.Apply` the real `Output()` runs — so a later
-step reads what an earlier one changed without a parallel projection that could
-drift. A pre-flight pass bails the whole ability to a `confirmApplied` no-op if
+gate** so a missed contest fizzles the rest. The action builds one **view** of every
+faction (`ability.NewView`) and every `Dispatch` re-projects each step's mutations
+onto it via the same `mutation.Apply` the real `Output()` runs — so a later step, or a
+later asset in the same action, reads what an earlier one changed without a parallel
+projection that could drift. Rolls still spend hook budgets on the real factions.
+A pre-flight pass bails the whole ability to a `confirmApplied` no-op if
 *any* step's effect is not yet built, so a built early step never half-applies
 before a later unbuilt one short-circuits.
 
@@ -164,8 +165,9 @@ can cascade to bases and faction HP.
   ability registry ([ability catalog](ability-catalog.md)) builds on.
 - **Ability dispatch is a per-step pipeline that halts on failure.** Each
   `ability.steps` entry runs target → gate → effect; the chain stops at the first
-  failed gate, and a working clone of the acting faction carries each step's
-  mutations forward so a later step reads what an earlier one changed. Abilities
+  failed gate, and one view of every faction, built once per action, carries each
+  step's mutations forward, so a later step or a later asset reads what an earlier
+  one changed (A.001.6 Effort 3, Decision 3). Abilities
   must therefore author ungated steps (relocate, roll-table) before gated ones.
   (Effort 1 Plan, Decision 1.)
 - **Effect handlers receive the world engine by parameter, not import.** Movement

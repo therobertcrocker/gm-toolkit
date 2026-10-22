@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/bubbles/help"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -19,6 +20,27 @@ func NewSelectAsset(title string, assets []*domain.Asset, rb *rulebook.Rulebook)
 	}
 	return NewSelect[*domain.Asset](title, "", opts)
 }
+
+// SelectAssetToLose is Monopoly's loss pick. Esc does nothing: the book gives the
+// target no way out of the loss (Effort 3 Decision Record 5).
+type SelectAssetToLose struct {
+	SelectOverlay[*domain.Asset]
+}
+
+func NewSelectAssetToLose(title string, assets []*domain.Asset, rb *rulebook.Rulebook) SelectAssetToLose {
+	return SelectAssetToLose{NewSelectAsset(title, assets, rb)}
+}
+
+func (o SelectAssetToLose) Update(msg tea.Msg) (Overlay, tea.Cmd) {
+	if k, ok := msg.(tea.KeyMsg); ok && k.String() == "esc" {
+		return o, nil
+	}
+	updated, cmd := o.SelectOverlay.Update(msg)
+	o.SelectOverlay = updated.(SelectOverlay[*domain.Asset])
+	return o, cmd
+}
+
+func (o SelectAssetToLose) Help() help.KeyMap { return formHelp{} }
 
 // assetLabel renders "<name> · HP x/y" for an owned asset. assetName lives in
 // movement.go (Effort 2). HP max comes from the definition.

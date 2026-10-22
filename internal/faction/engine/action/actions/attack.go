@@ -34,7 +34,7 @@ func NewAttack(collector action.Collector, roller domain.Roller, registry *hooks
 func (attack *AttackAction) Name() string { return "Attack" }
 
 func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
-	for _, attacker := range eligibleAttackers(faction) {
+	for _, attacker := range eligibleAttackers(faction, factionState) {
 		if attackerHasTarget(attacker, rulebook, attack.registry, attack.index) {
 			return true
 		}
@@ -44,7 +44,7 @@ func (attack *AttackAction) Validate(faction *domain.Faction, factionState *stat
 
 func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var candidates []*domain.Asset
-	for _, attacker := range eligibleAttackers(faction) {
+	for _, attacker := range eligibleAttackers(faction, factionState) {
 		if attackerHasTarget(attacker, rulebook, attack.registry, attack.index) {
 			candidates = append(candidates, attacker)
 		}
@@ -202,8 +202,11 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			}
 		}
 
+		// deliberate: a disabled defender rolls its defense but deals no counter and fires no own_defense_win entry, because the book makes it useless (Effort 3 Decision 2).
+		defenderActive := defender.Active()
+
 		// Counterattack damage: defender wins on tie (TieStandard/TieDefenderWins) or strictly greater.
-		if defenderWins {
+		if defenderWins && defenderActive {
 			if defenderDef.Counter != nil && dispatch.ResolveAttackEligibility(attack.registry, hooks.AttackEligibilityQuery{
 				Attacker:    defender,
 				AttackerDef: defenderDef,
@@ -217,7 +220,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		}
 
 		// deliberate: own_defense_win needs an outright win, not a tie, because on a tie the attack also landed and the defense did not succeed (Decision 13).
-		if defenderWins && !attackerWins {
+		if defenderWins && !attackerWins && defenderActive {
 			outcome := attack.fireMatchup(domain.TriggerOwnDefenseWin, defenderFaction, defender, defenderDef, faction, attacker, factionState)
 			attack.mutations = append(attack.mutations, outcome.Mutations...)
 			// deliberate: no prompt when the attacker has no damage and no counter, because its self-attack could do nothing (Decision Record 9).

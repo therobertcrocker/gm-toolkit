@@ -174,6 +174,15 @@ func Build(
 						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
 						Cause:     m.Cause,
 					})
+				case "levy_coin":
+					lossBeat := getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					lossBeat.Losses = append(lossBeat.Losses, AssetMove{
+						AssetID:   m.AssetID,
+						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+						Cause:     m.Cause,
+					})
+					getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAbilityStrike, factionState)
 				case "refit":
 					// already captured in refitRemovedAssetID; encoded as From on the paired AssetAdded
 				case "attack":
@@ -450,7 +459,11 @@ func Build(
 				if m.FactionID != record.FactionID {
 					getOrCreateBeat(beats, m.FactionID, factionState)
 					seenFactionIDs[m.FactionID] = struct{}{}
-					ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAttack, factionState)
+					kind := CrossAttack
+					if m.Cause == "ability" {
+						kind = CrossAbilityStrike
+					}
+					ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, kind, factionState)
 					if !slices.Contains(ce.Conditions, m.Condition.Kind) {
 						ce.Conditions = append(ce.Conditions, m.Condition.Kind)
 					}

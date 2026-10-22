@@ -321,6 +321,17 @@ var askEntries = map[adapter.AskKind]askEntry{
 		p := msg.Payload.(adapter.ConfirmCounterstrikePayload)
 		return overlay.NewConfirmCounterstrike(p.DefenderFaction, p.Source, p.Attacker, m.rulebook)
 	}},
+	adapter.AskSelectAbilityAssetTarget: {"Ability Target", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectAbilityAssetTargetPayload)
+		return overlay.NewSelectAbilityAssetTarget(p.Asset, p.Effect, p.Candidates, p.OwnerNames, m.rulebook)
+	}},
+	adapter.AskConfirmPayment: {"Pay?", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewConfirmPayment(msg.Payload.(adapter.ConfirmPaymentPayload).Offer, m.rulebook)
+	}},
+	adapter.AskSelectAssetToLose: {"Lose an Asset", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectAssetToLosePayload)
+		return overlay.NewSelectAssetToLose(fmt.Sprintf("%s cannot pay: lose which asset?", p.Faction.Name), p.Assets, m.rulebook)
+	}},
 	adapter.AskSelectExpandInfluenceOrder: {"Expand Influence", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectExpandInfluenceOrderPayload)
 		return overlay.NewExpand(p.NewBaseWorlds, p.WorldNames, p.ReinforceBases, p.Coin)

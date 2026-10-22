@@ -142,6 +142,8 @@ var quietTailTemplates = []string{
 
 var conditionClauses = map[domain.ConditionKind]string{
 	domain.ConditionNoAbility: "{defender} cannot use asset abilities there until {attacker}'s next turn.",
+	domain.ConditionDisabled:  "{defender} must pay to bring a disabled asset back into use.",
+	domain.ConditionNoAttack:  "{attacker}'s agitators keep one of {defender}'s assets from attacking.",
 }
 
 const counterstruckClause = "{defender}'s countermeasures turned the attack back on {attacker}."

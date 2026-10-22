@@ -277,3 +277,23 @@ func AssetOwner(factions map[string]*Faction, assetID string) *Faction {
 	}
 	return nil
 }
+
+// AttackBlocked reports whether a no_attack condition on asset holds now. It is
+// checked when read: the source must still exist, share the asset's world, and
+// belong to another faction. The source need not be active.
+func AttackBlocked(factions map[string]*Faction, asset *Asset) bool {
+	for _, condition := range asset.Conditions {
+		if condition.Kind != ConditionNoAttack {
+			continue
+		}
+		owner := AssetOwner(factions, condition.SourceAssetID)
+		if owner == nil || owner.ID == asset.OwnerID {
+			continue
+		}
+		source := owner.Assets[condition.SourceAssetID]
+		if source.Location.WorldID != "" && source.Location.WorldID == asset.Location.WorldID {
+			return true
+		}
+	}
+	return false
+}

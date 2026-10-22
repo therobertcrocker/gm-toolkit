@@ -74,6 +74,21 @@ func (mr *MockCollectorMockRecorder) ConfirmCounterstrike(defenderFaction, sourc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmCounterstrike", reflect.TypeOf((*MockCollector)(nil).ConfirmCounterstrike), defenderFaction, source, attacker)
 }
 
+// ConfirmPayment mocks base method.
+func (m *MockCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmPayment", offer)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmPayment indicates an expected call of ConfirmPayment.
+func (mr *MockCollectorMockRecorder) ConfirmPayment(offer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmPayment", reflect.TypeOf((*MockCollector)(nil).ConfirmPayment), offer)
+}
+
 // ConfirmRedirectToBase mocks base method.
 func (m *MockCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	m.ctrl.T.Helper()
@@ -161,6 +176,21 @@ func (m *MockCollector) SelectAsset(assets []*domain.Asset, arg1 *rulebook.Ruleb
 func (mr *MockCollectorMockRecorder) SelectAsset(assets, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAsset", reflect.TypeOf((*MockCollector)(nil).SelectAsset), assets, arg1)
+}
+
+// SelectAssetToLose mocks base method.
+func (m *MockCollector) SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, arg2 *rulebook.Rulebook) (*domain.Asset, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectAssetToLose", faction, assets, arg2)
+	ret0, _ := ret[0].(*domain.Asset)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectAssetToLose indicates an expected call of SelectAssetToLose.
+func (mr *MockCollectorMockRecorder) SelectAssetToLose(faction, assets, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAssetToLose", reflect.TypeOf((*MockCollector)(nil).SelectAssetToLose), faction, assets, arg2)
 }
 
 // SelectAttackers mocks base method.

@@ -154,8 +154,11 @@ func renderLoss(move digest.AssetMove, factionName string, rng *rand.Rand) strin
 	tmpl := pick(rng, lossTemplates)
 	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 	result = strings.ReplaceAll(result, "{asset}", move.AssetName)
-	if move.Cause == "captured" {
+	switch move.Cause {
+	case "captured":
 		result += " (captured)"
+	case "levy_coin":
+		result += " (forfeit to a monopoly)"
 	}
 	return result
 }
@@ -224,12 +227,7 @@ func renderCrossEvent(ce digest.CrossEvent, rng *rand.Rand) string {
 		result = strings.ReplaceAll(result, "{attacker_asset}", ce.AttackerAsset.AssetName)
 		result = strings.ReplaceAll(result, "{defender_asset}", ce.DefenderAsset.AssetName)
 		result = strings.ReplaceAll(result, "{damage}", fmt.Sprintf("%d", ce.DamageToDefender))
-		for _, kind := range ce.Conditions {
-			if clause, ok := conditionClauses[kind]; ok {
-				clause = strings.ReplaceAll(clause, "{attacker}", ce.Attacker.Name)
-				result += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
-			}
-		}
+		result += conditionText(ce)
 		if ce.Counterstruck {
 			clause := strings.ReplaceAll(counterstruckClause, "{attacker}", ce.Attacker.Name)
 			result += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
@@ -238,7 +236,7 @@ func renderCrossEvent(ce digest.CrossEvent, rng *rand.Rand) string {
 	case digest.CrossAbilityStrike:
 		tmpl := pick(rng, crossAbilityTemplates)
 		result := strings.ReplaceAll(tmpl, "{attacker}", ce.Attacker.Name)
-		return strings.ReplaceAll(result, "{defender}", ce.Defender.Name)
+		return strings.ReplaceAll(result, "{defender}", ce.Defender.Name) + conditionText(ce)
 	}
 	return ""
 }
@@ -250,4 +248,17 @@ func renderQuietTail(quietFactions []digest.FactionRef, rng *rand.Rand) string {
 	}
 	tmpl := pick(rng, quietTailTemplates)
 	return strings.ReplaceAll(tmpl, "{factions}", strings.Join(names, ", "))
+}
+
+// conditionText renders one clause per condition on a cross event, each with a
+// leading space, or "" when it carries none.
+func conditionText(ce digest.CrossEvent) string {
+	var text string
+	for _, kind := range ce.Conditions {
+		if clause, ok := conditionClauses[kind]; ok {
+			clause = strings.ReplaceAll(clause, "{attacker}", ce.Attacker.Name)
+			text += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
+		}
+	}
+	return text
 }

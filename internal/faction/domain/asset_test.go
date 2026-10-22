@@ -35,21 +35,27 @@ func TestNewPurchasedAsset(t *testing.T) {
 	}
 }
 
-func TestAsset_Active(t *testing.T) {
+func TestAsset_ActiveAndTargetable(t *testing.T) {
+	disabled := []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}}
 	cases := []struct {
-		name  string
-		asset domain.Asset
-		want  bool
+		name           string
+		asset          domain.Asset
+		wantActive     bool
+		wantTargetable bool
 	}{
-		{"ready, maintained, alive", domain.Asset{Ready: true, Maintained: true, CurrentHP: 1}, true},
-		{"not ready", domain.Asset{Ready: false, Maintained: true, CurrentHP: 1}, false},
-		{"unmaintained", domain.Asset{Ready: true, Maintained: false, CurrentHP: 1}, false},
-		{"destroyed", domain.Asset{Ready: true, Maintained: true, CurrentHP: 0}, false},
+		{"ready, maintained, alive", domain.Asset{Ready: true, Maintained: true, CurrentHP: 1}, true, true},
+		{"not ready", domain.Asset{Ready: false, Maintained: true, CurrentHP: 1}, false, false},
+		{"unmaintained", domain.Asset{Ready: true, Maintained: false, CurrentHP: 1}, false, false},
+		{"destroyed", domain.Asset{Ready: true, Maintained: true, CurrentHP: 0}, false, false},
+		{"disabled", domain.Asset{Ready: true, Maintained: true, CurrentHP: 1, Conditions: disabled}, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.asset.Active(); got != tc.want {
-				t.Errorf("Active() = %v, want %v", got, tc.want)
+			if got := tc.asset.Active(); got != tc.wantActive {
+				t.Errorf("Active() = %v, want %v", got, tc.wantActive)
+			}
+			if got := tc.asset.Targetable(); got != tc.wantTargetable {
+				t.Errorf("Targetable() = %v, want %v", got, tc.wantTargetable)
 			}
 		})
 	}

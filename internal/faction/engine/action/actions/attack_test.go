@@ -163,6 +163,34 @@ func TestAttack_Validate(t *testing.T) {
 			t.Error("expected Validate true")
 		}
 	})
+
+	// f2's Seditionists s1 hold no_attack on the only attacker a1.
+	blockAttacker := func(factionState *state.FactionState, attackerAsset *domain.Asset, sourceWorld string) {
+		factionState.Factions["f2"].Assets["s1"] = &domain.Asset{ID: "s1", OwnerID: "f2", Location: domain.Location{WorldID: sourceWorld}}
+		attackerAsset.Conditions = []domain.Condition{{Kind: domain.ConditionNoAttack, SourceAssetID: "s1"}}
+	}
+
+	t.Run("an attacker under a live no_attack cannot attack", func(t *testing.T) {
+		factionState, attackerAsset, _ := makeAttackState(8, 8, "force-defender", false)
+		blockAttacker(factionState, attackerAsset, "Anchorage")
+		faction := factionState.Factions["f1"]
+		ctrl := gomock.NewController(t)
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
+		if attack.Validate(faction, factionState, rulebook) {
+			t.Error("expected Validate false when the only attacker is blocked")
+		}
+	})
+
+	t.Run("a no_attack whose source is on another world does not hold", func(t *testing.T) {
+		factionState, attackerAsset, _ := makeAttackState(8, 8, "force-defender", false)
+		blockAttacker(factionState, attackerAsset, "Tartarus")
+		faction := factionState.Factions["f1"]
+		ctrl := gomock.NewController(t)
+		attack := NewAttack(mocks.NewMockCollector(ctrl), &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
+		if !attack.Validate(faction, factionState, rulebook) {
+			t.Error("expected Validate true when the block's source is on another world")
+		}
+	})
 }
 
 // TestAttack_AttackerWins_NonLethal: attacker roll > defense roll; damage < defender HP.
@@ -306,6 +334,68 @@ func TestAttack_DefenderWins_WithCounter(t *testing.T) {
 	}
 	if !delta.Counter {
 		t.Error("AssetHPDelta.Counter = false, want true for counterattack damage")
+	}
+}
+
+// A disabled defender still rolls its defense, but a win deals no counter
+// (Effort 3 Decision 2). Rolls: attack=2, defense=9; the counter die is never rolled.
+func TestAttack_DisabledDefenderDealsNoCounter(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, "force-defender", false)
+	defenderAsset.Conditions = []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}}
+	faction := factionState.Factions["f1"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	roller := &fixedRoller{values: []int{2, 9, 3}}
+	mutations := runAttack(t, collector, roller, faction, factionState, rulebook, nil)
+
+	if len(mutations) != 0 {
+		t.Errorf("mutations = %+v, want none", mutations)
+	}
+	if roller.index != 2 {
+		t.Errorf("rolls used = %d, want 2", roller.index)
+	}
+}
+
+// A defender under a live no_attack still counters: the block stops it from
+// attacking, not from defending (D-14). Rolls: attack=2, defense=9, counter=3.
+func TestAttack_BlockedDefenderStillCounters(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, "force-defender", false)
+	// The source is unready, so it is not an attacker candidate.
+	factionState.Factions["f1"].Assets["s1"] = &domain.Asset{ID: "s1", OwnerID: "f1", Location: domain.Location{WorldID: "Anchorage"}}
+	defenderAsset.Conditions = []domain.Condition{{Kind: domain.ConditionNoAttack, SourceAssetID: "s1"}}
+	faction := factionState.Factions["f1"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	mutations := runAttack(t, collector, &fixedRoller{values: []int{2, 9, 3}}, faction, factionState, rulebook, nil)
+
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
+	}
+	delta, ok := mutations[0].(domain.AssetHPDelta)
+	if !ok || delta.AssetID != "a1" || delta.Delta != -3 || !delta.Counter {
+		t.Errorf("mutations[0] = %+v, want a counter AssetHPDelta{a1, -3}", mutations[0])
+	}
+}
+
+func TestFilterOpposingDefenders_DisabledStaysTargetable(t *testing.T) {
+	disabled := &domain.Asset{ID: "d1", OwnerID: "f2", Ready: true, Maintained: true, CurrentHP: 1,
+		Conditions: []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}}}
+	unready := &domain.Asset{ID: "d2", OwnerID: "f2", Ready: false, Maintained: true, CurrentHP: 1}
+
+	got := filterOpposingDefenders("f1", []*domain.Asset{disabled, unready})
+
+	if !reflect.DeepEqual(got, []*domain.Asset{disabled}) {
+		t.Errorf("filterOpposingDefenders = %+v, want only the disabled asset", got)
 	}
 }
 
@@ -752,14 +842,15 @@ func TestAttack_Counterstrike(t *testing.T) {
 	}
 	confirmTrue, confirmFalse := true, false
 	cases := []struct {
-		name           string
-		attackerHP     int
-		attackerDefID  string
-		tieDefenderWin bool
-		rolls          []int
-		confirm        *bool // nil: ConfirmCounterstrike must not be called
-		want           []domain.Mutation
-		wantRollsUsed  int
+		name             string
+		attackerHP       int
+		attackerDefID    string
+		tieDefenderWin   bool
+		defenderDisabled bool
+		rolls            []int
+		confirm          *bool // nil: ConfirmCounterstrike must not be called
+		want             []domain.Mutation
+		wantRollsUsed    int
 	}{
 		{
 			name:       "an outright defense win, confirmed: the self-attack hits",
@@ -812,6 +903,12 @@ func TestAttack_Counterstrike(t *testing.T) {
 			rolls:         []int{2, 9},
 			wantRollsUsed: 2,
 		},
+		{
+			name:       "no prompt when the defender is disabled (Effort 3 Decision 2)",
+			attackerHP: 8, attackerDefID: "force-attacker", defenderDisabled: true,
+			rolls:         []int{2, 9},
+			wantRollsUsed: 2,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -833,6 +930,9 @@ func TestAttack_Counterstrike(t *testing.T) {
 
 			factionState, attackerAsset, defenderAsset := makeAttackState(tc.attackerHP, 8, comms.ID, false)
 			attackerAsset.DefinitionID = tc.attackerDefID
+			if tc.defenderDisabled {
+				defenderAsset.Conditions = []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}}
+			}
 			faction := factionState.Factions["f1"]
 			var registry *hooks.Registry
 			if tc.tieDefenderWin {

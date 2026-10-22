@@ -222,9 +222,14 @@ func (e *Engine) runBookkeepingPhase(
 	logging.PhaseStart(phaseLog, "bookkeeping")
 	phaseLog.Info("phase begin")
 
-	var startMutations []domain.Mutation
+	var liftMutations, startMutations []domain.Mutation
 	// deliberate: fire here, gated on BookkeepingApplied, not in turn setup, because setup re-runs on every resume and would pay a turn-start effect twice.
 	if e.Turn.InProgress(factionState) && !factionState.CurrentTurn.BookkeepingApplied {
+		var err error
+		// deliberate: lifts apply before the turn-start effects, not with them, because a lifted asset is active again and its own turn_start entries fire this turn (Effort 3 Decision 8).
+		if liftMutations, err = e.runConditionLifts(faction, factionState, paths, collectors.Phase, observer, phaseLog); err != nil {
+			return err
+		}
 		startMutations = append(turn.ExpireConditions(factionState, faction.ID), e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)...)
 		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
 			if !factionErrors.IsRecoverable(err) {
@@ -262,7 +267,7 @@ func (e *Engine) runBookkeepingPhase(
 			return err
 		}
 	}
-	observer.OnBookkeepingApplied(faction, bookResult, append(startMutations, bookMutations...))
+	observer.OnBookkeepingApplied(faction, bookResult, slices.Concat(liftMutations, startMutations, bookMutations))
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -275,6 +280,26 @@ func (e *Engine) runBookkeepingPhase(
 	}
 	phaseLog.Info("phase end", "mutations", len(bookMutations))
 	return nil
+}
+
+// runConditionLifts offers the faction's disabled assets their price and applies
+// the lifts it pays for. A recoverable failure is reported and lifts nothing.
+func (e *Engine) runConditionLifts(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, collector PhaseCollector, observer TurnObserver, phaseLog *slog.Logger) ([]domain.Mutation, error) {
+	mutations, err := turn.OfferConditionLifts(faction, e.Rulebook, collector)
+	if err == nil && len(mutations) > 0 {
+		err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
+	}
+	if err == nil {
+		return mutations, nil
+	}
+	if !factionErrors.IsRecoverable(err) {
+		phaseLog.Error("failure", "err", err)
+		observer.OnError(faction, err)
+		return nil, err
+	}
+	phaseLog.Warn("recoverable failure", "err", err)
+	observer.OnError(faction, err)
+	return nil, nil
 }
 
 func (e *Engine) runStatRaisePhase(

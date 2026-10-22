@@ -55,6 +55,10 @@ func (s *SmokePhaseCollector) SelectRelocateOrders(_ *domain.Asset, _ []*domain.
 	return nil, nil
 }
 
+func (s *SmokePhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+	return false, nil // the dry run declines every lift
+}
+
 var _ engine.PhaseCollector = (*SmokePhaseCollector)(nil)
 
 // SmokeActionCollector satisfies action.Collector for the dry-run. The smoke
@@ -71,6 +75,9 @@ func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.Mod
 func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return false }
 
 func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectAssetToLose(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectAbilityTarget(_ *domain.Asset, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
@@ -98,6 +105,9 @@ func (SmokeActionCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.B
 	return false, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) ConfirmCounterstrike(_ *domain.Faction, _ *domain.Asset, _ *domain.Asset) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
 	return false, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {

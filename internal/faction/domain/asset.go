@@ -57,6 +57,9 @@ const (
 	EffectPurchaseDiscount AbilityEffectType = "purchase_discount"
 	EffectRelocate         AbilityEffectType = "relocate"
 	EffectPurchaseEnabler  AbilityEffectType = "purchase_enabler"
+	EffectDisableAsset     AbilityEffectType = "disable_asset"
+	EffectBlockAttack      AbilityEffectType = "block_attack"
+	EffectLevyCoin         AbilityEffectType = "levy_coin"
 )
 
 type RelocateScope string
@@ -119,9 +122,8 @@ const (
 	TargetNone    TargetKind = "none"
 	TargetSelf    TargetKind = "self"
 	TargetFaction TargetKind = "faction"
-	// deliberate: TargetAsset/TargetWorld are dormant scalar-target vocab for A.001.3
-	// (Marketers/Seditionists), not dead — don't drop without that effort.
-	TargetAsset TargetKind = "asset"
+	TargetAsset   TargetKind = "asset"
+	// deliberate: TargetWorld is dormant vocab, not dead — no asset targets a world yet.
 	TargetWorld TargetKind = "world"
 )
 
@@ -170,9 +172,8 @@ type AbilityTarget struct {
 // collector reads the slice matching the step's TargetKind.
 type AbilityTargetCandidates struct {
 	Factions []*Faction
-	// deliberate: Assets/Worlds are dormant for A.001.3 scalar targets, not dead —
-	// don't drop without that effort. See TargetAsset/TargetWorld.
-	Assets []*Asset
+	Assets   []*Asset
+	// deliberate: Worlds is dormant, not dead. See TargetWorld.
 	Worlds []string
 }
 
@@ -199,7 +200,11 @@ type AssetDefinition struct {
 
 type ConditionKind string
 
-const ConditionNoAbility ConditionKind = "no_ability"
+const (
+	ConditionNoAbility ConditionKind = "no_ability"
+	ConditionDisabled  ConditionKind = "disabled"
+	ConditionNoAttack  ConditionKind = "no_attack"
+)
 
 // Condition is a lasting restriction one asset puts on another. The code that
 // reads a kind decides what it blocks. ExpiresAtTurnOf names the faction whose
@@ -234,9 +239,16 @@ func (asset *Asset) HasCondition(kind ConditionKind) bool {
 }
 
 // Active reports whether the asset can act or use its special ability now: an
-// asset is not usable until the turn after purchase, while unmaintained, or once
-// destroyed.
+// asset is not usable until the turn after purchase, while unmaintained, once
+// destroyed, or while disabled.
 func (asset *Asset) Active() bool {
+	return asset.Targetable() && !asset.HasCondition(ConditionDisabled)
+}
+
+// Targetable reports whether a rival may pick the asset as a defender. It is
+// Active without the conditions that stop use only: a disabled asset is useless,
+// not untouchable (D-38).
+func (asset *Asset) Targetable() bool {
 	return asset.Ready && asset.Maintained && asset.CurrentHP > 0
 }
 

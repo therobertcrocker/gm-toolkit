@@ -357,6 +357,15 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	if step.Effect == domain.EffectRevealStealth && step.Target != domain.TargetFaction {
 		return domain.AbilityStep{}, fmt.Errorf("reveal_stealth requires target = %q", "faction")
 	}
+	if step.Effect == domain.EffectDisableAsset && (step.Target != domain.TargetAsset || step.Contest == nil) {
+		return domain.AbilityStep{}, fmt.Errorf("disable_asset requires target = %q and a contest", "asset")
+	}
+	if step.Effect == domain.EffectBlockAttack && (step.Target != domain.TargetAsset || step.Roll == nil) {
+		return domain.AbilityStep{}, fmt.Errorf("block_attack requires target = %q and a die", "asset")
+	}
+	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Roll != nil) {
+		return domain.AbilityStep{}, fmt.Errorf("levy_coin requires target = %q and no contest or die", "faction")
+	}
 	return step, nil
 }
 
@@ -467,6 +476,12 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectRelocate, nil
 	case "purchase_enabler":
 		return domain.EffectPurchaseEnabler, nil
+	case "disable_asset":
+		return domain.EffectDisableAsset, nil
+	case "block_attack":
+		return domain.EffectBlockAttack, nil
+	case "levy_coin":
+		return domain.EffectLevyCoin, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}

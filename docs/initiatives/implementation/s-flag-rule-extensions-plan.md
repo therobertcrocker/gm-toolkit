@@ -86,8 +86,11 @@ and a modeled world government with one permission request.
    the miss contract exists to catch). Resolves Finding 3 and Open Question 9.
 
 6. **Each condition kind lands with the code that reads it.** Effort 1 builds the model
-   and `no_ability`; Effort 2 adds `sheltered` and D-38's defender test; Effort 3 adds
-   `disabled` (read by `Active()`) and `no_attack`. No kind ships before its reader.
+   and `no_ability`; Effort 3 adds `disabled` (read by `Active()`), D-38's defender test
+   (`Asset.Targetable()`) and `no_attack`; Effort 2 adds `sheltered` and puts "not
+   `sheltered`" in `Targetable()`. No kind ships before its reader. *(Reshaped in the
+   Effort 3 plan, Decision 1: Effort 3 runs first, and `disabled` in `Active()` would
+   drop a disabled asset as a target without the separate test.)*
 
 7. **The Cat 6 interface is designed in the Effort 2 plan.** The signature, the outcome
    type, and how the Attack action's HP tracker (`attack.go:62`) learns the outcome. One
@@ -274,15 +277,11 @@ Each is answered by the named effort plan.
 
 | Effort | Question |
 |---|---|
-| 1 | *(Resolved in the [Effort 1 plan](s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
+| 1 | *(Resolved in the [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
+| 3 | *(Resolved in the [Effort 3 plan](s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
 | 2 | Open Question 1 (Decision 7) |
 | 2 | When `sheltered` clears: a reactor on a repair that reaches full HP, or the bookkeeping step |
 | 2 | The tie case: today the counter branch runs even when the attack killed the defender (`attack.go:195`), so a sheltered or captured defender would still counter. Decide whether an intercepted defender counters |
-| 3 | The pay-prompt method's name and signature (Decision 19) |
-| 3 | Seditionists' 1d4 when the faction cannot pay the rolled amount (lean: the attach fails and nothing is charged) |
-| 3 | Marketers aimed at an asset already disabled (lean: not a candidate) |
-| 3 | Monopoly's target list: factions with unstealthed assets on the world; the effect name |
-| 3 | Seditionists whose source is captured into the target's own faction (Treachery): the when-read test adds "source owner differs from target owner", or the attach clears on capture |
 | 4 | The Cat 4 permission family's shape (`permission_query`, `require_permission`, `grant_permission`) and the D-41 request method |
 | 4 | `PermissionRefused` fields and the wizard's world prompt for a `T-011` pick (Decisions 10 and 22) |
 | 5 | Decision 12's mark: Lobbyists' withdrawal only (lean) or every refusal |
@@ -308,9 +307,9 @@ best at the Effort 1 boundary, since Efforts 2, 3 and 5 build on its model.
 
 | # | Effort | Scope | Assets | Plan |
 |---|--------|-------|--------|------|
-| 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](s-flag-rule-extensions-effort-1-plan.md) |
-| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` and D-38, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | own session → `-effort-2-plan.md` |
-| 3 | A-side abilities | `TargetAsset`, the shared pay prompt, `disabled` and `no_attack` | Marketers, Seditionists, Monopoly | own session → `-effort-3-plan.md` |
+| 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](completed/s-flag-rule-extensions-effort-1-plan.md) |
+| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | own session → `-effort-2-plan.md` |
+| 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](s-flag-rule-extensions-effort-3-plan.md) |
 | 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | own session → `-effort-4-plan.md` |
 | 5 | Movement permission | The arrival check and hold (`MovementOrderHeld`), the relocate request, the bypasses, the Lockdown `locked_out` condition | Lobbyists, Transport Lockdown, Deep Strike Landers, Blockade Runners | own session → `-effort-5-plan.md` |
 
@@ -330,11 +329,12 @@ they do not redefine it.
 | `AttackProfile.Damage *DiceRoll`, zero-damage hit, no redirect prompt | domain, loader, action | 1 |
 | Matchup route (`own_attack`, `own_defense_win`); Attack's effects-engine dependency (Decision 21) | effects phase route, action | 1 |
 | Cat 6 family | hooks | 2 |
-| `sheltered`; the separate defender test (D-38) | domain, actions | 2 |
+| `sheltered` in `Active()` and `Targetable()` | domain, actions | 2 |
 | `RepairCostModifier` | hooks Cat 4 | 2 |
-| `TargetAsset` in `resolveTarget` | ability pipeline | 3 |
-| Pay prompt interface | collectors | 3 |
-| `disabled` in `Active()`; `no_attack` in attacker eligibility | domain, actions | 3 |
+| One ability view per action (`ability.NewView`) | ability pipeline | 3 |
+| `TargetAsset` in `resolveTarget`; per-effect candidate rules | ability pipeline | 3 |
+| Pay prompt interface (`hooks.PaymentCollector`) | collectors | 3 |
+| `disabled` in `Active()`; the separate defender test `Targetable()` (D-38); `no_attack` in attacker eligibility (`domain.AttackBlocked`) | domain, actions | 3 |
 | `quality = true`, `grant_stealth` | loader, effects | 4 |
 | `FactionState.Governments`, `WorldGovernmentChanged`, `TagRemoved`, the wizard world prompt | state, mutation, TUI manage | 4 |
 | Permission request interface (D-41); `PermissionRefused` | collectors, mutation | 4 |
@@ -416,7 +416,7 @@ Each is fixed by the effort that makes its claim true, or at pre-merge.
 | `persistence.md` says `FactionState` holds the factions and the turn cursor | Effort 4 — add the government record |
 | `world-movement.md` movement phase has no arrival check | Effort 5 |
 | `domain.HasPlanetaryGovernment`, `PurchaseTerms.HoldsGovernment` | Effort 4 — retired (discovery, Replaces / Retires) |
-| `planned-work.md`: `B.001` narrowed, `B.009` closed, `R.014` closed (Effort 1 runs it), the drift audit and the digest's empty asset names (Effort 1 Out of Scope) if Robert files them | Pre-merge |
+| `planned-work.md`: `B.001` narrowed, `B.009` closed, `R.014` closed (Effort 1 runs it), `B.011` closed if review confirms (Effort 3 Decision 3 removes its cause), the drift audit and the digest's empty asset names (Effort 1 Out of Scope) if Robert files them | Pre-merge |
 
 ---
 
@@ -451,7 +451,7 @@ also updates the block here, so the two never disagree.
 Discovery: State Held on an Asset, Change of Asset Owner, Special Attacks and the
 Matchup Route, Damage Redirected into Combat.
 
-The [Effort 1 plan](s-flag-rule-extensions-effort-1-plan.md) carries the spec. Its
+The [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md) carries the spec. Its
 commits:
 
 - `refactor: AskKind dispatch table` — `R.014` first (Decision 23).
@@ -477,7 +477,9 @@ commits:
 - **What:** three assets whose ability a faction spends its action on. Marketers make a
   rival pay half an asset's price or lose the use of that asset until it pays.
   Seditionists stop one enemy asset on their world from attacking. Monopoly makes a
-  rival pay 1 Coin, or lose an asset of its choice if it cannot pay.
+  rival pay 1 Coin, or lose an asset of its choice if it cannot pay. It also fixes an
+  older fault: when one action uses several assets, each now sees what the earlier
+  ones did.
 - **Why:** abilities today can target only a whole faction, not one asset, and nothing
   can ask a faction "pay this, or else". All three assets need one or both.
 - **How it fits:** runs after Effort 1, whose condition model it extends with "disabled"
@@ -485,13 +487,20 @@ commits:
 
 Discovery: State Held on an Asset, Prompt to a Faction That Is Not Acting.
 
-- `feat: asset targets and the pay prompt` — `TargetAsset` (Decision 11); the shared pay
-  prompt interface (Decision 19).
-- `feat: Marketers` — `disable_asset`; the `disabled` kind read by `Active()`; the
-  pay-to-lift prompt in the condition step (D-12).
-- `feat: Seditionists` — `block_attack`; the `no_attack` kind read by attacker
-  eligibility, checked when read (source alive, same world, still attached).
-- `feat: Monopoly` — the A-side levy: a target faction with unstealthed assets on the
+The [Effort 3 plan](s-flag-rule-extensions-effort-3-plan.md) carries the spec. Its
+commits:
+
+- `fix: abilities in one action see earlier assets' results` — one `ability.NewView`
+  per Use Asset Ability; rolls spend budgets on the real factions.
+- `feat: asset targets and the pay prompt` — `TargetAsset` (Decision 11) with
+  per-effect candidate rules; an ability with no target is not offered;
+  `hooks.PaymentCollector` (Decision 19).
+- `feat: Marketers` — `disable_asset`; `disabled` read by `Active()`, with
+  `Targetable()` for D-38; no counter from a disabled defender; the pay-to-lift prompt
+  at turn start (D-12).
+- `feat: Seditionists` — `block_attack`; `no_attack` read through
+  `domain.AttackBlocked` (source exists, same world, another owner).
+- `feat: Monopoly` — `levy_coin`: a target faction with unstealthed assets on the
   world pays the owner 1 Coin, or loses one asset of its choice there; the TOML
   description from the book.
 
@@ -517,8 +526,9 @@ centre of this plan.
 - `feat: cat 6 lethal interception` — the family, its registry buckets, dispatch at
   `applyAssetDamage` and in the `self_damage` reactor (automatic only, D-10), the D-7
   walk order, and the tracker outcome.
-- `feat: Boltholes` — `sheltered`; `Active()` reads it; the separate defender test
-  (D-38); destroyed with its Boltholes; cleared at full HP.
+- `feat: Boltholes` — `sheltered`; `Active()` and `Targetable()` read it (the separate
+  defender test lands in Effort 3, Decision 6); destroyed with its Boltholes; cleared
+  at full HP.
 - `feat: False Front` — elective sacrifice.
 - `feat: Medical Center` — elective restore at 1 HP, once between turns; reuses the pay
   prompt; `RepairCostModifier` and Repair Asset's registry (Decision 18).

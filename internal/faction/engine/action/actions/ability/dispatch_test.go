@@ -69,6 +69,26 @@ func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinit
 	return actingFaction, actingAsset, def, factionState
 }
 
+// TestNewView_CopiesEveryFaction: a change to the view's rival faction or its asset
+// leaves the real state as it was.
+func TestNewView_CopiesEveryFaction(t *testing.T) {
+	_, _, _, factionState := makeDispatchFixture()
+	view := NewView(factionState)
+
+	if len(view.Factions) != len(factionState.Factions) {
+		t.Fatalf("len(view.Factions) = %d, want %d", len(view.Factions), len(factionState.Factions))
+	}
+	view.Factions["f2"].Coin = 9
+	view.Factions["f2"].Assets["t1"].CurrentHP = 7
+
+	if coin := factionState.Factions["f2"].Coin; coin != 0 {
+		t.Errorf("real f2.Coin = %d, want 0", coin)
+	}
+	if hp := factionState.Factions["f2"].Assets["t1"].CurrentHP; hp != 0 {
+		t.Errorf("real t1.CurrentHP = %d, want 0", hp)
+	}
+}
+
 // TestDispatch_RevealStealth_AttackerWins: attack roll beats defense, stealthy target asset cleared.
 func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 	faction, asset, def, factionState := makeDispatchFixture()
@@ -80,7 +100,7 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -107,7 +127,7 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -155,7 +175,7 @@ func TestDispatch_ContestRollsThroughHooks(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), factionTestDieKey, factionTestDie{})
 
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 9, 8}}, registry, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 9, 8}}, registry, factionState, NewView(factionState), nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -228,7 +248,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, nil, engine)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), nil, engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -260,7 +280,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins, reveal halts
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, nil, engine)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), nil, engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -304,12 +324,51 @@ func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil).
 		Times(1)
 
-	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, nil, factionState, relocRulebook(), relocEngine())
+	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, nil, factionState, NewView(factionState), relocRulebook(), relocEngine())
 	if err == nil {
 		t.Fatal("Dispatch: expected insufficient-Coin error on step 2, got nil")
 	}
 	if !strings.Contains(err.Error(), "insufficient Coin") {
 		t.Errorf("Dispatch error = %q, want it to mention insufficient Coin", err.Error())
+	}
+}
+
+// TestDispatch_NoTargetsLeft_Fizzles: step 2 targets an asset, but no rival asset
+// shares the acting world. The asset fizzles like a failed gate: no prompt, no
+// error, and step 1's Coin stands.
+func TestDispatch_NoTargetsLeft_Fizzles(t *testing.T) {
+	acting := &domain.Asset{ID: "a1", DefinitionID: "fixture", OwnerID: "f1", Location: domain.Location{WorldID: "Anchorage"}}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": acting}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{
+		"f1": faction,
+		"f2": {ID: "f2", Assets: map[string]*domain.Asset{"b1": {ID: "b1", OwnerID: "f2", Location: domain.Location{WorldID: "Hadrian"}}}},
+	}}
+	def := &domain.AssetDefinition{
+		ID:    "fixture",
+		Flags: []domain.AssetFlag{domain.FlagAction},
+		Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+			{
+				Effect: domain.EffectCoinDelta,
+				Target: domain.TargetNone,
+				Roll: &domain.RollTable{
+					Die:      domain.DiceRoll{NumDice: 1, Sides: 6},
+					Outcomes: []domain.AbilityOutcome{{From: 1, To: 6, Coin: 1}},
+				},
+			},
+			{Effect: domain.EffectRevealStealth, Target: domain.TargetAsset},
+		}},
+	}
+	collector := mocks.NewMockCollector(gomock.NewController(t))
+
+	mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), nil, nil)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1 (step 1's CoinDelta); got %v", len(mutations), mutations)
+	}
+	if delta, ok := mutations[0].(domain.CoinDelta); !ok || delta.Delta != 1 {
+		t.Errorf("mutations[0] = %+v, want CoinDelta +1", mutations[0])
 	}
 }
 
@@ -334,7 +393,7 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().ConfirmAbilityApplied(asset, def).Return(false, nil)
 
-	mutations, err := Dispatch(faction, asset, def, collector, nil, nil, factionState, nil, nil)
+	mutations, err := Dispatch(faction, asset, def, collector, nil, nil, factionState, NewView(factionState), nil, nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}

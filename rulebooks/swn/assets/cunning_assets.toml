@@ -296,6 +296,11 @@ flags = ["A"]
 counter = ""
 description = "For a cost of 1d4 Coins, the Seditionists can attach themselves to an enemy asset. Until they attach to a different asset or no longer share the same planet, the affected asset cannot attack. If the asset is destroyed, the Seditionists survive."
 
+[assets.Seditionists.ability]
+effect = "block_attack"
+target = "asset"
+die = "1d4"
+
 [assets.OrganizationMoles]
 id = "SWN-C5-001"
 name = "Organization Moles"

@@ -226,13 +226,63 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
-	t.Run("marketers has no ability section", func(t *testing.T) {
+	t.Run("marketers disables an asset", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-W5-001"]
 		if !ok {
 			t.Fatal("asset SWN-W5-001 not found")
 		}
-		if asset.Ability != nil {
-			t.Errorf("expected nil ability, got %+v", asset.Ability)
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("ability: got %+v, want one step", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectDisableAsset {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectDisableAsset)
+		}
+		if step.Target != domain.TargetAsset {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetAsset)
+		}
+		if step.Contest == nil || step.Contest.AttackerStat != domain.StatCunning || step.Contest.DefenderStat != domain.StatWealth {
+			t.Errorf("contest: got %+v, want Cunning vs Wealth", step.Contest)
+		}
+	})
+
+	t.Run("seditionists block an asset's attack", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C4-004"]
+		if !ok {
+			t.Fatal("asset SWN-C4-004 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("ability: got %+v, want one step", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectBlockAttack {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectBlockAttack)
+		}
+		if step.Target != domain.TargetAsset {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetAsset)
+		}
+		if step.Roll == nil || step.Roll.Die.NumDice != 1 || step.Roll.Die.Sides != 4 {
+			t.Errorf("roll: got %+v, want 1d4", step.Roll)
+		}
+	})
+
+	t.Run("monopoly levies a faction and keeps its attack", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W4-002"]
+		if !ok {
+			t.Fatal("asset SWN-W4-002 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("ability: got %+v, want one step", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectLevyCoin {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectLevyCoin)
+		}
+		if step.Target != domain.TargetFaction {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetFaction)
+		}
+		if asset.Attack == nil {
+			t.Error("attack: got nil, want the book attack kept")
 		}
 	})
 
@@ -447,6 +497,43 @@ func TestLoad(t *testing.T) {
 			t.Errorf("difficulty: got %q, want %q", goal.Difficulty, "half_assets_destroyed")
 		}
 	})
+}
+
+func TestConvertAbilityStep_DisableAssetNeedsAnAssetTarget(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+attacker_stat = "Cunning"
+defender_stat = "Wealth"
+effect = "disable_asset"
+target = "faction"
+`)
+	if err == nil || !strings.Contains(err.Error(), "disable_asset requires") {
+		t.Fatalf("err = %v, want a disable_asset target error", err)
+	}
+}
+
+func TestConvertAbilityStep_BlockAttackNeedsADie(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+effect = "block_attack"
+target = "asset"
+`)
+	if err == nil || !strings.Contains(err.Error(), "block_attack requires") {
+		t.Fatalf("err = %v, want a block_attack die error", err)
+	}
+}
+
+func TestConvertAbilityStep_LevyCoinRefusesAContest(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+effect = "levy_coin"
+target = "faction"
+`)
+	if err == nil || !strings.Contains(err.Error(), "levy_coin requires") {
+		t.Fatalf("err = %v, want a levy_coin contest error", err)
+	}
 }
 
 func TestLoadDuplicateAssetID(t *testing.T) {

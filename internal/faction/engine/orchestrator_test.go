@@ -72,6 +72,9 @@ func (c *minimalPhaseCollector) SelectRelocateOrders(acting *domain.Asset, candi
 	}
 	return nil, nil
 }
+func (c *minimalPhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+	return false, nil
+}
 
 // stubWorldMap satisfies world.HexRouter with no-op implementations.
 type stubWorldMap struct{}

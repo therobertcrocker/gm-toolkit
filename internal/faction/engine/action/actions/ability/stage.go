@@ -1,7 +1,10 @@
 package ability
 
 import (
+	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -11,6 +14,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
+
+// errNoTargets: the step has no candidate left, because an earlier step or asset in
+// the same action changed the view. Dispatch halts the asset's chain on it.
+var errNoTargets = errors.New("ability: no target left")
 
 func resolveTarget(
 	step domain.AbilityStep,
@@ -25,7 +32,10 @@ func resolveTarget(
 	case domain.TargetSelf:
 		return domain.AbilityTarget{Kind: domain.TargetSelf, Asset: asset, Faction: faction}, nil
 	case domain.TargetFaction:
-		candidates := otherFactions(factionState, faction.ID)
+		candidates := factionCandidates(step.Effect, faction.ID, asset, factionState)
+		if len(candidates) == 0 {
+			return domain.AbilityTarget{}, errNoTargets
+		}
 		target, err := collector.SelectAbilityTarget(asset, step, domain.AbilityTargetCandidates{Factions: candidates})
 		if err != nil {
 			return domain.AbilityTarget{}, err
@@ -34,9 +44,25 @@ func resolveTarget(
 			return domain.AbilityTarget{}, fmt.Errorf("%s: %w", step.Effect, action.ErrNoSelection)
 		}
 		return target, nil
+	case domain.TargetAsset:
+		candidates := assetCandidates(step.Effect, faction.ID, asset, factionState)
+		if len(candidates) == 0 {
+			return domain.AbilityTarget{}, errNoTargets
+		}
+		target, err := collector.SelectAbilityTarget(asset, step, domain.AbilityTargetCandidates{Assets: candidates})
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		if target.Asset == nil {
+			return domain.AbilityTarget{}, fmt.Errorf("%s: %w", step.Effect, action.ErrNoSelection)
+		}
+		owner := factionState.Factions[target.Asset.OwnerID]
+		if owner == nil {
+			return domain.AbilityTarget{}, fmt.Errorf("%s: target owner %s not in state", step.Effect, target.Asset.OwnerID)
+		}
+		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: target.Asset, Faction: owner}, nil
 	default:
-		// deliberate: asset/world targets await A.001.3 (Marketers/Seditionists),
-		// not unbuilt-by-oversight — see domain.TargetAsset/TargetWorld.
+		// deliberate: world targets are not unbuilt-by-oversight — no asset targets a world yet. See domain.TargetWorld.
 		return domain.AbilityTarget{}, fmt.Errorf("ability target kind %q not supported yet", step.Target)
 	}
 }
@@ -62,6 +88,11 @@ func passesGate(
 	if target.Faction == nil {
 		return false, fmt.Errorf("contest: target faction not resolved")
 	}
+	// deliberate: the real target faction, found by ID, not target.Faction, because the target stage reads the action's view and a defense hook's budget spent on a copy would be lost (Effort 3 Decision 3).
+	defender := factionState.Factions[target.Faction.ID]
+	if defender == nil {
+		return false, fmt.Errorf("contest: target faction %s not in state", target.Faction.ID)
+	}
 	worldID := asset.Location.WorldID
 	// deliberate: a literal, not UseAssetAbility.Name(), because actions imports ability (import cycle).
 	const actionName = "Use Asset Ability"
@@ -69,7 +100,7 @@ func passesGate(
 		hooks.RollContext{
 			Phase:         hooks.PhaseFactionTest,
 			Actor:         faction,
-			Opponent:      target.Faction,
+			Opponent:      defender,
 			Attribute:     string(step.Contest.AttackerStat),
 			Asset:         asset,
 			OpponentAsset: target.Asset,
@@ -82,7 +113,7 @@ func passesGate(
 	defense := dispatch.RollWithHooks(
 		hooks.RollContext{
 			Phase:         hooks.PhaseContested,
-			Actor:         target.Faction,
+			Actor:         defender,
 			Opponent:      faction,
 			Attribute:     string(step.Contest.DefenderStat),
 			Asset:         target.Asset,
@@ -90,8 +121,8 @@ func passesGate(
 			World:         worldID,
 			Action:        actionName,
 		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(target.Faction, step.Contest.DefenderStat)},
-		registry, collector, roller, target.Faction, factionState, rulebook,
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defender, step.Contest.DefenderStat)},
+		registry, collector, roller, defender, factionState, rulebook,
 	)
 	return attack.Sum > defense.Sum, nil
 }
@@ -135,4 +166,83 @@ func otherFactions(factionState *state.FactionState, actingFactionID string) []*
 
 func statScore(faction *domain.Faction, stat domain.FactionStat) int {
 	return faction.StatScore(stat)
+}
+
+// assetTargetRules narrows a step's asset candidates by its effect. An effect with
+// no rule takes every base candidate.
+var assetTargetRules = map[domain.AbilityEffectType]func(candidate, acting *domain.Asset) bool{
+	domain.EffectDisableAsset: func(candidate, _ *domain.Asset) bool {
+		return !candidate.HasCondition(domain.ConditionDisabled)
+	},
+	domain.EffectBlockAttack: func(candidate, acting *domain.Asset) bool {
+		attached := domain.Condition{Kind: domain.ConditionNoAttack, SourceAssetID: acting.ID}
+		return !slices.ContainsFunc(candidate.Conditions, attached.Is)
+	},
+}
+
+// assetCandidates returns other factions' unstealthed assets on the acting asset's
+// world, in faction-ID then asset-ID order, that pass the effect's rule. An asset
+// in transit has no world and no candidates.
+func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, acting *domain.Asset, factionState *state.FactionState) []*domain.Asset {
+	world := acting.Location.WorldID
+	if world == "" {
+		return nil
+	}
+	rule := assetTargetRules[effect]
+	var candidates []*domain.Asset
+	for _, id := range slices.Sorted(maps.Keys(factionState.Factions)) {
+		if id == actingFactionID {
+			continue
+		}
+		for _, candidate := range domain.SortedAssets(factionState.Factions[id]) {
+			if candidate.Location.WorldID != world || candidate.Stealthy {
+				continue
+			}
+			if rule == nil || rule(candidate, acting) {
+				candidates = append(candidates, candidate)
+			}
+		}
+	}
+	return candidates
+}
+
+// HasTargets reports whether the first step of def's ability can pick a target
+// now. A step that picks no target always can.
+func HasTargets(faction *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, factionState *state.FactionState) bool {
+	if def.Ability == nil || len(def.Ability.Steps) == 0 {
+		return true
+	}
+	// deliberate: only the first step, not every step, because a later step's candidates depend on what earlier steps change (Seductress moves before it reveals).
+	step := def.Ability.Steps[0]
+	switch step.Target {
+	case domain.TargetAsset:
+		return len(assetCandidates(step.Effect, faction.ID, asset, factionState)) > 0
+	case domain.TargetFaction:
+		return len(factionCandidates(step.Effect, faction.ID, asset, factionState)) > 0
+	}
+	return true
+}
+
+// factionTargetRules narrows a step's faction candidates by its effect. An effect
+// with no rule takes every other faction (Informers).
+var factionTargetRules = map[domain.AbilityEffectType]func(candidate *domain.Faction, acting *domain.Asset) bool{
+	domain.EffectLevyCoin: func(candidate *domain.Faction, acting *domain.Asset) bool {
+		world := acting.Location.WorldID
+		return world != "" && slices.ContainsFunc(domain.SortedAssets(candidate), func(asset *domain.Asset) bool {
+			return asset.Location.WorldID == world && !asset.Stealthy
+		})
+	},
+}
+
+// factionCandidates returns every other faction, name-sorted, that passes the
+// effect's rule.
+func factionCandidates(effect domain.AbilityEffectType, actingFactionID string, acting *domain.Asset, factionState *state.FactionState) []*domain.Faction {
+	rule := factionTargetRules[effect]
+	var candidates []*domain.Faction
+	for _, candidate := range otherFactions(factionState, actingFactionID) {
+		if rule == nil || rule(candidate, acting) {
+			candidates = append(candidates, candidate)
+		}
+	}
+	return candidates
 }

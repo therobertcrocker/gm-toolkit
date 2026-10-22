@@ -39,6 +39,9 @@ const (
 	AskSelectRelocateOrders
 	AskSelectPurchaseEnablerAsset
 	AskConfirmCounterstrike
+	AskSelectAbilityAssetTarget
+	AskConfirmPayment
+	AskSelectAssetToLose
 	// AskKindCount counts the kinds above; keep it last.
 	AskKindCount
 )
@@ -156,6 +159,18 @@ type ConfirmCounterstrikePayload struct {
 	DefenderFaction *domain.Faction
 	Source          *domain.Asset
 	Attacker        *domain.Asset
+}
+type SelectAbilityAssetTargetPayload struct {
+	Asset      *domain.Asset
+	Effect     domain.AbilityEffectType
+	Candidates []*domain.Asset
+	OwnerNames map[string]string // ownerID -> faction name (candidates are rivals')
+}
+type ConfirmPaymentPayload struct{ Offer hooks.PaymentOffer }
+
+type SelectAssetToLosePayload struct {
+	Faction *domain.Faction
+	Assets  []*domain.Asset
 }
 
 // ReinforceTarget is a per-base, adapter-pre-derived reinforce cap. CanHeal/CanMax

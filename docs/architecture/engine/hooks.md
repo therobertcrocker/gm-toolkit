@@ -173,6 +173,11 @@ subset to apply; for each *elective* Cat 2 directive the collector confirms or
 declines. Non-elective directives apply automatically. `SelectModifiers` is not
 called when no offer survives the budget filter.
 
+Beside it sits `PaymentCollector` (`ConfirmPayment(PaymentOffer) (bool, error)`):
+one faction is asked whether to pay one amount. It lives here, the lowest package
+with a collector, so a hook dispatcher can ask it as well as an action or the
+bookkeeping step. `action.Collector` and `PhaseCollector` both embed it.
+
 ### Per-turn budgets
 
 A modifier or reroll may carry a `BudgetKey` (namespaced, e.g. `"tag:Warlike"`).

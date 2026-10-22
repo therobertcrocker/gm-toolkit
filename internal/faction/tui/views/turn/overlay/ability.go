@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/huh"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
@@ -46,4 +47,29 @@ func abilityLabel(asset *domain.Asset, rb *rulebook.Rulebook) string {
 		return fmt.Sprintf("%s · %s", name, def.Ability.Steps[0].Effect)
 	}
 	return name
+}
+
+// NewSelectAbilityAssetTarget picks the rival asset an ability acts on (Marketers,
+// Seditionists). Labels carry the owner. Answer: *domain.Asset. Esc cancels.
+func NewSelectAbilityAssetTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Asset, ownerNames map[string]string, rb *rulebook.Rulebook) SelectOverlay[*domain.Asset] {
+	opts := make([]huh.Option[*domain.Asset], 0, len(candidates))
+	for _, candidate := range candidates {
+		owner := ownerNames[candidate.OwnerID]
+		if owner == "" {
+			owner = candidate.OwnerID
+		}
+		opts = append(opts, huh.NewOption(fmt.Sprintf("%s · %s", assetLabel(candidate, rb), owner), candidate))
+	}
+	return NewSelect[*domain.Asset]("Target which asset?", fmt.Sprintf("%s · %s", assetName(asset, rb), effect), opts)
+}
+
+// NewConfirmPayment asks the paying faction whether to pay. The header names the
+// faction asked, because it is often not the acting one. Answer: bool.
+func NewConfirmPayment(offer hooks.PaymentOffer, rb *rulebook.Rulebook) ConfirmOverlay {
+	name := assetName(offer.Asset, rb)
+	header := fmt.Sprintf("Asked of %s", offer.Payer.Name)
+	if offer.Reason == hooks.PaymentLiftDisable {
+		return NewConfirm(fmt.Sprintf("Pay %d Coin to bring %s back into use?", offer.Amount, name), header, "Pay", "Leave it disabled")
+	}
+	return NewConfirm(fmt.Sprintf("Pay %d Coin, or %s is disabled?", offer.Amount, name), header, "Pay", "Take the disable")
 }

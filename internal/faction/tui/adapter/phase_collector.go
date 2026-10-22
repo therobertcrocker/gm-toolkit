@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 )
 
@@ -94,6 +95,10 @@ func (p *phaseCollector) SelectTransportCargo(transport *domain.Asset, eligibleC
 
 func (p *phaseCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
 	return p.adapter.selectRelocateOrders(acting, candidates, candidateWorlds, maxAssets)
+}
+
+func (p *phaseCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	return p.adapter.confirmPayment(offer)
 }
 
 var _ engine.PhaseCollector = (*phaseCollector)(nil)

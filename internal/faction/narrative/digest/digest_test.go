@@ -910,3 +910,51 @@ func TestConditionAppliedJoinsCrossAttack(t *testing.T) {
 		}
 	}
 }
+
+func TestAbilityConditionJoinsCrossAbilityStrike(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: domain.Condition{Kind: domain.ConditionDisabled, SourceAssetID: "m1"},
+				Cause: "ability", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAbilityStrike {
+		t.Errorf("cross event = %+v, want CrossAbilityStrike f1 -> f2", crossEvent)
+	}
+	if len(crossEvent.Conditions) != 1 || crossEvent.Conditions[0] != domain.ConditionDisabled {
+		t.Errorf("Conditions = %v, want [disabled]", crossEvent.Conditions)
+	}
+}
+
+func TestLevyCoinRemovalIsALossAndAnAbilityStrike(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_removed", domain.AssetRemoved{
+				FactionID: "f2", AssetID: "b-asset-1", Cause: "levy_coin", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	beat := findBeat(cycleDigest, "f2")
+	if beat == nil || len(beat.Losses) != 1 || beat.Losses[0].AssetID != "b-asset-1" || beat.Losses[0].Cause != "levy_coin" {
+		t.Errorf("f2 beat = %+v, want one levy_coin loss of b-asset-1", beat)
+	}
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAbilityStrike {
+		t.Errorf("cross event = %+v, want CrossAbilityStrike f1 -> f2", crossEvent)
+	}
+}

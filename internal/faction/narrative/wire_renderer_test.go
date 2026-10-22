@@ -176,6 +176,33 @@ func TestRenderCrossEvent_NoDamageWithCondition(t *testing.T) {
 	}
 }
 
+func TestRenderCrossEvent_AbilityStrikeWithCondition(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:       digest.CrossAbilityStrike,
+		Attacker:   digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:   digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		Conditions: []domain.ConditionKind{domain.ConditionDisabled},
+	}
+
+	for seed := range int64(len(crossAbilityTemplates)) * 4 {
+		got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(seed)))
+		wantClause := " Free Worlds League must pay to bring a disabled asset back into use."
+		if !strings.HasSuffix(got, wantClause) {
+			t.Errorf("seed %d: %q does not end with the disabled clause", seed, got)
+		}
+	}
+}
+
+func TestRenderLoss_LevyCoin(t *testing.T) {
+	move := digest.AssetMove{AssetID: "b1", AssetName: "Party Machine", Cause: "levy_coin"}
+	for seed := range int64(len(lossTemplates)) * 4 {
+		got := renderLoss(move, "Free Worlds League", rand.New(rand.NewSource(seed)))
+		if !strings.HasSuffix(got, " (forfeit to a monopoly)") {
+			t.Errorf("seed %d: %q does not end with the monopoly forfeit", seed, got)
+		}
+	}
+}
+
 func TestRenderCrossEvent_Counterstruck(t *testing.T) {
 	crossEvent := digest.CrossEvent{
 		Kind:             digest.CrossAttack,

@@ -40,6 +40,13 @@
 > this page first filed it as. The action phase fires it for an asset that Buy Asset
 > or a purchase enabler adds (not a refit). Tripwire Cells' `stealth_arrival` now
 > also catches a rival asset bought stealthed on their world.
+>
+> **As-built (A.001.6 Effort 3):** the three AP-6 assets ship as A-side abilities
+> whose lasting effect is asset state. Marketers is `disable_asset` (a contest, then
+> the target pays half the listed cost or takes `disabled`); Seditionists is
+> `block_attack` (1d4 Coin; `no_attack` checked when read); Monopoly is `levy_coin`
+> (an action, by the book's text: 1 Coin, or an asset of the target's choice). Asset
+> targets are built (`TargetAsset`); the pay question is `hooks.PaymentCollector`.
 
 ## Purpose
 
@@ -114,11 +121,11 @@ with composition: **target-selection → (stat-contest | die-roll) → effect**.
 | **roll-table-coin** | Harvesters `SWN-W1-002`, Postech Industry `SWN-W3-001`, Venture Capital `SWN-W6-001`, Pretech Manufactory `SWN-W7-001` | pure `Die`+`Outcomes`. Manufactory's "half, round up" is a payout-formula variant of the same table |
 | **roll-table → purchase-discount** | Commodities Broker `SWN-W6-003` | roll-table whose result modifies the *next purchase cost*, not Coin directly |
 | **stat-contest → reveal-stealth** | Informers `SWN-C1-002` ✅, Seductress `SWN-C2-004` | Informers wired; Seductress also relocates one hex first (contest composed after a move) |
-| **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` | success forces target to pay half an asset's cost or have it disabled |
-| **coin-drain (on attack)** | Monopoly `SWN-W4-002` | flagged `A` but reads reactive ("when it successfully attacks"); flag-vs-text mismatch flagged below |
+| **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` ✅ | success forces target to pay half an asset's cost or have it disabled |
+| **coin-drain (on attack)** | Monopoly `SWN-W4-002` ✅ | an action by the book's text (levy_coin); the reactive TOML reading is retired |
 | **relocate-other (action-spent)** | Covert Shipping `SWN-C3-003`, Covert Transit Net `SWN-C6-002` | relocate *another* asset for Coin; the transport primitive is a *carrier* reactor, so these need a sibling shape |
 | **purchase-enabler** | Pretech Logistics `SWN-F5-002` | spend the action to buy one Force asset on the world at a **surcharge** (half again, rounded up) |
-| **attach / restrict-action** | Seditionists `SWN-C4-004` | pay `1d4` Coin to attach to an enemy asset, suppressing its attack |
+| **attach / restrict-action** | Seditionists `SWN-C4-004` ✅ | pay `1d4` Coin to attach to an enemy asset, suppressing its attack |
 
 ```mermaid
 ---
@@ -167,7 +174,6 @@ of these; this table reconciles with it and completes the survey.)
 | **relocate-other (free)** | Cat 4 `AssetMovementGranter` → `grant_movement`, run by the movement phase through `engine/relocate` | Transit Web `SWN-W7-003` ✅ — same effect as the A-flag relocate, but no action |
 | **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` ✅ |
 | **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001` ✅, Franchise `SWN-W1-001` ✅ → `coin_steal` |
-| **coin-drain-on-attack** (target loses, attacker doesn't gain) | Cat 3 `MutationReactor` | Monopoly's reactive reading → `coin_drain`. Local Investments was listed here; it ships as a purchase surcharge (row below) |
 | **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `SWN-C1-003`, Boltholes `SWN-C5-003`, Medical Center `SWN-W4-003` |
 | **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
 | **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
@@ -262,9 +268,6 @@ over 13 assets; the S-side maps cleanly onto the 5 existing hook categories), so
 
 ## Open reconciliations (carried into the arc)
 
-- **Monopoly's flag-vs-text mismatch** — flagged `A` but described reactively.
-  Resolve when its primitive is built: either it's an active `coin_drain` ability
-  or an S-flag on-attack reactor.
 - **`goals.md` "intentional flavor" wording** — the data-only skip is an
   incremental seam, not a deliberate end state; reconcile the wording at
   pre-merge (already flagged in the discovery).
