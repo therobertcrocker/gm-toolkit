@@ -57,8 +57,9 @@ or the overview open question it closes.
    action keys on an effect name).
 3. **A quality is never an asset.** F4: today Refit offers Stealth as a replacement
    for any Cunning asset, and the wizard offers it as a starting asset; both would
-   make a 0-HP "Stealth" asset. Refit and the wizard skip `def.Quality`. The purchase
-   enabler buys Force assets only, and no Force quality exists (Out of Scope).
+   make a 0-HP "Stealth" asset. Refit, the wizard and the purchase enabler skip
+   `def.Quality` (the enabler since DR-5). A quality bought through the enabler stays
+   Out of Scope.
 4. **The government record is read through `FactionState.Ruler(worldID)`, and
    `IsIndependent(worldID)` names its empty answer.** One nil-safe lookup: a nil state
    or a missing entry is an independent world, one no tracked faction governs. The
@@ -74,7 +75,8 @@ or the overview open question it closes.
    the ruling faction's ratings. The completion emits `WorldGovernmentChanged`,
    `TagAdded` only when the seizer lacks T-011, and `TagRemoved` for a previous ruler
    that governs no other world and holds the tag (overview Decision 10). A seizer
-   that already rules the world changes no government.
+   that already rules the world changes no government; Seize Planet does not offer
+   such a world (DR-3).
 6. **Inside Enemy Territory counts a world that is a rival's ground.** Robert's call.
    A world counts when a rival tracked faction governs it, or when it is independent
    and a rival's homeworld. A world the acting faction governs never counts, a
@@ -90,7 +92,7 @@ or the overview open question it closes.
    the record consistent.** A hidden form group appears when T-011 is picked. Its
    options are the worlds no other faction governs, the homeworld first.
    `state.CreateFaction` takes the world and writes the entry in the same
-   rollback-safe save. F5: `DeleteFaction` would leave entries naming a faction that
+   rollback-safe save, and refuses a world another faction governs (DR-6). F5: `DeleteFaction` would leave entries naming a faction that
    no longer exists, so it clears them, and restores them if the save fails.
    Resolves the overview OQ "the wizard's world prompt".
 8. **The permission request is `hooks.PermissionCollector.RequestPermission(PermissionRequest) (bool, error)`,
@@ -106,7 +108,8 @@ or the overview open question it closes.
    ignores Esc (Effort 3 Decision Record 7: a cancel drops earlier assets' results).
    Resolves the overview OQ "the D-41 request method".
 9. **The request runs after the choice; a refusal is the action's only mutation.**
-   Buy Asset and Refit ask in `Inputs`, after the order. The purchase enabler asks
+   Buy Asset and Refit ask in `Inputs`, after the order; Buy Asset asks before a
+   quality's target, and a refusal asks for none (DR-4). The purchase enabler asks
    after its pick, and a refusal ends that asset's step with the record; earlier
    assets in the action keep their results (Effort 3 Decision Record 1). No Coin is
    charged; the action is used (D-35, overview Decision 22).
@@ -166,6 +169,44 @@ homeworld, so the expected `RequestPermission` call would never come. The test n
 sets the homeworld to `Anchorage` and buys on `Tartarus`. The code is unchanged; the
 plan's test contradicted its own Decision 15.
 
+**DR-3 — Seize Planet does not offer a world the faction governs (interim review).**
+Robert's call. Decision 5 reads the XP from the previous ruler, so a seizure of a
+world the seizer already governs paid XP from the seizer's own ratings (3 XP at
+6/6/6). Both copies of the target list, `seizePlanetTargetWorlds` (Validate) and the
+adapter's `deriveContestedWorlds`, now skip a world the faction governs. This lifts
+the Out of Scope item "Seize Planet's target list offering a world the faction already
+rules". `takeGovernment` keeps its own-world guard.
+
+**DR-4 — Buy Asset asks permission before the quality target (interim review).**
+Commit 4 asked for the quality's target, then asked permission, so a restricted
+quality could prompt for a target and then be refused. `Inputs` now asks permission
+first, and a refusal asks for no target. No effect on the SWN data today: Stealth
+needs no permission. Decision 9 still holds: the ask comes after the order.
+
+**DR-5 — The purchase enabler skips a quality (interim review).** Decision 3 kept a
+quality out of Refit and the wizard and relied on "no Force quality exists" for the
+enabler. A GM rulebook can add one, and the enabler would then raise it as a 0-HP
+asset whose `on_purchase` fires on itself. `eligiblePurchaseDefs` now skips
+`def.Quality`, as Refit and the wizard do. Not in `domain.CanPurchase`: Buy Asset
+offers qualities through it.
+
+**DR-6 — `CreateFaction` refuses a world another faction governs (interim review).**
+Decision 7 relied on the wizard's picker, which lists only the worlds no faction
+governs. `CreateFaction` now returns `ErrWorldAlreadyGoverned` for a governed world,
+so no caller can leave the old ruler with T-011 and no record. A save rollback is then
+a plain delete of the entry.
+
+**DR-7 — Capital Fleet carries the book's `A` flag (interim review).** The book gives
+A, S (`swn-assets.md`); `force_assets.toml` had only `S`, a gap older than this
+effort that the Commit 5 loader test's text exposed. With `A`, Capital Fleet appears in
+Use Asset Ability through the GM-confirm fallback (no `[ability]` block), as the other
+A-flagged assets without a built ability do.
+
+**DR-8 — Review cleanups.** `FactionState`'s methods take the receiver
+`factionState`, not `s`. `FactionState.WorldsRuledBy` (ID order) replaces
+`state.worldsRuledBy` and the seizure's `governsNoOtherWorld`. This adds a second
+accessor beside Decision 4's `Ruler`.
+
 ---
 
 ## Shared Context
@@ -189,9 +230,8 @@ plan's test contradicted its own Decision 15.
 
 - Movement permission, the arrival hold, Lobbyists, Transport Lockdown, the bypasses,
   and `PhaseCollector` embedding `PermissionCollector` (Effort 5).
-- A quality bought through the purchase enabler (no Force quality exists).
-- Seize Planet's target list offering a world the faction already rules; such a
-  seizure completes with no government change.
+- A quality bought through the purchase enabler (no Force quality exists; the enabler
+  skips one, DR-5).
 - A wizard T-011 pick when every world is governed (the select has no options).
 - The general in-transit rule (`F.028`, filed in Commit 4).
 - The `"G.012"` half of `B.001` (overview Decision 20).

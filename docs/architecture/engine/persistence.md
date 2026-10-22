@@ -75,7 +75,8 @@ then `Save`. If the save fails they **roll the in-memory change back** — the
 created entry is deleted, the deleted entry restored — so `fs.Factions` always
 matches what is on disk and the caller can safely retry. Both guard their
 preconditions with sentinel errors (`ErrFactionAlreadyExists`,
-`ErrFactionNotFound`, `ErrInvalidFactionID`).
+`ErrFactionNotFound`, `ErrInvalidFactionID`, and `ErrWorldAlreadyGoverned` when
+`CreateFaction` is given a world another faction governs).
 
 ### Static rules: the rulebook
 

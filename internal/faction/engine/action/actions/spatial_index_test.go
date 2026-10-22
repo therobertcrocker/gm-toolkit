@@ -149,8 +149,13 @@ func TestSeizePlanetTargetWorlds_ReturnsContestedFragments(t *testing.T) {
 		},
 	}
 
-	result := seizePlanetTargetWorlds(f1, indexFromState(factionState))
+	result := seizePlanetTargetWorlds(f1, factionState, indexFromState(factionState))
 	if len(result) != 1 || result[0] != "krylos" {
 		t.Errorf("seizePlanetTargetWorlds = %v, want [krylos]", result)
+	}
+
+	factionState.Governments = map[string]string{"krylos": "f1"}
+	if result := seizePlanetTargetWorlds(f1, factionState, indexFromState(factionState)); len(result) != 0 {
+		t.Errorf("seizePlanetTargetWorlds = %v, want none: f1 already governs krylos", result)
 	}
 }

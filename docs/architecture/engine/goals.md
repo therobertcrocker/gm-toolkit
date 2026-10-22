@@ -80,7 +80,7 @@ capture or removal counts as progress; reactors do not see goal output.
 `ProcessPhase`:
 
 - **Phase 0 → 1:** the [`Seize Planet`](actions.md) action emits `GoalInitiated`
-  to start the goal on a contested world.
+  to start the goal on a contested world the faction does not govern.
 - **Phase 1 (combat):** `CheckLock` returns `LockRestrictActions` allowing only
   `Attack`. `UpdateProgress` watches for the moment no unstealthed rival asset
   remains on the target world and emits `GoalPhaseAdvanced` to phase 2.

@@ -11,13 +11,15 @@ var (
 	ErrFactionAlreadyExists = errors.New("state: faction already exists")
 	ErrFactionNotFound      = errors.New("state: faction not found")
 	ErrInvalidFactionID     = errors.New("state: invalid faction id (empty)")
+	ErrWorldAlreadyGoverned = errors.New("state: world already has a ruler")
 )
 
 // CreateFaction validates uniqueness, applies the mutation to fs.Factions,
 // records governedWorldID as a world the faction rules (none when it is empty),
-// then persists to path. The mutation is atomic: if Save fails the in-memory
-// insert is rolled back, so fs.Factions always matches what is on disk and the
-// caller may safely retry.
+// then persists to path. A world another faction rules is refused: taking it
+// would leave that ruler with the tag and no record. The mutation is atomic: if
+// Save fails the in-memory insert is rolled back, so fs.Factions always matches
+// what is on disk and the caller may safely retry.
 func CreateFaction(path string, fs *FactionState, faction *domain.Faction, governedWorldID string) error {
 	if faction.ID == "" {
 		return ErrInvalidFactionID
@@ -25,7 +27,9 @@ func CreateFaction(path string, fs *FactionState, faction *domain.Faction, gover
 	if _, exists := fs.Factions[faction.ID]; exists {
 		return fmt.Errorf("state: create %q: %w", faction.ID, ErrFactionAlreadyExists)
 	}
-	previousRuler, governed := fs.Governments[governedWorldID]
+	if governedWorldID != "" && !fs.IsIndependent(governedWorldID) {
+		return fmt.Errorf("state: create %q: %s: %w", faction.ID, governedWorldID, ErrWorldAlreadyGoverned)
+	}
 	fs.Factions[faction.ID] = faction
 	if governedWorldID != "" {
 		if fs.Governments == nil {
@@ -35,21 +39,10 @@ func CreateFaction(path string, fs *FactionState, faction *domain.Faction, gover
 	}
 	if err := Save(path, fs); err != nil {
 		delete(fs.Factions, faction.ID)
-		if governedWorldID != "" {
-			restoreGovernment(fs, governedWorldID, previousRuler, governed)
-		}
+		delete(fs.Governments, governedWorldID)
 		return fmt.Errorf("state: create %q: save: %w", faction.ID, err)
 	}
 	return nil
-}
-
-// restoreGovernment puts worldID's entry back as it was before a failed save.
-func restoreGovernment(fs *FactionState, worldID, previousRuler string, governed bool) {
-	if governed {
-		fs.Governments[worldID] = previousRuler
-		return
-	}
-	delete(fs.Governments, worldID)
 }
 
 // DeleteFaction validates that id exists in fs.Factions, removes the entry and
@@ -63,7 +56,7 @@ func DeleteFaction(path string, fs *FactionState, id string) error {
 	if !exists {
 		return fmt.Errorf("state: delete %q: %w", id, ErrFactionNotFound)
 	}
-	ruled := worldsRuledBy(fs, id)
+	ruled := fs.WorldsRuledBy(id)
 	delete(fs.Factions, id)
 	for _, worldID := range ruled {
 		delete(fs.Governments, worldID)
@@ -76,14 +69,4 @@ func DeleteFaction(path string, fs *FactionState, id string) error {
 		return fmt.Errorf("state: delete %q: save: %w", id, err)
 	}
 	return nil
-}
-
-func worldsRuledBy(fs *FactionState, factionID string) []string {
-	var worlds []string
-	for worldID, ruler := range fs.Governments {
-		if ruler == factionID {
-			worlds = append(worlds, worldID)
-		}
-	}
-	return worlds
 }

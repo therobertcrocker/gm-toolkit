@@ -65,18 +65,18 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, factionState *state.FactionS
 	ba.factionID = faction.ID
 	ba.buyOrder = order
 
-	if order.Definition.Quality {
+	refusal, err := dispatch.RequestPermission(ba.registry, ba.collector, factionState, faction, order.Definition, order.World, "buy")
+	if err != nil {
+		return fmt.Errorf("buy asset: %w", err)
+	}
+	ba.refusal = refusal
+	if refusal == nil && order.Definition.Quality {
 		target, err := ba.selectQualityTarget(faction, rulebook)
 		if err != nil {
 			return fmt.Errorf("buy asset: %w", err)
 		}
 		ba.qualityTarget = target
 	}
-	refusal, err := dispatch.RequestPermission(ba.registry, ba.collector, factionState, faction, order.Definition, order.World, "buy")
-	if err != nil {
-		return fmt.Errorf("buy asset: %w", err)
-	}
-	ba.refusal = refusal
 	return nil
 }
 

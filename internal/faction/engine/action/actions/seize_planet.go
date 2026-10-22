@@ -29,7 +29,7 @@ func (s *SeizePlanet) Validate(faction *domain.Faction, factionState *state.Fact
 	if faction.ActiveGoal == nil || faction.ActiveGoal.GoalID != "G-004" || faction.ActiveGoal.ProcessPhase != 0 {
 		return false
 	}
-	return len(seizePlanetTargetWorlds(faction, s.index)) > 0
+	return len(seizePlanetTargetWorlds(faction, factionState, s.index)) > 0
 }
 
 func (s *SeizePlanet) Inputs(faction *domain.Faction, factionState *state.FactionState, _ *rulebook.Rulebook) error {
@@ -64,11 +64,12 @@ func (s *SeizePlanet) Output() ([]domain.Mutation, error) {
 }
 
 // seizePlanetTargetWorlds returns worlds where the faction has at least one
-// unstealthed asset and a rival also has at least one unstealthed asset.
-func seizePlanetTargetWorlds(faction *domain.Faction, index *world.Index) []string {
+// unstealthed asset and a rival also has at least one unstealthed asset. A world the
+// faction already governs is not a target: there is no government to take.
+func seizePlanetTargetWorlds(faction *domain.Faction, factionState *state.FactionState, index *world.Index) []string {
 	factionFragments := map[string]struct{}{}
 	for _, asset := range faction.Assets {
-		if !asset.Stealthy {
+		if !asset.Stealthy && factionState.Ruler(asset.Location.WorldID) != faction.ID {
 			factionFragments[asset.Location.WorldID] = struct{}{}
 		}
 	}

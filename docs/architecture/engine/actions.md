@@ -120,7 +120,7 @@ determined once selected. The rules behind the numbers live in
 | Bribe | Spend Coin to raise a rival Base's influence | `SelectBribeTarget` → `CoinDelta`, `InfluenceDelta` |
 | Use Asset Ability | Activate the special ability of one or more A-flagged assets | `SelectAbilityAssets` (+ ability-specific prompts) → varies by ability |
 | Abandon Goal | Drop the active goal, forfeiting this turn's income | — → `CoinDelta`, `GoalAbandoned` |
-| Seize Planet | Begin the Planetary Seizure goal (G-004) on a contested world | `SelectSeizeTarget` → `GoalInitiated` |
+| Seize Planet | Begin the Planetary Seizure goal (G-004) on a contested world the faction does not govern | `SelectSeizeTarget` → `GoalInitiated` |
 | Change Homeworld | Begin the Change Homeworld goal (G-012) toward an owned base world | `SelectChangeHomeworldTarget` → `GoalInitiated`, `GoalPhaseAdvanced` |
 
 `Seize Planet` and `Change Homeworld` are *goal-initiating* actions — they don't

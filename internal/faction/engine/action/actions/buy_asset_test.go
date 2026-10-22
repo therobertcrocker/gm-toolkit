@@ -392,6 +392,41 @@ func TestBuyAsset_QualityStealthsItsTarget(t *testing.T) {
 	}
 }
 
+func TestBuyAsset_RefusedQualityAsksForNoTarget(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	rb := stealthBuyRulebook()
+	rb.Assets["stealth"].PurchasePermission = true
+	faction := stealthBuyer(false)
+	faction.Homeworld = domain.Location{WorldID: "Anchorage"}
+	for _, id := range []string{"f1-sf-1", "f1-sf-2"} {
+		faction.Assets[id] = &domain.Asset{ID: id, DefinitionID: "sf", OwnerID: "f1", Location: domain.Location{WorldID: "Tartarus"}}
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+	effectsEngine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectBuyOrder(gomock.Any()).Return(action.BuyOrder{World: "Tartarus", Definition: rb.Assets["stealth"]}, nil)
+	collector.EXPECT().RequestPermission(gomock.Any()).Return(false, nil)
+
+	act := NewBuyAsset(collector, nil, nil, effectsEngine)
+	if err := act.Inputs(faction, factionState, rb); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := act.Resolve(faction, factionState, rb); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := act.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	if len(mutations) != 1 {
+		t.Fatalf("mutations = %+v, want only the refusal record", mutations)
+	}
+	if _, ok := mutations[0].(domain.PermissionRefused); !ok {
+		t.Errorf("mutations[0] = %T, want PermissionRefused", mutations[0])
+	}
+}
+
 func TestBuyAsset_AsksPermissionAfterTheChoice(t *testing.T) {
 	def := &domain.AssetDefinition{ID: "perm", Name: "Gunships", Category: domain.StatForce, HP: 4, Cost: 4, MinRating: 1,
 		Flags: []domain.AssetFlag{domain.FlagPermission}}

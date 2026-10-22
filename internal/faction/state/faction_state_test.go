@@ -254,6 +254,17 @@ func TestRuler(t *testing.T) {
 	}
 }
 
+func TestWorldsRuledBy(t *testing.T) {
+	var nilState *FactionState
+	if got := nilState.WorldsRuledBy("f1"); got != nil {
+		t.Errorf("nil state WorldsRuledBy = %v, want none", got)
+	}
+	governed := &FactionState{Governments: map[string]string{"Krylos": "f1", "Hadrian": "f2", "Anchorage": "f1"}}
+	if got := governed.WorldsRuledBy("f1"); !reflect.DeepEqual(got, []string{"Anchorage", "Krylos"}) {
+		t.Errorf("WorldsRuledBy(f1) = %v, want [Anchorage Krylos]", got)
+	}
+}
+
 func TestIsIndependent(t *testing.T) {
 	var nilState *FactionState
 	if !nilState.IsIndependent("Krylos") {

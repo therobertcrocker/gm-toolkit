@@ -167,6 +167,24 @@ func TestCreateFactionRecordsGovernment(t *testing.T) {
 	}
 }
 
+func TestCreateFactionRefusesAGovernedWorld(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "faction_state.toml")
+	fs := newTestState()
+	fs.Factions["rulers"] = minimalFaction("rulers")
+	fs.Governments = map[string]string{"Krylos": "rulers"}
+
+	err := CreateFaction(path, fs, minimalFaction("usurpers"), "Krylos")
+	if !errors.Is(err, ErrWorldAlreadyGoverned) {
+		t.Fatalf("CreateFaction() error = %v, want %v", err, ErrWorldAlreadyGoverned)
+	}
+	if _, exists := fs.Factions["usurpers"]; exists {
+		t.Error("usurpers created, want no faction after a refused world")
+	}
+	if got := fs.Ruler("Krylos"); got != "rulers" {
+		t.Errorf("Ruler(Krylos) = %q, want rulers untouched", got)
+	}
+}
+
 func TestCreateFactionSaveFailureRollsBackGovernment(t *testing.T) {
 	fs := newTestState()
 

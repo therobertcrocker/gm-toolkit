@@ -30,6 +30,7 @@ func enablerRulebook() *rulebook.Rulebook {
 		"F-rating":  {ID: "F-rating", Name: "Ddd High Rating Force", Category: domain.StatForce, MinRating: 9, Cost: 4, HP: 6, TechLevel: 2},
 		"W-wealth":  {ID: "W-wealth", Name: "Eee Wealth", Category: domain.StatWealth, MinRating: 1, Cost: 4, HP: 6, TechLevel: 2},
 		"F-perm":    {ID: "F-perm", Name: "Fff Permission Force", Category: domain.StatForce, MinRating: 1, Cost: 4, HP: 6, TechLevel: 4, Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"F-quality": {ID: "F-quality", Name: "Ggg Force Quality", Category: domain.StatForce, MinRating: 1, Cost: 2, TechLevel: 2, Quality: true},
 	}}
 }
 
@@ -63,8 +64,8 @@ func TestPurchaseEnabler_BuysSurcharged(t *testing.T) {
 		t.Fatalf("purchaseEnabler: %v", err)
 	}
 
-	// candidate filter: wrong category, too-high TL and too-high rating excluded; the
-	// P-flagged def is offered and asks after the pick (D-35).
+	// candidate filter: wrong category, too-high TL, too-high rating and a quality
+	// excluded; the P-flagged def is offered and asks after the pick (D-35).
 	if len(offered) != 3 {
 		t.Fatalf("offered %d candidates, want 3 (F-cheap, F-pricey, F-perm); got %v", len(offered), offered)
 	}

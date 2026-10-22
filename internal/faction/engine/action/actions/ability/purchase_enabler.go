@@ -67,14 +67,15 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 }
 
 // eligiblePurchaseDefs returns the rulebook definitions an enabler purchase may buy:
-// matching category, required tech level at or below the cap, the faction meeting the
+// matching category and not a quality (which adds no asset to place), required tech
+// level at or below the cap, the faction meeting the
 // min rating, and affordable at the surcharged price. A P-flagged def is offered; its
 // permission is asked after the pick (D-35). Name-sorted for a deterministic candidate
 // order.
 func eligiblePurchaseDefs(ctx StepContext, params *domain.PurchaseParams) []*domain.AssetDefinition {
 	var eligible []*domain.AssetDefinition
 	for _, def := range ctx.Rulebook.Assets {
-		if def.Category != params.Category {
+		if def.Category != params.Category || def.Quality {
 			continue
 		}
 		terms := domain.PurchaseTerms{

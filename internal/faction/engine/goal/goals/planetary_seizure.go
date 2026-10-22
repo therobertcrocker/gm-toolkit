@@ -1,6 +1,8 @@
 package goals
 
 import (
+	"slices"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -78,7 +80,7 @@ func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, facti
 		mutations = append(mutations, domain.TagAdded{FactionID: seizer.ID, Tag: tag, Cause: "goal_completed", CausedByFactionID: seizer.ID})
 	}
 	previous := factionState.Factions[previousRuler]
-	if previous == nil || !governsNoOtherWorld(factionState, previousRuler, worldID) {
+	if previous == nil || !slices.Equal(factionState.WorldsRuledBy(previousRuler), []string{worldID}) {
 		return mutations
 	}
 	for _, held := range previous.Tags {
@@ -87,16 +89,6 @@ func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, facti
 		}
 	}
 	return mutations
-}
-
-// governsNoOtherWorld reports whether factionID governs no world but worldID.
-func governsNoOtherWorld(factionState *state.FactionState, factionID, worldID string) bool {
-	for ruledWorld, ruler := range factionState.Governments {
-		if ruler == factionID && ruledWorld != worldID {
-			return false
-		}
-	}
-	return true
 }
 
 func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook, _ *world.Index) []domain.Mutation {

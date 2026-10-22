@@ -421,7 +421,7 @@ func deriveBribeTargets(factionState *state.FactionState, factionID string) ([]*
 	return bases, names
 }
 func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	worlds := deriveContestedWorlds(faction, a.adapter.engine.World.Index)
+	worlds := deriveContestedWorlds(faction, factionState, a.adapter.engine.World.Index)
 	names := make(map[string]string, len(worlds))
 	for _, worldID := range worlds {
 		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
@@ -441,13 +441,14 @@ func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionStat
 
 // deriveContestedWorlds ports seizePlanetTargetWorlds (seize_planet.go): worlds
 // where the faction has at least one unstealthed asset and some rival also has an
-// unstealthed asset there. Reads the engine's world Index — quiescent because the
-// engine goroutine is parked on this ask's reply, and the same source the engine's
-// own Validate consulted to enable the action.
-func deriveContestedWorlds(faction *domain.Faction, index *world.Index) []string {
+// unstealthed asset there, minus the worlds the faction already governs. Reads the
+// engine's world Index — quiescent because the engine goroutine is parked on this
+// ask's reply, and the same source the engine's own Validate consulted to enable the
+// action.
+func deriveContestedWorlds(faction *domain.Faction, factionState *state.FactionState, index *world.Index) []string {
 	factionWorlds := map[string]struct{}{}
 	for _, asset := range faction.Assets {
-		if !asset.Stealthy {
+		if !asset.Stealthy && factionState.Ruler(asset.Location.WorldID) != faction.ID {
 			factionWorlds[asset.Location.WorldID] = struct{}{}
 		}
 	}
