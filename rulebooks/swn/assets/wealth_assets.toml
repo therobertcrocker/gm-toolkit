@@ -315,7 +315,29 @@ tech_level = 4
 type = "Facility"
 flags = ["S"]
 counter = ""
-description = "Fully-equipped medical facilities. If a Special Forces or Military Unit asset on this planet is destroyed, the faction may immediately pay half its purchase cost to restore it at 1 HP. Any Repair Asset action on this planet costs 1 fewer Coin for Special Forces and Military Units."
+description = "Fully-equipped medical facilities. Once between turns, if a Special Forces or Military Unit asset on this planet is destroyed, the faction may immediately pay half its purchase cost to restore it at 1 HP. Any Repair Asset action on this planet costs 1 fewer Coin for Special Forces and Military Units."
+
+[[assets.MedicalCenter.effects]]
+trigger = "lethal_damage"
+effect  = "restore_asset"
+[assets.MedicalCenter.effects.filters]
+owner      = "own"
+scope      = "world"
+asset_type = ["Special Forces", "Military Unit"]
+[assets.MedicalCenter.effects.gates]
+once_per = "asset"
+
+[[assets.MedicalCenter.effects]]
+trigger = "repair_cost_query"
+effect  = "discount_repair"
+[assets.MedicalCenter.effects.filters]
+owner      = "own"
+scope      = "world"
+asset_type = ["Special Forces", "Military Unit"]
+[assets.MedicalCenter.effects.gates]
+no_stack = true
+[assets.MedicalCenter.effects.discount_repair]
+amount = 1
 
 [assets.Bank]
 id = "SWN-W4-004"
@@ -548,6 +570,13 @@ description = "A coordinated financial and legal assault on a rival's holdings. 
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "2d10"
+
+[[assets.HostileTakeover.effects]]
+trigger = "lethal_damage"
+effect  = "seize_target"
+[assets.HostileTakeover.effects.filters]
+owner = "rival"
+scope = "self"
 
 [assets.TransitWeb]
 id = "SWN-W7-003"

@@ -37,6 +37,7 @@ func TestNewPurchasedAsset(t *testing.T) {
 
 func TestAsset_ActiveAndTargetable(t *testing.T) {
 	disabled := []domain.Condition{{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}}
+	sheltered := []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}
 	cases := []struct {
 		name           string
 		asset          domain.Asset
@@ -48,6 +49,7 @@ func TestAsset_ActiveAndTargetable(t *testing.T) {
 		{"unmaintained", domain.Asset{Ready: true, Maintained: false, CurrentHP: 1}, false, false},
 		{"destroyed", domain.Asset{Ready: true, Maintained: true, CurrentHP: 0}, false, false},
 		{"disabled", domain.Asset{Ready: true, Maintained: true, CurrentHP: 1, Conditions: disabled}, false, true},
+		{"sheltered", domain.Asset{Ready: true, Maintained: true, CurrentHP: 2, Conditions: sheltered}, false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,9 +1,12 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -28,19 +31,25 @@ func registerSelfDamage(ctx effect.RegisterContext) {
 		&selfDamageReactor{
 			factionID: ctx.Faction.ID,
 			assetID:   ctx.Asset.ID,
+			def:       ctx.Def,
 			counter:   ctx.Entry.Trigger == domain.TriggerOwnCounterHit,
 			amount:    ctx.Entry.SelfDamage.Amount,
 			roller:    ctx.Roller,
+			registry:  ctx.Registry,
 		},
 	)
 }
 
+// selfDamageReactor keeps its definition and the registry, because a lethal
+// self-hit asks the Cat 6 interceptors (D-10).
 type selfDamageReactor struct {
 	factionID string
 	assetID   string
+	def       *domain.AssetDefinition
 	counter   bool
 	amount    domain.DiceRoll
 	roller    domain.Roller
+	registry  *hooks.Registry
 }
 
 func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
@@ -68,6 +77,18 @@ func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, facti
 		CausedByFactionID: reactor.factionID,
 	}}
 	if effectiveHP-damage <= 0 {
+		// deliberate: only automatic interceptors, not elective ones, because a reactor has no collector to ask (D-10).
+		saved := dispatch.InterceptLethalAutomatic(reactor.registry, hooks.LethalContext{
+			Target:       asset,
+			TargetDef:    reactor.def,
+			HPAfter:      effectiveHP - damage,
+			Damage:       damage,
+			FactionState: factionState,
+			Batch:        append(slices.Clone(mutations), extra...),
+		})
+		if saved != nil {
+			return append(extra, saved...)
+		}
 		extra = append(extra, domain.AssetRemoved{
 			FactionID:         reactor.factionID,
 			AssetID:           reactor.assetID,

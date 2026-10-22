@@ -110,6 +110,9 @@ func (SmokeActionCollector) ConfirmCounterstrike(_ *domain.Faction, _ *domain.As
 func (SmokeActionCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
 	return false, action.ErrActionUnavailable
 }
+func (SmokeActionCollector) ConfirmSacrifice(_ hooks.SacrificeOffer) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
 func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {
 	return action.ExpandInfluenceOrder{}, action.ErrActionUnavailable
 }

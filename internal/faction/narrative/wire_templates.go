@@ -146,6 +146,15 @@ var conditionClauses = map[domain.ConditionKind]string{
 	domain.ConditionNoAttack:  "{attacker}'s agitators keep one of {defender}'s assets from attacking.",
 }
 
+// interceptionClauses name each Cat 6 save without naming a side, because the
+// saved asset can be the attacker's (a counter kill) or the defender's.
+var interceptionClauses = map[domain.SpecialEffectType]string{
+	domain.SpecialSeizeTarget:   "A stricken asset changed hands in a hostile takeover.",
+	domain.SpecialRestoreAsset:  "Medics pulled a stricken asset back from the brink.",
+	domain.SpecialSacrificeSelf: "A false front fell in place of the asset it covered.",
+	domain.SpecialShelterAsset:  "A stricken asset went to ground in its boltholes.",
+}
+
 const counterstruckClause = "{defender}'s countermeasures turned the attack back on {attacker}."
 
 var crossNoDamageTemplates = []string{

@@ -152,10 +152,10 @@ is the string written to history; the rules behind the numbers live in
 
 **Assets**
 - `asset_added` / `asset_removed` — add to / drop from the roster
-- `asset_hp_delta` — adjust an asset's HP
+- `asset_hp_delta` — adjust an asset's HP. A Cat 6 save keeps the hit and sets the HP it saves at with a second delta, caused by the save's effect
 - `asset_maintained_flag` — set the maintained flag
 - `asset_stealth_applied` / `asset_stealth_cleared` — toggle stealth
-- `asset_condition_applied` / `asset_condition_cleared` — add / drop a condition, keyed on kind and source asset (Saboteurs' `no_ability`)
+- `asset_condition_applied` / `asset_condition_cleared` — add / drop a condition, keyed on kind and source asset (Saboteurs' `no_ability`, Marketers' `disabled`, Seditionists' `no_attack`, Boltholes' `sheltered`)
 - `asset_owner_changed` — move one asset to another faction with its ID and order; its cargo keeps its old owner (Treachery)
 - `asset_moved` — set an asset's Location (cargo follows a transport; also emitted by the relocate ability with `Cause: "ability"`)
 

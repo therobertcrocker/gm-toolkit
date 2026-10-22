@@ -81,3 +81,17 @@ type AttackEligibilityRule interface {
 type AssetMovementGranter interface {
 	GrantMovementAbilities(faction *domain.Faction) []MovementAbility
 }
+
+// RepairCostQuery is the state a repair-cost chain carries from hook to hook.
+// Applied holds the effect names whose no_stack gate has already fired.
+type RepairCostQuery struct {
+	Cost    int
+	Applied map[string]bool
+}
+
+// RepairCostModifier adjusts what Repair Asset charges to repair one asset
+// (Cat 4). repairer is the faction that repairs; asset and def are the asset
+// repaired.
+type RepairCostModifier interface {
+	ModifyRepairCost(repairer *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, query *RepairCostQuery)
+}

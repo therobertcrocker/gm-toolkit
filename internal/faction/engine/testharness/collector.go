@@ -29,6 +29,7 @@ type ScriptedCollector struct {
 	ConfirmRedirectToBaseFn       func(*domain.Faction, *domain.Base, int) (bool, error)
 	ConfirmCounterstrikeFn        func(*domain.Faction, *domain.Asset, *domain.Asset) (bool, error)
 	ConfirmPaymentFn              func(hooks.PaymentOffer) (bool, error)
+	ConfirmSacrificeFn            func(hooks.SacrificeOffer) (bool, error)
 	SelectExpandInfluenceOrderFn  func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn      func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
@@ -115,6 +116,13 @@ func (c *ScriptedCollector) ConfirmCounterstrike(defenderFaction *domain.Faction
 func (c *ScriptedCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
 	if c.ConfirmPaymentFn != nil {
 		return c.ConfirmPaymentFn(offer)
+	}
+	return false, nil
+}
+
+func (c *ScriptedCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, error) {
+	if c.ConfirmSacrificeFn != nil {
+		return c.ConfirmSacrificeFn(offer)
 	}
 	return false, nil
 }

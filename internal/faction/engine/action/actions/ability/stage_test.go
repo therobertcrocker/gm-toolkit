@@ -90,6 +90,15 @@ func TestAssetCandidates(t *testing.T) {
 			t.Errorf("candidates = %v, want %v", got, want)
 		}
 	})
+
+	t.Run("a sheltered rival asset is not a candidate", func(t *testing.T) {
+		factionState, acting := makeAssetTargetState()
+		factionState.Factions["f2"].Assets["b2"].Conditions = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}
+		got := assetIDs(assetCandidates(fixtureAssetEffect, "f1", acting, factionState))
+		if want := []string{"c1"}; !slices.Equal(got, want) {
+			t.Errorf("candidates = %v, want %v", got, want)
+		}
+	})
 }
 
 func TestResolveTarget_Asset(t *testing.T) {

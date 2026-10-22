@@ -789,7 +789,8 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook)
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		def := rulebook.Assets[asset.DefinitionID]
-		if def != nil && def.Speed > 0 {
+		// deliberate: a sheltered asset stays put, not moves, because Boltholes make it unusable until repaired (Effort 2 Decision 11).
+		if def != nil && def.Speed > 0 && !asset.HasCondition(domain.ConditionSheltered) {
 			eligible = append(eligible, asset)
 		}
 	}
@@ -803,7 +804,7 @@ func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset,
 			continue
 		}
 		def := rulebook.Assets[asset.DefinitionID]
-		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 {
+		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) {
 			continue
 		}
 		if slices.Contains(profile.CargoTypes, def.Type) &&

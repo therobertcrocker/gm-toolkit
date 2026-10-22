@@ -160,7 +160,7 @@ flowchart LR
 ## S-flag — the effects engine (passive / reactive)
 
 The `S`-flag specials register [hooks](hooks.md) at cycle start through
-`EffectsEngine.ApplyAll`. Most effects map to one of the **five hook
+`EffectsEngine.ApplyAll`. Most effects map to one of the **six hook
 categories**, numbered as in `hooks/doc.go` (Cat 4 is the `RuleModifier` family,
 Cat 5 is `TieResolver`). Phase-event effects are the exception: a turn-start
 effect fires from a direct read of the asset's definition at the start of the
@@ -175,8 +175,8 @@ of these; this table reconciles with it and completes the survey.)
 | **relocate-other (free)** | Cat 4 `AssetMovementGranter` → `grant_movement`, run by the movement phase through `engine/relocate` | Transit Web `SWN-W7-003` ✅ — same effect as the A-flag relocate, but no action |
 | **self-damage-on-attack** | Cat 3 `MutationReactor` | Zealots `SWN-F3-001` ✅ |
 | **coin-steal-on-attack** (once/turn) | Cat 3 `MutationReactor` | Blockade Fleet `SWN-F5-001` ✅, Franchise `SWN-W1-001` ✅ → `coin_steal` |
-| **death-redirect** (intercept a killing blow) | Cat 3 `MutationReactor` | False Front `SWN-C1-003`, Boltholes `SWN-C5-003`, Medical Center `SWN-W4-003` |
-| **acquire-on-kill** (take the asset instead of destroying) | Cat 3 `MutationReactor` | Hostile Takeover `SWN-W7-002`, Treachery `SWN-C7-003` |
+| **death-redirect** (intercept a killing blow) | Cat 6 `LethalInterceptor` | False Front `SWN-C1-003` ✅ (`sacrifice_self`), Boltholes `SWN-C5-003` ✅ (`shelter_asset`), Medical Center `SWN-W4-003` ✅ (`restore_asset`) |
+| **acquire-on-kill** (take the asset instead of destroying) | Cat 6 `LethalInterceptor` (Hostile Takeover); Cat 3 `MutationReactor` → `capture_target` (Treachery) | Hostile Takeover `SWN-W7-002` ✅ (`seize_target`), Treachery `SWN-C7-003` ✅ |
 | **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
 | **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` (on arrival); turn-start phase route (per turn) | Tripwire Cells `SWN-C4-003` ✅, Panopticon Matrix `SWN-C8-001` ✅ |
 | **start-stealthed** | purchase phase route (direct definition read, not a hook) | Psychic Assassins `SWN-F5-003` ✅ |
@@ -189,6 +189,7 @@ of these; this table reconciles with it and completes the survey.)
 | **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `SWN-C2-002` (no abilities), Transport Lockdown `SWN-C6-001` (no transport in) |
 | **cost-ignore** (skip a Coin loss, once/turn) | Cat 3 `MutationReactor` | Bank `SWN-W4-004` ✅ |
 | **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` → `cost_surcharge` | Local Investments `SWN-W1-003` ✅ |
+| **repair discount** (cheaper Repair Asset on its world) | Cat 4 `RepairCostModifier` → `discount_repair` | Medical Center `SWN-W4-003` ✅ |
 | **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `WorldTechLevelModifier` → `tech_level_floor` | Laboratory `SWN-W3-002` ✅, Pretech Researchers `SWN-W5-002` ✅, R&D Department `SWN-W6-002` ✅ |
 | **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `SWN-C7-001` (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
 | **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` ✅ |

@@ -19,6 +19,8 @@ const (
 	PaymentAvoidDisable PaymentReason = "avoid_disable"
 	// PaymentLiftDisable: pay to lift a disabled condition at the owner's turn start.
 	PaymentLiftDisable PaymentReason = "lift_disable"
+	// PaymentRestore: pay to restore an asset at 1 HP instead of losing it (Medical Center).
+	PaymentRestore PaymentReason = "restore"
 )
 
 // PaymentOffer asks Payer whether to pay Amount Coin for Reason on Asset.
@@ -34,4 +36,20 @@ type PaymentOffer struct {
 // a hook dispatcher all ask the same question (A.001.6 overview Decision 19).
 type PaymentCollector interface {
 	ConfirmPayment(offer PaymentOffer) (bool, error)
+}
+
+// SacrificeOffer asks Owner whether to give up Sacrifice so that Saves survives a
+// killing blow (False Front).
+type SacrificeOffer struct {
+	Owner     *domain.Faction
+	Sacrifice *domain.Asset
+	Saves     *domain.Asset
+}
+
+// InterceptCollector asks the owner of an elective Cat 6 interceptor: give up one
+// asset, or pay to keep another. action.Collector embeds it; no phase destroys an
+// asset by damage, so PhaseCollector does not.
+type InterceptCollector interface {
+	PaymentCollector
+	ConfirmSacrifice(offer SacrificeOffer) (bool, error)
 }

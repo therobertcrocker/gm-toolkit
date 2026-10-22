@@ -95,6 +95,24 @@ func TestDispatch_LevyCoin(t *testing.T) {
 		}
 	})
 
+	t.Run("a sheltered asset is not offered for the loss", func(t *testing.T) {
+		faction, acting, def, factionState, assetRulebook := makeMonopolyFixture(0)
+		factionState.Factions["f2"].Assets["b1"].Conditions = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}
+		collector := mocks.NewMockCollector(gomock.NewController(t))
+		selectF2(collector)
+		collector.EXPECT().SelectAssetToLose(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ *domain.Faction, assets []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+				if got, want := assetIDs(assets), []string{"b2"}; !slices.Equal(got, want) {
+					t.Errorf("offered assets = %v, want %v", got, want)
+				}
+				return assets[0], nil
+			})
+
+		if _, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), assetRulebook, nil); err != nil {
+			t.Fatalf("Dispatch: %v", err)
+		}
+	})
+
 	t.Run("no asset chosen is an error, not a recoverable skip (Decision Record 5)", func(t *testing.T) {
 		faction, acting, def, factionState, rulebook := makeMonopolyFixture(0)
 		collector := mocks.NewMockCollector(gomock.NewController(t))
@@ -136,6 +154,15 @@ func TestFactionCandidates(t *testing.T) {
 		factionState.Factions["f3"].Assets["c1"].Location.WorldID = "Hadrian"
 		if got := factionCandidates(domain.EffectLevyCoin, "f1", acting, factionState); len(got) != 0 {
 			t.Errorf("candidates = %v, want none", factionIDs(got))
+		}
+	})
+
+	t.Run("a faction whose only unstealthed asset on the world is sheltered is not a Monopoly candidate", func(t *testing.T) {
+		factionState, acting := makeAssetTargetState()
+		factionState.Factions["f2"].Assets["b2"].Conditions = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}
+		got := factionIDs(factionCandidates(domain.EffectLevyCoin, "f1", acting, factionState))
+		if want := []string{"f3"}; !slices.Equal(got, want) {
+			t.Errorf("candidates = %v, want %v", got, want)
 		}
 	})
 

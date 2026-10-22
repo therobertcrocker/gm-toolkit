@@ -124,6 +124,10 @@ func TestPlanetarySeizure_Phase1_NoRivalAdvances(t *testing.T) {
 		{"stealthed rival", map[string]*domain.Asset{
 			"r1": {ID: "r1", OwnerID: "f2", Location: domain.Location{WorldID: "Krylos"}, Stealthy: true},
 		}},
+		{"sheltered rival", map[string]*domain.Asset{
+			"r1": {ID: "r1", OwnerID: "f2", Location: domain.Location{WorldID: "Krylos"},
+				Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}},
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,16 +1,18 @@
-// Package hooks defines the five reactive-mechanic hook families and the
+// Package hooks defines the six reactive-mechanic hook families and the
 // scoped registry that binds them.
 //
-// # The five categories
+// # The six categories
 //
 //	Cat 1  RollModifier / RollOfferFilter  pre-roll dice augmentation and offer removal  interfaces.go
 //	Cat 2  RollResultHook                  post-roll inspection & rerolls                interfaces.go
 //	Cat 3  MutationReactor                 post-action mutation reactions                interfaces.go
 //	Cat 4  RuleModifier family             query-time rule alterations                   rule_modifier.go
 //	Cat 5  TieResolver                     tie-point rule overrides                      interfaces.go
+//	Cat 6  LethalInterceptor               lethal-damage interception                    lethal.go
 //
 // Cat 4 is a typed family (AssetCostModifier, MaintenanceCostModifier,
-// WorldTechLevelModifier, AttackEligibilityRule, AssetMovementGranter) rather
+// WorldTechLevelModifier, AttackEligibilityRule, AssetMovementGranter,
+// RepairCostModifier) rather
 // than a single interface,
 // because each question has a different typed signature and a generic interface
 // would lose compile-time safety.

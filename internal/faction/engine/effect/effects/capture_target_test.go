@@ -89,6 +89,13 @@ func TestCaptureTarget(t *testing.T) {
 			},
 		},
 		{
+			name: "the capture fizzles when the batch leaves the target at 0 HP (sheltered)",
+			mutations: []domain.Mutation{
+				domain.AssetHPDelta{FactionID: "beta", AssetID: "x", Delta: -6, Cause: "attack", CausedByFactionID: "alpha", CausedByAssetID: "treachery"},
+				domain.AssetHPDelta{FactionID: "beta", AssetID: "x", Delta: 2, Cause: "shelter_asset", CausedByFactionID: "beta"},
+			},
+		},
+		{
 			name: "a tie's counter that kills Treachery still lets the capture land (Decision 15)",
 			mutations: []domain.Mutation{
 				treacheryHit("treachery", false),
@@ -119,6 +126,18 @@ func TestCaptureTarget_InactiveTreacheryTakesNothing(t *testing.T) {
 				t.Errorf("mutations = %+v, want none", got)
 			}
 		})
+	}
+}
+
+// TestCaptureTarget_FizzlesOnAMovedTarget: the batch already moves the target (a
+// Hostile Takeover seized it), so the Treachery fizzles and is not spent.
+func TestCaptureTarget_FizzlesOnAMovedTarget(t *testing.T) {
+	factionState := treacheryState()
+	reactors := treacheryReactors(t, factionState, "treachery")
+	seized := domain.AssetOwnerChanged{FactionID: "beta", AssetID: "x", ToFactionID: "alpha", Cause: "seize_target", CausedByFactionID: "alpha"}
+
+	if got := runReactors(reactors, []domain.Mutation{treacheryHit("treachery", false), seized}, factionState); len(got) != 0 {
+		t.Errorf("mutations = %+v, want none", got)
 	}
 }
 

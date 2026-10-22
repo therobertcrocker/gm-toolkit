@@ -112,10 +112,10 @@ determined once selected. The rules behind the numbers live in
 |--------|--------------|-----------------|
 | Sell Asset | Remove an asset for half its Cost back | `SelectAsset` → `AssetRemoved`, `CoinDelta` |
 | Repair Faction | Heal the faction's own HP, free | — → `FactionHPDelta` |
-| Repair Asset | Heal damaged assets; cost escalates per heal on the same asset | `SelectRepairOrders` → `AssetHPDelta`, `CoinDelta` |
+| Repair Asset | Heal damaged assets; cost escalates per heal on the same asset, and a `RepairCostModifier` can lower each asset's price | `SelectRepairOrders` → `AssetHPDelta`, `CoinDelta` (`AssetConditionCleared` when a sheltered asset reaches full HP) |
 | Buy Asset | Purchase an asset onto a world, inactive until next turn | `SelectBuyOrder` (`SelectAsset` for a stealth target) → `AssetAdded`, `CoinDelta` (`AssetStealthApplied`, `PurchaseDiscountConsumed`) |
 | Refit Asset | Swap an asset for another of its category, paying the cost difference | `SelectRefitOrder` → `AssetRemoved`, `AssetAdded`, `CoinDelta` |
-| Attack | Resolve asset combat against rivals at a world/hex; damage may redirect to a base | `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase` → `AssetHPDelta`, `AssetRemoved`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed`, `AssetStealthCleared` |
+| Attack | Resolve asset combat against rivals at a world/hex; damage may redirect to a base | `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase` (`ConfirmSacrifice`, `ConfirmPayment` for a Cat 6 interceptor) → `AssetHPDelta`, `AssetRemoved`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed`, `AssetStealthCleared` (a Cat 6 interception's mutations in place of `AssetRemoved`) |
 | Expand Influence | Place or reinforce a Base of Influence; a new base draws rival free attacks | `SelectExpandInfluenceOrder`, `ConfirmRivalFreeAttack`, `SelectBaseAttackers` → `BaseAdded`, `BaseHealed`, `BaseExpanded`, `CoinDelta`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed` |
 | Bribe | Spend Coin to raise a rival Base's influence | `SelectBribeTarget` → `CoinDelta`, `InfluenceDelta` |
 | Use Asset Ability | Activate the special ability of one or more A-flagged assets | `SelectAbilityAssets` (+ ability-specific prompts) → varies by ability |

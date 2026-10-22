@@ -306,6 +306,25 @@ effect  = "capture_target"` + filters,
 			wantErr: `effect "capture_target" requires a [capture_target] block`,
 		},
 		{
+			name: "discount_repair missing its block",
+			body: `
+[[assets.Machine.effects]]
+trigger = "repair_cost_query"
+effect  = "discount_repair"` + filters,
+			wantErr: `effect "discount_repair" requires a [discount_repair] block`,
+		},
+		{
+			name: "discount_repair amount 0",
+			body: `
+[[assets.Machine.effects]]
+trigger = "repair_cost_query"
+effect  = "discount_repair"` + filters + `
+[assets.Machine.effects.discount_repair]
+amount = 0
+`,
+			wantErr: "discount_repair amount must be > 0, got 0",
+		},
+		{
 			name: "no-damage attack with no own_attack_hit effect",
 			body: `
 [assets.Machine.attack]

@@ -189,6 +189,32 @@ func TestEligibleCargoForTransport(t *testing.T) {
 	}
 }
 
+var shelteredByBoltholes = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}
+
+func TestEligibleMovableAssets_SkipsSheltered(t *testing.T) {
+	free := &domain.Asset{ID: "t-free", DefinitionID: "transport-def", OwnerID: "alpha"}
+	sheltered := &domain.Asset{ID: "t-sheltered", DefinitionID: "transport-def", OwnerID: "alpha", Conditions: shelteredByBoltholes}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{free.ID: free, sheltered.ID: sheltered}}
+
+	eligible := eligibleMovableAssets(faction, transportRulebook())
+
+	if len(eligible) != 1 || eligible[0].ID != "t-free" {
+		t.Errorf("eligible = %v, want only t-free", eligible)
+	}
+}
+
+func TestEligibleCargoForTransport_SkipsSheltered(t *testing.T) {
+	loc := domain.Location{WorldID: "world-a"}
+	rb := transportRulebook()
+	transport := &domain.Asset{ID: "transport-1", DefinitionID: "transport-def", OwnerID: "alpha", Location: loc}
+	sheltered := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc, Conditions: shelteredByBoltholes}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, sheltered.ID: sheltered}}
+
+	if eligible := eligibleCargoForTransport(faction, transport, rb.Assets["transport-def"].Transport, rb); len(eligible) != 0 {
+		t.Errorf("eligible = %v, want none", eligible)
+	}
+}
+
 func TestPrepareMovementDecisions_MaxCargoViolation(t *testing.T) {
 	rb := transportRulebook()
 

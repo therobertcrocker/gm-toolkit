@@ -52,6 +52,17 @@ func (stub *stubAssetMovementGranter) GrantMovementAbilities(_ *domain.Faction) 
 	return nil
 }
 
+type stubRepairCostModifier struct{}
+
+func (stub *stubRepairCostModifier) ModifyRepairCost(_ *domain.Faction, _ *domain.Asset, _ *domain.AssetDefinition, _ *hooks.RepairCostQuery) {
+}
+
+type stubLethalInterceptor struct{ name string }
+
+func (stub *stubLethalInterceptor) OfferInterception(_ hooks.LethalContext) *hooks.Interception {
+	return nil
+}
+
 // --- Cat 1: RollModifier ---
 
 func TestRollModifier_RegistrationOrderPreserved(t *testing.T) {
@@ -350,6 +361,8 @@ func TestClearAsset_RemovesOnlyThatAssetsBucket(t *testing.T) {
 	registry.RegisterRollModifier(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubRollModifier{})
 	registry.RegisterMutationReactor(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubMutationReactor{})
 	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubAssetMovementGranter{})
+	registry.RegisterLethalInterceptor(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubLethalInterceptor{})
+	registry.RegisterRepairCostModifier(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubRepairCostModifier{})
 	registry.RegisterMutationReactor(hooks.AssetScope("f1", "asset-Y"), "asset-Y", &stubMutationReactor{})
 	registry.RegisterMutationReactor(hooks.AssetScope("f2", "asset-X"), "f2-asset-X", &stubMutationReactor{})
 	registry.RegisterMutationReactor(hooks.FactionScope("f1"), "faction", &stubMutationReactor{})
@@ -365,9 +378,30 @@ func TestClearAsset_RemovesOnlyThatAssetsBucket(t *testing.T) {
 	if got := registry.AssetMovementGrantersForAsset("f1", "asset-X"); len(got) != 0 {
 		t.Errorf("movement granters under f1/asset-X = %v, want none", got)
 	}
+	if got := registry.LethalInterceptorsForAsset("f1", "asset-X"); len(got) != 0 {
+		t.Errorf("lethal interceptors under f1/asset-X = %v, want none", got)
+	}
+	if got := registry.RepairCostModifiersForAsset("f1", "asset-X"); len(got) != 0 {
+		t.Errorf("repair-cost modifiers under f1/asset-X = %v, want none", got)
+	}
 	if len(registry.MutationReactorsForAsset("f1", "asset-Y")) != 1 ||
 		len(registry.MutationReactorsForAsset("f2", "asset-X")) != 1 ||
 		len(registry.MutationReactorsForFaction("f1")) != 1 {
 		t.Error("ClearAsset removed a hook outside f1/asset-X")
+	}
+}
+
+// --- Cat 6: LethalInterceptor ---
+
+func TestLethalInterceptor_ForAssetReturnsOnlyThatBucket(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterLethalInterceptor(hooks.AssetScope("f1", "asset-X"), "x", &stubLethalInterceptor{name: "x"})
+	registry.RegisterLethalInterceptor(hooks.AssetScope("f1", "asset-Y"), "y", &stubLethalInterceptor{name: "y"})
+
+	for _, testCase := range []struct{ assetID, want string }{{"asset-X", "x"}, {"asset-Y", "y"}} {
+		got := registry.LethalInterceptorsForAsset("f1", testCase.assetID)
+		if len(got) != 1 || got[0].Source != testCase.want {
+			t.Errorf("LethalInterceptorsForAsset(f1, %s) = %v, want only %q", testCase.assetID, got, testCase.want)
+		}
 	}
 }

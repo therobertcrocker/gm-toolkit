@@ -108,6 +108,7 @@ type CrossEvent struct {
 	StealthBroken          bool
 	Conditions             []domain.ConditionKind
 	Counterstruck          bool
+	Interceptions          []domain.SpecialEffectType
 }
 
 type BaseHitDetail struct {

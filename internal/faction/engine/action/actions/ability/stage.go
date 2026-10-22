@@ -176,9 +176,9 @@ var assetTargetRules = map[domain.AbilityEffectType]func(candidate, acting *doma
 	},
 }
 
-// assetCandidates returns other factions' unstealthed assets on the acting asset's
-// world, in faction-ID then asset-ID order, that pass the effect's rule. An asset
-// in transit has no world and no candidates.
+// assetCandidates returns other factions' unstealthed, unsheltered assets on the
+// acting asset's world, in faction-ID then asset-ID order, that pass the effect's
+// rule. An asset in transit has no world and no candidates.
 func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, acting *domain.Asset, factionState *state.FactionState) []*domain.Asset {
 	world := acting.Location.WorldID
 	if world == "" {
@@ -191,7 +191,8 @@ func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, ac
 			continue
 		}
 		for _, candidate := range domain.SortedAssets(factionState.Factions[id]) {
-			if candidate.Location.WorldID != world || candidate.Stealthy {
+			// deliberate: skip a sheltered asset, not offer it, because Boltholes make it untouchable to every ability, not only to Attack (Effort 2 Decision 11).
+			if candidate.Location.WorldID != world || candidate.Stealthy || candidate.HasCondition(domain.ConditionSheltered) {
 				continue
 			}
 			if rule == nil || rule(candidate, acting) {
@@ -231,7 +232,7 @@ var factionTargetRules = map[domain.AbilityEffectType]func(candidate *domain.Fac
 	domain.EffectLevyCoin: func(candidate *domain.Faction, acting *domain.Asset) bool {
 		world := acting.Location.WorldID
 		return world != "" && slices.ContainsFunc(domain.SortedAssets(candidate), func(asset *domain.Asset) bool {
-			return asset.Location.WorldID == world && !asset.Stealthy
+			return asset.Location.WorldID == world && !asset.Stealthy && !asset.HasCondition(domain.ConditionSheltered)
 		})
 	},
 }

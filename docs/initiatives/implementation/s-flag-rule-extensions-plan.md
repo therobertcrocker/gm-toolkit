@@ -281,10 +281,8 @@ Each is answered by the named effort plan.
 | Effort | Question |
 |---|---|
 | 1 | *(Resolved in the [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
-| 3 | *(Resolved in the [Effort 3 plan](s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
-| 2 | Open Question 1 (Decision 7) |
-| 2 | When `sheltered` clears: a reactor on a repair that reaches full HP, or the bookkeeping step |
-| 2 | The tie case: today the counter branch runs even when the attack killed the defender (`attack.go:195`), so a sheltered or captured defender would still counter. Decide whether an intercepted defender counters |
+| 3 | *(Resolved in the [Effort 3 plan](completed/s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
+| 2 | *(Resolved in the [Effort 2 plan](s-flag-rule-extensions-effort-2-plan.md), Decisions 1–3, 9 and 12: the hook offers and the dispatcher decides; the outcome is its mutations, with a second `AssetHPDelta` that sets the HP; the Attack tracker folds them; an intercepted defender still counters on a tie; Repair Asset clears `sheltered` at full HP)* |
 | 4 | The Cat 4 permission family's shape (`permission_query`, `require_permission`, `grant_permission`) and the D-41 request method |
 | 4 | `PermissionRefused` fields and the wizard's world prompt for a `T-011` pick (Decisions 10 and 22) |
 | 5 | Decision 12's mark: Lobbyists' withdrawal only (lean) or every refusal |
@@ -311,8 +309,8 @@ best at the Effort 1 boundary, since Efforts 2, 3 and 5 build on its model.
 | # | Effort | Scope | Assets | Plan |
 |---|--------|-------|--------|------|
 | 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](completed/s-flag-rule-extensions-effort-1-plan.md) |
-| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | own session → `-effort-2-plan.md` |
-| 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](s-flag-rule-extensions-effort-3-plan.md) |
+| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | [`-effort-2-plan.md`](s-flag-rule-extensions-effort-2-plan.md) |
+| 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](completed/s-flag-rule-extensions-effort-3-plan.md) |
 | 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | own session → `-effort-4-plan.md` |
 | 5 | Movement permission | The arrival check and hold (`MovementOrderHeld`), the relocate request, the bypasses, the Lockdown `locked_out` condition | Lobbyists, Transport Lockdown, Deep Strike Landers, Blockade Runners | own session → `-effort-5-plan.md` |
 
@@ -490,7 +488,7 @@ commits:
 
 Discovery: State Held on an Asset, Prompt to a Faction That Is Not Acting.
 
-The [Effort 3 plan](s-flag-rule-extensions-effort-3-plan.md) carries the spec. Its
+The [Effort 3 plan](completed/s-flag-rule-extensions-effort-3-plan.md) carries the spec. Its
 commits:
 
 - `fix: abilities in one action see earlier assets' results` — one `ability.NewView`
@@ -526,16 +524,22 @@ commits:
 Discovery: Lethal Damage Interception (Cat 6). Open Question 1 (Decision 7) is the
 centre of this plan.
 
-- `feat: cat 6 lethal interception` — the family, its registry buckets, dispatch at
-  `applyAssetDamage` and in the `self_damage` reactor (automatic only, D-10), the D-7
-  walk order, and the tracker outcome.
-- `feat: Boltholes` — `sheltered`; `Active()` and `Targetable()` read it (the separate
-  defender test lands in Effort 3, Decision 6); destroyed with its Boltholes; cleared
-  at full HP.
-- `feat: False Front` — elective sacrifice.
-- `feat: Medical Center` — elective restore at 1 HP, once between turns; reuses the pay
-  prompt; `RepairCostModifier` and Repair Asset's registry (Decision 18).
-- `feat: Hostile Takeover` — the attacker's interceptor: 1 HP and `AssetOwnerChanged`.
+The [Effort 2 plan](s-flag-rule-extensions-effort-2-plan.md) carries the spec. Its
+commits:
+
+- `feat: cat 6 lethal interception` — the hook offers and the dispatcher decides, the
+  D-7 walk, dispatch at `applyAssetDamage` and in the `self_damage` reactor (automatic
+  only, D-10), the tracker that folds the outcome's mutations, and both elective
+  prompts (`ConfirmSacrifice`, the `PaymentRestore` wording).
+- `feat: Boltholes` — `sheltered` in `Targetable()` (so `Active()`), skipped as an
+  ability target, by movement and by Planetary Seizure; Repair Asset clears it at full
+  HP; destroyed with its Boltholes when damage destroys it.
+- `feat: False Front` — elective sacrifice that undoes the killing blow.
+- `feat: Medical Center` — elective restore at 1 HP for the saved asset's half price,
+  once between turns per Medical Center; `RepairCostModifier` and Repair Asset's
+  registry (Decision 18).
+- `feat: Hostile Takeover` — the striker's interceptor, attack or counter: 1 HP and
+  `AssetOwnerChanged`; Treachery yields to it.
 
 ### Effort 4 — Purchase and government *(own Plan session)*
 

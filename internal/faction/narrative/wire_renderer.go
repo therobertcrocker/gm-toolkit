@@ -228,6 +228,7 @@ func renderCrossEvent(ce digest.CrossEvent, rng *rand.Rand) string {
 		result = strings.ReplaceAll(result, "{defender_asset}", ce.DefenderAsset.AssetName)
 		result = strings.ReplaceAll(result, "{damage}", fmt.Sprintf("%d", ce.DamageToDefender))
 		result += conditionText(ce)
+		result += interceptionText(ce)
 		if ce.Counterstruck {
 			clause := strings.ReplaceAll(counterstruckClause, "{attacker}", ce.Attacker.Name)
 			result += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
@@ -258,6 +259,18 @@ func conditionText(ce digest.CrossEvent) string {
 		if clause, ok := conditionClauses[kind]; ok {
 			clause = strings.ReplaceAll(clause, "{attacker}", ce.Attacker.Name)
 			text += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
+		}
+	}
+	return text
+}
+
+// interceptionText renders one clause per Cat 6 save on a cross event, each with a
+// leading space, or "" when it carries none.
+func interceptionText(ce digest.CrossEvent) string {
+	var text string
+	for _, effect := range ce.Interceptions {
+		if clause, ok := interceptionClauses[effect]; ok {
+			text += " " + clause
 		}
 	}
 	return text

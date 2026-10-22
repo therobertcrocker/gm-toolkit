@@ -42,6 +42,7 @@ const (
 	AskSelectAbilityAssetTarget
 	AskConfirmPayment
 	AskSelectAssetToLose
+	AskConfirmSacrifice
 	// AskKindCount counts the kinds above; keep it last.
 	AskKindCount
 )
@@ -167,6 +168,7 @@ type SelectAbilityAssetTargetPayload struct {
 	OwnerNames map[string]string // ownerID -> faction name (candidates are rivals')
 }
 type ConfirmPaymentPayload struct{ Offer hooks.PaymentOffer }
+type ConfirmSacrificePayload struct{ Offer hooks.SacrificeOffer }
 
 type SelectAssetToLosePayload struct {
 	Faction *domain.Faction

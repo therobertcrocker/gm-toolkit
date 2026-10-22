@@ -268,6 +268,17 @@ func (a *actionCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error)
 	return a.adapter.confirmPayment(offer)
 }
 
+// ConfirmSacrifice asks the owner of the False Front, who is often not the acting
+// faction.
+func (a *actionCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, error) {
+	raw, err := a.adapter.ask(AskConfirmSacrifice, offer.Owner, ConfirmSacrificePayload{Offer: offer})
+	if err != nil {
+		return false, err
+	}
+	confirmed, _ := raw.(bool)
+	return confirmed, nil
+}
+
 // confirmPayment asks the paying faction. The action collector (Marketers) and the
 // phase collector (the turn-start lift) share it.
 func (a *Adapter) confirmPayment(offer hooks.PaymentOffer) (bool, error) {

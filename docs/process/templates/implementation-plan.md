@@ -174,6 +174,27 @@ Task 1") rather than redefining it or referencing a floating section. The only
 back-reference allowed is a task-to-task citation.
 -->
 
+**Overview**
+
+<!--
+REQUIRED when the breakdown has phases. The work breakdown at one glance: one
+line per phase, one nested line per commit with its conventional message and
+its task count. Plain text, no anchor links. A bold label, not a heading, so
+`###` stays the phase level.
+
+Not for steps-only plans (they are short) or overview plans (the Effort Summary
+does this job).
+
+Keep it in sync: when execution adds, splits, or moves a commit or task, update
+this list in the same edit that changes the plan body.
+-->
+
+- **Phase 1 — [Title]**
+  - Commit 1 — `feat: [conventional commit message]` (N tasks)
+  - Commit 2 — `refactor: [conventional commit message]` (N tasks)
+- **Phase 2 — [Title]**
+  - Commit 3 — `[type]: [conventional commit message]` (N tasks)
+
 ### Phase 1 — [Title]
 
 <!-- Phase-level goal in 1–2 sentences. One phase = one execution session. -->

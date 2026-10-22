@@ -77,8 +77,11 @@ type ConfirmPayment struct {
 func NewConfirmPayment(offer hooks.PaymentOffer, rb *rulebook.Rulebook) ConfirmPayment {
 	name := assetName(offer.Asset, rb)
 	header := fmt.Sprintf("Asked of %s", offer.Payer.Name)
-	if offer.Reason == hooks.PaymentLiftDisable {
+	switch offer.Reason {
+	case hooks.PaymentLiftDisable:
 		return ConfirmPayment{NewConfirm(fmt.Sprintf("Pay %d Coin to bring %s back into use?", offer.Amount, name), header, "Pay", "Leave it disabled")}
+	case hooks.PaymentRestore:
+		return ConfirmPayment{NewConfirm(fmt.Sprintf("Pay %d Coin to restore %s at 1 HP?", offer.Amount, name), header, "Pay", "Let it be destroyed")}
 	}
 	return ConfirmPayment{NewConfirm(fmt.Sprintf("Pay %d Coin, or %s is disabled?", offer.Amount, name), header, "Pay", "Take the disable")}
 }

@@ -332,6 +332,9 @@ var askEntries = map[adapter.AskKind]askEntry{
 		p := msg.Payload.(adapter.SelectAssetToLosePayload)
 		return overlay.NewSelectAssetToLose(fmt.Sprintf("%s cannot pay: lose which asset?", p.Faction.Name), p.Assets, m.rulebook)
 	}},
+	adapter.AskConfirmSacrifice: {"Sacrifice?", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewConfirmSacrifice(msg.Payload.(adapter.ConfirmSacrificePayload).Offer, m.rulebook)
+	}},
 	adapter.AskSelectExpandInfluenceOrder: {"Expand Influence", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectExpandInfluenceOrderPayload)
 		return overlay.NewExpand(p.NewBaseWorlds, p.WorldNames, p.ReinforceBases, p.Coin)

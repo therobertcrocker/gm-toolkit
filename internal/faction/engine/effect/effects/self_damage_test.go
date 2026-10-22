@@ -12,10 +12,14 @@ import (
 )
 
 // zealotReactors registers both Zealots entries on alpha's "zealots" (HP 4), as
-// the SWN data declares them, and returns the reactors in registration order.
-func zealotReactors(t *testing.T, factionState *state.FactionState) []hooks.MutationReactor {
+// the SWN data declares them, and returns the reactors in registration order. A
+// non-nil interceptor is registered on alpha's "bolt".
+func zealotReactors(t *testing.T, factionState *state.FactionState, interceptor hooks.LethalInterceptor) []hooks.MutationReactor {
 	t.Helper()
 	registry := hooks.NewRegistry()
+	if interceptor != nil {
+		registry.RegisterLethalInterceptor(hooks.AssetScope("alpha", "bolt"), "fixture", interceptor)
+	}
 	alpha := factionState.Factions["alpha"]
 	asset := alpha.Assets["zealots"]
 	def := &domain.AssetDefinition{ID: "SWN-F3-001"}
@@ -41,6 +45,7 @@ func zealotState() *state.FactionState {
 	return &state.FactionState{Factions: map[string]*domain.Faction{
 		"alpha": {ID: "alpha", Assets: map[string]*domain.Asset{
 			"zealots": activeAsset("zealots", "SWN-F3-001"),
+			"bolt":    activeAsset("bolt", "fixture"),
 		}},
 		"beta": {ID: "beta"},
 	}}
@@ -117,7 +122,7 @@ func TestSelfDamage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			factionState := zealotState()
-			got := runReactors(zealotReactors(t, factionState), tc.mutations, factionState)
+			got := runReactors(zealotReactors(t, factionState, nil), tc.mutations, factionState)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
@@ -129,7 +134,7 @@ func TestSelfDamage_InactiveZealotsTakeNothing(t *testing.T) {
 	for name, deactivate := range inactiveStates {
 		t.Run(name, func(t *testing.T) {
 			factionState := zealotState()
-			reactors := zealotReactors(t, factionState)
+			reactors := zealotReactors(t, factionState, nil)
 			deactivate(factionState.Factions["alpha"].Assets["zealots"])
 
 			if got := runReactors(reactors, []domain.Mutation{zealotHit(false)}, factionState); len(got) != 0 {
@@ -141,7 +146,41 @@ func TestSelfDamage_InactiveZealotsTakeNothing(t *testing.T) {
 
 func TestSelfDamage_DoesNotReactToItsOwnDamage(t *testing.T) {
 	factionState := zealotState()
-	if got := runReactors(zealotReactors(t, factionState), []domain.Mutation{zealotDamage(-3)}, factionState); len(got) != 0 {
+	if got := runReactors(zealotReactors(t, factionState, nil), []domain.Mutation{zealotDamage(-3)}, factionState); len(got) != 0 {
 		t.Errorf("mutations = %+v, want none: self_damage is not an attack hit", got)
+	}
+}
+
+// offerInterceptor is a fixture Cat 6 hook: it always makes the same offer.
+type offerInterceptor struct{ offer *hooks.Interception }
+
+func (interceptor *offerInterceptor) OfferInterception(_ hooks.LethalContext) *hooks.Interception {
+	return interceptor.offer
+}
+
+// A lethal self-hit asks only the automatic interceptors: a reactor has no
+// collector, so an elective one is never used (D-10).
+func TestSelfDamage_AutomaticInterceptorSaves(t *testing.T) {
+	save := domain.AssetHPDelta{FactionID: "alpha", AssetID: "zealots", Delta: 1, Cause: "fixture"}
+	cases := []struct {
+		name string
+		ask  hooks.InterceptAsk
+		want []domain.Mutation
+	}{
+		{name: "automatic", ask: hooks.InterceptAutomatic, want: []domain.Mutation{zealotDamage(-3), save}},
+		{name: "elective", ask: hooks.InterceptSacrifice, want: []domain.Mutation{zealotDamage(-3), zealotRemoved}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState := zealotState()
+			alpha := factionState.Factions["alpha"]
+			alpha.Assets["zealots"].CurrentHP = 2
+			interceptor := &offerInterceptor{offer: &hooks.Interception{Source: alpha.Assets["bolt"], Ask: tc.ask, Mutations: []domain.Mutation{save}}}
+
+			got := runReactors(zealotReactors(t, factionState, interceptor), []domain.Mutation{zealotHit(false)}, factionState)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("mutations = %+v, want %+v", got, tc.want)
+			}
+		})
 	}
 }

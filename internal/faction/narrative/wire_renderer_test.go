@@ -176,6 +176,23 @@ func TestRenderCrossEvent_NoDamageWithCondition(t *testing.T) {
 	}
 }
 
+func TestRenderCrossEvent_AttackWithInterception(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:             digest.CrossAttack,
+		Attacker:         digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:         digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		DamageToDefender: 5,
+		Interceptions:    []domain.SpecialEffectType{domain.SpecialShelterAsset},
+	}
+
+	for seed := range int64(len(crossAttackTemplates)) * 4 {
+		got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(seed)))
+		if !strings.HasSuffix(got, " A stricken asset went to ground in its boltholes.") {
+			t.Errorf("seed %d: %q does not end with the shelter_asset clause", seed, got)
+		}
+	}
+}
+
 func TestRenderCrossEvent_AbilityStrikeWithCondition(t *testing.T) {
 	crossEvent := digest.CrossEvent{
 		Kind:       digest.CrossAbilityStrike,

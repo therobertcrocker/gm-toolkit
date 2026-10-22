@@ -482,6 +482,85 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
+	t.Run("false front sacrifice_self effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C1-003"]
+		if !ok {
+			t.Fatal("asset SWN-C1-003 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerLethalDamage,
+			Effect:  domain.SpecialSacrificeSelf,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("boltholes shelter_asset effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C5-003"]
+		if !ok {
+			t.Fatal("asset SWN-C5-003 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerLethalDamage,
+			Effect:  domain.SpecialShelterAsset,
+			Filters: domain.EffectFilters{
+				Owner:      domain.OwnerOwn,
+				Scope:      domain.ScopeWorld,
+				AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+			},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("hostile takeover seize_target effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W7-002"]
+		if !ok {
+			t.Fatal("asset SWN-W7-002 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerLethalDamage,
+			Effect:  domain.SpecialSeizeTarget,
+			Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeSelf},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("medical center restore_asset and discount_repair effects parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W4-003"]
+		if !ok {
+			t.Fatal("asset SWN-W4-003 not found")
+		}
+		filters := domain.EffectFilters{
+			Owner:      domain.OwnerOwn,
+			Scope:      domain.ScopeWorld,
+			AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+		}
+		want := []domain.EffectDefinition{
+			{
+				Trigger: domain.TriggerLethalDamage,
+				Effect:  domain.SpecialRestoreAsset,
+				Filters: filters,
+				Gates:   domain.EffectGates{OncePer: domain.OncePerAsset},
+			},
+			{
+				Trigger:        domain.TriggerRepairCostQuery,
+				Effect:         domain.SpecialDiscountRepair,
+				Filters:        filters,
+				Gates:          domain.EffectGates{NoStack: true},
+				DiscountRepair: &domain.DiscountRepairParams{Amount: 1},
+			},
+		}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
 	t.Run("goals populated", func(t *testing.T) {
 		if len(rb.Goals) == 0 {
 			t.Fatal("expected goals to be loaded, got none")

@@ -211,6 +211,7 @@ const (
 	ConditionNoAbility ConditionKind = "no_ability"
 	ConditionDisabled  ConditionKind = "disabled"
 	ConditionNoAttack  ConditionKind = "no_attack"
+	ConditionSheltered ConditionKind = "sheltered"
 )
 
 // Condition is a lasting restriction one asset puts on another. The code that
@@ -247,16 +248,16 @@ func (asset *Asset) HasCondition(kind ConditionKind) bool {
 
 // Active reports whether the asset can act or use its special ability now: an
 // asset is not usable until the turn after purchase, while unmaintained, once
-// destroyed, or while disabled.
+// destroyed, while sheltered, or while disabled.
 func (asset *Asset) Active() bool {
 	return asset.Targetable() && !asset.HasCondition(ConditionDisabled)
 }
 
 // Targetable reports whether a rival may pick the asset as a defender. It is
 // Active without the conditions that stop use only: a disabled asset is useless,
-// not untouchable (D-38).
+// not untouchable (D-38). A sheltered asset is both.
 func (asset *Asset) Targetable() bool {
-	return asset.Ready && asset.Maintained && asset.CurrentHP > 0
+	return asset.Ready && asset.Maintained && asset.CurrentHP > 0 && !asset.HasCondition(ConditionSheltered)
 }
 
 // Clone deep-copies an asset, including its CurrentOrder pointer and that order's

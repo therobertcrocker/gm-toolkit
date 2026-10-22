@@ -59,9 +59,9 @@ func (attack *AttackAction) Inputs(faction *domain.Faction, factionState *state.
 }
 
 func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
-	// Local HP trackers reflect damage dealt this sequence before mutations are
-	// applied to state, so mid-sequence re-checks see accurate effective HP.
-	assetHPTracker := make(map[string]int)
+	// The tracker reflects what this sequence did before its mutations apply, so
+	// mid-sequence re-checks see each asset's HP and whether it left the fight.
+	tracker := newSequenceTracker()
 	baseHPTracker := make(map[string]int)
 	// Stealth-cleared tracks assets already cleared this sequence; defenders can
 	// face multiple matchups and we emit the mutation only once.
@@ -73,12 +73,12 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			continue
 		}
 
-		// Re-check: skip if destroyed earlier in this sequence.
-		if attacker.CurrentHP+assetHPTracker[attacker.ID] <= 0 {
+		// Re-check: skip if destroyed or taken out of the fight earlier in this sequence.
+		if !tracker.live(attacker) {
 			continue
 		}
 
-		defenders := liveDefendersAtHex(attacker, attackerDef, assetHPTracker, rulebook, attack.registry, attack.index)
+		defenders := liveDefendersAtHex(attacker, attackerDef, tracker, rulebook, attack.registry, attack.index)
 		if len(defenders) == 0 {
 			continue
 		}
@@ -167,7 +167,9 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		if attackerWins {
 			if attackerDef.Attack.Damage == nil {
 				// deliberate: a special hit skips the redirect prompt, because it has no damage to send to a Base (D-15).
-				attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, 0, assetHPTracker, attacker, false, "attack")
+				if err := attack.applyAssetDamage(factionState, rulebook, defenderFaction.ID, faction.ID, defender, 0, tracker, attacker, false, "attack"); err != nil {
+					return err
+				}
 			} else {
 				damage := attackerDef.Attack.Damage.Roll(attack.roller)
 				base := factionBaseOnWorld(defenderFaction, attacker.Location.WorldID)
@@ -193,16 +195,17 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 								CausedByFactionID: faction.ID,
 							})
 						}
-					} else {
-						attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker, attacker, false, "attack")
+					} else if err := attack.applyAssetDamage(factionState, rulebook, defenderFaction.ID, faction.ID, defender, damage, tracker, attacker, false, "attack"); err != nil {
+						return err
 					}
-				} else {
-					attack.applyAssetDamage(defenderFaction.ID, faction.ID, defender, damage, assetHPTracker, attacker, false, "attack")
+				} else if err := attack.applyAssetDamage(factionState, rulebook, defenderFaction.ID, faction.ID, defender, damage, tracker, attacker, false, "attack"); err != nil {
+					return err
 				}
 			}
 		}
 
 		// deliberate: a disabled defender rolls its defense but deals no counter and fires no own_defense_win entry, because the book makes it useless (Effort 3 Decision 2).
+		// deliberate: read state, not the tracker, because on a tie both sides hit at once: a defender this matchup killed or intercepted still counters (Effort 2 Decision 9).
 		defenderActive := defender.Active()
 
 		// Counterattack damage: defender wins on tie (TieStandard/TieDefenderWins) or strictly greater.
@@ -215,7 +218,9 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				Side:        hooks.SideCounter,
 			}) {
 				counterDamage := defenderDef.Counter.Roll(attack.roller)
-				attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, counterDamage, assetHPTracker, defender, true, "attack")
+				if err := attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, counterDamage, tracker, defender, true, "attack"); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -225,13 +230,15 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			attack.mutations = append(attack.mutations, outcome.Mutations...)
 			// deliberate: no prompt when the attacker has no damage and no counter, because its self-attack could do nothing (Decision Record 9).
 			canHurtItself := attackerDef.Attack.Damage != nil || attackerDef.Counter != nil
-			if outcome.Counterstrike && canHurtItself && attacker.CurrentHP+assetHPTracker[attacker.ID] > 0 {
+			if outcome.Counterstrike && canHurtItself && tracker.live(attacker) {
 				confirmed, err := attack.collector.ConfirmCounterstrike(defenderFaction, defender, attacker)
 				if err != nil {
 					return fmt.Errorf("attack: counterstrike prompt: %w", err)
 				}
 				if confirmed {
-					attack.counterstrike(faction, attacker, attackerDef, defenderFaction, defender, assetHPTracker, factionState, rulebook)
+					if err := attack.counterstrike(faction, attacker, attackerDef, defenderFaction, defender, tracker, factionState, rulebook); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -242,7 +249,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 // counterstrike turns the attacker on itself (D-18): its attack roll against its
 // own defense. A hit deals its attack damage; a miss deals its counter damage, if
 // it has one. The cause is not "attack", so no own_attack_hit fires on it.
-func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *domain.Asset, attackerDef *domain.AssetDefinition, defenderFaction *domain.Faction, source *domain.Asset, tracker map[string]int, factionState *state.FactionState, rulebook *rulebook.Rulebook) {
+func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *domain.Asset, attackerDef *domain.AssetDefinition, defenderFaction *domain.Faction, source *domain.Asset, tracker *sequenceTracker, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	worldID := attacker.Location.WorldID
 	// deliberate: Opponent nil, not faction, because Actor == Opponent would ask every asset hook on the world twice (overview Decision 9).
 	attackRoll := dispatch.RollWithHooks(
@@ -262,9 +269,9 @@ func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *dom
 		damage = attackerDef.Attack.Damage
 	}
 	if damage == nil {
-		return
+		return nil
 	}
-	attack.applyAssetDamage(faction.ID, defenderFaction.ID, attacker, damage.Roll(attack.roller), tracker, source, false, string(domain.SpecialCounterstrike))
+	return attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, damage.Roll(attack.roller), tracker, source, false, string(domain.SpecialCounterstrike))
 }
 
 func (attack *AttackAction) Output() ([]domain.Mutation, error) {
@@ -287,15 +294,16 @@ func (attack *AttackAction) fireMatchup(trigger domain.EffectTrigger, faction *d
 	})
 }
 
-// applyAssetDamage emits AssetHPDelta and, when lethal, AssetRemoved inline.
-// factionID is the owner of the damaged asset; causedByFactionID is the attacker.
-// Updates the local tracker so subsequent re-checks see the correct effective HP.
-func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker map[string]int, causedByAsset *domain.Asset, counter bool, cause string) {
+// applyAssetDamage emits AssetHPDelta and, when the hit is lethal, the mutations
+// of the Cat 6 interceptor that takes it, or else AssetRemoved. factionID is the
+// owner of the damaged asset; causedByFactionID is the striker's. Every mutation
+// goes through the tracker, so later re-checks see the outcome.
+func (attack *AttackAction) applyAssetDamage(factionState *state.FactionState, rulebook *rulebook.Rulebook, factionID, causedByFactionID string, asset *domain.Asset, damage int, tracker *sequenceTracker, causedByAsset *domain.Asset, counter bool, cause string) error {
 	causedByAssetID := ""
 	if causedByAsset != nil {
 		causedByAssetID = causedByAsset.ID
 	}
-	attack.mutations = append(attack.mutations, domain.AssetHPDelta{
+	attack.emit(tracker, domain.AssetHPDelta{
 		FactionID:         factionID,
 		AssetID:           asset.ID,
 		Delta:             -damage,
@@ -304,15 +312,76 @@ func (attack *AttackAction) applyAssetDamage(factionID, causedByFactionID string
 		CausedByAssetID:   causedByAssetID,
 		Counter:           counter,
 	})
-	tracker[asset.ID] -= damage
-	if asset.CurrentHP+tracker[asset.ID] <= 0 {
-		attack.mutations = append(attack.mutations, domain.AssetRemoved{
-			FactionID:         factionID,
-			AssetID:           asset.ID,
-			Cause:             cause,
-			CausedByFactionID: causedByFactionID,
-		})
+	hpAfter := tracker.hpOf(asset)
+	if hpAfter > 0 {
+		return nil
 	}
+	intercepted, err := dispatch.InterceptLethal(attack.registry, hooks.LethalContext{
+		Target:       asset,
+		TargetDef:    rulebook.Assets[asset.DefinitionID],
+		HPAfter:      hpAfter,
+		Damage:       damage,
+		Striker:      causedByAsset,
+		FactionState: factionState,
+		Batch:        attack.mutations,
+	}, attack.collector)
+	if err != nil {
+		return fmt.Errorf("attack: lethal interception: %w", err)
+	}
+	if intercepted != nil {
+		attack.emit(tracker, intercepted...)
+		return nil
+	}
+	attack.emit(tracker, domain.AssetRemoved{
+		FactionID:         factionID,
+		AssetID:           asset.ID,
+		Cause:             cause,
+		CausedByFactionID: causedByFactionID,
+	})
+	return nil
+}
+
+// emit appends mutations to the action's output and folds them into the tracker.
+func (attack *AttackAction) emit(tracker *sequenceTracker, mutations ...domain.Mutation) {
+	attack.mutations = append(attack.mutations, mutations...)
+	tracker.record(mutations)
+}
+
+// sequenceTracker is what the Attack sequence has done to each asset before its
+// batch applies: the HP change, and the assets that left the fight (removed, or
+// moved to another faction).
+type sequenceTracker struct {
+	hp   map[string]int
+	gone map[string]bool
+}
+
+func newSequenceTracker() *sequenceTracker {
+	return &sequenceTracker{hp: make(map[string]int), gone: make(map[string]bool)}
+}
+
+// record folds mutations in: HP deltas add up, and a removal or an owner change
+// takes the asset out of the rest of the sequence (Effort 2 Decision 3).
+func (tracker *sequenceTracker) record(mutations []domain.Mutation) {
+	for _, mutation := range mutations {
+		switch m := mutation.(type) {
+		case domain.AssetHPDelta:
+			tracker.hp[m.AssetID] += m.Delta
+		case domain.AssetRemoved:
+			tracker.gone[m.AssetID] = true
+		case domain.AssetOwnerChanged:
+			tracker.gone[m.AssetID] = true
+		}
+	}
+}
+
+// hpOf is asset's HP once this sequence's mutations apply.
+func (tracker *sequenceTracker) hpOf(asset *domain.Asset) int {
+	return asset.CurrentHP + tracker.hp[asset.ID]
+}
+
+// live reports whether asset can still fight in this sequence.
+func (tracker *sequenceTracker) live(asset *domain.Asset) bool {
+	return !tracker.gone[asset.ID] && tracker.hpOf(asset) > 0
 }
 
 // attackerHasTarget returns true if the attacker has a valid Attack profile and
@@ -325,24 +394,22 @@ func attackerHasTarget(attacker *domain.Asset, rulebook *rulebook.Rulebook, regi
 	return len(eligibleDefendersAtHex(attacker, def, rulebook, registry, index)) > 0
 }
 
-// liveDefendersOnWorld filters eligibleDefendersOnWorld to exclude assets
-// whose effective HP has been driven to 0 by earlier matchups in the current
-// Resolve pass.
-func liveDefendersOnWorld(attackerFactionID, worldID string, assetHPTracker map[string]int, index *world.Index) []*domain.Asset {
-	return filterLiveDefenders(eligibleDefendersOnWorld(attackerFactionID, worldID, index), assetHPTracker)
+// liveDefendersOnWorld filters eligibleDefendersOnWorld to the assets still live
+// in the current Resolve pass.
+func liveDefendersOnWorld(attackerFactionID, worldID string, tracker *sequenceTracker, index *world.Index) []*domain.Asset {
+	return filterLiveDefenders(eligibleDefendersOnWorld(attackerFactionID, worldID, index), tracker)
 }
 
-// liveDefendersAtHex filters eligibleDefendersAtHex to exclude assets whose
-// effective HP has been driven to 0 by earlier matchups in the current Resolve
-// pass. Used when the attacker is mid-flight (empty WorldID).
-func liveDefendersAtHex(attacker *domain.Asset, attackerDef *domain.AssetDefinition, assetHPTracker map[string]int, rulebook *rulebook.Rulebook, registry *hooks.Registry, index *world.Index) []*domain.Asset {
-	return filterLiveDefenders(eligibleDefendersAtHex(attacker, attackerDef, rulebook, registry, index), assetHPTracker)
+// liveDefendersAtHex filters eligibleDefendersAtHex to the assets still live in
+// the current Resolve pass. Used when the attacker is mid-flight (empty WorldID).
+func liveDefendersAtHex(attacker *domain.Asset, attackerDef *domain.AssetDefinition, tracker *sequenceTracker, rulebook *rulebook.Rulebook, registry *hooks.Registry, index *world.Index) []*domain.Asset {
+	return filterLiveDefenders(eligibleDefendersAtHex(attacker, attackerDef, rulebook, registry, index), tracker)
 }
 
-func filterLiveDefenders(defenders []*domain.Asset, assetHPTracker map[string]int) []*domain.Asset {
+func filterLiveDefenders(defenders []*domain.Asset, tracker *sequenceTracker) []*domain.Asset {
 	live := make([]*domain.Asset, 0, len(defenders))
 	for _, defender := range defenders {
-		if defender.CurrentHP+assetHPTracker[defender.ID] > 0 {
+		if tracker.live(defender) {
 			live = append(live, defender)
 		}
 	}

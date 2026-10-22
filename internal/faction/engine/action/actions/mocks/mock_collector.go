@@ -133,6 +133,21 @@ func (mr *MockCollectorMockRecorder) ConfirmRivalFreeAttack(rival, rivalRoll, fa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmRivalFreeAttack", reflect.TypeOf((*MockCollector)(nil).ConfirmRivalFreeAttack), rival, rivalRoll, factionRoll)
 }
 
+// ConfirmSacrifice mocks base method.
+func (m *MockCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmSacrifice", offer)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmSacrifice indicates an expected call of ConfirmSacrifice.
+func (mr *MockCollectorMockRecorder) ConfirmSacrifice(offer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmSacrifice", reflect.TypeOf((*MockCollector)(nil).ConfirmSacrifice), offer)
+}
+
 // SelectAbilityAssets mocks base method.
 func (m *MockCollector) SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, arg2 *rulebook.Rulebook) ([]*domain.Asset, error) {
 	m.ctrl.T.Helper()

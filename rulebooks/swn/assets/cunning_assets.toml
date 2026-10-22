@@ -60,6 +60,13 @@ flags = ["S"]
 counter = ""
 description = "If another asset on the planet suffers enough damage to destroy it, the faction can sacrifice the False Front instead to nullify the killing blow."
 
+[[assets.FalseFront.effects]]
+trigger = "lethal_damage"
+effect  = "sacrifice_self"
+[assets.FalseFront.effects.filters]
+owner = "own"
+scope = "world"
+
 [assets.Lobbyists]
 id = "SWN-C2-001"
 name = "Lobbyists"
@@ -354,6 +361,14 @@ type = "Logistics Facility"
 flags = ["S"]
 counter = "2d6"
 description = "If a faction Special Forces or Military Unit asset on the same planet as the Boltholes suffers damage sufficient to destroy it, it is instead set at 0 HP and rendered untouchable and unusable until repaired to full strength. If the Boltholes are destroyed first, the asset is destroyed with them."
+
+[[assets.Boltholes.effects]]
+trigger = "lethal_damage"
+effect  = "shelter_asset"
+[assets.Boltholes.effects.filters]
+owner      = "own"
+scope      = "world"
+asset_type = ["Special Forces", "Military Unit"]
 
 [assets.TransportLockdown]
 id = "SWN-C6-001"

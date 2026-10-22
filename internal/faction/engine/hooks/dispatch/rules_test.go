@@ -348,3 +348,43 @@ func TestGrantedMovementAbilities_NilRegistry(t *testing.T) {
 		t.Errorf("GrantedMovementAbilities(nil) = %v, want nil", got)
 	}
 }
+
+// stubRepairCostModifier takes a fixed amount off the repair cost.
+type stubRepairCostModifier struct{ delta int }
+
+func (stub *stubRepairCostModifier) ModifyRepairCost(_ *domain.Faction, _ *domain.Asset, _ *domain.AssetDefinition, query *hooks.RepairCostQuery) {
+	query.Cost -= stub.delta
+}
+
+func TestResolveRepairCost(t *testing.T) {
+	repairer := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"own": {ID: "own", OwnerID: "f1"}}}
+	repaired := repairer.Assets["own"]
+	def := &domain.AssetDefinition{ID: "unit"}
+
+	t.Run("nil registry returns the base cost", func(t *testing.T) {
+		if got := ResolveRepairCost(nil, repairer, repaired, def, 3); got != 3 {
+			t.Errorf("cost = %d, want 3", got)
+		}
+	})
+	t.Run("a modifier on the repairer's own asset lowers the cost", func(t *testing.T) {
+		registry := hooks.NewRegistry()
+		registry.RegisterRepairCostModifier(hooks.AssetScope("f1", "own"), "own", &stubRepairCostModifier{delta: 1})
+		if got := ResolveRepairCost(registry, repairer, repaired, def, 3); got != 2 {
+			t.Errorf("cost = %d, want 2", got)
+		}
+	})
+	t.Run("a modifier on a rival's asset is not asked", func(t *testing.T) {
+		registry := hooks.NewRegistry()
+		registry.RegisterRepairCostModifier(hooks.AssetScope("rival", "r1"), "rival", &stubRepairCostModifier{delta: 1})
+		if got := ResolveRepairCost(registry, repairer, repaired, def, 3); got != 3 {
+			t.Errorf("cost = %d, want 3", got)
+		}
+	})
+	t.Run("the cost never drops below 0", func(t *testing.T) {
+		registry := hooks.NewRegistry()
+		registry.RegisterRepairCostModifier(hooks.AssetScope("f1", "own"), "own", &stubRepairCostModifier{delta: 5})
+		if got := ResolveRepairCost(registry, repairer, repaired, def, 1); got != 0 {
+			t.Errorf("cost = %d, want 0", got)
+		}
+	})
+}

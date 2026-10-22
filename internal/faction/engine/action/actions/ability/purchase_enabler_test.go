@@ -205,8 +205,8 @@ func TestPurchaseEnabler_PaysRivalSurcharge(t *testing.T) {
 			registry.RegisterAssetCostModifier(hooks.AssetScope("rival", "li"), "surcharge", &stubSurcharge{})
 			rivalAsset := &domain.Asset{ID: "li", OwnerID: "rival", Location: domain.Location{WorldID: "w1"}}
 			ctx := StepContext{
-				Faction:     &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: testCase.discount, Assets: map[string]*domain.Asset{}},
-				Asset:       &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
+				Faction:      &domain.Faction{ID: "f1", Force: 5, Coin: 20, PendingPurchaseDiscount: testCase.discount, Assets: map[string]*domain.Asset{}},
+				Asset:        &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
 				Step:         enablerStep(),
 				FactionState: &state.FactionState{},
 				Rulebook:     enablerRulebook(),

@@ -25,7 +25,7 @@ func TestSelectAssetToLoseIgnoresEsc(t *testing.T) {
 
 func TestConfirmPaymentIgnoresEsc(t *testing.T) {
 	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"machine": {ID: "machine", Name: "Machine"}}}
-	for _, reason := range []hooks.PaymentReason{hooks.PaymentAvoidDisable, hooks.PaymentLiftDisable} {
+	for _, reason := range []hooks.PaymentReason{hooks.PaymentAvoidDisable, hooks.PaymentLiftDisable, hooks.PaymentRestore} {
 		offer := hooks.PaymentOffer{
 			Payer:  &domain.Faction{ID: "f2", Name: "Beta"},
 			Asset:  &domain.Asset{ID: "b-1", DefinitionID: "machine"},
@@ -40,5 +40,25 @@ func TestConfirmPaymentIgnoresEsc(t *testing.T) {
 		if _, ok := updated.(ConfirmPayment); !ok {
 			t.Errorf("%s: Update returned %T, want ConfirmPayment", reason, updated)
 		}
+	}
+}
+
+func TestConfirmSacrificeIgnoresEsc(t *testing.T) {
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"front":  {ID: "front", Name: "False Front"},
+		"target": {ID: "target", Name: "Safehouse"},
+	}}
+	offer := hooks.SacrificeOffer{
+		Owner:     &domain.Faction{ID: "f2", Name: "Beta"},
+		Sacrifice: &domain.Asset{ID: "b-1", DefinitionID: "front"},
+		Saves:     &domain.Asset{ID: "b-2", DefinitionID: "target"},
+	}
+
+	updated, cmd := NewConfirmSacrifice(offer, rb).Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd != nil {
+		t.Errorf("Esc produced a command (%T), want none", cmd())
+	}
+	if _, ok := updated.(ConfirmSacrifice); !ok {
+		t.Errorf("Update returned %T, want ConfirmSacrifice", updated)
 	}
 }

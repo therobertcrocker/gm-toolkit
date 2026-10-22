@@ -129,7 +129,8 @@ func eligibleAssets(request Request, candidateWorlds []string) []*domain.Asset {
 	var eligible []*domain.Asset
 	for _, asset := range request.Faction.Assets {
 		// deliberate: skip an asset under orders, not just one in flight, because it keeps its origin WorldID until the next tick.
-		if asset.ID == request.Acting.ID || asset.CurrentOrder != nil {
+		// deliberate: skip a sheltered asset, because it stays put until repaired (Effort 2 Decision 11).
+		if asset.ID == request.Acting.ID || asset.CurrentOrder != nil || asset.HasCondition(domain.ConditionSheltered) {
 			continue
 		}
 		if _, ok := inRange[asset.Location.WorldID]; !ok {

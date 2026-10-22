@@ -21,6 +21,11 @@ const (
 	SpecialCaptureTarget  SpecialEffectType = "capture_target"
 	SpecialBlockAbility   SpecialEffectType = "block_ability"
 	SpecialCounterstrike  SpecialEffectType = "counterstrike"
+	SpecialSeizeTarget    SpecialEffectType = "seize_target"
+	SpecialRestoreAsset   SpecialEffectType = "restore_asset"
+	SpecialDiscountRepair SpecialEffectType = "discount_repair"
+	SpecialSacrificeSelf  SpecialEffectType = "sacrifice_self"
+	SpecialShelterAsset   SpecialEffectType = "shelter_asset"
 )
 
 type EffectTrigger string
@@ -40,6 +45,8 @@ const (
 	TriggerAttackEligibilityQuery EffectTrigger = "attack_eligibility_query"
 	TriggerOwnAttack              EffectTrigger = "own_attack"
 	TriggerOwnDefenseWin          EffectTrigger = "own_defense_win"
+	TriggerRepairCostQuery        EffectTrigger = "repair_cost_query"
+	TriggerLethalDamage           EffectTrigger = "lethal_damage"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -228,6 +235,10 @@ type CaptureTargetParams struct {
 	Coin DiceRoll
 }
 
+type DiscountRepairParams struct {
+	Amount int
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -246,4 +257,5 @@ type EffectDefinition struct {
 	RestrictAttack *RestrictAttackParams
 	GrantMovement  *GrantMovementParams
 	CaptureTarget  *CaptureTargetParams
+	DiscountRepair *DiscountRepairParams
 }

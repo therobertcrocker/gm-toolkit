@@ -27,7 +27,7 @@ func RegisterDefaultActions(
 ) {
 	ae.Register(func(c action.Collector) action.Action { return NewSellAsset(c) })
 	ae.Register(func(_ action.Collector) action.Action { return NewRepairFaction() })
-	ae.Register(func(c action.Collector) action.Action { return NewRepairAsset(c) })
+	ae.Register(func(c action.Collector) action.Action { return NewRepairAsset(c, hookRegistry) })
 	ae.Register(func(c action.Collector) action.Action { return NewBuyAsset(c, hookRegistry, worldEngine) })
 	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c) })
 	ae.Register(func(c action.Collector) action.Action {

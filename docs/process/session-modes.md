@@ -131,6 +131,8 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 | Commit | One reviewable unit that builds green | `#### Commit` section | Split only at a real seam |
 | Task | One edit, as literal code | `##### Task` section | — |
 
+**Work breakdown overview.** A plan with phases opens its Work Breakdown with an **Overview** list: each phase, each commit's conventional message, and each commit's task count. It gives the big picture without a scroll through the tasks. Keep it in sync with the body when execution changes the breakdown.
+
 **Session ends when:** the plan is written and Robert has signed off. Do not begin execution in the same session.
 
 ### Execution (N sessions)

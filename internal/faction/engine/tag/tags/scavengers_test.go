@@ -64,3 +64,16 @@ func TestScavengersReactor_IgnoresNonCombatRemoval(t *testing.T) {
 		t.Errorf("got %d mutations, want 0 (sell removal should not trigger Scavengers)", len(result))
 	}
 }
+
+// A sacrificed False Front is given up, not killed (Effort 2 Decision 14).
+func TestScavengersReactor_IgnoresSacrifice(t *testing.T) {
+	reactor := &tags.ScavengersReactor{FactionID: "f1"}
+	mutations := []domain.Mutation{
+		domain.AssetRemoved{FactionID: "f2", AssetID: "ff", Cause: "sacrifice_self", CausedByFactionID: "f2"},
+	}
+
+	result := reactor.OnMutations(mutations, nil, nil)
+	if len(result) != 0 {
+		t.Errorf("got %d mutations, want 0 (a sacrifice should not trigger Scavengers)", len(result))
+	}
+}

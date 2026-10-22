@@ -332,6 +332,21 @@ func TestEligibleAssets_SkipsAssetUnderOrders(t *testing.T) {
 	}
 }
 
+func TestEligibleAssets_SkipsSheltered(t *testing.T) {
+	acting := &domain.Asset{ID: "web", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "origin"}}
+	idle := &domain.Asset{ID: "wf-idle", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "near"}}
+	sheltered := &domain.Asset{ID: "wf-sheltered", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "near"},
+		Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"web": acting, "wf-idle": idle, "wf-sheltered": sheltered}}
+	request := Request{Faction: faction, Acting: acting, Params: transitWebParams(), Rulebook: relocRulebook()}
+
+	eligible := eligibleAssets(request, []string{"origin", "near"})
+
+	if len(eligible) != 1 || eligible[0].ID != "wf-idle" {
+		t.Errorf("eligible = %v, want [wf-idle] (the sheltered asset is skipped)", assetIDs(eligible))
+	}
+}
+
 func TestRun_FlatCostChargesOnce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	web := &domain.Asset{ID: "web", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}

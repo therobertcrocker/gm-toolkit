@@ -23,5 +23,10 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialCaptureTarget:  captureTargetRegistrar,
 		domain.SpecialBlockAbility:   blockAbilityRegistrar,
 		domain.SpecialCounterstrike:  counterstrikeRegistrar,
+		domain.SpecialShelterAsset:   shelterAssetRegistrar,
+		domain.SpecialSacrificeSelf:  sacrificeSelfRegistrar,
+		domain.SpecialRestoreAsset:   restoreAssetRegistrar,
+		domain.SpecialDiscountRepair: discountRepairRegistrar,
+		domain.SpecialSeizeTarget:    seizeTargetRegistrar,
 	}
 }

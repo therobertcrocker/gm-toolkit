@@ -70,6 +70,10 @@ func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations 
 			if m.ToFactionID == actingFaction.ID {
 				cleared[m.AssetID] = true
 			}
+		case domain.AssetConditionApplied:
+			if m.Condition.Kind == domain.ConditionSheltered {
+				cleared[m.AssetID] = true
+			}
 		}
 	}
 	if rivalPresentOn(goal.TargetWorld.WorldID, actingFaction.ID, factionState, cleared) {
@@ -79,14 +83,16 @@ func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations 
 }
 
 // rivalPresentOn reports whether a faction other than seizerID holds an
-// unstealthed asset on world that cleared does not name.
+// unstealthed, unsheltered asset on world that cleared does not name. A sheltered
+// asset hides and cannot be attacked, so the Attack-only lock would hold forever
+// (Effort 2 Decision 11).
 func rivalPresentOn(world, seizerID string, factionState *state.FactionState, cleared map[string]bool) bool {
 	for factionID, faction := range factionState.Factions {
 		if factionID == seizerID {
 			continue
 		}
 		for _, asset := range faction.Assets {
-			if asset.Location.WorldID == world && !asset.Stealthy && !cleared[asset.ID] {
+			if asset.Location.WorldID == world && !asset.Stealthy && !asset.HasCondition(domain.ConditionSheltered) && !cleared[asset.ID] {
 				return true
 			}
 		}

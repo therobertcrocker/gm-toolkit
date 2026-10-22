@@ -11,7 +11,8 @@ const levyAmount = 1
 
 // levyCoin is Monopoly: the target faction pays the owner 1 Coin. A faction that
 // cannot pay loses one asset of its choice on the world instead, from all its
-// assets there, stealthed ones too (Effort 3 Decision 11).
+// assets there, stealthed ones too (Effort 3 Decision 11), but not a sheltered one
+// (Effort 2 Decision 11).
 func levyCoin(ctx StepContext) ([]domain.Mutation, error) {
 	target := ctx.Target.Faction
 	if target.Coin >= levyAmount {
@@ -23,7 +24,7 @@ func levyCoin(ctx StepContext) ([]domain.Mutation, error) {
 	}
 	var onWorld []*domain.Asset
 	for _, asset := range domain.SortedAssets(target) {
-		if asset.Location.WorldID == ctx.Asset.Location.WorldID {
+		if asset.Location.WorldID == ctx.Asset.Location.WorldID && !asset.HasCondition(domain.ConditionSheltered) {
 			onWorld = append(onWorld, asset)
 		}
 	}
