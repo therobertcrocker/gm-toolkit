@@ -235,3 +235,15 @@ func TestRenderCrossEvent_Counterstruck(t *testing.T) {
 		t.Errorf("%q does not end with the counterstruck clause", got)
 	}
 }
+
+func TestRenderGoalEvent_GovernmentAndTagLoss(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	governed := renderGoalEvent(digest.GoalEvent{Kind: digest.GoalWorldGoverned, ToWorld: "Krylos"}, "Alpha", rng)
+	if !strings.Contains(governed, "Alpha") || !strings.Contains(governed, "Krylos") {
+		t.Errorf("governed line = %q, want the faction and the world", governed)
+	}
+	lost := renderGoalEvent(digest.GoalEvent{Kind: digest.GoalTagLost, TagName: "Planetary Government"}, "Bravo", rng)
+	if !strings.Contains(lost, "Bravo") || !strings.Contains(lost, "Planetary Government") {
+		t.Errorf("tag-lost line = %q, want the faction and the tag", lost)
+	}
+}

@@ -100,6 +100,10 @@ func renderFactionSection(beat digest.FactionBeat, crossEvents []digest.CrossEve
 		sb.WriteString(renderStealthOp(stealth, beat.Faction.Name, rng))
 		sb.WriteString("\n\n")
 	}
+	for _, refusal := range beat.Refusals {
+		sb.WriteString(renderRefusal(refusal, beat.Faction.Name, rng))
+		sb.WriteString("\n\n")
+	}
 	for _, ce := range crossEvents {
 		if ce.Attacker.ID == beat.Faction.ID {
 			sb.WriteString(renderCrossEvent(ce, rng))
@@ -131,6 +135,14 @@ func renderGoalEvent(ge digest.GoalEvent, factionName string, rng *rand.Rand) st
 		return strings.ReplaceAll(result, "{to}", ge.ToWorld)
 	case digest.GoalTagGained:
 		tmpl := pick(rng, goalTagTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		return strings.ReplaceAll(result, "{tag}", ge.TagName)
+	case digest.GoalWorldGoverned:
+		tmpl := pick(rng, goalGovernedTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		return strings.ReplaceAll(result, "{world}", ge.ToWorld)
+	case digest.GoalTagLost:
+		tmpl := pick(rng, goalTagLostTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 		return strings.ReplaceAll(result, "{tag}", ge.TagName)
 	}
@@ -274,4 +286,16 @@ func interceptionText(ce digest.CrossEvent) string {
 		}
 	}
 	return text
+}
+
+func renderRefusal(refusal digest.RefusalEvent, factionName string, rng *rand.Rand) string {
+	decider := refusal.DecidedBy
+	if decider == "" {
+		decider = "The independent government"
+	}
+	tmpl := pick(rng, refusalTemplates)
+	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+	result = strings.ReplaceAll(result, "{asset}", refusal.AssetName)
+	result = strings.ReplaceAll(result, "{world}", refusal.World)
+	return strings.ReplaceAll(result, "{decider}", decider)
 }

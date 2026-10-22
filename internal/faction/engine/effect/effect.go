@@ -46,6 +46,9 @@ func (e *EffectsEngine) RegisterEffectsList(def *domain.AssetDefinition) error {
 			return fmt.Errorf("asset %q effects[%d]: %w", def.ID, i, err)
 		}
 	}
+	if def.Quality && (len(def.Effects) != 1 || e.registrars[def.Effects[0].Effect].Targets == nil) {
+		return fmt.Errorf("asset %q: a quality needs one effect with a Targets route", def.ID)
+	}
 	return e.Register(&effectsListHandler{def: def, registrars: e.registrars})
 }
 
@@ -132,6 +135,36 @@ func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asse
 		})...)
 	}
 	return mutations
+}
+
+// QualityTargets lists the assets faction holds on worldID that quality def may act
+// on, as its registrar reads the entry's filters. A definition that is not a quality
+// has none.
+func (e *EffectsEngine) QualityTargets(def *domain.AssetDefinition, faction *domain.Faction, worldID string, rulebook *rulebook.Rulebook) []*domain.Asset {
+	if !def.Quality || len(def.Effects) != 1 {
+		return nil
+	}
+	entry := def.Effects[0]
+	registrar, ok := e.registrars[entry.Effect]
+	if !ok || registrar.Targets == nil {
+		return nil
+	}
+	return registrar.Targets(TargetContext{Faction: faction, WorldID: worldID, Entry: entry, Rulebook: rulebook})
+}
+
+// FireQuality runs quality def's one entry on target through its phase route. A
+// direct definition read raised by Buy Asset: a quality adds no asset, so
+// FirePurchase never sees it. FireContext.Asset is the target, not a declaring asset.
+func (e *EffectsEngine) FireQuality(faction *domain.Faction, def *domain.AssetDefinition, target *domain.Asset, factionState *state.FactionState) []domain.Mutation {
+	entry := def.Effects[0]
+	// deliberate: no roller, because no quality effect rolls; give FireQuality one when one does.
+	return e.registrars[entry.Effect].Fire(FireContext{
+		Faction:      faction,
+		Asset:        target,
+		Def:          def,
+		Entry:        entry,
+		FactionState: factionState,
+	})
 }
 
 // FireMatchup runs the declaring asset's entries for trigger through each

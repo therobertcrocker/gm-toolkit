@@ -134,24 +134,6 @@ func TestNextAssetID_ScansEveryFaction(t *testing.T) {
 	}
 }
 
-func TestHasPlanetaryGovernment(t *testing.T) {
-	owned := &domain.Base{OwnerID: "f1"}
-	rival := &domain.Base{OwnerID: "f2"}
-
-	if !domain.HasPlanetaryGovernment("f1", []*domain.Base{owned}) {
-		t.Error("want true when faction owns a base")
-	}
-	if domain.HasPlanetaryGovernment("f1", []*domain.Base{rival}) {
-		t.Error("want false when only rival owns a base")
-	}
-	if domain.HasPlanetaryGovernment("f1", nil) {
-		t.Error("want false for nil slice")
-	}
-	if !domain.HasPlanetaryGovernment("f1", []*domain.Base{rival, owned}) {
-		t.Error("want true when faction base is present among rivals")
-	}
-}
-
 func TestAsset_CloneCopiesConditions(t *testing.T) {
 	original := &domain.Asset{ID: "a1", Conditions: []domain.Condition{{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1"}}}
 

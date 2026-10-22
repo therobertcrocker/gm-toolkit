@@ -29,6 +29,10 @@ type Tag struct {
 	Effect      string `toml:"effect"`
 }
 
+// TagPlanetaryGovernment marks a faction that governs at least one world; the
+// government record says which (A.001.6 overview Decision 10).
+const TagPlanetaryGovernment = "T-011"
+
 type Goal struct {
 	ID          string `toml:"id"`
 	Name        string `toml:"name"`
@@ -64,6 +68,11 @@ type Faction struct {
 	Bases                   []*Base           `toml:"bases"`
 	HookBudgets             map[string]int    `toml:"hook_budgets,omitempty"`
 	PendingPurchaseDiscount int               `toml:"pending_purchase_discount,omitempty"`
+}
+
+// HasTag reports whether the faction holds the tag with ID tagID.
+func (faction *Faction) HasTag(tagID string) bool {
+	return slices.ContainsFunc(faction.Tags, func(tag *Tag) bool { return tag.ID == tagID })
 }
 
 // Clone deep-copies a faction so a caller can apply mutations to the copy without

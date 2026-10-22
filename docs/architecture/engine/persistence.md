@@ -53,8 +53,11 @@ source rulebook directory and copies every `.toml` into the campaign's
 ### Mutable state: `state.toml`
 
 `FactionState` is the entire mutable game: the `CampaignID`, the `CycleNumber`,
-a `map[string]*Faction`, and the optional `CurrentTurn` cursor (the pause/resume
-state from the [turn pipeline](turn-pipeline.md)). It is one TOML file.
+a `map[string]*Faction`, the government record (`Governments`, world ID → ruling
+faction ID; a world with no entry is independent, governed by no tracked faction,
+so a file without the table loads as "every world independent"), and the optional
+`CurrentTurn` cursor (the
+pause/resume state from the [turn pipeline](turn-pipeline.md)). It is one TOML file.
 
 - **`Load` is bootstrap-friendly.** A missing `state.toml` returns an *empty*
   state, not an error, so a freshly scaffolded campaign runs without a manual

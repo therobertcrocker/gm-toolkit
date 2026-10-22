@@ -13,6 +13,7 @@ import (
 type Collector interface {
 	hooks.Collector
 	hooks.InterceptCollector
+	hooks.PermissionCollector
 	SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
 	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]RelocateOrder, error)
 	SelectPurchaseEnablerAsset(world string, candidates []PurchaseEnablerOption) (*domain.AssetDefinition, error)

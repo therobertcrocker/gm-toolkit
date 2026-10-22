@@ -187,7 +187,7 @@ A faction with no current goal may pick one. A faction **can take one action typ
 - Attempt to become the ruling government of a world
 - Must destroy all **unstealthed** opposing assets on the planet; if not accomplished in one turn, must continue next turn (no other actions allowed in the meantime). The attempt ends when **either** all resistance is destroyed **or** all of the seizing faction's own assets on that planet are destroyed or have left
 - If all resistance is eliminated, the faction must maintain at least one unstealthed asset on the world for **three turns**
-- On success: gain the **Planetary Government** tag for that world
+- On success: become the world's ruler in the government record, and gain the **Planetary Government** tag if not already held; a previous ruler that governs no other world loses it
 
 ### Use Asset Ability
 - Trigger the special abilities of any assets with the `A` (Action) flag
@@ -238,7 +238,7 @@ Some individual assets have recurring maintenance costs noted in their descripti
 
 Assets with flag `P` require the permission of the local planetary government to purchase or import. The standing government can physically prevent recruitment or shoot down assets in entry phase. Bribes of 1d4 Coin can occasionally succeed. No government will willingly permit assets powerful enough to overthrow them.
 
-The **Planetary Government** tag grants or denies this permission for that world.
+The campaign's government record names the ruler of each world; that ruler grants or denies this permission there, and the GM decides for a world no faction governs. The **Planetary Government** tag marks a faction that governs at least one world.
 
 ### Bases of Influence
 
@@ -266,7 +266,7 @@ The **Planetary Government** tag grants or denies this permission for that world
    - Major: 2 assets in primary attribute + 2 assets in other attributes
    - Hegemon: 4 assets in primary attribute + 4 assets in other attributes
    - Assets must meet attribute rating and tech level requirements
-   - If the faction controls one or more worlds, add **Planetary Government** tags
+   - If the faction controls a world, add the **Planetary Government** tag; the faction wizard then asks which world it governs
 8. **Set starting Coin** — 0 (unless specified by GM)
 
 ---

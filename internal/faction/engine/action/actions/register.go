@@ -16,7 +16,8 @@ import (
 // resolveRoller is read at factory-invocation (turn) time rather than captured
 // by value, because the roller is a swappable seam — tests replace Engine.Rand
 // with a deterministic FixedRoller after construction.
-// The Attack action raises the matchup route itself, so it takes the effects engine.
+// The Attack action raises the matchup route itself, and Buy Asset fires a quality's
+// effect itself, so both take the effects engine.
 func RegisterDefaultActions(
 	ae *action.ActionEngine,
 	resolveRoller func() domain.Roller,
@@ -28,8 +29,10 @@ func RegisterDefaultActions(
 	ae.Register(func(c action.Collector) action.Action { return NewSellAsset(c) })
 	ae.Register(func(_ action.Collector) action.Action { return NewRepairFaction() })
 	ae.Register(func(c action.Collector) action.Action { return NewRepairAsset(c, hookRegistry) })
-	ae.Register(func(c action.Collector) action.Action { return NewBuyAsset(c, hookRegistry, worldEngine) })
-	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c) })
+	ae.Register(func(c action.Collector) action.Action {
+		return NewBuyAsset(c, hookRegistry, worldEngine, effectsEngine)
+	})
+	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c, hookRegistry) })
 	ae.Register(func(c action.Collector) action.Action {
 		return NewAttack(c, resolveRoller(), hookRegistry, worldIndex(worldEngine), effectsEngine)
 	})

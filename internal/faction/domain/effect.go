@@ -5,27 +5,29 @@ package domain
 type SpecialEffectType string
 
 const (
-	SpecialCoinGain       SpecialEffectType = "coin_gain"
-	SpecialCoinSteal      SpecialEffectType = "coin_steal"
-	SpecialIgnoreCoinLoss SpecialEffectType = "ignore_coin_loss"
-	SpecialSelfDamage     SpecialEffectType = "self_damage"
-	SpecialApplyStealth   SpecialEffectType = "apply_stealth"
-	SpecialClearStealth   SpecialEffectType = "clear_stealth"
-	SpecialBonusDie       SpecialEffectType = "bonus_die"
-	SpecialRemoveTagDice  SpecialEffectType = "remove_tag_dice"
-	SpecialReroll         SpecialEffectType = "reroll"
-	SpecialTechLevelFloor SpecialEffectType = "tech_level_floor"
-	SpecialCostSurcharge  SpecialEffectType = "cost_surcharge"
-	SpecialGrantMovement  SpecialEffectType = "grant_movement"
-	SpecialRestrictAttack SpecialEffectType = "restrict_attack"
-	SpecialCaptureTarget  SpecialEffectType = "capture_target"
-	SpecialBlockAbility   SpecialEffectType = "block_ability"
-	SpecialCounterstrike  SpecialEffectType = "counterstrike"
-	SpecialSeizeTarget    SpecialEffectType = "seize_target"
-	SpecialRestoreAsset   SpecialEffectType = "restore_asset"
-	SpecialDiscountRepair SpecialEffectType = "discount_repair"
-	SpecialSacrificeSelf  SpecialEffectType = "sacrifice_self"
-	SpecialShelterAsset   SpecialEffectType = "shelter_asset"
+	SpecialCoinGain        SpecialEffectType = "coin_gain"
+	SpecialCoinSteal       SpecialEffectType = "coin_steal"
+	SpecialIgnoreCoinLoss  SpecialEffectType = "ignore_coin_loss"
+	SpecialSelfDamage      SpecialEffectType = "self_damage"
+	SpecialApplyStealth    SpecialEffectType = "apply_stealth"
+	SpecialClearStealth    SpecialEffectType = "clear_stealth"
+	SpecialBonusDie        SpecialEffectType = "bonus_die"
+	SpecialRemoveTagDice   SpecialEffectType = "remove_tag_dice"
+	SpecialReroll          SpecialEffectType = "reroll"
+	SpecialTechLevelFloor  SpecialEffectType = "tech_level_floor"
+	SpecialCostSurcharge   SpecialEffectType = "cost_surcharge"
+	SpecialGrantMovement   SpecialEffectType = "grant_movement"
+	SpecialRestrictAttack  SpecialEffectType = "restrict_attack"
+	SpecialCaptureTarget   SpecialEffectType = "capture_target"
+	SpecialBlockAbility    SpecialEffectType = "block_ability"
+	SpecialCounterstrike   SpecialEffectType = "counterstrike"
+	SpecialSeizeTarget     SpecialEffectType = "seize_target"
+	SpecialRestoreAsset    SpecialEffectType = "restore_asset"
+	SpecialDiscountRepair  SpecialEffectType = "discount_repair"
+	SpecialSacrificeSelf   SpecialEffectType = "sacrifice_self"
+	SpecialShelterAsset    SpecialEffectType = "shelter_asset"
+	SpecialGrantStealth    SpecialEffectType = "grant_stealth"
+	SpecialGrantPermission SpecialEffectType = "grant_permission"
 )
 
 type EffectTrigger string
@@ -47,6 +49,7 @@ const (
 	TriggerOwnDefenseWin          EffectTrigger = "own_defense_win"
 	TriggerRepairCostQuery        EffectTrigger = "repair_cost_query"
 	TriggerLethalDamage           EffectTrigger = "lethal_damage"
+	TriggerPermissionQuery        EffectTrigger = "permission_query"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The

@@ -561,6 +561,58 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
+	t.Run("capital fleet needs permission to be raised", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-F8-001"]
+		if !ok {
+			t.Fatal("asset SWN-F8-001 not found")
+		}
+		if asset.HasFlag(domain.FlagPermission) {
+			t.Error("Capital Fleet carries P, want the book's flags (A, S) only (D-26)")
+		}
+		if !asset.NeedsPurchasePermission() {
+			t.Error("NeedsPurchasePermission = false, want true")
+		}
+	})
+
+	t.Run("popular movement grant_permission effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C7-001"]
+		if !ok {
+			t.Fatal("asset SWN-C7-001 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerPermissionQuery,
+			Effect:  domain.SpecialGrantPermission,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("stealth is a quality with grant_stealth", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C3-002"]
+		if !ok {
+			t.Fatal("asset SWN-C3-002 not found")
+		}
+		if !asset.Quality {
+			t.Error("Quality = false, want true")
+		}
+		stealthy := false
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerOnPurchase,
+			Effect:  domain.SpecialGrantStealth,
+			Filters: domain.EffectFilters{
+				Owner:      domain.OwnerOwn,
+				Scope:      domain.ScopeWorld,
+				AssetTypes: []domain.AssetType{domain.TypeSpecialForces},
+				Stealthy:   &stealthy,
+			},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
 	t.Run("goals populated", func(t *testing.T) {
 		if len(rb.Goals) == 0 {
 			t.Fatal("expected goals to be loaded, got none")

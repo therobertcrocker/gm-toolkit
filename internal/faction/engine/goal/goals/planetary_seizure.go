@@ -41,19 +41,62 @@ func (PlanetarySeizure) CheckLock(faction *domain.Faction, factionState *state.F
 	}
 	newTurns := goal.TurnsRemaining - 1
 	if newTurns == 0 {
-		xp := calcPlanetarySeizureXP(goal.TargetFactionID, factionState)
-		var pgTag domain.Tag
-		if t, ok := rulebook.Tags["T-011"]; ok {
-			pgTag = *t
-		}
-		return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{
-			tick,
-			domain.TagAdded{FactionID: faction.ID, Tag: pgTag, Cause: "goal_completed"},
+		worldID := goal.TargetWorld.WorldID
+		previousRuler := factionState.Ruler(worldID)
+		xp := calcPlanetarySeizureXP(previousRuler, factionState)
+		mutations := []domain.Mutation{tick}
+		mutations = append(mutations, takeGovernment(faction, worldID, previousRuler, factionState, rulebook)...)
+		mutations = append(mutations,
 			domain.GoalCompleted{FactionID: faction.ID, GoalID: goal.GoalID, XPAwarded: xp},
 			domain.XPAwarded{FactionID: faction.ID, Amount: xp, Cause: "goal_completed"},
-		}
+		)
+		return locks.GoalLock{Type: locks.LockNone}, mutations
 	}
 	return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{tick}
+}
+
+// takeGovernment makes seizer the ruler of worldID (overview Decision 10): the
+// record changes hands, the seizer gains T-011 unless it holds it, and a previous
+// ruler that governs no other world loses the tag it holds. A seizer that already
+// rules the world changes nothing.
+func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
+	if previousRuler == seizer.ID {
+		return nil
+	}
+	mutations := []domain.Mutation{domain.WorldGovernmentChanged{
+		WorldID:           worldID,
+		FromFactionID:     previousRuler,
+		ToFactionID:       seizer.ID,
+		Cause:             "goal_completed",
+		CausedByFactionID: seizer.ID,
+	}}
+	if !seizer.HasTag(domain.TagPlanetaryGovernment) {
+		var tag domain.Tag
+		if found, ok := rulebook.Tags[domain.TagPlanetaryGovernment]; ok {
+			tag = *found
+		}
+		mutations = append(mutations, domain.TagAdded{FactionID: seizer.ID, Tag: tag, Cause: "goal_completed", CausedByFactionID: seizer.ID})
+	}
+	previous := factionState.Factions[previousRuler]
+	if previous == nil || !governsNoOtherWorld(factionState, previousRuler, worldID) {
+		return mutations
+	}
+	for _, held := range previous.Tags {
+		if held.ID == domain.TagPlanetaryGovernment {
+			return append(mutations, domain.TagRemoved{FactionID: previousRuler, Tag: *held, Cause: "goal_completed", CausedByFactionID: seizer.ID})
+		}
+	}
+	return mutations
+}
+
+// governsNoOtherWorld reports whether factionID governs no world but worldID.
+func governsNoOtherWorld(factionState *state.FactionState, factionID, worldID string) bool {
+	for ruledWorld, ruler := range factionState.Governments {
+		if ruler == factionID && ruledWorld != worldID {
+			return false
+		}
+	}
+	return true
 }
 
 func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook, _ *world.Index) []domain.Mutation {

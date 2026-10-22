@@ -14,7 +14,7 @@ import (
 type MutationMiss struct {
 	MutationType string
 	FactionID    string
-	EntityID     string // asset or base ID; empty for faction-level misses
+	EntityID     string // asset, base or tag ID; empty for faction-level misses
 }
 
 // MutationApplyError is returned by Apply when one or more referenced entities
@@ -252,6 +252,32 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.TagRemoved:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				index := slices.IndexFunc(faction.Tags, func(tag *domain.Tag) bool { return tag.ID == v.Tag.ID })
+				if index >= 0 {
+					faction.Tags = slices.Delete(faction.Tags, index, index+1)
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.Tag.ID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.WorldGovernmentChanged:
+			_, known := factionState.Factions[v.ToFactionID]
+			switch {
+			case v.ToFactionID == "":
+				delete(factionState.Governments, v.WorldID)
+			case !known:
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.ToFactionID})
+			default:
+				if factionState.Governments == nil {
+					factionState.Governments = make(map[string]string)
+				}
+				factionState.Governments[v.WorldID] = v.ToFactionID
+			}
+		case domain.PermissionRefused:
+			// record only: the refused action bought nothing
 		case domain.InfluenceDelta:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				found := false

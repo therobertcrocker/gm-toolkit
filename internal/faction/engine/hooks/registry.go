@@ -89,6 +89,7 @@ type Registry struct {
 	tieResolvers             map[Scope][]RegisteredTieResolver
 	lethalInterceptors       map[Scope][]RegisteredLethalInterceptor
 	repairCostModifiers      map[Scope][]RegisteredRepairCostModifier
+	permissionGranters       map[Scope][]RegisteredPermissionGranter
 }
 
 // NewRegistry returns an empty Registry ready for registration.
@@ -113,6 +114,7 @@ func (registry *Registry) Reset() {
 	registry.tieResolvers = make(map[Scope][]RegisteredTieResolver)
 	registry.lethalInterceptors = make(map[Scope][]RegisteredLethalInterceptor)
 	registry.repairCostModifiers = make(map[Scope][]RegisteredRepairCostModifier)
+	registry.permissionGranters = make(map[Scope][]RegisteredPermissionGranter)
 }
 
 // ClearAsset removes every hook registered under one asset's scope.
@@ -130,6 +132,7 @@ func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
 	delete(registry.tieResolvers, scope)
 	delete(registry.lethalInterceptors, scope)
 	delete(registry.repairCostModifiers, scope)
+	delete(registry.permissionGranters, scope)
 }
 
 // RegisterRollModifier registers a Cat 1 hook under the given scope.
@@ -334,4 +337,26 @@ func (registry *Registry) RepairCostModifiersFor(factionID, assetInstanceID stri
 // against one asset instance, without the global or faction buckets.
 func (registry *Registry) RepairCostModifiersForAsset(factionID, assetInstanceID string) []RegisteredRepairCostModifier {
 	return registry.repairCostModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
+// RegisterPermissionGranter registers a Cat 4 permission-granter hook under the given scope.
+func (registry *Registry) RegisterPermissionGranter(scope Scope, source string, hook PermissionGranter) {
+	registry.permissionGranters[scope] = append(registry.permissionGranters[scope], RegisteredPermissionGranter{Scope: scope, Source: source, Hook: hook})
+}
+
+// PermissionGrantersFor returns all Cat 4 permission-granter hooks matching the given faction and asset.
+func (registry *Registry) PermissionGrantersFor(factionID, assetInstanceID string) []RegisteredPermissionGranter {
+	var result []RegisteredPermissionGranter
+	result = append(result, registry.permissionGranters[GlobalScope()]...)
+	result = append(result, registry.permissionGranters[FactionScope(factionID)]...)
+	if assetInstanceID != "" {
+		result = append(result, registry.permissionGranters[AssetScope(factionID, assetInstanceID)]...)
+	}
+	return result
+}
+
+// PermissionGrantersForAsset returns the Cat 4 permission-granter hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) PermissionGrantersForAsset(factionID, assetInstanceID string) []RegisteredPermissionGranter {
+	return registry.permissionGranters[AssetScope(factionID, assetInstanceID)]
 }

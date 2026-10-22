@@ -207,6 +207,32 @@ func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 	}
 }
 
+func TestRegisterEffectsList_QualityNeedsTargets(t *testing.T) {
+	entry := domain.EffectDefinition{Trigger: domain.TriggerOnPurchase, Effect: domain.SpecialApplyStealth, Filters: ownSelf}
+	def := &domain.AssetDefinition{ID: "Q-001", Quality: true, Effects: []domain.EffectDefinition{entry}}
+
+	withoutTargets := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialApplyStealth: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnSelf},
+			Fire:     noopFire,
+		},
+	}
+	if err := effect.New(withoutTargets, discardLog).RegisterEffectsList(def); err == nil {
+		t.Error("a quality whose effect has no Targets registered; want an error")
+	}
+
+	withTargets := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialApplyStealth: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnSelf},
+			Fire:     noopFire,
+			Targets:  func(effect.TargetContext) []*domain.Asset { return nil },
+		},
+	}
+	if err := effect.New(withTargets, discardLog).RegisterEffectsList(def); err != nil {
+		t.Errorf("RegisterEffectsList: %v", err)
+	}
+}
+
 func noopFire(effect.FireContext) []domain.Mutation { return nil }
 
 func noopRegister(effect.RegisterContext) {}

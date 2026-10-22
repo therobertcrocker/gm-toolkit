@@ -52,6 +52,10 @@ func (stub *stubAssetMovementGranter) GrantMovementAbilities(_ *domain.Faction) 
 	return nil
 }
 
+type stubPermissionGranter struct{}
+
+func (stub *stubPermissionGranter) GrantsPermission(hooks.PermissionQuery) bool { return false }
+
 type stubRepairCostModifier struct{}
 
 func (stub *stubRepairCostModifier) ModifyRepairCost(_ *domain.Faction, _ *domain.Asset, _ *domain.AssetDefinition, _ *hooks.RepairCostQuery) {
@@ -363,6 +367,7 @@ func TestClearAsset_RemovesOnlyThatAssetsBucket(t *testing.T) {
 	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubAssetMovementGranter{})
 	registry.RegisterLethalInterceptor(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubLethalInterceptor{})
 	registry.RegisterRepairCostModifier(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubRepairCostModifier{})
+	registry.RegisterPermissionGranter(hooks.AssetScope("f1", "asset-X"), "asset-X", &stubPermissionGranter{})
 	registry.RegisterMutationReactor(hooks.AssetScope("f1", "asset-Y"), "asset-Y", &stubMutationReactor{})
 	registry.RegisterMutationReactor(hooks.AssetScope("f2", "asset-X"), "f2-asset-X", &stubMutationReactor{})
 	registry.RegisterMutationReactor(hooks.FactionScope("f1"), "faction", &stubMutationReactor{})
@@ -383,6 +388,9 @@ func TestClearAsset_RemovesOnlyThatAssetsBucket(t *testing.T) {
 	}
 	if got := registry.RepairCostModifiersForAsset("f1", "asset-X"); len(got) != 0 {
 		t.Errorf("repair-cost modifiers under f1/asset-X = %v, want none", got)
+	}
+	if got := registry.PermissionGrantersForAsset("f1", "asset-X"); len(got) != 0 {
+		t.Errorf("permission granters under f1/asset-X = %v, want none", got)
 	}
 	if len(registry.MutationReactorsForAsset("f1", "asset-Y")) != 1 ||
 		len(registry.MutationReactorsForAsset("f2", "asset-X")) != 1 ||

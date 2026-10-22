@@ -113,8 +113,8 @@ determined once selected. The rules behind the numbers live in
 | Sell Asset | Remove an asset for half its Cost back; a sheltered asset cannot be sold | `SelectAsset` → `AssetRemoved`, `CoinDelta` |
 | Repair Faction | Heal the faction's own HP, free | — → `FactionHPDelta` |
 | Repair Asset | Heal damaged assets; cost escalates per heal on the same asset, and a `RepairCostModifier` can lower each asset's price | `SelectRepairOrders` → `AssetHPDelta`, `CoinDelta` (`AssetConditionCleared` when a sheltered asset reaches full HP) |
-| Buy Asset | Purchase an asset onto a world, inactive until next turn | `SelectBuyOrder` (`SelectAsset` for a stealth target) → `AssetAdded`, `CoinDelta` (`AssetStealthApplied`, `PurchaseDiscountConsumed`) |
-| Refit Asset | Swap an asset for another of its category, paying the cost difference; a sheltered asset cannot be refit | `SelectRefitOrder` → `AssetRemoved`, `AssetAdded`, `CoinDelta` |
+| Buy Asset | Purchase an asset onto a world, inactive until next turn; a quality (Stealth) adds no asset and acts on one the faction holds there; a permission asset asks the world's government after the choice | `SelectBuyOrder` (`SelectAsset` for a quality's target, `RequestPermission`) → `AssetAdded`, `CoinDelta` (a quality's effect mutations, such as `AssetStealthApplied`, in place of `AssetAdded`; `PurchaseDiscountConsumed`; only `PermissionRefused` on a refusal) |
+| Refit Asset | Swap an asset for another of its category, paying the cost difference; a sheltered asset or one in transit cannot be refit; a permission replacement asks the world's government | `SelectRefitOrder` (`RequestPermission`) → `AssetRemoved`, `AssetAdded`, `CoinDelta` (only `PermissionRefused` on a refusal) |
 | Attack | Resolve asset combat against rivals at a world/hex; damage may redirect to a base | `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase` (`ConfirmSacrifice`, `ConfirmPayment` for a Cat 6 interceptor) → `AssetHPDelta`, `AssetRemoved`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed`, `AssetStealthCleared` (a Cat 6 interception's mutations in place of `AssetRemoved`) |
 | Expand Influence | Place or reinforce a Base of Influence; a new base draws rival free attacks | `SelectExpandInfluenceOrder`, `ConfirmRivalFreeAttack`, `SelectBaseAttackers` → `BaseAdded`, `BaseHealed`, `BaseExpanded`, `CoinDelta`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed` |
 | Bribe | Spend Coin to raise a rival Base's influence | `SelectBribeTarget` → `CoinDelta`, `InfluenceDelta` |
@@ -171,7 +171,7 @@ can cascade to bases and faction HP.
   must therefore author ungated steps (relocate, roll-table) before gated ones.
   (Effort 1 Plan, Decision 1.)
 - **Effect handlers receive the world engine by parameter, not import.** Movement
-  effects (relocate, the purchase-enabler's government check) need spatial queries,
+  effects (relocate, the purchase-enabler's cost chain) need spatial queries,
   so `Dispatch` threads the `*world.WorldEngine` into each step's `StepContext` —
   nil for non-spatial effects — keeping `actions/ability/` free of an `engine`
   import the same way `RegisterDefaultActions` is.
@@ -179,7 +179,10 @@ can cascade to bases and faction HP.
   the new asset through `domain.NewPurchasedAsset` and gate it through
   `domain.CanPurchase` / `PurchaseTerms`, and both consume a
   `PendingPurchaseDiscount` under the same half-base-price floor clamp — so the two
-  purchase surfaces cannot drift on cost, permission, or discount rules. Every
+  purchase surfaces cannot drift on cost or discount rules. Permission is not a
+  menu filter: Buy Asset, the purchase-enabler and Refit each ask
+  `dispatch.RequestPermission` after the choice, and a refusal ends the purchase
+  with a `PermissionRefused` record and no charge (A.001.6 Effort 4, D-35). Every
   purchase path, the Buy Asset menu included, prices through the full
   `ResolveAssetCost` chain, never `def.Cost`: once a cost hook can raise a price
   (`cost_surcharge`), a check against the base price offers a def that `Resolve`

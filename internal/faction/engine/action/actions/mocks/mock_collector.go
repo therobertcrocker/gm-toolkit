@@ -148,6 +148,21 @@ func (mr *MockCollectorMockRecorder) ConfirmSacrifice(offer any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmSacrifice", reflect.TypeOf((*MockCollector)(nil).ConfirmSacrifice), offer)
 }
 
+// RequestPermission mocks base method.
+func (m *MockCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RequestPermission", request)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RequestPermission indicates an expected call of RequestPermission.
+func (mr *MockCollectorMockRecorder) RequestPermission(request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestPermission", reflect.TypeOf((*MockCollector)(nil).RequestPermission), request)
+}
+
 // SelectAbilityAssets mocks base method.
 func (m *MockCollector) SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, arg2 *rulebook.Rulebook) ([]*domain.Asset, error) {
 	m.ctrl.T.Helper()

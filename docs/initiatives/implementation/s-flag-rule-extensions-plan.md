@@ -103,12 +103,13 @@ and a modeled world government with one permission request.
 
 8. **The government record is `FactionState.Governments map[string]string`** (TOML
    `governments`, `omitempty`): world ID → ruling faction ID, with an absent key meaning
-   an NPC government. A missing table loads as "every world NPC" (D-5) with no load
+   an independent world, one no tracked faction governs (the term replaced "NPC" on
+   2026-10-22). A missing table loads as "every world independent" (D-5) with no load
    change, because a nil map reads as empty. *(Amended in the approval review.)* The
    authoring path is the faction wizard: picking the Planetary Government tag asks
    which world, and the wizard writes the entry (Decision 10). Hand-editing `state.toml`
    stays possible but is not the designed path. No load-time derivation from existing
-   tags: a campaign saved before this record loads all-NPC, and Robert regenerates the
+   tags: a campaign saved before this record loads all-independent, and Robert regenerates the
    test campaign after the arc. Rejected: a CLI command now (the wizard already owns
    faction authoring); deriving the record at load (the tag never recorded a world, and
    the one campaign that holds it is being regenerated). Resolves Open Question 2.
@@ -128,7 +129,7 @@ and a modeled world government with one permission request.
     `swn-faction-mechanics.md` and the tag's own effect text, both of which say the tag
     grants permission.)* The book makes the tag per-planet ("can be held once per planet
     controlled"); the record is that per-planet instance list, and the tag is its
-    coarse presence marker. Three consequences:
+    coarse presence marker. Four consequences:
     - Planetary Seizure emits `WorldGovernmentChanged` on completion
       (`planetary_seizure.go:41-47`), and `TagAdded` for `T-011` only when the faction
       does not already hold it. When the previous ruler loses its last world, Seizure
@@ -136,8 +137,15 @@ and a modeled world government with one permission request.
     - The faction wizard, on a `T-011` pick, asks which world and writes the record entry
       at creation (Decision 8). The wizard is the authoring surface; a GM who picks the
       tag never ends up with a tag that governs nothing.
-    - Inside Enemy Territory reads the record ("a rival rules this world") in place of
-      its own test (`helpers.go:80-102`: a rival Base here and `T-011` anywhere).
+    - Inside Enemy Territory reads the record in place of its own test
+      (`helpers.go:80-102`: a rival Base here and `T-011` anywhere). *(Reshaped in
+      the Effort 4 plan, Decision 6, by Robert's call: a world counts when a rival
+      governs it, or when it is independent and a rival's homeworld; a world the
+      acting faction governs never counts. The first version read "a rival rules
+      this world".)*
+    - A homeworld is not a government. It never enters the record; a faction never
+      asks permission to purchase on its own homeworld, but an arrival there still
+      asks (Effort 4 Decision 15, Robert's call).
     The tag's effect text in `tags.toml` and the Government Permission paragraph in
     `swn-faction-mechanics.md` are retexted at Effort 4 to name the record as the
     per-planet instance. D-3's "two copies of one fact" objection does not apply: the
@@ -282,9 +290,8 @@ Each is answered by the named effort plan.
 |---|---|
 | 1 | *(Resolved in the [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
 | 3 | *(Resolved in the [Effort 3 plan](completed/s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
-| 2 | *(Resolved in the [Effort 2 plan](s-flag-rule-extensions-effort-2-plan.md), Decisions 1–3, 9 and 12: the hook offers and the dispatcher decides; the outcome is its mutations, with a second `AssetHPDelta` that sets the HP; the Attack tracker folds them; an intercepted defender still counters on a tie; Repair Asset clears `sheltered` at full HP)* |
-| 4 | The Cat 4 permission family's shape (`permission_query`, `require_permission`, `grant_permission`) and the D-41 request method |
-| 4 | `PermissionRefused` fields and the wizard's world prompt for a `T-011` pick (Decisions 10 and 22) |
+| 2 | *(Resolved in the [Effort 2 plan](completed/s-flag-rule-extensions-effort-2-plan.md), Decisions 1–3, 9 and 12: the hook offers and the dispatcher decides; the outcome is its mutations, with a second `AssetHPDelta` that sets the HP; the Attack tracker folds them; an intercepted defender still counters on a tie; Repair Asset clears `sheltered` at full HP)* |
+| 4 | *(Resolved in the [Effort 4 plan](s-flag-rule-extensions-effort-4-plan.md), Decisions 1, 7, 8 and 10: Capital Fleet's raise-only permission is a definition field, `purchase_permission`, so the Cat 4 family is one member, `PermissionGranter` (`permission_query → grant_permission`); `hooks.PermissionCollector.RequestPermission`, driven by `dispatch.RequestPermission`; `PermissionRefused{FactionID, WorldID, DefinitionID, DecidedByFactionID, Cause, CausedByFactionID}`; the wizard's hidden world select on a T-011 pick)* |
 | 5 | Decision 12's mark: Lobbyists' withdrawal only (lean) or every refusal |
 | 5 | Transport Lockdown's paid-and-waiting mark on the order (Decision 15) |
 | 5 | The Lobbyists contest's prompt to its owner inside the request path |
@@ -309,9 +316,9 @@ best at the Effort 1 boundary, since Efforts 2, 3 and 5 build on its model.
 | # | Effort | Scope | Assets | Plan |
 |---|--------|-------|--------|------|
 | 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](completed/s-flag-rule-extensions-effort-1-plan.md) |
-| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | [`-effort-2-plan.md`](s-flag-rule-extensions-effort-2-plan.md) |
+| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | [`-effort-2-plan.md`](completed/s-flag-rule-extensions-effort-2-plan.md) |
 | 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](completed/s-flag-rule-extensions-effort-3-plan.md) |
-| 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | own session → `-effort-4-plan.md` |
+| 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | [`-effort-4-plan.md`](s-flag-rule-extensions-effort-4-plan.md) |
 | 5 | Movement permission | The arrival check and hold (`MovementOrderHeld`), the relocate request, the bypasses, the Lockdown `locked_out` condition | Lobbyists, Transport Lockdown, Deep Strike Landers, Blockade Runners | own session → `-effort-5-plan.md` |
 
 Effort 4 depends on nothing; it runs fourth only so that the work runs in one line.
@@ -336,10 +343,10 @@ they do not redefine it.
 | `TargetAsset` in `resolveTarget`; per-effect candidate rules | ability pipeline | 3 |
 | Pay prompt interface (`hooks.PaymentCollector`) | collectors | 3 |
 | `disabled` in `Active()`; the separate defender test `Targetable()` (D-38); `no_attack` in attacker eligibility (`domain.AttackBlocked`) | domain, actions | 3 |
-| `quality = true`, `grant_stealth` | loader, effects | 4 |
-| `FactionState.Governments`, `WorldGovernmentChanged`, `TagRemoved`, the wizard world prompt | state, mutation, TUI manage | 4 |
-| Permission request interface (D-41); `PermissionRefused` | collectors, mutation | 4 |
-| Cat 4 permission family | hooks | 4 |
+| `quality = true`, `grant_stealth`; `Registrar.Targets`, `FireQuality` | loader, effects | 4 |
+| `FactionState.Governments` and `Ruler()`, `WorldGovernmentChanged`, `TagRemoved`, the wizard world prompt | state, mutation, TUI manage | 4 |
+| Permission request interface (D-41, in `action.Collector`; `PhaseCollector` in Effort 5); `dispatch.RequestPermission`; `PermissionRefused` | collectors, dispatch, mutation | 4 |
+| Cat 4 permission family (`PermissionGranter`); `AssetDefinition.PurchasePermission` | hooks, domain, loader | 4 |
 | `TransportProfile.IgnoresPermission` | domain, loader | 5 |
 | `MovementOrderHeld`; the transport reactor's `Held` arm | mutation, effects | 5 |
 | `locked_out` condition kind with a target-faction field (Decision 24) | domain, mutation | 5 |
@@ -360,7 +367,8 @@ history, digest and TUI grow together (Decision 13):
 **State storage.** New durable fields: `Asset.Conditions` (Effort 1; in `Clone`),
 `FactionState.Governments` (Effort 4; `omitempty`), the order's paid-and-waiting mark
 (Effort 5 plan). New definition fields: `AttackProfile.Damage` as a pointer (Effort 1),
-`quality` (Effort 4), `TransportProfile.IgnoresPermission` (Effort 5). No new file.
+`quality` and `purchase_permission` (Effort 4), `TransportProfile.IgnoresPermission`
+(Effort 5). No new file.
 
 **Prompts addressed to a faction that is not acting.** Each names the faction it asks,
 as `ConfirmRedirectToBase(defenderFaction, …)` does (`attack.go:167`). One shared driver
@@ -524,7 +532,7 @@ commits:
 Discovery: Lethal Damage Interception (Cat 6). Open Question 1 (Decision 7) is the
 centre of this plan.
 
-The [Effort 2 plan](s-flag-rule-extensions-effort-2-plan.md) carries the spec. Its
+The [Effort 2 plan](completed/s-flag-rule-extensions-effort-2-plan.md) carries the spec. Its
 commits:
 
 - `feat: cat 6 lethal interception` — the hook offers and the dispatcher decides, the
@@ -559,19 +567,26 @@ commits:
 Discovery: Purchase That Targets Another Asset, Permission Model (government and
 purchase rows).
 
+The [Effort 4 plan](s-flag-rule-extensions-effort-4-plan.md) carries the spec. Its
+commits:
+
 - `refactor: Stealth as a purchase quality` — `quality = true`, `grant_stealth`, the
-  fourth direct definition read in Buy Asset; every `SWN-C3-002` check goes (D-19 to
-  D-22).
+  fourth direct definition read in Buy Asset (`FireQuality`, on a target the
+  registrar's `Targets` selects); every `SWN-C3-002` check goes (D-19 to D-22); a
+  quality is never a refit or starting asset.
 - `feat: world government record` — `FactionState.Governments` (Decision 8),
-  `WorldGovernmentChanged` and `TagRemoved`, Planetary Seizure emitting both, Inside
-  Enemy Territory on the record, the wizard's world prompt on a `T-011` pick, and the
+  `WorldGovernmentChanged` and `TagRemoved`, Planetary Seizure emitting both with its
+  XP from the previous ruler, Inside Enemy Territory on the record, and the
   `tags.toml` and rules-doc retext (Decision 10).
-- `feat: permission request at purchase` — the D-41 interface in both collectors and the
-  TUI; the request at Buy Asset, the purchase enabler and Refit (D-23, D-35); the
-  automatic grant on a world the faction rules (D-6); `PermissionRefused` on a refusal
-  (Decision 22); retire `HasPlanetaryGovernment`.
-- `feat: permission rule queries` — the Cat 4 permission family; Capital Fleet's
-  `require_permission` (D-26, closes `B.009`); Popular Movement's `grant_permission`.
+- `feat: the wizard records a world's government` — the world prompt on a `T-011`
+  pick; faction create and delete keep the record consistent.
+- `feat: permission request at purchase` — the D-41 interface in `action.Collector`
+  and the TUI; the request at Buy Asset, the purchase enabler and Refit (D-23, D-35);
+  the automatic grant on a world the faction rules (D-6); `PermissionRefused` on a
+  refusal (Decision 22); retire `HasPlanetaryGovernment`; no refit in transit.
+- `feat: permission rule queries` — the Cat 4 permission family (`PermissionGranter`);
+  Capital Fleet's `purchase_permission` field (D-26 reshaped, closes `B.009`);
+  Popular Movement's `grant_permission`.
 
 ### Effort 5 — Movement permission *(own Plan session)*
 

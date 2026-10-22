@@ -40,7 +40,7 @@ share, and it is a passive store — it never calls a hook itself.
 
 Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
 `MaintenanceCostModifier`, `WorldTechLevelModifier`, `AttackEligibilityRule`,
-`AssetMovementGranter`, `RepairCostModifier` — each with its own signature
+`AssetMovementGranter`, `RepairCostModifier`, `PermissionGranter` — each with its own signature
 (`ModifyAssetCost(buyer, def, world, query *AssetCostQuery)`,
 `MayFight(query AttackEligibilityQuery) bool` and so on). The asset-cost hook
 edits a shared `AssetCostQuery` in place of returning an `int`, because the chain
@@ -153,6 +153,12 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   of its own assets in ID order, chaining a `RepairCostQuery` (whose `Applied`
   holds the `no_stack` marks), and never returns less than 0. A discount serves
   its owner only.
+- **`PermissionGranted`** is the sixth Cat 4 resolver, asked by
+  `RequestPermission` before it prompts. It walks the requester's global and
+  faction granters, then each of its own assets in ID order, and the first yes
+  grants (Popular Movement). A grant serves its owner only. Capital Fleet's
+  raise-only permission is not a hook: the fleet being raised has no instance, so
+  it is the definition field `purchase_permission` (A.001.6 Effort 4 Decision 1).
 - **`InterceptLethal`** is Cat 6. It runs when a hit would destroy an asset,
   before `AssetRemoved` is emitted: in the Attack action's `applyAssetDamage`
   (attack, counter and Cracked Comms' self-attack) and in the `self_damage`
@@ -203,6 +209,14 @@ bookkeeping step. `action.Collector` and `PhaseCollector` both embed it.
 owner of an elective interceptor whether to give up one asset to save another, or
 to pay to keep it. Only `action.Collector` embeds it, because no phase destroys
 an asset by damage, and a reactor asks nothing.
+
+`PermissionCollector` (`RequestPermission(PermissionRequest) (bool, error)`) asks
+a world's government whether a faction may raise an asset there. The request
+names the ruler, or none for an independent world, where the GM answers.
+`dispatch.RequestPermission` decides whether to ask at all; a purchase on the
+requester's own homeworld never asks. `action.Collector`
+embeds it for the purchase paths; `PhaseCollector` will when arrivals ask
+(A.001.6 Effort 5).
 
 ### Per-turn budgets
 

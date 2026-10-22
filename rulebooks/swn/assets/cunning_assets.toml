@@ -190,8 +190,18 @@ maintenance = 0
 tech_level = 0
 type = "Tactic"
 flags = ["S"]
+quality = true
 counter = ""
 description = "Not a standard asset but a special quality purchased for another Special Forces asset on the planet. A Stealthed asset cannot be detected or attacked. If the unit normally requires government permission to land, that permission may be foregone. Stealth is lost if the asset attacks or defends."
+
+[[assets.Stealth.effects]]
+trigger = "on_purchase"
+effect = "grant_stealth"
+[assets.Stealth.effects.filters]
+owner = "own"
+scope = "world"
+asset_type = ["Special Forces"]
+stealthy = false
 
 [assets.CovertShipping]
 id = "SWN-C3-003"
@@ -443,6 +453,13 @@ description = "A planet-wide surge of enthusiasm for a cause controlled by the f
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 damage = "2d6"
+
+[[assets.PopularMovement.effects]]
+trigger = "permission_query"
+effect = "grant_permission"
+[assets.PopularMovement.effects.filters]
+owner = "own"
+scope = "world"
 
 [assets.BookOfSecrets]
 id = "SWN-C7-002"

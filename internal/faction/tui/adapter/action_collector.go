@@ -279,6 +279,21 @@ func (a *actionCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, er
 	return confirmed, nil
 }
 
+// RequestPermission asks the world's ruler, or the GM for an independent world; the ask
+// names the ruler, who is often not the acting faction.
+func (a *actionCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	worldName := request.WorldID
+	if loc, ok := a.adapter.engine.World.Location(request.WorldID); ok {
+		worldName = loc.Name()
+	}
+	raw, err := a.adapter.ask(AskRequestPermission, request.Ruler, RequestPermissionPayload{Request: request, WorldName: worldName})
+	if err != nil {
+		return false, err
+	}
+	granted, _ := raw.(bool)
+	return granted, nil
+}
+
 // confirmPayment asks the paying faction. The action collector (Marketers) and the
 // phase collector (the turn-start lift) share it.
 func (a *Adapter) confirmPayment(offer hooks.PaymentOffer) (bool, error) {

@@ -53,3 +53,18 @@ type InterceptCollector interface {
 	PaymentCollector
 	ConfirmSacrifice(offer SacrificeOffer) (bool, error)
 }
+
+// PermissionRequest asks a world's government whether Requester may raise Def
+// there. Ruler is nil for a world no faction governs; the GM answers for it (D-4).
+type PermissionRequest struct {
+	Requester *domain.Faction
+	Ruler     *domain.Faction
+	WorldID   string
+	Def       *domain.AssetDefinition
+}
+
+// PermissionCollector asks for a government's permission. action.Collector embeds
+// it; PhaseCollector will when arrivals ask (A.001.6 Effort 5, D-41).
+type PermissionCollector interface {
+	RequestPermission(request PermissionRequest) (bool, error)
+}

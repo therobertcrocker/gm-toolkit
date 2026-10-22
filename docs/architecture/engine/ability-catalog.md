@@ -180,7 +180,7 @@ of these; this table reconciles with it and completes the survey.)
 | **passive income** (per-turn Coin) | turn-start phase route (direct definition read, not a hook) | Party Machine `SWN-C4-001` ✅ |
 | **reactive reveal-stealth** (on stealth arrival / per turn) | Cat 3 `MutationReactor` (on arrival); turn-start phase route (per turn) | Tripwire Cells `SWN-C4-003` ✅, Panopticon Matrix `SWN-C8-001` ✅ |
 | **start-stealthed** | purchase phase route (direct definition read, not a hook) | Psychic Assassins `SWN-F5-003` ✅ |
-| **grant-stealth** (quality bought for another asset) | Cat 4 `RuleModifier` | Stealth `SWN-C3-002` |
+| **grant-stealth** (quality bought for another asset) | purchase quality: Buy Asset fires its `on_purchase` entry on a chosen asset (`FireQuality`) → `grant_stealth` | Stealth `SWN-C3-002` ✅ |
 | **bonus-die** (extra die on a roll class) | Cat 1 `RollModifier` | Integral Protocols `SWN-F7-002` ✅ (Cunning defense), Surveyors `SWN-W2-004` ✅ (Expand Influence), Panopticon `SWN-C8-001` ✅ (Cunning attacks/defenses) |
 | **reroll** (force/allow one reroll, once/turn) | Cat 2 `RollResultHook` | Book of Secrets `SWN-C7-002` ✅ |
 | **negate-bonus** (suppress tag dice) | Cat 1 `RollOfferFilter` | Blackmail `SWN-C2-003` ✅ |
@@ -191,7 +191,7 @@ of these; this table reconciles with it and completes the survey.)
 | **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` → `cost_surcharge` | Local Investments `SWN-W1-003` ✅ |
 | **repair discount** (cheaper Repair Asset on its world) | Cat 4 `RepairCostModifier` → `discount_repair` | Medical Center `SWN-W4-003` ✅ |
 | **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `WorldTechLevelModifier` → `tech_level_floor` | Laboratory `SWN-W3-002` ✅, Pretech Researchers `SWN-W5-002` ✅, R&D Department `SWN-W6-002` ✅ |
-| **auto-permission / revoke-permission** | Cat 4 `RuleModifier` | Popular Movement `SWN-C7-001` (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
+| **auto-permission / revoke-permission** | Cat 4 `PermissionGranter` → `grant_permission` (grant); revoke in Effort 5 | Popular Movement `SWN-C7-001` ✅ (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
 | **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` ✅ |
 
 **Dual-flag assets** (`A`+`S`: Informers, Seductress, Covert Shipping) resolve

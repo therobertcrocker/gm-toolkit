@@ -196,6 +196,18 @@ type AssetDefinition struct {
 	Ability     *AbilityDefinition
 	Transport   *TransportProfile
 	Effects     []EffectDefinition
+	// Quality marks a definition that adds no asset: buying it runs its one
+	// on_purchase entry on an asset the buyer already holds (Stealth).
+	Quality bool
+	// deliberate: a definition field, not a require_permission hook, because the asset being raised has no instance to register a hook on (Effort 4 Decision 1).
+	// PurchasePermission asks the government to raise this asset, though moving it
+	// in needs none (Capital Fleet).
+	PurchasePermission bool
+}
+
+// NeedsPurchasePermission reports whether buying def asks the world's government.
+func (def *AssetDefinition) NeedsPurchasePermission() bool {
+	return def.HasFlag(FlagPermission) || def.PurchasePermission
 }
 
 // HalfPrice is half the listed cost, rounded down, but at least 1 Coin: the price
@@ -329,33 +341,19 @@ func NewPurchasedAsset(factions map[string]*Faction, faction *Faction, def *Asse
 	}
 }
 
-// HasPlanetaryGovernment reports whether the faction owns a base on the world (the SWN
-// P-flag permission gate). basesOnWorld is the slice for one world (a nil slice is "no
-// bases" → false), so callers pass worldEngine.Index.BasesByLocation[worldID].
-func HasPlanetaryGovernment(factionID string, basesOnWorld []*Base) bool {
-	for _, base := range basesOnWorld {
-		if base.OwnerID == factionID {
-			return true
-		}
-	}
-	return false
-}
-
 // PurchaseTerms are the per-path inputs to CanPurchase that differ between the Buy Asset
 // action and the purchase_enabler ability: Cost is the price to test affordability against
 // (base cost for a buy, surcharged for an enabler); TechCap is the highest required tech
 // level a def may carry (the target world's tech level for a buy, the enabler's own cap for
-// an enabler); HoldsGovernment is whether the faction owns a base on the target world (the
-// P-flag gate). The shared checks themselves live in CanPurchase so the two paths can't drift.
+// an enabler). The shared checks themselves live in CanPurchase so the two paths can't drift.
 type PurchaseTerms struct {
-	Cost            int
-	TechCap         int
-	HoldsGovernment bool
+	Cost    int
+	TechCap int
 }
 
 // CanPurchase reports whether the faction may buy def under terms: it can afford Cost, meets
-// the def's minimum category rating, the def's required tech level is within TechCap, and it
-// holds Planetary Government when the def is P-flagged.
+// the def's minimum category rating, and the def's required tech level is within TechCap.
+// Government permission is asked after the choice, not here (D-35).
 func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bool {
 	switch {
 	case faction.Coin < terms.Cost:
@@ -363,8 +361,6 @@ func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bo
 	case def.MinRating > faction.StatScore(def.Category):
 		return false
 	case def.TechLevel > terms.TechCap:
-		return false
-	case def.HasFlag(FlagPermission) && !terms.HoldsGovernment:
 		return false
 	}
 	return true

@@ -1,6 +1,7 @@
 package ability
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -62,10 +63,10 @@ func TestPurchaseEnabler_BuysSurcharged(t *testing.T) {
 		t.Fatalf("purchaseEnabler: %v", err)
 	}
 
-	// candidate filter: wrong category, too-high TL, too-high rating, and the P-flagged
-	// def (no WorldEngine, so no Planetary Government) all excluded.
-	if len(offered) != 2 {
-		t.Fatalf("offered %d candidates, want 2 (F-cheap, F-pricey); got %v", len(offered), offered)
+	// candidate filter: wrong category, too-high TL and too-high rating excluded; the
+	// P-flagged def is offered and asks after the pick (D-35).
+	if len(offered) != 3 {
+		t.Fatalf("offered %d candidates, want 3 (F-cheap, F-pricey, F-perm); got %v", len(offered), offered)
 	}
 	// C5: the engine computes the surcharge and passes it through; the view must not
 	// recompute. Each option carries surchargedCost(def.Cost, 150).
@@ -260,20 +261,22 @@ func TestPurchaseEnabler_InsufficientCoin(t *testing.T) {
 	}
 }
 
-func TestPurchaseEnabler_PermissionGate(t *testing.T) {
+func TestPurchaseEnabler_AsksPermissionAfterThePick(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	var offered []action.PurchaseEnablerOption
-
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().
 		SelectPurchaseEnablerAsset(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
-			offered = candidates
-			return candidates[0].Def, nil
-		}).
-		Times(2)
+			for _, candidate := range candidates {
+				if candidate.Def.ID == "F-perm" {
+					return candidate.Def, nil
+				}
+			}
+			t.Fatal("F-perm not offered")
+			return nil, nil
+		})
+	collector.EXPECT().RequestPermission(gomock.Any()).Return(false, nil)
 
-	// A base owned by the acting faction on w1 = Planetary Government, unlocking F-perm.
 	ctx := StepContext{
 		Faction:      &domain.Faction{ID: "f1", Force: 5, Coin: 20, Assets: map[string]*domain.Asset{}},
 		Asset:        &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "w1"}},
@@ -281,22 +284,13 @@ func TestPurchaseEnabler_PermissionGate(t *testing.T) {
 		FactionState: &state.FactionState{},
 		Rulebook:     enablerRulebook(),
 		Collector:    collector,
-		WorldEngine:  &world.WorldEngine{Index: &world.Index{BasesByLocation: map[string][]*domain.Base{"w1": {{OwnerID: "f1"}}}}},
 	}
-	if _, err := purchaseEnabler(ctx); err != nil {
-		t.Fatalf("purchaseEnabler with gov: %v", err)
+	mutations, err := purchaseEnabler(ctx)
+	if err != nil {
+		t.Fatalf("purchaseEnabler: %v", err)
 	}
-	// F-cheap, F-pricey, and F-perm (government held) — 3 candidates.
-	if len(offered) != 3 {
-		t.Fatalf("with Planetary Government, offered %d candidates, want 3 (incl F-perm); got %v", len(offered), offered)
-	}
-
-	// Rival base only — F-perm stays excluded.
-	ctx.WorldEngine = &world.WorldEngine{Index: &world.Index{BasesByLocation: map[string][]*domain.Base{"w1": {{OwnerID: "rival"}}}}}
-	if _, err := purchaseEnabler(ctx); err != nil {
-		t.Fatalf("purchaseEnabler without gov: %v", err)
-	}
-	if len(offered) != 2 {
-		t.Fatalf("without Planetary Government, offered %d candidates, want 2; got %v", len(offered), offered)
+	want := []domain.Mutation{domain.PermissionRefused{FactionID: "f1", WorldID: "w1", DefinitionID: "F-perm", Cause: "ability", CausedByFactionID: "f1"}}
+	if !reflect.DeepEqual(mutations, want) {
+		t.Errorf("mutations = %+v, want only the refusal record (no asset, no charge)", mutations)
 	}
 }

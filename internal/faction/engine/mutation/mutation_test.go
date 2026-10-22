@@ -280,3 +280,69 @@ func TestMutationEngine_OwnerChangeAppliesLast(t *testing.T) {
 		t.Errorf("CurrentHP = %d, want -2", asset.CurrentHP)
 	}
 }
+
+func TestMutationEngine_WorldGovernmentChanged(t *testing.T) {
+	s := newMutationTestState()
+	s.Factions["f2"] = &domain.Faction{ID: "f2"}
+	me := New(slog.New(slog.DiscardHandler))
+	apply := func(mutation domain.Mutation) *MutationApplyError {
+		return me.Apply(s, []domain.Mutation{mutation}, slog.New(slog.DiscardHandler))
+	}
+
+	if err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", ToFactionID: "f1"}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got := s.Ruler("Anchorage"); got != "f1" {
+		t.Errorf("Ruler after f1 takes it = %q, want f1", got)
+	}
+	if err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", FromFactionID: "f1", ToFactionID: "f2"}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got := s.Ruler("Anchorage"); got != "f2" {
+		t.Errorf("Ruler after f2 takes it = %q, want f2", got)
+	}
+	err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", FromFactionID: "f2", ToFactionID: "missing"})
+	if err == nil || len(err.Misses) != 1 {
+		t.Fatalf("Apply to a missing faction = %v, want one miss", err)
+	}
+	if got := s.Ruler("Anchorage"); got != "f2" {
+		t.Errorf("Ruler after a miss = %q, want f2 unchanged", got)
+	}
+	if err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", FromFactionID: "f2"}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if _, ok := s.Governments["Anchorage"]; ok {
+		t.Error("an empty ToFactionID left an entry, want the world independent")
+	}
+}
+
+func TestMutationEngine_TagRemoved(t *testing.T) {
+	s := newMutationTestState()
+	s.Factions["f1"].Tags = []*domain.Tag{{ID: "T-001"}, {ID: domain.TagPlanetaryGovernment}}
+	me := New(slog.New(slog.DiscardHandler))
+	removal := domain.TagRemoved{FactionID: "f1", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment}}
+
+	if err := me.Apply(s, []domain.Mutation{removal}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if tags := s.Factions["f1"].Tags; len(tags) != 1 || tags[0].ID != "T-001" {
+		t.Errorf("Tags = %v, want [T-001]", tags)
+	}
+	err := me.Apply(s, []domain.Mutation{removal}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != domain.TagPlanetaryGovernment {
+		t.Errorf("removing a tag not held = %v, want one miss naming %s", err, domain.TagPlanetaryGovernment)
+	}
+}
+
+func TestMutationEngine_PermissionRefusedIsRecordOnly(t *testing.T) {
+	s := newMutationTestState()
+	me := New(slog.New(slog.DiscardHandler))
+
+	refusal := domain.PermissionRefused{FactionID: "missing", WorldID: "Anchorage", DefinitionID: "gunships", Cause: "buy"}
+	if err := me.Apply(s, []domain.Mutation{refusal}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Errorf("Apply = %v, want no miss for a record-only mutation", err)
+	}
+	if got := s.Factions["f1"].Coin; got != 10 {
+		t.Errorf("Coin = %d, want 10 unchanged", got)
+	}
+}

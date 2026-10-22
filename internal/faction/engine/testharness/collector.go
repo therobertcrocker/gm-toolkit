@@ -30,6 +30,7 @@ type ScriptedCollector struct {
 	ConfirmCounterstrikeFn        func(*domain.Faction, *domain.Asset, *domain.Asset) (bool, error)
 	ConfirmPaymentFn              func(hooks.PaymentOffer) (bool, error)
 	ConfirmSacrificeFn            func(hooks.SacrificeOffer) (bool, error)
+	RequestPermissionFn           func(hooks.PermissionRequest) (bool, error)
 	SelectExpandInfluenceOrderFn  func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn      func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
@@ -125,6 +126,15 @@ func (c *ScriptedCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, 
 		return c.ConfirmSacrificeFn(offer)
 	}
 	return false, nil
+}
+
+// RequestPermission grants by default, so a scripted buy of a P asset goes through
+// unless a test scripts a refusal.
+func (c *ScriptedCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	if c.RequestPermissionFn != nil {
+		return c.RequestPermissionFn(request)
+	}
+	return true, nil
 }
 
 func (c *ScriptedCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {

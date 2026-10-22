@@ -2,6 +2,7 @@ package digest
 
 import (
 	"encoding/json"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -1081,5 +1082,68 @@ func TestLevyCoinRemovalIsALossAndAnAbilityStrike(t *testing.T) {
 	crossEvent := cycleDigest.Cross[0]
 	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAbilityStrike {
 		t.Errorf("cross event = %+v, want CrossAbilityStrike f1 -> f2", crossEvent)
+	}
+}
+
+func TestGovernmentChangeAndTagLoss(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "world_government_changed", domain.WorldGovernmentChanged{
+				WorldID: "Krylos", FromFactionID: "f2", ToFactionID: "f1", Cause: "goal_completed", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "tag_removed", domain.TagRemoved{
+				FactionID: "f2", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment, Name: "Planetary Government"},
+				Cause: "goal_completed", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	ruler := findBeat(cycleDigest, "f1")
+	if ruler == nil || !slices.ContainsFunc(ruler.GoalEvents, func(event GoalEvent) bool {
+		return event.Kind == GoalWorldGoverned && event.ToWorld == "Krylos"
+	}) {
+		t.Errorf("f1 beat = %+v, want a GoalWorldGoverned event for Krylos", ruler)
+	}
+	loser := findBeat(cycleDigest, "f2")
+	if loser == nil || !slices.ContainsFunc(loser.GoalEvents, func(event GoalEvent) bool {
+		return event.Kind == GoalTagLost && event.TagName == "Planetary Government"
+	}) {
+		t.Errorf("f2 beat = %+v, want a GoalTagLost event", loser)
+	}
+	for _, beat := range []*FactionBeat{ruler, loser} {
+		if beat != nil && len(beat.Notes) != 0 {
+			t.Errorf("%s Notes = %v, want none", beat.Faction.ID, beat.Notes)
+		}
+	}
+}
+
+func TestPermissionRefusedIsARefusalLine(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"gunships": {ID: "gunships", Name: "Gunships"}}}
+	records := []domain.EventRecord{
+		eventRec("f1", mutRec(t, "permission_refused", domain.PermissionRefused{
+			FactionID: "f1", WorldID: "Krylos", DefinitionID: "gunships", DecidedByFactionID: "f2", Cause: "buy", CausedByFactionID: "f1",
+		})),
+		eventRec("f1", mutRec(t, "permission_refused", domain.PermissionRefused{
+			FactionID: "f1", WorldID: "Hadrian", DefinitionID: "gunships", Cause: "buy", CausedByFactionID: "f1",
+		})),
+	}
+	cycleDigest := buildOne(t, records, factionState, rb)
+
+	beat := findBeat(cycleDigest, "f1")
+	if beat == nil {
+		t.Fatal("f1 is quiet, want a refusal to make it active")
+	}
+	want := []RefusalEvent{
+		{AssetName: "Gunships", World: "Krylos", DecidedBy: "Bravo"},
+		{AssetName: "Gunships", World: "Hadrian"},
+	}
+	if !reflect.DeepEqual(beat.Refusals, want) {
+		t.Errorf("Refusals = %+v, want %+v", beat.Refusals, want)
+	}
+	if len(beat.Notes) != 0 {
+		t.Errorf("Notes = %v, want none", beat.Notes)
 	}
 }

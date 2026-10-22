@@ -21,7 +21,8 @@ The session ends when Commit [b] lands. [Do not start Commit [b+1]. | Commit [b]
 
 ## Read first
 <!-- The plan sections in scope, the overview's In Plain Words, and the arch pages whose Key Decisions bind this phase. Name the decisions by number. -->
-1. `[plan path]` — In Plain Words, Decisions Ratified in Planning (esp. [numbers]),
+1. `[plan path]` — In Plain Words, the In plain words line of [Phase N],
+   Decisions Ratified in Planning (esp. [numbers]),
    Decision Record — Execution (entries 1–[n]), Shared Context, then the tasks for the
    commit at hand. The tasks are the edits: literal Find/Replace and full files.
 2. `[overview plan path]` — In Plain Words only, for the initiative frame.

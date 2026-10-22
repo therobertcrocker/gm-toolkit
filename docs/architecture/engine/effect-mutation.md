@@ -65,8 +65,9 @@ register hooks in any combination of categories; Fanatical already does two.
 `EffectsEngine` is the home for asset **`S`-flag** features: the passive and
 reactive specialness an asset carries just by existing. (The `A` flag — *active*
 abilities a faction spends its action on — is resolved by the
-[actions](actions.md) ability dispatch instead; `P` is a buy-time government-
-permission check. The effect engine owns only the passive `S` side.) Its handlers
+[actions](actions.md) ability dispatch instead; `P` asks the world's government at
+purchase, through `dispatch.RequestPermission`. The effect engine owns only the
+passive `S` side.) Its handlers
 are registered the same *data-driven* way by the orchestrator at construction:
 `NewWithRulebook` registers one handler per asset definition that declares the
 relevant profile.
@@ -91,7 +92,9 @@ hook. `turn_start` fires from the bookkeeping phase (`FireTurnStart`).
 runs, the phase scans its batch for `AssetAdded` with cause `buy` or `ability`
 (not `refit`), and fires each bought asset's entries before goal progress and
 the reactors. So Psychic Assassins enter play stealthed, and Tripwire Cells see
-them arrive. A third route, `own_attack` and `own_defense_win`, is raised by the
+them arrive. A quality (`quality = true`, Stealth) adds no asset, so Buy Asset
+fires its one `on_purchase` entry itself (`FireQuality`), on a target picked from
+the registrar's `Targets`. A third route, `own_attack` and `own_defense_win`, is raised by the
 Attack action at each matchup (`FireMatchup`), because Cracked Comms needs a
 prompt and a full roll inside the matchup. The [ability catalog](ability-catalog.md) tracks which features
 ship.
@@ -148,7 +151,9 @@ is the string written to history; the rules behind the numbers live in
 - `xp_awarded` / `xp_spent` — credit / debit XP
 - `stat_raised` — raise one attribute and recompute MaxHP
 - `homeworld_changed` — relocate the faction's homeworld
-- `tag_added` — grant a tag (the full `Tag` is embedded, so `Apply` needs no rulebook lookup)
+- `tag_added` / `tag_removed` — grant / take a tag (the full `Tag` is embedded, so `Apply` needs no rulebook lookup)
+- `world_government_changed` — set or clear a world's ruler in the government record (Planetary Seizure)
+- `permission_refused` — record only: a government refused a purchase, which bought nothing
 
 **Assets**
 - `asset_added` / `asset_removed` — add to / drop from the roster

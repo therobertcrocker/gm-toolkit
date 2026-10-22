@@ -335,6 +335,10 @@ var askEntries = map[adapter.AskKind]askEntry{
 	adapter.AskConfirmSacrifice: {"Sacrifice?", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewConfirmSacrifice(msg.Payload.(adapter.ConfirmSacrificePayload).Offer, m.rulebook)
 	}},
+	adapter.AskRequestPermission: {"Permission?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.RequestPermissionPayload)
+		return overlay.NewRequestPermission(p.Request, p.WorldName)
+	}},
 	adapter.AskSelectExpandInfluenceOrder: {"Expand Influence", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectExpandInfluenceOrderPayload)
 		return overlay.NewExpand(p.NewBaseWorlds, p.WorldNames, p.ReinforceBases, p.Coin)

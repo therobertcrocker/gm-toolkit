@@ -63,3 +63,14 @@ func resolveBaseLocation(factionID, baseID string, factionState *state.FactionSt
 	}
 	return ""
 }
+
+// resolveDefinitionName names a definition, or returns its ID when the rulebook
+// lacks it.
+func resolveDefinitionName(definitionID string, rulebook *rulebook.Rulebook) string {
+	if rulebook != nil {
+		if def, ok := rulebook.Assets[definitionID]; ok {
+			return def.Name
+		}
+	}
+	return definitionID
+}

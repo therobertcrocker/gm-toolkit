@@ -62,3 +62,20 @@ func TestConfirmSacrificeIgnoresEsc(t *testing.T) {
 		t.Errorf("Update returned %T, want NoCancelConfirm", updated)
 	}
 }
+
+func TestRequestPermissionIgnoresEsc(t *testing.T) {
+	request := hooks.PermissionRequest{
+		Requester: &domain.Faction{ID: "f1", Name: "Alpha"},
+		Ruler:     &domain.Faction{ID: "f2", Name: "Bravo"},
+		WorldID:   "krylos",
+		Def:       &domain.AssetDefinition{ID: "gunships", Name: "Gunships"},
+	}
+
+	updated, cmd := NewRequestPermission(request, "Krylos").Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd != nil {
+		t.Errorf("Esc produced a command (%T), want none", cmd())
+	}
+	if _, ok := updated.(NoCancelConfirm); !ok {
+		t.Errorf("Update returned %T, want NoCancelConfirm", updated)
+	}
+}

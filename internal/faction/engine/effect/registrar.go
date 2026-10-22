@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -17,12 +18,15 @@ import (
 // a phase event (IsPhaseTrigger), and through Register otherwise; a nil function
 // means the effect has no such route. Validate is optional: it refuses a
 // combination of fields that Accepts, which checks each field alone, cannot express.
+// Targets lists the assets a quality's entry may act on; only an effect a quality
+// can carry sets it.
 type Registrar struct {
 	Triggers map[domain.EffectTrigger]Accepts
 	Register func(RegisterContext)
 	Fire     func(FireContext) []domain.Mutation
 	Matchup  func(MatchupContext) MatchupOutcome
 	Validate func(domain.EffectDefinition) error
+	Targets  func(TargetContext) []*domain.Asset
 }
 
 type Accepts struct {
@@ -52,6 +56,16 @@ type FireContext struct {
 	Entry        domain.EffectDefinition
 	Roller       domain.Roller
 	FactionState *state.FactionState
+}
+
+// TargetContext is a quality's purchase before it is made: the buyer, the world it
+// buys on, and the quality's one entry. Rulebook rides along because a filter such
+// as asset_type reads the candidate's definition.
+type TargetContext struct {
+	Faction  *domain.Faction
+	WorldID  string
+	Entry    domain.EffectDefinition
+	Rulebook *rulebook.Rulebook
 }
 
 // MatchupContext is one matchup of the Attack action, seen from the declaring

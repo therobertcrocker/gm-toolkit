@@ -13,7 +13,24 @@ type FactionState struct {
 	CampaignID  string                     `toml:"campaign_id"`
 	CycleNumber int                        `toml:"cycle_number"`
 	Factions    map[string]*domain.Faction `toml:"factions"`
-	CurrentTurn *domain.TurnState          `toml:"current_turn,omitempty"`
+	// Governments maps a world ID to the faction that rules it. A world with no
+	// entry is independent: no tracked faction governs it (A.001.6 overview Decision 8).
+	Governments map[string]string `toml:"governments,omitempty"`
+	CurrentTurn *domain.TurnState `toml:"current_turn,omitempty"`
+}
+
+// Ruler returns the ID of the faction that governs worldID, or "" for an
+// independent world. A nil state has no governments.
+func (s *FactionState) Ruler(worldID string) string {
+	if s == nil {
+		return ""
+	}
+	return s.Governments[worldID]
+}
+
+// IsIndependent reports whether no tracked faction governs worldID.
+func (s *FactionState) IsIndependent(worldID string) bool {
+	return s.Ruler(worldID) == ""
 }
 
 // Load reads campaign state from path. Returns an empty State if the file does not exist.

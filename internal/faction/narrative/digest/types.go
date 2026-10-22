@@ -28,7 +28,16 @@ type FactionBeat struct {
 	Expansions   []ExpansionEvent
 	GoalEvents   []GoalEvent
 	StealthOps   []StealthEvent
+	Refusals     []RefusalEvent
 	Notes        []string
+}
+
+// RefusalEvent is a purchase a government refused. DecidedBy is the ruler's name,
+// empty when the GM decided for an independent world.
+type RefusalEvent struct {
+	AssetName string
+	World     string
+	DecidedBy string
 }
 
 type AssetMove struct {
@@ -68,6 +77,8 @@ const (
 	GoalAbandoned
 	GoalHomeworldShift
 	GoalTagGained
+	GoalWorldGoverned
+	GoalTagLost
 )
 
 type GoalEvent struct {

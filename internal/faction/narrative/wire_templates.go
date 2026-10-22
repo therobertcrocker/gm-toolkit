@@ -75,6 +75,21 @@ var goalTagTemplates = []string{
 	"New descriptor logged for {faction}: {tag}.",
 }
 
+var goalGovernedTemplates = []string{
+	"{faction} now governs {world}.",
+	"A change of rule: {world} answers to {faction}.",
+}
+
+var goalTagLostTemplates = []string{
+	"{faction} lost the tag: {tag}.",
+	"{faction} no longer holds {tag}.",
+}
+
+var refusalTemplates = []string{
+	"{decider} refused {faction} permission to raise {asset} on {world}.",
+	"Permission denied: {decider} would not let {faction} raise {asset} on {world}.",
+}
+
 var acquisitionTemplates = []string{
 	"{faction} added {asset} to their order of battle.",
 	"New acquisition: {faction} brought {asset} online.",

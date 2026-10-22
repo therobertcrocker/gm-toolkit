@@ -130,6 +130,13 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("asset %s -%s", mut.AssetID, mut.Condition.Kind), true
 	case domain.AssetOwnerChanged:
 		return fmt.Sprintf("asset %s captured by %s", mut.AssetID, mut.ToFactionID), true
+	case domain.WorldGovernmentChanged:
+		if mut.ToFactionID == "" {
+			return fmt.Sprintf("%s → independent", mut.WorldID), true
+		}
+		return fmt.Sprintf("%s governed by %s", mut.WorldID, mut.ToFactionID), true
+	case domain.PermissionRefused:
+		return fmt.Sprintf("permission refused: %s on %s", mut.DefinitionID, mut.WorldID), true
 	case domain.AssetRemoved:
 		if label, ok := interceptionLabels[mut.Cause]; ok {
 			return fmt.Sprintf("-asset %s (%s)", mut.AssetID, label), true
@@ -166,7 +173,8 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		// Folded as bookkeeping noise or redundant with a surfaced line:
 		// GoalTurnsTick, GoalProgressed, GoalInitiated, GoalPhaseAdvanced,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
-		// XPSpent, XPAwarded, MovementOrderProgressed, InfluenceDelta, TagAdded.
+		// XPSpent, XPAwarded, MovementOrderProgressed, InfluenceDelta, TagAdded,
+		// TagRemoved.
 		return "", false
 	}
 }

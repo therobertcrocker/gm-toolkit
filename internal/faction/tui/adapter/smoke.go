@@ -113,6 +113,9 @@ func (SmokeActionCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
 func (SmokeActionCollector) ConfirmSacrifice(_ hooks.SacrificeOffer) (bool, error) {
 	return false, action.ErrActionUnavailable
 }
+func (SmokeActionCollector) RequestPermission(_ hooks.PermissionRequest) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
 func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {
 	return action.ExpandInfluenceOrder{}, action.ErrActionUnavailable
 }

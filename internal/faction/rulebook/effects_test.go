@@ -567,3 +567,24 @@ func TestParseAmount(t *testing.T) {
 		t.Error(`parseAmount("lots"): expected an error`)
 	}
 }
+
+func TestLoadEffects_QualityNeedsOneOnPurchaseEntry(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+"quality = true\n")
+	if err == nil || !strings.Contains(err.Error(), "a quality needs exactly one on_purchase effect") {
+		t.Fatalf("err = %v, want a quality shape error", err)
+	}
+}
+
+func TestLoadEffects_GrantStealthNeedsAQuality(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[[assets.Machine.effects]]
+trigger = "on_purchase"
+effect  = "grant_stealth"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "world"
+`)
+	if err == nil || !strings.Contains(err.Error(), "grant_stealth needs quality = true") {
+		t.Fatalf("err = %v, want a grant_stealth quality error", err)
+	}
+}

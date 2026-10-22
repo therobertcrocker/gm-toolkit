@@ -379,7 +379,7 @@ When plan mode is active and the stated deliverable is a file (a discovery doc o
 
 Every Plan session and every Execution session must verify its inputs against the current state of the code before acting:
 
-- **Every session** — read the **In Plain Words** section of the doc in scope first, then that of each layer above it (overview plan, arc), so the detail is read against what, why and how it fits.
+- **Every session** — read the **In Plain Words** section of the doc in scope first, then that of each layer above it (overview plan, arc), so the detail is read against what, why and how it fits. An Execution session also reads the **In plain words** line of each phase in scope.
 - **Discovery and Plan sessions** — read the relevant architecture page(s) under `docs/architecture/` before designing (start at `docs/architecture/architecture-overview.md`); their `Key Decisions` sections are binding context. This is the push half of the push-not-pull decision system (see Decision records below).
 - **Plan sessions** — re-read the relevant code. The discovery doc is a snapshot; the snapshot may have decayed. Verify the plan's assumptions against the current source, not against what the discovery doc said.
 - **Execution sessions** — re-read the current code for the unit being touched. The plan was written against a snapshot that may have shifted, especially for refactors where prior phases have already changed the surrounding code. `// deliberate:` fence-signs encountered in that code are binding unless explicitly revisited with Robert.
@@ -445,6 +445,6 @@ Templates for the file artifacts produced by Concept, Discovery, and Plan sessio
 
 All templates carry inline guidance (HTML comments) explaining required sections, optional sections, and how to scale the structure to the size of the work. Required sections are marked `REQUIRED`; everything else is included only when relevant.
 
-Every layer of initiative artifact opens with a required **In Plain Words** section: what, why and how it fits, in plain words, under 15 lines. The layers are the arc concept, arc-discovery, arc-plan, discovery doc, overview plan, effort plan and docs-initiative plan. Each one is scoped to its own layer.
+Every layer of initiative artifact opens with a required **In Plain Words** section: what, why and how it fits, in plain words, under 15 lines. The layers are the arc concept, arc-discovery, arc-plan, discovery doc, overview plan, effort plan and docs-initiative plan. Each one is scoped to its own layer. Inside a single-file or effort plan, each phase also opens with a required **In plain words** line: one or two sentences, with the same rules, scoped to that phase.
 
 Templates evolve as we learn what artifacts actually need. Treat them as living documents — update when a real plan or discovery surfaces a missing section or an unused one.

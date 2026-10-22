@@ -461,6 +461,26 @@ func Build(
 					TagName: m.Tag.Name,
 				})
 
+			case "tag_removed":
+				var m domain.TagRemoved
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				loser := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: m.Tag.Name})
+
+			case "world_government_changed":
+				var m domain.WorldGovernmentChanged
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				if m.ToFactionID != "" {
+					ruler := getOrCreateBeat(beats, m.ToFactionID, factionState)
+					seenFactionIDs[m.ToFactionID] = struct{}{}
+					ruler.GoalEvents = append(ruler.GoalEvents, GoalEvent{Kind: GoalWorldGoverned, ToWorld: m.WorldID})
+				}
+
 			case "goal_abandoned":
 				var m domain.GoalAbandoned
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {
@@ -520,6 +540,23 @@ func Build(
 				if m.Cause == string(domain.SpecialSeizeTarget) {
 					noteInterception(crossMap, record, m.FactionID, targetID, domain.SpecialSeizeTarget, factionState)
 				}
+
+			case "permission_refused":
+				var m domain.PermissionRefused
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				refused := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				decidedBy := ""
+				if m.DecidedByFactionID != "" {
+					decidedBy = resolveFactionName(m.DecidedByFactionID, factionState)
+				}
+				refused.Refusals = append(refused.Refusals, RefusalEvent{
+					AssetName: resolveDefinitionName(m.DefinitionID, rulebook),
+					World:     m.WorldID,
+					DecidedBy: decidedBy,
+				})
 
 			case "goal_initiated":
 				// dropped — bookkeeping only

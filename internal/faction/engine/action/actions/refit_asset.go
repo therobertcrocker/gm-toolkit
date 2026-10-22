@@ -5,6 +5,8 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -12,17 +14,20 @@ import (
 // RefitAsset swaps one asset for another of the same category. The faction
 // pays the cost difference (minimum 0); the new asset starts at full HP and
 // is inactive until the start of the next turn.
-// Tech-level filtering and P-flag (government permission) checks are deferred.
+// A replacement that needs permission asks the world's government after the
+// choice (D-23). Tech-level filtering is deferred.
 type RefitAsset struct {
 	collector  action.Collector
+	registry   *hooks.Registry
 	factionID  string
 	refitOrder action.RefitOrder
+	refusal    *domain.PermissionRefused
 	newAsset   domain.Asset
 	costDelta  int
 }
 
-func NewRefitAsset(collector action.Collector) *RefitAsset {
-	return &RefitAsset{collector: collector}
+func NewRefitAsset(collector action.Collector, registry *hooks.Registry) *RefitAsset {
+	return &RefitAsset{collector: collector, registry: registry}
 }
 
 func (ra *RefitAsset) Name() string { return "Refit Asset" }
@@ -36,7 +41,7 @@ func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, r
 	return false
 }
 
-func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
+func (ra *RefitAsset) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var options []action.RefitOption
 	for _, asset := range faction.Assets {
 		replacements := validRefitReplacements(faction, asset, rulebook)
@@ -52,10 +57,18 @@ func (ra *RefitAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rul
 	}
 	ra.factionID = faction.ID
 	ra.refitOrder = order
+	refusal, err := dispatch.RequestPermission(ra.registry, ra.collector, factionState, faction, order.NewDefinition, order.OldAsset.Location.WorldID, "refit")
+	if err != nil {
+		return fmt.Errorf("refit asset: %w", err)
+	}
+	ra.refusal = refusal
 	return nil
 }
 
 func (ra *RefitAsset) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
+	if ra.refusal != nil {
+		return nil
+	}
 	oldDef, ok := rulebook.Assets[ra.refitOrder.OldAsset.DefinitionID]
 	if !ok {
 		return fmt.Errorf("asset definition not found: %s", ra.refitOrder.OldAsset.DefinitionID)
@@ -81,6 +94,9 @@ func (ra *RefitAsset) Resolve(faction *domain.Faction, factionState *state.Facti
 }
 
 func (ra *RefitAsset) Output() ([]domain.Mutation, error) {
+	if ra.refusal != nil {
+		return []domain.Mutation{*ra.refusal}, nil
+	}
 	mutations := []domain.Mutation{
 		domain.AssetRemoved{FactionID: ra.factionID, AssetID: ra.refitOrder.OldAsset.ID, Cause: "refit", CausedByFactionID: ra.factionID},
 		domain.AssetAdded{FactionID: ra.factionID, Asset: ra.newAsset, Cause: "refit", CausedByFactionID: ra.factionID},
@@ -99,13 +115,17 @@ func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rul
 	if oldAsset.HasCondition(domain.ConditionSheltered) {
 		return nil
 	}
+	// deliberate: no refit for an asset in transit, because an asset between worlds cannot be acted on (Effort 4 Decision 11; the general rule is F.028).
+	if oldAsset.Location.WorldID == "" {
+		return nil
+	}
 	oldDef, ok := rulebook.Assets[oldAsset.DefinitionID]
 	if !ok {
 		return nil
 	}
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
-		if def.ID == oldDef.ID {
+		if def.ID == oldDef.ID || def.Quality {
 			continue
 		}
 		if def.Category != oldDef.Category {

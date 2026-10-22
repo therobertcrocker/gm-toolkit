@@ -261,6 +261,45 @@ type TagAdded struct {
 
 func (m TagAdded) Type() string { return "tag_added" }
 
+// TagRemoved takes one tag from a faction. The full Tag rides along, as on
+// TagAdded, so the digest can name it after the faction no longer holds it.
+type TagRemoved struct {
+	FactionID         string `json:"faction_id"`
+	Tag               Tag    `json:"tag"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m TagRemoved) Type() string { return "tag_removed" }
+
+// WorldGovernmentChanged sets the faction that governs a world. An empty
+// ToFactionID makes the world independent; FromFactionID is the ruler it replaces,
+// empty for an independent world.
+type WorldGovernmentChanged struct {
+	WorldID           string `json:"world_id"`
+	FromFactionID     string `json:"from_faction_id"`
+	ToFactionID       string `json:"to_faction_id"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m WorldGovernmentChanged) Type() string { return "world_government_changed" }
+
+// PermissionRefused records a refused permission request. It changes no state:
+// the action it ends bought nothing (D-35, overview Decision 22).
+// DecidedByFactionID is the world's ruler, empty when the GM decided for an
+// independent world. Cause is the purchase path: buy, refit or ability.
+type PermissionRefused struct {
+	FactionID          string `json:"faction_id"`
+	WorldID            string `json:"world_id"`
+	DefinitionID       string `json:"definition_id"`
+	DecidedByFactionID string `json:"decided_by_faction_id"`
+	Cause              string `json:"cause"`
+	CausedByFactionID  string `json:"caused_by_faction_id"`
+}
+
+func (m PermissionRefused) Type() string { return "permission_refused" }
+
 // InfluenceDelta adds Delta to a Base's Influence field. Emitted by the Bribe action.
 type InfluenceDelta struct {
 	FactionID         string `json:"faction_id"`

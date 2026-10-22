@@ -1,7 +1,7 @@
 # [Initiative Name] — Implementation Plan
 
 <!--
-COPY THIS FILE TO: docs/initiatives/implementation/<initiative-name>-plan.md
+COPY THIS FILE TO: docs/initiatives/implementation/<[initiative-id]_initiative-name>-plan.md
 
 LEVELS (session-modes.md section 4, Work breakdown levels):
   Initiative → Effort → Phase → Commit → Task. One phase = one execution
@@ -197,7 +197,17 @@ this list in the same edit that changes the plan body.
 
 ### Phase 1 — [Title]
 
-<!-- Phase-level goal in 1–2 sentences. One phase = one execution session. -->
+**In plain words:** [what this phase changes, and what is true when it lands.]
+
+<!--
+REQUIRED per phase. One or two sentences, no more. Plain words for a reader who
+has not read the rest of this plan: no project shorthand unless it is defined in
+the same sentence. A bold label, not a heading, so `####` stays the commit level.
+One phase = one execution session.
+
+The execution session reads it after the plan's In Plain Words (session-modes.md
+section 10, Re-grounding). If execution changes the phase's scope, fix it here too.
+-->
 
 #### Commit 1 — `feat: [conventional commit message]`
 
