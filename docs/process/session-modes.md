@@ -19,12 +19,14 @@ Every initiative passes through the same stages, regardless of type. All stages 
 
 ### Stage 1 — Backlog
 
-Lands in the **Backlog** section of `planned-work.md`, grouped into per-type subsections (Features, Refactors, Bugfixes — others added as needed). Each table has columns:
+Lands in the **Backlog** section of `planned-work.md`, grouped into per-type subsections (Arcs, Features, Refactors, Bugfixes, Docs — others added as needed). Refactors and Bugfixes are split again into per-layer sub-tables (1. Data, 2. Engine, 3. Driver, 4. Presentation, 5. Rendering); a row goes in the layer where its fix lands, and an empty layer shows `_None._`. The Backlog intro in `planned-work.md` lists what each layer holds. Each table has columns:
 
 - **ID** — stable identifier; the prefix encodes the type: `A.` arc, `F.` feature, `R.` refactor, `B.` bugfix, `D.` docs, `C.` chore
 - **Item** — short title
-- **Trigger** — the condition that warrants promotion ("when X is done", "when Y becomes blocking")
+- **Trigger** — one of `--` (no gate), `ready` (scoped, can be promoted), `after <ID>`, `when <condition>`, `needs triage` (cause not known)
 - **Detail** — one-line context, problem, or rationale
+
+Prose notes attached to a row (an idea to weigh, not a decision) go in the Backlog's **Captured Ideas** subsection, after the tables.
 
 The ID prefix determines which flow applies when the item is eventually worked (see section 3). Backlog items are unordered. They sit until their trigger fires.
 
@@ -319,7 +321,7 @@ If the work fits in one initiative — even a multi-effort one — use the Featu
 
 ### Arc-Concept
 
-The arc's Concept is a standalone doc, `arcs/<arc-name>/<arc-name>-arc-concept.md` (template: `templates/arc-concept.md`), drafted when the arc is promoted to Current Initiatives (section 2). It captures the vision, why the work is an arc rather than one initiative, and the rough candidate initiatives — before any Discovery.
+The arc's Concept is a standalone doc, `arcs/<arc-name>/<arc-name>-arc-concept.md` (template: `templates/arc-concept.md`), drafted when the arc is promoted to Current Initiatives (section 2). Before promotion, an arc waits in the Backlog's Arcs subsection as a normal row. It captures the vision, why the work is an arc rather than one initiative, and the rough candidate initiatives — before any Discovery.
 
 ### Arc-Discovery (1–2 sessions)
 
