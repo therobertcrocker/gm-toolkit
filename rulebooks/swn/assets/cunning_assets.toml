@@ -81,6 +81,17 @@ flags = ["S"]
 counter = ""
 description = "When a rival faction gains governmental permission to buy or transport an asset, the Lobbyists can make an immediate Cunning vs. Cunning test; if successful, the permission is withdrawn and cannot be re-attempted until next turn."
 
+[[assets.Lobbyists.effects]]
+trigger = "permission_granted"
+effect  = "withdraw_permission"
+[assets.Lobbyists.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.Lobbyists.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
 [assets.Saboteurs]
 id = "SWN-C2-002"
 name = "Saboteurs"
@@ -393,6 +404,17 @@ type = "Tactic"
 flags = ["S"]
 counter = ""
 description = "On a successful Cunning vs. Cunning attack against a rival faction, the rival faction cannot transport assets onto that planet without spending 1d4 Coins and waiting one turn."
+
+[assets.TransportLockdown.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[[assets.TransportLockdown.effects]]
+trigger = "own_attack_hit"
+effect  = "lock_out"
+[assets.TransportLockdown.effects.filters]
+owner = "own"
+scope = "self"
 
 [assets.CovertTransitNet]
 id = "SWN-C6-002"

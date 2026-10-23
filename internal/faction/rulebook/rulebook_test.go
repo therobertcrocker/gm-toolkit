@@ -676,3 +676,64 @@ func TestLoadDuplicateAssetID(t *testing.T) {
 		t.Errorf("error message %q does not mention duplicate asset ID", err.Error())
 	}
 }
+
+func TestLoad_TransportBypasses(t *testing.T) {
+	rb, err := Load(testDataDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	for _, id := range []string{"SWN-F7-001", "SWN-W5-003"} {
+		def := rb.Assets[id]
+		if def == nil || def.Transport == nil || !def.Transport.IgnoresPermission {
+			t.Errorf("%s transport = %+v, want ignores_permission", id, def)
+		}
+	}
+	if rb.Assets["SWN-W2-001"].Transport.IgnoresPermission {
+		t.Error("Freighter Contract ignores permission, want only the two bypass transports")
+	}
+}
+
+func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
+	rb, err := Load(testDataDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	want := []domain.EffectDefinition{{
+		Trigger: domain.TriggerPermissionGranted,
+		Effect:  domain.SpecialWithdrawPermission,
+		Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld},
+		Gates: domain.EffectGates{Contest: &domain.EffectContest{
+			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+			Roller:  domain.ContestRollerSelf,
+		}},
+	}}
+	if got := rb.Assets["SWN-C2-001"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Lobbyists effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoad_TransportLockdown(t *testing.T) {
+	rb, err := Load(testDataDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	lockdown := rb.Assets["SWN-C6-001"]
+	wantAttack := &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning}
+	if !reflect.DeepEqual(lockdown.Attack, wantAttack) {
+		t.Errorf("Attack = %+v, want the book's special attack, Cunning vs. Cunning with no damage", lockdown.Attack)
+	}
+	wantEffects := []domain.EffectDefinition{{
+		Trigger: domain.TriggerOwnAttackHit,
+		Effect:  domain.SpecialLockOut,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+	}}
+	if !reflect.DeepEqual(lockdown.Effects, wantEffects) {
+		t.Errorf("Effects = %+v, want %+v", lockdown.Effects, wantEffects)
+	}
+	if !rb.Assets["SWN-F7-001"].Transport.IgnoresLockdown {
+		t.Error("Deep Strike Landers do not ignore the lockdown, want them to (Effort 5 Decision 15)")
+	}
+	if rb.Assets["SWN-W5-003"].Transport.IgnoresLockdown {
+		t.Error("Blockade Runners ignore the lockdown, want them caught")
+	}
+}

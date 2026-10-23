@@ -176,3 +176,79 @@ func TestAsset_HasCondition(t *testing.T) {
 		t.Error("HasCondition(other) = true; only no_ability is present")
 	}
 }
+
+func TestAssetDefinition_NeedsArrivalPermission(t *testing.T) {
+	restricted := &domain.AssetDefinition{ID: "troops", Flags: []domain.AssetFlag{domain.FlagPermission}}
+	raiseOnly := &domain.AssetDefinition{ID: "fleet", PurchasePermission: true}
+	cases := []struct {
+		name  string
+		def   *domain.AssetDefinition
+		asset *domain.Asset
+		want  bool
+	}{
+		{"a P asset", restricted, &domain.Asset{}, true},
+		{"a stealthed P asset", restricted, &domain.Asset{Stealthy: true}, false},
+		{"raise-only permission", raiseOnly, &domain.Asset{}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.def.NeedsArrivalPermission(tc.asset); got != tc.want {
+				t.Errorf("NeedsArrivalPermission = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCondition_IsComparesTheTargetFaction(t *testing.T) {
+	bravo := domain.Condition{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "bravo"}
+	charlie := domain.Condition{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "charlie"}
+	if bravo.Is(charlie) {
+		t.Error("lock-outs against two factions are one condition, want two")
+	}
+	if !bravo.Is(bravo) {
+		t.Error("a lock-out is not itself")
+	}
+	elsewhere := bravo
+	elsewhere.WorldID = "Hadrian"
+	if bravo.Is(elsewhere) {
+		t.Error("lock-outs on two worlds are one condition, want two")
+	}
+}
+
+func TestLockedOut(t *testing.T) {
+	lockdown := func(owner string) *domain.Asset {
+		return &domain.Asset{ID: "lock", OwnerID: owner, Location: domain.Location{WorldID: "Krylos"}, Ready: true, Maintained: true, CurrentHP: 10,
+			Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "bravo", WorldID: "Krylos"}}}
+	}
+	movedTo := func(worldID string) func(*domain.Asset) {
+		return func(asset *domain.Asset) { asset.Location.WorldID = worldID }
+	}
+	cases := []struct {
+		name    string
+		holder  string
+		mutate  func(*domain.Asset)
+		world   string
+		faction string
+		want    bool
+	}{
+		{name: "the struck faction on the Lockdown's world", holder: "alpha", world: "Krylos", faction: "bravo", want: true},
+		{name: "another world", holder: "alpha", world: "Hadrian", faction: "bravo"},
+		{name: "another faction", holder: "alpha", world: "Krylos", faction: "charlie"},
+		{name: "an inactive Lockdown", holder: "alpha", mutate: func(asset *domain.Asset) { asset.Maintained = false }, world: "Krylos", faction: "bravo"},
+		{name: "captured into the struck faction", holder: "bravo", world: "Krylos", faction: "bravo"},
+		{name: "the Lockdown moved: its new world is free", holder: "alpha", mutate: movedTo("Hadrian"), world: "Hadrian", faction: "bravo"},
+		{name: "the Lockdown moved: the world of the hit is free", holder: "alpha", mutate: movedTo("Hadrian"), world: "Krylos", faction: "bravo"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			asset := lockdown(tc.holder)
+			if tc.mutate != nil {
+				tc.mutate(asset)
+			}
+			factions := map[string]*domain.Faction{tc.holder: {ID: tc.holder, Assets: map[string]*domain.Asset{"lock": asset}}}
+			if got := domain.LockedOut(factions, tc.world, tc.faction); got != tc.want {
+				t.Errorf("LockedOut = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

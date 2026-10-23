@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -92,5 +93,27 @@ func TestBuildMovementMutations_RevisionCost(t *testing.T) {
 	_, ok = mutations[1].(domain.MovementOrderRevised)
 	if !ok {
 		t.Fatalf("expected MovementOrderRevised as second mutation, got %T", mutations[1])
+	}
+}
+
+func TestTickMovementOrders_InAssetIDOrder(t *testing.T) {
+	path := []spatial.RegionHex{{RegionID: "void", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "void", Coord: spatial.HexCoord{Q: 1}}}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{}}
+	for _, id := range []string{"c", "a", "d", "b"} {
+		faction.Assets[id] = &domain.Asset{ID: id, OwnerID: "f1", DefinitionID: "test-def",
+			CurrentOrder: &domain.MovementOrder{AssetID: id, Path: path}}
+	}
+
+	mutations, err := regionWorldEngine(t).TickMovementOrders(faction, reviseRulebook(), slog.New(slog.DiscardHandler))
+
+	if err != nil {
+		t.Fatalf("TickMovementOrders: %v", err)
+	}
+	var order []string
+	for _, mutation := range mutations {
+		order = append(order, mutation.(domain.MovementOrderCompleted).AssetID)
+	}
+	if want := []string{"a", "b", "c", "d"}; !slices.Equal(order, want) {
+		t.Errorf("tick order = %v, want %v", order, want)
 	}
 }

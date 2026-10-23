@@ -82,6 +82,14 @@ func (reactor *TransportReactor) OnMutations(mutations []domain.Mutation, factio
 				"transport_completed",
 			)...)
 
+		case domain.MovementOrderHeld:
+			extra = append(extra, reactor.cargoFollows(
+				factionState,
+				m.AssetID,
+				domain.Location{RegionHex: m.RegionHex},
+				"transport_held",
+			)...)
+
 		case domain.MovementOrderCancelled:
 			extra = append(extra, reactor.cargoFollows(
 				factionState,

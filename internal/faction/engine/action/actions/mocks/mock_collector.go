@@ -89,6 +89,21 @@ func (mr *MockCollectorMockRecorder) ConfirmPayment(offer any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmPayment", reflect.TypeOf((*MockCollector)(nil).ConfirmPayment), offer)
 }
 
+// ConfirmPermissionContest mocks base method.
+func (m *MockCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmPermissionContest", offer)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmPermissionContest indicates an expected call of ConfirmPermissionContest.
+func (mr *MockCollectorMockRecorder) ConfirmPermissionContest(offer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmPermissionContest", reflect.TypeOf((*MockCollector)(nil).ConfirmPermissionContest), offer)
+}
+
 // ConfirmRedirectToBase mocks base method.
 func (m *MockCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	m.ctrl.T.Helper()

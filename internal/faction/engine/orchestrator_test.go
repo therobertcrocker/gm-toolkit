@@ -45,6 +45,7 @@ type minimalPhaseCollector struct {
 	movementDecisionsFn  func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
 	selectTransportCargo func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
 	selectRelocateOrders func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
+	requestPermission    func(hooks.PermissionRequest) (bool, error)
 }
 
 func (c *minimalPhaseCollector) AwaitCheckpoint(_ string) error { return nil }
@@ -73,6 +74,15 @@ func (c *minimalPhaseCollector) SelectRelocateOrders(acting *domain.Asset, candi
 	return nil, nil
 }
 func (c *minimalPhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+	return false, nil
+}
+func (c *minimalPhaseCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	if c.requestPermission != nil {
+		return c.requestPermission(request)
+	}
+	return true, nil
+}
+func (c *minimalPhaseCollector) ConfirmPermissionContest(_ hooks.PermissionContestOffer) (bool, error) {
 	return false, nil
 }
 
@@ -518,5 +528,42 @@ func TestFirePurchaseEffects_CausesWhitelisted(t *testing.T) {
 	}
 	if want := []string{"bought", "enabled"}; !slices.Equal(stealthed, want) {
 		t.Errorf("stealthed %v, want %v (a refit is not a purchase)", stealthed, want)
+	}
+}
+
+func TestRunGrantedMovement_RefusedLandingStays(t *testing.T) {
+	eng, factionState, alpha, paths := grantFixture(t, 5)
+	eng.Rulebook = &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"troops": {ID: "troops", Flags: []domain.AssetFlag{domain.FlagPermission}},
+	}}
+	alpha.Assets["wf"].DefinitionID = "troops"
+	collector := &minimalPhaseCollector{
+		selectRelocateOrders: func(_ *domain.Asset, candidates []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
+			return []action.RelocateOrder{{Asset: candidates[0], DestinationWorld: "Tartarus"}}, nil
+		},
+		requestPermission: func(request hooks.PermissionRequest) (bool, error) {
+			if request.Cause != domain.PermissionCauseRelocate {
+				t.Errorf("Cause = %q, want relocate", request.Cause)
+			}
+			return false, nil
+		},
+	}
+
+	resolved, err := eng.runGrantedMovement(alpha, factionState, paths, collector, &errorObserver{}, slog.New(slog.DiscardHandler))
+
+	if err != nil {
+		t.Fatalf("runGrantedMovement: %v", err)
+	}
+	if got := alpha.Assets["wf"].Location.WorldID; got != "Krylos" {
+		t.Errorf("wf on %q, want it still on Krylos", got)
+	}
+	if alpha.Coin != 5 {
+		t.Errorf("Coin = %d, want 5 (a refused landing charges nothing)", alpha.Coin)
+	}
+	if len(resolved) != 1 {
+		t.Fatalf("resolved = %+v, want only the refusal", resolved)
+	}
+	if _, ok := resolved[0].(domain.PermissionRefused); !ok {
+		t.Errorf("resolved[0] = %T, want PermissionRefused", resolved[0])
 	}
 }

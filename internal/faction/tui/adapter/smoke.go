@@ -59,6 +59,14 @@ func (s *SmokePhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error)
 	return false, nil // the dry run declines every lift
 }
 
+func (s *SmokePhaseCollector) RequestPermission(_ hooks.PermissionRequest) (bool, error) {
+	return false, nil // the smoke faction has no assets, so nothing arrives to ask
+}
+
+func (s *SmokePhaseCollector) ConfirmPermissionContest(_ hooks.PermissionContestOffer) (bool, error) {
+	return false, nil
+}
+
 var _ engine.PhaseCollector = (*SmokePhaseCollector)(nil)
 
 // SmokeActionCollector satisfies action.Collector for the dry-run. The smoke
@@ -114,6 +122,9 @@ func (SmokeActionCollector) ConfirmSacrifice(_ hooks.SacrificeOffer) (bool, erro
 	return false, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) RequestPermission(_ hooks.PermissionRequest) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmPermissionContest(_ hooks.PermissionContestOffer) (bool, error) {
 	return false, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {

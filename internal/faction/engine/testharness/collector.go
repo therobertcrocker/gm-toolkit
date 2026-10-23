@@ -31,6 +31,7 @@ type ScriptedCollector struct {
 	ConfirmPaymentFn              func(hooks.PaymentOffer) (bool, error)
 	ConfirmSacrificeFn            func(hooks.SacrificeOffer) (bool, error)
 	RequestPermissionFn           func(hooks.PermissionRequest) (bool, error)
+	ConfirmPermissionContestFn    func(hooks.PermissionContestOffer) (bool, error)
 	SelectExpandInfluenceOrderFn  func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn      func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
@@ -135,6 +136,15 @@ func (c *ScriptedCollector) RequestPermission(request hooks.PermissionRequest) (
 		return c.RequestPermissionFn(request)
 	}
 	return true, nil
+}
+
+// ConfirmPermissionContest lets every grant stand by default, so a scripted grant is
+// never withdrawn unless a test scripts a contest.
+func (c *ScriptedCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	if c.ConfirmPermissionContestFn != nil {
+		return c.ConfirmPermissionContestFn(offer)
+	}
+	return false, nil
 }
 
 func (c *ScriptedCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {

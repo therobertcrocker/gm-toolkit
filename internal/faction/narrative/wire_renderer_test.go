@@ -247,3 +247,41 @@ func TestRenderGoalEvent_GovernmentAndTagLoss(t *testing.T) {
 		t.Errorf("tag-lost line = %q, want the faction and the tag", lost)
 	}
 }
+
+func TestRenderRefusalAndHold_Landing(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	refusal := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Landing: true}, "Alpha", rng)
+	if !strings.Contains(refusal, "land Troops") {
+		t.Errorf("refusal = %q, want the landing verb", refusal)
+	}
+	raise := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo"}, "Alpha", rng)
+	if !strings.Contains(raise, "raise Troops") {
+		t.Errorf("refusal = %q, want the purchase verb", raise)
+	}
+	hold := renderHold(digest.HoldEvent{AssetName: "Freighter", World: "Krylos", Reason: domain.HoldRefused}, "Alpha", rng)
+	if !strings.Contains(hold, "Freighter") || !strings.Contains(hold, "Krylos") {
+		t.Errorf("hold = %q, want the asset and the world", hold)
+	}
+}
+
+func TestRenderRefusal_WithdrawnAndBarred(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	withdrawn := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Landing: true, Reason: domain.RefusalWithdrawn}, "Alpha", rng)
+	if !strings.Contains(withdrawn, "Bravo") || !strings.Contains(withdrawn, "land Troops") {
+		t.Errorf("withdrawn line = %q, want the Lobbyists' owner and the landing", withdrawn)
+	}
+	barred := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Reason: domain.RefusalBarred}, "Alpha", rng)
+	if !strings.Contains(barred, "Bravo") || !strings.Contains(barred, "asking again") {
+		t.Errorf("barred line = %q, want the Lobbyists' owner and the barred wording", barred)
+	}
+}
+
+func TestRenderHold_LockdownReasons(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	for _, reason := range []domain.HoldReason{domain.HoldLockdownPaid, domain.HoldLockdownUnpaid} {
+		line := renderHold(digest.HoldEvent{AssetName: "Freighter", World: "Krylos", Reason: reason}, "Alpha", rng)
+		if !strings.Contains(line, "lockdown") || !strings.Contains(line, "Krylos") {
+			t.Errorf("%s: hold line = %q, want the lockdown and the world", reason, line)
+		}
+	}
+}

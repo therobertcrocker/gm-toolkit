@@ -90,6 +90,7 @@ type Registry struct {
 	lethalInterceptors       map[Scope][]RegisteredLethalInterceptor
 	repairCostModifiers      map[Scope][]RegisteredRepairCostModifier
 	permissionGranters       map[Scope][]RegisteredPermissionGranter
+	permissionContesters     map[Scope][]RegisteredPermissionContester
 }
 
 // NewRegistry returns an empty Registry ready for registration.
@@ -115,6 +116,7 @@ func (registry *Registry) Reset() {
 	registry.lethalInterceptors = make(map[Scope][]RegisteredLethalInterceptor)
 	registry.repairCostModifiers = make(map[Scope][]RegisteredRepairCostModifier)
 	registry.permissionGranters = make(map[Scope][]RegisteredPermissionGranter)
+	registry.permissionContesters = make(map[Scope][]RegisteredPermissionContester)
 }
 
 // ClearAsset removes every hook registered under one asset's scope.
@@ -133,6 +135,7 @@ func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
 	delete(registry.lethalInterceptors, scope)
 	delete(registry.repairCostModifiers, scope)
 	delete(registry.permissionGranters, scope)
+	delete(registry.permissionContesters, scope)
 }
 
 // RegisterRollModifier registers a Cat 1 hook under the given scope.
@@ -359,4 +362,23 @@ func (registry *Registry) PermissionGrantersFor(factionID, assetInstanceID strin
 // against one asset instance, without the global or faction buckets.
 func (registry *Registry) PermissionGrantersForAsset(factionID, assetInstanceID string) []RegisteredPermissionGranter {
 	return registry.permissionGranters[AssetScope(factionID, assetInstanceID)]
+}
+
+// RegisteredPermissionContester is a Cat 4 permission-contester hook with its scope and source.
+type RegisteredPermissionContester struct {
+	Scope  Scope
+	Source string
+	Hook   PermissionContester
+}
+
+// RegisterPermissionContester registers a Cat 4 permission-contester hook under the given scope.
+func (registry *Registry) RegisterPermissionContester(scope Scope, source string, hook PermissionContester) {
+	registry.permissionContesters[scope] = append(registry.permissionContesters[scope], RegisteredPermissionContester{Scope: scope, Source: source, Hook: hook})
+}
+
+// PermissionContestersForAsset returns the Cat 4 permission-contester hooks
+// registered against one asset instance. Every contester is an asset's
+// (Lobbyists), so there is no global or faction lookup.
+func (registry *Registry) PermissionContestersForAsset(factionID, assetInstanceID string) []RegisteredPermissionContester {
+	return registry.permissionContesters[AssetScope(factionID, assetInstanceID)]
 }

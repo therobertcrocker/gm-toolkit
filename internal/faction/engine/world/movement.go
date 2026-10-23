@@ -28,7 +28,7 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 	var mutations []domain.Mutation
 	log.Info("ticking movement orders")
 
-	for _, asset := range faction.Assets {
+	for _, asset := range domain.SortedAssets(faction) {
 		if asset.CurrentOrder == nil {
 			continue
 		}

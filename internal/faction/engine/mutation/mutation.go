@@ -416,6 +416,20 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.MovementOrderHeld:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if asset, ok := faction.Assets[v.AssetID]; ok && asset.CurrentOrder != nil {
+					asset.CurrentOrder.StepIdx = v.NewStepIdx
+					asset.Location = domain.Location{RegionHex: v.RegionHex}
+					if v.Reason == domain.HoldLockdownPaid {
+						asset.CurrentOrder.LockdownPaid = true
+					}
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.AssetID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
 		case domain.MovementOrderRevised:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok {

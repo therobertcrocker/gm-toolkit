@@ -240,6 +240,12 @@ Assets with flag `P` require the permission of the local planetary government to
 
 The campaign's government record names the ruler of each world; that ruler grants or denies this permission there, and the GM decides for a world no faction governs. The **Planetary Government** tag marks a faction that governs at least one world.
 
+A `P` asset asks when it lands on a world: at the end of a drift order (as cargo or under its own order) or by a relocate. A refused drift order holds one hex short of the world and asks again at its next tick; the whole order holds, cargo included. A stealthed asset lands without asking. A faction never asks on a world it governs, but it does ask to land on its own homeworld when another government holds it. A refused relocate leaves that asset where it is; the other assets of the same relocate still move.
+
+Every grant — a ruler's own, Popular Movement's, or a government's yes — is open to a rival's **Lobbyists** on that world, except the Lobbyists of a ruler that said yes. Each Lobbyists' owner may test Cunning against the requester, in faction then asset order, and the first win withdraws the permission. The requester cannot ask again for that world until its next turn. A purchase on a faction's homeworld is no grant, so it cannot be contested.
+
+A successful **Transport Lockdown** attack locks the struck faction out of the world of the attack while the Lockdown is active there. If the Lockdown leaves, the lock stops; if it comes back, the lock starts again. Each hit locks its own world, so one Lockdown can hold a faction out of two worlds, one at a time. Each of that faction's drift orders arriving on a locked world pays 1d4 Coin and waits one turn one hex short, then asks for permission as usual; an order that cannot pay waits until it can. The faction cannot relocate any asset onto the world. Deep Strike Landers land past a lockdown; Blockade Runners and stealthed assets do not.
+
 ### Bases of Influence
 
 - Required to purchase assets on a planet (exception: a faction can always buy on its homeworld even if its Base there is destroyed, provided it still has a Base elsewhere)

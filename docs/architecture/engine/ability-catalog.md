@@ -186,13 +186,13 @@ of these; this table reconciles with it and completes the survey.)
 | **negate-bonus** (suppress tag dice) | Cat 1 `RollOfferFilter` | Blackmail `SWN-C2-003` ✅ |
 | **reflect-on-defense** | Cat 2 `RollResultHook` / rule | Cracked Comms `SWN-C5-002` |
 | **attack/defense restriction** | Cat 4 `AttackEligibilityRule` → `restrict_attack` | Planetary Defenses `SWN-F6-002` ✅ (defends only vs Starship), Lawyers `SWN-W2-002` ✅ (no attack or counter vs Force), Integral Protocols `SWN-F7-002` ✅ (defends only vs Cunning attacks) |
-| **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `SWN-C2-002` (no abilities), Transport Lockdown `SWN-C6-001` (no transport in) |
+| **restrict-action on target** | Cat 3 `MutationReactor` | Saboteurs `SWN-C2-002` (no abilities), Transport Lockdown `SWN-C6-001` ✅ (`lock_out`: arrivals pay 1d4 and wait, relocates barred) |
 | **cost-ignore** (skip a Coin loss, once/turn) | Cat 3 `MutationReactor` | Bank `SWN-W4-004` ✅ |
 | **purchase surcharge on rivals** | Cat 4 `AssetCostModifier` → `cost_surcharge` | Local Investments `SWN-W1-003` ✅ |
 | **repair discount** (cheaper Repair Asset on its world) | Cat 4 `RepairCostModifier` → `discount_repair` | Medical Center `SWN-W4-003` ✅ |
 | **tech-level uplift** (treat world/faction at higher TL) | Cat 4 `WorldTechLevelModifier` → `tech_level_floor` | Laboratory `SWN-W3-002` ✅, Pretech Researchers `SWN-W5-002` ✅, R&D Department `SWN-W6-002` ✅ |
-| **auto-permission / revoke-permission** | Cat 4 `PermissionGranter` → `grant_permission` (grant); revoke in Effort 5 | Popular Movement `SWN-C7-001` ✅ (grant), Lobbyists `SWN-C2-001` (revoke, reactive contest) |
-| **reactive contest** (test on an enemy event) | Cat 3 + stat-contest | Lobbyists `SWN-C2-001`, Tripwire Cells `SWN-C4-003` ✅ |
+| **auto-permission / revoke-permission** | Cat 4 `PermissionGranter` → `grant_permission` (grant); Cat 4 `PermissionContester` → `withdraw_permission` (revoke) | Popular Movement `SWN-C7-001` ✅ (grant), Lobbyists `SWN-C2-001` ✅ (revoke, reactive contest) |
+| **reactive contest** (test on an enemy event) | Cat 3 + stat-contest; Cat 4 `PermissionContester` + stat-contest | Lobbyists `SWN-C2-001` ✅, Tripwire Cells `SWN-C4-003` ✅ |
 
 **Dual-flag assets** (`A`+`S`: Informers, Seductress, Covert Shipping) resolve
 their *active* mechanic through the abilities engine; any passive side, if it

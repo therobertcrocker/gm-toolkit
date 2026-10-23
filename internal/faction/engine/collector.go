@@ -9,11 +9,13 @@ import (
 
 // PhaseCollector abstracts the orchestrator-owned input prompts: the phase
 // checkpoints, action choice, stat raise, movement decisions, transport cargo and
-// the relocate orders of a free movement grant, and the pay-to-lift question at turn start.
+// the relocate orders of a free movement grant, the pay-to-lift question at turn
+// start, and an arriving asset's permission request.
 // The GM implementation uses interactive prompts; AI and test implementations
 // use scripted or goal-driven logic.
 type PhaseCollector interface {
 	hooks.PaymentCollector
+	hooks.PermissionCollector
 	AwaitCheckpoint(phase string) error
 	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error)

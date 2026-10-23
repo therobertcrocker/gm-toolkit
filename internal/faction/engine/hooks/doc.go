@@ -12,7 +12,7 @@
 //
 // Cat 4 is a typed family (AssetCostModifier, MaintenanceCostModifier,
 // WorldTechLevelModifier, AttackEligibilityRule, AssetMovementGranter,
-// RepairCostModifier, PermissionGranter) rather
+// RepairCostModifier, PermissionGranter, PermissionContester) rather
 // than a single interface,
 // because each question has a different typed signature and a generic interface
 // would lose compile-time safety.

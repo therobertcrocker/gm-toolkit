@@ -509,6 +509,14 @@ func Build(
 				}
 				if m.Cause == string(domain.SpecialShelterAsset) {
 					noteInterception(crossMap, record, m.FactionID, targetID, domain.SpecialShelterAsset, factionState)
+				} else if m.Condition.Kind == domain.ConditionLockedOut {
+					rival := m.Condition.TargetFactionID
+					getOrCreateBeat(beats, rival, factionState)
+					seenFactionIDs[rival] = struct{}{}
+					ce := getOrCreateCross(crossMap, record.FactionID, rival, CrossAttack, factionState)
+					if !slices.Contains(ce.Conditions, m.Condition.Kind) {
+						ce.Conditions = append(ce.Conditions, m.Condition.Kind)
+					}
 				} else if m.FactionID != record.FactionID {
 					getOrCreateBeat(beats, m.FactionID, factionState)
 					seenFactionIDs[m.FactionID] = struct{}{}
@@ -556,6 +564,19 @@ func Build(
 					AssetName: resolveDefinitionName(m.DefinitionID, rulebook),
 					World:     m.WorldID,
 					DecidedBy: decidedBy,
+					Landing:   domain.IsLanding(m.Cause),
+					Reason:    m.Reason,
+				})
+
+			case "movement_order_held":
+				var m domain.MovementOrderHeld
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				beat.Holds = append(beat.Holds, HoldEvent{
+					AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+					World:     m.WorldID,
+					Reason:    m.Reason,
 				})
 
 			case "goal_initiated":

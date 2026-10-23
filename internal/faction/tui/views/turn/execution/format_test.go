@@ -63,10 +63,12 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 		{"MovementOrderRevised", domain.MovementOrderRevised{}, "move revised"},
 		{"MovementOrderCancelled", domain.MovementOrderCancelled{}, "move cancelled"},
 		{"MovementOrderCompleted", domain.MovementOrderCompleted{}, "move completed"},
+		{"MovementOrderHeld", domain.MovementOrderHeld{WorldID: "Krylos", Reason: domain.HoldRefused}, "move held short of Krylos (permission_refused)"},
 		{"AssetMoved ability", domain.AssetMoved{AssetID: "sf-1", ToLocation: domain.Location{WorldID: "Andama"}, Cause: "ability"}, "asset sf-1 → Andama"},
 		{"WorldGovernmentChanged", domain.WorldGovernmentChanged{WorldID: "Krylos", ToFactionID: "f1"}, "Krylos governed by f1"},
 		{"WorldGovernmentChanged independent", domain.WorldGovernmentChanged{WorldID: "Krylos", FromFactionID: "f1"}, "Krylos → independent"},
 		{"PermissionRefused", domain.PermissionRefused{DefinitionID: "gunships", WorldID: "Krylos"}, "permission refused: gunships on Krylos"},
+		{"PermissionRefused withdrawn", domain.PermissionRefused{DefinitionID: "gunships", WorldID: "Krylos", Reason: domain.RefusalWithdrawn}, "permission withdrawn: gunships on Krylos"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -21,4 +21,8 @@ type MovementOrder struct {
 	StepIdx       int                 `toml:"step_idx" json:"step_idx"`
 	DriftRating   int                 `toml:"drift_rating" json:"drift_rating"`
 	CargoAssetIDs []string            `toml:"cargo_asset_ids,omitempty" json:"cargo_asset_ids,omitempty"`
+	// LockdownPaid marks an order that has paid its way through a Transport
+	// Lockdown and waited its turn; it lands without paying again (Effort 5
+	// Decision 14). A revised order is a new order and pays again.
+	LockdownPaid bool `toml:"lockdown_paid,omitempty" json:"lockdown_paid,omitempty"`
 }

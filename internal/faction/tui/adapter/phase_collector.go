@@ -101,4 +101,12 @@ func (p *phaseCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) 
 	return p.adapter.confirmPayment(offer)
 }
 
+func (p *phaseCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	return p.adapter.requestPermission(request)
+}
+
+func (p *phaseCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	return p.adapter.confirmPermissionContest(offer)
+}
+
 var _ engine.PhaseCollector = (*phaseCollector)(nil)

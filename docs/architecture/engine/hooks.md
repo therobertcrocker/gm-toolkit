@@ -40,7 +40,7 @@ share, and it is a passive store — it never calls a hook itself.
 
 Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
 `MaintenanceCostModifier`, `WorldTechLevelModifier`, `AttackEligibilityRule`,
-`AssetMovementGranter`, `RepairCostModifier`, `PermissionGranter` — each with its own signature
+`AssetMovementGranter`, `RepairCostModifier`, `PermissionGranter`, `PermissionContester` — each with its own signature
 (`ModifyAssetCost(buyer, def, world, query *AssetCostQuery)`,
 `MayFight(query AttackEligibilityQuery) bool` and so on). The asset-cost hook
 edits a shared `AssetCostQuery` in place of returning an `int`, because the chain
@@ -159,6 +159,18 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   grants (Popular Movement). A grant serves its owner only. Capital Fleet's
   raise-only permission is not a hook: the fleet being raised has no instance, so
   it is the definition field `purchase_permission` (A.001.6 Effort 4 Decision 1).
+- **The contest walk** runs inside `RequestPermission` and
+  `RequestArrivalPermission` after every grant: a ruler's own, a grant hook's, or
+  a yes. It asks the `PermissionContester`s registered on each rival's assets,
+  rival factions in ID order, then assets in ID order (Lobbyists). A ruler that
+  said yes is not offered its own grant; a grant that went around the ruler (a
+  grant hook) is. Each offer is asked of its owner through the
+  `PermissionCollector`, and on a yes the hook rolls its own contest. **The first
+  win withdraws the grant** and spends `permission_withdrawn:<world>:<withdrawer>`
+  on the requester, which refuses its later requests for that world until its next
+  bookkeeping and names the withdrawer on the refusal. A homeworld purchase is no
+  grant, so it is never contested. (A.001.6 Effort 5 Decisions 9–11, Decision
+  Record 3–4.)
 - **`InterceptLethal`** is Cat 6. It runs when a hit would destroy an asset,
   before `AssetRemoved` is emitted: in the Attack action's `applyAssetDamage`
   (attack, counter and Cracked Comms' self-attack) and in the `self_damage`

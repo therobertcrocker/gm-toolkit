@@ -442,6 +442,8 @@ max_hex = 3
 coin_cost = 2
 cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
 max_cargo = 1
+ignores_permission = true
+ignores_lockdown = true
 
 [assets.IntegralProtocols]
 id = "SWN-F7-002"

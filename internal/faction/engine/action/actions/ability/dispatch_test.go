@@ -314,7 +314,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), nil, engine)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), relocRulebook(), engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -346,7 +346,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins, reveal halts
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), nil, engine)
+	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), relocRulebook(), engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}

@@ -5,7 +5,8 @@ import "sort"
 func isQuiet(beat FactionBeat, crossEvents []CrossEvent) bool {
 	if len(beat.Acquisitions) > 0 || len(beat.Losses) > 0 || len(beat.Movements) > 0 ||
 		len(beat.Bribes) > 0 || len(beat.Repairs) > 0 || len(beat.Expansions) > 0 ||
-		len(beat.GoalEvents) > 0 || len(beat.StealthOps) > 0 || len(beat.Refusals) > 0 {
+		len(beat.GoalEvents) > 0 || len(beat.StealthOps) > 0 || len(beat.Refusals) > 0 ||
+		len(beat.Holds) > 0 {
 		return false
 	}
 	for _, ce := range crossEvents {

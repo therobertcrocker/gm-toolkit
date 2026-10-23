@@ -109,3 +109,18 @@ type PermissionQuery struct {
 type PermissionGranter interface {
 	GrantsPermission(query PermissionQuery) bool
 }
+
+// PermissionContest is one asset's offer to contest a permission granted to a
+// rival (Lobbyists).
+type PermissionContest struct {
+	Source *domain.Asset
+}
+
+// PermissionContester contests a permission granted to a rival (Cat 4).
+// OfferContest returns nil when the grant is not its to contest. It never
+// prompts: the dispatcher asks the owner, and on a yes calls WinsContest, which
+// rolls the hook's own test against the requester.
+type PermissionContester interface {
+	OfferContest(query PermissionQuery) *PermissionContest
+	WinsContest(query PermissionQuery) bool
+}

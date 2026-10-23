@@ -376,6 +376,17 @@ func (e *Engine) runMovementPhase(
 		return err
 	}
 	if len(tickMutations) > 0 {
+		tickMutations, err = e.checkArrivals(faction, factionState, tickMutations, collectors.Phase)
+		if err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
+			observer.OnError(faction, err)
+			return err
+		}
 		tickMutations, err = dispatch.MutationReactors(e.Hooks, faction, tickMutations, factionState, e.Rulebook)
 		if err != nil {
 			if factionErrors.IsRecoverable(err) {
@@ -837,12 +848,14 @@ func (e *Engine) runGrantedMovement(
 	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, faction) {
 		params := grant.Relocate
 		mutations, err := relocate.Run(relocate.Request{
-			Faction:   faction,
-			Acting:    grant.Source,
-			Params:    &params,
-			World:     e.World,
-			Rulebook:  e.Rulebook,
-			Collector: collector,
+			Faction:      faction,
+			Acting:       grant.Source,
+			Params:       &params,
+			World:        e.World,
+			Rulebook:     e.Rulebook,
+			Registry:     e.Hooks,
+			FactionState: factionState,
+			Collector:    collector,
 		})
 		if errors.Is(err, relocate.ErrInsufficientCoin) {
 			phaseLog.Warn("granted movement skipped", "source", grant.Source.ID, "err", err)

@@ -29,15 +29,27 @@ type FactionBeat struct {
 	GoalEvents   []GoalEvent
 	StealthOps   []StealthEvent
 	Refusals     []RefusalEvent
+	Holds        []HoldEvent
 	Notes        []string
 }
 
-// RefusalEvent is a purchase a government refused. DecidedBy is the ruler's name,
-// empty when the GM decided for an independent world.
+// RefusalEvent is a purchase or a landing that was refused. DecidedBy is the
+// ruler's name (empty when the GM decided for an independent world), or the
+// Lobbyists' owner's on a withdrawal or a bar. Landing is true for an arrival or a
+// relocate.
 type RefusalEvent struct {
 	AssetName string
 	World     string
 	DecidedBy string
+	Landing   bool
+	Reason    domain.RefusalReason
+}
+
+// HoldEvent is an arriving order held one hex short of World (D-27).
+type HoldEvent struct {
+	AssetName string
+	World     string
+	Reason    domain.HoldReason
 }
 
 type AssetMove struct {

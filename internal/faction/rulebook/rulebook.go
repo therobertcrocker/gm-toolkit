@@ -95,6 +95,8 @@ type transportRecord struct {
 	CargoTypes        []string `toml:"cargo_types"`
 	MaxCargo          int      `toml:"max_cargo"`
 	ExcludeCategories []string `toml:"exclude_categories"`
+	IgnoresPermission bool     `toml:"ignores_permission"`
+	IgnoresLockdown   bool     `toml:"ignores_lockdown"`
 }
 
 type attackRecord struct {
@@ -535,6 +537,8 @@ func convertTransport(r *transportRecord) (*domain.TransportProfile, error) {
 		CargoTypes:        cargoTypes,
 		MaxCargo:          r.MaxCargo,
 		ExcludeCategories: excludeCategories,
+		IgnoresPermission: r.IgnoresPermission,
+		IgnoresLockdown:   r.IgnoresLockdown,
 	}, nil
 }
 

@@ -76,6 +76,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.019` | Migrate `[transport]` onto the effects list | `A.001.6` | Transport keeps its own typed profile and registration branch (`core.go:58-61`) beside the `[[effects]]` model; fold it in once the S-flag model is fully built, so one parse and dispatch path serves every S effect. |
 | `R.021` | Remove dead world-scoped defender filter | -- | `liveDefendersOnWorld` → `eligibleDefendersOnWorld` has no caller outside `spatial_index_test.go` and skips the attack-eligibility hooks; delete it (move its tests to `eligibleDefendersAtHex`) so no future caller bypasses `restrict_attack`. Found in `A.001.3` Effort 4 Commit 4 review. |
 | `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
+| `R.023` | Effect contests through roll hooks | When reactors and phase effects can reach a collector | Tripwire Cells, Panopticon Matrix and Lobbyists roll bare 1d10 + stat (`contestPasses`), so Fanatical's and Book of Secrets' rerolls skip them; move all three onto `RollWithHooks` together. `A.001.6` Effort 5 Decision 10. |
 
 ### Bugfixes
 

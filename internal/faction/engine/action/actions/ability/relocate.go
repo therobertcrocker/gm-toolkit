@@ -14,11 +14,13 @@ func relocateAssets(ctx StepContext) ([]domain.Mutation, error) {
 		return nil, fmt.Errorf("relocate: step has no relocate params")
 	}
 	return relocate.Run(relocate.Request{
-		Faction:   ctx.Faction,
-		Acting:    ctx.Asset,
-		Params:    ctx.Step.Relocate,
-		World:     ctx.WorldEngine,
-		Rulebook:  ctx.Rulebook,
-		Collector: ctx.Collector,
+		Faction:      ctx.Faction,
+		Acting:       ctx.Asset,
+		Params:       ctx.Step.Relocate,
+		World:        ctx.WorldEngine,
+		Rulebook:     ctx.Rulebook,
+		Registry:     ctx.Registry,
+		FactionState: ctx.FactionState,
+		Collector:    ctx.Collector,
 	})
 }

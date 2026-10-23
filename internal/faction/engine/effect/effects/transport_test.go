@@ -338,3 +338,22 @@ func TestTransportReactor_Revised(t *testing.T) {
 		t.Errorf("expected no reactor output on Revised (cargo manifest carried forward by BuildMovementMutations), got %d", len(result))
 	}
 }
+
+func TestTransportReactor_Held(t *testing.T) {
+	path := testPath(5)
+	transport := &domain.Asset{ID: "transport-1", OwnerID: "alpha",
+		CurrentOrder: &domain.MovementOrder{AssetID: "transport-1", Path: path, CargoAssetIDs: []string{"cargo-1"}}}
+	cargo := &domain.Asset{ID: "cargo-1", OwnerID: "alpha", Location: domain.Location{RegionHex: path[2]}}
+
+	result := newReactor().OnMutations([]domain.Mutation{
+		domain.MovementOrderHeld{FactionID: "alpha", AssetID: "transport-1", WorldID: "Krylos", NewStepIdx: 3, RegionHex: path[3], Reason: domain.HoldRefused},
+	}, stateWithTransport(transport, cargo), nil)
+
+	if len(result) != 1 {
+		t.Fatalf("result = %+v, want one cargo move", result)
+	}
+	moved, ok := result[0].(domain.AssetMoved)
+	if !ok || moved.AssetID != "cargo-1" || moved.ToLocation != (domain.Location{RegionHex: path[3]}) || moved.Cause != "transport_held" {
+		t.Errorf("result[0] = %+v, want cargo-1 moved to the hold hex", result[0])
+	}
+}

@@ -168,12 +168,16 @@ and a modeled world government with one permission request.
     kind parameter (the two assets differ in gate, cost and prompt). Resolves Open
     Question 6.
 
-12. **D-30's per-turn relocate mark is the budget key `permission_refused:<worldID>`**
-    on the refused faction's `HookBudgets`. That map clears in the refused faction's own
-    bookkeeping, which is the book's "until next turn". Relocate's destination list drops
-    a world whose key is spent. The gap it closes: `runGrantedMovement`
-    (`orchestrator.go:791`) can run several grants in one movement phase. Resolves Open
-    Question 7.
+12. **D-30's per-turn mark is the budget key `permission_withdrawn:<worldID>`** on the
+    requester's `HookBudgets`, set only by a Lobbyists withdrawal. That map clears in
+    the requester's own bookkeeping, which is the book's "until next turn". While the
+    key is spent, every request the requester makes for that world is refused with no
+    ask, in every path. The gap it closes: `runGrantedMovement` can run several grants
+    in one movement phase, and the purchase enabler can buy several assets in one
+    action. *(Reshaped in the Effort 5 plan, Decisions 8 and 9, by Robert's call: the
+    first version set the key on every refusal, named it `permission_refused:`, and
+    dropped the world from relocate's destination list; a relocate now asks for each
+    order after the pick.)* Resolves Open Question 7.
 
 13. **Every new mutation ships its digest and TUI cases in the commit that adds it.**
     The digest notes an unknown type as `"unknown mutation: X"` in the beat
@@ -193,8 +197,8 @@ and a modeled world government with one permission request.
 
 15. **A rival that cannot pay Transport Lockdown's 1d4 holds at the edge and is asked
     again next tick, as a refusal does (D-27).** One hold behavior for both causes. The
-    order's paid-and-waiting mark is designed in the Effort 5 plan. Resolves Open
-    Question 11.
+    order's paid-and-waiting mark is `MovementOrder.LockdownPaid`, set by the hold's
+    apply arm (Effort 5 Decision 14). Resolves Open Question 11.
 
 16. **A refused arrival needs no special case for a one-hop path.** The refusal replaces
     the tick's `MovementOrderCompleted` with `MovementOrderHeld{NewStepIdx: len(Path)-2,
@@ -273,8 +277,9 @@ Added in the approval review (2026-10-20):
     Lean for the Effort 5 plan: the condition shape gains an optional target-faction
     field, and `locked_out{source: the Lockdown, faction: the struck rival}` sits on the
     Lockdown asset like any other condition. One asset-state shape instead of two, and
-    the record still lives and dies with its source (D-31, D-36). The Effort 5 plan
-    confirms once the Effort 1 condition shape exists. Amends D-36.
+    the record still lives and dies with its source (D-31, D-36). *(Confirmed in the
+    Effort 5 plan, Decision 13: `Condition.TargetFactionID`, compared by `Is`.)*
+    Amends D-36.
 
 ## Decision Record — Execution
 
@@ -291,12 +296,8 @@ Each is answered by the named effort plan.
 | 1 | *(Resolved in the [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
 | 3 | *(Resolved in the [Effort 3 plan](completed/s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
 | 2 | *(Resolved in the [Effort 2 plan](completed/s-flag-rule-extensions-effort-2-plan.md), Decisions 1–3, 9 and 12: the hook offers and the dispatcher decides; the outcome is its mutations, with a second `AssetHPDelta` that sets the HP; the Attack tracker folds them; an intercepted defender still counters on a tie; Repair Asset clears `sheltered` at full HP)* |
-| 4 | *(Resolved in the [Effort 4 plan](s-flag-rule-extensions-effort-4-plan.md), Decisions 1, 7, 8 and 10: Capital Fleet's raise-only permission is a definition field, `purchase_permission`, so the Cat 4 family is one member, `PermissionGranter` (`permission_query → grant_permission`); `hooks.PermissionCollector.RequestPermission`, driven by `dispatch.RequestPermission`; `PermissionRefused{FactionID, WorldID, DefinitionID, DecidedByFactionID, Cause, CausedByFactionID}`; the wizard's hidden world select on a T-011 pick)* |
-| 5 | Decision 12's mark: Lobbyists' withdrawal only (lean) or every refusal |
-| 5 | Transport Lockdown's paid-and-waiting mark on the order (Decision 15) |
-| 5 | The Lobbyists contest's prompt to its owner inside the request path |
-| 5 | The condition shape's target-faction field for `locked_out` (Decision 24) |
-| 5 | D-33 re-confirmed: refusing a relocate outright under Lockdown is the harshest of three readings of "spending 1d4 and waiting one turn" |
+| 4 | *(Resolved in the [Effort 4 plan](completed/s-flag-rule-extensions-effort-4-plan.md), Decisions 1, 7, 8 and 10: Capital Fleet's raise-only permission is a definition field, `purchase_permission`, so the Cat 4 family is one member, `PermissionGranter` (`permission_query → grant_permission`); `hooks.PermissionCollector.RequestPermission`, driven by `dispatch.RequestPermission`; `PermissionRefused{FactionID, WorldID, DefinitionID, DecidedByFactionID, Cause, CausedByFactionID}`; the wizard's hidden world select on a T-011 pick)* |
+| 5 | *(Resolved in the [Effort 5 plan](s-flag-rule-extensions-effort-5-plan.md), Decisions 9, 10, 13, 14 and 16: only a Lobbyists withdrawal sets the mark; `ConfirmPermissionContest` on `hooks.PermissionCollector`, asked by the dispatcher before the Cat 4 `PermissionContester` rolls; `Condition.TargetFactionID`; `MovementOrder.LockdownPaid`; D-33 re-confirmed by Robert)* |
 | each | Digest and TUI wording for its new mutations (Decision 13) |
 
 ## Effort Summary
@@ -318,8 +319,8 @@ best at the Effort 1 boundary, since Efforts 2, 3 and 5 build on its model.
 | 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](completed/s-flag-rule-extensions-effort-1-plan.md) |
 | 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | [`-effort-2-plan.md`](completed/s-flag-rule-extensions-effort-2-plan.md) |
 | 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](completed/s-flag-rule-extensions-effort-3-plan.md) |
-| 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | [`-effort-4-plan.md`](s-flag-rule-extensions-effort-4-plan.md) |
-| 5 | Movement permission | The arrival check and hold (`MovementOrderHeld`), the relocate request, the bypasses, the Lockdown `locked_out` condition | Lobbyists, Transport Lockdown, Deep Strike Landers, Blockade Runners | own session → `-effort-5-plan.md` |
+| 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | [`-effort-4-plan.md`](completed/s-flag-rule-extensions-effort-4-plan.md) |
+| 5 | Movement permission | The arrival check and hold (`MovementOrderHeld`), the relocate request, the bypasses, Lobbyists' `PermissionContester`, the Lockdown `locked_out` condition | Lobbyists, Transport Lockdown, Deep Strike Landers, Blockade Runners | [`-effort-5-plan.md`](s-flag-rule-extensions-effort-5-plan.md) |
 
 Effort 4 depends on nothing; it runs fourth only so that the work runs in one line.
 
@@ -347,9 +348,11 @@ they do not redefine it.
 | `FactionState.Governments` and `Ruler()`, `WorldGovernmentChanged`, `TagRemoved`, the wizard world prompt | state, mutation, TUI manage | 4 |
 | Permission request interface (D-41, in `action.Collector`; `PhaseCollector` in Effort 5); `dispatch.RequestPermission`; `PermissionRefused` | collectors, dispatch, mutation | 4 |
 | Cat 4 permission family (`PermissionGranter`); `AssetDefinition.PurchasePermission` | hooks, domain, loader | 4 |
-| `TransportProfile.IgnoresPermission` | domain, loader | 5 |
-| `MovementOrderHeld`; the transport reactor's `Held` arm | mutation, effects | 5 |
-| `locked_out` condition kind with a target-faction field (Decision 24) | domain, mutation | 5 |
+| `TransportProfile.IgnoresPermission`, `IgnoresLockdown` | domain, loader | 5 |
+| `MovementOrderHeld`; the transport reactor's `Held` arm; the arrival check (`engine/arrival.go`) | mutation, effects, orchestrator | 5 |
+| `dispatch.RequestArrivalPermission`; `PhaseCollector` embeds `PermissionCollector` | dispatch, collectors | 5 |
+| Cat 4 `PermissionContester` (Lobbyists); `PermissionRefused.Reason` | hooks, mutation | 5 |
+| `locked_out` condition kind with a target-faction field (Decision 24); `MovementOrder.LockdownPaid` | domain, mutation | 5 |
 
 **Mutation surface.** The new vocabulary this initiative adds, so the apply switch,
 history, digest and TUI grow together (Decision 13):
@@ -365,10 +368,11 @@ history, digest and TUI grow together (Decision 13):
 | `MovementOrderHeld` | order step and hex, as `Progressed` | 5 |
 
 **State storage.** New durable fields: `Asset.Conditions` (Effort 1; in `Clone`),
-`FactionState.Governments` (Effort 4; `omitempty`), the order's paid-and-waiting mark
-(Effort 5 plan). New definition fields: `AttackProfile.Damage` as a pointer (Effort 1),
-`quality` and `purchase_permission` (Effort 4), `TransportProfile.IgnoresPermission`
-(Effort 5). No new file.
+`FactionState.Governments` (Effort 4; `omitempty`), `MovementOrder.LockdownPaid` and
+`Condition.TargetFactionID` (Effort 5; both `omitempty`). New definition fields:
+`AttackProfile.Damage` as a pointer (Effort 1), `quality` and `purchase_permission`
+(Effort 4), `TransportProfile.IgnoresPermission` and `IgnoresLockdown` (Effort 5). No
+new file.
 
 **Prompts addressed to a faction that is not acting.** Each names the faction it asks,
 as `ConfirmRedirectToBase(defenderFaction, …)` does (`attack.go:167`). One shared driver
@@ -567,7 +571,7 @@ commits:
 Discovery: Purchase That Targets Another Asset, Permission Model (government and
 purchase rows).
 
-The [Effort 4 plan](s-flag-rule-extensions-effort-4-plan.md) carries the spec. Its
+The [Effort 4 plan](completed/s-flag-rule-extensions-effort-4-plan.md) carries the spec. Its
 commits:
 
 - `refactor: Stealth as a purchase quality` — `quality = true`, `grant_stealth`, the
@@ -594,9 +598,11 @@ commits:
 
 - **What:** a restricted asset that arrives at a world, or jumps there by an ability,
   asks that world's government for permission. A refused arrival waits in orbit and asks
-  again next turn. Deep Strike Landers, Blockade Runners and stealthed assets skip the
-  question. Lobbyists can take back a permission given to a rival. Transport Lockdown
-  makes a rival pay and wait one turn for every arrival on its world.
+  again next turn; a refused jump leaves that asset where it is. Deep Strike Landers,
+  Blockade Runners and stealthed assets skip the question. Lobbyists can take back a
+  permission given to a rival. Transport Lockdown makes a rival pay and wait one turn
+  for every arrival on its world, and bars its jumps there; only Deep Strike Landers
+  get through.
 - **Why:** the book's permission rule covers moving onto a world, not only buying there,
   and five assets bend that rule. None of them works until arrivals ask.
 - **How it fits:** the last effort. It needs Effort 4's government record and permission
@@ -604,15 +610,21 @@ commits:
 
 Discovery: Permission Model (movement rows and "What bends it").
 
-- `feat: arrival permission and hold` — the request between tick and apply (D-24); the
-  hold at the edge as `MovementOrderHeld` (D-27, Decisions 16 and 22), the whole order
-  with its cargo through the reactor's `Held` arm (D-28).
-- `feat: relocate permission` — the request at the destination choice; the per-turn
-  mark (Decision 12).
+The [Effort 5 plan](s-flag-rule-extensions-effort-5-plan.md) carries the spec. Its
+commits:
+
+- `feat: arrival permission and hold` — the arrival check between tick and reactors
+  (D-24, `engine/arrival.go`); the hold at the edge as `MovementOrderHeld` (D-27,
+  Decisions 16 and 22), the whole order with its cargo through the reactor's `Held`
+  arm (D-28); `RequestArrivalPermission` with the stealthed-`P` rule (D-25).
 - `feat: permission bypasses` — `TransportProfile.IgnoresPermission` on Deep Strike
-  Landers and Blockade Runners; the stealthed-`P` rule (D-25).
-- `feat: Lobbyists` — the contest after any grant to a rival on its world (D-29, D-30).
+  Landers and Blockade Runners (D-25).
+- `feat: relocate permission` — the request for each order after the pick; a refused
+  order stays and the others move.
+- `feat: Lobbyists` — the Cat 4 `PermissionContester`, offered after every grant to a
+  rival on its world (D-29); a withdrawal bars the world until next turn (D-30,
+  Decision 12).
 - `feat: Transport Lockdown` — its `[attack]` line from the book; the `locked_out`
   condition on the Lockdown asset (D-36, Decision 24), read while it is active there
-  (D-31); 1d4 and a one-turn hold on drift arrivals, refusal on relocates (D-32, D-33,
-  Decision 15).
+  (D-31); 1d4 and a one-turn hold on drift arrivals, before the permission ask;
+  relocates barred (D-32, D-33, Decision 15); Deep Strike Landers get through.

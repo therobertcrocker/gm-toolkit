@@ -431,6 +431,7 @@ max_hex = 3
 coin_cost = 2
 cargo_types = ["Military Unit", "Special Forces"]
 max_cargo = 1
+ignores_permission = true
 
 [assets.VentureCapital]
 id = "SWN-W6-001"

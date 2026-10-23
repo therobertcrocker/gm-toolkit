@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func newMutationTestState() *state.FactionState {
@@ -344,5 +345,66 @@ func TestMutationEngine_PermissionRefusedIsRecordOnly(t *testing.T) {
 	}
 	if got := s.Factions["f1"].Coin; got != 10 {
 		t.Errorf("Coin = %d, want 10 unchanged", got)
+	}
+}
+
+func TestMutationEngine_MovementOrderHeld(t *testing.T) {
+	s := newMutationTestState()
+	hexes := []spatial.RegionHex{{RegionID: "r", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 1}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 2}}}
+	s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes, Destination: domain.Location{WorldID: "Krylos", RegionHex: hexes[2]}}
+	me := New(slog.New(slog.DiscardHandler))
+
+	held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: hexes[1], Reason: domain.HoldRefused}
+	if err := me.Apply(s, []domain.Mutation{held}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	asset := s.Factions["f1"].Assets["a1"]
+	if asset.CurrentOrder == nil || asset.CurrentOrder.StepIdx != 1 {
+		t.Errorf("order = %+v, want it open at step 1", asset.CurrentOrder)
+	}
+	if asset.Location != (domain.Location{RegionHex: hexes[1]}) {
+		t.Errorf("Location = %+v, want the edge hex with no world", asset.Location)
+	}
+}
+
+func TestMutationEngine_MovementOrderHeldMisses(t *testing.T) {
+	cases := []struct {
+		name string
+		held domain.MovementOrderHeld
+	}{
+		{"unknown faction", domain.MovementOrderHeld{FactionID: "missing", AssetID: "a1"}},
+		{"unknown asset", domain.MovementOrderHeld{FactionID: "f1", AssetID: "missing"}},
+		{"asset with no order", domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := New(slog.New(slog.DiscardHandler)).Apply(newMutationTestState(), []domain.Mutation{tc.held}, slog.New(slog.DiscardHandler))
+			if err == nil || len(err.Misses) != 1 {
+				t.Errorf("Apply = %v, want one miss", err)
+			}
+		})
+	}
+}
+
+func TestMutationEngine_MovementOrderHeldMarksAPaidLockdown(t *testing.T) {
+	for _, tc := range []struct {
+		reason domain.HoldReason
+		want   bool
+	}{
+		{domain.HoldLockdownPaid, true},
+		{domain.HoldLockdownUnpaid, false},
+		{domain.HoldRefused, false},
+	} {
+		s := newMutationTestState()
+		hexes := []spatial.RegionHex{{RegionID: "r", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 1}}}
+		s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes}
+		held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", NewStepIdx: 0, RegionHex: hexes[0], Reason: tc.reason}
+
+		if err := New(slog.New(slog.DiscardHandler)).Apply(s, []domain.Mutation{held}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("%s: Apply: %v", tc.reason, err)
+		}
+		if got := s.Factions["f1"].Assets["a1"].CurrentOrder.LockdownPaid; got != tc.want {
+			t.Errorf("%s: LockdownPaid = %v, want %v", tc.reason, got, tc.want)
+		}
 	}
 }

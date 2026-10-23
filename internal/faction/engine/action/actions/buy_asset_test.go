@@ -461,7 +461,7 @@ func TestBuyAsset_AsksPermissionAfterTheChoice(t *testing.T) {
 			collector.EXPECT().SelectBuyOrder(gomock.Any()).Return(action.BuyOrder{World: tc.world, Definition: def}, nil)
 			if tc.ask {
 				collector.EXPECT().
-					RequestPermission(hooks.PermissionRequest{Requester: faction, Ruler: ruler, WorldID: tc.world, Def: def}).
+					RequestPermission(hooks.PermissionRequest{Requester: faction, Ruler: ruler, WorldID: tc.world, Def: def, Cause: "buy"}).
 					Return(tc.grant, nil)
 			}
 
@@ -505,7 +505,7 @@ func TestBuyAsset_PurchasePermissionAsksForARaise(t *testing.T) {
 
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectBuyOrder(gomock.Any()).Return(action.BuyOrder{World: "Tartarus", Definition: def}, nil)
-	collector.EXPECT().RequestPermission(hooks.PermissionRequest{Requester: faction, WorldID: "Tartarus", Def: def}).Return(false, nil)
+	collector.EXPECT().RequestPermission(hooks.PermissionRequest{Requester: faction, WorldID: "Tartarus", Def: def, Cause: "buy"}).Return(false, nil)
 
 	act := NewBuyAsset(collector, nil, nil, nil)
 	if err := act.Inputs(faction, factionState, rb); err != nil {

@@ -136,6 +136,9 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		}
 		return fmt.Sprintf("%s governed by %s", mut.WorldID, mut.ToFactionID), true
 	case domain.PermissionRefused:
+		if mut.Reason != domain.RefusalDenied {
+			return fmt.Sprintf("permission %s: %s on %s", mut.Reason, mut.DefinitionID, mut.WorldID), true
+		}
 		return fmt.Sprintf("permission refused: %s on %s", mut.DefinitionID, mut.WorldID), true
 	case domain.AssetRemoved:
 		if label, ok := interceptionLabels[mut.Cause]; ok {
@@ -162,6 +165,8 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return "move cancelled", true
 	case domain.MovementOrderCompleted:
 		return "move completed", true
+	case domain.MovementOrderHeld:
+		return fmt.Sprintf("move held short of %s (%s)", mut.WorldID, mut.Reason), true
 	case domain.AssetMoved:
 		// deliberate: surface ability relocations, fold drift movement — drift's own
 		// MovementOrderCompleted line already reports the move, an ability has none.

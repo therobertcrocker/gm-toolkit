@@ -1147,3 +1147,71 @@ func TestPermissionRefusedIsARefusalLine(t *testing.T) {
 		t.Errorf("Notes = %v, want none", beat.Notes)
 	}
 }
+
+func TestMovementOrderHeldIsAHoldLine(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha"})
+	factionState.Factions["f1"].Assets = map[string]*domain.Asset{"t1": {ID: "t1", DefinitionID: "ship"}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"ship":   {ID: "ship", Name: "Freighter"},
+		"troops": {ID: "troops", Name: "Troops"},
+	}}
+	records := []domain.EventRecord{eventRec("f1",
+		mutRec(t, "permission_refused", domain.PermissionRefused{
+			FactionID: "f1", WorldID: "Krylos", DefinitionID: "troops", Cause: domain.PermissionCauseArrival, CausedByFactionID: "f1",
+		}),
+		mutRec(t, "movement_order_held", domain.MovementOrderHeld{
+			FactionID: "f1", AssetID: "t1", WorldID: "Krylos", NewStepIdx: 1, Reason: domain.HoldRefused, Cause: domain.CauseMovementTick, CausedByFactionID: "f1",
+		}),
+	)}
+
+	beat := findBeat(buildOne(t, records, factionState, rb), "f1")
+
+	if beat == nil {
+		t.Fatal("f1 is quiet, want a hold to make it active")
+	}
+	if want := []RefusalEvent{{AssetName: "Troops", World: "Krylos", Landing: true}}; !reflect.DeepEqual(beat.Refusals, want) {
+		t.Errorf("Refusals = %+v, want %+v", beat.Refusals, want)
+	}
+	if want := []HoldEvent{{AssetName: "Freighter", World: "Krylos", Reason: domain.HoldRefused}}; !reflect.DeepEqual(beat.Holds, want) {
+		t.Errorf("Holds = %+v, want %+v", beat.Holds, want)
+	}
+	if len(beat.Notes) != 0 {
+		t.Errorf("Notes = %v, want none", beat.Notes)
+	}
+}
+
+func TestPermissionWithdrawnCarriesItsReason(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"gunships": {ID: "gunships", Name: "Gunships"}}}
+	records := []domain.EventRecord{eventRec("f1", mutRec(t, "permission_refused", domain.PermissionRefused{
+		FactionID: "f1", WorldID: "Krylos", DefinitionID: "gunships", DecidedByFactionID: "f2", Reason: domain.RefusalWithdrawn, Cause: "buy", CausedByFactionID: "f1",
+	}))}
+
+	beat := findBeat(buildOne(t, records, factionState, rb), "f1")
+
+	want := []RefusalEvent{{AssetName: "Gunships", World: "Krylos", DecidedBy: "Bravo", Reason: domain.RefusalWithdrawn}}
+	if beat == nil || !reflect.DeepEqual(beat.Refusals, want) {
+		t.Errorf("beat = %+v, want Refusals %+v", beat, want)
+	}
+}
+
+func TestLockedOutIsAConditionOnTheCrossEvent(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{eventRec("f1", mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+		FactionID: "f1", AssetID: "lock",
+		Condition: domain.Condition{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "f2"},
+		Cause:     "lock_out", CausedByFactionID: "f1",
+	}))}
+
+	cycleDigest := buildOne(t, records, factionState, minRulebook(nil))
+
+	var found bool
+	for _, ce := range cycleDigest.Cross {
+		if ce.Attacker.ID == "f1" && ce.Defender.ID == "f2" && slices.Contains(ce.Conditions, domain.ConditionLockedOut) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Cross = %+v, want f1 → f2 carrying locked_out", cycleDigest.Cross)
+	}
+}

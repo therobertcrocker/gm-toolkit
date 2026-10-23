@@ -41,12 +41,17 @@ type AttackProfile struct {
 	Damage *DiceRoll
 }
 
+// TransportProfile is a transport's typed data. IgnoresPermission lets its order
+// land the carrier and its cargo without asking the government (D-25);
+// IgnoresLockdown lets it land past a Transport Lockdown (Effort 5 Decision 15).
 type TransportProfile struct {
 	MaxHex            int
 	CoinCost          int
 	CargoTypes        []AssetType
 	MaxCargo          int
 	ExcludeCategories []FactionStat
+	IgnoresPermission bool
+	IgnoresLockdown   bool
 }
 
 type AbilityEffectType string
@@ -210,6 +215,14 @@ func (def *AssetDefinition) NeedsPurchasePermission() bool {
 	return def.HasFlag(FlagPermission) || def.PurchasePermission
 }
 
+// NeedsArrivalPermission reports whether landing asset on a world asks the world's
+// government. A P asset does (the book: "purchase them or move them onto the
+// planet"), unless it is stealthed (Stealth: "that permission may be foregone",
+// D-25). Capital Fleet's PurchasePermission covers raising only.
+func (def *AssetDefinition) NeedsArrivalPermission(asset *Asset) bool {
+	return def.HasFlag(FlagPermission) && !asset.Stealthy
+}
+
 // HalfPrice is half the listed cost, rounded down, but at least 1 Coin: the price
 // to keep or bring back an asset (Marketers, the turn-start lift). A sale does not
 // use it; a sale is worth Cost / 2 with no floor.
@@ -224,21 +237,55 @@ const (
 	ConditionDisabled  ConditionKind = "disabled"
 	ConditionNoAttack  ConditionKind = "no_attack"
 	ConditionSheltered ConditionKind = "sheltered"
+	ConditionLockedOut ConditionKind = "locked_out"
 )
 
-// Condition is a lasting restriction one asset puts on another. The code that
-// reads a kind decides what it blocks. ExpiresAtTurnOf names the faction whose
-// turn start clears it; empty means the kind ends some other way.
+// Condition is a lasting restriction one asset puts on another, or on itself
+// against a faction: Transport Lockdown's locked_out names TargetFactionID and
+// the WorldID of the hit (overview Decision 24). The code that reads a kind
+// decides what it blocks. ExpiresAtTurnOf names the faction whose turn start
+// clears it; empty means the kind ends some other way.
 type Condition struct {
 	Kind            ConditionKind `toml:"kind" json:"kind"`
 	SourceAssetID   string        `toml:"source_asset_id" json:"source_asset_id"`
 	ExpiresAtTurnOf string        `toml:"expires_at_turn_of,omitempty" json:"expires_at_turn_of,omitempty"`
+	TargetFactionID string        `toml:"target_faction_id,omitempty" json:"target_faction_id,omitempty"`
+	WorldID         string        `toml:"world_id,omitempty" json:"world_id,omitempty"`
 }
 
 // Is reports whether condition and other are one condition: the same kind from
-// the same source.
+// the same source, against the same faction, on the same world.
 func (condition Condition) Is(other Condition) bool {
-	return condition.Kind == other.Kind && condition.SourceAssetID == other.SourceAssetID
+	return condition.Kind == other.Kind && condition.SourceAssetID == other.SourceAssetID &&
+		condition.TargetFactionID == other.TargetFactionID && condition.WorldID == other.WorldID
+}
+
+// LockedOut reports whether a Transport Lockdown holds factionID out of worldID:
+// an active asset of another faction on the world carries locked_out, from itself,
+// against factionID, struck on that world. The lock lives and dies with that
+// asset (D-31, D-36), and sleeps while the asset is away from the world of the
+// hit (Effort 5 Decision Record 5); a capture into factionID lapses it.
+func LockedOut(factions map[string]*Faction, worldID, factionID string) bool {
+	if worldID == "" {
+		return false
+	}
+	for _, holder := range factions {
+		if holder.ID == factionID {
+			continue
+		}
+		for _, asset := range holder.Assets {
+			if asset.Location.WorldID != worldID || !asset.Active() {
+				continue
+			}
+			if slices.ContainsFunc(asset.Conditions, func(condition Condition) bool {
+				return condition.Kind == ConditionLockedOut && condition.SourceAssetID == asset.ID &&
+					condition.TargetFactionID == factionID && condition.WorldID == worldID
+			}) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type Asset struct {

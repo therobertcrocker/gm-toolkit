@@ -44,6 +44,7 @@ const (
 	AskSelectAssetToLose
 	AskConfirmSacrifice
 	AskRequestPermission
+	AskConfirmPermissionContest
 	// AskKindCount counts the kinds above; keep it last.
 	AskKindCount
 )
@@ -172,6 +173,10 @@ type ConfirmPaymentPayload struct{ Offer hooks.PaymentOffer }
 type ConfirmSacrificePayload struct{ Offer hooks.SacrificeOffer }
 type RequestPermissionPayload struct {
 	Request   hooks.PermissionRequest
+	WorldName string
+}
+type ConfirmPermissionContestPayload struct {
+	Offer     hooks.PermissionContestOffer
 	WorldName string
 }
 

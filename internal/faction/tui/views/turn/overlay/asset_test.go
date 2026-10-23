@@ -79,3 +79,33 @@ func TestRequestPermissionIgnoresEsc(t *testing.T) {
 		t.Errorf("Update returned %T, want NoCancelConfirm", updated)
 	}
 }
+
+func TestPermissionTitle(t *testing.T) {
+	request := hooks.PermissionRequest{
+		Requester: &domain.Faction{ID: "f1", Name: "Alpha"},
+		WorldID:   "krylos",
+		Def:       &domain.AssetDefinition{ID: "troops", Name: "Troops"},
+		Cause:     domain.PermissionCauseArrival,
+	}
+	if got, want := permissionTitle(request, "Krylos"), "Permit Alpha to land Troops on Krylos?"; got != want {
+		t.Errorf("title = %q, want %q", got, want)
+	}
+	request.Cause = "buy"
+	if got, want := permissionTitle(request, "Krylos"), "Permit Alpha to raise Troops on Krylos?"; got != want {
+		t.Errorf("title = %q, want %q", got, want)
+	}
+}
+
+func TestContestTitle(t *testing.T) {
+	offer := hooks.PermissionContestOffer{
+		Owner:     &domain.Faction{ID: "f2", Name: "Bravo"},
+		Source:    &domain.Asset{ID: "lob"},
+		Requester: &domain.Faction{ID: "f1", Name: "Alpha"},
+		WorldID:   "krylos",
+		Def:       &domain.AssetDefinition{ID: "troops", Name: "Troops"},
+		Cause:     domain.PermissionCauseRelocate,
+	}
+	if got, want := contestTitle(offer, "Krylos"), "Contest Alpha's permission to land Troops on Krylos?"; got != want {
+		t.Errorf("title = %q, want %q", got, want)
+	}
+}

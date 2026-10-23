@@ -285,17 +285,43 @@ type WorldGovernmentChanged struct {
 
 func (m WorldGovernmentChanged) Type() string { return "world_government_changed" }
 
+// The permission causes that ask to land an asset, not to raise one. The purchase
+// causes are buy, refit and ability.
+const (
+	PermissionCauseArrival  = "arrival"
+	PermissionCauseRelocate = "relocate"
+)
+
+// IsLanding reports whether a permission cause asks to land an asset on a world.
+func IsLanding(cause string) bool {
+	return cause == PermissionCauseArrival || cause == PermissionCauseRelocate
+}
+
+// RefusalReason says how a permission request was refused.
+type RefusalReason string
+
+const (
+	// RefusalDenied (the zero value): the government said no.
+	RefusalDenied RefusalReason = ""
+	// RefusalWithdrawn: a rival's Lobbyists won its contest after the grant.
+	RefusalWithdrawn RefusalReason = "withdrawn"
+	// RefusalBarred: a withdrawal on this world earlier in the turn bars the request (D-30).
+	RefusalBarred RefusalReason = "barred"
+)
+
 // PermissionRefused records a refused permission request. It changes no state:
-// the action it ends bought nothing (D-35, overview Decision 22).
-// DecidedByFactionID is the world's ruler, empty when the GM decided for an
-// independent world. Cause is the purchase path: buy, refit or ability.
+// the purchase or landing it refuses did not happen (D-35, overview Decision 22).
+// DecidedByFactionID is the world's ruler (empty when the GM decided for an
+// independent world), or the Lobbyists' owner on a withdrawal or a bar. Cause is the path:
+// buy, refit or ability for a purchase, arrival or relocate for a landing.
 type PermissionRefused struct {
-	FactionID          string `json:"faction_id"`
-	WorldID            string `json:"world_id"`
-	DefinitionID       string `json:"definition_id"`
-	DecidedByFactionID string `json:"decided_by_faction_id"`
-	Cause              string `json:"cause"`
-	CausedByFactionID  string `json:"caused_by_faction_id"`
+	FactionID          string        `json:"faction_id"`
+	WorldID            string        `json:"world_id"`
+	DefinitionID       string        `json:"definition_id"`
+	DecidedByFactionID string        `json:"decided_by_faction_id"`
+	Reason             RefusalReason `json:"reason,omitempty"`
+	Cause              string        `json:"cause"`
+	CausedByFactionID  string        `json:"caused_by_faction_id"`
 }
 
 func (m PermissionRefused) Type() string { return "permission_refused" }
@@ -426,6 +452,34 @@ type MovementOrderCompleted struct {
 }
 
 func (m MovementOrderCompleted) Type() string { return "movement_order_completed" }
+
+// HoldReason says why an arriving order holds at the edge of its destination.
+type HoldReason string
+
+const (
+	// HoldRefused: the destination's government refused an asset aboard (D-27).
+	HoldRefused HoldReason = "permission_refused"
+	// HoldLockdownPaid: the order paid a Transport Lockdown's 1d4 and waits a turn (D-33).
+	HoldLockdownPaid HoldReason = "lockdown_paid"
+	// HoldLockdownUnpaid: the faction cannot pay the 1d4 yet (overview Decision 15).
+	HoldLockdownUnpaid HoldReason = "lockdown_unpaid"
+)
+
+// MovementOrderHeld keeps an order that would complete at the last hex before its
+// destination, WorldID. The order stays open and asks again at the next tick
+// (D-27). Its apply arm sets the step and hex as MovementOrderProgressed does.
+type MovementOrderHeld struct {
+	FactionID         string            `json:"faction_id"`
+	AssetID           string            `json:"asset_id"`
+	WorldID           string            `json:"world_id"`
+	NewStepIdx        int               `json:"new_step_idx"`
+	RegionHex         spatial.RegionHex `json:"region_hex"`
+	Reason            HoldReason        `json:"reason"`
+	Cause             string            `json:"cause"`
+	CausedByFactionID string            `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderHeld) Type() string { return "movement_order_held" }
 
 // AssetConditionApplied puts a condition on an asset, replacing one with the same
 // kind and source.

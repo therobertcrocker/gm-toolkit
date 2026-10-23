@@ -54,17 +54,35 @@ type InterceptCollector interface {
 	ConfirmSacrifice(offer SacrificeOffer) (bool, error)
 }
 
-// PermissionRequest asks a world's government whether Requester may raise Def
-// there. Ruler is nil for a world no faction governs; the GM answers for it (D-4).
+// PermissionRequest asks a world's government whether Requester may raise or land
+// Def there. Ruler is nil for a world no faction governs; the GM answers for it
+// (D-4). Cause names the path, so a prompt can say "raise" or "land"
+// (domain.IsLanding).
 type PermissionRequest struct {
 	Requester *domain.Faction
 	Ruler     *domain.Faction
 	WorldID   string
 	Def       *domain.AssetDefinition
+	Cause     string
 }
 
-// PermissionCollector asks for a government's permission. action.Collector embeds
-// it; PhaseCollector will when arrivals ask (A.001.6 Effort 5, D-41).
+// PermissionContestOffer asks Owner whether its Source (Lobbyists) contests the
+// permission Requester was just granted to raise or land Def on WorldID. Cause is
+// the request's path, as on PermissionRequest.
+type PermissionContestOffer struct {
+	Owner     *domain.Faction
+	Source    *domain.Asset
+	Requester *domain.Faction
+	WorldID   string
+	Def       *domain.AssetDefinition
+	Cause     string
+}
+
+// PermissionCollector asks for a government's permission, and asks a Lobbyists'
+// owner whether to contest a grant. action.Collector and the engine's
+// PhaseCollector both embed it (D-41): purchases and relocates ask in an action,
+// drift arrivals in the movement phase.
 type PermissionCollector interface {
 	RequestPermission(request PermissionRequest) (bool, error)
+	ConfirmPermissionContest(offer PermissionContestOffer) (bool, error)
 }

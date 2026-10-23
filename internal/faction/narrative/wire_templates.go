@@ -86,8 +86,30 @@ var goalTagLostTemplates = []string{
 }
 
 var refusalTemplates = []string{
-	"{decider} refused {faction} permission to raise {asset} on {world}.",
-	"Permission denied: {decider} would not let {faction} raise {asset} on {world}.",
+	"{decider} refused {faction} permission to {verb} {asset} on {world}.",
+	"Permission denied: {decider} would not let {faction} {verb} {asset} on {world}.",
+}
+
+var withdrawalTemplates = []string{
+	"{decider}'s lobbyists had {faction}'s permission to {verb} {asset} on {world} withdrawn.",
+	"Lobbying by {decider} cost {faction} its leave to {verb} {asset} on {world}.",
+}
+
+var barredTemplates = []string{
+	"{decider}'s lobbying kept {faction} from asking again to {verb} {asset} on {world} this turn.",
+}
+
+var holdTemplates = map[domain.HoldReason][]string{
+	domain.HoldRefused: {
+		"{faction}'s {asset} holds in orbit over {world}, waiting for leave to land.",
+		"Turned back at the edge of {world}, {faction}'s {asset} waits to ask again.",
+	},
+	domain.HoldLockdownPaid: {
+		"{faction}'s {asset} pays its way through the shipping lockdown at {world} and waits a turn in orbit.",
+	},
+	domain.HoldLockdownUnpaid: {
+		"{faction}'s {asset} cannot pay its way through the shipping lockdown at {world} and waits in orbit.",
+	},
 }
 
 var acquisitionTemplates = []string{
@@ -159,6 +181,7 @@ var conditionClauses = map[domain.ConditionKind]string{
 	domain.ConditionNoAbility: "{defender} cannot use asset abilities there until {attacker}'s next turn.",
 	domain.ConditionDisabled:  "{defender} must pay to bring a disabled asset back into use.",
 	domain.ConditionNoAttack:  "{attacker}'s agitators keep one of {defender}'s assets from attacking.",
+	domain.ConditionLockedOut: "{attacker}'s shipping lockdown makes {defender} pay and wait to land there.",
 }
 
 // interceptionClauses name each Cat 6 save without naming a side, because the

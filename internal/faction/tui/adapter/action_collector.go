@@ -279,19 +279,43 @@ func (a *actionCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, er
 	return confirmed, nil
 }
 
-// RequestPermission asks the world's ruler, or the GM for an independent world; the ask
-// names the ruler, who is often not the acting faction.
 func (a *actionCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	return a.adapter.requestPermission(request)
+}
+
+// requestPermission asks the world's ruler, or the GM for an independent world; the
+// ask names the ruler, who is often not the acting faction. The action collector
+// (purchases, relocates) and the phase collector (arrivals) share it.
+func (a *Adapter) requestPermission(request hooks.PermissionRequest) (bool, error) {
 	worldName := request.WorldID
-	if loc, ok := a.adapter.engine.World.Location(request.WorldID); ok {
+	if loc, ok := a.engine.World.Location(request.WorldID); ok {
 		worldName = loc.Name()
 	}
-	raw, err := a.adapter.ask(AskRequestPermission, request.Ruler, RequestPermissionPayload{Request: request, WorldName: worldName})
+	raw, err := a.ask(AskRequestPermission, request.Ruler, RequestPermissionPayload{Request: request, WorldName: worldName})
 	if err != nil {
 		return false, err
 	}
 	granted, _ := raw.(bool)
 	return granted, nil
+}
+
+func (a *actionCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	return a.adapter.confirmPermissionContest(offer)
+}
+
+// confirmPermissionContest asks a Lobbyists' owner, who is never the acting
+// faction, whether to contest a rival's grant. Both collectors share it.
+func (a *Adapter) confirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	worldName := offer.WorldID
+	if loc, ok := a.engine.World.Location(offer.WorldID); ok {
+		worldName = loc.Name()
+	}
+	raw, err := a.ask(AskConfirmPermissionContest, offer.Owner, ConfirmPermissionContestPayload{Offer: offer, WorldName: worldName})
+	if err != nil {
+		return false, err
+	}
+	contest, _ := raw.(bool)
+	return contest, nil
 }
 
 // confirmPayment asks the paying faction. The action collector (Marketers) and the

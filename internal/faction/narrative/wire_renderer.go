@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/narrative/digest"
 )
 
@@ -102,6 +103,10 @@ func renderFactionSection(beat digest.FactionBeat, crossEvents []digest.CrossEve
 	}
 	for _, refusal := range beat.Refusals {
 		sb.WriteString(renderRefusal(refusal, beat.Faction.Name, rng))
+		sb.WriteString("\n\n")
+	}
+	for _, hold := range beat.Holds {
+		sb.WriteString(renderHold(hold, beat.Faction.Name, rng))
 		sb.WriteString("\n\n")
 	}
 	for _, ce := range crossEvents {
@@ -293,9 +298,31 @@ func renderRefusal(refusal digest.RefusalEvent, factionName string, rng *rand.Ra
 	if decider == "" {
 		decider = "The independent government"
 	}
-	tmpl := pick(rng, refusalTemplates)
+	verb := "raise"
+	if refusal.Landing {
+		verb = "land"
+	}
+	pool := refusalTemplates
+	switch refusal.Reason {
+	case domain.RefusalWithdrawn:
+		pool = withdrawalTemplates
+	case domain.RefusalBarred:
+		pool = barredTemplates
+	}
+	tmpl := pick(rng, pool)
 	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+	result = strings.ReplaceAll(result, "{verb}", verb)
 	result = strings.ReplaceAll(result, "{asset}", refusal.AssetName)
 	result = strings.ReplaceAll(result, "{world}", refusal.World)
 	return strings.ReplaceAll(result, "{decider}", decider)
+}
+
+func renderHold(hold digest.HoldEvent, factionName string, rng *rand.Rand) string {
+	pool, ok := holdTemplates[hold.Reason]
+	if !ok {
+		pool = holdTemplates[domain.HoldRefused]
+	}
+	result := strings.ReplaceAll(pick(rng, pool), "{faction}", factionName)
+	result = strings.ReplaceAll(result, "{asset}", hold.AssetName)
+	return strings.ReplaceAll(result, "{world}", hold.World)
 }

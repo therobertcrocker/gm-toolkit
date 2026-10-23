@@ -153,14 +153,14 @@ is the string written to history; the rules behind the numbers live in
 - `homeworld_changed` — relocate the faction's homeworld
 - `tag_added` / `tag_removed` — grant / take a tag (the full `Tag` is embedded, so `Apply` needs no rulebook lookup)
 - `world_government_changed` — set or clear a world's ruler in the government record (Planetary Seizure)
-- `permission_refused` — record only: a government refused a purchase, which bought nothing
+- `permission_refused` — record only: a purchase (which bought nothing) or a landing (the asset holds or stays) was refused. Its reason says whether the government said no (the zero value), a rival's Lobbyists withdrew the grant, or a withdrawal earlier in the turn barred the request
 
 **Assets**
 - `asset_added` / `asset_removed` — add to / drop from the roster
 - `asset_hp_delta` — adjust an asset's HP. A Cat 6 save keeps the hit and sets the HP it saves at with a second delta, caused by the save's effect
 - `asset_maintained_flag` — set the maintained flag
 - `asset_stealth_applied` / `asset_stealth_cleared` — toggle stealth
-- `asset_condition_applied` / `asset_condition_cleared` — add / drop a condition, keyed on kind and source asset (Saboteurs' `no_ability`, Marketers' `disabled`, Seditionists' `no_attack`, Boltholes' `sheltered`)
+- `asset_condition_applied` / `asset_condition_cleared` — add / drop a condition, keyed on kind, source asset, target faction and world (Saboteurs' `no_ability`, Marketers' `disabled`, Seditionists' `no_attack`, Boltholes' `sheltered`, and Transport Lockdown's `locked_out`, which sits on the Lockdown itself and names the struck faction and the world of the hit)
 - `asset_owner_changed` — move one asset to another faction with its ID and order; its cargo keeps its old owner (Treachery)
 - `asset_moved` — set an asset's Location (cargo follows a transport; also emitted by the relocate ability with `Cause: "ability"`)
 
@@ -178,6 +178,7 @@ is the string written to history; the rules behind the numbers live in
 
 **Movement orders**
 - `movement_order_issued` / `_progressed` / `_revised` / `_cancelled` / `_completed` — the in-flight order lifecycle (see [world & movement](world-movement.md))
+- `movement_order_held` — an order that would complete stops one hex short of its world and stays open: a refused arrival. Its apply arm sets the step and hex as `_progressed` does
 
 ## Key Decisions
 
