@@ -11,7 +11,6 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
-| `A.001.6` | S-flag rule extensions | `feature` | In-Progress | The 14 SWN S-flag assets that need new state, a new prompt, or a new subsystem; registers through A.001.3's model; wide Discovery; see arc-plan |
 
 
 ---
@@ -53,6 +52,9 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.026` | Show why a target is refused | `F.018` | An attack-eligibility hook (`restrict_attack`) drops a defender from the target list or cancels a counter with no reason shown; surface the refusing asset so the GM sees why a target is missing. Found in `A.001.3` Effort 4 Commit 4 review. |
 | `F.027` | TUI adapter tests | next interface initiative | `tui/adapter` (1,176 lines) is the only implementation of the engine seam and has no tests; cover collector and observer paths with the engine test harness; `D.002` N7 |
 | `F.028` | In-transit assets can't be acted on | -- | An asset between worlds (no `WorldID`, cargo included) should be untouchable by actions; Refit already refuses it (`A.001.6` Effort 4 Decision 11); audit repair, sale, ability targets and the rest, then block them. |
+| `F.029` | Digest line for a paid lift | -- | A Marketers pay-to-lift (`turn.OfferConditionLifts`) reads only as Coin spent in bookkeeping; give the lift its own narrative line. Deferred from `A.001.6` Effort 3. |
+| `F.030` | Show who a Lockdown holds out | -- | No view shows the GM which factions a Transport Lockdown holds out of a world (`locked_out` sits on the Lockdown asset); surface it. Deferred from `A.001.6` Effort 5. |
+| `F.031` | Loyalty roll for captured cargo | -- | House rule: cargo aboard a transport that changes sides rides on under its old owner (`A.001.6` Effort 1 Decision 8); a loyalty roll could decide whether it defects. Deferred from `A.001.6` Effort 1. |
 
 ### Refactors
 
@@ -69,20 +71,20 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.011` | Cache per-frame allocations in `compose()` / root `View()` | -- | Low priority: repeated allocations on hot path; pre-allocate or cache where safe. |
 | `R.012` | Engine construction shape | -- | Review constructors so every user (TUI, CLI, tests) gets a fully-wired engine or fails fast at launch. |
 | `R.013` | Candidate derivation boundary | next action change | Collector methods should always receive engine-derived candidates; retires the adapter's `derive*`/`statRating` ports of engine eligibility logic (revisits tui-turn Decision 3). Investigate drift: `deriveContestedWorlds` copies `seizePlanetTargetWorlds` and needed the same fix twice (`A.001.6` Effort 4 review, DR-3). |
-| `R.014` | AskKind dispatch table | next new action | Collapse the parallel `newOverlay` + `askPhaseLabel` switches into one `map[AskKind]{label, factory}` that fails loudly on a missing entry. |
 | `R.015` | Collector reply rigor | -- | `action_collector` swallows bad reply types (`raw.(T)` zero-values); match `phase_collector`'s loud type errors, add the `SelectMovementDecisions` nil guard, drop the `phaseCollector.ask` delegation wrapper. |
 | `R.016` | Per-ask detail cards | 4th specialized card | Move per-ask knowledge out of `execution.detailView`'s `activeAsk` switch into an optional overlay interface (`DetailView() string`). |
 | `R.017` | Evaluate `teatest` for UI tests | -- | TUI tests currently drive `Update` by hand and assert emitted messages; explore `charmbracelet/x/exp/teatest` as a golden-output harness for full model behavior — adopt across overlays/views or document why not. |
-| `R.019` | Migrate `[transport]` onto the effects list | `A.001.6` | Transport keeps its own typed profile and registration branch (`core.go:58-61`) beside the `[[effects]]` model; fold it in once the S-flag model is fully built, so one parse and dispatch path serves every S effect. |
+| `R.019` | Migrate `[transport]` onto the effects list | ready | Transport keeps its own typed profile and registration branch (`core.go:58-61`) beside the `[[effects]]` model; fold it in once the S-flag model is fully built, so one parse and dispatch path serves every S effect. |
 | `R.021` | Remove dead world-scoped defender filter | -- | `liveDefendersOnWorld` → `eligibleDefendersOnWorld` has no caller outside `spatial_index_test.go` and skips the attack-eligibility hooks; delete it (move its tests to `eligibleDefendersAtHex`) so no future caller bypasses `restrict_attack`. Found in `A.001.3` Effort 4 Commit 4 review. |
 | `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
 | `R.023` | Effect contests through roll hooks | When reactors and phase effects can reach a collector | Tripwire Cells, Panopticon Matrix and Lobbyists roll bare 1d10 + stat (`contestPasses`), so Fanatical's and Book of Secrets' rerolls skip them; move all three onto `RollWithHooks` together. `A.001.6` Effort 5 Decision 10. |
+| `R.024` | Clear inert `no_attack` records | if saves grow noisy | A Seditionists' `no_attack` stays on its target after the Seditionists die; `domain.AttackBlocked` skips it when read, so it only clutters saves. Clear it when its source leaves play. Deferred from `A.001.6` Effort 3 Decision 10. |
 
 ### Bugfixes
 
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
-| `B.001` | Hardcoded IDs | -- | `stealth_applicator` (asset) and `"G.012"` (ChangeHomeworld goal) are hardcoded; silently break if TOML IDs change |
+| `B.001` | Hardcoded goal ID | -- | `"G-012"` (Change Homeworld goal) is hardcoded in `change_homeworld.go`; silently breaks if the TOML ID changes. The asset half (Stealth) closed in `A.001.6`. |
 | `B.002` | Goal/Tag Display IDs | -- | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only. |
 | `B.003` | `SeizePlanet` History | -- | Currently invisible in history. `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
 | `B.004` | `Ability` Narration | -- | Add fallback text for asset ability narration |
@@ -90,15 +92,18 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.006` | Turn event stream flash | -- | Center-pane event stream visibly redraws/flickers between collector prompts during a cycle; smooth the transition so it doesn't flash on each phase. |
 | `B.007` | Self-warp validation gap | -- | `newRegionMap` accepts a hand-edited warp with `from_region == to_region`; harmless dead edge in pathfinding, but the validator should reject it. |
 | `B.008` | Stale `ApplyBookkeeping` comment | -- | Doc comment claims it "advances the turn phase to `PhaseAction`", but `TurnState` has no phase field; phase order lives in the orchestrator. One-line comment fix. |
-| `B.009` | Capital Fleet missing `P` flag | -- | `SWN-F8-001` reads "permission is required to raise a Capital Fleet" but carries `flags = ["S"]`; Mercenaries `SWN-W3-003` states the same rule with `["S", "P"]`. Data error found in `A.001.3` discovery. |
 | `B.010` | Reroll uses base die sides | first non-d10 Cat 1 die | `roll.go:86` rerolls via `roller.Roll(baseRoll.Sides)`, so a Cat 1 die of other sides rerolls wrong. Inert today (all d10); Book of Secrets is the first real reroll user. |
-| `B.011` | TargetSelf contest gets the clone | first `TargetSelf` contest | `ability/dispatch.go:87` passes the `workingFaction` clone to `resolveTarget`, which returns it as `target.Faction` for `TargetSelf`; a self-contest's target-side roll would spend hook budgets on the clone. Latent: no asset authors it. Found in `A.001.3` Effort 3, Session 2. |
 | `B.012` | Old budget keys in saves | -- | `A.001.3` added a trigger segment to effect budget keys (`e047af7`); a mid-cycle save from before holds old keys, so one extra steal/absorb is possible that turn. Self-heals at the owner's next bookkeeping. |
 | `B.013` | Peaceable Kingdom misses a missed attack | -- | `peaceable_kingdom.go:20-36` detects an Attack from damage or attacker stealth-loss mutations; a miss by an unstealthed attacker emits neither, so the goal ("do not take an Attack action") does not reset. Found in `A.001.6` Effort 1, Commit 6. |
 | `B.014` | Capture misses a sibling-removed target | first Treachery hit on a self-damage defender | `capture_target.go` cannot see a sibling reactor's output in its round, so a target that removes itself (Zealots' `self_damage`) still gets `AssetOwnerChanged`; the owner change then misses and the turn aborts. Fence-signed; found in `A.001.6` Effort 1 interim review. |
 | `B.015` | Bought assets get no hex | -- | `NewPurchasedAsset` (`asset.go:305`) sets `WorldID` only, so bought assets on different worlds share the zero `RegionHex` and Attack (`eligibleDefendersAtHex`) lets them fight; harness `addActiveAsset`/`AddFaction` copy the gap. Unconfirmed in the app; found in `A.001.6` Effort 3, Commit 4. |
 | `B.016` | Hook budgets survive an aborted action | -- | `dispatch/lethal.go` and `dispatch/roll.go` spend once-per budgets on live state during Resolve; a prompt canceled later in the action drops its mutations but keeps the spend (a lost Medical Center restore or reroll); snapshot `HookBudgets` before `Run`, restore on error. Found in `A.001.6` Effort 2 interim review. |
 | `B.017` | Repair price ignores Medical Center | -- | `overlay/repairorders.go` shows `n(n+1)/2` without the `RepairCostModifier` discount, and `RepairAsset.Validate` still needs 1 Coin when a discounted repair is free; the engine charges the right amount. Deferred from `A.001.6` Effort 2. |
+| `B.018` | Digest drops the defender name | -- | Cross events name an asset only when it is destroyed (`digest/build.go`), so `{defender_asset}` renders empty on a non-lethal hit, a shelter or a save. Found in `A.001.6` Effort 1. |
+| `B.019` | Movement orders read as unknown in the digest | -- | `digest/build.go` has a case for `movement_order_held` only; the five other `movement_order_*` types each become an `unknown mutation` note. Found in `A.001.6` Effort 5 planning. |
+| `B.020` | T-011 pick with every world governed | -- | The faction wizard's world select for a T-011 pick lists only worlds no faction governs; when none is left, the select has no options. Found in `A.001.6` Effort 4. |
+| `B.021` | SWN asset data drift | -- | A diff of all 72 assets against the book: transports flagged `S` where the book says `A`; flag gaps on Mercenaries, Surveyors, Tripwire Cells, Strike Fleet, Space Marines, Pretech Manufactory; wrong cost/TL on Pretech Researchers, TL on Surveyors. Audit and fix. Found in `A.001.6` discovery. |
+| `B.022` | Enabler surcharge reads the turn-start index | first enabler after an in-action removal | `purchase_enabler.go` prices through `world.AssetsOnWorld`, the turn-start index, not the action's view; a rival surcharge asset that an earlier asset in the same action removed (a Monopoly levy) still charges. Found at `A.001.6` pre-merge. |
 
 ### Docs
 
@@ -134,33 +139,6 @@ This section contains detailed write-ups for each planned initiative, including 
 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
-**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `[[effects]]` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. `A.001.4` and `A.001.5` are ready; `A.001.6` (S-flag rule extensions) is unblocked.
-
-<br />
-
-## A.001.6 — S-flag Rule Extensions
-
-**Feature**, constituent of arc `A.001`. Added to the arc by the `A.001.3` Discovery (AP-7), which split the S side in two. Full boundary in the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), section "A.001.6 — S-flag rule extensions".
-
-**Problem** — `A.001.3` built the S-side model (*trigger → filters → gates → effect*) and shipped every effect that is a hook or a rule query: 19 assets. 14 SWN S-flag assets remain inert. Each one can register through the model, but its effect acts on something the engine does not have: game state, a prompt, or a subsystem.
-
-**Approach** — Six mechanisms, unequal in size. Each is a separate engine design:
-
-- **Change of asset owner** (small): Hostile Takeover, Treachery.
-- **State held on an asset** — a restriction with a lifetime, or unusable-until-repaired (medium): Saboteurs, Marketers, Seditionists, Boltholes.
-- **A prompt to a faction that is not acting** — Cat 3 receives no collector (medium): False Front, Medical Center, Monopoly.
-- **A purchase that targets another asset** (medium): Stealth.
-- **A permission model for movement** (large): Lobbyists, Popular Movement, Transport Lockdown. It also takes the transport bypass clauses `A.001.3` left alone (Deep Strike Landers, Blockade Runners).
-- **Damage redirected into combat** (medium): Cracked Comms.
-
-Marketers, Seditionists and Monopoly were rerouted from `A.001.2` (AP-6) and passed on by `A.001.3`. The arc-plan expects a full, wide Discovery and a multi-effort plan.
-
-**Related items** — `R.019` (migrate `[transport]` onto the effects list) triggers on this initiative. `B.009` (Capital Fleet missing `P` flag) belongs to the permission work. The `A.001.3` plan defers one model question to the first asset that needs it: `filters` answers both "which events fire this" and "which assets the effect acts on".
-
-**Unlocks** — The complete SWN S side: every S-flag asset runs as data. A larger primitive set for the `A.001.5` mechanical sort, if this initiative runs first. Gates nothing.
-
-**Trigger** — `A.001.3` complete (met).
-
-**Status** — In-Progress — promoted 2026-10-17. Discovery complete 2026-10-19 ([discovery doc](../../initiatives/discovery/s-flag-rule-extensions-discovery.md)). Overview plan complete and signed off in an approval review 2026-10-20 ([plan](../../initiatives/implementation/s-flag-rule-extensions-plan.md)); Effort 1 Plan session next. Effort 5's Plan session waits on one played cycle of Effort 4.
+**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](../../initiatives/arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `[[effects]]` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. **`A.001.6` complete** (the 14 remaining SWN S-flag assets: asset conditions, change of owner, special attacks, Cat 6 lethal interception, purchase qualities, the world government record, and permission at purchase and arrival, on `feature/s-flag-rule-extensions`; [plan](../../initiatives/implementation/completed/s-flag-rule-extensions-plan.md)); every SWN S-flag asset now runs as data. `A.001.4` and `A.001.5` are ready.
 
 

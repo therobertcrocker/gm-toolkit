@@ -144,6 +144,13 @@ flowchart LR
 - **Renderer variety is seeded, not random.** A `seed` drives template choice, so
   prose varies between cycles yet is exactly reproducible for a given seed —
   testable copy that still reads as written, not generated.
+- **A new mutation type ships its digest case in the same commit.** The builder
+  notes a type it does not know as `unknown mutation: X` and does not fail, so
+  nothing stops a new type from reaching the recap with no wording. The rule keeps
+  the narrative in step with the apply switch. Where a new event can reuse a type,
+  the digest keys on its cause instead: a Cat 6 save adds no type, and its one
+  distinctive mutation adds the save to the cross event. (A.001.6 overview
+  Decision 13; Effort 2 Decision 18.)
 
 ## Dependencies
 

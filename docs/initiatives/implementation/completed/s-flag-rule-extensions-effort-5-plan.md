@@ -21,13 +21,13 @@
 Build the effort the overview plan scopes as "Movement permission", on branch
 `feature/s-flag-rule-extensions`.
 
-- Discovery: [s-flag-rule-extensions-discovery.md](../discovery/s-flag-rule-extensions-discovery.md)
+- Discovery: [s-flag-rule-extensions-discovery.md](../../discovery/completed/s-flag-rule-extensions-discovery.md)
   — Permission Model (movement rows and "What bends it"); D-24, D-25, D-27 to D-34,
   D-36, D-41.
 - Overview plan: [s-flag-rule-extensions-plan.md](s-flag-rule-extensions-plan.md) —
   Decisions 12, 13, 15, 16, 18, 22 and 24 bind here. This plan reshapes Decision 12
   (Decisions 8 and 9 below) and confirms Decision 24 (Decision 13).
-- Effort 4 plan: [completed/s-flag-rule-extensions-effort-4-plan.md](completed/s-flag-rule-extensions-effort-4-plan.md)
+- Effort 4 plan: [s-flag-rule-extensions-effort-4-plan.md](s-flag-rule-extensions-effort-4-plan.md)
   — Decisions 8, 9, 10 and 15 (the request, its place in each path, the refusal
   record, the homeworld clause).
 - Rules source: `docs/rules/swn-assets.md` (Lobbyists, Transport Lockdown, Deep Strike

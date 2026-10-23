@@ -132,7 +132,12 @@ pattern paying off as near-identical small types.
 - **`UpdateProgress` runs before mutations apply.** The ordering is a real data
   dependency, not convention: progress is counted by inspecting
   about-to-be-destroyed entities in live state. Apply-after-inspect keeps the
-  kill counts correct. (Frozen log 110–123.)
+  kill counts correct. (Frozen log 110–123.) It runs after `MutationReactors`,
+  so a reactor's capture or removal counts as progress (Treachery clears
+  Planetary Seizure's phase 1 in the same turn as a kill does), and no reactor
+  reads goal output. Rejected: goals before reactors, which hid a capture until
+  the next `CheckLock`. (A.001.6 overview Decision 17; Effort 1 Decision Record
+  12.)
 - **`locks` is a separate leaf package.** `LockType`/`GoalLock` live in their own
   package because both `goal` (the engine) and `goals` (the handlers) reference
   them, and `goal` already imports `goals`. A shared leaf breaks the import cycle

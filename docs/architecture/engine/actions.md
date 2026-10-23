@@ -136,9 +136,35 @@ can cascade to bases and faction HP.
   collector, so an action never carries state between turns and always talks to
   the live prompt surface. (Frozen log 46–53.)
 - **`RegisterDefaultActions` takes explicit dependencies.** The roller resolver,
-  hook registry, world engine, and rulebook are passed as parameters so the
-  `actions` package does not import `engine`. The parent engine owns registration
-  without an import cycle.
+  hook registry, world engine, rulebook and effects engine are passed as
+  parameters so the `actions` package does not import `engine`. The parent engine
+  owns registration without an import cycle. Attack raises the matchup route
+  itself and Buy Asset fires a quality's effect itself, so both take the effects
+  engine. (A.001.6 overview Decision 21; Effort 4 Decision 2.)
+- **An asset that can act and an asset that can be attacked are two tests.**
+  `Asset.Active()` (ready, maintained, alive, not sheltered, not disabled) gates
+  every use: an attack, a counter, an ability, an S effect. `Asset.Targetable()`
+  leaves out only the disabled test, and the defender filter reads it, so a
+  disabled asset stays a target ("disabled and useless", not untouchable). A
+  sheltered asset fails both. `Asset.Hidden()` (stealthed or sheltered) is the
+  third test, for what a rival can find. (A.001.6 Effort 3 Decisions 1–2 and
+  Decision Record 2; Effort 2 Decision 11 and Decision Record 8.)
+- **A step with no target fizzles its asset, never the action.** An ability whose
+  first step has no candidate is not offered (`ability.HasTargets`). With one view
+  per action, an earlier asset can use up a later asset's targets, so
+  `resolveTarget` returns `errNoTargets` before any prompt and `Dispatch` halts
+  only that asset's chain. To drop the action would undo the earlier assets'
+  results after a rival may have answered a pay prompt. For the same reason, a
+  prompt asked of another faction inside an action cannot be canceled (see
+  [overlays](../interface/overlays.md)). (A.001.6 Effort 3 Decision 4, Decision
+  Records 1, 5 and 7.)
+- **A quality is a purchase that adds no asset.** Stealth (`quality = true`) is
+  bought for an asset the faction holds on the world. Buy Asset fires the
+  quality's one `on_purchase` entry on a target from the registrar's `Targets`
+  (`FireQuality`), so the registrar, not Buy Asset, defines what a quality can act
+  on. A quality is never a refit, a starting asset or a purchase-enabler pick,
+  because each of those would make a 0-HP asset of it. This retired the hard-coded
+  Stealth ID in Buy Asset. (A.001.6 Effort 4 Decisions 2–3, Decision Record 5.)
 - **The roller is resolved at invocation time, not captured.** Factories call
   `resolveRoller()` when the action is built (turn time), not when registered, so
   a test can swap `Engine.Rand` for a deterministic roller after construction and

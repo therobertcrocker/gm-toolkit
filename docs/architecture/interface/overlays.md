@@ -92,12 +92,12 @@ one commit at a time; all twelve actions are now wired.
 ### Mounting: the ask→overlay dispatch
 
 Overlays don't mount themselves. When the execution view receives a
-`CollectorAskMsg`, its `newOverlay` method switches on the `AskKind` and
-constructs the matching overlay from the ask payload, supplying the cycle number,
-rulebook, and spatial map the overlay needs but the ask doesn't carry. The switch
-is append-only alongside the `AskKind` enum, and its `default` arm builds a
-labeled `Placeholder` — so an ask with no overlay yet degrades to a visible
-placeholder rather than a panic. The overlay renders into the execution view's
+`CollectorAskMsg`, its `newOverlay` method looks up the `AskKind` in the
+`askEntries` table and calls that row's factory, which builds the overlay from the
+ask payload and the cycle number, rulebook, and spatial map the overlay needs but
+the ask doesn't carry. The same row holds the banner's phase label. A kind with no
+row panics (`askEntryFor`), and `TestAskEntriesCoverEveryKind` walks every kind,
+so a missing row fails a test before it can fail at the table. The overlay renders into the execution view's
 fixed **wizard band** and, while mounted, makes the execution view report
 `CapturesInput()` so the root routes every key to the form (see
 [state machine](state-machine.md)).
@@ -116,6 +116,13 @@ fixed **wizard band** and, while mounted, makes the execution view report
   whether empty is impossible, legal, or a cancel — and the cancel case routes a
   recoverable `ErrTurnCanceled` through the ordinary answer path rather than a
   special one. (Decision 2.)
+- **A prompt inside an action that the action cannot unwind ignores Esc.** A
+  cancel drops the acting faction's whole action, the earlier assets' results
+  included, after another faction may already have answered. So the pay,
+  sacrifice, permission, contest and loss prompts swallow Esc and show `formHelp`;
+  the decline is an explicit option (`NoCancelConfirm`, `SelectAssetToLose`).
+  (A.001.6 Effort 3 Decision Records 5 and 7; Effort 2 Decision 5 and Decision
+  Record 8; Effort 4 Decision 8.)
 - **Three archetypes cover the common shapes; the rest are bespoke.** Generic
   `Select`/`MultiSelect`/`Confirm` wrappers handle list and yes/no prompts;
   prompts needing more structure get hand-built `huh` forms following the same
@@ -125,10 +132,13 @@ fixed **wizard band** and, while mounted, makes the execution view report
   The `SelectAction` overlay disables (label-suffix + `Validate`-reject) actions
   the TUI can't yet drive, which let per-action overlays ship incrementally
   without the engine knowing or caring which were wired.
-- **`newOverlay` is the single mount point, with a placeholder default.** One
-  switch arm per `AskKind`, append-only, defaulting to a labeled placeholder — a
-  new ask kind shows a placeholder instead of crashing, so the bridge and the
-  prompt surface can grow out of step safely.
+- **`askEntries` is the one table of asks, and a missing row fails loudly.** One
+  map from `AskKind` to its banner label and overlay factory replaced the two
+  parallel switches (`newOverlay` and the banner's label switch). A kind with no
+  row panics, and a test walks every kind, so a new ask cannot ship without its
+  overlay. Rejected: the old placeholder default, which let a new kind reach the
+  GM as a placeholder and kept the two switches free to drift. (A.001.6 Effort 1
+  Decision 12, `R.014`.)
 
 ## Dependencies
 

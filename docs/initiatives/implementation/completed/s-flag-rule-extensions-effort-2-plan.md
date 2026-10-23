@@ -20,16 +20,16 @@
 Build the effort the overview plan scopes as "Cat 6 interception", on branch
 `feature/s-flag-rule-extensions`.
 
-- Discovery: [s-flag-rule-extensions-discovery.md](../discovery/s-flag-rule-extensions-discovery.md)
+- Discovery: [s-flag-rule-extensions-discovery.md](../../discovery/completed/s-flag-rule-extensions-discovery.md)
   — Lethal Damage Interception (Cat 6), Change of Asset Owner, State Held on an Asset;
   D-1, D-7, D-8, D-10, D-37, D-38.
 - Overview plan: [s-flag-rule-extensions-plan.md](s-flag-rule-extensions-plan.md) —
   Decisions 5, 6, 7, 13, 17, 18 and 19 bind here. This plan answers the three Effort 2
   open questions (Decisions 1–3, 9 and 12 below).
-- Effort 1 plan: [completed/s-flag-rule-extensions-effort-1-plan.md](completed/s-flag-rule-extensions-effort-1-plan.md)
+- Effort 1 plan: [s-flag-rule-extensions-effort-1-plan.md](s-flag-rule-extensions-effort-1-plan.md)
   — `AssetOwnerChanged`, the two-pass apply, `capture_target`; Decision 15 and
   Decision Records 11 and 14.
-- Effort 3 plan: [completed/s-flag-rule-extensions-effort-3-plan.md](completed/s-flag-rule-extensions-effort-3-plan.md)
+- Effort 3 plan: [s-flag-rule-extensions-effort-3-plan.md](s-flag-rule-extensions-effort-3-plan.md)
   — `Targetable()`, `hooks.PaymentCollector`, `HalfPrice()`; Decisions 2 and 3,
   Decision Records 2, 6 and 7.
 - Rules source: `docs/rules/swn-assets.md` (Boltholes line 59, False Front 73,

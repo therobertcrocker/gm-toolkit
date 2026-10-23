@@ -193,9 +193,37 @@ is the string written to history; the rules behind the numbers live in
   into a `MutationApplyError` instead of aborting on the first, so a failed turn
   reports all its problems at once. The orchestrator treats the error as fatal.
   (Frozen log 239–240.)
+- **Owner changes apply last in their batch.** `Apply` runs every mutation but
+  `AssetOwnerChanged` in the emitted order, then the owner changes. Reactors read
+  the state from before the batch, so a reactor's output that names a captured
+  asset addresses its old owner; applied after the capture, it would be a fatal
+  miss. History keeps the emitted order, and a fence-sign marks the two passes.
+  Asset IDs stay unique across factions, because `NextAssetID` scans every faction
+  for its prefix. Rejected: each emitter re-addresses (spread over every present
+  and future reactor); `Apply` finds an asset by ID in any faction (it hides the
+  wrong-owner bugs that the miss contract exists to catch). (A.001.6 overview
+  Decision 5; Effort 1 Decision 3.)
+- **Lasting asset state is one condition list, and each kind lands with its
+  reader.** `Asset.Conditions` holds `Condition{Kind, SourceAssetID,
+  ExpiresAtTurnOf, TargetFactionID, WorldID}`. `Is` compares all but the expiry, so
+  an apply replaces its own entry and two sources hold two entries. A timed end is
+  stored (`ExpiresAtTurnOf`, cleared at that faction's turn start), because a
+  counter or a capture can move the source before the end comes. Every other end
+  is checked when read: Seditionists' block and Transport Lockdown's lock hold only
+  while the source exists, stands on the world and belongs to another faction, so
+  they lapse and come back with no mutation. One shape serves all five kinds, and
+  no kind ships before the code that reads it. Rejected: a second asset field for
+  the lock-out. (A.001.6 overview Decisions 6 and 24; Effort 1 Decisions 1–2;
+  Effort 3 Decision 10; Effort 5 Decision 13 and Decision Record 5.)
+- **A refusal and a hold leave a record-only mutation.** `PermissionRefused`
+  changes no state, and `MovementOrderHeld` changes only the order's step and hex,
+  as `_progressed` does. Without them, a refused purchase that used the turn's
+  action leaves nothing in history, and a held arrival reads as a move. Each has an
+  apply arm, a digest line and a TUI line. Precedent: `GoalInitiated`. (A.001.6
+  overview Decision 22.)
 - **The rule layer registers hooks, it never dispatches.** Tag and effect engines
-  translate data into [hooks](hooks.md) and stop there; the orchestrator owns
-  every dispatch site. This is the same consumer-owned-registration pattern as the
+  translate data into [hooks](hooks.md) and stop there; the orchestrator and the
+  actions own every dispatch site. This is the same consumer-owned-registration pattern as the
   action factories, and it is what lets the hook framework grow without the
   orchestrator knowing which tags or effects exist.
 - **The S side has two routes: hooks at cycle start, and a direct definition read

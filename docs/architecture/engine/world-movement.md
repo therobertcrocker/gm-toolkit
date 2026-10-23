@@ -239,6 +239,22 @@ runner skips the grant.
   holds the whole order with its cargo, so an immobile rider is never left in space
   (D-28). The hold is its own record, `MovementOrderHeld`, so history never shows a
   move that did not happen. (A.001.6 overview Decisions 16 and 22; Effort 5 Decision 1.)
+- **Transport Lockdown is checked before permission, and only Deep Strike Landers
+  skip it.** Lockdown is shipping pressure, not the government, so the permission
+  bypasses (`ignores_permission`: Deep Strike Landers, Blockade Runners; a
+  stealthed asset) do not cover it. A second profile field, `ignores_lockdown`,
+  is on Deep Strike Landers only. A paid order holds one turn
+  (`MovementOrder.LockdownPaid`) and asks for permission at the real landing; an
+  order that cannot pay holds and pays at a later tick. A relocate cannot land on
+  a world the faction is locked out of. (A.001.6 overview Decision 15; Effort 5
+  Decisions 14–16.)
+- **A capture changes one asset, and every order carries over.** A captured
+  transport keeps its order and its cargo, and the cargo keeps its old owner. A
+  captured rider stays aboard its old owner's transport. The transport reactor
+  addresses each cargo `AssetMoved` to the cargo's current owner, found by ID, so a
+  manifest with two owners never misses. Rejected: cancel the order and strand the
+  cargo (the overview's first version); an owner per manifest entry (a change to
+  the saved format). (A.001.6 Effort 1 Decisions 8 and 10.)
 - **The movement phase dispatches reactors per batch.** Tick mutations and decision
   mutations each get their own `MutationReactors` pass, so reactive effects fire
   on both transit progress and newly issued orders. (Frozen log 227–235.) Each

@@ -21,7 +21,7 @@
 Build the effort the overview plan scopes as "Purchase and government", on branch
 `feature/s-flag-rule-extensions`.
 
-- Discovery: [s-flag-rule-extensions-discovery.md](../discovery/s-flag-rule-extensions-discovery.md)
+- Discovery: [s-flag-rule-extensions-discovery.md](../../discovery/completed/s-flag-rule-extensions-discovery.md)
   — Purchase That Targets Another Asset, Permission Model (government and purchase
   rows); D-2 to D-6, D-19 to D-23, D-26, D-35, D-41, D-42.
 - Overview plan: [s-flag-rule-extensions-plan.md](s-flag-rule-extensions-plan.md) —

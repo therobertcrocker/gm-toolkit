@@ -122,6 +122,19 @@ because they live under `state/`, but their logic lives on those pages.
   rules and the current snapshot; line-delimited JSON suits an ever-growing
   append-only event log. The formats match their access patterns. (Frozen log
   1–18.)
+- **The government record holds which worlds a faction rules; the `T-011` tag
+  says whether it rules any.** `FactionState.Governments` maps a world ID to the
+  ruling faction's ID. A world with no entry is independent, and the GM answers
+  for its government. A nil map reads as empty, so an older `state.toml` loads
+  with every world independent and needs no migration. The record and the tag hold
+  different facts, so neither is a copy of the other, and every writer keeps them
+  coupled: Planetary Seizure adds the tag with a faction's first world and removes
+  it with its last; faction create writes the entry for a T-011 pick and refuses a
+  world another faction governs; faction delete clears the entries. A homeworld is
+  not a government and never enters the record. Rejected: the tag as a label that
+  nothing reads; a tag instance per world (a `Tag` stops being a rulebook copy).
+  (A.001.6 overview Decisions 8 and 10; Effort 4 Decisions 4, 7 and 15, Decision
+  Record 6.)
 - **Load degrades gracefully; mutations are atomic.** A missing state file is an
   empty campaign, not a crash, and faction CRUD rolls back its in-memory change
   if the save fails — disk and memory never diverge.

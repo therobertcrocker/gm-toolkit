@@ -20,7 +20,7 @@
 Build the effort the overview plan scopes as "Combat foundations", on branch
 `feature/s-flag-rule-extensions`.
 
-- Discovery: [s-flag-rule-extensions-discovery.md](../discovery/s-flag-rule-extensions-discovery.md)
+- Discovery: [s-flag-rule-extensions-discovery.md](../../discovery/completed/s-flag-rule-extensions-discovery.md)
   — State Held on an Asset, Change of Asset Owner, Special Attacks and the Matchup
   Route, Damage Redirected into Combat.
 - Overview plan: [s-flag-rule-extensions-plan.md](s-flag-rule-extensions-plan.md) —

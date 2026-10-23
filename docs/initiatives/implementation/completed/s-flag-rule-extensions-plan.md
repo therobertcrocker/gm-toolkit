@@ -17,12 +17,12 @@
 
 ## Context / Goal
 
-Build the five pieces of engine the [discovery](../discovery/s-flag-rule-extensions-discovery.md)
+Build the five pieces of engine the [discovery](../../discovery/completed/s-flag-rule-extensions-discovery.md)
 designed, and author the 14 assets on them: lethal interception (Cat 6), asset
 conditions, change of owner, the matchup route with special attacks, purchase qualities,
 and a modeled world government with one permission request.
 
-- Arc: [data-driven-rulebook](../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md),
+- Arc: [data-driven-rulebook](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md),
   initiative A.001.6. The trigger → filters → gates → effect model and ACD-5's transport
   hybrid bind here without re-litigation.
 - Discovery decisions D-1 to D-42 stand, except where a decision below changes their
@@ -283,7 +283,61 @@ Added in the approval review (2026-10-20):
 
 ## Decision Record — Execution
 
-*(Empty at plan time.)*
+Each effort's execution decisions are in its own plan's Decision Record. The entries
+below are from the pre-merge session (2026-10-23).
+
+1. **No branch-level code review.** Robert's call. Each of the five efforts had an
+   interim review of its own diff, with the fixes committed as `fix:` commits, so the
+   pre-merge checklist starts at step 2.
+2. **Durable decisions promoted to the architecture pages.** Each claim was checked
+   against the source first:
+   - `effect-mutation.md`: owner changes apply last (Decision 5); one condition list,
+     with stored timed ends and other ends checked when read (Decisions 6 and 24);
+     record-only mutations for a refusal and a hold (Decision 22).
+   - `hooks.md`: a capture moves only the captured asset's hooks (Effort 1 DR-13); a
+     rule about an asset not yet in play is a definition field (Effort 4 Decision 1);
+     a permission grant does not chain; Cat 6 replaces a removal before it is
+     emitted (Decision 7); the narrow collectors in `hooks` (Decision 19).
+   - `actions.md`: the effects engine is a dependency (Decision 21); `Active()`,
+     `Targetable()` and `Hidden()`; a step with no target fizzles its asset; a quality
+     adds no asset.
+   - `goals.md`: goal progress runs after the reactors (Effort 1 DR-12).
+   - `persistence.md`: the government record and the `T-011` coupling (Decisions 8
+     and 10).
+   - `turn-pipeline.md`: the condition step at turn start (Decision 4).
+   - `world-movement.md`: Lockdown before permission (Decision 15); a capture keeps
+     every order and the cargo's owner (Decision 14 as reversed).
+   - `narrative-digest.md`: a new mutation type ships its digest case (Decision 13).
+   - `interface/overlays.md`: the `askEntries` table (`R.014`); prompts that an action
+     cannot unwind ignore Esc.
+   Decision 21's rewording of the "orchestrator owns each call site" Key Decision
+   landed in Effort 1 and needed no further change.
+3. **Stale architecture claims fixed while verifying.** `overlays.md` still described
+   `newOverlay`'s switch with a placeholder default (gone since Effort 1 Commit 0).
+   `hooks.md` said `PhaseCollector` "will" embed `PermissionCollector` and listed one
+   method; it embeds it, and the interface has two. `hooks.md` counted six Cat 4
+   interfaces (there are eight) and defined `Active()` without the sheltered and
+   disabled tests. `effect-mutation.md` said the orchestrator owns every dispatch
+   site; the actions own some too.
+4. **Planned-work closures.** `B.009` closed (Capital Fleet carries
+   `purchase_permission`). `B.011` closed: `passesGate` finds the target faction in
+   real state by ID, so a `TargetSelf` contest no longer gets the view's copy
+   (Effort 3 Decision 3). `R.014` closed (Effort 1 Commit 0). `B.001` narrowed to the
+   goal ID, and its text corrected from `"G.012"` to `"G-012"`, the ID in the code.
+   `R.019`'s trigger (this initiative) is met, so it reads "ready".
+5. **Out of Scope items filed as backlog rows.** Robert's call: all seven
+   candidates. `F.029` (a digest line for a paid lift), `F.030` (which factions a
+   Lockdown holds out), `F.031` (a loyalty roll for captured cargo), `B.018` (the
+   digest's empty defender name), `B.019` (the `movement_order_*` types read as
+   unknown in the digest), `B.020` (a T-011 pick with every world governed), `B.021`
+   (SWN asset data drift). The two Effort 3 items were left out at first, and Robert
+   filed both after asking: `R.024` (clear an inert `no_attack` record) and `B.022`.
+   `B.022` corrects the Effort 3 Out of Scope note. Relocate does not read the world
+   index for positions; it reads the acting asset and the faction from the action's
+   view, and uses the world engine for map geometry only. The one stale read inside
+   an action is the purchase enabler's cost chain (`world.AssetsOnWorld`, the
+   turn-start index), so a rival surcharge asset removed earlier in the action still
+   charges.
 
 ---
 
@@ -293,10 +347,10 @@ Each is answered by the named effort plan.
 
 | Effort | Question |
 |---|---|
-| 1 | *(Resolved in the [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
-| 3 | *(Resolved in the [Effort 3 plan](completed/s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
-| 2 | *(Resolved in the [Effort 2 plan](completed/s-flag-rule-extensions-effort-2-plan.md), Decisions 1–3, 9 and 12: the hook offers and the dispatcher decides; the outcome is its mutations, with a second `AssetHPDelta` that sets the HP; the Attack tracker folds them; an intercepted defender still counters on a tie; Repair Asset clears `sheltered` at full HP)* |
-| 4 | *(Resolved in the [Effort 4 plan](completed/s-flag-rule-extensions-effort-4-plan.md), Decisions 1, 7, 8 and 10: Capital Fleet's raise-only permission is a definition field, `purchase_permission`, so the Cat 4 family is one member, `PermissionGranter` (`permission_query → grant_permission`); `hooks.PermissionCollector.RequestPermission`, driven by `dispatch.RequestPermission`; `PermissionRefused{FactionID, WorldID, DefinitionID, DecidedByFactionID, Cause, CausedByFactionID}`; the wizard's hidden world select on a T-011 pick)* |
+| 1 | *(Resolved in the [Effort 1 plan](s-flag-rule-extensions-effort-1-plan.md), Decisions 1–15: condition shape, no manifest mutation (orders carry over), the `Matchup` route, Cracked Comms through the Attack action, effect names, special attackers excluded from Expand Influence, `R.014` first)* |
+| 3 | *(Resolved in the [Effort 3 plan](s-flag-rule-extensions-effort-3-plan.md), Decisions 5, 7, 9, 10 and 11: `hooks.PaymentCollector.ConfirmPayment`, a disabled asset is not a Marketers candidate, Seditionists' unpaid roll attaches nothing, a capture into the source's faction lapses the block when read, Monopoly's `levy_coin` and its target list)* |
+| 2 | *(Resolved in the [Effort 2 plan](s-flag-rule-extensions-effort-2-plan.md), Decisions 1–3, 9 and 12: the hook offers and the dispatcher decides; the outcome is its mutations, with a second `AssetHPDelta` that sets the HP; the Attack tracker folds them; an intercepted defender still counters on a tie; Repair Asset clears `sheltered` at full HP)* |
+| 4 | *(Resolved in the [Effort 4 plan](s-flag-rule-extensions-effort-4-plan.md), Decisions 1, 7, 8 and 10: Capital Fleet's raise-only permission is a definition field, `purchase_permission`, so the Cat 4 family is one member, `PermissionGranter` (`permission_query → grant_permission`); `hooks.PermissionCollector.RequestPermission`, driven by `dispatch.RequestPermission`; `PermissionRefused{FactionID, WorldID, DefinitionID, DecidedByFactionID, Cause, CausedByFactionID}`; the wizard's hidden world select on a T-011 pick)* |
 | 5 | *(Resolved in the [Effort 5 plan](s-flag-rule-extensions-effort-5-plan.md), Decisions 9, 10, 13, 14 and 16: only a Lobbyists withdrawal sets the mark; `ConfirmPermissionContest` on `hooks.PermissionCollector`, asked by the dispatcher before the Cat 4 `PermissionContester` rolls; `Condition.TargetFactionID`; `MovementOrder.LockdownPaid`; D-33 re-confirmed by Robert)* |
 | each | Digest and TUI wording for its new mutations (Decision 13) |
 
@@ -316,10 +370,10 @@ best at the Effort 1 boundary, since Efforts 2, 3 and 5 build on its model.
 
 | # | Effort | Scope | Assets | Plan |
 |---|--------|-------|--------|------|
-| 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](completed/s-flag-rule-extensions-effort-1-plan.md) |
-| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | [`-effort-2-plan.md`](completed/s-flag-rule-extensions-effort-2-plan.md) |
-| 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](completed/s-flag-rule-extensions-effort-3-plan.md) |
-| 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | [`-effort-4-plan.md`](completed/s-flag-rule-extensions-effort-4-plan.md) |
+| 1 | Combat foundations | `R.014`, asset conditions (`no_ability`), the condition step, `AssetOwnerChanged` with Decisions 5 and 17 (orders carry over), the matchup route, special attacks | Saboteurs, Treachery, Cracked Comms | [`-effort-1-plan.md`](s-flag-rule-extensions-effort-1-plan.md) |
+| 2 | Cat 6 interception | The Cat 6 family at both lethal emitters, `sheltered` in `Active()` and `Targetable()`, `RepairCostModifier` | Boltholes, False Front, Medical Center, Hostile Takeover | [`-effort-2-plan.md`](s-flag-rule-extensions-effort-2-plan.md) |
+| 3 | A-side abilities | One ability view per action, `TargetAsset`, the shared pay prompt, `disabled` with D-38's `Targetable()`, `no_attack` | Marketers, Seditionists, Monopoly | [`-effort-3-plan.md`](s-flag-rule-extensions-effort-3-plan.md) |
+| 4 | Purchase and government | Stealth as a quality, the government record with its wizard prompt and `T-011` coupling, Planetary Seizure and Inside Enemy Territory, the D-41 request at purchase, enabler and refit, `PermissionRefused`, the Cat 4 permission family | Stealth, Capital Fleet, Popular Movement | [`-effort-4-plan.md`](s-flag-rule-extensions-effort-4-plan.md) |
 | 5 | Movement permission | The arrival check and hold (`MovementOrderHeld`), the relocate request, the bypasses, Lobbyists' `PermissionContester`, the Lockdown `locked_out` condition | Lobbyists, Transport Lockdown, Deep Strike Landers, Blockade Runners | [`-effort-5-plan.md`](s-flag-rule-extensions-effort-5-plan.md) |
 
 Effort 4 depends on nothing; it runs fourth only so that the work runs in one line.
@@ -429,7 +483,7 @@ Each is fixed by the effort that makes its claim true, or at pre-merge.
 | `persistence.md` says `FactionState` holds the factions and the turn cursor | Effort 4 — add the government record |
 | `world-movement.md` movement phase has no arrival check | Effort 5 |
 | `domain.HasPlanetaryGovernment`, `PurchaseTerms.HoldsGovernment` | Effort 4 — retired (discovery, Replaces / Retires) |
-| `planned-work.md`: `B.001` narrowed, `B.009` closed, `R.014` closed (Effort 1 runs it), `B.011` closed if review confirms (Effort 3 Decision 3 removes its cause), the drift audit and the digest's empty asset names (Effort 1 Out of Scope) if Robert files them | Pre-merge |
+| `planned-work.md`: `B.001` narrowed, `B.009` closed, `R.014` closed (Effort 1 runs it), `B.011` closed if review confirms (Effort 3 Decision 3 removes its cause), the drift audit and the digest's empty asset names (Effort 1 Out of Scope) if Robert files them | Pre-merge — done (Decision Records 4 and 5) |
 
 ---
 
@@ -464,7 +518,7 @@ also updates the block here, so the two never disagree.
 Discovery: State Held on an Asset, Change of Asset Owner, Special Attacks and the
 Matchup Route, Damage Redirected into Combat.
 
-The [Effort 1 plan](completed/s-flag-rule-extensions-effort-1-plan.md) carries the spec. Its
+The [Effort 1 plan](s-flag-rule-extensions-effort-1-plan.md) carries the spec. Its
 commits:
 
 - `refactor: AskKind dispatch table` — `R.014` first (Decision 23).
@@ -500,7 +554,7 @@ commits:
 
 Discovery: State Held on an Asset, Prompt to a Faction That Is Not Acting.
 
-The [Effort 3 plan](completed/s-flag-rule-extensions-effort-3-plan.md) carries the spec. Its
+The [Effort 3 plan](s-flag-rule-extensions-effort-3-plan.md) carries the spec. Its
 commits:
 
 - `fix: abilities in one action see earlier assets' results` — one `ability.NewView`
@@ -536,7 +590,7 @@ commits:
 Discovery: Lethal Damage Interception (Cat 6). Open Question 1 (Decision 7) is the
 centre of this plan.
 
-The [Effort 2 plan](completed/s-flag-rule-extensions-effort-2-plan.md) carries the spec. Its
+The [Effort 2 plan](s-flag-rule-extensions-effort-2-plan.md) carries the spec. Its
 commits:
 
 - `feat: cat 6 lethal interception` — the hook offers and the dispatcher decides, the
@@ -571,7 +625,7 @@ commits:
 Discovery: Purchase That Targets Another Asset, Permission Model (government and
 purchase rows).
 
-The [Effort 4 plan](completed/s-flag-rule-extensions-effort-4-plan.md) carries the spec. Its
+The [Effort 4 plan](s-flag-rule-extensions-effort-4-plan.md) carries the spec. Its
 commits:
 
 - `refactor: Stealth as a purchase quality` — `quality = true`, `grant_stealth`, the

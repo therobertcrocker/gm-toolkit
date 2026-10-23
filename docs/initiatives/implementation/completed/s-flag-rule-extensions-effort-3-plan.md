@@ -22,12 +22,12 @@
 Build the effort the overview plan scopes as "A-side abilities", on branch
 `feature/s-flag-rule-extensions`.
 
-- Discovery: [s-flag-rule-extensions-discovery.md](../discovery/s-flag-rule-extensions-discovery.md)
+- Discovery: [s-flag-rule-extensions-discovery.md](../../discovery/completed/s-flag-rule-extensions-discovery.md)
   — State Held on an Asset, Prompt to a Faction That Is Not Acting; D-12, D-14, D-38.
 - Overview plan: [s-flag-rule-extensions-plan.md](s-flag-rule-extensions-plan.md) —
   Decisions 4, 6, 11, 13 and 19 bind here. This plan reshapes Decision 6 (Decision 1
   below); the overview is reconciled to match.
-- Effort 1 plan: [completed/s-flag-rule-extensions-effort-1-plan.md](completed/s-flag-rule-extensions-effort-1-plan.md)
+- Effort 1 plan: [s-flag-rule-extensions-effort-1-plan.md](s-flag-rule-extensions-effort-1-plan.md)
   — `Condition`, `AssetConditionApplied` / `Cleared`, `turn.ExpireConditions`.
 - Rules source: `docs/rules/swn-assets.md`; the Use Asset Ability text is the book's
   "Use the special abilities of one or more assets".
