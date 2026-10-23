@@ -11,6 +11,8 @@ bin/
 /campaigns/*/state/state.toml
 /campaigns/*/state/history.jsonl
 /campaigns/*/state/logs/
+# Claude's private copy of sandbox
+/campaigns/sandbox-claude/
 
 # Reference materials (copyrighted)
 reference/
