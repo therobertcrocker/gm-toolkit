@@ -56,8 +56,8 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.030` | Show who a Lockdown holds out | -- | No view shows the GM which factions a Transport Lockdown holds out of a world (`locked_out` sits on the Lockdown asset); surface it. Deferred from `A.001.6` Effort 5. |
 | `F.031` | Loyalty roll for captured cargo | -- | House rule: cargo aboard a transport that changes sides rides on under its old owner (`A.001.6` Effort 1 Decision 8); a loyalty roll could decide whether it defects. Deferred from `A.001.6` Effort 1. |
 | `F.032` | Reroll prompt shows the roll | -- | `NewConfirmReroll` gets only the `RerollDirective`, so the GM cannot see the dice; pass the `RollResult` and `RollContext` through `ConfirmReroll` and show dice + total (mark the die to reroll), roller + phase + stat, "Asked of", and on a defense roll the attack total to beat. Found in the sandbox combat test. |
-| `F.033` | Show goal phase changes | -- | `GoalPhaseAdvanced` is folded on purpose in the execution feed (`format.go:179`) and the digest (`build.go:588`), so the GM never sees Planetary Seizure reach phase 2; surface it in both. Found in the sandbox combat test. |
-| `F.034` | Attacker labels name the world | -- | `attackerLabel` (`overlay/attack.go:71`) shows name, stat and damage only, so two Treacheries on different worlds read the same; add the world name. Found in the sandbox combat test. |
+| `F.033` | Show goal start and phase changes | -- | `GoalInitiated` and `GoalPhaseAdvanced` are folded on purpose in the execution feed (`format.go:179`) and the digest (`build.go:582-589`), so the GM never sees Seize Planet start or reach phase 2; surface both. Found in the sandbox combat test. |
+| `F.034` | Attacker labels name the world | -- | `attackerLabel` (`overlay/attack.go:71`) shows name, stat and damage only, so two Treacheries on different worlds read the same; add the world name. This does not fix `B.029`: same-world rows still match. Found in the sandbox combat test. |
 
 ### Refactors
 
@@ -89,7 +89,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 |----|------|---------|--------|
 | `B.001` | Hardcoded goal ID | -- | `"G-012"` (Change Homeworld goal) is hardcoded in `change_homeworld.go`; silently breaks if the TOML ID changes. The asset half (Stealth) closed in `A.001.6`. |
 | `B.002` | Goal/Tag Display IDs | -- | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only. |
-| `B.003` | `SeizePlanet` History | -- | Currently invisible in history. `Output()` returns no mutations; add `GoalPhaseAdvanced` mutation |
 | `B.004` | `Ability` Narration | -- | Add fallback text for asset ability narration |
 | `B.005` | Goal XP | -- | Retype `Difficulty` from `string` to int or tagged sum so engine can dispatch XP |
 | `B.006` | Turn event stream flash | -- | Center-pane event stream visibly redraws/flickers between collector prompts during a cycle; smooth the transition so it doesn't flash on each phase. |
@@ -111,8 +110,14 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.024` | Book of Secrets rerolls twice a turn | -- | Its `own_roll` and `enemy_roll_at_me` entries each carry a `once_per` budget whose key includes the trigger, so one own and one forced reroll can both fire; rules call: one shared use per turn. A declined reroll spends no budget by design (`dispatch/roll.go:95-104`), so it re-offers on each roll at that world. Found in the sandbox combat test. |
 | `B.025` | Turn right panel shows stale Coin | -- | During a faction's turn the right panel shows Coin from before bookkeeping (Gilt Exchange 17 while the Bribe prompt allowed 24); refresh it after bookkeeping income. Found in the sandbox combat test. |
 | `B.026` | Action select opens on Skip | -- | The select opens on "Skip faction" (last) with the rows above scrolled out of view; one Up shows them all. Likely cause: `selectaction.go:43` binds `Value(&data.choice)`, whose nil zero value equals the Skip sentinel. Found in the sandbox combat test; reproduced on every turn. |
-| `B.027` | Prompts show world IDs | -- | The redirect prompt (`overlay/attack.go:49`) and the Bribe base label (`overlay/bribe.go:39`) print `Location.WorldID` (`mireholt`), not the world's name. Found in the sandbox combat test. |
+| `B.027` | Prompts show world IDs | -- | The redirect prompt (`overlay/attack.go:49`) and the Bribe base label (`overlay/bribe.go:39`) print `Location.WorldID` (`mireholt`), not the world's name; the feed's permission line (`execution/format.go:142`) prints the definition ID and world ID (`SWN-W3-003 on aurum`). Found in the sandbox combat and movement tests. |
 | `B.028` | State campaign ID not checked | -- | `faction.go:76` fills `CampaignID` only when empty, so a `state.toml` from another campaign loads silently and the header names it; the sandbox scenario seeds hard-code `campaign_id = "sandbox"`. Found in the sandbox combat test. |
+| `B.029` | Same-label rows toggle together | -- | huh v1.0.0 toggles every option whose label matches the cursor row (`field_multiselect.go:414-421`), so three "Militia Unit" cargo rows (`overlay/cargo.go:29`) or two Treachery attackers (`overlay/attack.go:19`) cannot be picked one by one; make every `NewMultiSelect` label unique. Found in the sandbox movement test. |
+| `B.030` | One asset loads onto two carriers | -- | `eligibleCargoForTransport` (`orchestrator.go:774`) skips only assets with a live order, and picks apply after the loop, so a later carrier is offered cargo an earlier one took; both carry it, and the second pulled it off Citadel after the first landed it. Found in the sandbox movement test. |
+| `B.031` | Resume replays the movement phase | needs look | Quit at the action phase, then resume: the turn ran its movement tick again (a second Lockdown roll, paid this time after a Coin edit), and `history.jsonl` kept both ticks while state kept one. Found in the sandbox movement test. |
+| `B.032` | Unaffordable grant reads as an error | -- | `runGrantedMovement` skips a Transit Web grant the faction cannot pay for on purpose, but `orchestrator.go:862` sends it to `OnError`, so the feed shows `error: relocate: insufficient Coin`. Found in the sandbox movement test. |
+| `B.033` | Destinations list the current world | -- | Move orders (`overlay/movement.go:50`, one shared `worldOptions` list) and Transit Web relocates (`overlay/relocateorders.go:36`) offer the world the asset is already on. Found in the sandbox movement test. |
+| `B.034` | In-transit assets show a blank location | -- | An asset between worlds has no `WorldID`, so the movement form reads `(at )` (`overlay/movement.go:57-60`) and the right panel reads `at` (`execution/execution.go:475`); show the order's origin and destination. Found in the sandbox movement test. |
 
 ### Docs
 
@@ -122,6 +127,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `D.005` | Whole-tree review at arc boundaries | -- | One line in the arc flow: a whole-codebase review runs when an arc's serial spine completes; diff-scoped reviews missed `RunCycle` for 148 days; `D.002` N5 |
 | `D.006` | Fold arc concept into arc plan; stop moving discovery docs | -- | Arc concept becomes the arc plan's first section; discovery docs stay put after merge (plans still move); templates 5 → 4; `D.002` N6 |
 | `D.007` | Sandbox Cracked Comms wording | -- | `campaigns/sandbox/TESTING.md` says the prompt shows "if Veiled Hand defends outright"; the effect is `ScopeSelf`, so Cracked Comms itself must win the defense and the attacker must survive the counter. Found in the sandbox combat test. |
+| `D.008` | Sandbox movement seed and wording | -- | `TESTING.md:268` says each carrier costs 2 Coin, but Heavy Drop costs 1; the seed leaves Ashfall at +2 income against −2 upkeep, so it hits 0 Coin and Heavy Drop can never pay without a state edit. Found in the sandbox movement test. |
 ---
 <br />
 
