@@ -1,0 +1,587 @@
+# Cunning Assets
+
+[assets.Smugglers]
+id = "SWN-C1-001"
+name = "Smugglers"
+category = "Cunning"
+min_rating = 1
+hp = 4
+cost = 2
+maintenance = 0
+tech_level = 4
+speed = 2
+type = "Starship"
+flags = ["S"]
+counter = ""
+description = "Men and women skilled in extracting personnel. For one Coin, the smugglers asset can transport itself and/or any one Special Forces unit to a planet up to two hexes away."
+
+[assets.Smugglers.attack]
+attacker_stat = "Cunning"
+defender_stat = "Wealth"
+damage = "1d4"
+
+[assets.Smugglers.transport]
+max_hex = 2
+coin_cost = 1
+cargo_types = ["Special Forces"]
+max_cargo = 1
+
+[assets.Informers]
+id = "SWN-C1-002"
+name = "Informers"
+category = "Cunning"
+min_rating = 1
+hp = 3
+cost = 2
+maintenance = 0
+tech_level = 0
+type = "Special Forces"
+flags = ["A", "S"]
+counter = ""
+description = "Minions that lace a planet's underworld, watchful for intruders. On a successful Cunning vs. Cunning attack, all Stealthed assets on the planet belonging to that faction are revealed. Can target a faction even if none of their assets are visible."
+
+[assets.Informers.ability]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+effect = "reveal_stealth"
+target = "faction"
+
+[assets.FalseFront]
+id = "SWN-C1-003"
+name = "False Front"
+category = "Cunning"
+min_rating = 1
+hp = 2
+cost = 1
+maintenance = 0
+tech_level = 0
+type = "Logistics Facility"
+flags = ["S"]
+counter = ""
+description = "If another asset on the planet suffers enough damage to destroy it, the faction can sacrifice the False Front instead to nullify the killing blow."
+
+[[assets.FalseFront.effects]]
+trigger = "lethal_damage"
+effect  = "sacrifice_self"
+[assets.FalseFront.effects.filters]
+owner = "own"
+scope = "world"
+
+[assets.Lobbyists]
+id = "SWN-C2-001"
+name = "Lobbyists"
+category = "Cunning"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 1
+tech_level = 0
+type = "Special Forces"
+flags = ["S"]
+counter = ""
+description = "When a rival faction gains governmental permission to buy or transport an asset, the Lobbyists can make an immediate Cunning vs. Cunning test; if successful, the permission is withdrawn and cannot be re-attempted until next turn."
+
+[[assets.Lobbyists.effects]]
+trigger = "permission_granted"
+effect  = "withdraw_permission"
+[assets.Lobbyists.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.Lobbyists.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[assets.Saboteurs]
+id = "SWN-C2-002"
+name = "Saboteurs"
+category = "Cunning"
+min_rating = 2
+hp = 6
+cost = 5
+maintenance = 0
+tech_level = 0
+type = "Special Forces"
+flags = ["S"]
+counter = ""
+description = "An asset attacked by Saboteurs cannot apply any Use Asset Ability action until the start of the attacking faction's next turn, whether or not the attack was successful."
+
+[assets.Saboteurs.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "2d4"
+
+[[assets.Saboteurs.effects]]
+trigger = "own_attack"
+effect  = "block_ability"
+[assets.Saboteurs.effects.filters]
+owner = "own"
+scope = "self"
+
+[assets.Blackmail]
+id = "SWN-C2-003"
+name = "Blackmail"
+category = "Cunning"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 0
+type = "Tactic"
+flags = ["S"]
+counter = ""
+description = "Selectively degrades the effectiveness of an asset. Any attempt to attack or defend against Blackmail loses any bonus dice earned by tags."
+
+[assets.Blackmail.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "1d4+1"
+
+[[assets.Blackmail.effects]]
+trigger = "enemy_roll_at_me"
+effect  = "remove_tag_dice"
+[assets.Blackmail.effects.filters]
+owner = "rival"
+scope = "self"
+
+[assets.Seductress]
+id = "SWN-C2-004"
+name = "Seductress"
+category = "Cunning"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 0
+speed = 1
+type = "Special Forces"
+flags = ["A", "S"]
+counter = ""
+description = "As an action, can travel to any world within one hex. On a successful Cunning vs. Cunning attack, does no damage but immediately reveals any other Stealthed assets of that faction on the planet. Only Special Forces units can attack a Seductress."
+
+[[assets.Seductress.ability.steps]]
+effect = "relocate"
+[assets.Seductress.ability.steps.relocate]
+scope = "self"
+max_hex = 1
+
+[[assets.Seductress.ability.steps]]
+effect = "reveal_stealth"
+target = "faction"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[assets.Cyberninjas]
+id = "SWN-C3-001"
+name = "Cyberninjas"
+category = "Cunning"
+min_rating = 3
+hp = 4
+cost = 6
+maintenance = 0
+tech_level = 4
+type = "Special Forces"
+flags = []
+counter = ""
+description = "Outfitted with the latest in personal stealth cyberware, cyberninjas are designed to avoid all but the most careful scans."
+
+[assets.Cyberninjas.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "2d6"
+
+[assets.Stealth]
+id = "SWN-C3-002"
+name = "Stealth"
+category = "Cunning"
+min_rating = 3
+hp = 0
+cost = 2
+maintenance = 0
+tech_level = 0
+type = "Tactic"
+flags = ["S"]
+quality = true
+counter = ""
+description = "Not a standard asset but a special quality purchased for another Special Forces asset on the planet. A Stealthed asset cannot be detected or attacked. If the unit normally requires government permission to land, that permission may be foregone. Stealth is lost if the asset attacks or defends."
+
+[[assets.Stealth.effects]]
+trigger = "on_purchase"
+effect = "grant_stealth"
+[assets.Stealth.effects.filters]
+owner = "own"
+scope = "world"
+asset_type = ["Special Forces"]
+stealthy = false
+
+[assets.CovertShipping]
+id = "SWN-C3-003"
+name = "Covert Shipping"
+category = "Cunning"
+min_rating = 3
+hp = 4
+cost = 8
+maintenance = 0
+tech_level = 4
+type = "Logistics Facility"
+flags = ["A", "S"]
+counter = ""
+description = "Any one Special Forces unit can be moved between any worlds within three hexes of the Covert Shipping at the cost of one Coin."
+
+[assets.CovertShipping.ability]
+effect = "relocate"
+[assets.CovertShipping.ability.relocate]
+scope = "other"
+max_hex = 3
+coin_cost = 1
+asset_type = "Special Forces"
+max_assets = 1
+
+[assets.PartyMachine]
+id = "SWN-C4-001"
+name = "Party Machine"
+category = "Cunning"
+min_rating = 4
+hp = 10
+cost = 8
+maintenance = 0
+tech_level = 0
+type = "Logistics Facility"
+flags = ["S"]
+counter = "1d6"
+description = "Political blocks firmly in control of the faction. Each turn, a Party Machine provides 1 Coin to its owning faction."
+
+[assets.PartyMachine.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "2d6"
+
+[[assets.PartyMachine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"
+[assets.PartyMachine.effects.filters]
+owner = "own"
+scope = "self"
+[assets.PartyMachine.effects.coin_gain]
+amount = "1"
+
+[assets.VanguardCadres]
+id = "SWN-C4-002"
+name = "Vanguard Cadres"
+category = "Cunning"
+min_rating = 4
+hp = 12
+cost = 8
+maintenance = 0
+tech_level = 3
+type = "Military Unit"
+flags = []
+counter = "1d6"
+description = "Followers of the movement inspired sufficiently to take up arms and fight on behalf of their leadership."
+
+[assets.VanguardCadres.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "1d6"
+
+[assets.TripwireCells]
+id = "SWN-C4-003"
+name = "Tripwire Cells"
+category = "Cunning"
+min_rating = 4
+hp = 8
+cost = 12
+maintenance = 0
+tech_level = 4
+type = "Special Forces"
+flags = ["S"]
+counter = "1d4"
+description = "Observers alert to the arrival of stealthed units. Whenever a stealthed asset lands or is purchased on a planet with Tripwire Cells, the Cells make an immediate Cunning vs. Cunning attack against the owning faction. If successful, the asset loses its stealth."
+
+[[assets.TripwireCells.effects]]
+trigger = "stealth_arrival"
+effect  = "clear_stealth"
+[assets.TripwireCells.effects.filters]
+owner    = "rival"
+scope    = "world"
+stealthy = true
+[assets.TripwireCells.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[assets.Seditionists]
+id = "SWN-C4-004"
+name = "Seditionists"
+category = "Cunning"
+min_rating = 4
+hp = 8
+cost = 12
+maintenance = 0
+tech_level = 0
+type = "Special Forces"
+flags = ["A"]
+counter = ""
+description = "For a cost of 1d4 Coins, the Seditionists can attach themselves to an enemy asset. Until they attach to a different asset or no longer share the same planet, the affected asset cannot attack. If the asset is destroyed, the Seditionists survive."
+
+[assets.Seditionists.ability]
+effect = "block_attack"
+target = "asset"
+die = "1d4"
+
+[assets.OrganizationMoles]
+id = "SWN-C5-001"
+name = "Organization Moles"
+category = "Cunning"
+min_rating = 5
+hp = 8
+cost = 10
+maintenance = 0
+tech_level = 0
+type = "Tactic"
+flags = []
+counter = ""
+description = "Can subvert and confuse enemy assets, striking to damage their cohesion."
+
+[assets.OrganizationMoles.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "2d6"
+
+[assets.CrackedComms]
+id = "SWN-C5-002"
+name = "Cracked Comms"
+category = "Cunning"
+min_rating = 5
+hp = 6
+cost = 14
+maintenance = 0
+tech_level = 0
+type = "Tactic"
+flags = ["S"]
+counter = ""
+description = "A cryptographic asset for intercepting and deciphering enemy communications. If Cracked Comms succeeds in defending against an attack, it can immediately cause the attacking asset to make an attack against itself for normal damage or counterattack results."
+
+[[assets.CrackedComms.effects]]
+trigger = "own_defense_win"
+effect  = "counterstrike"
+[assets.CrackedComms.effects.filters]
+owner = "own"
+scope = "self"
+
+[assets.Boltholes]
+id = "SWN-C5-003"
+name = "Boltholes"
+category = "Cunning"
+min_rating = 5
+hp = 6
+cost = 12
+maintenance = 0
+tech_level = 4
+type = "Logistics Facility"
+flags = ["S"]
+counter = "2d6"
+description = "If a faction Special Forces or Military Unit asset on the same planet as the Boltholes suffers damage sufficient to destroy it, it is instead set at 0 HP and rendered untouchable and unusable until repaired to full strength. If the Boltholes are destroyed first, the asset is destroyed with them."
+
+[[assets.Boltholes.effects]]
+trigger = "lethal_damage"
+effect  = "shelter_asset"
+[assets.Boltholes.effects.filters]
+owner      = "own"
+scope      = "world"
+asset_type = ["Special Forces", "Military Unit"]
+
+[assets.TransportLockdown]
+id = "SWN-C6-001"
+name = "Transport Lockdown"
+category = "Cunning"
+min_rating = 6
+hp = 10
+cost = 20
+maintenance = 0
+tech_level = 4
+type = "Tactic"
+flags = ["S"]
+counter = ""
+description = "On a successful Cunning vs. Cunning attack against a rival faction, the rival faction cannot transport assets onto that planet without spending 1d4 Coins and waiting one turn."
+
+[assets.TransportLockdown.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[[assets.TransportLockdown.effects]]
+trigger = "own_attack_hit"
+effect  = "lock_out"
+[assets.TransportLockdown.effects.filters]
+owner = "own"
+scope = "self"
+
+[assets.CovertTransitNet]
+id = "SWN-C6-002"
+name = "Covert Transit Net"
+category = "Cunning"
+min_rating = 6
+hp = 15
+cost = 18
+maintenance = 0
+tech_level = 4
+type = "Logistics Facility"
+flags = ["A"]
+counter = ""
+description = "Webs an area of space with a network of smugglers and gray-market freighter captains. As an action, any Special Forces assets can be moved between any worlds within three hexes of the Covert Transit Net."
+
+[assets.CovertTransitNet.ability]
+effect = "relocate"
+[assets.CovertTransitNet.ability.relocate]
+scope = "other"
+range = "region"
+asset_type = "Special Forces"
+max_assets = 0
+
+[assets.Demagogue]
+id = "SWN-C6-003"
+name = "Demagogue"
+category = "Cunning"
+min_rating = 6
+hp = 10
+cost = 20
+maintenance = 0
+tech_level = 0
+type = "Special Forces"
+flags = []
+counter = "1d8"
+description = "Popular leaders of a particular faith or ideology that can be relied upon to point their followers in the direction of maximum utility."
+
+[assets.Demagogue.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "2d8"
+
+[assets.PopularMovement]
+id = "SWN-C7-001"
+name = "Popular Movement"
+category = "Cunning"
+min_rating = 7
+hp = 16
+cost = 25
+maintenance = 0
+tech_level = 4
+type = "Tactic"
+flags = ["S"]
+counter = "1d6"
+description = "A planet-wide surge of enthusiasm for a cause controlled by the faction. This support pervades all levels of government, and the government always grants any asset purchase or movement requests made by the faction."
+
+[assets.PopularMovement.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+damage = "2d6"
+
+[[assets.PopularMovement.effects]]
+trigger = "permission_query"
+effect = "grant_permission"
+[assets.PopularMovement.effects.filters]
+owner = "own"
+scope = "world"
+
+[assets.BookOfSecrets]
+id = "SWN-C7-002"
+name = "Book of Secrets"
+category = "Cunning"
+min_rating = 7
+hp = 10
+cost = 20
+maintenance = 0
+tech_level = 4
+type = "Tactic"
+flags = ["S"]
+counter = "2d8"
+description = "Exhaustively cataloged psychometric records on important local figures. Once per turn, allows the faction to reroll one die for an action on that world or force an enemy faction to reroll one die. This reroll can only be forced once per turn."
+
+[[assets.BookOfSecrets.effects]]
+trigger = "own_roll"
+effect  = "reroll"
+[assets.BookOfSecrets.effects.filters]
+owner = "own"
+scope = "world"
+[assets.BookOfSecrets.effects.gates]
+once_per = "owner_faction"
+[assets.BookOfSecrets.effects.reroll]
+dice     = 1
+elective = true
+
+[[assets.BookOfSecrets.effects]]
+trigger = "enemy_roll_at_me"
+effect  = "reroll"
+[assets.BookOfSecrets.effects.filters]
+owner = "rival"
+scope = "world"
+[assets.BookOfSecrets.effects.gates]
+once_per = "owner_faction"
+[assets.BookOfSecrets.effects.reroll]
+dice     = 1
+elective = true
+
+[assets.Treachery]
+id = "SWN-C7-003"
+name = "Treachery"
+category = "Cunning"
+min_rating = 7
+hp = 5
+cost = 10
+maintenance = 0
+tech_level = 0
+type = "Tactic"
+flags = ["S"]
+counter = ""
+description = "On a successful Cunning vs. Cunning attack, the Treachery asset is lost, 5 Coins are gained, and the targeted asset switches sides to join the traitor's faction, even if the faction does not otherwise have the attributes necessary."
+
+[assets.Treachery.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+
+[[assets.Treachery.effects]]
+trigger = "own_attack_hit"
+effect  = "capture_target"
+[assets.Treachery.effects.filters]
+owner = "own"
+scope = "self"
+[assets.Treachery.effects.capture_target]
+amount = "5"
+
+[assets.PanopticonMatrix]
+id = "SWN-C8-001"
+name = "Panopticon Matrix"
+category = "Cunning"
+min_rating = 8
+hp = 20
+cost = 30
+maintenance = 2
+tech_level = 5
+type = "Logistics Facility"
+flags = ["S"]
+counter = "1d6"
+description = "Weaves braked-AI intelligence analysts into a web of observation. Every rival Stealthed asset on the planet must succeed in a Cunning vs. Cunning test at the beginning of every turn or lose their Stealth. The owner also gains an additional die on all Cunning attacks and defenses on that planet."
+
+[[assets.PanopticonMatrix.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[assets.PanopticonMatrix.effects.filters]
+owner     = "own"
+scope     = "world"
+phase     = ["attack", "defense"]
+attribute = "Cunning"
+[assets.PanopticonMatrix.effects.bonus_die]
+sides = 10
+count = 1
+
+[[assets.PanopticonMatrix.effects]]
+trigger = "turn_start"
+effect  = "clear_stealth"
+[assets.PanopticonMatrix.effects.filters]
+owner    = "rival"
+scope    = "world"
+stealthy = true
+[assets.PanopticonMatrix.effects.gates.contest]
+roller        = "target"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"

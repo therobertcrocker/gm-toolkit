@@ -1,0 +1,80 @@
+# Region metadata. Every region letter that appears in the layout
+# needs an entry; the CLI errors on missing ones.
+[regions.A]
+name = "Concord Core"
+
+[regions.B]
+name = "Crossway Hub"
+
+[regions.C]
+name = "Gilded Reach"
+
+[regions.D]
+name = "Far Drift"
+
+[regions.E]
+name = "Umbral Shoals"
+
+[regions.F]
+name = "Mire Basin"
+
+[regions.G]
+name = "Ironway"
+
+# Worlds. `at` is the marker glyph (integer for 1-9, string for a-z).
+# Every world declares its region, so a marker beside a boundary never infers wrong.
+[[worlds]]
+id = "citadel"
+name = "Citadel"
+at = 1
+region = "A"
+tech_level = 5
+population = 4000000
+
+[[worlds]]
+id = "ferrum"
+name = "Ferrum"
+at = 2
+region = "A"
+tech_level = 4
+population = 600000
+
+[[worlds]]
+id = "gloam"
+name = "Gloam"
+at = 3
+region = "E"
+tech_level = 4
+population = 2500000
+
+[[worlds]]
+id = "aurum"
+name = "Aurum"
+at = 4
+region = "C"
+tech_level = 5
+population = 3200000
+
+[[worlds]]
+id = "crossway"
+name = "Crossway"
+at = 5
+region = "B"
+tech_level = 4
+population = 900000
+
+[[worlds]]
+id = "mireholt"
+name = "Mireholt"
+at = 6
+region = "F"
+tech_level = 4
+population = 150000
+
+[[worlds]]
+id = "farpost"
+name = "Farpost"
+at = 7
+region = "D"
+tech_level = 4
+population = 20000

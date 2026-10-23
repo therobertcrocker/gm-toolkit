@@ -1,0 +1,62 @@
+[[world]]
+  id = "aurum"
+  name = "Aurum"
+  tech_level = 5
+  population = 3200000
+  region = "C"
+  hex_q = 15
+  hex_r = 5
+
+[[world]]
+  id = "citadel"
+  name = "Citadel"
+  tech_level = 5
+  population = 4000000
+  region = "A"
+  hex_q = 1
+  hex_r = 2
+
+[[world]]
+  id = "crossway"
+  name = "Crossway"
+  tech_level = 4
+  population = 900000
+  region = "B"
+  hex_q = 9
+  hex_r = 2
+
+[[world]]
+  id = "farpost"
+  name = "Farpost"
+  tech_level = 4
+  population = 20000
+  region = "D"
+  hex_q = 16
+  hex_r = 10
+
+[[world]]
+  id = "ferrum"
+  name = "Ferrum"
+  tech_level = 4
+  population = 600000
+  region = "A"
+  hex_q = 3
+  hex_r = 2
+
+[[world]]
+  id = "gloam"
+  name = "Gloam"
+  tech_level = 4
+  population = 2500000
+  region = "E"
+  hex_q = -1
+  hex_r = 8
+
+[[world]]
+  id = "mireholt"
+  name = "Mireholt"
+  tech_level = 4
+  population = 150000
+  region = "F"
+  hex_q = 7
+  hex_r = 10

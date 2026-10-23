@@ -1,0 +1,74 @@
+[[region]]
+  id = "A"
+  name = "Concord Core"
+  hexes = [[0, 2], [0, 3], [0, 4], [1, 1], [1, 2], [1, 3], [1, 4], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2], [3, 3], [4, 1], [4, 2]]
+
+[[region]]
+  id = "B"
+  name = "Crossway Hub"
+  hexes = [[8, 2], [9, 2], [9, 3], [10, 1], [10, 2], [10, 3], [11, 1], [11, 2], [12, 1]]
+
+[[region]]
+  id = "C"
+  name = "Gilded Reach"
+  hexes = [[13, 5], [13, 6], [14, 4], [14, 5], [14, 6], [15, 4], [15, 5], [15, 6], [16, 4], [16, 5], [17, 5]]
+
+[[region]]
+  id = "D"
+  name = "Far Drift"
+  hexes = [[15, 9], [15, 10], [15, 11], [16, 9], [16, 10], [16, 11], [17, 9], [17, 10]]
+
+[[region]]
+  id = "E"
+  name = "Umbral Shoals"
+  hexes = [[-3, 9], [-2, 8], [-2, 9], [-1, 7], [-1, 8], [-1, 9], [0, 7], [0, 8], [0, 9], [1, 7], [1, 8]]
+
+[[region]]
+  id = "F"
+  name = "Mire Basin"
+  hexes = [[5, 10], [6, 9], [6, 10], [6, 11], [7, 9], [7, 10], [7, 11], [8, 9], [8, 10]]
+
+[[region]]
+  id = "G"
+  name = "Ironway"
+  hexes = [[2, 4], [2, 5], [2, 6], [3, 6], [4, 3], [4, 6], [5, 6], [6, 6], [7, 6], [7, 7], [8, 6], [9, 6], [10, 6], [11, 6], [12, 6]]
+
+[[warp]]
+  from_region = "A"
+  from_q = 0
+  from_r = 4
+  to_region = "E"
+  to_q = -1
+  to_r = 7
+
+[[warp]]
+  from_region = "A"
+  from_q = 4
+  from_r = 2
+  to_region = "B"
+  to_q = 8
+  to_r = 2
+
+[[warp]]
+  from_region = "B"
+  from_q = 11
+  from_r = 2
+  to_region = "C"
+  to_q = 14
+  to_r = 4
+
+[[warp]]
+  from_region = "C"
+  from_q = 15
+  from_r = 6
+  to_region = "D"
+  to_q = 16
+  to_r = 9
+
+[[warp]]
+  from_region = "F"
+  from_q = 6
+  from_r = 9
+  to_region = "G"
+  to_q = 7
+  to_r = 7

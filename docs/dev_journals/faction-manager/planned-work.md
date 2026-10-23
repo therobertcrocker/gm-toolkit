@@ -104,6 +104,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.020` | T-011 pick with every world governed | -- | The faction wizard's world select for a T-011 pick lists only worlds no faction governs; when none is left, the select has no options. Found in `A.001.6` Effort 4. |
 | `B.021` | SWN asset data drift | -- | A diff of all 72 assets against the book: transports flagged `S` where the book says `A`; flag gaps on Mercenaries, Surveyors, Tripwire Cells, Strike Fleet, Space Marines, Pretech Manufactory; wrong cost/TL on Pretech Researchers, TL on Surveyors. Audit and fix. Found in `A.001.6` discovery. |
 | `B.022` | Enabler surcharge reads the turn-start index | first enabler after an in-action removal | `purchase_enabler.go` prices through `world.AssetsOnWorld`, the turn-start index, not the action's view; a rival surcharge asset that an earlier asset in the same action removed (a Monopoly levy) still charges. Found at `A.001.6` pre-merge. |
+| `B.023` | Transport range never enforced | -- | `TransportProfile.MaxHex` loads but nothing reads it: an order goes to any world. The movement-redesign Effort 2 plan (Commit 1 Task 6) planned the check; the orchestrator's cargo pick checks only `MaxCargo` (`orchestrator.go:779`). Rules call open: what `max_hex` means under multi-turn movement. Found in the sandbox build. |
 
 ### Docs
 

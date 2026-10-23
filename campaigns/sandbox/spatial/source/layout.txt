@@ -1,0 +1,16 @@
+# Sector: The Lantern Verge
+# Regions: A=Concord Core, B=Crossway Hub, C=Gilded Reach, D=Far Drift,
+#          E=Umbral Shoals, F=Mire Basin, G=Ironway (hex-only corridor A to C)
+. . . . . . . . . . . . . . . . . . . . . . . .
+ . A A A A . . . . . B B B . . . . . . . . . . .
+. A 1 A 2 A* . . . B* 5 B B* . . . . . . . . . . .
+ . A A A A G . . . . B B . . . . . . . . . . . .
+. . A* A G . . . . . . . . . . . C* C C . . . . .
+ . . . . G . . . . . . . . . . C C 4 C C . . . .
+. . . . . G G G G G G G G G G G C C C* . . . . .
+ . . E* E E . . . . . G* . . . . . . . . . . . .
+. . E 3 E E . . . . . . . . . . . . . . . . . .
+ . E E E E . . . . . F* F F . . . . . . D D* D .
+. . . . . . . . . . F F 6 F . . . . . . D 7 D .
+ . . . . . . . . . . . F F . . . . . . . D D . .
+. . . . . . . . . . . . . . . . . . . . . . . .

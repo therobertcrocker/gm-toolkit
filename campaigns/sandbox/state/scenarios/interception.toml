@@ -1,0 +1,242 @@
+# Scenario: interception (A.001.6 Effort 2) — Boltholes, False Front, Medical Center,
+# Hostile Takeover.
+# Load: ./cmd/scripts/reset-campaign.sh sandbox interception
+# Stages, one interceptor per world so each prompt stands alone:
+#   Crossway  Boltholes + Security Personnel (1 HP) + Zealots (1 HP, self-damage case)
+#   Ferrum    False Front + Hitmen (1 HP)
+#   Farpost   Medical Center + Militia Unit (1 HP)
+#   Gloam     False Front + Medical Center + Militia Unit (1 HP); Veiled Hand Base here
+#   Aurum     Gilt Exchange Hostile Takeover vs Ashfall Franchise (3 HP)
+# Iron Concord holds one attacker on each Veiled Hand world.
+# See campaigns/sandbox/TESTING.md for the steps.
+
+campaign_id = "sandbox"
+cycle_number = 1
+
+[governments]
+  citadel = "iron-concord"
+  ferrum = "iron-concord"
+  mireholt = "ashfall"
+
+[current_turn]
+  in_progress = true
+  cycle_number = 1
+  faction_order = ["iron-concord", "gilt-exchange", "veiled-hand", "ashfall"]
+  current_index = 0
+  bookkeeping_applied = false
+
+[factions.iron-concord]
+  id = "iron-concord"
+  name = "Iron Concord"
+  scale = "hegemon"
+  force = 8
+  cunning = 5
+  wealth = 7
+  current_hp = 49
+  max_hp = 49
+  coin = 20
+  xp = 0
+  homeworld = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } }
+  tags = [
+    { id = "T-011", name = "Planetary Government", description = "This faction is the legitimate government of a planet.", effect = "Held while the faction governs at least one world; the campaign's government record lists each world it governs (one per planet controlled). On those worlds, the faction grants or refuses permission to buy or import assets marked as needing government permission." },
+  ]
+  bases = [
+    { id = "iron-concord-homeworld", owner_id = "iron-concord", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } } },
+  ]
+  [factions.iron-concord.assets.iron-concord-SWN-F1-003-1]
+    id = "iron-concord-SWN-F1-003-1"
+    definition_id = "SWN-F1-003"
+    owner_id = "iron-concord"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "crossway", region_hex = { RegionID = "B", Coord = { Q = 9, R = 2 } } }
+  [factions.iron-concord.assets.iron-concord-SWN-F1-003-2]
+    id = "iron-concord-SWN-F1-003-2"
+    definition_id = "SWN-F1-003"
+    owner_id = "iron-concord"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
+  [factions.iron-concord.assets.iron-concord-SWN-F1-003-3]
+    id = "iron-concord-SWN-F1-003-3"
+    definition_id = "SWN-F1-003"
+    owner_id = "iron-concord"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } }
+  [factions.iron-concord.assets.iron-concord-SWN-F1-003-4]
+    id = "iron-concord-SWN-F1-003-4"
+    definition_id = "SWN-F1-003"
+    owner_id = "iron-concord"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
+
+[factions.veiled-hand]
+  id = "veiled-hand"
+  name = "Veiled Hand"
+  scale = "hegemon"
+  force = 5
+  cunning = 8
+  wealth = 7
+  current_hp = 49
+  max_hp = 49
+  coin = 10
+  xp = 0
+  homeworld = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
+  tags = []
+  bases = [
+    { id = "veiled-hand-homeworld", owner_id = "veiled-hand", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } } },
+  ]
+  [factions.veiled-hand.assets.veiled-hand-SWN-C5-003-1]
+    id = "veiled-hand-SWN-C5-003-1"
+    definition_id = "SWN-C5-003"
+    owner_id = "veiled-hand"
+    current_hp = 6
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "crossway", region_hex = { RegionID = "B", Coord = { Q = 9, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-F1-001-1]
+    id = "veiled-hand-SWN-F1-001-1"
+    definition_id = "SWN-F1-001"
+    owner_id = "veiled-hand"
+    current_hp = 1
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "crossway", region_hex = { RegionID = "B", Coord = { Q = 9, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-F3-001-1]
+    id = "veiled-hand-SWN-F3-001-1"
+    definition_id = "SWN-F3-001"
+    owner_id = "veiled-hand"
+    current_hp = 1
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "crossway", region_hex = { RegionID = "B", Coord = { Q = 9, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-C1-003-1]
+    id = "veiled-hand-SWN-C1-003-1"
+    definition_id = "SWN-C1-003"
+    owner_id = "veiled-hand"
+    current_hp = 2
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-F1-002-1]
+    id = "veiled-hand-SWN-F1-002-1"
+    definition_id = "SWN-F1-002"
+    owner_id = "veiled-hand"
+    current_hp = 1
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-W4-003-1]
+    id = "veiled-hand-SWN-W4-003-1"
+    definition_id = "SWN-W4-003"
+    owner_id = "veiled-hand"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-F1-003-1]
+    id = "veiled-hand-SWN-F1-003-1"
+    definition_id = "SWN-F1-003"
+    owner_id = "veiled-hand"
+    current_hp = 1
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-C1-003-2]
+    id = "veiled-hand-SWN-C1-003-2"
+    definition_id = "SWN-C1-003"
+    owner_id = "veiled-hand"
+    current_hp = 2
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-W4-003-2]
+    id = "veiled-hand-SWN-W4-003-2"
+    definition_id = "SWN-W4-003"
+    owner_id = "veiled-hand"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-F1-003-2]
+    id = "veiled-hand-SWN-F1-003-2"
+    definition_id = "SWN-F1-003"
+    owner_id = "veiled-hand"
+    current_hp = 1
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
+
+[factions.gilt-exchange]
+  id = "gilt-exchange"
+  name = "Gilt Exchange"
+  scale = "hegemon"
+  force = 5
+  cunning = 7
+  wealth = 8
+  current_hp = 49
+  max_hp = 49
+  coin = 20
+  xp = 0
+  homeworld = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } }
+  tags = []
+  bases = [
+    { id = "gilt-exchange-homeworld", owner_id = "gilt-exchange", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } } },
+  ]
+  [factions.gilt-exchange.assets.gilt-exchange-SWN-W7-002-1]
+    id = "gilt-exchange-SWN-W7-002-1"
+    definition_id = "SWN-W7-002"
+    owner_id = "gilt-exchange"
+    current_hp = 10
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } }
+
+[factions.ashfall]
+  id = "ashfall"
+  name = "Ashfall Collective"
+  scale = "minor"
+  force = 4
+  cunning = 1
+  wealth = 3
+  current_hp = 15
+  max_hp = 15
+  coin = 10
+  xp = 0
+  homeworld = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
+  tags = [
+    { id = "T-011", name = "Planetary Government", description = "This faction is the legitimate government of a planet.", effect = "Held while the faction governs at least one world; the campaign's government record lists each world it governs (one per planet controlled). On those worlds, the faction grants or refuses permission to buy or import assets marked as needing government permission." },
+  ]
+  bases = [
+    { id = "ashfall-homeworld", owner_id = "ashfall", current_hp = 15, max_hp = 15, influence = 0, ready = false, is_homeworld = true, location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } } },
+  ]
+  [factions.ashfall.assets.ashfall-SWN-W1-001-1]
+    id = "ashfall-SWN-W1-001-1"
+    definition_id = "SWN-W1-001"
+    owner_id = "ashfall"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } }

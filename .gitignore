@@ -5,10 +5,12 @@
 # Build output
 bin/
 
-# Campaign data (user-specific, not versioned)
+# Campaign data: authored files are versioned; play-time state is not
 # Anchored to repo root — avoids matching cmd/gm-toolkit/campaign/ and internal/campaigns/
 /campaign/
-/campaigns/
+/campaigns/*/state/state.toml
+/campaigns/*/state/history.jsonl
+/campaigns/*/state/logs/
 
 # Reference materials (copyrighted)
 reference/
