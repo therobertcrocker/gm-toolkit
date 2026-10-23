@@ -580,3 +580,43 @@ func TestRun_LockedWorldIsNotADestination(t *testing.T) {
 		t.Errorf("Run = %v, want ErrNoSelection from the empty pick", err)
 	}
 }
+
+func TestRun_EveryWorldLockedIsNoCandidates(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	faction, _, web, _, _, factionState := landingFixture()
+	faction.Coin = 0
+	locks := map[string]*domain.Asset{}
+	for _, worldID := range []string{"origin", "near", "mid"} {
+		lockID := "lock-" + worldID
+		locks[lockID] = &domain.Asset{ID: lockID, OwnerID: "f2", Location: domain.Location{WorldID: worldID}, Ready: true, Maintained: true, CurrentHP: 10,
+			Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: lockID, TargetFactionID: "f1", WorldID: worldID}}}
+	}
+	factionState.Factions["f2"].Assets = locks
+	collector := mocks.NewMockCollector(ctrl)
+
+	_, err := Run(Request{
+		Faction: faction, Acting: web, Params: transitWebParams(),
+		Collector: collector, World: relocEngine(), Rulebook: relocRulebook(), FactionState: factionState,
+	})
+
+	if !errors.Is(err, ErrNoCandidates) {
+		t.Errorf("Run = %v, want ErrNoCandidates before the coin check", err)
+	}
+}
+
+func TestRun_IllegalPickAsksNothing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	faction, _, web, mercs, works, factionState := landingFixture()
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: mercs, DestinationWorld: "mid"}, {Asset: works, DestinationWorld: "far"}}, nil)
+
+	_, err := Run(Request{
+		Faction: faction, Acting: web, Params: transitWebParams(),
+		Collector: collector, World: relocEngine(), Rulebook: relocRulebook(), FactionState: factionState,
+	})
+
+	if err == nil {
+		t.Fatal("Run = nil, want the out-of-range pick rejected")
+	}
+}

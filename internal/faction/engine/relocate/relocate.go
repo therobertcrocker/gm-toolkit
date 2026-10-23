@@ -89,14 +89,14 @@ func Run(request Request) ([]domain.Mutation, error) {
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("relocate: %w", ErrNoCandidates)
 	}
+	destinations := lockedOutRemoved(request, candidateWorlds)
+	if len(destinations) == 0 {
+		return nil, fmt.Errorf("relocate: every destination is locked out: %w", ErrNoCandidates)
+	}
 	if request.Faction.Coin < params.CoinCost {
 		return nil, fmt.Errorf("relocate: %w: need %d, have %d", ErrInsufficientCoin, params.CoinCost, request.Faction.Coin)
 	}
 
-	destinations := lockedOutRemoved(request, candidateWorlds)
-	if len(destinations) == 0 {
-		return nil, fmt.Errorf("relocate: %w", ErrNoCandidates)
-	}
 	orders, err := request.Collector.SelectRelocateOrders(request.Acting, candidates, destinations, maxAssets)
 	if err != nil {
 		return nil, fmt.Errorf("relocate: %w", err)
@@ -109,6 +109,12 @@ func Run(request Request) ([]domain.Mutation, error) {
 	}
 	if cost := totalCost(params, len(orders)); request.Faction.Coin < cost {
 		return nil, fmt.Errorf("relocate: %w: need %d, have %d", ErrInsufficientCoin, cost, request.Faction.Coin)
+	}
+	// deliberate: every pick is checked before the first ask, not by BuildRelocateMutations after it, because an ask prompts, may roll a Lobbyists contest and may set the withdrawal bar.
+	for _, order := range orders {
+		if !slices.Contains(destinations, order.DestinationWorld) {
+			return nil, fmt.Errorf("relocate: destination %q is not a legal target", order.DestinationWorld)
+		}
 	}
 
 	var mutations []domain.Mutation
@@ -162,7 +168,7 @@ func lockedOutRemoved(request Request, candidateWorlds []string) []string {
 		return candidateWorlds
 	}
 	return slices.DeleteFunc(slices.Clone(candidateWorlds), func(worldID string) bool {
-		return domain.LockedOut(request.FactionState.Factions, worldID, request.Faction.ID)
+		return domain.LockedOutBy(request.FactionState.Factions, worldID, request.Faction.ID) != ""
 	})
 }
 

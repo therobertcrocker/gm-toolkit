@@ -176,8 +176,9 @@ type RequestPermissionPayload struct {
 	WorldName string
 }
 type ConfirmPermissionContestPayload struct {
-	Offer     hooks.PermissionContestOffer
-	WorldName string
+	Offer      hooks.PermissionContestOffer
+	WorldName  string
+	SourceName string
 }
 
 type SelectAssetToLosePayload struct {

@@ -310,7 +310,11 @@ func (a *Adapter) confirmPermissionContest(offer hooks.PermissionContestOffer) (
 	if loc, ok := a.engine.World.Location(offer.WorldID); ok {
 		worldName = loc.Name()
 	}
-	raw, err := a.ask(AskConfirmPermissionContest, offer.Owner, ConfirmPermissionContestPayload{Offer: offer, WorldName: worldName})
+	sourceName := offer.Source.ID
+	if def := a.engine.Rulebook.Assets[offer.Source.DefinitionID]; def != nil {
+		sourceName = def.Name
+	}
+	raw, err := a.ask(AskConfirmPermissionContest, offer.Owner, ConfirmPermissionContestPayload{Offer: offer, WorldName: worldName, SourceName: sourceName})
 	if err != nil {
 		return false, err
 	}

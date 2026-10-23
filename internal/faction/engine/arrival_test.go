@@ -223,7 +223,7 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 		{
 			name: "pays and waits", coin: 5,
 			want: []domain.Mutation{
-				domain.CoinDelta{FactionID: "alpha", Delta: -3, Cause: "transport_lockdown", CausedByFactionID: "alpha"},
+				domain.CoinDelta{FactionID: "alpha", Delta: -3, Cause: "transport_lockdown", CausedByFactionID: "bravo"},
 				domain.MovementOrderHeld{FactionID: "alpha", AssetID: "t1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: arrivalHex(1), Reason: domain.HoldLockdownPaid, Cause: domain.CauseMovementTick, CausedByFactionID: "alpha"},
 			},
 		},

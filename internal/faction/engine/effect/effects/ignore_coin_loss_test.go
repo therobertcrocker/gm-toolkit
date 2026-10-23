@@ -85,6 +85,15 @@ func TestIgnoreCoinLoss(t *testing.T) {
 			want: []domain.Mutation{absorbed(1)},
 		},
 		{
+			name:  "a Transport Lockdown fee is paid back, the hold is not",
+			banks: []string{"bank-1"},
+			mutations: []domain.Mutation{
+				domain.CoinDelta{FactionID: "alpha", Delta: -3, Cause: "transport_lockdown", CausedByFactionID: "beta"},
+				domain.MovementOrderHeld{FactionID: "alpha", AssetID: "t1", WorldID: "Krylos", Reason: domain.HoldLockdownPaid, Cause: domain.CauseMovementTick, CausedByFactionID: "alpha"},
+			},
+			want: []domain.Mutation{absorbed(3)},
+		},
+		{
 			name:      "a loss the owner imposed on itself is not absorbed",
 			banks:     []string{"bank-1"},
 			mutations: []domain.Mutation{lossTo("alpha", -3, "alpha")},

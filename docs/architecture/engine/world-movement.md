@@ -86,7 +86,8 @@ the current `StepIdx`, the `DriftRating` that priced the route, and the
 
 1. **Tick first.** `TickMovementOrders` advances open orders, in asset ID order.
    `checkArrivals` (`engine/arrival.go`) then reads each `MovementOrderCompleted`.
-   A Transport Lockdown on the destination comes first: the order pays 1d4 Coin and
+   A Transport Lockdown on the destination comes first: the order pays 1d4 Coin (a
+   loss the Lockdown's owner imposes, so a Bank absorbs it) and
    holds a turn (`MovementOrderHeld`, `lockdown_paid`, which sets the order's
    `LockdownPaid`), or holds unpaid until it can pay. Otherwise it asks the
    destination's government for every `P` asset aboard (the carrier, then its
@@ -200,8 +201,10 @@ The orchestration around these lives in one shared package, `engine/relocate`.
 `relocate.Run` picks the enumerator by range mode, gathers the movable candidates
 (the acting asset for self-scope; for other-scope, the faction's in-range assets
 that pass the type, category and excluded-type filters and have no movement order),
-prompts through `relocate.Collector`, checks Coin, asks the destination's
-government for each `P` asset it moves (`dispatch.RequestArrivalPermission`, cause
+drops the worlds a Transport Lockdown holds the faction out of (`domain.LockedOutBy`),
+prompts through `relocate.Collector`, checks Coin, checks every pick against the
+legal worlds before the first ask (an ask can prompt, roll a Lobbyists contest and
+set the withdrawal bar), asks the destination's government for each `P` asset it moves (`dispatch.RequestArrivalPermission`, cause
 `relocate`), and calls `BuildRelocateMutations` for each order that may land. A
 refused order stays where it is and leaves a `PermissionRefused`; the others move.
 Under the `flat` cost mode only the first order that moves carries the cost. Two harnesses call it: a spent `relocate` ability in the action

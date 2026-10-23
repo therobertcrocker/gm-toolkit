@@ -341,7 +341,7 @@ var askEntries = map[adapter.AskKind]askEntry{
 	}},
 	adapter.AskConfirmPermissionContest: {"Contest?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.ConfirmPermissionContestPayload)
-		return overlay.NewConfirmPermissionContest(p.Offer, p.WorldName)
+		return overlay.NewConfirmPermissionContest(p.Offer, p.WorldName, p.SourceName)
 	}},
 	adapter.AskSelectExpandInfluenceOrder: {"Expand Influence", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectExpandInfluenceOrderPayload)

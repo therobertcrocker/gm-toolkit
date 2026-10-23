@@ -215,7 +215,7 @@ func TestCondition_IsComparesTheTargetFaction(t *testing.T) {
 	}
 }
 
-func TestLockedOut(t *testing.T) {
+func TestLockedOutBy(t *testing.T) {
 	lockdown := func(owner string) *domain.Asset {
 		return &domain.Asset{ID: "lock", OwnerID: owner, Location: domain.Location{WorldID: "Krylos"}, Ready: true, Maintained: true, CurrentHP: 10,
 			Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "bravo", WorldID: "Krylos"}}}
@@ -229,9 +229,9 @@ func TestLockedOut(t *testing.T) {
 		mutate  func(*domain.Asset)
 		world   string
 		faction string
-		want    bool
+		want    string
 	}{
-		{name: "the struck faction on the Lockdown's world", holder: "alpha", world: "Krylos", faction: "bravo", want: true},
+		{name: "the struck faction on the Lockdown's world", holder: "alpha", world: "Krylos", faction: "bravo", want: "alpha"},
 		{name: "another world", holder: "alpha", world: "Hadrian", faction: "bravo"},
 		{name: "another faction", holder: "alpha", world: "Krylos", faction: "charlie"},
 		{name: "an inactive Lockdown", holder: "alpha", mutate: func(asset *domain.Asset) { asset.Maintained = false }, world: "Krylos", faction: "bravo"},
@@ -246,9 +246,25 @@ func TestLockedOut(t *testing.T) {
 				tc.mutate(asset)
 			}
 			factions := map[string]*domain.Faction{tc.holder: {ID: tc.holder, Assets: map[string]*domain.Asset{"lock": asset}}}
-			if got := domain.LockedOut(factions, tc.world, tc.faction); got != tc.want {
-				t.Errorf("LockedOut = %v, want %v", got, tc.want)
+			if got := domain.LockedOutBy(factions, tc.world, tc.faction); got != tc.want {
+				t.Errorf("LockedOutBy = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestLockedOutBy_TwoHoldersNameTheFirstByID(t *testing.T) {
+	lockdown := func(owner string) *domain.Asset {
+		return &domain.Asset{ID: "lock-" + owner, OwnerID: owner, Location: domain.Location{WorldID: "Krylos"}, Ready: true, Maintained: true, CurrentHP: 10,
+			Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: "lock-" + owner, TargetFactionID: "bravo", WorldID: "Krylos"}}}
+	}
+	factions := map[string]*domain.Faction{}
+	for _, owner := range []string{"delta", "alpha", "charlie"} {
+		factions[owner] = &domain.Faction{ID: owner, Assets: map[string]*domain.Asset{"lock-" + owner: lockdown(owner)}}
+	}
+	for range 20 {
+		if got := domain.LockedOutBy(factions, "Krylos", "bravo"); got != "alpha" {
+			t.Fatalf("LockedOutBy = %q, want alpha, the first holder by ID", got)
+		}
 	}
 }

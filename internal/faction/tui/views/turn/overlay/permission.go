@@ -35,8 +35,8 @@ func permissionVerb(cause string) string {
 // NewConfirmPermissionContest asks a Lobbyists' owner whether to contest a
 // permission a rival was just granted. Esc does nothing, as with the request it
 // follows. Answer: bool.
-func NewConfirmPermissionContest(offer hooks.PermissionContestOffer, worldName string) NoCancelConfirm {
-	header := fmt.Sprintf("Asked of %s, for its asset %s", offer.Owner.Name, offer.Source.ID)
+func NewConfirmPermissionContest(offer hooks.PermissionContestOffer, worldName, sourceName string) NoCancelConfirm {
+	header := fmt.Sprintf("Asked of %s, for its %s", offer.Owner.Name, sourceName)
 	return NoCancelConfirm{NewConfirm(contestTitle(offer, worldName), header, "Contest", "Let it stand")}
 }
 

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -260,20 +261,21 @@ func (condition Condition) Is(other Condition) bool {
 		condition.TargetFactionID == other.TargetFactionID && condition.WorldID == other.WorldID
 }
 
-// LockedOut reports whether a Transport Lockdown holds factionID out of worldID:
-// an active asset of another faction on the world carries locked_out, from itself,
-// against factionID, struck on that world. The lock lives and dies with that
-// asset (D-31, D-36), and sleeps while the asset is away from the world of the
-// hit (Effort 5 Decision Record 5); a capture into factionID lapses it.
-func LockedOut(factions map[string]*Faction, worldID, factionID string) bool {
+// LockedOutBy returns the faction whose Transport Lockdown holds factionID out of
+// worldID, or "" when none does: an active asset of another faction on the world
+// carries locked_out, from itself, against factionID, struck on that world. The
+// lock lives and dies with that asset (D-31, D-36), and sleeps while the asset is
+// away from the world of the hit (Effort 5 Decision Record 5); a capture into
+// factionID lapses it. Holders are walked in ID order, so two locks name one.
+func LockedOutBy(factions map[string]*Faction, worldID, factionID string) string {
 	if worldID == "" {
-		return false
+		return ""
 	}
-	for _, holder := range factions {
-		if holder.ID == factionID {
+	for _, holderID := range slices.Sorted(maps.Keys(factions)) {
+		if holderID == factionID {
 			continue
 		}
-		for _, asset := range holder.Assets {
+		for _, asset := range factions[holderID].Assets {
 			if asset.Location.WorldID != worldID || !asset.Active() {
 				continue
 			}
@@ -281,11 +283,11 @@ func LockedOut(factions map[string]*Faction, worldID, factionID string) bool {
 				return condition.Kind == ConditionLockedOut && condition.SourceAssetID == asset.ID &&
 					condition.TargetFactionID == factionID && condition.WorldID == worldID
 			}) {
-				return true
+				return holderID
 			}
 		}
 	}
-	return false
+	return ""
 }
 
 type Asset struct {

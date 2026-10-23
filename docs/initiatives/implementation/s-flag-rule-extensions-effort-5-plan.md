@@ -86,7 +86,8 @@ named below on 2026-10-22.
    under the flat cost mode the first order that moves carries the cost. If every
    order is refused, the relocation emits only the records, and the action (or the
    grant) is still used (D-35). The cost check before the pick is unchanged: the full
-   pick's cost is the most the relocation can charge. Reshapes overview Decision 12's
+   pick's cost is the most the relocation can charge. Every pick is checked against
+   the legal worlds before the first ask (Decision Record 6). Reshapes overview Decision 12's
    "Relocate's destination list drops a world whose key is spent" (Decision 9).
    Rejected: dropping the world from the list (blocks non-`P` assets too); a world
    list per asset (changes the collector and the relocate overlay for one SWN case,
@@ -136,15 +137,17 @@ named below on 2026-10-22.
     added in execution, Decision Record 5). Overview Decision 24 confirmed.
     `Condition.Is` compares the target faction and the world too, so a lock-out
     against a second rival, or on a second world, does not replace the first.
-    `domain.LockedOut(factions, worldID, factionID)` reads it: an active asset of
-    another owner on the world that carries `locked_out` from itself against the
-    faction, struck on that world. The record lives and dies with its source (D-31,
+    `domain.LockedOutBy(factions, worldID, factionID)` reads it and returns the
+    holder's faction, first by ID, or `""` (renamed from `LockedOut` in review,
+    Decision Record 7): an active asset of another owner on the world that carries
+    `locked_out` from itself against the faction, struck on that world. The record lives and dies with its source (D-31,
     D-36); a capture into the struck faction lapses it when read, as Seditionists'
     block does (Effort 3 Decision 10).
 14. **Lockdown at a drift arrival: checked before permission, one 1d4 per order,
     charged automatically.** Robert's calls. The arrival check rolls 1d4 for an order
     whose faction is locked out of the destination. If the faction can pay, it emits a
-    `CoinDelta` (cause `transport_lockdown`) and `MovementOrderHeld{Reason:
+    `CoinDelta` (cause `transport_lockdown`, caused by the Lockdown's owner, so a Bank
+    absorbs it; Decision Record 7) and `MovementOrderHeld{Reason:
     lockdown_paid}`, whose apply arm sets `MovementOrder.LockdownPaid`. The next tick
     skips the lockdown and asks for permission at the real landing. A faction that
     cannot pay holds with `lockdown_unpaid` and pays at a later tick (overview Decision
@@ -158,7 +161,8 @@ named below on 2026-10-22.
     Strike Landers only.
 16. **D-33 holds: a relocate cannot land on a world the faction is locked out of.**
     Robert re-confirmed it. `relocate.Run` drops a locked world from `candidateWorlds`,
-    for every asset of the locked faction (D-32).
+    for every asset of the locked faction (D-32). When every world is locked, `Run`
+    returns `ErrNoCandidates` before the coin check (Decision Record 8).
 17. **Lockdown strikes with the book's special attack.** `[attack]` Cunning vs.
     Cunning with no `damage` (overview Decision 3); `lock_out` is an `own_attack_hit`
     reactor (owner `own`, scope `self`), as Treachery's `capture_target` is. A hit on a
@@ -168,7 +172,8 @@ named below on 2026-10-22.
     its own wording for `withdrawn` and `barred`. `locked_out` is a condition clause on
     the cross event between the attacker and the struck faction; the condition sits on
     the attacker's own asset, so the digest keys it on `TargetFactionID`. The TUI shows
-    the hold and its reason, and the refusal's reason.
+    the hold and its reason, and the refusal's reason. The contest prompt names the
+    contesting asset by its definition (Decision Record 9).
 19. **Five commits in four phases.** Phase 1 is the arrival check and the transport
     bypass; Phase 2 the relocate request; Phase 3 Lobbyists; Phase 4 Transport
     Lockdown. The bypass rides in Phase 1 because the arrival check is its only reader.
@@ -213,6 +218,47 @@ named below on 2026-10-22.
    call: "keep both locks"). The code in Tasks 1, 6, 11 and 12 shows the pre-pin
    form; the source is the truth. New `TestLockedOut` cases: a moved Lockdown frees
    both its new world and the world of the hit.
+6. **Interim review: every relocate pick is checked before the first ask.**
+   `askLanding` ran before `BuildRelocateMutations` checked the world, so an illegal
+   pick (or a bad second order after a good first one) could prompt the government,
+   roll a Lobbyists contest and set the withdrawal bar on the real state, and then
+   fail with no record. `Run` now checks every order against `destinations` in one
+   pass before the ask loop; the primitive keeps its own check. Today only a driver
+   that breaks the collector contract can pick an illegal world. Amends Decision 8.
+   New test: `TestRun_IllegalPickAsksNothing`.
+7. **Interim review: the lockdown fee names the Lockdown's owner.** The fee's
+   `CausedByFactionID` was the payer; Effort 4's cost surcharge names the faction
+   that imposes the charge. `domain.LockedOut` becomes `LockedOutBy`, which returns
+   the holder's faction ID, or `""`. Holders are walked in ID order, so two locks on
+   one world name one faction every time. `lockdownHold` takes the holder. Amends
+   Decisions 13 and 14. New test: `TestLockedOutBy_TwoHoldersNameTheFirstByID`.
+   Side effect, ruled by Robert: a Bank now absorbs the fee. `ignore_coin_loss`
+   pays back a loss another faction imposed, and the book's Bank ignores "one cost
+   or FacCred loss imposed by another faction", as it does Effort 4's surcharge. The
+   Bank pays back the Coin, not the wait: the order still holds a turn. The coin
+   check runs before the reactors, so a faction that cannot pay still holds unpaid.
+   New `TestIgnoreCoinLoss` case.
+8. **Interim review: a relocate with every world locked says so, before the coin
+   check.** The empty-destinations check moves above the first coin check, and its
+   error reads "every destination is locked out", wrapping `ErrNoCandidates`. Before
+   this, a faction that could not pay got a coin warning from the free harness for a
+   relocate that had nowhere to go. Amends Decision 16. New test:
+   `TestRun_EveryWorldLockedIsNoCandidates`.
+9. **Interim review: the contest prompt names the asset by its definition.** The
+   header showed the raw asset ID ("for its asset a-0042"). The adapter puts
+   `SourceName` (the definition name, falling back to the ID) in
+   `ConfirmPermissionContestPayload`, beside `WorldName`; the header reads "for its
+   Lobbyists". Amends Decision 18.
+10. **Interim review: dismissed findings.** A nil-rulebook guard in `askLanding`
+    (Decision Record 1 stands); clearing `locked_out` on its own (the lock lives and
+    dies with its source, D-31, D-36); a shared raise/land verb helper (the TUI and
+    the narrative word it apart, both from `domain.IsLanding`); caching
+    `withdrawnBy` and `LockedOutBy` (YAGNI at today's sizes). Leads checked and
+    closed: an Expand Influence hit cannot lock (Lockdown has no damage, so Effort 1
+    Decision 11 keeps it out of the base attackers), and the 1d4 fee rolls through
+    `e.Rand` like every damage or Coin die (roll hooks cover attribute contests only).
+    The code in Commit 5 Tasks 7 and 8 and Commit 4 Tasks 9 and 10 shows the
+    pre-review form; the source is the truth.
 
 ---
 

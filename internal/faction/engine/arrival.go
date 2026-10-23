@@ -53,9 +53,11 @@ func (e *Engine) arrivalHold(faction *domain.Faction, factionState *state.Factio
 		profile = carrierDef.Transport
 	}
 	ignoresLockdown := profile != nil && profile.IgnoresLockdown
-	if !order.LockdownPaid && !ignoresLockdown && domain.LockedOut(factionState.Factions, order.Destination.WorldID, faction.ID) {
-		hold, cost := lockdownHold(completed, order, e.Rand.Roll(4), coin)
-		return hold, cost, nil
+	if !order.LockdownPaid && !ignoresLockdown {
+		if lockerID := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockerID != "" {
+			hold, cost := lockdownHold(completed, order, lockerID, e.Rand.Roll(4), coin)
+			return hold, cost, nil
+		}
 	}
 	// deliberate: the carrier's bypass covers its cargo, because the book lets these transports land "any one … asset" past the government's objection (D-25).
 	if profile != nil && profile.IgnoresPermission {
@@ -80,13 +82,14 @@ func (e *Engine) arrivalHold(faction *domain.Faction, factionState *state.Factio
 
 // lockdownHold charges the order's 1d4 fee and holds it a turn at the edge; a
 // faction that cannot pay holds unpaid and tries again at its next tick (overview
-// Decision 15). It returns the mutations and the Coin they spend.
-func lockdownHold(completed domain.MovementOrderCompleted, order *domain.MovementOrder, fee, coin int) ([]domain.Mutation, int) {
+// Decision 15). The fee names lockerID, the Lockdown's owner, as its cause. It
+// returns the mutations and the Coin they spend.
+func lockdownHold(completed domain.MovementOrderCompleted, order *domain.MovementOrder, lockerID string, fee, coin int) ([]domain.Mutation, int) {
 	if coin < fee {
 		return []domain.Mutation{holdAtEdge(completed, order, domain.HoldLockdownUnpaid)}, 0
 	}
 	return []domain.Mutation{
-		domain.CoinDelta{FactionID: completed.FactionID, Delta: -fee, Cause: "transport_lockdown", CausedByFactionID: completed.CausedByFactionID},
+		domain.CoinDelta{FactionID: completed.FactionID, Delta: -fee, Cause: "transport_lockdown", CausedByFactionID: lockerID},
 		holdAtEdge(completed, order, domain.HoldLockdownPaid),
 	}, fee
 }
