@@ -46,6 +46,9 @@ func (e *EffectsEngine) RegisterEffectsList(def *domain.AssetDefinition) error {
 			return fmt.Errorf("asset %q effects[%d]: %w", def.ID, i, err)
 		}
 	}
+	if def.Quality && (len(def.Effects) != 1 || e.registrars[def.Effects[0].Effect].Targets == nil) {
+		return fmt.Errorf("asset %q: a quality needs one effect with a Targets route", def.ID)
+	}
 	return e.Register(&effectsListHandler{def: def, registrars: e.registrars})
 }
 
@@ -57,17 +60,23 @@ func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rul
 	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 		faction := factionState.Factions[factionID]
 		for _, asset := range domain.SortedAssets(faction) {
-			def := rulebook.Assets[asset.DefinitionID]
-			if def == nil {
-				continue
-			}
-			handler, ok := e.handlers[def.ID]
-			if !ok {
-				continue
-			}
-			handler.Apply(faction, asset, hookRegistry, roller)
+			e.ApplyAsset(faction, asset, rulebook, hookRegistry, roller)
 		}
 	}
+}
+
+// ApplyAsset registers one asset's hooks under faction. A missing definition or
+// handler registers nothing.
+func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) {
+	def := rulebook.Assets[asset.DefinitionID]
+	if def == nil {
+		return
+	}
+	handler, ok := e.handlers[def.ID]
+	if !ok {
+		return
+	}
+	handler.Apply(faction, asset, hookRegistry, roller)
 }
 
 // FireTurnStart runs every turn_start entry on faction's active assets, in asset ID
@@ -126,4 +135,52 @@ func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asse
 		})...)
 	}
 	return mutations
+}
+
+// QualityTargets lists the assets faction holds on worldID that quality def may act
+// on, as its registrar reads the entry's filters. A definition that is not a quality
+// has none.
+func (e *EffectsEngine) QualityTargets(def *domain.AssetDefinition, faction *domain.Faction, worldID string, rulebook *rulebook.Rulebook) []*domain.Asset {
+	if !def.Quality || len(def.Effects) != 1 {
+		return nil
+	}
+	entry := def.Effects[0]
+	registrar, ok := e.registrars[entry.Effect]
+	if !ok || registrar.Targets == nil {
+		return nil
+	}
+	return registrar.Targets(TargetContext{Faction: faction, WorldID: worldID, Entry: entry, Rulebook: rulebook})
+}
+
+// FireQuality runs quality def's one entry on target through its phase route. A
+// direct definition read raised by Buy Asset: a quality adds no asset, so
+// FirePurchase never sees it. FireContext.Asset is the target, not a declaring asset.
+func (e *EffectsEngine) FireQuality(faction *domain.Faction, def *domain.AssetDefinition, target *domain.Asset, factionState *state.FactionState) []domain.Mutation {
+	entry := def.Effects[0]
+	// deliberate: no roller, because no quality effect rolls; give FireQuality one when one does.
+	return e.registrars[entry.Effect].Fire(FireContext{
+		Faction:      faction,
+		Asset:        target,
+		Def:          def,
+		Entry:        entry,
+		FactionState: factionState,
+	})
+}
+
+// FireMatchup runs the declaring asset's entries for trigger through each
+// registrar's matchup route. A direct definition read, raised by the Attack
+// action, which owns the matchup.
+func (e *EffectsEngine) FireMatchup(trigger domain.EffectTrigger, ctx MatchupContext) MatchupOutcome {
+	var outcome MatchupOutcome
+	for _, entry := range ctx.Def.Effects {
+		if entry.Trigger != trigger {
+			continue
+		}
+		ctx.Entry = entry
+		// deliberate: no nil check on Matchup, because RegisterEffectsList rejects a matchup-route entry without one.
+		result := e.registrars[entry.Effect].Matchup(ctx)
+		outcome.Mutations = append(outcome.Mutations, result.Mutations...)
+		outcome.Counterstrike = outcome.Counterstrike || result.Counterstrike
+	}
+	return outcome
 }

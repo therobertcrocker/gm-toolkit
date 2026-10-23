@@ -16,11 +16,19 @@ func TestRegistrars_DeclareARouteForEveryTrigger(t *testing.T) {
 			if len(accepts.Owners) == 0 || len(accepts.Scopes) == 0 {
 				t.Errorf("%s: trigger %q must accept at least one owner and scope", name, trigger)
 			}
-			if effect.IsPhaseTrigger(trigger) && registrar.Fire == nil {
-				t.Errorf("%s: phase trigger %q needs Fire", name, trigger)
-			}
-			if !effect.IsPhaseTrigger(trigger) && registrar.Register == nil {
-				t.Errorf("%s: hook trigger %q needs Register", name, trigger)
+			switch {
+			case effect.IsMatchupTrigger(trigger):
+				if registrar.Matchup == nil {
+					t.Errorf("%s: matchup trigger %q needs Matchup", name, trigger)
+				}
+			case effect.IsPhaseTrigger(trigger):
+				if registrar.Fire == nil {
+					t.Errorf("%s: phase trigger %q needs Fire", name, trigger)
+				}
+			default:
+				if registrar.Register == nil {
+					t.Errorf("%s: hook trigger %q needs Register", name, trigger)
+				}
 			}
 		}
 	}

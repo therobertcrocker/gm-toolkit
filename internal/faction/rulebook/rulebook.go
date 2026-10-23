@@ -3,6 +3,7 @@ package rulebook
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -66,24 +67,26 @@ type assetFile struct {
 }
 
 type assetRecord struct {
-	ID          string           `toml:"id"`
-	Name        string           `toml:"name"`
-	Category    string           `toml:"category"`
-	MinRating   int              `toml:"min_rating"`
-	HP          int              `toml:"hp"`
-	Cost        int              `toml:"cost"`
-	Maintenance int              `toml:"maintenance"`
-	TechLevel   int              `toml:"tech_level"`
-	Speed       int              `toml:"speed"`
-	DriftRating int              `toml:"drift_rating"`
-	Type        string           `toml:"type"`
-	Flags       []string         `toml:"flags"`
-	Counter     string           `toml:"counter"`
-	Description string           `toml:"description"`
-	Attack      *attackRecord    `toml:"attack"`
-	Ability     *abilityRecord   `toml:"ability"`
-	Transport   *transportRecord `toml:"transport"`
-	Effects     []effectRecord   `toml:"effects"`
+	ID                 string           `toml:"id"`
+	Name               string           `toml:"name"`
+	Category           string           `toml:"category"`
+	MinRating          int              `toml:"min_rating"`
+	HP                 int              `toml:"hp"`
+	Cost               int              `toml:"cost"`
+	Maintenance        int              `toml:"maintenance"`
+	TechLevel          int              `toml:"tech_level"`
+	Speed              int              `toml:"speed"`
+	DriftRating        int              `toml:"drift_rating"`
+	Type               string           `toml:"type"`
+	Flags              []string         `toml:"flags"`
+	Counter            string           `toml:"counter"`
+	Description        string           `toml:"description"`
+	Attack             *attackRecord    `toml:"attack"`
+	Ability            *abilityRecord   `toml:"ability"`
+	Transport          *transportRecord `toml:"transport"`
+	Effects            []effectRecord   `toml:"effects"`
+	Quality            bool             `toml:"quality"`
+	PurchasePermission bool             `toml:"purchase_permission"`
 }
 
 type transportRecord struct {
@@ -92,6 +95,8 @@ type transportRecord struct {
 	CargoTypes        []string `toml:"cargo_types"`
 	MaxCargo          int      `toml:"max_cargo"`
 	ExcludeCategories []string `toml:"exclude_categories"`
+	IgnoresPermission bool     `toml:"ignores_permission"`
+	IgnoresLockdown   bool     `toml:"ignores_lockdown"`
 }
 
 type attackRecord struct {
@@ -215,7 +220,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		attack = &domain.AttackProfile{
 			AttackerStat: attackerStat,
 			DefenderStat: defenderStat,
-			Damage:       *damage,
+			Damage:       damage,
 		}
 	}
 
@@ -233,27 +238,53 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
+	// deliberate: a no-damage attack needs a hit rule, not a silent load, because an omitted damage line would otherwise hit for nothing and do nothing.
+	if attack != nil && attack.Damage == nil && !slices.ContainsFunc(effects, func(entry domain.EffectDefinition) bool {
+		return entry.Trigger == domain.TriggerOwnAttackHit
+	}) {
+		return nil, fmt.Errorf("attack has no damage and no own_attack_hit effect")
+	}
+	if err := checkQuality(r.Quality, effects); err != nil {
+		return nil, err
+	}
 
 	return &domain.AssetDefinition{
-		ID:          r.ID,
-		Name:        r.Name,
-		Category:    category,
-		MinRating:   r.MinRating,
-		HP:          r.HP,
-		Cost:        r.Cost,
-		Maintenance: r.Maintenance,
-		TechLevel:   r.TechLevel,
-		Speed:       r.Speed,
-		DriftRating: r.DriftRating,
-		Type:        assetType,
-		Attack:      attack,
-		Counter:     counter,
-		Flags:       flags,
-		Description: r.Description,
-		Ability:     ability,
-		Transport:   transport,
-		Effects:     effects,
+		ID:                 r.ID,
+		Name:               r.Name,
+		Category:           category,
+		MinRating:          r.MinRating,
+		HP:                 r.HP,
+		Cost:               r.Cost,
+		Maintenance:        r.Maintenance,
+		TechLevel:          r.TechLevel,
+		Speed:              r.Speed,
+		DriftRating:        r.DriftRating,
+		Type:               assetType,
+		Attack:             attack,
+		Counter:            counter,
+		Flags:              flags,
+		Description:        r.Description,
+		Ability:            ability,
+		Transport:          transport,
+		Effects:            effects,
+		Quality:            r.Quality,
+		PurchasePermission: r.PurchasePermission,
 	}, nil
+}
+
+// checkQuality holds a quality to one on_purchase entry (D-19), and grant_stealth to
+// a quality: the effect acts on an asset the buyer already holds, so on an asset of
+// its own it would fire on the asset just bought.
+func checkQuality(quality bool, effects []domain.EffectDefinition) error {
+	if quality && (len(effects) != 1 || effects[0].Trigger != domain.TriggerOnPurchase) {
+		return fmt.Errorf("a quality needs exactly one on_purchase effect")
+	}
+	if !quality && slices.ContainsFunc(effects, func(entry domain.EffectDefinition) bool {
+		return entry.Effect == domain.SpecialGrantStealth
+	}) {
+		return fmt.Errorf("grant_stealth needs quality = true")
+	}
+	return nil
 }
 
 func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
@@ -349,6 +380,15 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	}
 	if step.Effect == domain.EffectRevealStealth && step.Target != domain.TargetFaction {
 		return domain.AbilityStep{}, fmt.Errorf("reveal_stealth requires target = %q", "faction")
+	}
+	if step.Effect == domain.EffectDisableAsset && (step.Target != domain.TargetAsset || step.Contest == nil) {
+		return domain.AbilityStep{}, fmt.Errorf("disable_asset requires target = %q and a contest", "asset")
+	}
+	if step.Effect == domain.EffectBlockAttack && (step.Target != domain.TargetAsset || step.Roll == nil) {
+		return domain.AbilityStep{}, fmt.Errorf("block_attack requires target = %q and a die", "asset")
+	}
+	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Roll != nil) {
+		return domain.AbilityStep{}, fmt.Errorf("levy_coin requires target = %q and no contest or die", "faction")
 	}
 	return step, nil
 }
@@ -460,6 +500,12 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectRelocate, nil
 	case "purchase_enabler":
 		return domain.EffectPurchaseEnabler, nil
+	case "disable_asset":
+		return domain.EffectDisableAsset, nil
+	case "block_attack":
+		return domain.EffectBlockAttack, nil
+	case "levy_coin":
+		return domain.EffectLevyCoin, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
@@ -491,6 +537,8 @@ func convertTransport(r *transportRecord) (*domain.TransportProfile, error) {
 		CargoTypes:        cargoTypes,
 		MaxCargo:          r.MaxCargo,
 		ExcludeCategories: excludeCategories,
+		IgnoresPermission: r.IgnoresPermission,
+		IgnoresLockdown:   r.IgnoresLockdown,
 	}, nil
 }
 

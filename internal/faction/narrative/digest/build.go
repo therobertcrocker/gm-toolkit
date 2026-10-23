@@ -3,6 +3,7 @@ package digest
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -57,6 +58,23 @@ func findCrossTarget(record domain.EventRecord) string {
 		}
 	}
 	return ""
+}
+
+// noteInterception adds a Cat 6 save to the cross event of the record's fight.
+// ownerID is the faction whose asset the save touched. When it is the acting
+// faction's own asset (a counter kill), the fight is with targetID.
+func noteInterception(crossMap map[crossKey]*CrossEvent, record domain.EventRecord, ownerID, targetID string, effect domain.SpecialEffectType, factionState *state.FactionState) {
+	rival := ownerID
+	if ownerID == record.FactionID {
+		rival = targetID
+	}
+	if rival == "" {
+		return
+	}
+	ce := getOrCreateCross(crossMap, record.FactionID, rival, CrossAttack, factionState)
+	if !slices.Contains(ce.Interceptions, effect) {
+		ce.Interceptions = append(ce.Interceptions, effect)
+	}
 }
 
 func Build(
@@ -118,7 +136,12 @@ func Build(
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {
 					return CycleDigest{}, err
 				}
-				if m.FactionID != record.FactionID && m.Cause == "ability" {
+				if m.Cause == string(domain.SpecialRestoreAsset) {
+					payerBeat := getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					payerBeat.CoinDelta += m.Delta
+					noteInterception(crossMap, record, m.FactionID, targetID, domain.SpecialRestoreAsset, factionState)
+				} else if m.FactionID != record.FactionID && m.Cause == "ability" {
 					// Defender loses coin via ability drain/steal.
 					defBeat := getOrCreateBeat(beats, m.FactionID, factionState)
 					seenFactionIDs[m.FactionID] = struct{}{}
@@ -167,12 +190,30 @@ func Build(
 					return CycleDigest{}, err
 				}
 				switch m.Cause {
-				case "sell":
+				case "sell", "capture_target":
 					beat.Losses = append(beat.Losses, AssetMove{
 						AssetID:   m.AssetID,
 						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
 						Cause:     m.Cause,
 					})
+				case "levy_coin":
+					lossBeat := getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					lossBeat.Losses = append(lossBeat.Losses, AssetMove{
+						AssetID:   m.AssetID,
+						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+						Cause:     m.Cause,
+					})
+					getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAbilityStrike, factionState)
+				case string(domain.SpecialSacrificeSelf):
+					ownerBeat := getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					ownerBeat.Losses = append(ownerBeat.Losses, AssetMove{
+						AssetID:   m.AssetID,
+						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+						Cause:     m.Cause,
+					})
+					noteInterception(crossMap, record, m.FactionID, targetID, domain.SpecialSacrificeSelf, factionState)
 				case "refit":
 					// already captured in refitRemovedAssetID; encoded as From on the paired AssetAdded
 				case "attack":
@@ -201,6 +242,14 @@ func Build(
 							ce.AttackerAssetDestroyed = true
 						}
 					}
+				case "counterstrike":
+					ce := getOrCreateCross(crossMap, record.FactionID, m.CausedByFactionID, CrossAttack, factionState)
+					ce.AttackerAsset = AssetMove{
+						AssetID:   m.AssetID,
+						AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+						Cause:     m.Cause,
+					}
+					ce.AttackerAssetDestroyed = true
 				case "bookkeeping":
 					// dropped — asset attrition is noise
 				}
@@ -244,6 +293,10 @@ func Build(
 						seenFactionIDs[m.FactionID] = struct{}{}
 						ce.DamageToDefender -= m.Delta
 					}
+				case "counterstrike":
+					ce := getOrCreateCross(crossMap, record.FactionID, m.CausedByFactionID, CrossAttack, factionState)
+					ce.DamageToAttacker -= m.Delta
+					ce.Counterstruck = true
 				}
 
 			case "asset_moved":
@@ -408,6 +461,26 @@ func Build(
 					TagName: m.Tag.Name,
 				})
 
+			case "tag_removed":
+				var m domain.TagRemoved
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				loser := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: m.Tag.Name})
+
+			case "world_government_changed":
+				var m domain.WorldGovernmentChanged
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				if m.ToFactionID != "" {
+					ruler := getOrCreateBeat(beats, m.ToFactionID, factionState)
+					seenFactionIDs[m.ToFactionID] = struct{}{}
+					ruler.GoalEvents = append(ruler.GoalEvents, GoalEvent{Kind: GoalWorldGoverned, ToWorld: m.WorldID})
+				}
+
 			case "goal_abandoned":
 				var m domain.GoalAbandoned
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {
@@ -428,6 +501,83 @@ func Build(
 					bribe.baseID = m.BaseID
 					bribe.location = resolveBaseLocation(m.FactionID, m.BaseID, factionState)
 				}
+
+			case "asset_condition_applied":
+				var m domain.AssetConditionApplied
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				if m.Cause == string(domain.SpecialShelterAsset) {
+					noteInterception(crossMap, record, m.FactionID, targetID, domain.SpecialShelterAsset, factionState)
+				} else if m.Condition.Kind == domain.ConditionLockedOut {
+					rival := m.Condition.TargetFactionID
+					getOrCreateBeat(beats, rival, factionState)
+					seenFactionIDs[rival] = struct{}{}
+					ce := getOrCreateCross(crossMap, record.FactionID, rival, CrossAttack, factionState)
+					if !slices.Contains(ce.Conditions, m.Condition.Kind) {
+						ce.Conditions = append(ce.Conditions, m.Condition.Kind)
+					}
+				} else if m.FactionID != record.FactionID {
+					getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					kind := CrossAttack
+					if m.Cause == "ability" {
+						kind = CrossAbilityStrike
+					}
+					ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, kind, factionState)
+					if !slices.Contains(ce.Conditions, m.Condition.Kind) {
+						ce.Conditions = append(ce.Conditions, m.Condition.Kind)
+					}
+				}
+
+			case "asset_condition_cleared":
+				// dropped — expiry is bookkeeping
+
+			case "asset_owner_changed":
+				var m domain.AssetOwnerChanged
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				name := resolveAssetName(m.ToFactionID, m.AssetID, factionState, rulebook)
+				loser := getOrCreateBeat(beats, m.FactionID, factionState)
+				winner := getOrCreateBeat(beats, m.ToFactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				seenFactionIDs[m.ToFactionID] = struct{}{}
+				loser.Losses = append(loser.Losses, AssetMove{AssetID: m.AssetID, AssetName: name, Cause: "captured"})
+				winner.Acquisitions = append(winner.Acquisitions, AssetMove{AssetID: m.AssetID, AssetName: name, Cause: "captured"})
+				if m.Cause == string(domain.SpecialSeizeTarget) {
+					noteInterception(crossMap, record, m.FactionID, targetID, domain.SpecialSeizeTarget, factionState)
+				}
+
+			case "permission_refused":
+				var m domain.PermissionRefused
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				refused := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				decidedBy := ""
+				if m.DecidedByFactionID != "" {
+					decidedBy = resolveFactionName(m.DecidedByFactionID, factionState)
+				}
+				refused.Refusals = append(refused.Refusals, RefusalEvent{
+					AssetName: resolveDefinitionName(m.DefinitionID, rulebook),
+					World:     m.WorldID,
+					DecidedBy: decidedBy,
+					Landing:   domain.IsLanding(m.Cause),
+					Reason:    m.Reason,
+				})
+
+			case "movement_order_held":
+				var m domain.MovementOrderHeld
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				beat.Holds = append(beat.Holds, HoldEvent{
+					AssetName: resolveAssetName(m.FactionID, m.AssetID, factionState, rulebook),
+					World:     m.WorldID,
+					Reason:    m.Reason,
+				})
 
 			case "goal_initiated":
 				// dropped — bookkeeping only

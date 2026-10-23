@@ -1,12 +1,15 @@
 package actions
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 	"go.uber.org/mock/gomock"
 )
 
@@ -25,7 +28,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 	t.Run("no assets", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction has no assets")
 		}
 	})
@@ -35,8 +38,40 @@ func TestRefitAsset_Validate(t *testing.T) {
 		// delta = 4-2 = 2; Coin=1 < 2 → no valid replacement
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 1, Assets: map[string]*domain.Asset{"a1": asset}}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction cannot afford the cost delta")
+		}
+	})
+
+	t.Run("sheltered asset cannot be refit", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"},
+			Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}}
+		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+			t.Error("expected false when the only asset is sheltered")
+		}
+	})
+
+	t.Run("an asset in transit cannot be refit", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{RegionHex: spatial.RegionHex{RegionID: "drift"}}}
+		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+			t.Error("expected false when the only asset has no world")
+		}
+	})
+
+	t.Run("a quality is never a replacement", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		// built from makeRefitRulebook: the test's local rulebook shadows the package name
+		qualityRulebook := makeRefitRulebook()
+		delete(qualityRulebook.Assets, "new-def")
+		qualityRulebook.Assets["stealth"] = &domain.AssetDefinition{ID: "stealth", Category: domain.StatForce, Cost: 2, Quality: true}
+		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}
+		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, qualityRulebook) {
+			t.Error("expected false when the only other definition is a quality")
 		}
 	})
 
@@ -44,7 +79,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
-		if !NewRefitAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+		if !NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction can afford the refit")
 		}
 	})
@@ -63,11 +98,11 @@ func TestRefitAsset_Output(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectRefitOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewRefitAsset(collector)
+	act := NewRefitAsset(collector, nil)
 	if err := act.Inputs(faction, nil, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
-	if err := act.Resolve(faction, nil, rulebook); err != nil {
+	if err := act.Resolve(faction, &state.FactionState{}, rulebook); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	mutations, err := act.Output()
@@ -95,5 +130,35 @@ func TestRefitAsset_Output(t *testing.T) {
 	coin, ok := mutations[2].(domain.CoinDelta)
 	if !ok || coin.FactionID != "f1" || coin.Delta != -2 || coin.Cause != "refit" {
 		t.Errorf("mutations[2] = %v, want CoinDelta{f1, -2, refit}", mutations[2])
+	}
+}
+
+func TestRefitAsset_PermissionRefused(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	rulebook := makeRefitRulebook()
+	newDef := rulebook.Assets["new-def"]
+	newDef.Flags = []domain.AssetFlag{domain.FlagPermission}
+	oldAsset := &domain.Asset{ID: "f1-old-def-1", DefinitionID: "old-def", OwnerID: "f1", Location: domain.Location{WorldID: "Tartarus"}}
+	faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"f1-old-def-1": oldAsset}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRefitOrder(gomock.Any(), gomock.Any()).Return(action.RefitOrder{OldAsset: oldAsset, NewDefinition: newDef}, nil)
+	collector.EXPECT().RequestPermission(gomock.Any()).Return(false, nil)
+
+	act := NewRefitAsset(collector, nil)
+	if err := act.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := act.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := act.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	want := []domain.Mutation{domain.PermissionRefused{FactionID: "f1", WorldID: "Tartarus", DefinitionID: "new-def", Cause: "refit", CausedByFactionID: "f1"}}
+	if !reflect.DeepEqual(mutations, want) {
+		t.Errorf("mutations = %+v, want only the refusal record", mutations)
 	}
 }

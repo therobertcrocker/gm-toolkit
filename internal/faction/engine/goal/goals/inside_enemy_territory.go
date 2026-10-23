@@ -16,7 +16,9 @@ func (InsideEnemyTerritory) CheckLock(_ *domain.Faction, _ *state.FactionState, 
 	return locks.GoalLock{Type: locks.LockNone}, nil
 }
 
-func (InsideEnemyTerritory) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook, index *world.Index) []domain.Mutation {
+// UpdateProgress counts each asset stealthed this action on a rival's ground
+// (Effort 4 Decision 6). An asset in transit has no world and does not count.
+func (InsideEnemyTerritory) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook, _ *world.Index) []domain.Mutation {
 	gained := 0
 	for _, mutation := range mutations {
 		v, ok := mutation.(domain.AssetStealthApplied)
@@ -27,7 +29,7 @@ func (InsideEnemyTerritory) UpdateProgress(actingFaction *domain.Faction, mutati
 		if asset == nil {
 			continue
 		}
-		if !rivalHasPlanetaryGovernmentOnWorld(actingFaction.ID, asset.Location.WorldID, factionState, index) {
+		if asset.Location.WorldID == "" || !isEnemyTerritory(actingFaction.ID, asset.Location.WorldID, factionState) {
 			continue
 		}
 		gained++
@@ -46,4 +48,19 @@ func (InsideEnemyTerritory) UpdateProgress(actingFaction *domain.Faction, mutati
 		return []domain.Mutation{progressed}
 	}
 	return append([]domain.Mutation{progressed}, completeGoal(actingFaction, 2)...)
+}
+
+// isEnemyTerritory reports whether worldID is a rival's ground: a rival governs it,
+// or it is independent and a rival's homeworld. A world the acting faction governs
+// never is, a seized rival homeworld included.
+func isEnemyTerritory(actingFactionID, worldID string, factionState *state.FactionState) bool {
+	if !factionState.IsIndependent(worldID) {
+		return factionState.Ruler(worldID) != actingFactionID
+	}
+	for factionID, faction := range factionState.Factions {
+		if factionID != actingFactionID && faction.Homeworld.WorldID == worldID {
+			return true
+		}
+	}
+	return false
 }

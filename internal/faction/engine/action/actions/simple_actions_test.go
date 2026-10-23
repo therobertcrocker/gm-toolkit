@@ -39,6 +39,31 @@ func TestSellAsset_Validate(t *testing.T) {
 			t.Error("expected true when faction has assets")
 		}
 	})
+
+	t.Run("only sheltered assets", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		asset := &domain.Asset{ID: "a1", DefinitionID: "sell-me", Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}}
+		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
+		if NewSellAsset(mocks.NewMockCollector(ctrl)).Validate(faction, nil, rulebook) {
+			t.Error("expected false when every asset is sheltered")
+		}
+	})
+}
+
+// TestSellAsset_InputsSkipsSheltered: the pick list leaves out a sheltered asset.
+func TestSellAsset_InputsSkipsSheltered(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	rulebook := makeSimpleRulebook()
+	sheltered := &domain.Asset{ID: "a1", DefinitionID: "sell-me", Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}}
+	open := &domain.Asset{ID: "a2", DefinitionID: "sell-me"}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": sheltered, "a2": open}}
+
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAsset([]*domain.Asset{open}, gomock.Any()).Return(open, nil)
+
+	if err := NewSellAsset(collector).Inputs(faction, nil, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
 }
 
 // TestSellAsset_Output: selling an asset returns AssetRemoved + CoinDelta(cost/2 = 3).

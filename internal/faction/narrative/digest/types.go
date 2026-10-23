@@ -1,5 +1,7 @@
 package digest
 
+import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+
 type CycleDigest struct {
 	Cycle          int
 	ActiveFactions []FactionBeat
@@ -26,7 +28,28 @@ type FactionBeat struct {
 	Expansions   []ExpansionEvent
 	GoalEvents   []GoalEvent
 	StealthOps   []StealthEvent
+	Refusals     []RefusalEvent
+	Holds        []HoldEvent
 	Notes        []string
+}
+
+// RefusalEvent is a purchase or a landing that was refused. DecidedBy is the
+// ruler's name (empty when the GM decided for an independent world), or the
+// Lobbyists' owner's on a withdrawal or a bar. Landing is true for an arrival or a
+// relocate.
+type RefusalEvent struct {
+	AssetName string
+	World     string
+	DecidedBy string
+	Landing   bool
+	Reason    domain.RefusalReason
+}
+
+// HoldEvent is an arriving order held one hex short of World (D-27).
+type HoldEvent struct {
+	AssetName string
+	World     string
+	Reason    domain.HoldReason
 }
 
 type AssetMove struct {
@@ -66,6 +89,8 @@ const (
 	GoalAbandoned
 	GoalHomeworldShift
 	GoalTagGained
+	GoalWorldGoverned
+	GoalTagLost
 )
 
 type GoalEvent struct {
@@ -104,6 +129,9 @@ type CrossEvent struct {
 	BaseHit                *BaseHitDetail
 	CoinDrained            int
 	StealthBroken          bool
+	Conditions             []domain.ConditionKind
+	Counterstruck          bool
+	Interceptions          []domain.SpecialEffectType
 }
 
 type BaseHitDetail struct {

@@ -247,66 +247,147 @@ func (m Model) bannerView(width int) string {
 	}
 	phase := "resolving…"
 	if m.overlay != nil {
-		phase = askPhaseLabel(m.activeAsk)
+		phase = askEntryFor(m.activeAsk).label
 	}
 	return style.Render(styles.AccentAlt.Render("▶ "+m.detail.name) + styles.Subtle.Render(" · "+phase))
 }
 
-func askPhaseLabel(kind adapter.AskKind) string {
-	switch kind {
-	case adapter.AskSelectStatRaise:
-		return "Stat Raise"
-	case adapter.AskSelectAction:
-		return "Action"
-	case adapter.AskSelectMovementDecisions:
-		return "Movement"
-	case adapter.AskSelectTransportCargo:
-		return "Load Cargo"
-	case adapter.AskAwaitCheckpoint:
-		return "Cycle Checkpoint"
-	case adapter.AskSelectAsset:
-		return "Select Asset"
-	case adapter.AskSelectModifiers:
-		return "Pre-roll Modifiers"
-	case adapter.AskConfirmReroll:
-		return "Reroll?"
-	case adapter.AskSelectBuyOrder:
-		return "Buy Asset"
-	case adapter.AskSelectRefitOrder:
-		return "Refit Asset"
-	case adapter.AskSelectRepairOrders:
-		return "Repair Asset"
-	case adapter.AskSelectBribeTarget:
-		return "Bribe"
-	case adapter.AskSelectSeizeTarget:
-		return "Seize Planet"
-	case adapter.AskSelectChangeHomeworldTarget:
-		return "Change Homeworld"
-	case adapter.AskSelectAttackers:
-		return "Select Attackers"
-	case adapter.AskSelectDefender:
-		return "Select Defender"
-	case adapter.AskConfirmRedirectToBase:
-		return "Redirect to Base?"
-	case adapter.AskSelectExpandInfluenceOrder:
-		return "Expand Influence"
-	case adapter.AskConfirmRivalFreeAttack:
-		return "Rival Free Attack?"
-	case adapter.AskSelectBaseAttackers:
-		return "Base Attackers"
-	case adapter.AskSelectAbilityAssets:
-		return "Ability Assets"
-	case adapter.AskConfirmAbilityApplied:
-		return "Apply Ability?"
-	case adapter.AskSelectFactionTestTarget:
-		return "Ability Target"
-	case adapter.AskSelectRelocateOrders:
-		return "Relocate"
-	case adapter.AskSelectPurchaseEnablerAsset:
-		return "Purchase (Enabler)"
-	default:
-		return "Action"
+// askEntry is one AskKind's banner label and overlay factory.
+type askEntry struct {
+	label   string
+	overlay func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay
+}
+
+var askEntries = map[adapter.AskKind]askEntry{
+	adapter.AskAwaitCheckpoint: {"Cycle Checkpoint", func(m Model, _ adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewCheckpoint(m.cycleNumber)
+	}},
+	adapter.AskSelectAction: {"Action", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewSelectAction(msg.Payload.(adapter.SelectActionPayload).Available)
+	}},
+	adapter.AskSelectStatRaise: {"Stat Raise", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewStatRaise(msg.Faction, msg.Payload.(adapter.SelectStatRaisePayload).Eligible)
+	}},
+	adapter.AskSelectMovementDecisions: {"Movement", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
+	}},
+	adapter.AskSelectTransportCargo: {"Load Cargo", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectTransportCargoPayload)
+		return overlay.NewTransportCargo(p.Transport, p.EligibleCargo, p.Profile, m.rulebook)
+	}},
+	adapter.AskSelectAsset: {"Select Asset", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewSelectAsset("Select asset", msg.Payload.(adapter.SelectAssetPayload).Assets, m.rulebook)
+	}},
+	adapter.AskSelectModifiers: {"Pre-roll Modifiers", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewSelectModifiers(msg.Payload.(adapter.SelectModifiersPayload).Offers)
+	}},
+	adapter.AskConfirmReroll: {"Reroll?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewConfirmReroll(msg.Payload.(adapter.ConfirmRerollPayload).Directive)
+	}},
+	adapter.AskSelectBuyOrder: {"Buy Asset", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectBuyOrderPayload)
+		return overlay.NewBuyOrder(p.PurchasableByWorld, p.WorldNames, p.Coin)
+	}},
+	adapter.AskSelectRefitOrder: {"Refit Asset", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewRefitOrder(msg.Payload.(adapter.SelectRefitOrderPayload).Options, m.rulebook)
+	}},
+	adapter.AskSelectRepairOrders: {"Repair Asset", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewRepairOrders(msg.Payload.(adapter.SelectRepairOrdersPayload).Targets, m.rulebook)
+	}},
+	adapter.AskSelectBribeTarget: {"Bribe", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectBribeTargetPayload)
+		return overlay.NewBribe(p.Bases, p.OwnerNames, p.Coin)
+	}},
+	adapter.AskSelectSeizeTarget: {"Seize Planet", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectSeizeTargetPayload)
+		return overlay.NewWorldSelect("Seize which world?", "", p.Worlds, p.WorldNames)
+	}},
+	adapter.AskSelectChangeHomeworldTarget: {"Change Homeworld", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectChangeHomeworldTargetPayload)
+		return overlay.NewWorldSelect("New homeworld?", "", p.Worlds, p.WorldNames)
+	}},
+	adapter.AskSelectAttackers: {"Select Attackers", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewSelectAttackers(msg.Payload.(adapter.SelectAttackersPayload).Eligible, m.rulebook)
+	}},
+	adapter.AskSelectDefender: {"Select Defender", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectDefenderPayload)
+		return overlay.NewSelectDefender(p.Attacker, p.Eligible, p.OwnerNames, m.rulebook)
+	}},
+	adapter.AskConfirmRedirectToBase: {"Redirect to Base?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.ConfirmRedirectToBasePayload)
+		return overlay.NewConfirmRedirectToBase(p.DefenderFaction, p.Base, p.Damage)
+	}},
+	adapter.AskConfirmCounterstrike: {"Counterstrike?", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.ConfirmCounterstrikePayload)
+		return overlay.NewConfirmCounterstrike(p.DefenderFaction, p.Source, p.Attacker, m.rulebook)
+	}},
+	adapter.AskSelectAbilityAssetTarget: {"Ability Target", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectAbilityAssetTargetPayload)
+		return overlay.NewSelectAbilityAssetTarget(p.Asset, p.Effect, p.Candidates, p.OwnerNames, m.rulebook)
+	}},
+	adapter.AskConfirmPayment: {"Pay?", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewConfirmPayment(msg.Payload.(adapter.ConfirmPaymentPayload).Offer, m.rulebook)
+	}},
+	adapter.AskSelectAssetToLose: {"Lose an Asset", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectAssetToLosePayload)
+		return overlay.NewSelectAssetToLose(fmt.Sprintf("%s cannot pay: lose which asset?", p.Faction.Name), p.Assets, m.rulebook)
+	}},
+	adapter.AskConfirmSacrifice: {"Sacrifice?", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewConfirmSacrifice(msg.Payload.(adapter.ConfirmSacrificePayload).Offer, m.rulebook)
+	}},
+	adapter.AskRequestPermission: {"Permission?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.RequestPermissionPayload)
+		return overlay.NewRequestPermission(p.Request, p.WorldName)
+	}},
+	adapter.AskConfirmPermissionContest: {"Contest?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.ConfirmPermissionContestPayload)
+		return overlay.NewConfirmPermissionContest(p.Offer, p.WorldName, p.SourceName)
+	}},
+	adapter.AskSelectExpandInfluenceOrder: {"Expand Influence", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectExpandInfluenceOrderPayload)
+		return overlay.NewExpand(p.NewBaseWorlds, p.WorldNames, p.ReinforceBases, p.Coin)
+	}},
+	adapter.AskConfirmRivalFreeAttack: {"Rival Free Attack?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.ConfirmRivalFreeAttackPayload)
+		return overlay.NewConfirmRivalFreeAttack(p.Rival, p.RivalRoll, p.FactionRoll)
+	}},
+	adapter.AskSelectBaseAttackers: {"Base Attackers", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectBaseAttackersPayload)
+		return overlay.NewSelectBaseAttackers(p.Rival, p.Eligible, m.rulebook)
+	}},
+	adapter.AskSelectAbilityAssets: {"Ability Assets", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewSelectAbilityAssets(msg.Payload.(adapter.SelectAbilityAssetsPayload).Candidates, m.rulebook)
+	}},
+	adapter.AskConfirmAbilityApplied: {"Apply Ability?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.ConfirmAbilityAppliedPayload)
+		return overlay.NewConfirmAbilityApplied(p.Asset, p.Def)
+	}},
+	adapter.AskSelectFactionTestTarget: {"Ability Target", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectFactionTestTargetPayload)
+		return overlay.NewSelectFactionTestTarget(p.Asset, p.Effect, p.Candidates)
+	}},
+	adapter.AskSelectRelocateOrders: {"Relocate", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewRelocateOrders(msg.Payload.(adapter.SelectRelocateOrdersPayload), m.rulebook)
+	}},
+	adapter.AskSelectPurchaseEnablerAsset: {"Purchase (Enabler)", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewPurchaseEnabler(msg.Payload.(adapter.SelectPurchaseEnablerAssetPayload))
+	}},
+}
+
+// askEntryFor fails loudly on a kind with no askEntries row: a new AskKind must
+// add one, and TestAskEntriesCoverEveryKind catches the miss before runtime.
+func askEntryFor(kind adapter.AskKind) askEntry {
+	entry, ok := askEntries[kind]
+	if !ok {
+		panic(fmt.Sprintf("execution: no askEntries row for AskKind %d", kind))
 	}
+	return entry
+}
+
+// newOverlay builds the overlay for an ask. A method so the factory can read the
+// cycle number, rulebook and spatial map that the ask does not carry.
+func (m Model) newOverlay(msg adapter.CollectorAskMsg) overlay.Overlay {
+	return askEntryFor(msg.Kind).overlay(m, msg)
 }
 
 // wizardBand renders the reserved top of the center column: the active overlay,
@@ -452,81 +533,4 @@ func (m Model) StatusLine() (string, chrome.Severity) {
 		return m.latestErr.Error(), chrome.Fatal
 	}
 	return m.latestErr.Error(), chrome.Recoverable
-}
-
-// newOverlay builds the overlay for an ask. One arm per AskKind so Efforts 2-3
-// swap real overlays in kind-by-kind; the AskSelectAction arm stays on the
-// placeholder until Effort 3. A method so it can supply the cycle number,
-// rulebook, and spatial map the real overlays need but the ask does not carry.
-func (m Model) newOverlay(msg adapter.CollectorAskMsg) overlay.Overlay {
-	name := ""
-	if msg.Faction != nil {
-		name = msg.Faction.Name
-	}
-	switch msg.Kind {
-	case adapter.AskAwaitCheckpoint:
-		return overlay.NewCheckpoint(m.cycleNumber)
-	case adapter.AskSelectStatRaise:
-		return overlay.NewStatRaise(msg.Faction, msg.Payload.(adapter.SelectStatRaisePayload).Eligible)
-	case adapter.AskSelectAction:
-		return overlay.NewSelectAction(msg.Payload.(adapter.SelectActionPayload).Available)
-	case adapter.AskSelectAsset:
-		return overlay.NewSelectAsset("Select asset", msg.Payload.(adapter.SelectAssetPayload).Assets, m.rulebook)
-	case adapter.AskSelectModifiers:
-		return overlay.NewSelectModifiers(msg.Payload.(adapter.SelectModifiersPayload).Offers)
-	case adapter.AskConfirmReroll:
-		return overlay.NewConfirmReroll(msg.Payload.(adapter.ConfirmRerollPayload).Directive)
-	case adapter.AskSelectBuyOrder:
-		p := msg.Payload.(adapter.SelectBuyOrderPayload)
-		return overlay.NewBuyOrder(p.PurchasableByWorld, p.WorldNames, p.Coin)
-	case adapter.AskSelectRefitOrder:
-		return overlay.NewRefitOrder(msg.Payload.(adapter.SelectRefitOrderPayload).Options, m.rulebook)
-	case adapter.AskSelectRepairOrders:
-		return overlay.NewRepairOrders(msg.Payload.(adapter.SelectRepairOrdersPayload).Targets, m.rulebook)
-	case adapter.AskSelectBribeTarget:
-		p := msg.Payload.(adapter.SelectBribeTargetPayload)
-		return overlay.NewBribe(p.Bases, p.OwnerNames, p.Coin)
-	case adapter.AskSelectSeizeTarget:
-		p := msg.Payload.(adapter.SelectSeizeTargetPayload)
-		return overlay.NewWorldSelect("Seize which world?", "", p.Worlds, p.WorldNames)
-	case adapter.AskSelectChangeHomeworldTarget:
-		p := msg.Payload.(adapter.SelectChangeHomeworldTargetPayload)
-		return overlay.NewWorldSelect("New homeworld?", "", p.Worlds, p.WorldNames)
-	case adapter.AskSelectAttackers:
-		return overlay.NewSelectAttackers(msg.Payload.(adapter.SelectAttackersPayload).Eligible, m.rulebook)
-	case adapter.AskSelectDefender:
-		p := msg.Payload.(adapter.SelectDefenderPayload)
-		return overlay.NewSelectDefender(p.Attacker, p.Eligible, p.OwnerNames, m.rulebook)
-	case adapter.AskConfirmRedirectToBase:
-		p := msg.Payload.(adapter.ConfirmRedirectToBasePayload)
-		return overlay.NewConfirmRedirectToBase(p.DefenderFaction, p.Base, p.Damage)
-	case adapter.AskSelectExpandInfluenceOrder:
-		p := msg.Payload.(adapter.SelectExpandInfluenceOrderPayload)
-		return overlay.NewExpand(p.NewBaseWorlds, p.WorldNames, p.ReinforceBases, p.Coin)
-	case adapter.AskConfirmRivalFreeAttack:
-		p := msg.Payload.(adapter.ConfirmRivalFreeAttackPayload)
-		return overlay.NewConfirmRivalFreeAttack(p.Rival, p.RivalRoll, p.FactionRoll)
-	case adapter.AskSelectBaseAttackers:
-		p := msg.Payload.(adapter.SelectBaseAttackersPayload)
-		return overlay.NewSelectBaseAttackers(p.Rival, p.Eligible, m.rulebook)
-	case adapter.AskSelectAbilityAssets:
-		return overlay.NewSelectAbilityAssets(msg.Payload.(adapter.SelectAbilityAssetsPayload).Candidates, m.rulebook)
-	case adapter.AskConfirmAbilityApplied:
-		p := msg.Payload.(adapter.ConfirmAbilityAppliedPayload)
-		return overlay.NewConfirmAbilityApplied(p.Asset, p.Def)
-	case adapter.AskSelectFactionTestTarget:
-		p := msg.Payload.(adapter.SelectFactionTestTargetPayload)
-		return overlay.NewSelectFactionTestTarget(p.Asset, p.Effect, p.Candidates)
-	case adapter.AskSelectRelocateOrders:
-		return overlay.NewRelocateOrders(msg.Payload.(adapter.SelectRelocateOrdersPayload), m.rulebook)
-	case adapter.AskSelectPurchaseEnablerAsset:
-		return overlay.NewPurchaseEnabler(msg.Payload.(adapter.SelectPurchaseEnablerAssetPayload))
-	case adapter.AskSelectMovementDecisions:
-		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
-	case adapter.AskSelectTransportCargo:
-		p := msg.Payload.(adapter.SelectTransportCargoPayload)
-		return overlay.NewTransportCargo(p.Transport, p.EligibleCargo, p.Profile, m.rulebook)
-	default:
-		return overlay.NewPlaceholder(msg.Kind, name)
-	}
 }

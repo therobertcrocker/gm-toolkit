@@ -228,3 +228,53 @@ func TestMilitaryConquest_WrongCategory_NoProgress(t *testing.T) {
 		t.Errorf("expected no mutations for wrong asset category, got %v", mutations)
 	}
 }
+
+func TestPlanetarySeizure_CaptureOfLastRival(t *testing.T) {
+	cases := []struct {
+		name        string
+		toFactionID string
+		wantAdvance bool
+	}{
+		{"captured by the seizer", "f1", true},
+		{"captured by a third faction", "f3", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState, acting := makeSeizureState(map[string]*domain.Asset{
+				"r1": {ID: "r1", OwnerID: "f2", Location: domain.Location{WorldID: "Krylos"}},
+			})
+			input := []domain.Mutation{
+				domain.AssetOwnerChanged{FactionID: "f2", AssetID: "r1", ToFactionID: tc.toFactionID},
+			}
+
+			mutations := PlanetarySeizure{}.UpdateProgress(acting, input, factionState, nil, nil)
+
+			if got := len(mutations) == 1; got != tc.wantAdvance {
+				t.Fatalf("advanced = %v, want %v; got %v", got, tc.wantAdvance, mutations)
+			}
+			if tc.wantAdvance {
+				if _, ok := mutations[0].(domain.GoalPhaseAdvanced); !ok {
+					t.Errorf("mutations[0] type = %T, want GoalPhaseAdvanced", mutations[0])
+				}
+			}
+		})
+	}
+}
+
+func TestPlanetarySeizure_ShelterOfLastRival(t *testing.T) {
+	factionState, acting := makeSeizureState(map[string]*domain.Asset{
+		"r1": {ID: "r1", OwnerID: "f2", Location: domain.Location{WorldID: "Krylos"}},
+	})
+	input := []domain.Mutation{
+		domain.AssetConditionApplied{FactionID: "f2", AssetID: "r1", Condition: domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}},
+	}
+
+	mutations := PlanetarySeizure{}.UpdateProgress(acting, input, factionState, nil, nil)
+
+	if len(mutations) != 1 {
+		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
+	}
+	if _, ok := mutations[0].(domain.GoalPhaseAdvanced); !ok {
+		t.Errorf("mutations[0] type = %T, want GoalPhaseAdvanced", mutations[0])
+	}
+}

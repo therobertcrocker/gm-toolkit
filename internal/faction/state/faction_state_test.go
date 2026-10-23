@@ -1,7 +1,10 @@
 package state
 
 import (
+	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -206,5 +209,72 @@ func TestLoadMissingFile(t *testing.T) {
 	}
 	if s == nil {
 		t.Fatal("Load() on missing file should return empty state, got nil")
+	}
+}
+
+func TestGovernmentsRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	original := &FactionState{Factions: map[string]*domain.Faction{}, Governments: map[string]string{"Krylos": "f1"}}
+	if err := Save(path, original); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !reflect.DeepEqual(loaded.Governments, original.Governments) {
+		t.Errorf("Governments = %v, want %v", loaded.Governments, original.Governments)
+	}
+}
+
+func TestGovernmentsOmittedWhenEmpty(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	if err := Save(path, &FactionState{Factions: map[string]*domain.Faction{}}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if strings.Contains(string(body), "governments") {
+		t.Errorf("state.toml = %q, want no governments table", body)
+	}
+}
+
+func TestRuler(t *testing.T) {
+	var nilState *FactionState
+	if got := nilState.Ruler("Krylos"); got != "" {
+		t.Errorf("nil state Ruler = %q, want none", got)
+	}
+	if got := (&FactionState{}).Ruler("Krylos"); got != "" {
+		t.Errorf("no record Ruler = %q, want none (an independent world)", got)
+	}
+	if got := (&FactionState{Governments: map[string]string{"Krylos": "f1"}}).Ruler("Krylos"); got != "f1" {
+		t.Errorf("Ruler = %q, want f1", got)
+	}
+}
+
+func TestWorldsRuledBy(t *testing.T) {
+	var nilState *FactionState
+	if got := nilState.WorldsRuledBy("f1"); got != nil {
+		t.Errorf("nil state WorldsRuledBy = %v, want none", got)
+	}
+	governed := &FactionState{Governments: map[string]string{"Krylos": "f1", "Hadrian": "f2", "Anchorage": "f1"}}
+	if got := governed.WorldsRuledBy("f1"); !reflect.DeepEqual(got, []string{"Anchorage", "Krylos"}) {
+		t.Errorf("WorldsRuledBy(f1) = %v, want [Anchorage Krylos]", got)
+	}
+}
+
+func TestIsIndependent(t *testing.T) {
+	var nilState *FactionState
+	if !nilState.IsIndependent("Krylos") {
+		t.Error("nil state IsIndependent = false, want true")
+	}
+	governed := &FactionState{Governments: map[string]string{"Krylos": "f1"}}
+	if governed.IsIndependent("Krylos") {
+		t.Error("a governed world IsIndependent = true, want false")
+	}
+	if !governed.IsIndependent("Hadrian") {
+		t.Error("a world with no entry IsIndependent = false, want true")
 	}
 }

@@ -1,6 +1,8 @@
 package goals
 
 import (
+	"slices"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -18,6 +20,10 @@ func (PlanetarySeizure) CheckLock(faction *domain.Faction, factionState *state.F
 		return locks.GoalLock{Type: locks.LockNone}, nil
 	}
 	if goal.ProcessPhase == 1 {
+		// deliberate: re-check presence here, not only in UpdateProgress, because a rival can leave on its own turn, where UpdateProgress cannot see it, and the Attack-only lock would then hold forever.
+		if !rivalPresentOn(goal.TargetWorld.WorldID, faction.ID, factionState, nil) {
+			return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{phaseOneCleared(faction.ID, goal.GoalID)}
+		}
 		return locks.GoalLock{Type: locks.LockRestrictActions, AllowedActions: []string{"Attack"}}, nil
 	}
 	// Phase 2: occupation.
@@ -37,19 +43,52 @@ func (PlanetarySeizure) CheckLock(faction *domain.Faction, factionState *state.F
 	}
 	newTurns := goal.TurnsRemaining - 1
 	if newTurns == 0 {
-		xp := calcPlanetarySeizureXP(goal.TargetFactionID, factionState)
-		var pgTag domain.Tag
-		if t, ok := rulebook.Tags["T-011"]; ok {
-			pgTag = *t
-		}
-		return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{
-			tick,
-			domain.TagAdded{FactionID: faction.ID, Tag: pgTag, Cause: "goal_completed"},
+		worldID := goal.TargetWorld.WorldID
+		previousRuler := factionState.Ruler(worldID)
+		xp := calcPlanetarySeizureXP(previousRuler, factionState)
+		mutations := []domain.Mutation{tick}
+		mutations = append(mutations, takeGovernment(faction, worldID, previousRuler, factionState, rulebook)...)
+		mutations = append(mutations,
 			domain.GoalCompleted{FactionID: faction.ID, GoalID: goal.GoalID, XPAwarded: xp},
 			domain.XPAwarded{FactionID: faction.ID, Amount: xp, Cause: "goal_completed"},
-		}
+		)
+		return locks.GoalLock{Type: locks.LockNone}, mutations
 	}
 	return locks.GoalLock{Type: locks.LockNone}, []domain.Mutation{tick}
+}
+
+// takeGovernment makes seizer the ruler of worldID (overview Decision 10): the
+// record changes hands, the seizer gains T-011 unless it holds it, and a previous
+// ruler that governs no other world loses the tag it holds. A seizer that already
+// rules the world changes nothing.
+func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
+	if previousRuler == seizer.ID {
+		return nil
+	}
+	mutations := []domain.Mutation{domain.WorldGovernmentChanged{
+		WorldID:           worldID,
+		FromFactionID:     previousRuler,
+		ToFactionID:       seizer.ID,
+		Cause:             "goal_completed",
+		CausedByFactionID: seizer.ID,
+	}}
+	if !seizer.HasTag(domain.TagPlanetaryGovernment) {
+		var tag domain.Tag
+		if found, ok := rulebook.Tags[domain.TagPlanetaryGovernment]; ok {
+			tag = *found
+		}
+		mutations = append(mutations, domain.TagAdded{FactionID: seizer.ID, Tag: tag, Cause: "goal_completed", CausedByFactionID: seizer.ID})
+	}
+	previous := factionState.Factions[previousRuler]
+	if previous == nil || !slices.Equal(factionState.WorldsRuledBy(previousRuler), []string{worldID}) {
+		return mutations
+	}
+	for _, held := range previous.Tags {
+		if held.ID == domain.TagPlanetaryGovernment {
+			return append(mutations, domain.TagRemoved{FactionID: previousRuler, Tag: *held, Cause: "goal_completed", CausedByFactionID: seizer.ID})
+		}
+	}
+	return mutations
 }
 
 func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook, _ *world.Index) []domain.Mutation {
@@ -57,29 +96,51 @@ func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations 
 	if goal.ProcessPhase != 1 {
 		return nil
 	}
-	removedIDs := make(map[string]bool)
+	cleared := make(map[string]bool)
 	for _, mutation := range mutations {
-		if v, ok := mutation.(domain.AssetRemoved); ok {
-			removedIDs[v.AssetID] = true
-		}
-	}
-	for factionID, faction := range factionState.Factions {
-		if factionID == actingFaction.ID {
-			continue
-		}
-		for _, asset := range faction.Assets {
-			if asset.Location.WorldID == goal.TargetWorld.WorldID && !asset.Stealthy && !removedIDs[asset.ID] {
-				return nil
+		switch m := mutation.(type) {
+		case domain.AssetRemoved:
+			cleared[m.AssetID] = true
+		case domain.AssetOwnerChanged:
+			if m.ToFactionID == actingFaction.ID {
+				cleared[m.AssetID] = true
+			}
+		case domain.AssetConditionApplied:
+			if m.Condition.Kind == domain.ConditionSheltered {
+				cleared[m.AssetID] = true
 			}
 		}
 	}
-	return []domain.Mutation{
-		domain.GoalPhaseAdvanced{
-			FactionID:      actingFaction.ID,
-			GoalID:         goal.GoalID,
-			ProcessPhase:   2,
-			TurnsRemaining: 3,
-			Cause:          "planetary_seizure_phase_advance",
-		},
+	if rivalPresentOn(goal.TargetWorld.WorldID, actingFaction.ID, factionState, cleared) {
+		return nil
+	}
+	return []domain.Mutation{phaseOneCleared(actingFaction.ID, goal.GoalID)}
+}
+
+// rivalPresentOn reports whether a faction other than seizerID holds an
+// unstealthed, unsheltered asset on world that cleared does not name. A sheltered
+// asset hides and cannot be attacked, so the Attack-only lock would hold forever
+// (Effort 2 Decision 11).
+func rivalPresentOn(world, seizerID string, factionState *state.FactionState, cleared map[string]bool) bool {
+	for factionID, faction := range factionState.Factions {
+		if factionID == seizerID {
+			continue
+		}
+		for _, asset := range faction.Assets {
+			if asset.Location.WorldID == world && !asset.Hidden() && !cleared[asset.ID] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func phaseOneCleared(factionID, goalID string) domain.GoalPhaseAdvanced {
+	return domain.GoalPhaseAdvanced{
+		FactionID:      factionID,
+		GoalID:         goalID,
+		ProcessPhase:   2,
+		TurnsRemaining: 3,
+		Cause:          "planetary_seizure_phase_advance",
 	}
 }

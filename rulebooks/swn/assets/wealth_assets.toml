@@ -292,7 +292,11 @@ tech_level = 3
 type = "Facility"
 flags = ["A"]
 counter = "1d6"
-description = "A stranglehold on vital local businesses or resources. When a Monopoly successfully attacks an enemy faction, the target must pay 1 Coin or lose one asset of their choice on that world."
+description = "An open or tacit stranglehold on vital local businesses or resources. As an action, force one other faction with unstealthed assets on this world to pay the owner 1 Coin. If the target faction can't pay, it loses one asset of its choice on the world."
+
+[assets.Monopoly.ability]
+effect = "levy_coin"
+target = "faction"
 
 [assets.Monopoly.attack]
 attacker_stat = "Wealth"
@@ -311,7 +315,29 @@ tech_level = 4
 type = "Facility"
 flags = ["S"]
 counter = ""
-description = "Fully-equipped medical facilities. If a Special Forces or Military Unit asset on this planet is destroyed, the faction may immediately pay half its purchase cost to restore it at 1 HP. Any Repair Asset action on this planet costs 1 fewer Coin for Special Forces and Military Units."
+description = "Fully-equipped medical facilities. Once between turns, if a Special Forces or Military Unit asset on this planet is destroyed, the faction may immediately pay half its purchase cost to restore it at 1 HP. Any Repair Asset action on this planet costs 1 fewer Coin for Special Forces and Military Units."
+
+[[assets.MedicalCenter.effects]]
+trigger = "lethal_damage"
+effect  = "restore_asset"
+[assets.MedicalCenter.effects.filters]
+owner      = "own"
+scope      = "world"
+asset_type = ["Special Forces", "Military Unit"]
+[assets.MedicalCenter.effects.gates]
+once_per = "asset"
+
+[[assets.MedicalCenter.effects]]
+trigger = "repair_cost_query"
+effect  = "discount_repair"
+[assets.MedicalCenter.effects.filters]
+owner      = "own"
+scope      = "world"
+asset_type = ["Special Forces", "Military Unit"]
+[assets.MedicalCenter.effects.gates]
+no_stack = true
+[assets.MedicalCenter.effects.discount_repair]
+amount = 1
 
 [assets.Bank]
 id = "SWN-W4-004"
@@ -349,6 +375,12 @@ type = "Tactic"
 flags = ["A"]
 counter = ""
 description = "Operatives deployed to confuse enemy factions into untimely investments. As an ability action, test Cunning vs. Wealth against a rival faction's asset; if successful, the target faction must immediately pay half that asset's purchase cost (rounded down) or have it become disabled until the price is paid."
+
+[assets.Marketers.ability]
+attacker_stat = "Cunning"
+defender_stat = "Wealth"
+effect = "disable_asset"
+target = "asset"
 
 [assets.Marketers.attack]
 attacker_stat = "Cunning"
@@ -399,6 +431,7 @@ max_hex = 3
 coin_cost = 2
 cargo_types = ["Military Unit", "Special Forces"]
 max_cargo = 1
+ignores_permission = true
 
 [assets.VentureCapital]
 id = "SWN-W6-001"
@@ -538,6 +571,13 @@ description = "A coordinated financial and legal assault on a rival's holdings. 
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 damage = "2d10"
+
+[[assets.HostileTakeover.effects]]
+trigger = "lethal_damage"
+effect  = "seize_target"
+[assets.HostileTakeover.effects.filters]
+owner = "rival"
+scope = "self"
 
 [assets.TransitWeb]
 id = "SWN-W7-003"

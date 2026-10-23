@@ -495,3 +495,27 @@ func TestRollWithHooks_ScopeOrder(t *testing.T) {
 		}
 	}
 }
+
+// TestRollWithHooks_CapturedAssetOldBucketDoesNotFire: "b-1" is in alpha's map, but
+// a hook is still filed under beta. Asset scopes come from each faction's current
+// assets, so neither side's roll reaches a former owner's bucket, even before the
+// orchestrator clears it (Effort 1 Decision Record 13).
+func TestRollWithHooks_CapturedAssetOldBucketDoesNotFire(t *testing.T) {
+	alpha := factionWithAssets("alpha", map[string]string{"b-1": "Krylos"})
+	beta := factionWithAssets("beta", map[string]string{"b-2": "Krylos"})
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.AssetScope("beta", "b-1"), "b-1", addDieModifier("b-1", ""))
+	factionState := rollState(alpha, beta)
+
+	for name, rolling := range map[string]struct{ actor, opponent *domain.Faction }{
+		"the old owner rolls": {beta, alpha},
+		"the new owner rolls": {alpha, beta},
+	} {
+		t.Run(name, func(t *testing.T) {
+			result := RollWithHooks(contestCtx(rolling.actor, rolling.opponent, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5}}, rolling.actor, factionState, nil)
+			if len(result.Dice) != 2 {
+				t.Fatalf("expected 2 dice (old bucket unreached), got %d", len(result.Dice))
+			}
+		})
+	}
+}

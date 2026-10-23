@@ -298,6 +298,42 @@ effect  = "coin_gain"` + filters,
 			wantErr: `effect "coin_gain" requires a [coin_gain] block`,
 		},
 		{
+			name: "capture_target missing its block",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_attack_hit"
+effect  = "capture_target"` + filters,
+			wantErr: `effect "capture_target" requires a [capture_target] block`,
+		},
+		{
+			name: "discount_repair missing its block",
+			body: `
+[[assets.Machine.effects]]
+trigger = "repair_cost_query"
+effect  = "discount_repair"` + filters,
+			wantErr: `effect "discount_repair" requires a [discount_repair] block`,
+		},
+		{
+			name: "discount_repair amount 0",
+			body: `
+[[assets.Machine.effects]]
+trigger = "repair_cost_query"
+effect  = "discount_repair"` + filters + `
+[assets.Machine.effects.discount_repair]
+amount = 0
+`,
+			wantErr: "discount_repair amount must be > 0, got 0",
+		},
+		{
+			name: "no-damage attack with no own_attack_hit effect",
+			body: `
+[assets.Machine.attack]
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+`,
+			wantErr: "attack has no damage and no own_attack_hit effect",
+		},
+		{
 			name: "missing amount",
 			body: `
 [[assets.Machine.effects]]
@@ -529,5 +565,26 @@ func TestParseAmount(t *testing.T) {
 	}
 	if _, err := parseAmount("lots"); err == nil {
 		t.Error(`parseAmount("lots"): expected an error`)
+	}
+}
+
+func TestLoadEffects_QualityNeedsOneOnPurchaseEntry(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+"quality = true\n")
+	if err == nil || !strings.Contains(err.Error(), "a quality needs exactly one on_purchase effect") {
+		t.Fatalf("err = %v, want a quality shape error", err)
+	}
+}
+
+func TestLoadEffects_GrantStealthNeedsAQuality(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[[assets.Machine.effects]]
+trigger = "on_purchase"
+effect  = "grant_stealth"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "world"
+`)
+	if err == nil || !strings.Contains(err.Error(), "grant_stealth needs quality = true") {
+		t.Fatalf("err = %v, want a grant_stealth quality error", err)
 	}
 }

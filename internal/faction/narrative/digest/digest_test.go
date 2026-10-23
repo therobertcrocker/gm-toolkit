@@ -2,6 +2,8 @@ package digest
 
 import (
 	"encoding/json"
+	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -595,6 +597,34 @@ func TestCrossAttackerAssetDestroyed(t *testing.T) {
 	}
 }
 
+func TestCrossCounterstrike(t *testing.T) {
+	factionState := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "faction-a", AssetID: "a-asset-1", Delta: -5, Cause: "counterstrike",
+				CausedByFactionID: "faction-b", CausedByAssetID: "b-comms",
+			}),
+			mutRec(t, "asset_removed", domain.AssetRemoved{
+				FactionID: "faction-a", AssetID: "a-asset-1", Cause: "counterstrike",
+				CausedByFactionID: "faction-b",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "faction-a" || crossEvent.Defender.ID != "faction-b" || crossEvent.Kind != CrossAttack {
+		t.Errorf("cross event = %+v, want CrossAttack faction-a -> faction-b", crossEvent)
+	}
+	if !crossEvent.Counterstruck || crossEvent.DamageToAttacker != 5 || !crossEvent.AttackerAssetDestroyed {
+		t.Errorf("cross event = %+v, want Counterstruck, DamageToAttacker 5, AttackerAssetDestroyed", crossEvent)
+	}
+}
+
 func TestCrossBaseHit(t *testing.T) {
 	fs := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Bravo"})
 	fs.Factions["faction-b"].Bases = []*domain.Base{{ID: "base-b1", Location: domain.Location{WorldID: "Anvil"}}}
@@ -849,4 +879,339 @@ func TestUnknownMutationTypeAddsNote(t *testing.T) {
 	// A note is added but the beat may still be quiet (notes don't make it active).
 	// What matters is no panic and the note is recorded.
 	_ = beat
+}
+
+func TestConditionAppliedJoinsCrossAttack(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	condition := domain.Condition{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1", ExpiresAtTurnOf: "f1"}
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: condition, Cause: "attack", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_condition_cleared", domain.AssetConditionCleared{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: condition, Cause: "condition_expired", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAttack {
+		t.Errorf("cross event = %+v, want CrossAttack f1 -> f2", crossEvent)
+	}
+	if len(crossEvent.Conditions) != 1 || crossEvent.Conditions[0] != domain.ConditionNoAbility {
+		t.Errorf("Conditions = %v, want [no_ability]", crossEvent.Conditions)
+	}
+	for _, factionID := range []string{"f1", "f2"} {
+		if beat := findBeat(cycleDigest, factionID); beat != nil && len(beat.Notes) != 0 {
+			t.Errorf("%s Notes = %v, want none (the cleared condition is a dropped case)", factionID, beat.Notes)
+		}
+	}
+}
+
+func TestShelterIsAnInterceptionNotACondition(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: -5, Cause: "attack", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: 2, Cause: "shelter_asset", CausedByFactionID: "f2",
+			}),
+			mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"},
+				Cause: "shelter_asset", CausedByFactionID: "f2",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" {
+		t.Errorf("cross event = %+v, want f1 -> f2", crossEvent)
+	}
+	if !slices.Equal(crossEvent.Interceptions, []domain.SpecialEffectType{domain.SpecialShelterAsset}) {
+		t.Errorf("Interceptions = %v, want [shelter_asset]", crossEvent.Interceptions)
+	}
+	if len(crossEvent.Conditions) != 0 {
+		t.Errorf("Conditions = %v, want none", crossEvent.Conditions)
+	}
+}
+
+func TestSacrificeIsALossAndAnInterception(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: -6, Cause: "attack", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: 6, Cause: "sacrifice_self", CausedByFactionID: "f2",
+			}),
+			mutRec(t, "asset_removed", domain.AssetRemoved{
+				FactionID: "f2", AssetID: "ff", Cause: "sacrifice_self", CausedByFactionID: "f2",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	beat := findBeat(cycleDigest, "f2")
+	if beat == nil || len(beat.Losses) != 1 || beat.Losses[0].AssetID != "ff" || beat.Losses[0].Cause != "sacrifice_self" {
+		t.Errorf("f2 beat = %+v, want one sacrifice_self loss of ff", beat)
+	}
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	if got := cycleDigest.Cross[0].Interceptions; !slices.Equal(got, []domain.SpecialEffectType{domain.SpecialSacrificeSelf}) {
+		t.Errorf("Interceptions = %v, want [sacrifice_self]", got)
+	}
+}
+
+func TestSeizeIsACaptureAndAnInterception(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: -6, Cause: "attack", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: 4, Cause: "seize_target", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_owner_changed", domain.AssetOwnerChanged{
+				FactionID: "f2", AssetID: "b-asset-1", ToFactionID: "f1", Cause: "seize_target", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if loser := findBeat(cycleDigest, "f2"); loser == nil || len(loser.Losses) != 1 || loser.Losses[0].Cause != "captured" {
+		t.Errorf("f2 beat = %+v, want one captured loss", loser)
+	}
+	if winner := findBeat(cycleDigest, "f1"); winner == nil || len(winner.Acquisitions) != 1 || winner.Acquisitions[0].Cause != "captured" {
+		t.Errorf("f1 beat = %+v, want one captured acquisition", winner)
+	}
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	if got := cycleDigest.Cross[0].Interceptions; !slices.Equal(got, []domain.SpecialEffectType{domain.SpecialSeizeTarget}) {
+		t.Errorf("Interceptions = %v, want [seize_target]", got)
+	}
+}
+
+func TestRestoreCoinLandsOnThePayerAndIsAnInterception(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: -5, Cause: "attack", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "asset_hp_delta", domain.AssetHPDelta{
+				FactionID: "f2", AssetID: "b-asset-1", Delta: 3, Cause: "restore_asset", CausedByFactionID: "f2",
+			}),
+			mutRec(t, "coin_delta", domain.CoinDelta{
+				FactionID: "f2", Delta: -3, Cause: "restore_asset", CausedByFactionID: "f2",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if beat := findBeat(cycleDigest, "f2"); beat == nil || beat.CoinDelta != -3 {
+		t.Errorf("f2 beat = %+v, want CoinDelta -3", beat)
+	}
+	if beat := findBeat(cycleDigest, "f1"); beat != nil && beat.CoinDelta != 0 {
+		t.Errorf("f1 CoinDelta = %d, want 0", beat.CoinDelta)
+	}
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	if got := cycleDigest.Cross[0].Interceptions; !slices.Equal(got, []domain.SpecialEffectType{domain.SpecialRestoreAsset}) {
+		t.Errorf("Interceptions = %v, want [restore_asset]", got)
+	}
+}
+
+func TestAbilityConditionJoinsCrossAbilityStrike(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+				FactionID: "f2", AssetID: "b-asset-1", Condition: domain.Condition{Kind: domain.ConditionDisabled, SourceAssetID: "m1"},
+				Cause: "ability", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAbilityStrike {
+		t.Errorf("cross event = %+v, want CrossAbilityStrike f1 -> f2", crossEvent)
+	}
+	if len(crossEvent.Conditions) != 1 || crossEvent.Conditions[0] != domain.ConditionDisabled {
+		t.Errorf("Conditions = %v, want [disabled]", crossEvent.Conditions)
+	}
+}
+
+func TestLevyCoinRemovalIsALossAndAnAbilityStrike(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "asset_removed", domain.AssetRemoved{
+				FactionID: "f2", AssetID: "b-asset-1", Cause: "levy_coin", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	beat := findBeat(cycleDigest, "f2")
+	if beat == nil || len(beat.Losses) != 1 || beat.Losses[0].AssetID != "b-asset-1" || beat.Losses[0].Cause != "levy_coin" {
+		t.Errorf("f2 beat = %+v, want one levy_coin loss of b-asset-1", beat)
+	}
+	if len(cycleDigest.Cross) != 1 {
+		t.Fatalf("want 1 cross event, got %d", len(cycleDigest.Cross))
+	}
+	crossEvent := cycleDigest.Cross[0]
+	if crossEvent.Attacker.ID != "f1" || crossEvent.Defender.ID != "f2" || crossEvent.Kind != CrossAbilityStrike {
+		t.Errorf("cross event = %+v, want CrossAbilityStrike f1 -> f2", crossEvent)
+	}
+}
+
+func TestGovernmentChangeAndTagLoss(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "world_government_changed", domain.WorldGovernmentChanged{
+				WorldID: "Krylos", FromFactionID: "f2", ToFactionID: "f1", Cause: "goal_completed", CausedByFactionID: "f1",
+			}),
+			mutRec(t, "tag_removed", domain.TagRemoved{
+				FactionID: "f2", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment, Name: "Planetary Government"},
+				Cause: "goal_completed", CausedByFactionID: "f1",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	ruler := findBeat(cycleDigest, "f1")
+	if ruler == nil || !slices.ContainsFunc(ruler.GoalEvents, func(event GoalEvent) bool {
+		return event.Kind == GoalWorldGoverned && event.ToWorld == "Krylos"
+	}) {
+		t.Errorf("f1 beat = %+v, want a GoalWorldGoverned event for Krylos", ruler)
+	}
+	loser := findBeat(cycleDigest, "f2")
+	if loser == nil || !slices.ContainsFunc(loser.GoalEvents, func(event GoalEvent) bool {
+		return event.Kind == GoalTagLost && event.TagName == "Planetary Government"
+	}) {
+		t.Errorf("f2 beat = %+v, want a GoalTagLost event", loser)
+	}
+	for _, beat := range []*FactionBeat{ruler, loser} {
+		if beat != nil && len(beat.Notes) != 0 {
+			t.Errorf("%s Notes = %v, want none", beat.Faction.ID, beat.Notes)
+		}
+	}
+}
+
+func TestPermissionRefusedIsARefusalLine(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"gunships": {ID: "gunships", Name: "Gunships"}}}
+	records := []domain.EventRecord{
+		eventRec("f1", mutRec(t, "permission_refused", domain.PermissionRefused{
+			FactionID: "f1", WorldID: "Krylos", DefinitionID: "gunships", DecidedByFactionID: "f2", Cause: "buy", CausedByFactionID: "f1",
+		})),
+		eventRec("f1", mutRec(t, "permission_refused", domain.PermissionRefused{
+			FactionID: "f1", WorldID: "Hadrian", DefinitionID: "gunships", Cause: "buy", CausedByFactionID: "f1",
+		})),
+	}
+	cycleDigest := buildOne(t, records, factionState, rb)
+
+	beat := findBeat(cycleDigest, "f1")
+	if beat == nil {
+		t.Fatal("f1 is quiet, want a refusal to make it active")
+	}
+	want := []RefusalEvent{
+		{AssetName: "Gunships", World: "Krylos", DecidedBy: "Bravo"},
+		{AssetName: "Gunships", World: "Hadrian"},
+	}
+	if !reflect.DeepEqual(beat.Refusals, want) {
+		t.Errorf("Refusals = %+v, want %+v", beat.Refusals, want)
+	}
+	if len(beat.Notes) != 0 {
+		t.Errorf("Notes = %v, want none", beat.Notes)
+	}
+}
+
+func TestMovementOrderHeldIsAHoldLine(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha"})
+	factionState.Factions["f1"].Assets = map[string]*domain.Asset{"t1": {ID: "t1", DefinitionID: "ship"}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"ship":   {ID: "ship", Name: "Freighter"},
+		"troops": {ID: "troops", Name: "Troops"},
+	}}
+	records := []domain.EventRecord{eventRec("f1",
+		mutRec(t, "permission_refused", domain.PermissionRefused{
+			FactionID: "f1", WorldID: "Krylos", DefinitionID: "troops", Cause: domain.PermissionCauseArrival, CausedByFactionID: "f1",
+		}),
+		mutRec(t, "movement_order_held", domain.MovementOrderHeld{
+			FactionID: "f1", AssetID: "t1", WorldID: "Krylos", NewStepIdx: 1, Reason: domain.HoldRefused, Cause: domain.CauseMovementTick, CausedByFactionID: "f1",
+		}),
+	)}
+
+	beat := findBeat(buildOne(t, records, factionState, rb), "f1")
+
+	if beat == nil {
+		t.Fatal("f1 is quiet, want a hold to make it active")
+	}
+	if want := []RefusalEvent{{AssetName: "Troops", World: "Krylos", Landing: true}}; !reflect.DeepEqual(beat.Refusals, want) {
+		t.Errorf("Refusals = %+v, want %+v", beat.Refusals, want)
+	}
+	if want := []HoldEvent{{AssetName: "Freighter", World: "Krylos", Reason: domain.HoldRefused}}; !reflect.DeepEqual(beat.Holds, want) {
+		t.Errorf("Holds = %+v, want %+v", beat.Holds, want)
+	}
+	if len(beat.Notes) != 0 {
+		t.Errorf("Notes = %v, want none", beat.Notes)
+	}
+}
+
+func TestPermissionWithdrawnCarriesItsReason(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"gunships": {ID: "gunships", Name: "Gunships"}}}
+	records := []domain.EventRecord{eventRec("f1", mutRec(t, "permission_refused", domain.PermissionRefused{
+		FactionID: "f1", WorldID: "Krylos", DefinitionID: "gunships", DecidedByFactionID: "f2", Reason: domain.RefusalWithdrawn, Cause: "buy", CausedByFactionID: "f1",
+	}))}
+
+	beat := findBeat(buildOne(t, records, factionState, rb), "f1")
+
+	want := []RefusalEvent{{AssetName: "Gunships", World: "Krylos", DecidedBy: "Bravo", Reason: domain.RefusalWithdrawn}}
+	if beat == nil || !reflect.DeepEqual(beat.Refusals, want) {
+		t.Errorf("beat = %+v, want Refusals %+v", beat, want)
+	}
+}
+
+func TestLockedOutIsAConditionOnTheCrossEvent(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
+	records := []domain.EventRecord{eventRec("f1", mutRec(t, "asset_condition_applied", domain.AssetConditionApplied{
+		FactionID: "f1", AssetID: "lock",
+		Condition: domain.Condition{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "f2"},
+		Cause:     "lock_out", CausedByFactionID: "f1",
+	}))}
+
+	cycleDigest := buildOne(t, records, factionState, minRulebook(nil))
+
+	var found bool
+	for _, ce := range cycleDigest.Cross {
+		if ce.Attacker.ID == "f1" && ce.Defender.ID == "f2" && slices.Contains(ce.Conditions, domain.ConditionLockedOut) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Cross = %+v, want f1 → f2 carrying locked_out", cycleDigest.Cross)
+	}
 }

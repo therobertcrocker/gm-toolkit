@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/BurntSushi/toml"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -13,7 +14,39 @@ type FactionState struct {
 	CampaignID  string                     `toml:"campaign_id"`
 	CycleNumber int                        `toml:"cycle_number"`
 	Factions    map[string]*domain.Faction `toml:"factions"`
-	CurrentTurn *domain.TurnState          `toml:"current_turn,omitempty"`
+	// Governments maps a world ID to the faction that rules it. A world with no
+	// entry is independent: no tracked faction governs it (A.001.6 overview Decision 8).
+	Governments map[string]string `toml:"governments,omitempty"`
+	CurrentTurn *domain.TurnState `toml:"current_turn,omitempty"`
+}
+
+// Ruler returns the ID of the faction that governs worldID, or "" for an
+// independent world. A nil state has no governments.
+func (factionState *FactionState) Ruler(worldID string) string {
+	if factionState == nil {
+		return ""
+	}
+	return factionState.Governments[worldID]
+}
+
+// IsIndependent reports whether no tracked faction governs worldID.
+func (factionState *FactionState) IsIndependent(worldID string) bool {
+	return factionState.Ruler(worldID) == ""
+}
+
+// WorldsRuledBy returns the worlds factionID governs, in ID order.
+func (factionState *FactionState) WorldsRuledBy(factionID string) []string {
+	if factionState == nil {
+		return nil
+	}
+	var worlds []string
+	for worldID, ruler := range factionState.Governments {
+		if ruler == factionID {
+			worlds = append(worlds, worldID)
+		}
+	}
+	slices.Sort(worlds)
+	return worlds
 }
 
 // Load reads campaign state from path. Returns an empty State if the file does not exist.

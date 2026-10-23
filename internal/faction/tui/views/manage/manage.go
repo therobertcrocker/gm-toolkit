@@ -85,7 +85,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case msgs.CreatedMsg:
-		if err := state.CreateFaction(m.paths.StatePath, m.factionState, msg.Faction); err != nil {
+		if err := state.CreateFaction(m.paths.StatePath, m.factionState, msg.Faction, msg.GovernedWorldID); err != nil {
 			m.saveErr = err
 			return m, nil
 		}

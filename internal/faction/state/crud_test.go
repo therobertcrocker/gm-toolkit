@@ -44,7 +44,7 @@ func TestCreateFaction(t *testing.T) {
 				fs.Factions[tc.seedID] = minimalFaction(tc.seedID)
 			}
 
-			err := CreateFaction(path, fs, minimalFaction(tc.id))
+			err := CreateFaction(path, fs, minimalFaction(tc.id), "")
 
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("CreateFaction() error = %v, want %v", err, tc.wantErr)
@@ -98,7 +98,7 @@ func TestCreateFactionSaveFailureRollsBack(t *testing.T) {
 	dirPath := t.TempDir()
 	fs := newTestState()
 
-	err := CreateFaction(dirPath, fs, minimalFaction("doomed"))
+	err := CreateFaction(dirPath, fs, minimalFaction("doomed"), "")
 	if err == nil {
 		t.Fatal("CreateFaction() expected save error, got nil")
 	}
@@ -126,7 +126,7 @@ func TestCreateDeleteRoundTrip(t *testing.T) {
 	fs := newTestState()
 	faction := minimalFaction("round-trip-faction")
 
-	if err := CreateFaction(path, fs, faction); err != nil {
+	if err := CreateFaction(path, fs, faction, ""); err != nil {
 		t.Fatalf("CreateFaction() error: %v", err)
 	}
 
@@ -148,5 +148,80 @@ func TestCreateDeleteRoundTrip(t *testing.T) {
 	}
 	if _, ok := reloaded.Factions[faction.ID]; ok {
 		t.Errorf("faction %q still present after delete + load", faction.ID)
+	}
+}
+
+func TestCreateFactionRecordsGovernment(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "faction_state.toml")
+	fs := newTestState()
+
+	if err := CreateFaction(path, fs, minimalFaction("rulers"), "Krylos"); err != nil {
+		t.Fatalf("CreateFaction() error: %v", err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if got := loaded.Ruler("Krylos"); got != "rulers" {
+		t.Errorf("Ruler(Krylos) after load = %q, want rulers", got)
+	}
+}
+
+func TestCreateFactionRefusesAGovernedWorld(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "faction_state.toml")
+	fs := newTestState()
+	fs.Factions["rulers"] = minimalFaction("rulers")
+	fs.Governments = map[string]string{"Krylos": "rulers"}
+
+	err := CreateFaction(path, fs, minimalFaction("usurpers"), "Krylos")
+	if !errors.Is(err, ErrWorldAlreadyGoverned) {
+		t.Fatalf("CreateFaction() error = %v, want %v", err, ErrWorldAlreadyGoverned)
+	}
+	if _, exists := fs.Factions["usurpers"]; exists {
+		t.Error("usurpers created, want no faction after a refused world")
+	}
+	if got := fs.Ruler("Krylos"); got != "rulers" {
+		t.Errorf("Ruler(Krylos) = %q, want rulers untouched", got)
+	}
+}
+
+func TestCreateFactionSaveFailureRollsBackGovernment(t *testing.T) {
+	fs := newTestState()
+
+	if err := CreateFaction(t.TempDir(), fs, minimalFaction("doomed"), "Krylos"); err == nil {
+		t.Fatal("CreateFaction() expected save error, got nil")
+	}
+	if got := fs.Ruler("Krylos"); got != "" {
+		t.Errorf("Ruler(Krylos) after failed create = %q, want none", got)
+	}
+}
+
+func TestDeleteFactionClearsItsGovernments(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "faction_state.toml")
+	fs := newTestState()
+	fs.Factions["rulers"] = minimalFaction("rulers")
+	fs.Governments = map[string]string{"Krylos": "rulers", "Hadrian": "others"}
+
+	if err := DeleteFaction(path, fs, "rulers"); err != nil {
+		t.Fatalf("DeleteFaction() error: %v", err)
+	}
+	if got := fs.Ruler("Krylos"); got != "" {
+		t.Errorf("Ruler(Krylos) = %q, want none", got)
+	}
+	if got := fs.Ruler("Hadrian"); got != "others" {
+		t.Errorf("Ruler(Hadrian) = %q, want others untouched", got)
+	}
+}
+
+func TestDeleteFactionSaveFailureRestoresGovernments(t *testing.T) {
+	fs := newTestState()
+	fs.Factions["rulers"] = minimalFaction("rulers")
+	fs.Governments = map[string]string{"Krylos": "rulers"}
+
+	if err := DeleteFaction(t.TempDir(), fs, "rulers"); err == nil {
+		t.Fatal("DeleteFaction() expected save error, got nil")
+	}
+	if got := fs.Ruler("Krylos"); got != "rulers" {
+		t.Errorf("Ruler(Krylos) after failed delete = %q, want rulers", got)
 	}
 }

@@ -71,6 +71,8 @@ looks up the about-to-be-destroyed rival assets in state to read their category;
 if the destructive mutations had already applied, the assets would be gone and
 the kills uncountable. The orchestrator therefore folds `UpdateProgress`'s output
 into the action's mutations and applies the combined batch in one pass.
+`UpdateProgress` reads the batch after `dispatch.MutationReactors`, so a reactor's
+capture or removal counts as progress; reactors do not see goal output.
 
 ### Worked example — Planetary Seizure
 
@@ -78,14 +80,19 @@ into the action's mutations and applies the combined batch in one pass.
 `ProcessPhase`:
 
 - **Phase 0 → 1:** the [`Seize Planet`](actions.md) action emits `GoalInitiated`
-  to start the goal on a contested world.
+  to start the goal on a contested world the faction does not govern.
 - **Phase 1 (combat):** `CheckLock` returns `LockRestrictActions` allowing only
   `Attack`. `UpdateProgress` watches for the moment no unstealthed rival asset
   remains on the target world and emits `GoalPhaseAdvanced` to phase 2.
 - **Phase 2 (occupation):** `CheckLock` ticks `TurnsRemaining` down each turn,
   abandons the goal if the faction loses its foothold, and on the final tick
-  emits the completion bundle — `GoalCompleted`, `XPAwarded`, and a
-  `TagAdded` granting the `T-011` Planetary Government [tag](effect-mutation.md).
+  emits the completion bundle — `GoalCompleted`, `XPAwarded`, a
+  `WorldGovernmentChanged` that makes the faction the world's ruler in the
+  government record, a `TagAdded` for the `T-011` Planetary Government
+  [tag](effect-mutation.md) when the faction does not hold it, and a `TagRemoved`
+  for a previous ruler that governs no other world. The XP reads the previous
+  ruler's ratings (half their average, at least 1); a world with no faction ruler
+  gives 1.
 
 ## Goals catalogue
 
@@ -105,7 +112,7 @@ turn lock; the rest run `LockNone`. Completion awards XP per the rules in
 | Blood the Enemy (G-006) | Dealing damage to rival assets and bases | Cumulative damage reaches Force + Cunning + Wealth |
 | Peaceable Kingdom (G-007) | Passing turns without attacking (resets to 0 if it attacks) | Four uninterrupted peaceful turns |
 | Destroy the Foe (G-008) | Reducing the target faction's HP | The target faction reaches 0 HP |
-| Inside Enemy Territory (G-009) | Stealthing assets on rival-government worlds | Stealthed assets reach the faction's Cunning rating |
+| Inside Enemy Territory (G-009) | Stealthing assets on worlds a rival governs, or on a rival's independent homeworld | Stealthed assets reach the faction's Cunning rating |
 | Invincible Valor (G-010) | Destroying a Force asset rated above the faction's own Force | Any such kill — single turn |
 | Wealth of Worlds (G-011) | Spending Coin to raise rival Base influence | Cumulative spend reaches 4 × Wealth |
 | Change Homeworld (G-012) | Transit countdown that skips the faction's turns | Arrival at the destination world |
@@ -125,7 +132,12 @@ pattern paying off as near-identical small types.
 - **`UpdateProgress` runs before mutations apply.** The ordering is a real data
   dependency, not convention: progress is counted by inspecting
   about-to-be-destroyed entities in live state. Apply-after-inspect keeps the
-  kill counts correct. (Frozen log 110–123.)
+  kill counts correct. (Frozen log 110–123.) It runs after `MutationReactors`,
+  so a reactor's capture or removal counts as progress (Treachery clears
+  Planetary Seizure's phase 1 in the same turn as a kill does), and no reactor
+  reads goal output. Rejected: goals before reactors, which hid a capture until
+  the next `CheckLock`. (A.001.6 overview Decision 17; Effort 1 Decision Record
+  12.)
 - **`locks` is a separate leaf package.** `LockType`/`GoalLock` live in their own
   package because both `goal` (the engine) and `goals` (the handlers) reference
   them, and `goal` already imports `goals`. A shared leaf breaks the import cycle
@@ -134,7 +146,7 @@ pattern paying off as near-identical small types.
   registered handler returns `LockNone` and no progress — flavor data a GM can add
   without writing Go, the same silent-skip contract as tags and effects.
 - **Goals emit, never mutate.** Every handler returns `[]domain.Mutation`;
-  completion, XP, ticks, phase advances, even the Planetary Government tag are all
+  completion, XP, ticks, phase advances, even a world's change of government are all
   expressed as mutations the orchestrator applies. The goal engine never touches
   faction state directly.
 

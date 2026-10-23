@@ -59,6 +59,51 @@ func (mr *MockCollectorMockRecorder) ConfirmAbilityApplied(asset, def any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmAbilityApplied", reflect.TypeOf((*MockCollector)(nil).ConfirmAbilityApplied), asset, def)
 }
 
+// ConfirmCounterstrike mocks base method.
+func (m *MockCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source, attacker *domain.Asset) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmCounterstrike", defenderFaction, source, attacker)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmCounterstrike indicates an expected call of ConfirmCounterstrike.
+func (mr *MockCollectorMockRecorder) ConfirmCounterstrike(defenderFaction, source, attacker any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmCounterstrike", reflect.TypeOf((*MockCollector)(nil).ConfirmCounterstrike), defenderFaction, source, attacker)
+}
+
+// ConfirmPayment mocks base method.
+func (m *MockCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmPayment", offer)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmPayment indicates an expected call of ConfirmPayment.
+func (mr *MockCollectorMockRecorder) ConfirmPayment(offer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmPayment", reflect.TypeOf((*MockCollector)(nil).ConfirmPayment), offer)
+}
+
+// ConfirmPermissionContest mocks base method.
+func (m *MockCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmPermissionContest", offer)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmPermissionContest indicates an expected call of ConfirmPermissionContest.
+func (mr *MockCollectorMockRecorder) ConfirmPermissionContest(offer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmPermissionContest", reflect.TypeOf((*MockCollector)(nil).ConfirmPermissionContest), offer)
+}
+
 // ConfirmRedirectToBase mocks base method.
 func (m *MockCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	m.ctrl.T.Helper()
@@ -101,6 +146,36 @@ func (m *MockCollector) ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll,
 func (mr *MockCollectorMockRecorder) ConfirmRivalFreeAttack(rival, rivalRoll, factionRoll any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmRivalFreeAttack", reflect.TypeOf((*MockCollector)(nil).ConfirmRivalFreeAttack), rival, rivalRoll, factionRoll)
+}
+
+// ConfirmSacrifice mocks base method.
+func (m *MockCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmSacrifice", offer)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmSacrifice indicates an expected call of ConfirmSacrifice.
+func (mr *MockCollectorMockRecorder) ConfirmSacrifice(offer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmSacrifice", reflect.TypeOf((*MockCollector)(nil).ConfirmSacrifice), offer)
+}
+
+// RequestPermission mocks base method.
+func (m *MockCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RequestPermission", request)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RequestPermission indicates an expected call of RequestPermission.
+func (mr *MockCollectorMockRecorder) RequestPermission(request any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestPermission", reflect.TypeOf((*MockCollector)(nil).RequestPermission), request)
 }
 
 // SelectAbilityAssets mocks base method.
@@ -146,6 +221,21 @@ func (m *MockCollector) SelectAsset(assets []*domain.Asset, arg1 *rulebook.Ruleb
 func (mr *MockCollectorMockRecorder) SelectAsset(assets, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAsset", reflect.TypeOf((*MockCollector)(nil).SelectAsset), assets, arg1)
+}
+
+// SelectAssetToLose mocks base method.
+func (m *MockCollector) SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, arg2 *rulebook.Rulebook) (*domain.Asset, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectAssetToLose", faction, assets, arg2)
+	ret0, _ := ret[0].(*domain.Asset)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SelectAssetToLose indicates an expected call of SelectAssetToLose.
+func (mr *MockCollectorMockRecorder) SelectAssetToLose(faction, assets, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAssetToLose", reflect.TypeOf((*MockCollector)(nil).SelectAssetToLose), faction, assets, arg2)
 }
 
 // SelectAttackers mocks base method.

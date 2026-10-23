@@ -91,11 +91,12 @@ output.
 `Dispatch` is itself a **per-step pipeline**, not a single handler call. An
 ability is a sequence of `ability.steps`; each step runs *target-selection → gate
 (stat-contest or die-roll) → terminal effect*, and the chain **halts on a failed
-gate** so a missed contest fizzles the rest. Across steps the dispatcher threads a
-**working clone** of the acting faction, re-projecting each step's own mutations
-onto the clone via the same `mutation.Apply` the real `Output()` runs — so a later
-step reads what an earlier one changed without a parallel projection that could
-drift. A pre-flight pass bails the whole ability to a `confirmApplied` no-op if
+gate** so a missed contest fizzles the rest. The action builds one **view** of every
+faction (`ability.NewView`) and every `Dispatch` re-projects each step's mutations
+onto it via the same `mutation.Apply` the real `Output()` runs — so a later step, or a
+later asset in the same action, reads what an earlier one changed without a parallel
+projection that could drift. Rolls still spend hook budgets on the real factions.
+A pre-flight pass bails the whole ability to a `confirmApplied` no-op if
 *any* step's effect is not yet built, so a built early step never half-applies
 before a later unbuilt one short-circuits.
 
@@ -109,17 +110,17 @@ determined once selected. The rules behind the numbers live in
 
 | Action | What it does | Prompts → emits |
 |--------|--------------|-----------------|
-| Sell Asset | Remove an asset for half its Cost back | `SelectAsset` → `AssetRemoved`, `CoinDelta` |
+| Sell Asset | Remove an asset for half its Cost back; a sheltered asset cannot be sold | `SelectAsset` → `AssetRemoved`, `CoinDelta` |
 | Repair Faction | Heal the faction's own HP, free | — → `FactionHPDelta` |
-| Repair Asset | Heal damaged assets; cost escalates per heal on the same asset | `SelectRepairOrders` → `AssetHPDelta`, `CoinDelta` |
-| Buy Asset | Purchase an asset onto a world, inactive until next turn | `SelectBuyOrder` (`SelectAsset` for a stealth target) → `AssetAdded`, `CoinDelta` (`AssetStealthApplied`, `PurchaseDiscountConsumed`) |
-| Refit Asset | Swap an asset for another of its category, paying the cost difference | `SelectRefitOrder` → `AssetRemoved`, `AssetAdded`, `CoinDelta` |
-| Attack | Resolve asset combat against rivals at a world/hex; damage may redirect to a base | `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase` → `AssetHPDelta`, `AssetRemoved`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed`, `AssetStealthCleared` |
+| Repair Asset | Heal damaged assets; cost escalates per heal on the same asset, and a `RepairCostModifier` can lower each asset's price | `SelectRepairOrders` → `AssetHPDelta`, `CoinDelta` (`AssetConditionCleared` when a sheltered asset reaches full HP) |
+| Buy Asset | Purchase an asset onto a world, inactive until next turn; a quality (Stealth) adds no asset and acts on one the faction holds there; a permission asset asks the world's government after the choice | `SelectBuyOrder` (`SelectAsset` for a quality's target, `RequestPermission`) → `AssetAdded`, `CoinDelta` (a quality's effect mutations, such as `AssetStealthApplied`, in place of `AssetAdded`; `PurchaseDiscountConsumed`; only `PermissionRefused` on a refusal) |
+| Refit Asset | Swap an asset for another of its category, paying the cost difference; a sheltered asset or one in transit cannot be refit; a permission replacement asks the world's government | `SelectRefitOrder` (`RequestPermission`) → `AssetRemoved`, `AssetAdded`, `CoinDelta` (only `PermissionRefused` on a refusal) |
+| Attack | Resolve asset combat against rivals at a world/hex; damage may redirect to a base | `SelectAttackers`, `SelectDefender`, `ConfirmRedirectToBase` (`ConfirmSacrifice`, `ConfirmPayment` for a Cat 6 interceptor) → `AssetHPDelta`, `AssetRemoved`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed`, `AssetStealthCleared` (a Cat 6 interception's mutations in place of `AssetRemoved`) |
 | Expand Influence | Place or reinforce a Base of Influence; a new base draws rival free attacks | `SelectExpandInfluenceOrder`, `ConfirmRivalFreeAttack`, `SelectBaseAttackers` → `BaseAdded`, `BaseHealed`, `BaseExpanded`, `CoinDelta`, `BaseHPDelta`, `FactionHPDelta`, `BaseDestroyed` |
 | Bribe | Spend Coin to raise a rival Base's influence | `SelectBribeTarget` → `CoinDelta`, `InfluenceDelta` |
 | Use Asset Ability | Activate the special ability of one or more A-flagged assets | `SelectAbilityAssets` (+ ability-specific prompts) → varies by ability |
 | Abandon Goal | Drop the active goal, forfeiting this turn's income | — → `CoinDelta`, `GoalAbandoned` |
-| Seize Planet | Begin the Planetary Seizure goal (G-004) on a contested world | `SelectSeizeTarget` → `GoalInitiated` |
+| Seize Planet | Begin the Planetary Seizure goal (G-004) on a contested world the faction does not govern | `SelectSeizeTarget` → `GoalInitiated` |
 | Change Homeworld | Begin the Change Homeworld goal (G-012) toward an owned base world | `SelectChangeHomeworldTarget` → `GoalInitiated`, `GoalPhaseAdvanced` |
 
 `Seize Planet` and `Change Homeworld` are *goal-initiating* actions — they don't
@@ -135,9 +136,35 @@ can cascade to bases and faction HP.
   collector, so an action never carries state between turns and always talks to
   the live prompt surface. (Frozen log 46–53.)
 - **`RegisterDefaultActions` takes explicit dependencies.** The roller resolver,
-  hook registry, world engine, and rulebook are passed as parameters so the
-  `actions` package does not import `engine`. The parent engine owns registration
-  without an import cycle.
+  hook registry, world engine, rulebook and effects engine are passed as
+  parameters so the `actions` package does not import `engine`. The parent engine
+  owns registration without an import cycle. Attack raises the matchup route
+  itself and Buy Asset fires a quality's effect itself, so both take the effects
+  engine. (A.001.6 overview Decision 21; Effort 4 Decision 2.)
+- **An asset that can act and an asset that can be attacked are two tests.**
+  `Asset.Active()` (ready, maintained, alive, not sheltered, not disabled) gates
+  every use: an attack, a counter, an ability, an S effect. `Asset.Targetable()`
+  leaves out only the disabled test, and the defender filter reads it, so a
+  disabled asset stays a target ("disabled and useless", not untouchable). A
+  sheltered asset fails both. `Asset.Hidden()` (stealthed or sheltered) is the
+  third test, for what a rival can find. (A.001.6 Effort 3 Decisions 1–2 and
+  Decision Record 2; Effort 2 Decision 11 and Decision Record 8.)
+- **A step with no target fizzles its asset, never the action.** An ability whose
+  first step has no candidate is not offered (`ability.HasTargets`). With one view
+  per action, an earlier asset can use up a later asset's targets, so
+  `resolveTarget` returns `errNoTargets` before any prompt and `Dispatch` halts
+  only that asset's chain. To drop the action would undo the earlier assets'
+  results after a rival may have answered a pay prompt. For the same reason, a
+  prompt asked of another faction inside an action cannot be canceled (see
+  [overlays](../interface/overlays.md)). (A.001.6 Effort 3 Decision 4, Decision
+  Records 1, 5 and 7.)
+- **A quality is a purchase that adds no asset.** Stealth (`quality = true`) is
+  bought for an asset the faction holds on the world. Buy Asset fires the
+  quality's one `on_purchase` entry on a target from the registrar's `Targets`
+  (`FireQuality`), so the registrar, not Buy Asset, defines what a quality can act
+  on. A quality is never a refit, a starting asset or a purchase-enabler pick,
+  because each of those would make a 0-HP asset of it. This retired the hard-coded
+  Stealth ID in Buy Asset. (A.001.6 Effort 4 Decisions 2–3, Decision Record 5.)
 - **The roller is resolved at invocation time, not captured.** Factories call
   `resolveRoller()` when the action is built (turn time), not when registered, so
   a test can swap `Engine.Rand` for a deterministic roller after construction and
@@ -164,12 +191,13 @@ can cascade to bases and faction HP.
   ability registry ([ability catalog](ability-catalog.md)) builds on.
 - **Ability dispatch is a per-step pipeline that halts on failure.** Each
   `ability.steps` entry runs target → gate → effect; the chain stops at the first
-  failed gate, and a working clone of the acting faction carries each step's
-  mutations forward so a later step reads what an earlier one changed. Abilities
+  failed gate, and one view of every faction, built once per action, carries each
+  step's mutations forward, so a later step or a later asset reads what an earlier
+  one changed (A.001.6 Effort 3, Decision 3). Abilities
   must therefore author ungated steps (relocate, roll-table) before gated ones.
   (Effort 1 Plan, Decision 1.)
 - **Effect handlers receive the world engine by parameter, not import.** Movement
-  effects (relocate, the purchase-enabler's government check) need spatial queries,
+  effects (relocate, the purchase-enabler's cost chain) need spatial queries,
   so `Dispatch` threads the `*world.WorldEngine` into each step's `StepContext` —
   nil for non-spatial effects — keeping `actions/ability/` free of an `engine`
   import the same way `RegisterDefaultActions` is.
@@ -177,7 +205,10 @@ can cascade to bases and faction HP.
   the new asset through `domain.NewPurchasedAsset` and gate it through
   `domain.CanPurchase` / `PurchaseTerms`, and both consume a
   `PendingPurchaseDiscount` under the same half-base-price floor clamp — so the two
-  purchase surfaces cannot drift on cost, permission, or discount rules. Every
+  purchase surfaces cannot drift on cost or discount rules. Permission is not a
+  menu filter: Buy Asset, the purchase-enabler and Refit each ask
+  `dispatch.RequestPermission` after the choice, and a refusal ends the purchase
+  with a `PermissionRefused` record and no charge (A.001.6 Effort 4, D-35). Every
   purchase path, the Buy Asset menu included, prices through the full
   `ResolveAssetCost` chain, never `def.Cost`: once a cost hook can raise a price
   (`cost_surcharge`), a check against the base price offers a def that `Resolve`

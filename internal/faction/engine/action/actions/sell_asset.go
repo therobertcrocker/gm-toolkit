@@ -26,11 +26,11 @@ func (sa *SellAsset) Name() string { return "Sell Asset" }
 // Validate confirms the faction has at least one sellable asset.
 // Bases of Influence are excluded once they are modelled.
 func (sa *SellAsset) Validate(faction *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
-	return len(faction.Assets) > 0
+	return len(sellableAssets(faction)) > 0
 }
 
 func (sa *SellAsset) Inputs(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
-	selected, err := sa.collector.SelectAsset(domain.SortedAssets(faction), rulebook)
+	selected, err := sa.collector.SelectAsset(sellableAssets(faction), rulebook)
 	if err != nil {
 		return fmt.Errorf("sell asset: %w", err)
 	}
@@ -49,6 +49,19 @@ func (sa *SellAsset) Resolve(_ *domain.Faction, _ *state.FactionState, rulebook 
 	}
 	sa.saleValue = def.Cost / 2
 	return nil
+}
+
+// sellableAssets is faction's assets in ID order, without the sheltered ones: a
+// sheltered asset cannot be used until a repair brings it to full HP (Effort 2
+// Decision Record 5).
+func sellableAssets(faction *domain.Faction) []*domain.Asset {
+	var sellable []*domain.Asset
+	for _, asset := range domain.SortedAssets(faction) {
+		if !asset.HasCondition(domain.ConditionSheltered) {
+			sellable = append(sellable, asset)
+		}
+	}
+	return sellable
 }
 
 func (sa *SellAsset) Output() ([]domain.Mutation, error) {

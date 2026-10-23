@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/huh"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
@@ -49,6 +50,23 @@ func NewConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base
 	return NewConfirm(title, header, "Redirect to base", "Hit the asset")
 }
 
+// NewConfirmCounterstrike asks the defender whether Cracked Comms turns the
+// attacking asset on itself. Answer: bool.
+func NewConfirmCounterstrike(defenderFaction *domain.Faction, source, attacker *domain.Asset, rb *rulebook.Rulebook) ConfirmOverlay {
+	title := fmt.Sprintf("Turn %s's attack back on itself?", assetName(attacker, rb))
+	header := fmt.Sprintf("%s defended with %s", defenderFaction.Name, assetName(source, rb))
+	return NewConfirm(title, header, "Turn it", "Let it pass")
+}
+
+// NewConfirmSacrifice asks the owner whether to give up one asset to save another
+// from a killing blow (False Front). Its header names the faction asked, which is
+// often not the acting one. Esc does nothing. Answer: bool.
+func NewConfirmSacrifice(offer hooks.SacrificeOffer, rb *rulebook.Rulebook) NoCancelConfirm {
+	title := fmt.Sprintf("Sacrifice %s to save %s?", assetName(offer.Sacrifice, rb), assetName(offer.Saves, rb))
+	header := fmt.Sprintf("Asked of %s", offer.Owner.Name)
+	return NoCancelConfirm{NewConfirm(title, header, "Sacrifice", "Let it fall")}
+}
+
 // attackerLabel renders "<name> · <stat> · dmg NdM(±K)" for a committable attacker.
 func attackerLabel(asset *domain.Asset, rb *rulebook.Rulebook) string {
 	name := assetName(asset, rb)
@@ -56,7 +74,11 @@ func attackerLabel(asset *domain.Asset, rb *rulebook.Rulebook) string {
 	if !ok || def.Attack == nil {
 		return name
 	}
-	return fmt.Sprintf("%s · %s · dmg %s", name, def.Attack.AttackerStat, diceLabel(def.Attack.Damage))
+	damage := "special"
+	if def.Attack.Damage != nil {
+		damage = "dmg " + diceLabel(*def.Attack.Damage)
+	}
+	return fmt.Sprintf("%s · %s · %s", name, def.Attack.AttackerStat, damage)
 }
 
 func diceLabel(d domain.DiceRoll) string {

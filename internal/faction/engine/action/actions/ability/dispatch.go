@@ -1,6 +1,8 @@
 package ability
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -32,12 +34,31 @@ type StepContext struct {
 // EffectHandler emits the mutations for one resolved step.
 type EffectHandler func(StepContext) ([]domain.Mutation, error)
 
+// NewView copies every faction, so Dispatch can apply each step's mutations and a
+// later step, or a later asset in the same action, reads what changed. Rolls spend
+// budgets on the real factions, not on the view (Effort 3 Decision 3).
+func NewView(factionState *state.FactionState) *state.FactionState {
+	view := &state.FactionState{Factions: map[string]*domain.Faction{}}
+	if factionState == nil {
+		return view
+	}
+	*view = *factionState
+	view.Factions = make(map[string]*domain.Faction, len(factionState.Factions))
+	for id, faction := range factionState.Factions {
+		view.Factions[id] = faction.Clone()
+	}
+	return view
+}
+
 var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectRevealStealth:    revealStealth,
 	domain.EffectCoinDelta:        coinDelta,
 	domain.EffectPurchaseDiscount: purchaseDiscount,
 	domain.EffectRelocate:         relocateAssets,
 	domain.EffectPurchaseEnabler:  purchaseEnabler,
+	domain.EffectDisableAsset:     disableAsset,
+	domain.EffectBlockAttack:      blockAttack,
+	domain.EffectLevyCoin:         levyCoin,
 }
 
 // Dispatch runs an asset's ability as a sequence of steps: resolve the step's
@@ -52,6 +73,7 @@ func Dispatch(
 	roller domain.Roller,
 	registry *hooks.Registry,
 	factionState *state.FactionState,
+	view *state.FactionState,
 	rb *rulebook.Rulebook,
 	worldEngine *world.WorldEngine,
 ) ([]domain.Mutation, error) {
@@ -67,29 +89,30 @@ func Dispatch(
 			return confirmApplied(asset, def, collector)
 		}
 	}
-	var mutations []domain.Mutation
-
-	// Cross-step working view: after each step, re-project the acting faction's own
-	// post-step state (Location, Coin, …) onto a clone via the same mutation.Apply the
-	// real Output() runs — so a later step reads what an earlier step changed, without a
-	// parallel projection that could drift from the engine. The clone, not shared state,
-	// is what each step sees.
-	discardLog := slog.New(slog.DiscardHandler)
-	mutationEngine := mutation.New(discardLog)
-	workingFaction := faction.Clone()
-	workingState := &state.FactionState{Factions: map[string]*domain.Faction{faction.ID: workingFaction}}
+	workingFaction := view.Factions[faction.ID]
+	if workingFaction == nil {
+		return nil, fmt.Errorf("ability: acting faction %s not in the view", faction.ID)
+	}
 	workingAsset := workingFaction.Assets[asset.ID]
 	if workingAsset == nil {
-		workingAsset = asset.Clone()
+		// deliberate: fizzle, not act from real state, because an asset missing from the view was removed by an earlier asset in this action.
+		return nil, nil
 	}
+	discardLog := slog.New(slog.DiscardHandler)
+	mutationEngine := mutation.New(discardLog)
 
+	var mutations []domain.Mutation
 	for _, step := range def.Ability.Steps {
 		handler := handlers[step.Effect]
-		target, err := resolveTarget(step, workingFaction, workingAsset, factionState, collector)
+		target, err := resolveTarget(step, workingFaction, workingAsset, view, collector)
+		// deliberate: fizzle this asset, not fail the action, because an earlier asset in the same action may have used up the targets and its result must stand (Effort 3 Decision Record 1).
+		if errors.Is(err, errNoTargets) {
+			break
+		}
 		if err != nil {
 			return nil, err
 		}
-		// deliberate: the real faction, not workingFaction, because a roll hook's budget spent on the clone would be lost (Effort 3 plan, Decision 12).
+		// deliberate: the real faction, not workingFaction, because a roll hook's budget spent on the view would be lost (Effort 3 plan, Decision 12).
 		passed, err := passesGate(step, faction, workingAsset, target, registry, collector, roller, factionState, rb)
 		if err != nil {
 			return nil, err
@@ -108,7 +131,7 @@ func Dispatch(
 			Step:         step,
 			Target:       target,
 			RollResult:   resolveRoll(step, roller),
-			FactionState: factionState,
+			FactionState: view,
 			Rulebook:     rb,
 			Collector:    collector,
 			WorldEngine:  worldEngine,
@@ -118,11 +141,8 @@ func Dispatch(
 			return nil, err
 		}
 		mutations = append(mutations, stepMutations...)
-		// deliberate: drop the projection's apply error — workingState holds only the
-		// acting faction, so any other-faction mutation (e.g. a reveal clearing a target
-		// faction's stealth) is an expected miss; a genuine miss still surfaces when
-		// Output() applies these same mutations against full state.
-		_ = mutationEngine.Apply(workingState, stepMutations, discardLog)
+		// deliberate: drop the projection's apply error, not return it, because Output() applies the same mutations against real state, where a genuine miss still surfaces.
+		_ = mutationEngine.Apply(view, stepMutations, discardLog)
 		if updated, ok := workingFaction.Assets[asset.ID]; ok {
 			workingAsset = updated
 		}

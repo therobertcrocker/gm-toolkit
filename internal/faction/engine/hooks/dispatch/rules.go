@@ -135,6 +135,50 @@ func GrantedMovementAbilities(registry *hooks.Registry, faction *domain.Faction)
 	return abilities
 }
 
+// PermissionGranted reports whether one of query.Requester's own grant hooks grants
+// the request: its global and faction granters, then those registered against each
+// asset it holds, in asset ID order. A grant serves its owner only, so a rival's
+// assets are never asked; the first yes ends the walk. Returns false when registry
+// is nil.
+func PermissionGranted(registry *hooks.Registry, query hooks.PermissionQuery) bool {
+	if registry == nil {
+		return false
+	}
+	for _, registered := range registry.PermissionGrantersFor(query.Requester.ID, "") {
+		if registered.Hook.GrantsPermission(query) {
+			return true
+		}
+	}
+	for _, asset := range domain.SortedAssets(query.Requester) {
+		for _, registered := range registry.PermissionGrantersForAsset(query.Requester.ID, asset.ID) {
+			if registered.Hook.GrantsPermission(query) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ResolveRepairCost runs the repairer's own RepairCostModifiers, then those
+// registered against each asset it holds, in asset ID order, chaining the query.
+// A repair discount serves its owner only, so a rival's assets are never asked.
+// The cost never drops below 0.
+func ResolveRepairCost(registry *hooks.Registry, repairer *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, baseCost int) int {
+	if registry == nil {
+		return baseCost
+	}
+	query := &hooks.RepairCostQuery{Cost: baseCost, Applied: map[string]bool{}}
+	for _, registered := range registry.RepairCostModifiersFor(repairer.ID, "") {
+		registered.Hook.ModifyRepairCost(repairer, asset, def, query)
+	}
+	for _, held := range domain.SortedAssets(repairer) {
+		for _, registered := range registry.RepairCostModifiersForAsset(repairer.ID, held.ID) {
+			registered.Hook.ModifyRepairCost(repairer, asset, def, query)
+		}
+	}
+	return max(0, query.Cost)
+}
+
 // ResolveTie consults registered TieResolvers for the attacker, then the
 // defender; first registration wins. Returns TieStandard when no resolvers
 // match.

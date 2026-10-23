@@ -48,8 +48,27 @@ func TestLoad(t *testing.T) {
 			t.Fatal("expected attack profile, got nil")
 		}
 		d := asset.Attack.Damage
+		if d == nil {
+			t.Fatal("expected damage, got nil")
+		}
 		if d.NumDice != 1 || d.Sides != 3 || d.Modifier != 1 {
 			t.Errorf("damage: got %+v, want 1d3+1", d)
+		}
+	})
+
+	t.Run("special attack: Treachery", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C7-003"]
+		if !ok {
+			t.Fatal("asset SWN-C7-003 (Treachery) not found")
+		}
+		if asset.Attack == nil || asset.Attack.Damage != nil {
+			t.Fatalf("attack: got %+v, want a profile with nil Damage", asset.Attack)
+		}
+		if len(asset.Effects) != 1 || asset.Effects[0].Effect != domain.SpecialCaptureTarget {
+			t.Fatalf("effects: got %+v, want one capture_target entry", asset.Effects)
+		}
+		if capture := asset.Effects[0].CaptureTarget; capture == nil || capture.Coin.Modifier != 5 {
+			t.Errorf("capture_target: got %+v, want Coin modifier 5", capture)
 		}
 	})
 
@@ -207,13 +226,63 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
-	t.Run("marketers has no ability section", func(t *testing.T) {
+	t.Run("marketers disables an asset", func(t *testing.T) {
 		asset, ok := rb.Assets["SWN-W5-001"]
 		if !ok {
 			t.Fatal("asset SWN-W5-001 not found")
 		}
-		if asset.Ability != nil {
-			t.Errorf("expected nil ability, got %+v", asset.Ability)
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("ability: got %+v, want one step", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectDisableAsset {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectDisableAsset)
+		}
+		if step.Target != domain.TargetAsset {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetAsset)
+		}
+		if step.Contest == nil || step.Contest.AttackerStat != domain.StatCunning || step.Contest.DefenderStat != domain.StatWealth {
+			t.Errorf("contest: got %+v, want Cunning vs Wealth", step.Contest)
+		}
+	})
+
+	t.Run("seditionists block an asset's attack", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C4-004"]
+		if !ok {
+			t.Fatal("asset SWN-C4-004 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("ability: got %+v, want one step", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectBlockAttack {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectBlockAttack)
+		}
+		if step.Target != domain.TargetAsset {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetAsset)
+		}
+		if step.Roll == nil || step.Roll.Die.NumDice != 1 || step.Roll.Die.Sides != 4 {
+			t.Errorf("roll: got %+v, want 1d4", step.Roll)
+		}
+	})
+
+	t.Run("monopoly levies a faction and keeps its attack", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W4-002"]
+		if !ok {
+			t.Fatal("asset SWN-W4-002 not found")
+		}
+		if asset.Ability == nil || len(asset.Ability.Steps) != 1 {
+			t.Fatalf("ability: got %+v, want one step", asset.Ability)
+		}
+		step := asset.Ability.Steps[0]
+		if step.Effect != domain.EffectLevyCoin {
+			t.Errorf("effect: got %q, want %q", step.Effect, domain.EffectLevyCoin)
+		}
+		if step.Target != domain.TargetFaction {
+			t.Errorf("target: got %q, want %q", step.Target, domain.TargetFaction)
+		}
+		if asset.Attack == nil {
+			t.Error("attack: got nil, want the book attack kept")
 		}
 	})
 
@@ -413,6 +482,137 @@ func TestLoad(t *testing.T) {
 		}
 	})
 
+	t.Run("false front sacrifice_self effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C1-003"]
+		if !ok {
+			t.Fatal("asset SWN-C1-003 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerLethalDamage,
+			Effect:  domain.SpecialSacrificeSelf,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("boltholes shelter_asset effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C5-003"]
+		if !ok {
+			t.Fatal("asset SWN-C5-003 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerLethalDamage,
+			Effect:  domain.SpecialShelterAsset,
+			Filters: domain.EffectFilters{
+				Owner:      domain.OwnerOwn,
+				Scope:      domain.ScopeWorld,
+				AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+			},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("hostile takeover seize_target effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W7-002"]
+		if !ok {
+			t.Fatal("asset SWN-W7-002 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerLethalDamage,
+			Effect:  domain.SpecialSeizeTarget,
+			Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeSelf},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("medical center restore_asset and discount_repair effects parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-W4-003"]
+		if !ok {
+			t.Fatal("asset SWN-W4-003 not found")
+		}
+		filters := domain.EffectFilters{
+			Owner:      domain.OwnerOwn,
+			Scope:      domain.ScopeWorld,
+			AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+		}
+		want := []domain.EffectDefinition{
+			{
+				Trigger: domain.TriggerLethalDamage,
+				Effect:  domain.SpecialRestoreAsset,
+				Filters: filters,
+				Gates:   domain.EffectGates{OncePer: domain.OncePerAsset},
+			},
+			{
+				Trigger:        domain.TriggerRepairCostQuery,
+				Effect:         domain.SpecialDiscountRepair,
+				Filters:        filters,
+				Gates:          domain.EffectGates{NoStack: true},
+				DiscountRepair: &domain.DiscountRepairParams{Amount: 1},
+			},
+		}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("capital fleet needs permission to be raised", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-F8-001"]
+		if !ok {
+			t.Fatal("asset SWN-F8-001 not found")
+		}
+		if asset.HasFlag(domain.FlagPermission) {
+			t.Error("Capital Fleet carries P, want the book's flags (A, S) only (D-26)")
+		}
+		if !asset.NeedsPurchasePermission() {
+			t.Error("NeedsPurchasePermission = false, want true")
+		}
+	})
+
+	t.Run("popular movement grant_permission effect parsed", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C7-001"]
+		if !ok {
+			t.Fatal("asset SWN-C7-001 not found")
+		}
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerPermissionQuery,
+			Effect:  domain.SpecialGrantPermission,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
+	t.Run("stealth is a quality with grant_stealth", func(t *testing.T) {
+		asset, ok := rb.Assets["SWN-C3-002"]
+		if !ok {
+			t.Fatal("asset SWN-C3-002 not found")
+		}
+		if !asset.Quality {
+			t.Error("Quality = false, want true")
+		}
+		stealthy := false
+		want := []domain.EffectDefinition{{
+			Trigger: domain.TriggerOnPurchase,
+			Effect:  domain.SpecialGrantStealth,
+			Filters: domain.EffectFilters{
+				Owner:      domain.OwnerOwn,
+				Scope:      domain.ScopeWorld,
+				AssetTypes: []domain.AssetType{domain.TypeSpecialForces},
+				Stealthy:   &stealthy,
+			},
+		}}
+		if !reflect.DeepEqual(asset.Effects, want) {
+			t.Errorf("effects: got %+v, want %+v", asset.Effects, want)
+		}
+	})
+
 	t.Run("goals populated", func(t *testing.T) {
 		if len(rb.Goals) == 0 {
 			t.Fatal("expected goals to be loaded, got none")
@@ -430,6 +630,43 @@ func TestLoad(t *testing.T) {
 	})
 }
 
+func TestConvertAbilityStep_DisableAssetNeedsAnAssetTarget(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+attacker_stat = "Cunning"
+defender_stat = "Wealth"
+effect = "disable_asset"
+target = "faction"
+`)
+	if err == nil || !strings.Contains(err.Error(), "disable_asset requires") {
+		t.Fatalf("err = %v, want a disable_asset target error", err)
+	}
+}
+
+func TestConvertAbilityStep_BlockAttackNeedsADie(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+effect = "block_attack"
+target = "asset"
+`)
+	if err == nil || !strings.Contains(err.Error(), "block_attack requires") {
+		t.Fatalf("err = %v, want a block_attack die error", err)
+	}
+}
+
+func TestConvertAbilityStep_LevyCoinRefusesAContest(t *testing.T) {
+	_, err := loadAssetsFromTOML(t, effectTestAsset+`
+[assets.Machine.ability]
+attacker_stat = "Wealth"
+defender_stat = "Wealth"
+effect = "levy_coin"
+target = "faction"
+`)
+	if err == nil || !strings.Contains(err.Error(), "levy_coin requires") {
+		t.Fatalf("err = %v, want a levy_coin contest error", err)
+	}
+}
+
 func TestLoadDuplicateAssetID(t *testing.T) {
 	_, err := Load("testdata/duplicate_ids")
 	if err == nil {
@@ -437,5 +674,66 @@ func TestLoadDuplicateAssetID(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "duplicate asset ID") {
 		t.Errorf("error message %q does not mention duplicate asset ID", err.Error())
+	}
+}
+
+func TestLoad_TransportBypasses(t *testing.T) {
+	rb, err := Load(testDataDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	for _, id := range []string{"SWN-F7-001", "SWN-W5-003"} {
+		def := rb.Assets[id]
+		if def == nil || def.Transport == nil || !def.Transport.IgnoresPermission {
+			t.Errorf("%s transport = %+v, want ignores_permission", id, def)
+		}
+	}
+	if rb.Assets["SWN-W2-001"].Transport.IgnoresPermission {
+		t.Error("Freighter Contract ignores permission, want only the two bypass transports")
+	}
+}
+
+func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
+	rb, err := Load(testDataDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	want := []domain.EffectDefinition{{
+		Trigger: domain.TriggerPermissionGranted,
+		Effect:  domain.SpecialWithdrawPermission,
+		Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld},
+		Gates: domain.EffectGates{Contest: &domain.EffectContest{
+			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+			Roller:  domain.ContestRollerSelf,
+		}},
+	}}
+	if got := rb.Assets["SWN-C2-001"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Lobbyists effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoad_TransportLockdown(t *testing.T) {
+	rb, err := Load(testDataDir)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	lockdown := rb.Assets["SWN-C6-001"]
+	wantAttack := &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning}
+	if !reflect.DeepEqual(lockdown.Attack, wantAttack) {
+		t.Errorf("Attack = %+v, want the book's special attack, Cunning vs. Cunning with no damage", lockdown.Attack)
+	}
+	wantEffects := []domain.EffectDefinition{{
+		Trigger: domain.TriggerOwnAttackHit,
+		Effect:  domain.SpecialLockOut,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+	}}
+	if !reflect.DeepEqual(lockdown.Effects, wantEffects) {
+		t.Errorf("Effects = %+v, want %+v", lockdown.Effects, wantEffects)
+	}
+	if !rb.Assets["SWN-F7-001"].Transport.IgnoresLockdown {
+		t.Error("Deep Strike Landers do not ignore the lockdown, want them to (Effort 5 Decision 15)")
+	}
+	if rb.Assets["SWN-W5-003"].Transport.IgnoresLockdown {
+		t.Error("Blockade Runners ignore the lockdown, want them caught")
 	}
 }

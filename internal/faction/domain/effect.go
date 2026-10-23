@@ -5,19 +5,31 @@ package domain
 type SpecialEffectType string
 
 const (
-	SpecialCoinGain       SpecialEffectType = "coin_gain"
-	SpecialCoinSteal      SpecialEffectType = "coin_steal"
-	SpecialIgnoreCoinLoss SpecialEffectType = "ignore_coin_loss"
-	SpecialSelfDamage     SpecialEffectType = "self_damage"
-	SpecialApplyStealth   SpecialEffectType = "apply_stealth"
-	SpecialClearStealth   SpecialEffectType = "clear_stealth"
-	SpecialBonusDie       SpecialEffectType = "bonus_die"
-	SpecialRemoveTagDice  SpecialEffectType = "remove_tag_dice"
-	SpecialReroll         SpecialEffectType = "reroll"
-	SpecialTechLevelFloor SpecialEffectType = "tech_level_floor"
-	SpecialCostSurcharge  SpecialEffectType = "cost_surcharge"
-	SpecialGrantMovement  SpecialEffectType = "grant_movement"
-	SpecialRestrictAttack SpecialEffectType = "restrict_attack"
+	SpecialCoinGain           SpecialEffectType = "coin_gain"
+	SpecialCoinSteal          SpecialEffectType = "coin_steal"
+	SpecialIgnoreCoinLoss     SpecialEffectType = "ignore_coin_loss"
+	SpecialSelfDamage         SpecialEffectType = "self_damage"
+	SpecialApplyStealth       SpecialEffectType = "apply_stealth"
+	SpecialClearStealth       SpecialEffectType = "clear_stealth"
+	SpecialBonusDie           SpecialEffectType = "bonus_die"
+	SpecialRemoveTagDice      SpecialEffectType = "remove_tag_dice"
+	SpecialReroll             SpecialEffectType = "reroll"
+	SpecialTechLevelFloor     SpecialEffectType = "tech_level_floor"
+	SpecialCostSurcharge      SpecialEffectType = "cost_surcharge"
+	SpecialGrantMovement      SpecialEffectType = "grant_movement"
+	SpecialRestrictAttack     SpecialEffectType = "restrict_attack"
+	SpecialCaptureTarget      SpecialEffectType = "capture_target"
+	SpecialBlockAbility       SpecialEffectType = "block_ability"
+	SpecialCounterstrike      SpecialEffectType = "counterstrike"
+	SpecialSeizeTarget        SpecialEffectType = "seize_target"
+	SpecialRestoreAsset       SpecialEffectType = "restore_asset"
+	SpecialDiscountRepair     SpecialEffectType = "discount_repair"
+	SpecialSacrificeSelf      SpecialEffectType = "sacrifice_self"
+	SpecialShelterAsset       SpecialEffectType = "shelter_asset"
+	SpecialGrantStealth       SpecialEffectType = "grant_stealth"
+	SpecialGrantPermission    SpecialEffectType = "grant_permission"
+	SpecialWithdrawPermission SpecialEffectType = "withdraw_permission"
+	SpecialLockOut            SpecialEffectType = "lock_out"
 )
 
 type EffectTrigger string
@@ -35,6 +47,12 @@ const (
 	TriggerAssetCostQuery         EffectTrigger = "asset_cost_query"
 	TriggerMovementOptionsQuery   EffectTrigger = "movement_options_query"
 	TriggerAttackEligibilityQuery EffectTrigger = "attack_eligibility_query"
+	TriggerOwnAttack              EffectTrigger = "own_attack"
+	TriggerOwnDefenseWin          EffectTrigger = "own_defense_win"
+	TriggerRepairCostQuery        EffectTrigger = "repair_cost_query"
+	TriggerLethalDamage           EffectTrigger = "lethal_damage"
+	TriggerPermissionQuery        EffectTrigger = "permission_query"
+	TriggerPermissionGranted      EffectTrigger = "permission_granted"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -219,6 +237,14 @@ type GrantMovementParams struct {
 	Relocate RelocateParams
 }
 
+type CaptureTargetParams struct {
+	Coin DiceRoll
+}
+
+type DiscountRepairParams struct {
+	Amount int
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -236,4 +262,6 @@ type EffectDefinition struct {
 	CostSurcharge  *CostSurchargeParams
 	RestrictAttack *RestrictAttackParams
 	GrantMovement  *GrantMovementParams
+	CaptureTarget  *CaptureTargetParams
+	DiscountRepair *DiscountRepairParams
 }

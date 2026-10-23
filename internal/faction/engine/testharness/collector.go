@@ -20,12 +20,18 @@ var _ hooks.Collector = (*ScriptedCollector)(nil)
 // AwaitCheckpoint always returns nil so headless tests do not block.
 type ScriptedCollector struct {
 	SelectAssetFn                 func([]*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
+	SelectAssetToLoseFn           func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrdersFn          func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]action.RepairOrder, error)
 	SelectBuyOrderFn              func(map[string][]*domain.AssetDefinition) (action.BuyOrder, error)
 	SelectRefitOrderFn            func([]action.RefitOption, *rulebook.Rulebook) (action.RefitOrder, error)
 	SelectAttackersFn             func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectDefenderFn              func(*domain.Asset, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBaseFn       func(*domain.Faction, *domain.Base, int) (bool, error)
+	ConfirmCounterstrikeFn        func(*domain.Faction, *domain.Asset, *domain.Asset) (bool, error)
+	ConfirmPaymentFn              func(hooks.PaymentOffer) (bool, error)
+	ConfirmSacrificeFn            func(hooks.SacrificeOffer) (bool, error)
+	RequestPermissionFn           func(hooks.PermissionRequest) (bool, error)
+	ConfirmPermissionContestFn    func(hooks.PermissionContestOffer) (bool, error)
 	SelectExpandInfluenceOrderFn  func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttackFn      func(*domain.Faction, int, int) (bool, error)
 	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
@@ -49,6 +55,13 @@ type ScriptedCollector struct {
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
 	if c.SelectAssetFn != nil {
 		return c.SelectAssetFn(assets, rulebook)
+	}
+	return nil, nil
+}
+
+func (c *ScriptedCollector) SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
+	if c.SelectAssetToLoseFn != nil {
+		return c.SelectAssetToLoseFn(faction, assets, rulebook)
 	}
 	return nil, nil
 }
@@ -91,6 +104,45 @@ func (c *ScriptedCollector) SelectDefender(attacker *domain.Asset, eligible []*d
 func (c *ScriptedCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	if c.ConfirmRedirectToBaseFn != nil {
 		return c.ConfirmRedirectToBaseFn(defenderFaction, base, damage)
+	}
+	return false, nil
+}
+
+func (c *ScriptedCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source *domain.Asset, attacker *domain.Asset) (bool, error) {
+	if c.ConfirmCounterstrikeFn != nil {
+		return c.ConfirmCounterstrikeFn(defenderFaction, source, attacker)
+	}
+	return false, nil
+}
+
+func (c *ScriptedCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	if c.ConfirmPaymentFn != nil {
+		return c.ConfirmPaymentFn(offer)
+	}
+	return false, nil
+}
+
+func (c *ScriptedCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, error) {
+	if c.ConfirmSacrificeFn != nil {
+		return c.ConfirmSacrificeFn(offer)
+	}
+	return false, nil
+}
+
+// RequestPermission grants by default, so a scripted buy of a P asset goes through
+// unless a test scripts a refusal.
+func (c *ScriptedCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	if c.RequestPermissionFn != nil {
+		return c.RequestPermissionFn(request)
+	}
+	return true, nil
+}
+
+// ConfirmPermissionContest lets every grant stand by default, so a scripted grant is
+// never withdrawn unless a test scripts a contest.
+func (c *ScriptedCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	if c.ConfirmPermissionContestFn != nil {
+		return c.ConfirmPermissionContestFn(offer)
 	}
 	return false, nil
 }

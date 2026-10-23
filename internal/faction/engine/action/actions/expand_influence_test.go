@@ -23,8 +23,15 @@ func makeExpandRulebook() *rulebook.Rulebook {
 				Attack: &domain.AttackProfile{
 					AttackerStat: domain.StatForce,
 					DefenderStat: domain.StatCunning,
-					Damage:       domain.DiceRoll{NumDice: 1, Sides: 6},
+					Damage:       &domain.DiceRoll{NumDice: 1, Sides: 6},
 				},
+			},
+			"special-unit": {
+				ID:       "special-unit",
+				Name:     "Treachery",
+				Category: domain.StatCunning,
+				HP:       2,
+				Attack:   &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
 			},
 		},
 	}
@@ -237,6 +244,81 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	factionDelta, ok := mutations[3].(domain.FactionHPDelta)
 	if !ok || factionDelta.Delta != -4 || factionDelta.CausedByFactionID != "f2" {
 		t.Errorf("mutations[3] = %v, want FactionHPDelta{-4, caused by f2}", mutations[3])
+	}
+}
+
+// TestExpandInfluence_SpecialAttackerNotOffered: the rival's only asset has a
+// special attack, so no base attackers are offered (no SelectBaseAttackers EXPECT)
+// and the new Base takes no damage. Rolls: factionRoll=5, rivalRoll=5 (tie).
+func TestExpandInfluence_SpecialAttackerNotOffered(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	rulebook := makeExpandRulebook()
+
+	f1Asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
+	f2Asset := &domain.Asset{
+		ID: "a2", DefinitionID: "special-unit", OwnerID: "f2",
+		Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 2, Ready: true, Maintained: true,
+	}
+	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": f1Asset}}
+	rival := &domain.Faction{ID: "f2", Cunning: 0, Assets: map[string]*domain.Asset{"a2": f2Asset}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
+
+	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
+	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
+
+	act := NewExpandInfluence(collector, &fixedRoller{values: []int{5, 5}}, nil, indexFromState(factionState), nil)
+	if err := act.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := act.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := act.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	if len(mutations) != 2 {
+		t.Fatalf("len(mutations) = %d, want 2 (CoinDelta + BaseAdded, no attack); got %v", len(mutations), mutations)
+	}
+}
+
+// TestExpandInfluence_BlockedAttackerNotOffered: the rival's only asset holds a
+// live no_attack from f1's a1, so no base attackers are offered (no
+// SelectBaseAttackers EXPECT). Rolls: factionRoll=5, rivalRoll=5 (tie).
+func TestExpandInfluence_BlockedAttackerNotOffered(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	rulebook := makeExpandRulebook()
+
+	f1Asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
+	f2Asset := &domain.Asset{
+		ID: "a2", DefinitionID: "force-unit", OwnerID: "f2",
+		Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 8, Ready: true, Maintained: true,
+		Conditions: []domain.Condition{{Kind: domain.ConditionNoAttack, SourceAssetID: "a1"}},
+	}
+	faction := &domain.Faction{ID: "f1", Cunning: 0, Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": f1Asset}}
+	rival := &domain.Faction{ID: "f2", Force: 0, Cunning: 0, Assets: map[string]*domain.Asset{"a2": f2Asset}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
+
+	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
+	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
+
+	act := NewExpandInfluence(collector, &fixedRoller{values: []int{5, 5}}, nil, indexFromState(factionState), nil)
+	if err := act.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := act.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	mutations, err := act.Output()
+	if err != nil {
+		t.Fatalf("Output: %v", err)
+	}
+	if len(mutations) != 2 {
+		t.Fatalf("len(mutations) = %d, want 2 (CoinDelta + BaseAdded, no attack); got %v", len(mutations), mutations)
 	}
 }
 

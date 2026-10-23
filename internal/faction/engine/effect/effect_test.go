@@ -178,10 +178,16 @@ func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 				registered = append(registered, ctx.Entry.Effect)
 			},
 		},
+		domain.SpecialBlockAbility: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnAttack: acceptsOwnSelf},
+			Register: func(effect.RegisterContext) { t.Error("ApplyAll must not register a matchup-route entry") },
+			Matchup:  noopMatchup,
+		},
 	}
 	def := &domain.AssetDefinition{ID: "T-001", Effects: []domain.EffectDefinition{
 		{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialCoinGain, Filters: ownSelf},
 		{Trigger: domain.TriggerOwnAttackHit, Effect: domain.SpecialCoinSteal, Filters: rivalWorld},
+		{Trigger: domain.TriggerOwnAttack, Effect: domain.SpecialBlockAbility, Filters: ownSelf},
 	}}
 	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{
@@ -201,9 +207,37 @@ func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 	}
 }
 
+func TestRegisterEffectsList_QualityNeedsTargets(t *testing.T) {
+	entry := domain.EffectDefinition{Trigger: domain.TriggerOnPurchase, Effect: domain.SpecialApplyStealth, Filters: ownSelf}
+	def := &domain.AssetDefinition{ID: "Q-001", Quality: true, Effects: []domain.EffectDefinition{entry}}
+
+	withoutTargets := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialApplyStealth: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnSelf},
+			Fire:     noopFire,
+		},
+	}
+	if err := effect.New(withoutTargets, discardLog).RegisterEffectsList(def); err == nil {
+		t.Error("a quality whose effect has no Targets registered; want an error")
+	}
+
+	withTargets := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialApplyStealth: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnSelf},
+			Fire:     noopFire,
+			Targets:  func(effect.TargetContext) []*domain.Asset { return nil },
+		},
+	}
+	if err := effect.New(withTargets, discardLog).RegisterEffectsList(def); err != nil {
+		t.Errorf("RegisterEffectsList: %v", err)
+	}
+}
+
 func noopFire(effect.FireContext) []domain.Mutation { return nil }
 
 func noopRegister(effect.RegisterContext) {}
+
+func noopMatchup(effect.MatchupContext) effect.MatchupOutcome { return effect.MatchupOutcome{} }
 
 func validationRegistrars() map[domain.SpecialEffectType]effect.Registrar {
 	return map[domain.SpecialEffectType]effect.Registrar{
@@ -238,6 +272,15 @@ func validationRegistrars() map[domain.SpecialEffectType]effect.Registrar {
 		// declares a phase trigger but has only a hook route
 		domain.SpecialApplyStealth: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnSelf},
+			Register: noopRegister,
+		},
+		domain.SpecialBlockAbility: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnAttack: acceptsOwnSelf},
+			Matchup:  noopMatchup,
+		},
+		// declares a matchup trigger but has only a hook route
+		domain.SpecialCaptureTarget: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnDefenseWin: acceptsOwnSelf},
 			Register: noopRegister,
 		},
 	}
@@ -315,6 +358,15 @@ func TestRegisterEffectsList_Validates(t *testing.T) {
 			name:    "phase trigger without a phase route",
 			entry:   domain.EffectDefinition{Trigger: domain.TriggerOnPurchase, Effect: domain.SpecialApplyStealth, Filters: ownSelf},
 			wantErr: "has no phase route",
+		},
+		{
+			name:  "accepted matchup-route entry",
+			entry: domain.EffectDefinition{Trigger: domain.TriggerOwnAttack, Effect: domain.SpecialBlockAbility, Filters: ownSelf},
+		},
+		{
+			name:    "matchup trigger without a matchup route",
+			entry:   domain.EffectDefinition{Trigger: domain.TriggerOwnDefenseWin, Effect: domain.SpecialCaptureTarget, Filters: ownSelf},
+			wantErr: "has no matchup route",
 		},
 	}
 	for _, tc := range cases {
@@ -434,4 +486,58 @@ func TestFireTurnStart_PassesFactionStateToThePhaseRoute(t *testing.T) {
 	if seen != factionState {
 		t.Errorf("FireContext.FactionState = %p, want the state passed in (%p)", seen, factionState)
 	}
+}
+
+func TestFireMatchup_FiresEntriesOfTheTriggerAndOrsCounterstrike(t *testing.T) {
+	coinPerEffect := func(counterstrike bool) func(effect.MatchupContext) effect.MatchupOutcome {
+		return func(ctx effect.MatchupContext) effect.MatchupOutcome {
+			return effect.MatchupOutcome{
+				Mutations:     []domain.Mutation{domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: 1, Cause: string(ctx.Entry.Effect)}},
+				Counterstrike: counterstrike,
+			}
+		}
+	}
+	registrars := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialBlockAbility: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnAttack: acceptsOwnSelf},
+			Matchup:  coinPerEffect(false),
+		},
+		domain.SpecialCaptureTarget: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnDefenseWin: acceptsOwnSelf},
+			Matchup:  coinPerEffect(true),
+		},
+		domain.SpecialReroll: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnDefenseWin: acceptsOwnSelf},
+			Matchup:  coinPerEffect(false),
+		},
+	}
+	def := &domain.AssetDefinition{ID: "T-001", Effects: []domain.EffectDefinition{
+		{Trigger: domain.TriggerOwnAttack, Effect: domain.SpecialBlockAbility, Filters: ownSelf},
+		{Trigger: domain.TriggerOwnDefenseWin, Effect: domain.SpecialCaptureTarget, Filters: ownSelf},
+		{Trigger: domain.TriggerOwnDefenseWin, Effect: domain.SpecialReroll, Filters: ownSelf},
+	}}
+	engine := effect.New(registrars, discardLog)
+	ctx := effect.MatchupContext{Faction: &domain.Faction{ID: "alpha"}, Def: def}
+
+	t.Run("own_attack fires its one entry", func(t *testing.T) {
+		got := engine.FireMatchup(domain.TriggerOwnAttack, ctx)
+		want := effect.MatchupOutcome{Mutations: []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "block_ability"}}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("outcome = %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("own_defense_win fires both entries and ors Counterstrike", func(t *testing.T) {
+		got := engine.FireMatchup(domain.TriggerOwnDefenseWin, ctx)
+		want := effect.MatchupOutcome{
+			Mutations: []domain.Mutation{
+				domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "capture_target"},
+				domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "reroll"},
+			},
+			Counterstrike: true,
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("outcome = %+v, want %+v", got, want)
+		}
+	})
 }

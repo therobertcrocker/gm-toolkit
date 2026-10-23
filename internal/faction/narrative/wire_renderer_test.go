@@ -2,10 +2,13 @@ package narrative
 
 import (
 	"flag"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/narrative/digest"
 )
 
@@ -149,5 +152,136 @@ func TestWireRendererGolden(t *testing.T) {
 				t.Errorf("golden mismatch for %s\nwant:\n%s\ngot:\n%s", tc.name, want, got)
 			}
 		})
+	}
+}
+
+func TestRenderCrossEvent_NoDamageWithCondition(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:             digest.CrossAttack,
+		Attacker:         digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:         digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		DamageToDefender: 0,
+		Conditions:       []domain.ConditionKind{domain.ConditionNoAbility},
+	}
+
+	for seed := range int64(len(crossNoDamageTemplates)) * 4 {
+		got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(seed)))
+		if !strings.Contains(got, "no damage") {
+			t.Errorf("seed %d: %q does not use a no-damage template", seed, got)
+		}
+		wantClause := " Free Worlds League cannot use asset abilities there until Iron Hegemony's next turn."
+		if !strings.HasSuffix(got, wantClause) {
+			t.Errorf("seed %d: %q does not end with the no_ability clause", seed, got)
+		}
+	}
+}
+
+func TestRenderCrossEvent_AttackWithInterception(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:             digest.CrossAttack,
+		Attacker:         digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:         digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		DamageToDefender: 5,
+		Interceptions:    []domain.SpecialEffectType{domain.SpecialShelterAsset},
+	}
+
+	for seed := range int64(len(crossAttackTemplates)) * 4 {
+		got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(seed)))
+		if !strings.HasSuffix(got, " A stricken asset went to ground in its boltholes.") {
+			t.Errorf("seed %d: %q does not end with the shelter_asset clause", seed, got)
+		}
+	}
+}
+
+func TestRenderCrossEvent_AbilityStrikeWithCondition(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:       digest.CrossAbilityStrike,
+		Attacker:   digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:   digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		Conditions: []domain.ConditionKind{domain.ConditionDisabled},
+	}
+
+	for seed := range int64(len(crossAbilityTemplates)) * 4 {
+		got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(seed)))
+		wantClause := " Free Worlds League must pay to bring a disabled asset back into use."
+		if !strings.HasSuffix(got, wantClause) {
+			t.Errorf("seed %d: %q does not end with the disabled clause", seed, got)
+		}
+	}
+}
+
+func TestRenderLoss_LevyCoin(t *testing.T) {
+	move := digest.AssetMove{AssetID: "b1", AssetName: "Party Machine", Cause: "levy_coin"}
+	for seed := range int64(len(lossTemplates)) * 4 {
+		got := renderLoss(move, "Free Worlds League", rand.New(rand.NewSource(seed)))
+		if !strings.HasSuffix(got, " (forfeit to a monopoly)") {
+			t.Errorf("seed %d: %q does not end with the monopoly forfeit", seed, got)
+		}
+	}
+}
+
+func TestRenderCrossEvent_Counterstruck(t *testing.T) {
+	crossEvent := digest.CrossEvent{
+		Kind:             digest.CrossAttack,
+		Attacker:         digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"},
+		Defender:         digest.FactionRef{ID: "faction-b", Name: "Free Worlds League"},
+		DamageToAttacker: 5,
+		Counterstruck:    true,
+	}
+
+	got := renderCrossEvent(crossEvent, rand.New(rand.NewSource(1)))
+	wantClause := " Free Worlds League's countermeasures turned the attack back on Iron Hegemony."
+	if !strings.HasSuffix(got, wantClause) {
+		t.Errorf("%q does not end with the counterstruck clause", got)
+	}
+}
+
+func TestRenderGoalEvent_GovernmentAndTagLoss(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	governed := renderGoalEvent(digest.GoalEvent{Kind: digest.GoalWorldGoverned, ToWorld: "Krylos"}, "Alpha", rng)
+	if !strings.Contains(governed, "Alpha") || !strings.Contains(governed, "Krylos") {
+		t.Errorf("governed line = %q, want the faction and the world", governed)
+	}
+	lost := renderGoalEvent(digest.GoalEvent{Kind: digest.GoalTagLost, TagName: "Planetary Government"}, "Bravo", rng)
+	if !strings.Contains(lost, "Bravo") || !strings.Contains(lost, "Planetary Government") {
+		t.Errorf("tag-lost line = %q, want the faction and the tag", lost)
+	}
+}
+
+func TestRenderRefusalAndHold_Landing(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	refusal := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Landing: true}, "Alpha", rng)
+	if !strings.Contains(refusal, "land Troops") {
+		t.Errorf("refusal = %q, want the landing verb", refusal)
+	}
+	raise := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo"}, "Alpha", rng)
+	if !strings.Contains(raise, "raise Troops") {
+		t.Errorf("refusal = %q, want the purchase verb", raise)
+	}
+	hold := renderHold(digest.HoldEvent{AssetName: "Freighter", World: "Krylos", Reason: domain.HoldRefused}, "Alpha", rng)
+	if !strings.Contains(hold, "Freighter") || !strings.Contains(hold, "Krylos") {
+		t.Errorf("hold = %q, want the asset and the world", hold)
+	}
+}
+
+func TestRenderRefusal_WithdrawnAndBarred(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	withdrawn := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Landing: true, Reason: domain.RefusalWithdrawn}, "Alpha", rng)
+	if !strings.Contains(withdrawn, "Bravo") || !strings.Contains(withdrawn, "land Troops") {
+		t.Errorf("withdrawn line = %q, want the Lobbyists' owner and the landing", withdrawn)
+	}
+	barred := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Reason: domain.RefusalBarred}, "Alpha", rng)
+	if !strings.Contains(barred, "Bravo") || !strings.Contains(barred, "asking again") {
+		t.Errorf("barred line = %q, want the Lobbyists' owner and the barred wording", barred)
+	}
+}
+
+func TestRenderHold_LockdownReasons(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	for _, reason := range []domain.HoldReason{domain.HoldLockdownPaid, domain.HoldLockdownUnpaid} {
+		line := renderHold(digest.HoldEvent{AssetName: "Freighter", World: "Krylos", Reason: reason}, "Alpha", rng)
+		if !strings.Contains(line, "lockdown") || !strings.Contains(line, "Krylos") {
+			t.Errorf("%s: hold line = %q, want the lockdown and the world", reason, line)
+		}
 	}
 }

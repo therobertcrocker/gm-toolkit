@@ -5,9 +5,10 @@
 ## Purpose
 
 Hooks are how a faction's tags and an asset's special features bend the rules of
-a turn without the core engine knowing they exist. The package defines **five
+a turn without the core engine knowing they exist. The package defines **six
 families of reactive mechanic** — pre-roll dice augmentation, post-roll rerolls,
-post-mutation reactions, query-time rule alterations, and tie-breaks — plus a
+post-mutation reactions, query-time rule alterations, tie-breaks, and lethal-damage
+interception — plus a
 single `Registry` that binds each registered hook to a **scope** (global, a
 faction, or one asset instance). The [tag and effect engines](effect-mutation.md)
 *register* hooks from rulebook data at cycle start; the orchestrator and the
@@ -23,7 +24,7 @@ an implementation into the registry under a scope; **dispatch** reads it back ou
 at a pipeline point and runs it. The registry is the only thing the two halves
 share, and it is a passive store — it never calls a hook itself.
 
-### The five categories
+### The six categories
 
 `doc.go` is the canonical outline; the categories are numbered for shorthand
 (a tag is described as exercising "Cat 1 + Cat 5," etc.):
@@ -35,10 +36,11 @@ share, and it is a passive store — it never calls a hook itself.
 | 3 | `MutationReactor` | after a phase's mutations — may emit more | orchestrator, after movement & action |
 | 4 | `RuleModifier` family | at a rule query — alters the answer | the query site (purchase, bookkeeping, movement, attack targeting) |
 | 5 | `TieResolver` | at an attack/defense tie | `ResolveTie` (combat) |
+| 6 | `LethalInterceptor` | when a hit would destroy an asset — may take the hit in place of the removal | `InterceptLethal` (the Attack action's `applyAssetDamage`, the `self_damage` reactor) |
 
 Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
 `MaintenanceCostModifier`, `WorldTechLevelModifier`, `AttackEligibilityRule`,
-`AssetMovementGranter` — each with its own signature
+`AssetMovementGranter`, `RepairCostModifier`, `PermissionGranter`, `PermissionContester` — each with its own signature
 (`ModifyAssetCost(buyer, def, world, query *AssetCostQuery)`,
 `MayFight(query AttackEligibilityQuery) bool` and so on). The asset-cost hook
 edits a shared `AssetCostQuery` in place of returning an `int`, because the chain
@@ -114,9 +116,10 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   `ModifierOffer.FromTag`), hands them to the [collector](#the-collector-seam) for
   selection, expands and rolls the dice pool, applies keep-highest, then runs Cat
   2 reroll directives — so one call covers both roll-time families.
-- **`MutationReactors`** runs after the orchestrator applies a phase's mutations
-  (movement and action phases), letting Cat 3 reactors respond to what just
-  happened. It runs **every** registered reactor, not only the acting
+- **`MutationReactors`** runs on a phase's emitted mutations before the
+  orchestrator applies them (movement and action phases), letting Cat 3 reactors
+  respond to what is about to happen. Their output joins the batch, which
+  `applyAndRecord` then applies in one pass. It runs **every** registered reactor, not only the acting
   faction's: global, then each faction's, then each of that faction's assets,
   sorted by faction ID and then asset ID so the emitted mutations are
   deterministic. A defender's reactor hears what was done to it; each reactor
@@ -145,6 +148,42 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   then answer as `defense`; a counter is not a defense, so the target is not
   asked. It **refuses on the first no and does not chain**: there is no value to
   pass along.
+- **`ResolveRepairCost`** is the fifth Cat 4 resolver, asked by Repair Asset once
+  per asset repaired. It walks the repairer's global and faction hooks, then each
+  of its own assets in ID order, chaining a `RepairCostQuery` (whose `Applied`
+  holds the `no_stack` marks), and never returns less than 0. A discount serves
+  its owner only.
+- **`PermissionGranted`** is the sixth Cat 4 resolver, asked by
+  `RequestPermission` before it prompts. It walks the requester's global and
+  faction granters, then each of its own assets in ID order, and the first yes
+  grants (Popular Movement). A grant serves its owner only. Capital Fleet's
+  raise-only permission is not a hook: the fleet being raised has no instance, so
+  it is the definition field `purchase_permission` (A.001.6 Effort 4 Decision 1).
+- **The contest walk** runs inside `RequestPermission` and
+  `RequestArrivalPermission` after every grant: a ruler's own, a grant hook's, or
+  a yes. It asks the `PermissionContester`s registered on each rival's assets,
+  rival factions in ID order, then assets in ID order (Lobbyists). A ruler that
+  said yes is not offered its own grant; a grant that went around the ruler (a
+  grant hook) is. Each offer is asked of its owner through the
+  `PermissionCollector`, and on a yes the hook rolls its own contest. **The first
+  win withdraws the grant** and spends `permission_withdrawn:<world>:<withdrawer>`
+  on the requester, which refuses its later requests for that world until its next
+  bookkeeping and names the withdrawer on the refusal. A homeworld purchase is no
+  grant, so it is never contested. (A.001.6 Effort 5 Decisions 9–11, Decision
+  Record 3–4.)
+- **`InterceptLethal`** is Cat 6. It runs when a hit would destroy an asset,
+  before `AssetRemoved` is emitted: in the Attack action's `applyAssetDamage`
+  (attack, counter and Cracked Comms' self-attack) and in the `self_damage`
+  reactor. It asks the bucket of each asset the target's owner holds, in ID
+  order, then the striker's own bucket. Each `LethalInterceptor` returns an
+  `Interception` offer or nil, and the dispatcher decides: the target side's
+  automatic offers, then its elective ones, then the striker's. **The first that
+  takes the hit wins**, and its mutations replace the removal. An elective offer
+  asks its owner through the `InterceptCollector`; a restore is offered only when
+  the owner can pay, counting the Coin the batch already spends; a yes spends the
+  offer's budget. An interceptor that the batch already removes or moves offers
+  nothing. A reactor has no collector, so `self_damage` calls
+  `InterceptLethalAutomatic`, which skips elective offers.
 - **`ResolveTie`** is consulted at a combat tie, asking the attacker's resolvers
   first and the defender's only if the attacker has none; **first registration
   wins** (ties are a binary outcome, so there is nothing to chain).
@@ -172,6 +211,27 @@ subset to apply; for each *elective* Cat 2 directive the collector confirms or
 declines. Non-elective directives apply automatically. `SelectModifiers` is not
 called when no offer survives the budget filter.
 
+Beside it sits `PaymentCollector` (`ConfirmPayment(PaymentOffer) (bool, error)`):
+one faction is asked whether to pay one amount. It lives here, the lowest package
+with a collector, so a hook dispatcher can ask it as well as an action or the
+bookkeeping step. `action.Collector` and `PhaseCollector` both embed it.
+
+`InterceptCollector` embeds `PaymentCollector` and adds
+`ConfirmSacrifice(SacrificeOffer) (bool, error)`: the Cat 6 dispatcher asks the
+owner of an elective interceptor whether to give up one asset to save another, or
+to pay to keep it. Only `action.Collector` embeds it, because no phase destroys
+an asset by damage, and a reactor asks nothing.
+
+`PermissionCollector` has two methods. `RequestPermission(PermissionRequest)
+(bool, error)` asks a world's government whether a faction may raise or land an
+asset there. The request names the ruler, or none for an independent world, where
+the GM answers. `ConfirmPermissionContest(PermissionContestOffer) (bool, error)`
+asks a rival's Lobbyists owner whether to contest a grant. `dispatch.RequestPermission`
+(purchases) and `dispatch.RequestArrivalPermission` (landings) decide whether to
+ask at all; a purchase on the requester's own homeworld never asks, and an arrival
+there does. `action.Collector` embeds it for the purchase paths and the relocate
+ability, and `PhaseCollector` for arrivals and free relocates.
+
 ### Per-turn budgets
 
 A modifier or reroll may carry a `BudgetKey` (namespaced, e.g. `"tag:Warlike"`).
@@ -191,7 +251,7 @@ trigger reactors. `reactDispatch` bounds this at **depth 5** and trips an error
 on overflow rather than looping forever. Critically, each level recurses on
 **only the newly emitted mutations**, not the accumulated set — so a reactor
 never re-fires on the mutations that triggered it, and the accumulated result is
-built back up on the way out of the recursion. The other four families are
+built back up on the way out of the recursion. The other five families are
 single-shot by construction.
 
 ```mermaid
@@ -220,6 +280,7 @@ flowchart LR
     Tie["ResolveTie<br>Cat 5 — first wins"]:::process
     Cat4["Cat 4 value resolvers<br>cost · TL · movement — chain"]:::process
     Elig["ResolveAttackEligibility<br>Cat 4 — first no refuses"]:::process
+    Lethal["InterceptLethal<br>Cat 6 — first taker wins"]:::process
     subgraph Cat3["Cat 3 · bounded recursion (depth ≤ 5)"]
       React["MutationReactors"]:::process
       React -- "new mutations only" --> React
@@ -237,10 +298,12 @@ flowchart LR
   Registry --> Tie
   Registry --> Cat4
   Registry --> Elig
+  Registry --> Lethal
   Registry --> React
 
   Budgets -. "filter spent" .-> Roll
   Roll <-->|"offers / selection"| Collector
+  Lethal <-->|"sacrifice / pay"| Collector
 
   classDef artifact fill:#a6e3a1,stroke:#79c574,color:#1e1e2e
   classDef process  fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e
@@ -252,15 +315,32 @@ flowchart LR
 ## Key Decisions
 
 - **Category 4 is a typed family, not a generic interface.** Each rule query
-  (asset cost, maintenance, world TL, attack eligibility, movement grants) has
-  different argument and return types, so a single `Modify(any) any` would throw
-  away compile-time safety. Five small interfaces keep every call site honest.
-  (`doc.go`; frozen log 158–188.)
+  (asset cost, maintenance, world TL, attack eligibility, movement grants, repair
+  cost, permission grants, permission contests) has different argument and return
+  types, so a single `Modify(any) any` would throw away compile-time safety. Eight
+  small interfaces keep every call site honest. (`doc.go`; frozen log 158–188.)
+- **A rule about an asset that is not in play yet is a definition field, not a
+  hook.** Hooks register on asset instances at cycle start, so an asset that is
+  being bought has no hook to ask. Capital Fleet's raise-only permission is the
+  field `purchase_permission`, which `NeedsPurchasePermission()` reads beside the
+  `P` flag. The Cat 4 permission family keeps the rules that an asset in play
+  applies to others: Popular Movement's grant and Lobbyists' contest. Rejected: a
+  fourth registrar route; a read of the bought definition by effect name (new
+  machinery for one asset). (A.001.6 Effort 4 Decision 1.)
 - **The registry is cleared in place at the start of every cycle.** The TUI runs
   every cycle on one engine, so registering again without a reset adds another
   copy of every hook each cycle. The maps are cleared in place, not replaced,
   because the actions hold the registry pointer from engine construction.
   (s-flag-effect-registry plan, Decision Record 24.)
+- **A capture moves only the captured asset's hooks, in the middle of the cycle.**
+  Hooks register once per cycle, and a reactor is found through its owner's
+  assets, so a captured transport would have no reactor for the rest of the cycle.
+  After an action batch with an `AssetOwnerChanged`, the orchestrator clears the
+  asset's bucket under its old owner (`Registry.ClearAsset`) and registers it under
+  the new one (`EffectsEngine.ApplyAsset`). The clear is necessary because
+  registration appends: a recapture in the same cycle would file the asset twice.
+  Rejected: a full re-prime, which also woke the hooks of assets bought earlier in
+  the cycle. (A.001.6 Effort 1 Decision 9, Decision Record 13.)
 - **Scope is a comparable struct used directly as a map key.** Global / faction /
   asset identity collapses into one value type, so the registry is just maps and
   lookup is a fixed global→faction→asset walk — no per-category routing logic.
@@ -277,7 +357,22 @@ flowchart LR
   (each modifier sees the prior result), so several effects stack. A tie is a
   single binary outcome, so the first registered resolver wins and the rest are
   ignored. Attack eligibility is also yes or no, so it does not chain either: the
-  first hook that refuses ends the fight.
+  first hook that refuses ends the fight. A permission grant is yes or no too: the
+  first granter that says yes grants, and the first contester that wins withdraws.
+- **Cat 6 replaces a removal before it is emitted; the hook offers and the
+  dispatcher decides.** An interception must run before `AssetRemoved` exists,
+  because the kill reactors (Scavengers), goal progress and the digest all read
+  that record. So `InterceptLethal` runs at the two damage emitters, and only
+  there: a sale, a refit or a levy is not damage. A `LethalInterceptor` returns an
+  offer or nil. The dispatcher puts the offers in order (D-7), asks the owner of an
+  elective one, checks the price and spends the budget, so no hook holds a
+  collector, as on the Cat 1 path. The save keeps the hit's `AssetHPDelta` and
+  sets the HP with a second delta, so history shows the hit and the save. A
+  reactor has no collector, so only automatic offers run there. Rejected: a hook
+  that takes the collector (each elective hook repeats the prompt, price and
+  budget code); undoing the removal later in a Cat 3 reactor (its readers have
+  already seen it). (A.001.6 overview Decision 7; Effort 2 Decisions 1, 2 and
+  6–8.)
 - **The eligibility query names the striker, and a counter asks only the
   striker.** `Attacker` is the asset that deals the damage, so on a counterattack
   the original defender is `Attacker`, and a rule such as Lawyers always finds its
@@ -293,6 +388,16 @@ flowchart LR
   modifiers and elective rerolls are offered to the driver; the engine never
   decides them itself. This is the same source-agnostic collector contract the
   rest of the engine uses, narrowed to two methods.
+- **A question that a hook path asks is a narrow collector in `hooks`, and both
+  engine collectors embed it.** `PaymentCollector`, `InterceptCollector` and
+  `PermissionCollector` live in `hooks`, the lowest package with a collector, so
+  `hooks/dispatch` can ask them as well as an action or the orchestrator.
+  `action.Collector` embeds all three; `PhaseCollector` embeds the two a phase
+  asks (payment and permission). One question, such as "pay this amount?", then
+  has one method wherever it is asked: Marketers' prompt, the turn-start lift and
+  Medical Center's restore all use `ConfirmPayment`. Each prompt names the faction
+  it asks. (A.001.6 overview Decision 19; Effort 3 Decision 5; Effort 4 Decision
+  8; Effort 5 Decision 6.)
 - **Elective rerolls keep per-roll timing.** Cat 2 runs right after each roll, so
   an attacker decides on a reroll before the defense is rolled. Deciding after
   both rolls would split `RollWithHooks` into roll and post-roll calls at every
@@ -303,8 +408,9 @@ flowchart LR
   effect always knows the asset that declared it. The check runs at fire time,
   not at registration, because `ApplyAll` runs at cycle start while `Ready` flips
   at the owner's turn start and `Maintained` in each bookkeeping. The rule is
-  `domain.Asset.Active()` (`Ready && Maintained && CurrentHP > 0`, the same test
-  as attack eligibility). A Cat 4 hook gets no `FactionState`, so it keeps its
+  `domain.Asset.Active()` (ready, maintained, alive, and neither sheltered nor
+  disabled: the same test as attacker selection; see [actions](actions.md)). A
+  Cat 4 hook gets no `FactionState`, so it keeps its
   owner from registration and reads `owner.Assets[assetID]` at query time; a
   removed asset reads as nil and fails `effects.active()`. Rejected: holding the
   asset pointer, which keeps a removed asset in effect until the next cycle.
@@ -366,6 +472,6 @@ driver. The package defines the contracts; it owns no game data of its own.
 [effect & mutation](effect-mutation.md) page — the only writers to the registry.
 **Dispatched by** the [orchestrator](orchestrator.md) (Cat 3 reactors after
 movement and action), the [actions](actions.md) engine (Cat 1/2 on every faction roll, Cat 5 in combat, Cat
-4 asset-cost and tech level at purchase, Cat 4 attack eligibility in combat), and the [turn pipeline](turn-pipeline.md) (Cat 4
+4 asset-cost and tech level at purchase, Cat 4 attack eligibility and Cat 6 interception in combat), and the [turn pipeline](turn-pipeline.md) (Cat 4
 maintenance-cost at bookkeeping). Emitted reactions flow back through the same
 [mutation apply layer](effect-mutation.md) as every other state change.

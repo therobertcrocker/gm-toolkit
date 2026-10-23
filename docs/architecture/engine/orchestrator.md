@@ -158,11 +158,11 @@ type Collectors struct {
 }
 ```
 
-`PhaseCollector` is the orchestrator's own prompt surface: `AwaitCheckpoint`,
+`PhaseCollector` is the orchestrator's own prompt surface: `ConfirmPayment` (embedded `hooks.PaymentCollector`; the turn-start lift), `RequestPermission` and `ConfirmPermissionContest` (embedded `hooks.PermissionCollector`; an arriving asset's permission request, and a rival Lobbyists' contest of the grant), `AwaitCheckpoint`,
 `SelectAction`, `SelectStatRaise`, `SelectMovementDecisions`,
 `SelectTransportCargo`, `SelectRelocateOrders` (a free movement grant's prompt; it
 shares the signature of the action collector's, so both satisfy
-`relocate.OrderCollector`). `action.Collector` is a separate, richer contract passed
+`relocate.Collector`). `action.Collector` is a separate, richer contract passed
 down into the action sub-engine (it transitively satisfies `hooks.Collector` and
 `ability.Collector`). The orchestrator threads both but calls only `Phase`
 itself.

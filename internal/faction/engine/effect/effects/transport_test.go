@@ -188,6 +188,46 @@ func TestTransportReactor_Progressed(t *testing.T) {
 	}
 }
 
+func TestTransportReactor_RiderOfAnotherFaction(t *testing.T) {
+	path := testPath(5)
+	newHex := path[2]
+	transport := &domain.Asset{
+		ID:      "transport-1",
+		OwnerID: "beta",
+		CurrentOrder: &domain.MovementOrder{
+			AssetID:       "transport-1",
+			Path:          path,
+			CargoAssetIDs: []string{"alpha-x"},
+		},
+	}
+	rider := &domain.Asset{ID: "alpha-x", OwnerID: "alpha", Location: domain.Location{RegionHex: path[0]}}
+	factionState := &state.FactionState{
+		Factions: map[string]*domain.Faction{
+			"alpha": {ID: "alpha", Assets: map[string]*domain.Asset{rider.ID: rider}},
+			"beta":  {ID: "beta", Assets: map[string]*domain.Asset{transport.ID: transport}},
+		},
+	}
+	reactor := &effects.TransportReactor{FactionID: "beta", AssetID: "transport-1", Profile: &domain.TransportProfile{}}
+
+	result := reactor.OnMutations([]domain.Mutation{
+		domain.MovementOrderProgressed{FactionID: "beta", AssetID: "transport-1", NewStepIdx: 2, RegionHex: newHex},
+	}, factionState, nil)
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 AssetMoved for the rider, got %d", len(result))
+	}
+	moved, ok := result[0].(domain.AssetMoved)
+	if !ok {
+		t.Fatalf("result[0] = %T, want AssetMoved", result[0])
+	}
+	if moved.FactionID != "alpha" || moved.CausedByFactionID != "beta" {
+		t.Errorf("AssetMoved = {FactionID: %q, CausedByFactionID: %q}, want {alpha, beta}", moved.FactionID, moved.CausedByFactionID)
+	}
+	if moved.FromLocation != rider.Location {
+		t.Errorf("FromLocation = %+v, want the rider's location %+v", moved.FromLocation, rider.Location)
+	}
+}
+
 // --- MovementOrderCompleted ---
 
 func TestTransportReactor_Completed(t *testing.T) {
@@ -296,5 +336,24 @@ func TestTransportReactor_Revised(t *testing.T) {
 	result := newReactor().OnMutations(mutations, factionState, nil)
 	if len(result) != 0 {
 		t.Errorf("expected no reactor output on Revised (cargo manifest carried forward by BuildMovementMutations), got %d", len(result))
+	}
+}
+
+func TestTransportReactor_Held(t *testing.T) {
+	path := testPath(5)
+	transport := &domain.Asset{ID: "transport-1", OwnerID: "alpha",
+		CurrentOrder: &domain.MovementOrder{AssetID: "transport-1", Path: path, CargoAssetIDs: []string{"cargo-1"}}}
+	cargo := &domain.Asset{ID: "cargo-1", OwnerID: "alpha", Location: domain.Location{RegionHex: path[2]}}
+
+	result := newReactor().OnMutations([]domain.Mutation{
+		domain.MovementOrderHeld{FactionID: "alpha", AssetID: "transport-1", WorldID: "Krylos", NewStepIdx: 3, RegionHex: path[3], Reason: domain.HoldRefused},
+	}, stateWithTransport(transport, cargo), nil)
+
+	if len(result) != 1 {
+		t.Fatalf("result = %+v, want one cargo move", result)
+	}
+	moved, ok := result[0].(domain.AssetMoved)
+	if !ok || moved.AssetID != "cargo-1" || moved.ToLocation != (domain.Location{RegionHex: path[3]}) || moved.Cause != "transport_held" {
+		t.Errorf("result[0] = %+v, want cargo-1 moved to the hold hex", result[0])
 	}
 }

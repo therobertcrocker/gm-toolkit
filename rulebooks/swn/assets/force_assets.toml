@@ -442,6 +442,8 @@ max_hex = 3
 coin_cost = 2
 cargo_types = ["Facility", "Military Unit", "Special Forces", "Tactic", "Logistics Facility"]
 max_cargo = 1
+ignores_permission = true
+ignores_lockdown = true
 
 [assets.IntegralProtocols]
 id = "SWN-F7-002"
@@ -511,7 +513,8 @@ maintenance = 2
 tech_level = 4
 speed = 3
 type = "Starship"
-flags = ["S"]
+flags = ["A", "S"]
+purchase_permission = true
 counter = "3d8"
 description = "The pride of an empire, a collection of massive capital warships without peer in most sectors. Capital fleets cost an additional 2 Coin of maintenance each turn. As an action, they may move to any world within three hexes of their current location. Planetary government permission is required to raise a Capital Fleet, but not to move one into a system."
 

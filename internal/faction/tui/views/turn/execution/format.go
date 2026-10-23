@@ -87,6 +87,14 @@ func phaseHeader(phrase string) string {
 	return styles.Subtle.Render(phrase)
 }
 
+// interceptionLabels name the Cat 6 save behind a mutation that is not damage.
+var interceptionLabels = map[string]string{
+	string(domain.SpecialSeizeTarget):   "seized",
+	string(domain.SpecialRestoreAsset):  "restored",
+	string(domain.SpecialSacrificeSelf): "false front",
+	string(domain.SpecialShelterAsset):  "sheltered",
+}
+
 // formatMutation renders one mutation as a single indented line, returning
 // include=false for bookkeeping noise the stream omits. AssetAdded surfaces the
 // asset's DefinitionID — domain.Asset carries no display name (that lives on the
@@ -96,6 +104,15 @@ func formatMutation(m domain.Mutation) (string, bool) {
 	case domain.FactionHPDelta:
 		return fmt.Sprintf("HP %+d", mut.Delta), true
 	case domain.AssetHPDelta:
+		if label, ok := interceptionLabels[mut.Cause]; ok {
+			return fmt.Sprintf("asset %s HP %+d (%s)", mut.AssetID, mut.Delta, label), true
+		}
+		switch {
+		case mut.Delta == 0:
+			return fmt.Sprintf("asset %s hit (no damage)", mut.AssetID), true
+		case mut.Cause == string(domain.SpecialCounterstrike):
+			return fmt.Sprintf("asset %s HP %+d (counterstrike)", mut.AssetID, mut.Delta), true
+		}
 		return fmt.Sprintf("asset %s HP %+d", mut.AssetID, mut.Delta), true
 	case domain.BaseHPDelta:
 		return fmt.Sprintf("base %s HP %+d", mut.BaseID, mut.Delta), true
@@ -107,7 +124,26 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("Coin %+d", mut.Delta), true
 	case domain.AssetAdded:
 		return fmt.Sprintf("+asset %s", mut.Asset.DefinitionID), true
+	case domain.AssetConditionApplied:
+		return fmt.Sprintf("asset %s +%s", mut.AssetID, mut.Condition.Kind), true
+	case domain.AssetConditionCleared:
+		return fmt.Sprintf("asset %s -%s", mut.AssetID, mut.Condition.Kind), true
+	case domain.AssetOwnerChanged:
+		return fmt.Sprintf("asset %s captured by %s", mut.AssetID, mut.ToFactionID), true
+	case domain.WorldGovernmentChanged:
+		if mut.ToFactionID == "" {
+			return fmt.Sprintf("%s → independent", mut.WorldID), true
+		}
+		return fmt.Sprintf("%s governed by %s", mut.WorldID, mut.ToFactionID), true
+	case domain.PermissionRefused:
+		if mut.Reason != domain.RefusalDenied {
+			return fmt.Sprintf("permission %s: %s on %s", mut.Reason, mut.DefinitionID, mut.WorldID), true
+		}
+		return fmt.Sprintf("permission refused: %s on %s", mut.DefinitionID, mut.WorldID), true
 	case domain.AssetRemoved:
+		if label, ok := interceptionLabels[mut.Cause]; ok {
+			return fmt.Sprintf("-asset %s (%s)", mut.AssetID, label), true
+		}
 		return fmt.Sprintf("-asset %s", mut.AssetID), true
 	case domain.BaseAdded:
 		return fmt.Sprintf("+base %s", mut.Base.ID), true
@@ -129,6 +165,8 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return "move cancelled", true
 	case domain.MovementOrderCompleted:
 		return "move completed", true
+	case domain.MovementOrderHeld:
+		return fmt.Sprintf("move held short of %s (%s)", mut.WorldID, mut.Reason), true
 	case domain.AssetMoved:
 		// deliberate: surface ability relocations, fold drift movement — drift's own
 		// MovementOrderCompleted line already reports the move, an ability has none.
@@ -140,7 +178,8 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		// Folded as bookkeeping noise or redundant with a surfaced line:
 		// GoalTurnsTick, GoalProgressed, GoalInitiated, GoalPhaseAdvanced,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
-		// XPSpent, XPAwarded, MovementOrderProgressed, InfluenceDelta, TagAdded.
+		// XPSpent, XPAwarded, MovementOrderProgressed, InfluenceDelta, TagAdded,
+		// TagRemoved.
 		return "", false
 	}
 }

@@ -14,6 +14,20 @@ The arc's planned-work write-up reduces to a pointer at this doc.
 Delete these comments before writing.
 -->
 
+## In Plain Words
+
+<!--
+REQUIRED. Under 15 lines. Plain words for a reader who has not read the rest of
+this doc: no project shorthand unless it is defined in the same sentence.
+
+  - What: what this arc builds.
+  - Why: the problem it solves, for the GM or for the codebase.
+  - How it fits: where it sits in the project, and what it unblocks.
+
+Every session on this arc reads this section first (session-modes.md section 10,
+Re-grounding).
+-->
+
 ## Vision
 
 <!--

@@ -39,12 +39,19 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 		{"FactionHPDelta positive", domain.FactionHPDelta{Delta: 3}, "HP +3"},
 		{"FactionHPDelta negative", domain.FactionHPDelta{Delta: -2}, "HP -2"},
 		{"AssetHPDelta", domain.AssetHPDelta{AssetID: "rifle-1", Delta: -1}, "asset rifle-1 HP -1"},
+		{"AssetHPDelta zero", domain.AssetHPDelta{AssetID: "x", Delta: 0, Cause: "attack"}, "asset x hit (no damage)"},
+		{"AssetHPDelta counterstrike", domain.AssetHPDelta{AssetID: "a1", Delta: -5, Cause: "counterstrike"}, "asset a1 HP -5 (counterstrike)"},
+		{"AssetHPDelta shelter", domain.AssetHPDelta{AssetID: "mu", Delta: 5, Cause: "shelter_asset"}, "asset mu HP +5 (sheltered)"},
+		{"AssetHPDelta seize", domain.AssetHPDelta{AssetID: "pm", Delta: 4, Cause: "seize_target"}, "asset pm HP +4 (seized)"},
+		{"AssetRemoved sacrifice", domain.AssetRemoved{AssetID: "ff", Cause: "sacrifice_self"}, "-asset ff (false front)"},
 		{"BaseHPDelta", domain.BaseHPDelta{BaseID: "b1", Delta: 2}, "base b1 HP +2"},
 		{"BaseHealed", domain.BaseHealed{BaseID: "b1", Delta: 4}, "base b1 healed +4"},
 		{"BaseExpanded", domain.BaseExpanded{BaseID: "b1", Delta: 1}, "base b1 expanded +1"},
 		{"CoinDelta positive", domain.CoinDelta{Delta: 10}, "Coin +10"},
 		{"CoinDelta negative", domain.CoinDelta{Delta: -5}, "Coin -5"},
 		{"AssetAdded", domain.AssetAdded{Asset: domain.Asset{DefinitionID: "def-rifle"}}, "+asset def-rifle"},
+		{"AssetConditionApplied", domain.AssetConditionApplied{AssetID: "x", Condition: domain.Condition{Kind: domain.ConditionNoAbility}}, "asset x +no_ability"},
+		{"AssetConditionCleared", domain.AssetConditionCleared{AssetID: "x", Condition: domain.Condition{Kind: domain.ConditionNoAbility}}, "asset x -no_ability"},
 		{"AssetRemoved", domain.AssetRemoved{AssetID: "a2"}, "-asset a2"},
 		{"BaseAdded", domain.BaseAdded{Base: domain.Base{ID: "base-1"}}, "+base base-1"},
 		{"BaseDestroyed", domain.BaseDestroyed{BaseID: "base-1"}, "base base-1 destroyed"},
@@ -56,7 +63,12 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 		{"MovementOrderRevised", domain.MovementOrderRevised{}, "move revised"},
 		{"MovementOrderCancelled", domain.MovementOrderCancelled{}, "move cancelled"},
 		{"MovementOrderCompleted", domain.MovementOrderCompleted{}, "move completed"},
+		{"MovementOrderHeld", domain.MovementOrderHeld{WorldID: "Krylos", Reason: domain.HoldRefused}, "move held short of Krylos (permission_refused)"},
 		{"AssetMoved ability", domain.AssetMoved{AssetID: "sf-1", ToLocation: domain.Location{WorldID: "Andama"}, Cause: "ability"}, "asset sf-1 → Andama"},
+		{"WorldGovernmentChanged", domain.WorldGovernmentChanged{WorldID: "Krylos", ToFactionID: "f1"}, "Krylos governed by f1"},
+		{"WorldGovernmentChanged independent", domain.WorldGovernmentChanged{WorldID: "Krylos", FromFactionID: "f1"}, "Krylos → independent"},
+		{"PermissionRefused", domain.PermissionRefused{DefinitionID: "gunships", WorldID: "Krylos"}, "permission refused: gunships on Krylos"},
+		{"PermissionRefused withdrawn", domain.PermissionRefused{DefinitionID: "gunships", WorldID: "Krylos", Reason: domain.RefusalWithdrawn}, "permission withdrawn: gunships on Krylos"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -81,6 +93,7 @@ func TestFormatMutation_Folded(t *testing.T) {
 		domain.InfluenceDelta{},
 		domain.AssetMoved{Cause: "transport_completed"},
 		domain.TagAdded{},
+		domain.TagRemoved{},
 	}
 	for _, mut := range folded {
 		t.Run(fmt.Sprintf("%T", mut), func(t *testing.T) {

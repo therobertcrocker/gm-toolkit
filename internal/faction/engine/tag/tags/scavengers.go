@@ -19,7 +19,7 @@ func (reactor *ScavengersReactor) OnMutations(mutations []domain.Mutation, _ *st
 	var extra []domain.Mutation
 	for _, mutation := range mutations {
 		removed, ok := mutation.(domain.AssetRemoved)
-		if ok && removed.Cause == "attack" {
+		if ok && (removed.Cause == "attack" || removed.Cause == string(domain.SpecialCounterstrike)) {
 			extra = append(extra, domain.CoinDelta{
 				FactionID:         reactor.FactionID,
 				Delta:             1,

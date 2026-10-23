@@ -29,6 +29,10 @@ type Tag struct {
 	Effect      string `toml:"effect"`
 }
 
+// TagPlanetaryGovernment marks a faction that governs at least one world; the
+// government record says which (A.001.6 overview Decision 10).
+const TagPlanetaryGovernment = "T-011"
+
 type Goal struct {
 	ID          string `toml:"id"`
 	Name        string `toml:"name"`
@@ -64,6 +68,11 @@ type Faction struct {
 	Bases                   []*Base           `toml:"bases"`
 	HookBudgets             map[string]int    `toml:"hook_budgets,omitempty"`
 	PendingPurchaseDiscount int               `toml:"pending_purchase_discount,omitempty"`
+}
+
+// HasTag reports whether the faction holds the tag with ID tagID.
+func (faction *Faction) HasTag(tagID string) bool {
+	return slices.ContainsFunc(faction.Tags, func(tag *Tag) bool { return tag.ID == tagID })
 }
 
 // Clone deep-copies a faction so a caller can apply mutations to the copy without
@@ -265,4 +274,35 @@ func SortedAssets(faction *Faction) []*Asset {
 		return strings.Compare(a.ID, b.ID)
 	})
 	return sorted
+}
+
+// AssetOwner returns the faction that holds assetID, or nil. Asset IDs are unique
+// across factions (NextAssetID), so at most one matches.
+func AssetOwner(factions map[string]*Faction, assetID string) *Faction {
+	for _, faction := range factions {
+		if _, ok := faction.Assets[assetID]; ok {
+			return faction
+		}
+	}
+	return nil
+}
+
+// AttackBlocked reports whether a no_attack condition on asset holds now. It is
+// checked when read: the source must still exist, share the asset's world, and
+// belong to another faction. The source need not be active.
+func AttackBlocked(factions map[string]*Faction, asset *Asset) bool {
+	for _, condition := range asset.Conditions {
+		if condition.Kind != ConditionNoAttack {
+			continue
+		}
+		owner := AssetOwner(factions, condition.SourceAssetID)
+		if owner == nil || owner.ID == asset.OwnerID {
+			continue
+		}
+		source := owner.Assets[condition.SourceAssetID]
+		if source.Location.WorldID != "" && source.Location.WorldID == asset.Location.WorldID {
+			return true
+		}
+	}
+	return false
 }

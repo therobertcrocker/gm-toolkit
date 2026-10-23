@@ -94,8 +94,8 @@ Every flow is a different weighting of the same three artifacts (Concept → Dis
 | Type | Concept | Discovery | Plan | Execution |
 |------|---------|-----------|------|-----------|
 | **Arc** | Standalone doc in `arcs/<arc>/` | Arc-Discovery, always | Arc-Plan (initiative slicing + DAG) | N initiatives, each running its own flow |
-| **Feature** | planned-work write-up | Always (1–2 sessions) | Overview plan; per-effort plans as needed (section 8) | Hand-off sets scope; default one commit per session |
-| **Refactor** | planned-work write-up | Often skipped; audit-first when it fires | Pattern + unit list | Hand-off sets scope; default one unit per session; mandatory re-grounding per unit |
+| **Feature** | planned-work write-up | Always (1–2 sessions) | Overview plan; per-effort plans as needed (section 8) | Hand-off sets scope; default one phase per session |
+| **Refactor** | planned-work write-up | Often skipped; audit-first when it fires | Pattern + unit list | Hand-off sets scope; default one phase (typically one unit) per session; mandatory re-grounding per unit |
 | **Bugfix** | Backlog row only | Never (diagnosis = first half of Plan) | Skipped (trivial) or lightweight (non-trivial) | Single session |
 | **Docs** | Backlog row, or write-up if initiative-sized | Skipped — generative docs discover-at-write | Skipped (single-session) or docs-initiative plan (multi-effort) | One session per effort/doc |
 | **Chore** | Backlog row only | Never | Never | Single session |
@@ -114,21 +114,33 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 ### Plan (1–2 sessions)
 
-**Goal:** turn the discovery doc into an executable plan — work broken into commits, each commit sized for one execution session.
+**Goal:** turn the discovery doc into an executable plan — work broken into phases and commits, each phase sized for one execution session (section 10, Execution scope).
 
 **Artifacts** — see template at `docs/process/templates/implementation-plan.md`:
 
 - **Top-level plan** — `docs/initiatives/implementation/<initiative-name>-plan.md`. Always required.
 - **Per-effort plans** — `docs/initiatives/implementation/<initiative-name>-effort-N-plan.md`. Used when the initiative splits into efforts — see section 8 for when to split and how effort planning is paced.
 
+**Work breakdown levels.** Each level has one job, one artifact and one size rule. The template holds the budgets and the commands that check them.
+
+| Level | Is | Artifact | Size rule |
+|---|---|---|---|
+| Initiative | One branch, one discovery doc, one merge | Top-level plan. With efforts, its Work Breakdown lists the efforts. | None |
+| Effort | One design surface; its boundary is a review point (section 8) | Effort plan: front matter plus phases. With one effort, the top-level plan is the effort plan. | Front matter about 400 lines; every phase session reads it again |
+| Phase | One execution session | `### Phase` section | About 800 lines |
+| Commit | One reviewable unit that builds green | `#### Commit` section | Split only at a real seam |
+| Task | One edit, as literal code | `##### Task` section | — |
+
+**Work breakdown overview.** A plan with phases opens its Work Breakdown with an **Overview** list: each phase, each commit's conventional message, and each commit's task count. It gives the big picture without a scroll through the tasks. Keep it in sync with the body when execution changes the breakdown.
+
 **Session ends when:** the plan is written and Robert has signed off. Do not begin execution in the same session.
 
 ### Execution (N sessions)
 
-**Goal:** implement the commits the hand-off names — one commit when it names none (section 10, Execution scope).
+**Goal:** implement the phase the hand-off names (section 10, Execution scope).
 
 **Activities:**
-- Read the implementation plan, focused on the current commit's tasks
+- Read the implementation plan, focused on the tasks of the commits in scope
 - Read the relevant current code (it may have shifted since the plan was written)
 - Implement the tasks
 - Commit using conventional commit format (per CLAUDE.md)
@@ -180,7 +192,7 @@ Phases are scoped smaller than feature phases — typically one unit per phase. 
 
 ### Execution (N sessions, mandatory re-grounding per unit)
 
-Scope follows section 10, Execution scope, with one unit as the default. Every unit opens with a **re-grounding step:**
+Scope follows section 10, Execution scope: one phase, which is typically one unit. Every unit opens with a **re-grounding step:**
 
 1. Read the current state of the unit being converted
 2. Verify it still matches what the plan assumed
@@ -280,7 +292,7 @@ An **effort** is the scaling mechanism for initiatives too large to be contained
 - **One Discovery, shared.** The initiative's discovery doc designs across all efforts; efforts do not get their own Discovery.
 - **One overview plan, always.** The first Plan session produces the top-level plan (`<initiative-name>-plan.md`): shared decisions, the effort slicing, and the dependency DAG between efforts. Small efforts are specified fully here and execute straight from it.
 - **Per-effort Plan sessions, as needed.** A large or design-heavy effort gets its own lightweight Plan session producing `<initiative-name>-effort-N-plan.md`. The overview plan names which efforts need one. Each per-effort Plan session is its own session, subject to the usual mode boundaries.
-- **Execution per effort.** Each effort's commits run as normal execution sessions for the initiative's type (per-commit for features, per-unit for refactors, per-doc for docs).
+- **Execution per effort.** Each effort's work runs as normal execution sessions for the initiative's type (per-phase for features and refactors, per-doc for docs).
 
 ### Interim Effort Review (optional)
 
@@ -355,7 +367,9 @@ This applies to refactor and bugfix Plan sessions as well, even when the plan is
 
 ### Execution scope
 
-The hand-off sets how many commits an execution session covers (for example, "Commits 1–3"). When the hand-off names no scope, the session covers one commit (one unit for a refactor). Inside a multi-commit session, each commit is still its own unit: re-ground, log decisions, summarize, and wait for the commit go-ahead, then start the next commit without asking.
+One phase is one execution session (section 4, Work breakdown levels). The Plan session sizes each phase to the phase budget in `templates/implementation-plan.md` and splits phases only at real seams: a green-build point, a type-system or cross-package boundary, or a behavior change. A phase typically holds 2–3 commits.
+
+The hand-off names the phase (for example, "Phase 2, Commits 3–4"). It can override the default with a different scope. When the hand-off names no scope, the session covers one phase. Inside a multi-commit session, each commit is still its own unit: re-ground, log decisions, summarize, and wait for the commit go-ahead, then start the next commit without asking.
 
 ### Plan mode is a strong signal
 
@@ -365,7 +379,7 @@ When plan mode is active and the stated deliverable is a file (a discovery doc o
 
 Every Plan session and every Execution session must verify its inputs against the current state of the code before acting:
 
-- **Every session** — read the **In Plain Words** section of the initiative's discovery doc or plan first, so the detail is read against what, why and how it fits.
+- **Every session** — read the **In Plain Words** section of the doc in scope first, then that of each layer above it (overview plan, arc), so the detail is read against what, why and how it fits. An Execution session also reads the **In plain words** line of each phase in scope.
 - **Discovery and Plan sessions** — read the relevant architecture page(s) under `docs/architecture/` before designing (start at `docs/architecture/architecture-overview.md`); their `Key Decisions` sections are binding context. This is the push half of the push-not-pull decision system (see Decision records below).
 - **Plan sessions** — re-read the relevant code. The discovery doc is a snapshot; the snapshot may have decayed. Verify the plan's assumptions against the current source, not against what the discovery doc said.
 - **Execution sessions** — re-read the current code for the unit being touched. The plan was written against a snapshot that may have shifted, especially for refactors where prior phases have already changed the surrounding code. `// deliberate:` fence-signs encountered in that code are binding unless explicitly revisited with Robert.
@@ -425,11 +439,12 @@ Templates for the file artifacts produced by Concept, Discovery, and Plan sessio
 - **Discovery doc** — [`templates/discovery.md`](./templates/discovery.md). Copy to `docs/initiatives/discovery/<initiative-name>-discovery.md` and fill in.
 - **Implementation plan** — [`templates/implementation-plan.md`](./templates/implementation-plan.md). Copy to `docs/initiatives/implementation/<initiative-name>-plan.md` (or split into per-effort files for large initiatives) and fill in.
 - **Docs-initiative plan** — [`templates/docs-plan.md`](./templates/docs-plan.md). For multi-effort `docs` initiatives (section 7). Copy to `docs/initiatives/implementation/<initiative-name>-plan.md` and fill in.
+- **Execution hand-off** — [`templates/execution-handoff.md`](./templates/execution-handoff.md). Written at the end of an Execution session to start the next one. Copy to `docs/initiatives/implementation/<initiative-name>[-effort-N]-handoff.md`. Never committed; the session that uses it deletes it.
 - **Arc concept** — [`templates/arc-concept.md`](./templates/arc-concept.md). Copy to `docs/initiatives/arcs/<arc-name>/<arc-name>-arc-concept.md` when an arc is promoted.
 - **Architecture page** — [`templates/arch-page.md`](./templates/arch-page.md). Code-map header + Purpose / Shape / Key Decisions / Dependencies. Copy to `docs/architecture/<side>/<subsystem>.md` (`<side>` = `engine` or `interface`) and fill in. Landed and validated against the orchestrator pilot in D-002 Effort 3.
 
 All templates carry inline guidance (HTML comments) explaining required sections, optional sections, and how to scale the structure to the size of the work. Required sections are marked `REQUIRED`; everything else is included only when relevant.
 
-Every discovery doc and plan, arc-discovery and arc-plan included, opens with a required **In Plain Words** section: what, why and how it fits, in plain words, under 15 lines.
+Every layer of initiative artifact opens with a required **In Plain Words** section: what, why and how it fits, in plain words, under 15 lines. The layers are the arc concept, arc-discovery, arc-plan, discovery doc, overview plan, effort plan and docs-initiative plan. Each one is scoped to its own layer. Inside a single-file or effort plan, each phase also opens with a required **In plain words** line: one or two sentences, with the same rules, scoped to that phase.
 
 Templates evolve as we learn what artifacts actually need. Treat them as living documents — update when a real plan or discovery surfaces a missing section or an unused one.

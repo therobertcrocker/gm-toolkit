@@ -6,14 +6,15 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// eligibleAttackers returns faction assets that may attack this turn: the
-// active ones.
-func eligibleAttackers(faction *domain.Faction) []*domain.Asset {
+// eligibleAttackers returns faction assets that may attack this turn: the active
+// ones whose attack no Seditionists block.
+func eligibleAttackers(faction *domain.Faction, factionState *state.FactionState) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range faction.Assets {
-		if asset.Active() {
+		if asset.Active() && !domain.AttackBlocked(factionState.Factions, asset) {
 			result = append(result, asset)
 		}
 	}
@@ -50,12 +51,13 @@ func eligibleDefendersAtHex(attacker *domain.Asset, attackerDef *domain.AssetDef
 }
 
 // filterOpposingDefenders applies the defender eligibility filter to a candidate
-// slice: excludes the attacker's own assets and assets that are stealthy or
-// not active.
+// slice: excludes the attacker's own assets and assets that are stealthy or not
+// targetable.
 func filterOpposingDefenders(attackerFactionID string, candidates []*domain.Asset) []*domain.Asset {
 	var result []*domain.Asset
 	for _, asset := range candidates {
-		if asset.OwnerID != attackerFactionID && !asset.Stealthy && asset.Active() {
+		// deliberate: Targetable, not Active, because a disabled asset can still be attacked (D-38).
+		if asset.OwnerID != attackerFactionID && !asset.Stealthy && asset.Targetable() {
 			result = append(result, asset)
 		}
 	}

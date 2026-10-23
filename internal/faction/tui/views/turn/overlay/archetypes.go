@@ -153,8 +153,30 @@ func (o ConfirmOverlay) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 func (o ConfirmOverlay) View() string      { return withHeader(o.header, o.form.View()) }
 func (o ConfirmOverlay) Help() help.KeyMap { return cancelFormHelp{} }
 
+// --- NoCancelConfirm: yes/no where Esc does nothing ---
+
+// NoCancelConfirm is a ConfirmOverlay that ignores Esc, for a prompt asked inside
+// an action, often of a faction that is not the acting one. The decline is an
+// explicit option, and a cancel would drop the acting faction's whole action
+// (Effort 3 Decision Record 7).
+type NoCancelConfirm struct {
+	ConfirmOverlay
+}
+
+func (o NoCancelConfirm) Update(msg tea.Msg) (Overlay, tea.Cmd) {
+	if k, ok := msg.(tea.KeyMsg); ok && k.String() == "esc" {
+		return o, nil
+	}
+	updated, cmd := o.ConfirmOverlay.Update(msg)
+	o.ConfirmOverlay = updated.(ConfirmOverlay)
+	return o, cmd
+}
+
+func (o NoCancelConfirm) Help() help.KeyMap { return formHelp{} }
+
 var (
 	_ Overlay = SelectOverlay[int]{}
 	_ Overlay = MultiSelectOverlay[int]{}
 	_ Overlay = ConfirmOverlay{}
+	_ Overlay = NoCancelConfirm{}
 )

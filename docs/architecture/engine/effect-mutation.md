@@ -65,8 +65,9 @@ register hooks in any combination of categories; Fanatical already does two.
 `EffectsEngine` is the home for asset **`S`-flag** features: the passive and
 reactive specialness an asset carries just by existing. (The `A` flag — *active*
 abilities a faction spends its action on — is resolved by the
-[actions](actions.md) ability dispatch instead; `P` is a buy-time government-
-permission check. The effect engine owns only the passive `S` side.) Its handlers
+[actions](actions.md) ability dispatch instead; `P` asks the world's government at
+purchase, through `dispatch.RequestPermission`. The effect engine owns only the
+passive `S` side.) Its handlers
 are registered the same *data-driven* way by the orchestrator at construction:
 `NewWithRulebook` registers one handler per asset definition that declares the
 relevant profile.
@@ -91,7 +92,11 @@ hook. `turn_start` fires from the bookkeeping phase (`FireTurnStart`).
 runs, the phase scans its batch for `AssetAdded` with cause `buy` or `ability`
 (not `refit`), and fires each bought asset's entries before goal progress and
 the reactors. So Psychic Assassins enter play stealthed, and Tripwire Cells see
-them arrive. The [ability catalog](ability-catalog.md) tracks which features
+them arrive. A quality (`quality = true`, Stealth) adds no asset, so Buy Asset
+fires its one `on_purchase` entry itself (`FireQuality`), on a target picked from
+the registrar's `Targets`. A third route, `own_attack` and `own_defense_win`, is raised by the
+Attack action at each matchup (`FireMatchup`), because Cracked Comms needs a
+prompt and a full roll inside the matchup. The [ability catalog](ability-catalog.md) tracks which features
 ship.
 
 ### The apply layer: the mutation vocabulary
@@ -146,13 +151,17 @@ is the string written to history; the rules behind the numbers live in
 - `xp_awarded` / `xp_spent` — credit / debit XP
 - `stat_raised` — raise one attribute and recompute MaxHP
 - `homeworld_changed` — relocate the faction's homeworld
-- `tag_added` — grant a tag (the full `Tag` is embedded, so `Apply` needs no rulebook lookup)
+- `tag_added` / `tag_removed` — grant / take a tag (the full `Tag` is embedded, so `Apply` needs no rulebook lookup)
+- `world_government_changed` — set or clear a world's ruler in the government record (Planetary Seizure)
+- `permission_refused` — record only: a purchase (which bought nothing) or a landing (the asset holds or stays) was refused. Its reason says whether the government said no (the zero value), a rival's Lobbyists withdrew the grant, or a withdrawal earlier in the turn barred the request
 
 **Assets**
 - `asset_added` / `asset_removed` — add to / drop from the roster
-- `asset_hp_delta` — adjust an asset's HP
+- `asset_hp_delta` — adjust an asset's HP. A Cat 6 save keeps the hit and sets the HP it saves at with a second delta, caused by the save's effect
 - `asset_maintained_flag` — set the maintained flag
 - `asset_stealth_applied` / `asset_stealth_cleared` — toggle stealth
+- `asset_condition_applied` / `asset_condition_cleared` — add / drop a condition, keyed on kind, source asset, target faction and world (Saboteurs' `no_ability`, Marketers' `disabled`, Seditionists' `no_attack`, Boltholes' `sheltered`, and Transport Lockdown's `locked_out`, which sits on the Lockdown itself and names the struck faction and the world of the hit)
+- `asset_owner_changed` — move one asset to another faction with its ID and order; its cargo keeps its old owner (Treachery)
 - `asset_moved` — set an asset's Location (cargo follows a transport; also emitted by the relocate ability with `Cause: "ability"`)
 
 **Bases**
@@ -169,6 +178,7 @@ is the string written to history; the rules behind the numbers live in
 
 **Movement orders**
 - `movement_order_issued` / `_progressed` / `_revised` / `_cancelled` / `_completed` — the in-flight order lifecycle (see [world & movement](world-movement.md))
+- `movement_order_held` — an order that would complete stops one hex short of its world and stays open: a refused arrival. Its apply arm sets the step and hex as `_progressed` does
 
 ## Key Decisions
 
@@ -183,9 +193,37 @@ is the string written to history; the rules behind the numbers live in
   into a `MutationApplyError` instead of aborting on the first, so a failed turn
   reports all its problems at once. The orchestrator treats the error as fatal.
   (Frozen log 239–240.)
+- **Owner changes apply last in their batch.** `Apply` runs every mutation but
+  `AssetOwnerChanged` in the emitted order, then the owner changes. Reactors read
+  the state from before the batch, so a reactor's output that names a captured
+  asset addresses its old owner; applied after the capture, it would be a fatal
+  miss. History keeps the emitted order, and a fence-sign marks the two passes.
+  Asset IDs stay unique across factions, because `NextAssetID` scans every faction
+  for its prefix. Rejected: each emitter re-addresses (spread over every present
+  and future reactor); `Apply` finds an asset by ID in any faction (it hides the
+  wrong-owner bugs that the miss contract exists to catch). (A.001.6 overview
+  Decision 5; Effort 1 Decision 3.)
+- **Lasting asset state is one condition list, and each kind lands with its
+  reader.** `Asset.Conditions` holds `Condition{Kind, SourceAssetID,
+  ExpiresAtTurnOf, TargetFactionID, WorldID}`. `Is` compares all but the expiry, so
+  an apply replaces its own entry and two sources hold two entries. A timed end is
+  stored (`ExpiresAtTurnOf`, cleared at that faction's turn start), because a
+  counter or a capture can move the source before the end comes. Every other end
+  is checked when read: Seditionists' block and Transport Lockdown's lock hold only
+  while the source exists, stands on the world and belongs to another faction, so
+  they lapse and come back with no mutation. One shape serves all five kinds, and
+  no kind ships before the code that reads it. Rejected: a second asset field for
+  the lock-out. (A.001.6 overview Decisions 6 and 24; Effort 1 Decisions 1–2;
+  Effort 3 Decision 10; Effort 5 Decision 13 and Decision Record 5.)
+- **A refusal and a hold leave a record-only mutation.** `PermissionRefused`
+  changes no state, and `MovementOrderHeld` changes only the order's step and hex,
+  as `_progressed` does. Without them, a refused purchase that used the turn's
+  action leaves nothing in history, and a held arrival reads as a move. Each has an
+  apply arm, a digest line and a TUI line. Precedent: `GoalInitiated`. (A.001.6
+  overview Decision 22.)
 - **The rule layer registers hooks, it never dispatches.** Tag and effect engines
-  translate data into [hooks](hooks.md) and stop there; the orchestrator owns
-  every dispatch site. This is the same consumer-owned-registration pattern as the
+  translate data into [hooks](hooks.md) and stop there; the orchestrator and the
+  actions own every dispatch site. This is the same consumer-owned-registration pattern as the
   action factories, and it is what lets the hook framework grow without the
   orchestrator knowing which tags or effects exist.
 - **The S side has two routes: hooks at cycle start, and a direct definition read
@@ -193,8 +231,8 @@ is the string written to history; the rules behind the numbers live in
   asset has no hooks until the next cycle, so a Cat 3 reactor is the wrong shape
   for both. `FireTurnStart` and `FirePurchase` read the definition and run the
   registrar's `Fire`. This refines the rule above, but does not break it: the
-  orchestrator still owns each call site, and the effects engine resolves a phase
-  event that the orchestrator raises. Turn start fires at the start of the
+  orchestrator, or the action that owns the event, raises each route, and the
+  effects engine resolves it (A.001.6 overview Decision 21). Turn start fires at the start of the
   bookkeeping phase, gated on `BookkeepingApplied`, because turn setup re-runs on
   every resume and would pay twice. Purchase fires from one scan of the action
   batch, which covers Buy Asset and the purchase enabler with no effects engine in

@@ -55,6 +55,18 @@ func (s *SmokePhaseCollector) SelectRelocateOrders(_ *domain.Asset, _ []*domain.
 	return nil, nil
 }
 
+func (s *SmokePhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+	return false, nil // the dry run declines every lift
+}
+
+func (s *SmokePhaseCollector) RequestPermission(_ hooks.PermissionRequest) (bool, error) {
+	return false, nil // the smoke faction has no assets, so nothing arrives to ask
+}
+
+func (s *SmokePhaseCollector) ConfirmPermissionContest(_ hooks.PermissionContestOffer) (bool, error) {
+	return false, nil
+}
+
 var _ engine.PhaseCollector = (*SmokePhaseCollector)(nil)
 
 // SmokeActionCollector satisfies action.Collector for the dry-run. The smoke
@@ -71,6 +83,9 @@ func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.Mod
 func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return false }
 
 func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+	return nil, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) SelectAssetToLose(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectAbilityTarget(_ *domain.Asset, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
@@ -95,6 +110,21 @@ func (SmokeActionCollector) SelectDefender(_ *domain.Asset, _ []*domain.Asset, _
 	return nil, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) ConfirmRedirectToBase(_ *domain.Faction, _ *domain.Base, _ int) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmCounterstrike(_ *domain.Faction, _ *domain.Asset, _ *domain.Asset) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmSacrifice(_ hooks.SacrificeOffer) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) RequestPermission(_ hooks.PermissionRequest) (bool, error) {
+	return false, action.ErrActionUnavailable
+}
+func (SmokeActionCollector) ConfirmPermissionContest(_ hooks.PermissionContestOffer) (bool, error) {
 	return false, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectExpandInfluenceOrder(_ *domain.Faction, _ *state.FactionState, _ []string) (action.ExpandInfluenceOrder, error) {

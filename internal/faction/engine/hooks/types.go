@@ -96,3 +96,9 @@ const (
 	TieAttackerWins                   // attacker wins ties unconditionally
 	TieDefenderWins                   // defender wins ties unconditionally
 )
+
+type RegisteredPermissionGranter struct {
+	Scope  Scope
+	Source string
+	Hook   PermissionGranter
+}

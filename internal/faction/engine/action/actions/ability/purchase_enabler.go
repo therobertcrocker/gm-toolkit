@@ -38,6 +38,13 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	if def == nil {
 		return nil, fmt.Errorf("purchase_enabler: %w", action.ErrNoSelection)
 	}
+	refusal, err := dispatch.RequestPermission(ctx.Registry, ctx.Collector, ctx.FactionState, ctx.Faction, def, worldID, "ability")
+	if err != nil {
+		return nil, fmt.Errorf("purchase_enabler: %w", err)
+	}
+	if refusal != nil {
+		return []domain.Mutation{*refusal}, nil
+	}
 	quote := enablerQuote(ctx, def, params)
 	cost := quote.Cost
 	discountConsumed := false
@@ -48,7 +55,7 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	if ctx.Faction.Coin < cost {
 		return nil, fmt.Errorf("purchase_enabler: insufficient Coin: need %d, have %d", cost, ctx.Faction.Coin)
 	}
-	newAsset := domain.NewPurchasedAsset(ctx.Faction, def, worldID)
+	newAsset := domain.NewPurchasedAsset(ctx.FactionState.Factions, ctx.Faction, def, worldID)
 	mutations := []domain.Mutation{
 		domain.AssetAdded{FactionID: ctx.Faction.ID, Asset: newAsset, Cause: "ability", CausedByFactionID: ctx.Faction.ID},
 	}
@@ -60,21 +67,20 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 }
 
 // eligiblePurchaseDefs returns the rulebook definitions an enabler purchase may buy:
-// matching category, required tech level at or below the cap, the faction meeting the
-// min rating, holding Planetary Government when the def is P-flagged (Decision 7), and
-// affordable at the surcharged price. Name-sorted for a deterministic candidate order.
+// matching category and not a quality (which adds no asset to place), required tech
+// level at or below the cap, the faction meeting the
+// min rating, and affordable at the surcharged price. A P-flagged def is offered; its
+// permission is asked after the pick (D-35). Name-sorted for a deterministic candidate
+// order.
 func eligiblePurchaseDefs(ctx StepContext, params *domain.PurchaseParams) []*domain.AssetDefinition {
-	worldID := ctx.Asset.Location.WorldID
-	government := holdsGovernment(ctx, worldID)
 	var eligible []*domain.AssetDefinition
 	for _, def := range ctx.Rulebook.Assets {
-		if def.Category != params.Category {
+		if def.Category != params.Category || def.Quality {
 			continue
 		}
 		terms := domain.PurchaseTerms{
-			Cost:            enablerQuote(ctx, def, params).Cost,
-			TechCap:         params.MaxTechLevel,
-			HoldsGovernment: government,
+			Cost:    enablerQuote(ctx, def, params).Cost,
+			TechCap: params.MaxTechLevel,
 		}
 		if domain.CanPurchase(ctx.Faction, def, terms) {
 			eligible = append(eligible, def)
@@ -82,16 +88,6 @@ func eligiblePurchaseDefs(ctx StepContext, params *domain.PurchaseParams) []*dom
 	}
 	sort.Slice(eligible, func(i, j int) bool { return eligible[i].Name < eligible[j].Name })
 	return eligible
-}
-
-// holdsGovernment guards the (possibly nil) world engine before delegating to
-// domain.HasPlanetaryGovernment. Pretech Logistics waives the tech-level requirement
-// but not the P-flag permission requirement.
-func holdsGovernment(ctx StepContext, worldID string) bool {
-	if ctx.WorldEngine == nil || ctx.WorldEngine.Index == nil {
-		return false
-	}
-	return domain.HasPlanetaryGovernment(ctx.Faction.ID, ctx.WorldEngine.Index.BasesByLocation[worldID])
 }
 
 // enablerQuote runs the asset-cost chain on the enabler's surcharged price, so the

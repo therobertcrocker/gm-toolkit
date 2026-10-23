@@ -20,6 +20,8 @@ type effectRecord struct {
 	CostSurcharge  *costSurchargeRecord  `toml:"cost_surcharge"`
 	RestrictAttack *restrictAttackRecord `toml:"restrict_attack"`
 	GrantMovement  *grantMovementRecord  `toml:"grant_movement"`
+	CaptureTarget  *amountRecord         `toml:"capture_target"`
+	DiscountRepair *discountRepairRecord `toml:"discount_repair"`
 }
 
 type effectFiltersRecord struct {
@@ -76,20 +78,29 @@ type grantMovementRecord struct {
 	Relocate *relocateRecord `toml:"relocate"`
 }
 
+type discountRepairRecord struct {
+	Amount int `toml:"amount"`
+}
+
 var (
 	effectTriggers = []domain.EffectTrigger{
 		domain.TriggerTurnStart, domain.TriggerOnPurchase, domain.TriggerOwnAttackHit,
 		domain.TriggerOwnCounterHit, domain.TriggerOwnRoll, domain.TriggerEnemyRollAtMe,
 		domain.TriggerStealthArrival, domain.TriggerCoinLoss, domain.TriggerTechLevelQuery,
 		domain.TriggerAssetCostQuery, domain.TriggerMovementOptionsQuery,
-		domain.TriggerAttackEligibilityQuery,
+		domain.TriggerAttackEligibilityQuery, domain.TriggerOwnAttack, domain.TriggerOwnDefenseWin, domain.TriggerLethalDamage, domain.TriggerRepairCostQuery,
+		domain.TriggerPermissionQuery, domain.TriggerPermissionGranted,
 	}
 	specialEffects = []domain.SpecialEffectType{
 		domain.SpecialCoinGain, domain.SpecialCoinSteal, domain.SpecialIgnoreCoinLoss,
 		domain.SpecialSelfDamage, domain.SpecialApplyStealth, domain.SpecialClearStealth,
 		domain.SpecialBonusDie, domain.SpecialRemoveTagDice, domain.SpecialReroll,
 		domain.SpecialTechLevelFloor, domain.SpecialCostSurcharge, domain.SpecialGrantMovement,
-		domain.SpecialRestrictAttack,
+		domain.SpecialRestrictAttack, domain.SpecialCaptureTarget, domain.SpecialBlockAbility,
+		domain.SpecialCounterstrike, domain.SpecialShelterAsset, domain.SpecialSacrificeSelf,
+		domain.SpecialRestoreAsset, domain.SpecialDiscountRepair, domain.SpecialSeizeTarget,
+		domain.SpecialGrantStealth, domain.SpecialGrantPermission, domain.SpecialWithdrawPermission,
+		domain.SpecialLockOut,
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
 	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction}
@@ -260,12 +271,18 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	if record.GrantMovement != nil {
 		present = append(present, domain.SpecialGrantMovement)
 	}
+	if record.CaptureTarget != nil {
+		present = append(present, domain.SpecialCaptureTarget)
+	}
+	if record.DiscountRepair != nil {
+		present = append(present, domain.SpecialDiscountRepair)
+	}
 	return present
 }
 
 // convertEffectParams fills the parameter pointer for definition.Effect. An effect
-// that takes parameters must carry its block; the four that take none
-// (ignore_coin_loss, apply_stealth, clear_stealth, remove_tag_dice) fall through.
+// that takes parameters must carry its block; an effect that takes none falls
+// through.
 func convertEffectParams(record effectRecord, definition *domain.EffectDefinition) error {
 	switch definition.Effect {
 	case domain.SpecialCoinGain:
@@ -343,6 +360,20 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return fmt.Errorf("grant_movement: %w", err)
 		}
 		definition.GrantMovement = &domain.GrantMovementParams{Relocate: *relocate}
+	case domain.SpecialCaptureTarget:
+		coin, err := convertAmount(definition.Effect, record.CaptureTarget)
+		if err != nil {
+			return err
+		}
+		definition.CaptureTarget = &domain.CaptureTargetParams{Coin: coin}
+	case domain.SpecialDiscountRepair:
+		if record.DiscountRepair == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		if record.DiscountRepair.Amount <= 0 {
+			return fmt.Errorf("discount_repair amount must be > 0, got %d", record.DiscountRepair.Amount)
+		}
+		definition.DiscountRepair = &domain.DiscountRepairParams{Amount: record.DiscountRepair.Amount}
 	}
 	return nil
 }

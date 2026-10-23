@@ -3,6 +3,7 @@ package mutation
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -13,7 +14,7 @@ import (
 type MutationMiss struct {
 	MutationType string
 	FactionID    string
-	EntityID     string // asset or base ID; empty for faction-level misses
+	EntityID     string // asset, base or tag ID; empty for faction-level misses
 }
 
 // MutationApplyError is returned by Apply when one or more referenced entities
@@ -49,7 +50,17 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 	var errs MutationApplyError
 	log.Info("applying mutations", "count", len(mutations))
 
+	// deliberate: owner changes apply after the rest of the batch, not in emitted order, because reactors read pre-apply state and address the asset's old owner (overview Decision 5).
+	ordered := make([]domain.Mutation, 0, len(mutations))
+	var ownerChanges []domain.Mutation
 	for _, mutation := range mutations {
+		if _, ok := mutation.(domain.AssetOwnerChanged); ok {
+			ownerChanges = append(ownerChanges, mutation)
+			continue
+		}
+		ordered = append(ordered, mutation)
+	}
+	for _, mutation := range append(ordered, ownerChanges...) {
 		log.Debug("mutation", "type", mutation.Type())
 		switch v := mutation.(type) {
 		case domain.CoinDelta:
@@ -241,6 +252,32 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.TagRemoved:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				index := slices.IndexFunc(faction.Tags, func(tag *domain.Tag) bool { return tag.ID == v.Tag.ID })
+				if index >= 0 {
+					faction.Tags = slices.Delete(faction.Tags, index, index+1)
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.Tag.ID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.WorldGovernmentChanged:
+			_, known := factionState.Factions[v.ToFactionID]
+			switch {
+			case v.ToFactionID == "":
+				delete(factionState.Governments, v.WorldID)
+			case !known:
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.ToFactionID})
+			default:
+				if factionState.Governments == nil {
+					factionState.Governments = make(map[string]string)
+				}
+				factionState.Governments[v.WorldID] = v.ToFactionID
+			}
+		case domain.PermissionRefused:
+			// record only: the refused action bought nothing
 		case domain.InfluenceDelta:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				found := false
@@ -312,6 +349,46 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.AssetConditionApplied:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.Conditions = append(slices.DeleteFunc(asset.Conditions, v.Condition.Is), v.Condition)
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.AssetID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.AssetConditionCleared:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if asset, ok := faction.Assets[v.AssetID]; ok {
+					asset.Conditions = slices.DeleteFunc(asset.Conditions, v.Condition.Is)
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.AssetID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.AssetOwnerChanged:
+			from, fromOK := factionState.Factions[v.FactionID]
+			to, toOK := factionState.Factions[v.ToFactionID]
+			switch {
+			case !fromOK:
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			case !toOK:
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.ToFactionID})
+			default:
+				if asset, ok := from.Assets[v.AssetID]; ok {
+					delete(from.Assets, v.AssetID)
+					asset.OwnerID = v.ToFactionID
+					if to.Assets == nil {
+						to.Assets = make(map[string]*domain.Asset)
+					}
+					to.Assets[v.AssetID] = asset
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.AssetID})
+				}
+			}
 		case domain.MovementOrderIssued:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok {
@@ -332,6 +409,20 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 					asset.CurrentOrder.StepIdx = v.NewStepIdx
 					asset.Location = domain.Location{
 						RegionHex: v.RegionHex,
+					}
+				} else {
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.AssetID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.MovementOrderHeld:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if asset, ok := faction.Assets[v.AssetID]; ok && asset.CurrentOrder != nil {
+					asset.CurrentOrder.StepIdx = v.NewStepIdx
+					asset.Location = domain.Location{RegionHex: v.RegionHex}
+					if v.Reason == domain.HoldLockdownPaid {
+						asset.CurrentOrder.LockdownPaid = true
 					}
 				} else {
 					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.AssetID})

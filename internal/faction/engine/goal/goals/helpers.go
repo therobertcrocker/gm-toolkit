@@ -77,31 +77,6 @@ func worldHasRivalPresence(locationID, actingFactionID string, index *world.Inde
 	return false
 }
 
-func rivalHasPlanetaryGovernmentOnWorld(actingFactionID, locationID string, factionState *state.FactionState, index *world.Index) bool {
-	for _, base := range index.BasesByLocation[locationID] {
-		if base.OwnerID == actingFactionID {
-			continue
-		}
-		rival, ok := factionState.Factions[base.OwnerID]
-		if !ok {
-			continue
-		}
-		if factionHasPlanetaryGovernmentTag(rival) {
-			return true
-		}
-	}
-	return false
-}
-
-func factionHasPlanetaryGovernmentTag(faction *domain.Faction) bool {
-	for _, tag := range faction.Tags {
-		if tag.ID == "T-011" {
-			return true
-		}
-	}
-	return false
-}
-
 func factionHasUnstealthedAssetOn(faction *domain.Faction, world string) bool {
 	for _, asset := range faction.Assets {
 		if asset.Location.WorldID == world && !asset.Stealthy {

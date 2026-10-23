@@ -261,6 +261,71 @@ type TagAdded struct {
 
 func (m TagAdded) Type() string { return "tag_added" }
 
+// TagRemoved takes one tag from a faction. The full Tag rides along, as on
+// TagAdded, so the digest can name it after the faction no longer holds it.
+type TagRemoved struct {
+	FactionID         string `json:"faction_id"`
+	Tag               Tag    `json:"tag"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m TagRemoved) Type() string { return "tag_removed" }
+
+// WorldGovernmentChanged sets the faction that governs a world. An empty
+// ToFactionID makes the world independent; FromFactionID is the ruler it replaces,
+// empty for an independent world.
+type WorldGovernmentChanged struct {
+	WorldID           string `json:"world_id"`
+	FromFactionID     string `json:"from_faction_id"`
+	ToFactionID       string `json:"to_faction_id"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m WorldGovernmentChanged) Type() string { return "world_government_changed" }
+
+// The permission causes that ask to land an asset, not to raise one. The purchase
+// causes are buy, refit and ability.
+const (
+	PermissionCauseArrival  = "arrival"
+	PermissionCauseRelocate = "relocate"
+)
+
+// IsLanding reports whether a permission cause asks to land an asset on a world.
+func IsLanding(cause string) bool {
+	return cause == PermissionCauseArrival || cause == PermissionCauseRelocate
+}
+
+// RefusalReason says how a permission request was refused.
+type RefusalReason string
+
+const (
+	// RefusalDenied (the zero value): the government said no.
+	RefusalDenied RefusalReason = ""
+	// RefusalWithdrawn: a rival's Lobbyists won its contest after the grant.
+	RefusalWithdrawn RefusalReason = "withdrawn"
+	// RefusalBarred: a withdrawal on this world earlier in the turn bars the request (D-30).
+	RefusalBarred RefusalReason = "barred"
+)
+
+// PermissionRefused records a refused permission request. It changes no state:
+// the purchase or landing it refuses did not happen (D-35, overview Decision 22).
+// DecidedByFactionID is the world's ruler (empty when the GM decided for an
+// independent world), or the Lobbyists' owner on a withdrawal or a bar. Cause is the path:
+// buy, refit or ability for a purchase, arrival or relocate for a landing.
+type PermissionRefused struct {
+	FactionID          string        `json:"faction_id"`
+	WorldID            string        `json:"world_id"`
+	DefinitionID       string        `json:"definition_id"`
+	DecidedByFactionID string        `json:"decided_by_faction_id"`
+	Reason             RefusalReason `json:"reason,omitempty"`
+	Cause              string        `json:"cause"`
+	CausedByFactionID  string        `json:"caused_by_faction_id"`
+}
+
+func (m PermissionRefused) Type() string { return "permission_refused" }
+
 // InfluenceDelta adds Delta to a Base's Influence field. Emitted by the Bribe action.
 type InfluenceDelta struct {
 	FactionID         string `json:"faction_id"`
@@ -387,3 +452,84 @@ type MovementOrderCompleted struct {
 }
 
 func (m MovementOrderCompleted) Type() string { return "movement_order_completed" }
+
+// HoldReason says why an arriving order holds at the edge of its destination.
+type HoldReason string
+
+const (
+	// HoldRefused: the destination's government refused an asset aboard (D-27).
+	HoldRefused HoldReason = "permission_refused"
+	// HoldLockdownPaid: the order paid a Transport Lockdown's 1d4 and waits a turn (D-33).
+	HoldLockdownPaid HoldReason = "lockdown_paid"
+	// HoldLockdownUnpaid: the faction cannot pay the 1d4 yet (overview Decision 15).
+	HoldLockdownUnpaid HoldReason = "lockdown_unpaid"
+)
+
+// MovementOrderHeld keeps an order that would complete at the last hex before its
+// destination, WorldID. The order stays open and asks again at the next tick
+// (D-27). Its apply arm sets the step and hex as MovementOrderProgressed does.
+type MovementOrderHeld struct {
+	FactionID         string            `json:"faction_id"`
+	AssetID           string            `json:"asset_id"`
+	WorldID           string            `json:"world_id"`
+	NewStepIdx        int               `json:"new_step_idx"`
+	RegionHex         spatial.RegionHex `json:"region_hex"`
+	Reason            HoldReason        `json:"reason"`
+	Cause             string            `json:"cause"`
+	CausedByFactionID string            `json:"caused_by_faction_id"`
+}
+
+func (m MovementOrderHeld) Type() string { return "movement_order_held" }
+
+// AssetConditionApplied puts a condition on an asset, replacing one with the same
+// kind and source.
+type AssetConditionApplied struct {
+	FactionID         string    `json:"faction_id"`
+	AssetID           string    `json:"asset_id"`
+	Condition         Condition `json:"condition"`
+	Cause             string    `json:"cause"`
+	CausedByFactionID string    `json:"caused_by_faction_id"`
+}
+
+func (m AssetConditionApplied) Type() string { return "asset_condition_applied" }
+
+// AssetConditionCleared removes the condition with Condition's kind and source.
+type AssetConditionCleared struct {
+	FactionID         string    `json:"faction_id"`
+	AssetID           string    `json:"asset_id"`
+	Condition         Condition `json:"condition"`
+	Cause             string    `json:"cause"`
+	CausedByFactionID string    `json:"caused_by_faction_id"`
+}
+
+func (m AssetConditionCleared) Type() string { return "asset_condition_cleared" }
+
+// AssetOwnerChanged moves an asset from FactionID to ToFactionID. The asset keeps
+// its ID, its order and its conditions.
+type AssetOwnerChanged struct {
+	FactionID         string `json:"faction_id"`
+	AssetID           string `json:"asset_id"`
+	ToFactionID       string `json:"to_faction_id"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m AssetOwnerChanged) Type() string { return "asset_owner_changed" }
+
+// RemovesOrMoves reports whether mutations remove assetID or move it to another
+// faction.
+func RemovesOrMoves(mutations []Mutation, assetID string) bool {
+	for _, mutation := range mutations {
+		switch m := mutation.(type) {
+		case AssetRemoved:
+			if m.AssetID == assetID {
+				return true
+			}
+		case AssetOwnerChanged:
+			if m.AssetID == assetID {
+				return true
+			}
+		}
+	}
+	return false
+}

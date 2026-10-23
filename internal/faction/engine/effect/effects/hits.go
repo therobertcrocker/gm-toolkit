@@ -5,6 +5,7 @@ import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 type hit struct {
 	strikerID       string
 	targetFactionID string
+	targetAssetID   string // empty for a Base hit
 }
 
 // hits returns every hit in mutations, in mutation order. counter picks
@@ -17,7 +18,7 @@ func hits(mutations []domain.Mutation, counter bool) []hit {
 		switch m := mutation.(type) {
 		case domain.AssetHPDelta:
 			if m.Cause == "attack" && m.CausedByAssetID != "" && m.Counter == counter {
-				found = append(found, hit{strikerID: m.CausedByAssetID, targetFactionID: m.FactionID})
+				found = append(found, hit{strikerID: m.CausedByAssetID, targetFactionID: m.FactionID, targetAssetID: m.AssetID})
 			}
 		case domain.BaseHPDelta:
 			if !counter && (m.Cause == "attack" || m.Cause == "expand") && m.CausedByAssetID != "" {

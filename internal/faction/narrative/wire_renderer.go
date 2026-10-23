@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/narrative/digest"
 )
 
@@ -100,6 +101,14 @@ func renderFactionSection(beat digest.FactionBeat, crossEvents []digest.CrossEve
 		sb.WriteString(renderStealthOp(stealth, beat.Faction.Name, rng))
 		sb.WriteString("\n\n")
 	}
+	for _, refusal := range beat.Refusals {
+		sb.WriteString(renderRefusal(refusal, beat.Faction.Name, rng))
+		sb.WriteString("\n\n")
+	}
+	for _, hold := range beat.Holds {
+		sb.WriteString(renderHold(hold, beat.Faction.Name, rng))
+		sb.WriteString("\n\n")
+	}
 	for _, ce := range crossEvents {
 		if ce.Attacker.ID == beat.Faction.ID {
 			sb.WriteString(renderCrossEvent(ce, rng))
@@ -133,6 +142,14 @@ func renderGoalEvent(ge digest.GoalEvent, factionName string, rng *rand.Rand) st
 		tmpl := pick(rng, goalTagTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 		return strings.ReplaceAll(result, "{tag}", ge.TagName)
+	case digest.GoalWorldGoverned:
+		tmpl := pick(rng, goalGovernedTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		return strings.ReplaceAll(result, "{world}", ge.ToWorld)
+	case digest.GoalTagLost:
+		tmpl := pick(rng, goalTagLostTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		return strings.ReplaceAll(result, "{tag}", ge.TagName)
 	}
 	return ""
 }
@@ -144,13 +161,23 @@ func renderAcquisition(move digest.AssetMove, factionName string, rng *rand.Rand
 	if move.From != "" {
 		result += fmt.Sprintf(" (upgraded from %s)", move.From)
 	}
+	if move.Cause == "captured" {
+		result += " (captured)"
+	}
 	return result
 }
 
 func renderLoss(move digest.AssetMove, factionName string, rng *rand.Rand) string {
 	tmpl := pick(rng, lossTemplates)
 	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
-	return strings.ReplaceAll(result, "{asset}", move.AssetName)
+	result = strings.ReplaceAll(result, "{asset}", move.AssetName)
+	switch move.Cause {
+	case "captured":
+		result += " (captured)"
+	case "levy_coin":
+		result += " (forfeit to a monopoly)"
+	}
+	return result
 }
 
 func renderMovement(move digest.AssetMove, factionName string, rng *rand.Rand) string {
@@ -208,16 +235,26 @@ func renderStealthOp(stealth digest.StealthEvent, factionName string, rng *rand.
 func renderCrossEvent(ce digest.CrossEvent, rng *rand.Rand) string {
 	switch ce.Kind {
 	case digest.CrossAttack:
-		tmpl := pick(rng, crossAttackTemplates)
-		result := strings.ReplaceAll(tmpl, "{attacker}", ce.Attacker.Name)
+		templates := crossAttackTemplates
+		if ce.DamageToDefender == 0 && ce.BaseHit == nil && !ce.DefenderAssetDestroyed {
+			templates = crossNoDamageTemplates
+		}
+		result := strings.ReplaceAll(pick(rng, templates), "{attacker}", ce.Attacker.Name)
 		result = strings.ReplaceAll(result, "{defender}", ce.Defender.Name)
 		result = strings.ReplaceAll(result, "{attacker_asset}", ce.AttackerAsset.AssetName)
 		result = strings.ReplaceAll(result, "{defender_asset}", ce.DefenderAsset.AssetName)
-		return strings.ReplaceAll(result, "{damage}", fmt.Sprintf("%d", ce.DamageToDefender))
+		result = strings.ReplaceAll(result, "{damage}", fmt.Sprintf("%d", ce.DamageToDefender))
+		result += conditionText(ce)
+		result += interceptionText(ce)
+		if ce.Counterstruck {
+			clause := strings.ReplaceAll(counterstruckClause, "{attacker}", ce.Attacker.Name)
+			result += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
+		}
+		return result
 	case digest.CrossAbilityStrike:
 		tmpl := pick(rng, crossAbilityTemplates)
 		result := strings.ReplaceAll(tmpl, "{attacker}", ce.Attacker.Name)
-		return strings.ReplaceAll(result, "{defender}", ce.Defender.Name)
+		return strings.ReplaceAll(result, "{defender}", ce.Defender.Name) + conditionText(ce)
 	}
 	return ""
 }
@@ -229,4 +266,63 @@ func renderQuietTail(quietFactions []digest.FactionRef, rng *rand.Rand) string {
 	}
 	tmpl := pick(rng, quietTailTemplates)
 	return strings.ReplaceAll(tmpl, "{factions}", strings.Join(names, ", "))
+}
+
+// conditionText renders one clause per condition on a cross event, each with a
+// leading space, or "" when it carries none.
+func conditionText(ce digest.CrossEvent) string {
+	var text string
+	for _, kind := range ce.Conditions {
+		if clause, ok := conditionClauses[kind]; ok {
+			clause = strings.ReplaceAll(clause, "{attacker}", ce.Attacker.Name)
+			text += " " + strings.ReplaceAll(clause, "{defender}", ce.Defender.Name)
+		}
+	}
+	return text
+}
+
+// interceptionText renders one clause per Cat 6 save on a cross event, each with a
+// leading space, or "" when it carries none.
+func interceptionText(ce digest.CrossEvent) string {
+	var text string
+	for _, effect := range ce.Interceptions {
+		if clause, ok := interceptionClauses[effect]; ok {
+			text += " " + clause
+		}
+	}
+	return text
+}
+
+func renderRefusal(refusal digest.RefusalEvent, factionName string, rng *rand.Rand) string {
+	decider := refusal.DecidedBy
+	if decider == "" {
+		decider = "The independent government"
+	}
+	verb := "raise"
+	if refusal.Landing {
+		verb = "land"
+	}
+	pool := refusalTemplates
+	switch refusal.Reason {
+	case domain.RefusalWithdrawn:
+		pool = withdrawalTemplates
+	case domain.RefusalBarred:
+		pool = barredTemplates
+	}
+	tmpl := pick(rng, pool)
+	result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+	result = strings.ReplaceAll(result, "{verb}", verb)
+	result = strings.ReplaceAll(result, "{asset}", refusal.AssetName)
+	result = strings.ReplaceAll(result, "{world}", refusal.World)
+	return strings.ReplaceAll(result, "{decider}", decider)
+}
+
+func renderHold(hold digest.HoldEvent, factionName string, rng *rand.Rand) string {
+	pool, ok := holdTemplates[hold.Reason]
+	if !ok {
+		pool = holdTemplates[domain.HoldRefused]
+	}
+	result := strings.ReplaceAll(pick(rng, pool), "{faction}", factionName)
+	result = strings.ReplaceAll(result, "{asset}", hold.AssetName)
+	return strings.ReplaceAll(result, "{world}", hold.World)
 }

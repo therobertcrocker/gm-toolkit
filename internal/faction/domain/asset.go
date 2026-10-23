@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -36,15 +37,22 @@ type DiceRoll struct {
 type AttackProfile struct {
 	AttackerStat FactionStat
 	DefenderStat FactionStat
-	Damage       DiceRoll
+	// Damage is nil for a special attack, which hits for no damage and leaves
+	// its effect to the asset's own_attack_hit entries.
+	Damage *DiceRoll
 }
 
+// TransportProfile is a transport's typed data. IgnoresPermission lets its order
+// land the carrier and its cargo without asking the government (D-25);
+// IgnoresLockdown lets it land past a Transport Lockdown (Effort 5 Decision 15).
 type TransportProfile struct {
 	MaxHex            int
 	CoinCost          int
 	CargoTypes        []AssetType
 	MaxCargo          int
 	ExcludeCategories []FactionStat
+	IgnoresPermission bool
+	IgnoresLockdown   bool
 }
 
 type AbilityEffectType string
@@ -55,6 +63,9 @@ const (
 	EffectPurchaseDiscount AbilityEffectType = "purchase_discount"
 	EffectRelocate         AbilityEffectType = "relocate"
 	EffectPurchaseEnabler  AbilityEffectType = "purchase_enabler"
+	EffectDisableAsset     AbilityEffectType = "disable_asset"
+	EffectBlockAttack      AbilityEffectType = "block_attack"
+	EffectLevyCoin         AbilityEffectType = "levy_coin"
 )
 
 type RelocateScope string
@@ -117,9 +128,8 @@ const (
 	TargetNone    TargetKind = "none"
 	TargetSelf    TargetKind = "self"
 	TargetFaction TargetKind = "faction"
-	// deliberate: TargetAsset/TargetWorld are dormant scalar-target vocab for A.001.3
-	// (Marketers/Seditionists), not dead — don't drop without that effort.
-	TargetAsset TargetKind = "asset"
+	TargetAsset   TargetKind = "asset"
+	// deliberate: TargetWorld is dormant vocab, not dead — no asset targets a world yet.
 	TargetWorld TargetKind = "world"
 )
 
@@ -168,9 +178,8 @@ type AbilityTarget struct {
 // collector reads the slice matching the step's TargetKind.
 type AbilityTargetCandidates struct {
 	Factions []*Faction
-	// deliberate: Assets/Worlds are dormant for A.001.3 scalar targets, not dead —
-	// don't drop without that effort. See TargetAsset/TargetWorld.
-	Assets []*Asset
+	Assets   []*Asset
+	// deliberate: Worlds is dormant, not dead. See TargetWorld.
 	Worlds []string
 }
 
@@ -193,6 +202,92 @@ type AssetDefinition struct {
 	Ability     *AbilityDefinition
 	Transport   *TransportProfile
 	Effects     []EffectDefinition
+	// Quality marks a definition that adds no asset: buying it runs its one
+	// on_purchase entry on an asset the buyer already holds (Stealth).
+	Quality bool
+	// deliberate: a definition field, not a require_permission hook, because the asset being raised has no instance to register a hook on (Effort 4 Decision 1).
+	// PurchasePermission asks the government to raise this asset, though moving it
+	// in needs none (Capital Fleet).
+	PurchasePermission bool
+}
+
+// NeedsPurchasePermission reports whether buying def asks the world's government.
+func (def *AssetDefinition) NeedsPurchasePermission() bool {
+	return def.HasFlag(FlagPermission) || def.PurchasePermission
+}
+
+// NeedsArrivalPermission reports whether landing asset on a world asks the world's
+// government. A P asset does (the book: "purchase them or move them onto the
+// planet"), unless it is stealthed (Stealth: "that permission may be foregone",
+// D-25). Capital Fleet's PurchasePermission covers raising only.
+func (def *AssetDefinition) NeedsArrivalPermission(asset *Asset) bool {
+	return def.HasFlag(FlagPermission) && !asset.Stealthy
+}
+
+// HalfPrice is half the listed cost, rounded down, but at least 1 Coin: the price
+// to keep or bring back an asset (Marketers, the turn-start lift). A sale does not
+// use it; a sale is worth Cost / 2 with no floor.
+func (def *AssetDefinition) HalfPrice() int {
+	return max(1, def.Cost/2)
+}
+
+type ConditionKind string
+
+const (
+	ConditionNoAbility ConditionKind = "no_ability"
+	ConditionDisabled  ConditionKind = "disabled"
+	ConditionNoAttack  ConditionKind = "no_attack"
+	ConditionSheltered ConditionKind = "sheltered"
+	ConditionLockedOut ConditionKind = "locked_out"
+)
+
+// Condition is a lasting restriction one asset puts on another, or on itself
+// against a faction: Transport Lockdown's locked_out names TargetFactionID and
+// the WorldID of the hit (overview Decision 24). The code that reads a kind
+// decides what it blocks. ExpiresAtTurnOf names the faction whose turn start
+// clears it; empty means the kind ends some other way.
+type Condition struct {
+	Kind            ConditionKind `toml:"kind" json:"kind"`
+	SourceAssetID   string        `toml:"source_asset_id" json:"source_asset_id"`
+	ExpiresAtTurnOf string        `toml:"expires_at_turn_of,omitempty" json:"expires_at_turn_of,omitempty"`
+	TargetFactionID string        `toml:"target_faction_id,omitempty" json:"target_faction_id,omitempty"`
+	WorldID         string        `toml:"world_id,omitempty" json:"world_id,omitempty"`
+}
+
+// Is reports whether condition and other are one condition: the same kind from
+// the same source, against the same faction, on the same world.
+func (condition Condition) Is(other Condition) bool {
+	return condition.Kind == other.Kind && condition.SourceAssetID == other.SourceAssetID &&
+		condition.TargetFactionID == other.TargetFactionID && condition.WorldID == other.WorldID
+}
+
+// LockedOutBy returns the faction whose Transport Lockdown holds factionID out of
+// worldID, or "" when none does: an active asset of another faction on the world
+// carries locked_out, from itself, against factionID, struck on that world. The
+// lock lives and dies with that asset (D-31, D-36), and sleeps while the asset is
+// away from the world of the hit (Effort 5 Decision Record 5); a capture into
+// factionID lapses it. Holders are walked in ID order, so two locks name one.
+func LockedOutBy(factions map[string]*Faction, worldID, factionID string) string {
+	if worldID == "" {
+		return ""
+	}
+	for _, holderID := range slices.Sorted(maps.Keys(factions)) {
+		if holderID == factionID {
+			continue
+		}
+		for _, asset := range factions[holderID].Assets {
+			if asset.Location.WorldID != worldID || !asset.Active() {
+				continue
+			}
+			if slices.ContainsFunc(asset.Conditions, func(condition Condition) bool {
+				return condition.Kind == ConditionLockedOut && condition.SourceAssetID == asset.ID &&
+					condition.TargetFactionID == factionID && condition.WorldID == worldID
+			}) {
+				return holderID
+			}
+		}
+	}
+	return ""
 }
 
 type Asset struct {
@@ -205,19 +300,38 @@ type Asset struct {
 	Ready        bool           `toml:"ready"`
 	Maintained   bool           `toml:"maintained"`
 	CurrentOrder *MovementOrder `toml:"current_order,omitempty"`
+	Conditions   []Condition    `toml:"conditions,omitempty"`
+}
+
+func (asset *Asset) HasCondition(kind ConditionKind) bool {
+	return slices.ContainsFunc(asset.Conditions, func(condition Condition) bool { return condition.Kind == kind })
 }
 
 // Active reports whether the asset can act or use its special ability now: an
-// asset is not usable until the turn after purchase, while unmaintained, or once
-// destroyed.
+// asset is not usable until the turn after purchase, while unmaintained, once
+// destroyed, while sheltered, or while disabled.
 func (asset *Asset) Active() bool {
-	return asset.Ready && asset.Maintained && asset.CurrentHP > 0
+	return asset.Targetable() && !asset.HasCondition(ConditionDisabled)
+}
+
+// Targetable reports whether a rival may pick the asset as a defender. It is
+// Active without the conditions that stop use only: a disabled asset is useless,
+// not untouchable (D-38). A sheltered asset is both.
+func (asset *Asset) Targetable() bool {
+	return asset.Ready && asset.Maintained && asset.CurrentHP > 0 && !asset.HasCondition(ConditionSheltered)
+}
+
+// Hidden reports whether rivals cannot find the asset: it is stealthed, or
+// sheltered by Boltholes.
+func (asset *Asset) Hidden() bool {
+	return asset.Stealthy || asset.HasCondition(ConditionSheltered)
 }
 
 // Clone deep-copies an asset, including its CurrentOrder pointer and that order's
 // slices, so mutations applied to the copy never reach the original.
 func (asset *Asset) Clone() *Asset {
 	clone := *asset
+	clone.Conditions = slices.Clone(asset.Conditions)
 	if asset.CurrentOrder != nil {
 		order := *asset.CurrentOrder
 		order.Path = slices.Clone(asset.CurrentOrder.Path)
@@ -236,8 +350,18 @@ func (def *AssetDefinition) HasFlag(flag AssetFlag) bool {
 	return false
 }
 
-func NextAssetID(faction *Faction, definitionID string) string {
+func NextAssetID(factions map[string]*Faction, faction *Faction, definitionID string) string {
 	prefix := fmt.Sprintf("%s-%s-", faction.ID, definitionID)
+	// deliberate: scan the owner on its own, not only through factions, because a map without the owner would reuse a live ID.
+	highest := highestSuffix(faction, prefix)
+	// deliberate: scan every faction, not only the owner, because a captured asset keeps its ID in its new owner's map (D-9).
+	for _, holder := range factions {
+		highest = max(highest, highestSuffix(holder, prefix))
+	}
+	return fmt.Sprintf("%s%d", prefix, highest+1)
+}
+
+func highestSuffix(faction *Faction, prefix string) int {
 	highest := 0
 	for id := range faction.Assets {
 		if !strings.HasPrefix(id, prefix) {
@@ -248,16 +372,15 @@ func NextAssetID(faction *Faction, definitionID string) string {
 			highest = n
 		}
 	}
-
-	return fmt.Sprintf("%s%d", prefix, highest+1)
+	return highest
 }
 
 // NewPurchasedAsset builds a freshly-bought asset for a faction: a fresh ID, full HP, not
 // yet Ready (activates next turn), and Maintained. Shared by the Buy Asset action and the
 // purchase_enabler ability so the two purchase paths can't drift on the asset shape.
-func NewPurchasedAsset(faction *Faction, def *AssetDefinition, worldID string) Asset {
+func NewPurchasedAsset(factions map[string]*Faction, faction *Faction, def *AssetDefinition, worldID string) Asset {
 	return Asset{
-		ID:           NextAssetID(faction, def.ID),
+		ID:           NextAssetID(factions, faction, def.ID),
 		DefinitionID: def.ID,
 		OwnerID:      faction.ID,
 		Location:     Location{WorldID: worldID},
@@ -267,33 +390,19 @@ func NewPurchasedAsset(faction *Faction, def *AssetDefinition, worldID string) A
 	}
 }
 
-// HasPlanetaryGovernment reports whether the faction owns a base on the world (the SWN
-// P-flag permission gate). basesOnWorld is the slice for one world (a nil slice is "no
-// bases" → false), so callers pass worldEngine.Index.BasesByLocation[worldID].
-func HasPlanetaryGovernment(factionID string, basesOnWorld []*Base) bool {
-	for _, base := range basesOnWorld {
-		if base.OwnerID == factionID {
-			return true
-		}
-	}
-	return false
-}
-
 // PurchaseTerms are the per-path inputs to CanPurchase that differ between the Buy Asset
 // action and the purchase_enabler ability: Cost is the price to test affordability against
 // (base cost for a buy, surcharged for an enabler); TechCap is the highest required tech
 // level a def may carry (the target world's tech level for a buy, the enabler's own cap for
-// an enabler); HoldsGovernment is whether the faction owns a base on the target world (the
-// P-flag gate). The shared checks themselves live in CanPurchase so the two paths can't drift.
+// an enabler). The shared checks themselves live in CanPurchase so the two paths can't drift.
 type PurchaseTerms struct {
-	Cost            int
-	TechCap         int
-	HoldsGovernment bool
+	Cost    int
+	TechCap int
 }
 
 // CanPurchase reports whether the faction may buy def under terms: it can afford Cost, meets
-// the def's minimum category rating, the def's required tech level is within TechCap, and it
-// holds Planetary Government when the def is P-flagged.
+// the def's minimum category rating, and the def's required tech level is within TechCap.
+// Government permission is asked after the choice, not here (D-35).
 func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bool {
 	switch {
 	case faction.Coin < terms.Cost:
@@ -301,8 +410,6 @@ func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bo
 	case def.MinRating > faction.StatScore(def.Category):
 		return false
 	case def.TechLevel > terms.TechCap:
-		return false
-	case def.HasFlag(FlagPermission) && !terms.HoldsGovernment:
 		return false
 	}
 	return true

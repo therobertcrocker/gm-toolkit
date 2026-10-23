@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func newMutationTestState() *state.FactionState {
@@ -178,5 +179,232 @@ func TestMutationEngine_BaseDestroyed(t *testing.T) {
 	}
 	if got := len(s.Factions["f1"].Bases); got != 0 {
 		t.Errorf("len(Bases) = %d, want 0 after BaseDestroyed", got)
+	}
+}
+
+func TestMutationEngine_AssetCondition(t *testing.T) {
+	factionState := newMutationTestState()
+	engine := New(slog.New(slog.DiscardHandler))
+	fromSab1 := domain.Condition{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1", ExpiresAtTurnOf: "f2"}
+	fromSab2 := domain.Condition{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-2", ExpiresAtTurnOf: "f2"}
+	apply := func(mutation domain.Mutation) {
+		t.Helper()
+		if err := engine.Apply(factionState, []domain.Mutation{mutation}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply(%s) unexpected error: %v", mutation.Type(), err)
+		}
+	}
+	conditions := func() []domain.Condition { return factionState.Factions["f1"].Assets["a1"].Conditions }
+
+	apply(domain.AssetConditionApplied{FactionID: "f1", AssetID: "a1", Condition: fromSab1})
+	apply(domain.AssetConditionApplied{FactionID: "f1", AssetID: "a1", Condition: fromSab1})
+	if got := len(conditions()); got != 1 {
+		t.Fatalf("after re-applying one source: len(Conditions) = %d, want 1", got)
+	}
+
+	apply(domain.AssetConditionApplied{FactionID: "f1", AssetID: "a1", Condition: fromSab2})
+	if got := len(conditions()); got != 2 {
+		t.Fatalf("after a second source: len(Conditions) = %d, want 2", got)
+	}
+
+	apply(domain.AssetConditionCleared{FactionID: "f1", AssetID: "a1", Condition: fromSab1})
+	if got := conditions(); len(got) != 1 || got[0].SourceAssetID != "sab-2" {
+		t.Fatalf("after clearing sab-1: Conditions = %+v, want only sab-2", got)
+	}
+
+	err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetConditionApplied{FactionID: "f1", AssetID: "ghost", Condition: fromSab1},
+	}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != "ghost" {
+		t.Fatalf("Apply on missing asset: err = %v, want one miss with EntityID ghost", err)
+	}
+}
+
+func newOwnerChangeTestState() *state.FactionState {
+	factionState := newMutationTestState()
+	asset := factionState.Factions["f1"].Assets["a1"]
+	asset.OwnerID = "f1"
+	asset.CurrentOrder = &domain.MovementOrder{AssetID: "a1", StepIdx: 2}
+	asset.Conditions = []domain.Condition{{Kind: domain.ConditionNoAbility, SourceAssetID: "sab-1"}}
+	factionState.Factions["f2"] = &domain.Faction{ID: "f2", Name: "Faction Two"}
+	return factionState
+}
+
+func TestMutationEngine_AssetOwnerChanged(t *testing.T) {
+	factionState := newOwnerChangeTestState()
+	engine := New(slog.New(slog.DiscardHandler))
+
+	if err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetOwnerChanged{FactionID: "f1", AssetID: "a1", ToFactionID: "f2"},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if _, ok := factionState.Factions["f1"].Assets["a1"]; ok {
+		t.Error("a1 still in f1 after the owner change")
+	}
+	asset, ok := factionState.Factions["f2"].Assets["a1"]
+	if !ok {
+		t.Fatal("a1 not in f2 after the owner change")
+	}
+	if asset.ID != "a1" || asset.OwnerID != "f2" {
+		t.Errorf("asset = {ID: %q, OwnerID: %q}, want {a1, f2}", asset.ID, asset.OwnerID)
+	}
+	if asset.CurrentOrder == nil || asset.CurrentOrder.StepIdx != 2 {
+		t.Errorf("CurrentOrder = %+v, want the order carried over at StepIdx 2", asset.CurrentOrder)
+	}
+	if !asset.HasCondition(domain.ConditionNoAbility) {
+		t.Error("condition lost in the owner change")
+	}
+
+	err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetOwnerChanged{FactionID: "f2", AssetID: "a1", ToFactionID: "ghost"},
+	}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].FactionID != "ghost" || err.Misses[0].EntityID != "" {
+		t.Fatalf("Apply to unknown faction: err = %v, want one faction miss on ghost", err)
+	}
+}
+
+func TestMutationEngine_OwnerChangeAppliesLast(t *testing.T) {
+	factionState := newOwnerChangeTestState()
+	engine := New(slog.New(slog.DiscardHandler))
+
+	if err := engine.Apply(factionState, []domain.Mutation{
+		domain.AssetOwnerChanged{FactionID: "f1", AssetID: "a1", ToFactionID: "f2"},
+		domain.AssetHPDelta{FactionID: "f1", AssetID: "a1", Delta: -2},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v (the HP delta addressed to the old owner must land first)", err)
+	}
+	asset, ok := factionState.Factions["f2"].Assets["a1"]
+	if !ok {
+		t.Fatal("a1 not in f2 after the batch")
+	}
+	if asset.CurrentHP != -2 {
+		t.Errorf("CurrentHP = %d, want -2", asset.CurrentHP)
+	}
+}
+
+func TestMutationEngine_WorldGovernmentChanged(t *testing.T) {
+	s := newMutationTestState()
+	s.Factions["f2"] = &domain.Faction{ID: "f2"}
+	me := New(slog.New(slog.DiscardHandler))
+	apply := func(mutation domain.Mutation) *MutationApplyError {
+		return me.Apply(s, []domain.Mutation{mutation}, slog.New(slog.DiscardHandler))
+	}
+
+	if err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", ToFactionID: "f1"}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got := s.Ruler("Anchorage"); got != "f1" {
+		t.Errorf("Ruler after f1 takes it = %q, want f1", got)
+	}
+	if err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", FromFactionID: "f1", ToFactionID: "f2"}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if got := s.Ruler("Anchorage"); got != "f2" {
+		t.Errorf("Ruler after f2 takes it = %q, want f2", got)
+	}
+	err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", FromFactionID: "f2", ToFactionID: "missing"})
+	if err == nil || len(err.Misses) != 1 {
+		t.Fatalf("Apply to a missing faction = %v, want one miss", err)
+	}
+	if got := s.Ruler("Anchorage"); got != "f2" {
+		t.Errorf("Ruler after a miss = %q, want f2 unchanged", got)
+	}
+	if err := apply(domain.WorldGovernmentChanged{WorldID: "Anchorage", FromFactionID: "f2"}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if _, ok := s.Governments["Anchorage"]; ok {
+		t.Error("an empty ToFactionID left an entry, want the world independent")
+	}
+}
+
+func TestMutationEngine_TagRemoved(t *testing.T) {
+	s := newMutationTestState()
+	s.Factions["f1"].Tags = []*domain.Tag{{ID: "T-001"}, {ID: domain.TagPlanetaryGovernment}}
+	me := New(slog.New(slog.DiscardHandler))
+	removal := domain.TagRemoved{FactionID: "f1", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment}}
+
+	if err := me.Apply(s, []domain.Mutation{removal}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if tags := s.Factions["f1"].Tags; len(tags) != 1 || tags[0].ID != "T-001" {
+		t.Errorf("Tags = %v, want [T-001]", tags)
+	}
+	err := me.Apply(s, []domain.Mutation{removal}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != domain.TagPlanetaryGovernment {
+		t.Errorf("removing a tag not held = %v, want one miss naming %s", err, domain.TagPlanetaryGovernment)
+	}
+}
+
+func TestMutationEngine_PermissionRefusedIsRecordOnly(t *testing.T) {
+	s := newMutationTestState()
+	me := New(slog.New(slog.DiscardHandler))
+
+	refusal := domain.PermissionRefused{FactionID: "missing", WorldID: "Anchorage", DefinitionID: "gunships", Cause: "buy"}
+	if err := me.Apply(s, []domain.Mutation{refusal}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Errorf("Apply = %v, want no miss for a record-only mutation", err)
+	}
+	if got := s.Factions["f1"].Coin; got != 10 {
+		t.Errorf("Coin = %d, want 10 unchanged", got)
+	}
+}
+
+func TestMutationEngine_MovementOrderHeld(t *testing.T) {
+	s := newMutationTestState()
+	hexes := []spatial.RegionHex{{RegionID: "r", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 1}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 2}}}
+	s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes, Destination: domain.Location{WorldID: "Krylos", RegionHex: hexes[2]}}
+	me := New(slog.New(slog.DiscardHandler))
+
+	held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: hexes[1], Reason: domain.HoldRefused}
+	if err := me.Apply(s, []domain.Mutation{held}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	asset := s.Factions["f1"].Assets["a1"]
+	if asset.CurrentOrder == nil || asset.CurrentOrder.StepIdx != 1 {
+		t.Errorf("order = %+v, want it open at step 1", asset.CurrentOrder)
+	}
+	if asset.Location != (domain.Location{RegionHex: hexes[1]}) {
+		t.Errorf("Location = %+v, want the edge hex with no world", asset.Location)
+	}
+}
+
+func TestMutationEngine_MovementOrderHeldMisses(t *testing.T) {
+	cases := []struct {
+		name string
+		held domain.MovementOrderHeld
+	}{
+		{"unknown faction", domain.MovementOrderHeld{FactionID: "missing", AssetID: "a1"}},
+		{"unknown asset", domain.MovementOrderHeld{FactionID: "f1", AssetID: "missing"}},
+		{"asset with no order", domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := New(slog.New(slog.DiscardHandler)).Apply(newMutationTestState(), []domain.Mutation{tc.held}, slog.New(slog.DiscardHandler))
+			if err == nil || len(err.Misses) != 1 {
+				t.Errorf("Apply = %v, want one miss", err)
+			}
+		})
+	}
+}
+
+func TestMutationEngine_MovementOrderHeldMarksAPaidLockdown(t *testing.T) {
+	for _, tc := range []struct {
+		reason domain.HoldReason
+		want   bool
+	}{
+		{domain.HoldLockdownPaid, true},
+		{domain.HoldLockdownUnpaid, false},
+		{domain.HoldRefused, false},
+	} {
+		s := newMutationTestState()
+		hexes := []spatial.RegionHex{{RegionID: "r", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 1}}}
+		s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes}
+		held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", NewStepIdx: 0, RegionHex: hexes[0], Reason: tc.reason}
+
+		if err := New(slog.New(slog.DiscardHandler)).Apply(s, []domain.Mutation{held}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("%s: Apply: %v", tc.reason, err)
+		}
+		if got := s.Factions["f1"].Assets["a1"].CurrentOrder.LockdownPaid; got != tc.want {
+			t.Errorf("%s: LockdownPaid = %v, want %v", tc.reason, got, tc.want)
+		}
 	}
 }

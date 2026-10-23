@@ -82,6 +82,15 @@ func (a *actionCollector) SelectAsset(assets []*domain.Asset, rb *rulebook.Ruleb
 	return chosen, nil
 }
 
+func (a *actionCollector) SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, rb *rulebook.Rulebook) (*domain.Asset, error) {
+	raw, err := a.adapter.ask(AskSelectAssetToLose, faction, SelectAssetToLosePayload{Faction: faction, Assets: assets})
+	if err != nil {
+		return nil, err
+	}
+	chosen, _ := raw.(*domain.Asset)
+	return chosen, nil
+}
+
 // --- action.Collector: action-unique (recoverable-stubbed until each action's commit) ---
 
 func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
@@ -97,6 +106,18 @@ func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.A
 		}
 		chosen, _ := raw.(*domain.Faction)
 		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, nil
+	case domain.TargetAsset:
+		raw, err := a.adapter.ask(AskSelectAbilityAssetTarget, nil, SelectAbilityAssetTargetPayload{
+			Asset:      asset,
+			Effect:     step.Effect,
+			Candidates: candidates.Assets,
+			OwnerNames: a.adapter.ownerNames(candidates.Assets),
+		})
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		chosen, _ := raw.(*domain.Asset)
+		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: chosen}, nil
 	default:
 		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported yet", step.Target)
 	}
@@ -231,6 +252,86 @@ func (a *actionCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction,
 	confirmed, _ := raw.(bool)
 	return confirmed, nil
 }
+func (a *actionCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source *domain.Asset, attacker *domain.Asset) (bool, error) {
+	raw, err := a.adapter.ask(AskConfirmCounterstrike, defenderFaction, ConfirmCounterstrikePayload{
+		DefenderFaction: defenderFaction,
+		Source:          source,
+		Attacker:        attacker,
+	})
+	if err != nil {
+		return false, err
+	}
+	confirmed, _ := raw.(bool)
+	return confirmed, nil
+}
+func (a *actionCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	return a.adapter.confirmPayment(offer)
+}
+
+// ConfirmSacrifice asks the owner of the False Front, who is often not the acting
+// faction.
+func (a *actionCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, error) {
+	raw, err := a.adapter.ask(AskConfirmSacrifice, offer.Owner, ConfirmSacrificePayload{Offer: offer})
+	if err != nil {
+		return false, err
+	}
+	confirmed, _ := raw.(bool)
+	return confirmed, nil
+}
+
+func (a *actionCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
+	return a.adapter.requestPermission(request)
+}
+
+// requestPermission asks the world's ruler, or the GM for an independent world; the
+// ask names the ruler, who is often not the acting faction. The action collector
+// (purchases, relocates) and the phase collector (arrivals) share it.
+func (a *Adapter) requestPermission(request hooks.PermissionRequest) (bool, error) {
+	worldName := request.WorldID
+	if loc, ok := a.engine.World.Location(request.WorldID); ok {
+		worldName = loc.Name()
+	}
+	raw, err := a.ask(AskRequestPermission, request.Ruler, RequestPermissionPayload{Request: request, WorldName: worldName})
+	if err != nil {
+		return false, err
+	}
+	granted, _ := raw.(bool)
+	return granted, nil
+}
+
+func (a *actionCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	return a.adapter.confirmPermissionContest(offer)
+}
+
+// confirmPermissionContest asks a Lobbyists' owner, who is never the acting
+// faction, whether to contest a rival's grant. Both collectors share it.
+func (a *Adapter) confirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
+	worldName := offer.WorldID
+	if loc, ok := a.engine.World.Location(offer.WorldID); ok {
+		worldName = loc.Name()
+	}
+	sourceName := offer.Source.ID
+	if def := a.engine.Rulebook.Assets[offer.Source.DefinitionID]; def != nil {
+		sourceName = def.Name
+	}
+	raw, err := a.ask(AskConfirmPermissionContest, offer.Owner, ConfirmPermissionContestPayload{Offer: offer, WorldName: worldName, SourceName: sourceName})
+	if err != nil {
+		return false, err
+	}
+	contest, _ := raw.(bool)
+	return contest, nil
+}
+
+// confirmPayment asks the paying faction. The action collector (Marketers) and the
+// phase collector (the turn-start lift) share it.
+func (a *Adapter) confirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	raw, err := a.ask(AskConfirmPayment, offer.Payer, ConfirmPaymentPayload{Offer: offer})
+	if err != nil {
+		return false, err
+	}
+	paid, _ := raw.(bool)
+	return paid, nil
+}
 func (a *actionCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
 	names := make(map[string]string, len(eligibleNewBaseWorlds))
 	for _, worldID := range eligibleNewBaseWorlds {
@@ -348,7 +449,7 @@ func deriveBribeTargets(factionState *state.FactionState, factionID string) ([]*
 	return bases, names
 }
 func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	worlds := deriveContestedWorlds(faction, a.adapter.engine.World.Index)
+	worlds := deriveContestedWorlds(faction, factionState, a.adapter.engine.World.Index)
 	names := make(map[string]string, len(worlds))
 	for _, worldID := range worlds {
 		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
@@ -368,13 +469,14 @@ func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionStat
 
 // deriveContestedWorlds ports seizePlanetTargetWorlds (seize_planet.go): worlds
 // where the faction has at least one unstealthed asset and some rival also has an
-// unstealthed asset there. Reads the engine's world Index — quiescent because the
-// engine goroutine is parked on this ask's reply, and the same source the engine's
-// own Validate consulted to enable the action.
-func deriveContestedWorlds(faction *domain.Faction, index *world.Index) []string {
+// unstealthed asset there, minus the worlds the faction already governs. Reads the
+// engine's world Index — quiescent because the engine goroutine is parked on this
+// ask's reply, and the same source the engine's own Validate consulted to enable the
+// action.
+func deriveContestedWorlds(faction *domain.Faction, factionState *state.FactionState, index *world.Index) []string {
 	factionWorlds := map[string]struct{}{}
 	for _, asset := range faction.Assets {
-		if !asset.Stealthy {
+		if !asset.Stealthy && factionState.Ruler(asset.Location.WorldID) != faction.ID {
 			factionWorlds[asset.Location.WorldID] = struct{}{}
 		}
 	}

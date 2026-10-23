@@ -56,6 +56,24 @@ func (e *Engine) RunCycle(
 	}
 }
 
+// registerCapturedAssets moves each asset that changed owner in mutations to its
+// new owner's hook bucket.
+func (e *Engine) registerCapturedAssets(factionState *state.FactionState, mutations []domain.Mutation) {
+	for _, mutation := range mutations {
+		changed, ok := mutation.(domain.AssetOwnerChanged)
+		if !ok {
+			continue
+		}
+		// deliberate: clear the old bucket, not leave it, because a recapture in the same cycle would register the asset there a second time and its hooks would fire twice (Decision Record 13).
+		e.Hooks.ClearAsset(changed.FactionID, changed.AssetID)
+		owner := factionState.Factions[changed.ToFactionID]
+		if owner == nil || owner.Assets[changed.AssetID] == nil {
+			continue
+		}
+		e.Effect.ApplyAsset(owner, owner.Assets[changed.AssetID], e.Rulebook, e.Hooks, e.Rand)
+	}
+}
+
 // RunFactionTurn drives one faction's turn from setup through state save:
 // stat-raise, bookkeeping, movement, goal-lock (gating the action), action.
 // Errors are reported to the observer via OnError and returned to the
@@ -204,10 +222,15 @@ func (e *Engine) runBookkeepingPhase(
 	logging.PhaseStart(phaseLog, "bookkeeping")
 	phaseLog.Info("phase begin")
 
-	var startMutations []domain.Mutation
+	var liftMutations, startMutations []domain.Mutation
 	// deliberate: fire here, gated on BookkeepingApplied, not in turn setup, because setup re-runs on every resume and would pay a turn-start effect twice.
 	if e.Turn.InProgress(factionState) && !factionState.CurrentTurn.BookkeepingApplied {
-		startMutations = e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)
+		var err error
+		// deliberate: lifts apply before the turn-start effects, not with them, because a lifted asset is active again and its own turn_start entries fire this turn (Effort 3 Decision 8).
+		if liftMutations, err = e.runConditionLifts(faction, factionState, paths, collectors.Phase, observer, phaseLog); err != nil {
+			return err
+		}
+		startMutations = append(turn.ExpireConditions(factionState, faction.ID), e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)...)
 		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
 			if !factionErrors.IsRecoverable(err) {
 				phaseLog.Error("failure", "err", err)
@@ -244,7 +267,7 @@ func (e *Engine) runBookkeepingPhase(
 			return err
 		}
 	}
-	observer.OnBookkeepingApplied(faction, bookResult, append(startMutations, bookMutations...))
+	observer.OnBookkeepingApplied(faction, bookResult, slices.Concat(liftMutations, startMutations, bookMutations))
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointBookkeeping); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -257,6 +280,26 @@ func (e *Engine) runBookkeepingPhase(
 	}
 	phaseLog.Info("phase end", "mutations", len(bookMutations))
 	return nil
+}
+
+// runConditionLifts offers the faction's disabled assets their price and applies
+// the lifts it pays for. A recoverable failure is reported and lifts nothing.
+func (e *Engine) runConditionLifts(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, collector PhaseCollector, observer TurnObserver, phaseLog *slog.Logger) ([]domain.Mutation, error) {
+	mutations, err := turn.OfferConditionLifts(faction, e.Rulebook, collector)
+	if err == nil && len(mutations) > 0 {
+		err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
+	}
+	if err == nil {
+		return mutations, nil
+	}
+	if !factionErrors.IsRecoverable(err) {
+		phaseLog.Error("failure", "err", err)
+		observer.OnError(faction, err)
+		return nil, err
+	}
+	phaseLog.Warn("recoverable failure", "err", err)
+	observer.OnError(faction, err)
+	return nil, nil
 }
 
 func (e *Engine) runStatRaisePhase(
@@ -333,6 +376,17 @@ func (e *Engine) runMovementPhase(
 		return err
 	}
 	if len(tickMutations) > 0 {
+		tickMutations, err = e.checkArrivals(faction, factionState, tickMutations, collectors.Phase)
+		if err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
+			observer.OnError(faction, err)
+			return err
+		}
 		tickMutations, err = dispatch.MutationReactors(e.Hooks, faction, tickMutations, factionState, e.Rulebook)
 		if err != nil {
 			if factionErrors.IsRecoverable(err) {
@@ -475,10 +529,8 @@ func (e *Engine) runActionPhase(
 	}
 	worldIndex = e.World.Index
 	actionMutations = append(actionMutations, e.firePurchaseEffects(faction, actionMutations, factionState)...)
-	goalMutations := e.Goal.UpdateProgress(faction.ID, actionMutations, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
-	combined := append(actionMutations, goalMutations...)
 
-	combined, err = dispatch.MutationReactors(e.Hooks, faction, combined, factionState, e.Rulebook)
+	combined, err := dispatch.MutationReactors(e.Hooks, faction, actionMutations, factionState, e.Rulebook)
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -489,6 +541,8 @@ func (e *Engine) runActionPhase(
 		observer.OnError(faction, err)
 		return err
 	}
+	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
+	combined = append(combined, e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))...)
 
 	if err := e.applyAndRecord(factionState, faction, combined, paths, phaseLog); err != nil {
 		if factionErrors.IsRecoverable(err) {
@@ -500,6 +554,8 @@ func (e *Engine) runActionPhase(
 		observer.OnError(faction, err)
 		return err
 	}
+	// deliberate: register the captured asset now, not at the next cycle, and only that asset, not every hook, because its hooks are keyed under its old owner, and a full re-prime would also wake hooks bought this cycle (Decision 9).
+	e.registerCapturedAssets(factionState, combined)
 	observer.OnActionResolved(faction, selectedAction, combined)
 	if err := collectors.Phase.AwaitCheckpoint(CheckpointActionResult); err != nil {
 		if factionErrors.IsRecoverable(err) {
@@ -744,7 +800,8 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook)
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		def := rulebook.Assets[asset.DefinitionID]
-		if def != nil && def.Speed > 0 {
+		// deliberate: a sheltered asset stays put, not moves, because Boltholes make it unusable until repaired (Effort 2 Decision 11).
+		if def != nil && def.Speed > 0 && !asset.HasCondition(domain.ConditionSheltered) {
 			eligible = append(eligible, asset)
 		}
 	}
@@ -758,7 +815,7 @@ func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset,
 			continue
 		}
 		def := rulebook.Assets[asset.DefinitionID]
-		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 {
+		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) {
 			continue
 		}
 		if slices.Contains(profile.CargoTypes, def.Type) &&
@@ -791,12 +848,14 @@ func (e *Engine) runGrantedMovement(
 	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, faction) {
 		params := grant.Relocate
 		mutations, err := relocate.Run(relocate.Request{
-			Faction:   faction,
-			Acting:    grant.Source,
-			Params:    &params,
-			World:     e.World,
-			Rulebook:  e.Rulebook,
-			Collector: collector,
+			Faction:      faction,
+			Acting:       grant.Source,
+			Params:       &params,
+			World:        e.World,
+			Rulebook:     e.Rulebook,
+			Registry:     e.Hooks,
+			FactionState: factionState,
+			Collector:    collector,
 		})
 		if errors.Is(err, relocate.ErrInsufficientCoin) {
 			phaseLog.Warn("granted movement skipped", "source", grant.Source.ID, "err", err)

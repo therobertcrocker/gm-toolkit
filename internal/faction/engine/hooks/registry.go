@@ -63,6 +63,18 @@ type RegisteredTieResolver struct {
 	Hook   TieResolver
 }
 
+type RegisteredRepairCostModifier struct {
+	Scope  Scope
+	Source string
+	Hook   RepairCostModifier
+}
+
+type RegisteredLethalInterceptor struct {
+	Scope  Scope
+	Source string
+	Hook   LethalInterceptor
+}
+
 // Registry holds all registered hooks keyed by Scope, one map per category.
 type Registry struct {
 	rollModifiers            map[Scope][]RegisteredRollModifier
@@ -75,6 +87,10 @@ type Registry struct {
 	attackEligibilityRules   map[Scope][]RegisteredAttackEligibilityRule
 	assetMovementGranters    map[Scope][]RegisteredAssetMovementGranter
 	tieResolvers             map[Scope][]RegisteredTieResolver
+	lethalInterceptors       map[Scope][]RegisteredLethalInterceptor
+	repairCostModifiers      map[Scope][]RegisteredRepairCostModifier
+	permissionGranters       map[Scope][]RegisteredPermissionGranter
+	permissionContesters     map[Scope][]RegisteredPermissionContester
 }
 
 // NewRegistry returns an empty Registry ready for registration.
@@ -97,6 +113,29 @@ func (registry *Registry) Reset() {
 	registry.attackEligibilityRules = make(map[Scope][]RegisteredAttackEligibilityRule)
 	registry.assetMovementGranters = make(map[Scope][]RegisteredAssetMovementGranter)
 	registry.tieResolvers = make(map[Scope][]RegisteredTieResolver)
+	registry.lethalInterceptors = make(map[Scope][]RegisteredLethalInterceptor)
+	registry.repairCostModifiers = make(map[Scope][]RegisteredRepairCostModifier)
+	registry.permissionGranters = make(map[Scope][]RegisteredPermissionGranter)
+	registry.permissionContesters = make(map[Scope][]RegisteredPermissionContester)
+}
+
+// ClearAsset removes every hook registered under one asset's scope.
+func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
+	scope := AssetScope(factionID, assetInstanceID)
+	delete(registry.rollModifiers, scope)
+	delete(registry.rollResultHooks, scope)
+	delete(registry.rollOfferFilters, scope)
+	delete(registry.mutationReactors, scope)
+	delete(registry.assetCostModifiers, scope)
+	delete(registry.maintenanceCostModifiers, scope)
+	delete(registry.worldTechLevelModifiers, scope)
+	delete(registry.attackEligibilityRules, scope)
+	delete(registry.assetMovementGranters, scope)
+	delete(registry.tieResolvers, scope)
+	delete(registry.lethalInterceptors, scope)
+	delete(registry.repairCostModifiers, scope)
+	delete(registry.permissionGranters, scope)
+	delete(registry.permissionContesters, scope)
 }
 
 // RegisterRollModifier registers a Cat 1 hook under the given scope.
@@ -147,6 +186,11 @@ func (registry *Registry) RegisterAssetMovementGranter(scope Scope, source strin
 // RegisterTieResolver registers a Cat 5 hook under the given scope.
 func (registry *Registry) RegisterTieResolver(scope Scope, source string, hook TieResolver) {
 	registry.tieResolvers[scope] = append(registry.tieResolvers[scope], RegisteredTieResolver{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterLethalInterceptor registers a Cat 6 hook under the given scope.
+func (registry *Registry) RegisterLethalInterceptor(scope Scope, source string, hook LethalInterceptor) {
+	registry.lethalInterceptors[scope] = append(registry.lethalInterceptors[scope], RegisteredLethalInterceptor{Scope: scope, Source: source, Hook: hook})
 }
 
 // RollModifiersAt returns the Cat 1 hooks registered in one scope bucket. The roll
@@ -268,4 +312,73 @@ func (registry *Registry) TieResolversFor(factionID, assetInstanceID string) []R
 		result = append(result, registry.tieResolvers[AssetScope(factionID, assetInstanceID)]...)
 	}
 	return result
+}
+
+// LethalInterceptorsForAsset returns the Cat 6 hooks registered against one asset
+// instance. Every interceptor is an asset's, so there is no global or faction lookup.
+func (registry *Registry) LethalInterceptorsForAsset(factionID, assetInstanceID string) []RegisteredLethalInterceptor {
+	return registry.lethalInterceptors[AssetScope(factionID, assetInstanceID)]
+}
+
+// RegisterRepairCostModifier registers a Cat 4 repair-cost hook under the given scope.
+func (registry *Registry) RegisterRepairCostModifier(scope Scope, source string, hook RepairCostModifier) {
+	registry.repairCostModifiers[scope] = append(registry.repairCostModifiers[scope], RegisteredRepairCostModifier{Scope: scope, Source: source, Hook: hook})
+}
+
+// RepairCostModifiersFor returns all Cat 4 repair-cost hooks matching the given faction and asset.
+func (registry *Registry) RepairCostModifiersFor(factionID, assetInstanceID string) []RegisteredRepairCostModifier {
+	var result []RegisteredRepairCostModifier
+	result = append(result, registry.repairCostModifiers[GlobalScope()]...)
+	result = append(result, registry.repairCostModifiers[FactionScope(factionID)]...)
+	if assetInstanceID != "" {
+		result = append(result, registry.repairCostModifiers[AssetScope(factionID, assetInstanceID)]...)
+	}
+	return result
+}
+
+// RepairCostModifiersForAsset returns the Cat 4 repair-cost hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) RepairCostModifiersForAsset(factionID, assetInstanceID string) []RegisteredRepairCostModifier {
+	return registry.repairCostModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
+// RegisterPermissionGranter registers a Cat 4 permission-granter hook under the given scope.
+func (registry *Registry) RegisterPermissionGranter(scope Scope, source string, hook PermissionGranter) {
+	registry.permissionGranters[scope] = append(registry.permissionGranters[scope], RegisteredPermissionGranter{Scope: scope, Source: source, Hook: hook})
+}
+
+// PermissionGrantersFor returns all Cat 4 permission-granter hooks matching the given faction and asset.
+func (registry *Registry) PermissionGrantersFor(factionID, assetInstanceID string) []RegisteredPermissionGranter {
+	var result []RegisteredPermissionGranter
+	result = append(result, registry.permissionGranters[GlobalScope()]...)
+	result = append(result, registry.permissionGranters[FactionScope(factionID)]...)
+	if assetInstanceID != "" {
+		result = append(result, registry.permissionGranters[AssetScope(factionID, assetInstanceID)]...)
+	}
+	return result
+}
+
+// PermissionGrantersForAsset returns the Cat 4 permission-granter hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) PermissionGrantersForAsset(factionID, assetInstanceID string) []RegisteredPermissionGranter {
+	return registry.permissionGranters[AssetScope(factionID, assetInstanceID)]
+}
+
+// RegisteredPermissionContester is a Cat 4 permission-contester hook with its scope and source.
+type RegisteredPermissionContester struct {
+	Scope  Scope
+	Source string
+	Hook   PermissionContester
+}
+
+// RegisterPermissionContester registers a Cat 4 permission-contester hook under the given scope.
+func (registry *Registry) RegisterPermissionContester(scope Scope, source string, hook PermissionContester) {
+	registry.permissionContesters[scope] = append(registry.permissionContesters[scope], RegisteredPermissionContester{Scope: scope, Source: source, Hook: hook})
+}
+
+// PermissionContestersForAsset returns the Cat 4 permission-contester hooks
+// registered against one asset instance. Every contester is an asset's
+// (Lobbyists), so there is no global or faction lookup.
+func (registry *Registry) PermissionContestersForAsset(factionID, assetInstanceID string) []RegisteredPermissionContester {
+	return registry.permissionContesters[AssetScope(factionID, assetInstanceID)]
 }

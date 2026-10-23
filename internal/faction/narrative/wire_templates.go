@@ -1,6 +1,10 @@
 package narrative
 
-import "math/rand"
+import (
+	"math/rand"
+
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+)
 
 func pick(rng *rand.Rand, pool []string) string {
 	return pool[rng.Intn(len(pool))]
@@ -71,6 +75,43 @@ var goalTagTemplates = []string{
 	"New descriptor logged for {faction}: {tag}.",
 }
 
+var goalGovernedTemplates = []string{
+	"{faction} now governs {world}.",
+	"A change of rule: {world} answers to {faction}.",
+}
+
+var goalTagLostTemplates = []string{
+	"{faction} lost the tag: {tag}.",
+	"{faction} no longer holds {tag}.",
+}
+
+var refusalTemplates = []string{
+	"{decider} refused {faction} permission to {verb} {asset} on {world}.",
+	"Permission denied: {decider} would not let {faction} {verb} {asset} on {world}.",
+}
+
+var withdrawalTemplates = []string{
+	"{decider}'s lobbyists had {faction}'s permission to {verb} {asset} on {world} withdrawn.",
+	"Lobbying by {decider} cost {faction} its leave to {verb} {asset} on {world}.",
+}
+
+var barredTemplates = []string{
+	"{decider}'s lobbying kept {faction} from asking again to {verb} {asset} on {world} this turn.",
+}
+
+var holdTemplates = map[domain.HoldReason][]string{
+	domain.HoldRefused: {
+		"{faction}'s {asset} holds in orbit over {world}, waiting for leave to land.",
+		"Turned back at the edge of {world}, {faction}'s {asset} waits to ask again.",
+	},
+	domain.HoldLockdownPaid: {
+		"{faction}'s {asset} pays its way through the shipping lockdown at {world} and waits a turn in orbit.",
+	},
+	domain.HoldLockdownUnpaid: {
+		"{faction}'s {asset} cannot pay its way through the shipping lockdown at {world} and waits in orbit.",
+	},
+}
+
 var acquisitionTemplates = []string{
 	"{faction} added {asset} to their order of battle.",
 	"New acquisition: {faction} brought {asset} online.",
@@ -134,4 +175,27 @@ var crossAbilityTemplates = []string{
 var quietTailTemplates = []string{
 	"No major action reported from: {factions}.",
 	"The following factions remained quiet this cycle: {factions}.",
+}
+
+var conditionClauses = map[domain.ConditionKind]string{
+	domain.ConditionNoAbility: "{defender} cannot use asset abilities there until {attacker}'s next turn.",
+	domain.ConditionDisabled:  "{defender} must pay to bring a disabled asset back into use.",
+	domain.ConditionNoAttack:  "{attacker}'s agitators keep one of {defender}'s assets from attacking.",
+	domain.ConditionLockedOut: "{attacker}'s shipping lockdown makes {defender} pay and wait to land there.",
+}
+
+// interceptionClauses name each Cat 6 save without naming a side, because the
+// saved asset can be the attacker's (a counter kill) or the defender's.
+var interceptionClauses = map[domain.SpecialEffectType]string{
+	domain.SpecialSeizeTarget:   "A stricken asset changed hands in a hostile takeover.",
+	domain.SpecialRestoreAsset:  "Medics pulled a stricken asset back from the brink.",
+	domain.SpecialSacrificeSelf: "A false front fell in place of the asset it covered.",
+	domain.SpecialShelterAsset:  "A stricken asset went to ground in its boltholes.",
+}
+
+const counterstruckClause = "{defender}'s countermeasures turned the attack back on {attacker}."
+
+var crossNoDamageTemplates = []string{
+	"{attacker} moved against {defender}, but dealt no damage.",
+	"{attacker} struck at {defender} — no damage recorded.",
 }

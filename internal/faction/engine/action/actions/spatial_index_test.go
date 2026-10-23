@@ -89,8 +89,12 @@ func TestLiveDefenders_ExcludesTrackerDead(t *testing.T) {
 	halfDead := liveAsset("a3", "f2", "krylos")
 	halfDead.CurrentHP = 4 // tracker drives it to exactly 0
 
-	idx := indexWithAssets(live, halfDead)
-	tracker := map[string]int{"a3": -4}
+	captured := liveAsset("a4", "f2", "krylos")
+
+	idx := indexWithAssets(live, halfDead, captured)
+	tracker := newSequenceTracker()
+	tracker.hp["a3"] = -4
+	tracker.gone["a4"] = true
 
 	result := liveDefendersOnWorld("f1", "krylos", tracker, idx)
 	if len(result) != 1 || result[0].ID != "a2" {
@@ -145,8 +149,13 @@ func TestSeizePlanetTargetWorlds_ReturnsContestedFragments(t *testing.T) {
 		},
 	}
 
-	result := seizePlanetTargetWorlds(f1, indexFromState(factionState))
+	result := seizePlanetTargetWorlds(f1, factionState, indexFromState(factionState))
 	if len(result) != 1 || result[0] != "krylos" {
 		t.Errorf("seizePlanetTargetWorlds = %v, want [krylos]", result)
+	}
+
+	factionState.Governments = map[string]string{"krylos": "f1"}
+	if result := seizePlanetTargetWorlds(f1, factionState, indexFromState(factionState)); len(result) != 0 {
+		t.Errorf("seizePlanetTargetWorlds = %v, want none: f1 already governs krylos", result)
 	}
 }

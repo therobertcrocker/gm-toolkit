@@ -62,7 +62,7 @@ effect = "Any movement of an asset onto a world that has a Base of Influence for
 id = "T-011"
 name = "Planetary Government"
 description = "This faction is the legitimate government of a planet."
-effect = "The faction's permission is required to buy or import assets marked as needing government permission. Can be held once per planet controlled."
+effect = "Held while the faction governs at least one world; the campaign's government record lists each world it governs (one per planet controlled). On those worlds, the faction grants or refuses permission to buy or import assets marked as needing government permission."
 
 [tags.Plutocratic]
 id = "T-012"

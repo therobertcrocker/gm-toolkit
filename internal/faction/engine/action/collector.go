@@ -12,16 +12,20 @@ import (
 // Collector abstracts all user-input methods that action implementations may call.
 type Collector interface {
 	hooks.Collector
+	hooks.InterceptCollector
+	hooks.PermissionCollector
 	SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
 	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]RelocateOrder, error)
 	SelectPurchaseEnablerAsset(world string, candidates []PurchaseEnablerOption) (*domain.AssetDefinition, error)
 	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
+	SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rulebook *rulebook.Rulebook) ([]RepairOrder, error)
 	SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (BuyOrder, error)
 	SelectRefitOrder(options []RefitOption, rulebook *rulebook.Rulebook) (RefitOrder, error)
 	SelectAttackers(eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
 	ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error)
+	ConfirmCounterstrike(defenderFaction *domain.Faction, source *domain.Asset, attacker *domain.Asset) (bool, error)
 	SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error)
 	SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)

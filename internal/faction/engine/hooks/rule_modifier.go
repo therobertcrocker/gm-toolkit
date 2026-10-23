@@ -81,3 +81,46 @@ type AttackEligibilityRule interface {
 type AssetMovementGranter interface {
 	GrantMovementAbilities(faction *domain.Faction) []MovementAbility
 }
+
+// RepairCostQuery is the state a repair-cost chain carries from hook to hook.
+// Applied holds the effect names whose no_stack gate has already fired.
+type RepairCostQuery struct {
+	Cost    int
+	Applied map[string]bool
+}
+
+// RepairCostModifier adjusts what Repair Asset charges to repair one asset
+// (Cat 4). repairer is the faction that repairs; asset and def are the asset
+// repaired.
+type RepairCostModifier interface {
+	ModifyRepairCost(repairer *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, query *RepairCostQuery)
+}
+
+// PermissionQuery asks whether Requester's request to raise Def on WorldID is
+// granted without asking the government.
+type PermissionQuery struct {
+	Requester *domain.Faction
+	WorldID   string
+	Def       *domain.AssetDefinition
+}
+
+// PermissionGranter reports whether a permission request is granted at once
+// (Cat 4). A granter asked about a request it does not serve returns false.
+type PermissionGranter interface {
+	GrantsPermission(query PermissionQuery) bool
+}
+
+// PermissionContest is one asset's offer to contest a permission granted to a
+// rival (Lobbyists).
+type PermissionContest struct {
+	Source *domain.Asset
+}
+
+// PermissionContester contests a permission granted to a rival (Cat 4).
+// OfferContest returns nil when the grant is not its to contest. It never
+// prompts: the dispatcher asks the owner, and on a yes calls WinsContest, which
+// rolls the hook's own test against the requester.
+type PermissionContester interface {
+	OfferContest(query PermissionQuery) *PermissionContest
+	WinsContest(query PermissionQuery) bool
+}

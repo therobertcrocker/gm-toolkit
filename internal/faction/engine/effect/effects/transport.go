@@ -82,6 +82,14 @@ func (reactor *TransportReactor) OnMutations(mutations []domain.Mutation, factio
 				"transport_completed",
 			)...)
 
+		case domain.MovementOrderHeld:
+			extra = append(extra, reactor.cargoFollows(
+				factionState,
+				m.AssetID,
+				domain.Location{RegionHex: m.RegionHex},
+				"transport_held",
+			)...)
+
 		case domain.MovementOrderCancelled:
 			extra = append(extra, reactor.cargoFollows(
 				factionState,
@@ -122,19 +130,21 @@ func (reactor *TransportReactor) cargoFollows(factionState *state.FactionState, 
 	return moves
 }
 
-func buildCargoMoved(factionState *state.FactionState, factionID, cargoID string, toLoc domain.Location, cause string) domain.AssetMoved {
+// buildCargoMoved addresses the move to the cargo's current owner, which a
+// capture can make differ from the transport's (Decision 8).
+func buildCargoMoved(factionState *state.FactionState, transportOwnerID, cargoID string, toLoc domain.Location, cause string) domain.AssetMoved {
+	ownerID := transportOwnerID
 	var from domain.Location
-	if faction, ok := factionState.Factions[factionID]; ok {
-		if cargo, ok := faction.Assets[cargoID]; ok {
-			from = cargo.Location
-		}
+	if owner := domain.AssetOwner(factionState.Factions, cargoID); owner != nil {
+		ownerID = owner.ID
+		from = owner.Assets[cargoID].Location
 	}
 	return domain.AssetMoved{
-		FactionID:         factionID,
+		FactionID:         ownerID,
 		AssetID:           cargoID,
 		FromLocation:      from,
 		ToLocation:        toLoc,
 		Cause:             cause,
-		CausedByFactionID: factionID,
+		CausedByFactionID: transportOwnerID,
 	}
 }

@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ type formData struct {
 	selectedTags    []*domain.Tag
 	selectedGoal    *domain.Goal
 	homeworldID     string
+	governedWorldID string
 	primaryAssets   []*domain.AssetDefinition
 	secondaryAssets []*domain.AssetDefinition
 	coinStr         string
@@ -73,7 +75,7 @@ func New(rb *rulebook.Rulebook, spatialMap *spatial.RegionMap, factionState *sta
 			Cancel:  key.NewBinding(key.WithKeys("n", "esc")),
 		},
 	}
-	m.form = buildForm(data, rb, spatialMap)
+	m.form = buildForm(data, rb, spatialMap, factionState)
 	return m
 }
 
@@ -113,7 +115,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	m.assetsForm = formModel.(*huh.Form)
 	if m.assetsForm.State == huh.StateCompleted {
 		faction := m.synthesize()
-		return m, func() tea.Msg { return msgs.CreatedMsg{Faction: faction} }
+		governedWorldID := ""
+		if pickedGovernmentTag(m.data.selectedTags) {
+			governedWorldID = m.data.governedWorldID
+		}
+		return m, func() tea.Msg { return msgs.CreatedMsg{Faction: faction, GovernedWorldID: governedWorldID} }
 	}
 	return m, cmd
 }
@@ -166,7 +172,7 @@ func (m *Model) synthesize() *domain.Faction {
 // Form builder
 // ---------------------------------------------------------------------------
 
-func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap, factionState *state.FactionState) *huh.Form {
 	statOptions := []huh.Option[domain.FactionStat]{
 		huh.NewOption("Force", domain.StatForce),
 		huh.NewOption("Cunning", domain.StatCunning),
@@ -252,6 +258,15 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 			Value(&data.homeworldID),
 	)
 
+	governmentGroup := huh.NewGroup(
+		huh.NewSelect[string]().
+			Title("Governed world (Planetary Government)").
+			OptionsFunc(func() []huh.Option[string] {
+				return governableWorldOptions(spatialMap, factionState, data.homeworldID)
+			}, &data.homeworldID).
+			Value(&data.governedWorldID),
+	).WithHideFunc(func() bool { return !pickedGovernmentTag(data.selectedTags) })
+
 	coinGroup := huh.NewGroup(
 		huh.NewInput().
 			Title("Starting Coin").
@@ -272,8 +287,30 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 		tagsGroup,
 		goalGroup,
 		homeworldGroup,
+		governmentGroup,
 		coinGroup,
 	).WithTheme(styles.FormTheme())
+}
+
+func pickedGovernmentTag(tags []*domain.Tag) bool {
+	return slices.ContainsFunc(tags, func(tag *domain.Tag) bool { return tag.ID == domain.TagPlanetaryGovernment })
+}
+
+// governableWorldOptions lists the worlds no other faction governs, the homeworld
+// first: a government most often rules its own home.
+func governableWorldOptions(spatialMap *spatial.RegionMap, factionState *state.FactionState, homeworldID string) []huh.Option[string] {
+	var home, others []huh.Option[string]
+	for _, option := range worldsToOptions(spatialMap) {
+		if factionState.Ruler(option.Value) != "" {
+			continue
+		}
+		if option.Value == homeworldID {
+			home = append(home, option)
+			continue
+		}
+		others = append(others, option)
+	}
+	return append(home, others...)
 }
 
 // buildAssetsForm constructs the asset-selection form after the main form
@@ -281,6 +318,9 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 func buildAssetsForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
 	allDefs := make([]*domain.AssetDefinition, 0, len(rb.Assets))
 	for _, def := range rb.Assets {
+		if def.Quality {
+			continue
+		}
 		allDefs = append(allDefs, def)
 	}
 	sort.Slice(allDefs, func(i, j int) bool { return allDefs[i].Name < allDefs[j].Name })
@@ -448,7 +488,7 @@ func previewMaxHP(data *formData) int {
 func instantiateAssets(defs []*domain.AssetDefinition, homeworld domain.Location, tempFaction *domain.Faction) []*domain.Asset {
 	assets := make([]*domain.Asset, 0, len(defs))
 	for _, def := range defs {
-		id := domain.NextAssetID(tempFaction, def.ID)
+		id := domain.NextAssetID(map[string]*domain.Faction{tempFaction.ID: tempFaction}, tempFaction, def.ID)
 		asset := &domain.Asset{
 			ID:           id,
 			DefinitionID: def.ID,

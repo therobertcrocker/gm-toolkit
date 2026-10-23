@@ -116,6 +116,16 @@ history file only; it is **not** a state save (see Key Decisions).
 - **Hook budgets reset each turn.** Clearing `HookBudgets` at the top of
   bookkeeping is what makes "once per turn" hooks fire once per turn; budgets
   re-accumulate from scratch rather than persisting across cycles.
+- **Condition upkeep is its own step at turn start, not the `turn_start` effect
+  route.** `FireTurnStart` walks only the current faction's active assets and reads
+  each asset's own entries, but a disabled asset is not active, and Saboteurs'
+  mark sits on a rival's asset. So, inside the `BookkeepingApplied` gate, the
+  orchestrator first offers each disabled asset of the faction its lift price
+  (`turn.OfferConditionLifts`, applied at once, so a lifted asset's own
+  `turn_start` entries fire this turn). It then clears every condition on any
+  asset that ends at this faction's turn (`turn.ExpireConditions`), and then runs
+  `FireTurnStart`. No action is spent. (A.001.6 overview Decision 4; Effort 1
+  Decision 14; Effort 3 Decision 8.)
 - **History append is decoupled from state save.** `RecordHistory` appends to
   `history.jsonl`; durable faction state is persisted separately, by the
   orchestrator, at phase gates. History grows per turn; on-disk state lands only
