@@ -1,7 +1,7 @@
 # [Initiative Name] — Implementation Plan
 
 <!--
-COPY THIS FILE TO: docs/initiatives/implementation/<initiative-name>-plan.md
+COPY THIS FILE TO: docs/initiatives/implementation/<ID>-<initiative-name>-overview-plan.md
 
 This is the plan format for MULTI-EFFORT DOCS INITIATIVES (session-modes.md
 section 7). Single-session docs work needs no plan at all — if you're reaching

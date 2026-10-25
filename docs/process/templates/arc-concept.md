@@ -1,7 +1,7 @@
 # [Arc Name] — Arc Concept
 
 <!--
-COPY THIS FILE TO: docs/initiatives/arcs/<arc-name>/<arc-name>-arc-concept.md
+COPY THIS FILE TO: docs/initiatives/arcs/<ID>-<arc-name>/<ID>-<arc-name>-arc-concept.md
 
 The Concept is the lightest arc artifact — drafted when the arc is promoted to
 Current Initiatives (session-modes.md section 2), before any Discovery. It

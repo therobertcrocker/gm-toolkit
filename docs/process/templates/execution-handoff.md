@@ -1,7 +1,7 @@
 # Hand-off — [Initiative ID] [Effort N] execution ([Phase N]: [phase name])
 
 <!--
-COPY THIS FILE TO: docs/initiatives/implementation/<initiative-name>[-effort-N]-handoff.md
+COPY THIS FILE TO: docs/initiatives/implementation/<ID>-<initiative-name>[-effort-N]-handoff.md
 
 A hand-off starts the next Execution session. Write it at the end of a session,
 after its last commit lands. Never commit it; the session that uses it deletes it.

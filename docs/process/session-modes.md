@@ -48,7 +48,7 @@ The write-up is the initiative's **Concept** artifact — the basic idea, record
 - **Trigger** — copied from the Backlog/Up Next entry
 - **Status** — see below
 
-**Arcs are the exception:** an arc's Concept is a standalone doc at `docs/initiatives/arcs/<arc-name>/<arc-name>-arc-concept.md` (template in `templates/`), because it outlives the planned-work entry and anchors the arc's folder. The arc's planned-work write-up reduces to a pointer at that doc.
+**Arcs are the exception:** an arc's Concept is a standalone doc at `docs/initiatives/arcs/<ID>-<arc-name>/<ID>-<arc-name>-arc-concept.md` (template in `templates/`), because it outlives the planned-work entry and anchors the arc's folder. The arc's planned-work write-up reduces to a pointer at that doc.
 
 **Status values:**
 
@@ -110,7 +110,7 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Goal:** understand the problem space, survey relevant existing code, identify approach options, surface tradeoffs and open questions.
 
-**Artifact:** `docs/initiatives/discovery/<initiative-name>-discovery.md` — see template at `docs/process/templates/discovery.md` for required and optional sections.
+**Artifact:** `docs/initiatives/discovery/<ID>-<initiative-name>-discovery.md` (naming: section 10, File locations) — see template at `docs/process/templates/discovery.md` for required and optional sections.
 
 **Session ends when:** the discovery doc is written and Robert has signed off. Do not begin planning in the same session.
 
@@ -120,8 +120,8 @@ Feature work follows three modes in sequence: **Discovery → Plan → Execution
 
 **Artifacts** — see template at `docs/process/templates/implementation-plan.md`:
 
-- **Top-level plan** — `docs/initiatives/implementation/<initiative-name>-plan.md`. Always required.
-- **Per-effort plans** — `docs/initiatives/implementation/<initiative-name>-effort-N-plan.md`. Used when the initiative splits into efforts — see section 8 for when to split and how effort planning is paced.
+- **Top-level plan** — `docs/initiatives/implementation/<ID>-<initiative-name>-plan.md`, or `<ID>-<initiative-name>-overview-plan.md` when the initiative splits into efforts. Always required.
+- **Per-effort plans** — `docs/initiatives/implementation/<ID>-<initiative-name>-effort-N-plan.md`. Used when the initiative splits into efforts — see section 8 for when to split and how effort planning is paced.
 
 **Work breakdown levels.** Each level has one job, one artifact and one size rule. The template holds the budgets and the commands that check them.
 
@@ -241,7 +241,7 @@ Use when:
 
 Flow: **Backlog → Plan → Execution → Done.**
 
-The plan is **lightweight** — typically a single section in `docs/initiatives/implementation/<bugfix-name>-plan.md` covering:
+The plan is **lightweight** — typically a single section in `docs/initiatives/implementation/<ID>-<bugfix-name>-plan.md` covering:
 
 - **Root cause** — what's actually wrong
 - **Fix approach** — the chosen approach, with brief rationale if alternatives existed
@@ -292,8 +292,8 @@ An **effort** is the scaling mechanism for initiatives too large to be contained
 **Discovery → Overview Plan → per effort: (Plan as needed) → Execution.**
 
 - **One Discovery, shared.** The initiative's discovery doc designs across all efforts; efforts do not get their own Discovery.
-- **One overview plan, always.** The first Plan session produces the top-level plan (`<initiative-name>-plan.md`): shared decisions, the effort slicing, and the dependency DAG between efforts. Small efforts are specified fully here and execute straight from it.
-- **Per-effort Plan sessions, as needed.** A large or design-heavy effort gets its own lightweight Plan session producing `<initiative-name>-effort-N-plan.md`. The overview plan names which efforts need one. Each per-effort Plan session is its own session, subject to the usual mode boundaries.
+- **One overview plan, always.** The first Plan session produces the top-level plan (`<ID>-<initiative-name>-overview-plan.md`): shared decisions, the effort slicing, and the dependency DAG between efforts. Small efforts are specified fully here and execute straight from it.
+- **Per-effort Plan sessions, as needed.** A large or design-heavy effort gets its own lightweight Plan session producing `<ID>-<initiative-name>-effort-N-plan.md`. The overview plan names which efforts need one. Each per-effort Plan session is its own session, subject to the usual mode boundaries.
 - **Execution per effort.** Each effort's work runs as normal execution sessions for the initiative's type (per-phase for features and refactors, per-doc for docs).
 
 ### Interim Effort Review (optional)
@@ -317,17 +317,17 @@ Some work spans multiple initiatives that share a common architecture — for ex
 
 If the work fits in one initiative — even a multi-effort one — use the Feature or Refactor Flow directly. Arcs add overhead that only pays off when cross-initiative coordination is real.
 
-**Arc artifacts live together:** every arc-level doc sits in `docs/initiatives/arcs/<arc-name>/` — the concept, the arc-discovery, and the arc-plan. Per-initiative artifacts stay in the standard `discovery/` and `implementation/` locations.
+**Arc artifacts live together:** every arc-level doc sits in `docs/initiatives/arcs/<ID>-<arc-name>/` — the concept, the arc-discovery, and the arc-plan. Per-initiative artifacts stay in the standard `discovery/` and `implementation/` locations.
 
 ### Arc-Concept
 
-The arc's Concept is a standalone doc, `arcs/<arc-name>/<arc-name>-arc-concept.md` (template: `templates/arc-concept.md`), drafted when the arc is promoted to Current Initiatives (section 2). Before promotion, an arc waits in the Backlog's Arcs subsection as a normal row. It captures the vision, why the work is an arc rather than one initiative, and the rough candidate initiatives — before any Discovery.
+The arc's Concept is a standalone doc, `arcs/<ID>-<arc-name>/<ID>-<arc-name>-arc-concept.md` (template: `templates/arc-concept.md`), drafted when the arc is promoted to Current Initiatives (section 2). Before promotion, an arc waits in the Backlog's Arcs subsection as a normal row. It captures the vision, why the work is an arc rather than one initiative, and the rough candidate initiatives — before any Discovery.
 
 ### Arc-Discovery (1–2 sessions)
 
 **Goal:** ratify the cross-cutting architectural decisions that will constrain *every* initiative in the arc — framework, boundaries, conventions, extensibility patterns. Do not slice into initiatives yet; that is Arc-Plan's job.
 
-**Artifact:** `docs/initiatives/arcs/<arc-name>/<arc-name>-arc-discovery.md`. Structurally similar to a per-initiative discovery doc, but its decisions apply to the whole arc, and its Open Questions may be routed to specific initiatives later (in Arc-Plan).
+**Artifact:** `docs/initiatives/arcs/<ID>-<arc-name>/<ID>-<arc-name>-arc-discovery.md`. Structurally similar to a per-initiative discovery doc, but its decisions apply to the whole arc, and its Open Questions may be routed to specific initiatives later (in Arc-Plan).
 
 **Session ends when:** the arc-discovery doc is written and Robert has signed off. Do not begin Arc-Plan in the same session.
 
@@ -335,7 +335,7 @@ The arc's Concept is a standalone doc, `arcs/<arc-name>/<arc-name>-arc-concept.m
 
 **Goal:** define the initiatives that make up the arc, in what order, with what boundaries.
 
-**Artifact:** `docs/initiatives/arcs/<arc-name>/<arc-name>-arc-plan.md`. Contains:
+**Artifact:** `docs/initiatives/arcs/<ID>-<arc-name>/<ID>-<arc-name>-arc-plan.md`. Contains:
 
 - **Initiative list** — ordered, with dependencies surfaced (a DAG, not necessarily a flat sequence — some entries can parallelize).
 - **Per-initiative boundary** — what is in scope for each initiative, what is punted to a later entry.
@@ -353,7 +353,7 @@ The arc-level artifacts make per-initiative Discovery and Plan *lighter*, not ab
 
 ### Arc completion
 
-The arc is complete when its final initiative ships. There is no separate arc pre-merge checklist — each initiative runs its own per section 4 or 5. The arc's row leaves Current Initiatives at that point (section 2). Arc artifacts stay in `arcs/<arc-name>/` — the folder is the arc's permanent home; nothing moves to `completed/`.
+The arc is complete when its final initiative ships. There is no separate arc pre-merge checklist — each initiative runs its own per section 4 or 5. The arc's row leaves Current Initiatives at that point (section 2). Arc artifacts stay in `arcs/<ID>-<arc-name>/` — the folder is the arc's permanent home; nothing moves to `completed/`.
 
 ## 10 — Session Discipline
 
@@ -398,9 +398,12 @@ Movement between lifecycle stages (Backlog → Up Next → Current Initiative �
 
 ### File locations
 
-- **Discovery docs** — `docs/initiatives/discovery/<initiative-name>-discovery.md`
-- **Implementation plans** — `docs/initiatives/implementation/<initiative-name>-plan.md`, plus per-effort plans at `docs/initiatives/implementation/<initiative-name>-effort-N-plan.md` when needed
-- **Arc artifacts** — `docs/initiatives/arcs/<arc-name>/` holds the arc concept, arc-discovery, and arc-plan; this is the arc's permanent home
+**File names start with the initiative ID.** `<ID>` is the `planned-work.md` ID exactly as written (`A.001.4`, `F.026`, `B.013`), followed by a hyphen and the initiative name in kebab-case: `A.001.4-goals-tags-core-discovery.md`. Arcs carry the ID on the folder and on each file. The rule applies to docs created from 2026-10-24 on; older docs keep their names.
+
+- **Discovery docs** — `docs/initiatives/discovery/<ID>-<initiative-name>-discovery.md`
+- **Implementation plans** — `docs/initiatives/implementation/<ID>-<initiative-name>-plan.md` for a single-effort initiative. A multi-effort initiative has an overview plan at `<ID>-<initiative-name>-overview-plan.md`, plus per-effort plans at `<ID>-<initiative-name>-effort-N-plan.md` when needed
+- **Execution hand-offs** — `docs/initiatives/implementation/<ID>-<initiative-name>[-effort-N]-handoff.md`
+- **Arc artifacts** — `docs/initiatives/arcs/<ID>-<arc-name>/` holds `<ID>-<arc-name>-arc-concept.md`, `-arc-discovery.md`, and `-arc-plan.md`; this is the arc's permanent home
 - **Completed artifacts** — moved to `docs/initiatives/discovery/completed/` and `docs/initiatives/implementation/completed/` when the initiative ships (arc artifacts stay put)
 
 Plans never live in `~/.claude/plans/` or other harness defaults — they are repo-tracked artifacts.
@@ -438,11 +441,11 @@ When a refactor is scoped but not yet executed, new code added in the meantime m
 
 Templates for the file artifacts produced by Concept, Discovery, and Plan sessions:
 
-- **Discovery doc** — [`templates/discovery.md`](./templates/discovery.md). Copy to `docs/initiatives/discovery/<initiative-name>-discovery.md` and fill in.
-- **Implementation plan** — [`templates/implementation-plan.md`](./templates/implementation-plan.md). Copy to `docs/initiatives/implementation/<initiative-name>-plan.md` (or split into per-effort files for large initiatives) and fill in.
-- **Docs-initiative plan** — [`templates/docs-plan.md`](./templates/docs-plan.md). For multi-effort `docs` initiatives (section 7). Copy to `docs/initiatives/implementation/<initiative-name>-plan.md` and fill in.
-- **Execution hand-off** — [`templates/execution-handoff.md`](./templates/execution-handoff.md). Written at the end of an Execution session to start the next one. Copy to `docs/initiatives/implementation/<initiative-name>[-effort-N]-handoff.md`. Never committed; the session that uses it deletes it.
-- **Arc concept** — [`templates/arc-concept.md`](./templates/arc-concept.md). Copy to `docs/initiatives/arcs/<arc-name>/<arc-name>-arc-concept.md` when an arc is promoted.
+- **Discovery doc** — [`templates/discovery.md`](./templates/discovery.md). Copy to `docs/initiatives/discovery/<ID>-<initiative-name>-discovery.md` and fill in.
+- **Implementation plan** — [`templates/implementation-plan.md`](./templates/implementation-plan.md). Copy to `docs/initiatives/implementation/<ID>-<initiative-name>-plan.md` (or, for large initiatives, an `<ID>-<initiative-name>-overview-plan.md` plus per-effort files) and fill in.
+- **Docs-initiative plan** — [`templates/docs-plan.md`](./templates/docs-plan.md). For multi-effort `docs` initiatives (section 7). Copy to `docs/initiatives/implementation/<ID>-<initiative-name>-overview-plan.md` and fill in.
+- **Execution hand-off** — [`templates/execution-handoff.md`](./templates/execution-handoff.md). Written at the end of an Execution session to start the next one. Copy to `docs/initiatives/implementation/<ID>-<initiative-name>[-effort-N]-handoff.md`. Never committed; the session that uses it deletes it.
+- **Arc concept** — [`templates/arc-concept.md`](./templates/arc-concept.md). Copy to `docs/initiatives/arcs/<ID>-<arc-name>/<ID>-<arc-name>-arc-concept.md` when an arc is promoted.
 - **Architecture page** — [`templates/arch-page.md`](./templates/arch-page.md). Code-map header + Purpose / Shape / Key Decisions / Dependencies. Copy to `docs/architecture/<side>/<subsystem>.md` (`<side>` = `engine` or `interface`) and fill in. Landed and validated against the orchestrator pilot in D-002 Effort 3.
 
 All templates carry inline guidance (HTML comments) explaining required sections, optional sections, and how to scale the structure to the size of the work. Required sections are marked `REQUIRED`; everything else is included only when relevant.

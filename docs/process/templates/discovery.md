@@ -1,7 +1,8 @@
 # [Initiative Name] — Discovery
 
 <!--
-COPY THIS FILE TO: docs/initiatives/discovery/<initiative-name>-discovery.md
+COPY THIS FILE TO: docs/initiatives/discovery/<ID>-<initiative-name>-discovery.md
+  (<ID> is the planned-work ID as written, e.g. A.001.4-goals-tags-core-discovery.md)
 
 A discovery doc captures the design for an initiative before implementation begins.
 The shape varies by what's being designed — feature work and refactor work call for

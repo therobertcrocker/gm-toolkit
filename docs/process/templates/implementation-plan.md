@@ -1,7 +1,9 @@
 # [Initiative Name] — Implementation Plan
 
 <!--
-COPY THIS FILE TO: docs/initiatives/implementation/<[initiative-id]_initiative-name>-plan.md
+COPY THIS FILE TO: docs/initiatives/implementation/<ID>-<initiative-name>-plan.md
+  (<ID> is the planned-work ID as written, e.g. A.001.4-goals-tags-core-plan.md;
+  an overview plan is <ID>-<initiative-name>-overview-plan.md)
 
 LEVELS (session-modes.md section 4, Work breakdown levels):
   Initiative → Effort → Phase → Commit → Task. One phase = one execution
@@ -12,13 +14,15 @@ This template covers three file shapes:
   1. Single-file plan (one effort): every section below, with phases in
      Work Breakdown. The overview and the effort plan are the same file.
 
-  2. Overview plan (multi-effort): every section above Work Breakdown, plus
+  2. Overview plan (multi-effort):
+         docs/initiatives/implementation/<ID>-<initiative-name>-overview-plan.md
+     Every section above Work Breakdown, plus
      the Effort Summary. Work Breakdown holds one "### Effort N" section per
      effort: its scope, and whether it gets its own Plan session. Effort
      pacing is defined in session-modes.md section 8.
 
   3. Effort plan (multi-effort):
-         docs/initiatives/implementation/<initiative-name>-effort-N-plan.md
+         docs/initiatives/implementation/<ID>-<initiative-name>-effort-N-plan.md
      Same sections as a single-file plan, scoped to the effort: its own
      In Plain Words, Decisions Ratified, Decision Record, Shared Context,
      Out of Scope, then phases in Work Breakdown. It cites the overview's
@@ -119,7 +123,7 @@ effort in a table, with a link to each per-effort plan file.
 
 | # | Effort | Scope | File |
 |---|--------|-------|------|
-| 1 | [name] | [one-line scope] | [`-effort-1-plan.md`](./<initiative-name>-effort-1-plan.md) |
+| 1 | [name] | [one-line scope] | [`-effort-1-plan.md`](./<ID>-<initiative-name>-effort-1-plan.md) |
 
 ## Shared Context
 

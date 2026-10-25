@@ -16,7 +16,7 @@
    1. A code-review as if you were a senior engineer reviewing a junior's PR. Use /code-review skill. Be critical, but constructive. Don't just point out issues — suggest specific improvements.
    2. Promote durable decisions: graduate architecturally-significant entries from the plan's Decision Record into the relevant architecture page's `Key Decisions` section (`docs/architecture/`). Micro-decisions stay in the plan as provenance.
    3. Update the planned work doc (`docs/dev_journals/faction-manager/planned-work.md`) with any new features or deferred items that arose during the work. If a feature was completed, remove it from the planned work doc.
-   4. Move the initiative's discovery and plan docs to their `completed/` subdirectories (arc artifacts stay in `docs/initiatives/arcs/<arc-name>/`).
+   4. Move the initiative's discovery and plan docs to their `completed/` subdirectories (arc artifacts stay in `docs/initiatives/arcs/<ID>-<arc-name>/`).
 10. After every branch merge, assess whether the work warrants a patch/minor/major bump and tag accordingly. Check current version with `git describe --tags --abbrev=0` before tagging.
 11. Use conventional commits: `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`). Concise, imperative mood.
 12. Three Principles of Code:
@@ -39,7 +39,7 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 | Rules behavior                       | `docs/rules/swn-faction-mechanics.md`       |
 | Creating or editing any doc          | `docs/process/style-guide.md`                       |
 | Creating or editing a diagram        | `docs/process/diagram-kit.md`                       |
-| When implementing a feature...       | `docs/initiatives/implementation/<feature>.md`          |
+| When implementing a feature...       | `docs/initiatives/implementation/<ID>-<initiative-name>-plan.md` (or `-overview-plan.md` + `-effort-N-plan.md`) |
 | Session modes, flows, or templates   | `docs/process/session-modes.md`             |
 
 **Searching the decisions log (historical only — log is frozen):** Do not read the full file. Use one of:
@@ -52,9 +52,9 @@ When docs conflict, flag the conflict before proceeding. When docs are silent on
 
 See `docs/process/session-modes.md` for the full description of Discovery / Plan / Execution modes, the initiative lifecycle, per-type flows (arc / feature / refactor / bugfix / docs / chore), the effort mechanism for large initiatives, session discipline, and templates. Always read the session modes doc before starting a new initiative or session, and refer back to it as needed. Templates for docs are found in docs/process/templates/
 
-**Discovery:** Start with a scaffolded doc in `docs/initiatives/discovery/<initiative-name>.md`. Use the template and fill in the sections as you go. The goal is to explore the problem space, gather information, and identify potential solutions. The output is a clear definition of the problem, a set of possible approaches, and a recommended next step (usually a Plan session).
+**Discovery:** Start with a scaffolded doc in `docs/initiatives/discovery/<ID>-<initiative-name>-discovery.md`. Every initiative doc file name starts with the initiative ID as written in `planned-work.md` (for example `A.001.4-goals-tags-core-discovery.md`); see `session-modes.md` section 10, File locations. Use the template and fill in the sections as you go. The goal is to explore the problem space, gather information, and identify potential solutions. The output is a clear definition of the problem, a set of possible approaches, and a recommended next step (usually a Plan session).
 
-**Implementation:** Read the discovery doc, then relevant code. Ask any open questions, and then determine the Phases, Commits, Tasks. Write the implementation doc in one go at `docs/initiatives/implementation/<initiative-name>.md` using the template. The goal is to create a clear, actionable plan for implementing the feature, refactor, or bugfix. The output is a detailed implementation plan that can be executed in the next phase.
+**Implementation:** Read the discovery doc, then relevant code. Ask any open questions, and then determine the Phases, Commits, Tasks. Write the implementation doc in one go at `docs/initiatives/implementation/<ID>-<initiative-name>-plan.md` (`-overview-plan.md` when the initiative splits into efforts) using the template. The goal is to create a clear, actionable plan for implementing the feature, refactor, or bugfix. The output is a detailed implementation plan that can be executed in the next phase.
 
 ## Session Boundaries
 | Session Type | Boundary Definition |

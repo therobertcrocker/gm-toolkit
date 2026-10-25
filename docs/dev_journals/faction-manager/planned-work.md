@@ -205,6 +205,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `E.001` | Display translation ownership | after `A.001` | Engine data reaches the GM through label, feed and card code spread across `tui/` with no single owner, and the sandbox runs placed most UX findings there; explore the current design (presentation, drivers, Manage mode, `narrative/digest`) and brainstorm options, from fixing in place to a frontend-neutral layer. Starting reference: [layer map](https://claude.ai/artifact/6UjHPwdY3mq8oQ24HRqvU1). |
+| `E.002` | Data-driven tags and goals | ready | Make tags and goals data-driven like assets, replacing the 5 tag and 12 goal bespoke Go handlers keyed on bare IDs; the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
 
 ### Captured Ideas
 
