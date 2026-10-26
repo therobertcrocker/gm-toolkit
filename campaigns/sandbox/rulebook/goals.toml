@@ -16,16 +16,16 @@ name = "Intelligence Coup"
 description = "Destroy a number of Cunning assets of rival factions equal to your faction's Cunning rating."
 difficulty = "half_assets_destroyed"
 
-[goals.PlanetarySeizure]
+[goals.WorldSeizure]
 id = "G-004"
-name = "Planetary Seizure"
-description = "Take control of a planet, becoming the legitimate planetary government. If no opposing faction resists, counts as difficulty low."
+name = "World Seizure"
+description = "Take control of a world, becoming the world's legitimate government. If no opposing faction resists, counts as difficulty low."
 difficulty = "half_avg_ruling_faction"
 
 [goals.ExpandInfluence]
 id = "G-005"
 name = "Expand Influence"
-description = "Plant a Base of Influence on a new planet. Difficulty increases by one if the attempt is contested by a rival faction."
+description = "Plant a Base of Influence on a new world. Difficulty increases by one if the attempt is contested by a rival faction."
 difficulty = "low_plus_contested"
 
 [goals.BloodTheEnemy]
@@ -49,7 +49,7 @@ difficulty = "one_plus_avg_target"
 [goals.InsideEnemyTerritory]
 id = "G-009"
 name = "Inside Enemy Territory"
-description = "Have a number of stealthed assets on worlds with other planetary governments equal to your Cunning score. Units already stealthed when this goal is adopted do not count."
+description = "Have a number of stealthed assets on worlds with other governments equal to your Cunning score. Units already stealthed when this goal is adopted do not count."
 difficulty = "moderate"
 
 [goals.InvincibleValor]
@@ -67,5 +67,5 @@ difficulty = "moderate"
 [goals.ChangeHomeworld]
 id = "G-012"
 name = "Change Homeworld"
-description = "Relocate the faction's homeworld to another world where it has a Base of Influence. The move takes a number of turns equal to the hex distance plus one."
+description = "Relocate the faction's homeworld to another world where it has a Base of Influence. The move takes a number of turns equal to the distance between the two worlds plus one."
 difficulty = "none"
