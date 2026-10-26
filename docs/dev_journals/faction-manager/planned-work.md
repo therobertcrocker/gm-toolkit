@@ -11,7 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
-| `E.002` | Data-driven tags and goals | `exploration` | In-Progress | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
+| `E.002` | Data-driven tags and goals | `exploration` | Complete | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
 
 
 ---
@@ -22,8 +22,10 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan |
+| `A.001.4` | Goals/tags neutralization + `_core` home | `feature` | ready | Shared `rulebooks/_core/` composed at scaffold + data-only flavor neutralization; see arc-plan. `E.002` scope answer: goals in `_core`, tags per rulebook (amends ACD-6/ACD-7; arc-plan amendment); add a strict tag/goal loader (unknown keys fail, duplicate IDs refused) and rulebook-prefixed tag/goal IDs (`SWN-T-020`, `CORE-G-001`), superseding `B.002` |
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes; owns lore canon; see arc-plan |
+| `A.001.7` | Data-driven tags | `feature` | after `A.001.4` | Tags carry `[[effects]]`; registrars accept a faction holder; factions hold tag IDs, not copies; the four Go handlers and the inert tags that fit become data; runs before H.A.W.K tag authoring; see `E.002` (T-1) |
+| `A.001.8` | Data-driven goals | `feature` | after `A.001.4` | Goal vocabulary of named parts (start, progress, tick, reset, threshold, complete, XP, phases), a turn-start goal pick in the engine, the twelve goals as data; absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; see `E.002` (G-1) |
 
 
 ---
@@ -134,7 +136,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
-| `B.002` | Goal/Tag Display IDs | -- | Key `Rulebook.Goals`/`Rulebook.Tags` on semantic table key; `id` becomes display-only. |
 | `B.005` | Goal XP | -- | Retype `Difficulty` from `string` to int or tagged sum so engine can dispatch XP |
 | `B.007` | Self-warp validation gap | -- | `newRegionMap` accepts a hand-edited warp with `from_region == to_region`; harmless dead edge in pathfinding, but the validator should reject it. |
 | `B.012` | Old budget keys in saves | -- | `A.001.3` added a trigger segment to effect budget keys (`e047af7`); a mid-cycle save from before holds old keys, so one extra steal/absorb is possible that turn. Self-heals at the owner's next bookkeeping. |
@@ -160,6 +161,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.032` | Unaffordable grant reads as an error | -- | `runGrantedMovement` skips a Transit Web grant the faction cannot pay for on purpose, but `orchestrator.go:862` sends it to `OnError`, so the feed shows `error: relocate: insufficient Coin`. Found in the sandbox movement test. |
 | `B.039` | Goal selection lost in the TUI rebuild | -- | The rules let a faction pick a new goal at the start of its next turn; the old TUI's `phases/goal_select.go` (`0561d28`) prompted when `ActiveGoal == nil`, with start inputs for `G-012` and `G-004`, but `798cd45` deleted it with the old TUI and the rebuild never restored it, so after `GoalCompleted` a faction has no goal unless it takes Seize Planet or Change Homeworld; restore it as an engine step plus a collector ask, so it is not lost with a frontend again. Found in the `E.002` audit. |
 | `B.040` | Destroy the Foe has no target | -- | Only `destroy_the_foe.go` reads `ActiveGoal.TargetFactionID` and no production code writes it (two scenario tests set it by hand), so `G-008` gets no progress and cannot complete; the old goal selection never set it either. Likely fixed with `B.039`'s goal pick. Found in the `E.002` audit. |
+| `B.042` | Scavengers pays for other factions' fights | -- | `ScavengersReactor` pays 1 Coin on any combat `AssetRemoved`, and `allReactors` gives every faction every batch, so a fight between two other factions pays too; the rules pay only on own kills and own losses (Robert's call, `E.002` session 2). From reading the code, not a run. |
 
 #### 3. Driver
 

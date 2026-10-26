@@ -4,12 +4,25 @@
 > the type's flow and template from what worked in this doc.
 > **Feeds:** the paused [`A.001.4` discovery](../discovery/A.001.4-goals-tags-core-discovery.md),
 > which waits on the answer to "core, per-rulebook, or hybrid?".
-> **Status:** in progress. Session 1 (audit) wrote Current State and Existing
-> Patterns. Session 2 fills In Plain Words, Options, Recommendation and Follow-on Rows.
+> **Status:** complete (reviewed by Robert). Session 1 (audit) wrote Current State
+> and Existing Patterns. Session 2 wrote In Plain Words, Options, Recommendation and
+> Follow-on Rows.
 
 ## In Plain Words
 
-_Written after the audit._
+- **What:** tags and goals get their behavior from Go code written for each bare ID.
+  This exploration asks how they can get it from rulebook data, as assets do now.
+- **Short answer:** yes for both. Tags reuse the asset `[[effects]]` model: each
+  registrar learns a second *holder*, the faction. Goals need a new vocabulary of
+  named parts (start, progress, threshold, completion, XP, phases). The asset model
+  gives goals the pattern, not the parts. When no Go code keys on a tag or goal ID, an
+  ID collision is a load error, and a rulebook prefix makes it rare.
+- **Why it matters:** a second rulebook (H.A.W.K) gets behavior from its own data, not
+  by reusing an SWN ID. The goal vocabulary also closes the audit gaps by its shape:
+  a goal states the start data it needs (`B.039`–`B.041`), its XP (`B.005`) and the
+  action that resets it (`B.013`).
+- **How it lands:** `A.001.4` unpauses with a scope answer (goals in `_core`, tags
+  per rulebook), and two new initiatives do the conversion, tags first.
 
 <br/>
 
@@ -201,26 +214,243 @@ are the effect filters (owner, attribute, category) for the event side, and the
 
 ## Options
 
+Two words, kept apart in every option below (Robert's call, session 2):
+
+- **holder** — the thing that declares an `[[effects]]` entry: an asset (through its
+  definition) or a faction (through a tag it holds). New word; no Go identifier uses
+  it.
+- **scope** — unchanged: which events or rolls an entry matches, read relative to the
+  holder. Today `scope = "faction"` on an asset entry means "an event anywhere in the
+  owner's faction". It does not mean "the faction is the holder".
+
 ### Tags
 
-_Session 2._
+#### T-1 — Shared effects, faction as a second holder
+
+A tag record carries `[[tags.<Key>.effects]]` with the same `EffectDefinition`, the
+same loader conversion, and the same registrars.
+
+- **Registrar.** `Accepts` gains `Holders` (`asset`, `faction`), per trigger like the
+  other sets. `validateEntry` refuses a tag entry for an effect that accepts only
+  `asset`, at engine construction, as for assets.
+- **Register route.** `RegisterContext` names its holder. For a faction holder,
+  `Asset` and `Def` are nil and a tag field is set. The hook registers at
+  `hooks.FactionScope`.
+- **Fire-time check.** "The faction still holds the tag" replaces `active(asset)`.
+  The reason is the same as for assets: tags change in the middle of a cycle (`G-004`
+  removes `T-011`; Deep Rooted is lost on a homeworld change).
+- **Scope per holder.** Each registrar documents what each scope means for a faction
+  holder. `faction` reads as "any event of the holder's faction"; `self` has no
+  asset to name. Deep Rooted and Colonists need a new value, `homeworld`.
+- **`FromTag` comes from the holder.** The registrar sets the marker when the holder
+  is a faction. No data flag, so Blackmail's `remove_tag_dice` keeps working.
+- **Budget key.** `budgetKey` uses the definition ID; a tag entry uses the tag ID.
+  Warlike's key changes from `tag:Warlike`, so a mid-cycle save from before allows one
+  extra use (the `B.012` pattern; it self-heals).
+- **Roll dispatch.** Data entries check the owner relation themselves
+  (`rollMatches`), so the hooks Key Decision "never the opponent's faction bucket"
+  loses its reason (Fanatical's missing actor check). It needs to change only for a
+  tag that acts on a rival's roll (`T-014`, "whether or not they are involved").
+
+Fit of the four tags with Go handlers:
+
+| Tag | Data form | New vocabulary |
+|---|---|---|
+| Warlike | `bonus_die`, `own_roll`, `attribute = "force"`, `phase = "attack"` | `bonus_die` accepts no gates today; add `once_per` |
+| Fanatical | `reroll`, `own_roll`, not elective | A die selector for "every die showing 1" (`reroll` picks the lowest *n*); a new `lose_ties` effect (Cat 5) |
+| Scavengers | `coin_gain` on a new `asset_destroyed` trigger | The trigger, and an owner filter: own kills and own losses only (see `B.042` below) |
+| Preceptor Archive | A new `cost_discount` (`asset_cost_query`, own buyer, floor 0) | The effect and a `min_tech_level` filter; a negative `cost_surcharge` would invert its owner and scope readings |
+
+Fit of the 15 inert tags, by what they need:
+
+- **Existing effects plus new filters or scopes:** Imperialists, Machiavellian,
+  Plutocratic, Theocratic, Savage, Perimeter Agency, Deep Rooted (`bonus_die` with
+  attribute, phase, action, tech-level or `homeworld` filters). Mercenary Group
+  (`grant_movement`). Secretive (`apply_stealth` at `on_purchase`; `FirePurchase`
+  must also read the buyer's tags).
+- **New effects or triggers:** Pirates (a movement surcharge paid to the holder),
+  Exchange Consulate (a `goal_completed` trigger with an XP roll), Deep Rooted's loss
+  on a homeworld change (a tag that removes itself).
+- **Outside the S-side model:** Eugenics Cult (grants a purchasable asset),
+  Preceptor Archive's special action, Psychic Academy's mentor training, the
+  population limits of Colonists and Technical Expertise. These are the rules calls
+  that `A.001.4` already routes to Robert. A tag that grants an action would need an
+  A-side harness.
+- **`T-011` Planetary Government:** no effects. The government record finds it
+  through `domain.TagPlanetaryGovernment`. A data marker (`government = true`) can
+  replace the constant (see IDs).
+
+#### T-2 — A separate tag vocabulary
+
+A registrar table in `engine/tag`, with the same TOML shape and its own effect names.
+The asset registrars do not change. One rule gets two names (`bonus_die` for assets,
+another for tags), which breaks ACD-4 (one primitive, many harnesses) and the aim of
+one way to handle data files.
+
+#### T-3 — Tags as hidden assets
+
+Each tag becomes an asset definition that the faction holds as an invisible instance,
+so the asset model runs with no change. Every asset walk (attack targets,
+maintenance, digest, asset-count goals, faction HP) must then skip it. The cost is
+spread over every present and future reader.
+
+#### T-4 — Keep the Go handlers (baseline)
+
+Fix only the IDs. A rulebook still gets a behavior only by reusing an ID, and 15 tags
+stay inert.
+
+**For T-1 to T-3: factions hold tag IDs, not copies.** `TagAdded` writes the whole
+`domain.Tag` into state. With effects on the record, each save would freeze the
+rules that applied when the tag was granted. A faction holds the tag ID and the
+engine reads the definition from the rulebook, as `Asset.DefinitionID` does. The two
+sandbox campaigns need a migration.
 
 ### Goals
 
-_Session 2._
+#### The vocabulary
+
+Every goal in the table above can be stated with these parts. Each part name is a Go
+primitive with parameters, checked at engine construction, as an effect name is.
+
+| Part | Job | Used by |
+|---|---|---|
+| `start` | How the goal begins: `select` (the turn-start pick, `B.039`) or a named action (`seize_planet`, `change_homeworld`). The inputs it needs: `target_faction`, `target_world` with a candidate rule, a turn count from the action. A selection gate | All; inputs for `G-004`, `G-008`, `G-012`; gate for `G-011` ("Wealth must increase before this goal can be selected again", rules doc and `goals.toml`) |
+| `progress` | An event source, filters and an amount. Events: `asset_destroyed`, `damage_dealt`, `stealth_applied`, `base_added`, `influence_bought`, `action_taken`. Filters: owner relation, category, world relation (rival-governed), rating compare. Amount: 1, damage, Coin | Counter and one-event goals |
+| `tick` | Progress for each turn at the goal-lock beat | `G-007` |
+| `reset` | Events that set progress to 0 | `G-007` (`action_taken = "attack"` fixes `B.013` by its shape) |
+| `threshold` | A formula on own ratings: one rating, a sum, a multiplier, a constant | Counter goals; `G-007` (4) |
+| `complete` | Progress reaches the threshold, or a state predicate is true | `G-008` (target HP ≤ 0); the predicate is `F.013`'s `Satisfied(state)` |
+| `xp` | A named formula: a constant, half the progress, 1 + target average, half the previous ruler's average (min 1), +1 if contested | All (`B.005`) |
+| `phases` | Per phase: a lock (`none`, `skip`, `restrict` plus actions), an advance (predicate or countdown), an abandon predicate, and named completion effects (`take_government`, `move_homeworld`) | `G-004`, `G-012` |
+
+- **The two beats stay.** `tick`, countdowns and locks run in `CheckLock`; `progress`,
+  `reset` and event advances run in `UpdateProgress`, before `MutationEngine.Apply`
+  (goals Key Decisions).
+- **`action_taken` needs a new input.** `UpdateProgress` receives the mutations and
+  no action name (`orchestrator.go:545`). A missed attack by an unstealthed attacker
+  emits no mutation, which is `B.013`.
+- **XP checked against the rules.** The XP column above matches the
+  `swn-faction-mechanics.md` goal table. A data formula keeps today's reading. Any
+  change is a rules call (see Recommendation).
+
+#### G-1 — Composed parts
+
+Each goal composes the parts above. Counter, one-event, streak, state and process
+goals use the same parts, and a process goal is a `phases` list. Example, `G-001`:
+
+```toml
+[goals.MilitaryConquest]
+id = "SWN-G-001"
+start = { kind = "select" }
+progress = { event = "asset_destroyed", by = "own", owner = "rival", categories = ["force"], amount = "count" }
+threshold = { rating = "force" }
+xp = { formula = "half_progress" }
+```
+
+#### G-2 — One shape field
+
+`shape = "counter" | "one_event" | "streak" | "state" | "process"`, each a Go kernel
+with parameters. Fewer names. But one `process` parameter set cannot state both
+`G-004` (two phases, a government change) and `G-012` (a transit countdown, a
+homeworld change), so `process` splits into two kernels. Those are the two per-goal
+handlers under a new name.
+
+#### G-3 — Data for the simple shapes, Go for process goals
+
+The counter, one-event, streak and state goals use G-1's parts. `G-004` and `G-012`
+keep Go, keyed on a behavior name (`process = "seize_world"`), not on an ID. The
+precedent is the `[transport]` profile. Smallest change. It leaves two kernels that
+only these two goals use.
 
 ### IDs
 
-_Session 2._
+In every option, **no Go code names a tag or goal ID**:
+
+- **Roles, not IDs.** The government record finds its tag by a data marker
+  (`government = true`). `Seize Planet` and `Change Homeworld` find their goal by its
+  `start` action. This closes `B.001` and removes `domain.TagPlanetaryGovernment`.
+- **Data-to-data references go by ID and are checked at load.** Exchange Consulate
+  names Peaceable Kingdom. An unknown reference fails the load.
+- **Strict loader.** The tag and goal loaders fail on unknown keys and refuse a
+  duplicate ID, as `loadAssets` does.
+
+#### I-1 — Rulebook prefix
+
+`SWN-T-020`, and a prefix for each home folder (`CORE-` for `_core`). This is the
+`A.001.1` asset convention. Saves need a migration (sandbox state holds `T-011` and
+`G-004`).
+
+#### I-2 — Table key as the identity (`B.002`)
+
+`[tags.Warlike]` is the key, and `id` becomes display-only. Assets keep a prefixed
+`id`, so the two conventions split. Table keys collide across rulebooks the same way
+bare IDs do.
+
+#### I-3 — Refusal only
+
+Keep bare IDs. With behavior in data, a collision in a composed set is a load error,
+not a silent handler. Smallest change. Tag and goal IDs then read unlike asset IDs.
 
 <br/>
 
 ## Recommendation
 
-_Session 2._
+- **Tags: T-1.** ACD-2 asks for behavior from data on every surface, and ACD-4 asks
+  for one primitive with many harnesses. A faction holder is one more harness for the
+  same registrars. Most inert tags need only new filters on effects that exist.
+  Factions hold tag IDs, not copies.
+- **Goals: G-1.** One way to state every goal. G-2 and G-3 keep two kernels that only
+  `G-004` and `G-012` use, which are per-ID handlers under a behavior name. The
+  `phases` part serves two goals today; cost is not a criterion, and a second
+  rulebook can add process goals with no Go.
+- **IDs: I-1, with roles and the strict loader.** It matches the asset convention.
+  `B.002` is superseded.
+
+### How it lands
+
+- **`A.001.4` unpauses with a scope answer: goals in `_core`, tags per rulebook.**
+  Goals are the objective structure of the faction game and are near-neutral. Tags
+  are setting identity. Once behavior is data, an H.A.W.K tag states Warlike's
+  behavior in its own entry and shares no record with SWN. This is narrower than the
+  hybrid in `A.001.4`'s Open Questions: no tag goes to core. So the `T-003`, `T-013`
+  and `T-014` neutralization rules calls leave scope, and a merge-by-record loader is
+  not needed (each folder supplies a whole file). `T-011` need not be core, because
+  the government role is a data marker. This amends ACD-6 (core holds goals only)
+  and narrows ACD-7 (neutralization covers goals only), so the arc-plan needs an
+  amendment. The strict loader and the I-1 prefixes also go into `A.001.4`, because
+  it moves and edits the same files.
+- **`A.001.7` — data-driven tags (T-1).** Holder on the registrars, faction holds IDs,
+  the four handlers become data, then the inert tags that fit. It runs before
+  H.A.W.K tag authoring.
+- **`A.001.8` — data-driven goals (G-1).** The vocabulary, the turn-start goal pick as
+  an engine step with a collector ask, and the twelve goals as data. It absorbs
+  `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`. The
+  `complete` predicate keeps `F.013` open.
+- **Order:** `A.001.4`, then `A.001.7` and `A.001.8` in either order. Both touch the
+  rulebook loader; tags first is smaller and proves the holder before goals reuse
+  the effect filters.
+
+### Rules calls to carry (Robert)
+
+- **Scavengers** — decided in session 2: own kills and own losses only (`B.042`).
+- **`G-004` XP when no faction resists** — the `goals.toml` text says "counts as
+  difficulty low"; Go gives 1 only when no faction rules the world.
+- **`G-009` count** — the rules say "have Stealthed assets … equal to Cunning";
+  Go counts stealth events, so an asset that loses stealth still counts.
+- **`G-011` gate** — what "Wealth must increase" compares against.
+- **`T-014` reach** — "whether or not they are involved" means any roll anywhere.
 
 <br/>
 
 ## Follow-on Rows
 
-_Session 2._
+Filed in `planned-work.md` (session 2): `A.001.7` and `A.001.8` in Up Next, `B.042`
+under Bugfixes (Engine), the `A.001.4` row amended, `B.002` removed.
+
+| ID | Item | Type | Detail |
+|---|---|---|---|
+| `A.001.7` | Data-driven tags | `feature` | Tags carry `[[effects]]`; registrars accept a faction holder; factions hold tag IDs; the four Go handlers and the inert tags that fit become data (`E.002` T-1) |
+| `A.001.8` | Data-driven goals | `feature` | Goal vocabulary of named parts, a turn-start goal pick in the engine, the twelve goals as data; absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041`, `R.004` goal half (`E.002` G-1) |
+| `B.042` | Scavengers pays for other factions' fights | `bugfix` | `ScavengersReactor` pays 1 Coin on any combat `AssetRemoved`, and `allReactors` gives every faction every batch, so a third party's fight pays; the rules pay on own kills and own losses only (Robert's call, `E.002` session 2). From reading the code, not a run |
+| `A.001.4` | Scope answer (amend the row) | -- | Goals in `_core`, tags per rulebook; add the strict tag/goal loader and the I-1 prefixes; arc-plan amendment for ACD-6 and ACD-7 |
+| `B.002` | Close as superseded | -- | I-1 replaces the table-key approach |
