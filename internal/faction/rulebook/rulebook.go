@@ -163,13 +163,8 @@ func loadAssets(dataDir string) (map[string]*domain.AssetDefinition, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decoding %s: %w", path, err)
 		}
-		// deliberate: unknown keys fail the load, not skip, because the decoder drops them silently and a misspelt filter or gate would do nothing.
-		if undecoded := metadata.Undecoded(); len(undecoded) > 0 {
-			keys := make([]string, len(undecoded))
-			for i, key := range undecoded {
-				keys[i] = key.String()
-			}
-			return nil, fmt.Errorf("unknown keys in %s: %s", path, strings.Join(keys, ", "))
+		if err := refuseUnknownKeys(path, metadata); err != nil {
+			return nil, err
 		}
 		for _, record := range f.Assets {
 			def, err := convertAsset(record)
@@ -183,6 +178,19 @@ func loadAssets(dataDir string) (map[string]*domain.AssetDefinition, error) {
 		}
 	}
 	return result, nil
+}
+
+// deliberate: unknown keys fail the load, not skip, because the decoder drops them silently and a misspelt filter or gate would do nothing.
+func refuseUnknownKeys(path string, metadata toml.MetaData) error {
+	undecoded := metadata.Undecoded()
+	if len(undecoded) == 0 {
+		return nil
+	}
+	keys := make([]string, len(undecoded))
+	for i, key := range undecoded {
+		keys[i] = key.String()
+	}
+	return fmt.Errorf("unknown keys in %s: %s", path, strings.Join(keys, ", "))
 }
 
 func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
@@ -575,11 +583,18 @@ type tagRecord struct {
 
 func loadTags(path string) (map[string]*domain.Tag, error) {
 	var f tagFile
-	if _, err := toml.DecodeFile(path, &f); err != nil {
+	metadata, err := toml.DecodeFile(path, &f)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseUnknownKeys(path, metadata); err != nil {
 		return nil, err
 	}
 	result := make(map[string]*domain.Tag, len(f.Tags))
 	for _, r := range f.Tags {
+		if _, exists := result[r.ID]; exists {
+			return nil, fmt.Errorf("duplicate tag ID %q in %s", r.ID, path)
+		}
 		result[r.ID] = &domain.Tag{
 			ID:          r.ID,
 			Name:        r.Name,
@@ -607,11 +622,18 @@ type goalRecord struct {
 
 func loadGoals(path string) (map[string]*domain.Goal, error) {
 	var f goalFile
-	if _, err := toml.DecodeFile(path, &f); err != nil {
+	metadata, err := toml.DecodeFile(path, &f)
+	if err != nil {
+		return nil, err
+	}
+	if err := refuseUnknownKeys(path, metadata); err != nil {
 		return nil, err
 	}
 	result := make(map[string]*domain.Goal, len(f.Goals))
 	for _, r := range f.Goals {
+		if _, exists := result[r.ID]; exists {
+			return nil, fmt.Errorf("duplicate goal ID %q in %s", r.ID, path)
+		}
 		result[r.ID] = &domain.Goal{
 			ID:          r.ID,
 			Name:        r.Name,

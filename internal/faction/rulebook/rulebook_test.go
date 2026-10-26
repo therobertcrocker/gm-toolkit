@@ -1,6 +1,8 @@
 package rulebook
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -674,6 +676,54 @@ func TestLoadDuplicateAssetID(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "duplicate asset ID") {
 		t.Errorf("error message %q does not mention duplicate asset ID", err.Error())
+	}
+}
+
+func TestLoadTagsAndGoals_Strict(t *testing.T) {
+	loadTagFile := func(path string) error { _, err := loadTags(path); return err }
+	loadGoalFile := func(path string) error { _, err := loadGoals(path); return err }
+	cases := []struct {
+		name string
+		body string
+		load func(path string) error
+		want string
+	}{
+		{
+			name: "tag unknown key",
+			body: "[tags.Alpha]\nid = \"T-001\"\nname = \"Alpha\"\neffekt = \"none\"\n",
+			load: loadTagFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "tag duplicate ID",
+			body: "[tags.Alpha]\nid = \"T-001\"\n\n[tags.Beta]\nid = \"T-001\"\n",
+			load: loadTagFile,
+			want: `duplicate tag ID "T-001"`,
+		},
+		{
+			name: "goal unknown key",
+			body: "[goals.Alpha]\nid = \"G-001\"\nname = \"Alpha\"\ndificulty = \"low\"\n",
+			load: loadGoalFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "goal duplicate ID",
+			body: "[goals.Alpha]\nid = \"G-001\"\n\n[goals.Beta]\nid = \"G-001\"\n",
+			load: loadGoalFile,
+			want: `duplicate goal ID "G-001"`,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "data.toml")
+			if err := os.WriteFile(path, []byte(testCase.body), 0o644); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+			err := testCase.load(path)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
+			}
+		})
 	}
 }
 

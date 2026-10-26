@@ -89,7 +89,8 @@ turn:
   ID across files. This lets a GM split assets across themed files
   (`core_assets.toml`, `homebrew_assets.toml`) that merge transparently.
 - **Tags, goals, drift costs** load from single files (`tags.toml`, `goals.toml`,
-  `drift_costs.toml`).
+  `drift_costs.toml`). The tag and goal loaders refuse unknown keys and a
+  duplicate ID, as the asset loader does.
 - Loading is also **validating conversion**: every TOML record is converted into
   a domain type, and an unknown faction stat, asset type, asset flag (`P`/`A`/`S`),
   or ability effect is a load-time error — bad rulebook data fails loudly at
