@@ -13,13 +13,15 @@
 > candidate list), and the [ability & effect catalog](../../../architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
-> **Status:** signed off, and **amended once since**. The A.001.3 Discovery split the
-> S side into two initiatives and reset A.001.3's boundary (AP-7). Amendments are
+> **Status:** signed off, and **amended twice since**. The A.001.3 Discovery split the
+> S side into two initiatives and reset A.001.3's boundary (AP-7). The A.001.4
+> Discovery narrowed `_core` to goals, kept tags per rulebook, and added A.001.7 and
+> A.001.8 from the `E.002` exploration (AP-8). Amendments are
 > recorded in the Decision Record and folded into the body, so this doc stays the
 > current arc shape rather than a snapshot of sign-off. Each initiative is registered in
 > `planned-work.md` and runs its own lifecycle (session-modes section 9).
 
-## The arc in six initiatives
+## The arc in eight initiatives
 
 | ID | Initiative | Type | Depends on |
 |---|---|---|---|
@@ -27,18 +29,26 @@
 | **A.001.2** | A-flag ability registry | feature | A.001.1 |
 | **A.001.3** | S-flag effect registry | feature | A.001.2 *(relocate primitive only)* |
 | **A.001.4** | Goals/tags neutralization + `_core` home | feature | — |
-| **A.001.5** | H.A.W.K asset authoring | feature | A.001.2, A.001.3, its own lore-seed effort |
+| **A.001.5** | H.A.W.K asset authoring | feature | A.001.2, A.001.3, its own lore-seed effort; A.001.7 *(tag pass only)* |
 | **A.001.6** | S-flag rule extensions | feature | A.001.3 |
+| **A.001.7** | Data-driven tags | feature | A.001.3, A.001.4 |
+| **A.001.8** | Data-driven goals | feature | A.001.4 |
 
 > **A.001.6 was added after sign-off,** by the A.001.3 Discovery session (AP-7). The
 > plan first treated the whole S side as one initiative. The asset inventory split it
 > in two.
+>
+> **A.001.7 and A.001.8 were added after sign-off,** by the A.001.4 Discovery session
+> (AP-8), from the `E.002` exploration. A.001.4 keeps its name, but its scope is now
+> goals only: tags stay in each rulebook.
 
 The arc is a DAG, not a line: A.001.4 and A.001.5's lore-seed effort carry no
 dependency on the registries and can run from the start; the registries themselves are
 the only strictly-serial spine (A.001.1 → A.001.2 → A.001.3's relocate slice).
 A.001.6 hangs off A.001.3 and gates nothing — it completes the SWN S-side rather than
-unlocking anything downstream.
+unlocking anything downstream. A.001.7 and A.001.8 hang off A.001.4's strict loader.
+A.001.7 also reuses A.001.3's registrars and gates A.001.5's tag pass. A.001.8 gates
+nothing.
 
 ```mermaid
 ---
@@ -49,13 +59,16 @@ config:
     lineColor: '#ff2e97'
 ---
 flowchart TD
-  Core["A.001.4<br>goals/tags + _core"]:::free
+  Core["A.001.4<br>goals + _core<br>+ strict loader"]:::free
   Lore["A.001.5 · E1<br>lore-seed session"]:::free
   R018["A.001.1<br>effect-keyed dispatch<br>+ SWN re-prefix"]:::spine
   A["A.001.2<br>A-flag registry<br>(owns relocate primitive)"]:::spine
   S["A.001.3<br>S-flag registry<br>(free relocate harness)"]:::spine
   Rules["A.001.6<br>S-flag rule extensions<br>(gates nothing)"]:::muted
+  Tags["A.001.7<br>data-driven tags<br>(faction holder)"]:::spine
+  Goals["A.001.8<br>data-driven goals<br>(gates nothing)"]:::muted
   Author["A.001.5 · E2+<br>H.A.W.K authoring passes"]:::content
+  TagPass["A.001.5<br>H.A.W.K tag pass"]:::content
   Playable(["H.A.W.K playable"]):::milestone
 
   R018 --> A
@@ -63,8 +76,14 @@ flowchart TD
   A --> Author
   S --> Author
   S --> Rules
+  S -- "registrars" --> Tags
+  Core -- "strict loader" --> Tags
+  Core --> Goals
   Lore --> Author
+  Lore --> TagPass
+  Tags --> TagPass
   Author --> Playable
+  TagPass --> Playable
   Core --> Playable
 
   classDef spine     fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e
@@ -178,22 +197,30 @@ first.
 
 ### A.001.4 — Goals/tags neutralization + `_core` home (feature) — no deps
 
-Two data-layer moves, no registry dependency:
+> Boundary reset by the A.001.4 Discovery (AP-8). Goals go to `_core`; tags stay in
+> each rulebook.
 
-- **`_core` home (ACD-6).** Create `rulebooks/_core/` holding `goals.toml` +
-  `tags.toml`; strip goals/tags from `rulebooks/swn/` and `rulebooks/hawk/`. The
+Three data-layer moves, no registry dependency:
+
+- **`_core` home (ACD-6, narrowed to goals).** Create `rulebooks/_core/` holding
+  `goals.toml`, and remove `goals.toml` from `rulebooks/swn/`. `tags.toml` stays in
+  `rulebooks/swn/`. (`rulebooks/hawk/` does not exist yet; A.001.5 creates it.) The
   scaffold step composes core + the chosen rulebook into the campaign's `rulebook/`
-  dir, so the on-disk result is unchanged and `rulebook.Load` never learns `_core`
-  exists. This is a `campaigns`/scaffold change, **not** a loader change and **not** a
-  new `Paths` field.
-- **Neutralization (ACD-7).** Strip SWN flavor from the shared goals/tags as a
-  **data-only** change — bare-ID handlers keep firing, no mechanic added/changed/removed.
-  Because the same files now compose into both rulebooks, a neutralized tag must read
-  neutral for **both** games at once.
+  dir, so the on-disk result is unchanged. This is a `campaigns`/scaffold change and
+  **not** a new `Paths` field.
+- **Neutralization (ACD-7, narrowed to goals).** Strip SWN flavor from the shared goals
+  as a **data-only** change — bare-ID handlers keep firing, no mechanic
+  added/changed/removed. Because `goals.toml` now composes into both rulebooks, its
+  text must read neutral for **both** games at once. Tag text does not change.
+- **Strict tag and goal loader.** `rulebook.Load` fails on unknown keys and refuses a
+  duplicate ID in `tags.toml` and `goals.toml`, as `loadAssets` does. This is the one
+  loader change; ACD-6's "`rulebook.Load` is untouched" no longer holds for it.
 
-**Covers:** the shared-source dedupe mechanism + the flavor neutralization.
-**Punts:** goals authoring and tag *mechanic* changes (out of scope); `B.002` semantic
-table keys (out of scope, untriggered — handlers keep firing on bare IDs).
+**Covers:** the shared-source dedupe mechanism, goal flavor neutralization, and the
+strict loader.
+**Punts:** tag text and tag or goal *mechanic* changes (A.001.7, A.001.8); rulebook
+prefixes on tag and goal IDs (A.001.7, A.001.8, where the ID-keyed handlers go away);
+renames of Go types that carry goal names (A.001.8 deletes them).
 
 ### A.001.5 — H.A.W.K asset authoring (feature) — depends A.001.2, A.001.3, lore seed
 
@@ -211,10 +238,45 @@ Owns the living lore canon (ACD-9) and ships H.A.W.K's assets.
   `rulebooks/hawk/assets/<category>_assets.toml`, any new registry primitives the sort
   required, and canon-doc updates. IDs gain the `HAWK-` prefix, initially mirroring
   SWN's tier suffix (`HAWK-F1-001`) and drifting as the set diverges.
+- **Tag pass (added by AP-8) — depends A.001.7.** H.A.W.K's own
+  `rulebooks/hawk/tags.toml`, authored in A.001.7's data form, with the same lore-gate
+  → reflavor → mechanical sort → review loop. The folder also gets a `rulebook.toml`
+  that includes `../_core` for goals.
 
-**Covers:** the lore seed, the canon lifecycle, and the H.A.W.K asset content.
+**Covers:** the lore seed, the canon lifecycle, and the H.A.W.K asset and tag content.
 **Punts:** nothing within its surface — but it depends on the registries existing
-(passes can't classify against primitives that aren't built).
+(passes can't classify against primitives that aren't built), and the tag pass on
+A.001.7.
+
+### A.001.7 — Data-driven tags (feature) — depends A.001.3, A.001.4
+
+Added by AP-8, from `E.002` option T-1. Tags get their behavior from rulebook data, as
+assets do.
+
+- A tag record carries `[[tags.<Key>.effects]]` with the asset `EffectDefinition`. Each
+  registrar learns a second holder, the faction, beside the asset.
+- Factions hold tag IDs, not copies; the engine reads the definition from the rulebook.
+- The four Go handlers (`T-005`, `T-013`, `T-016`, `T-020`) and the inert tags that fit
+  become data. The government role moves from `domain.TagPlanetaryGovernment` to a
+  data marker.
+- Tag IDs gain the rulebook prefix (`SWN-T-020`; `E.002` option I-1).
+
+**Covers:** the tag half of `E.002`. **Punts:** tags that grant actions or assets
+(outside the S-side model; `E.002` lists them). **Gates:** A.001.5's tag pass.
+
+### A.001.8 — Data-driven goals (feature) — depends A.001.4
+
+Added by AP-8, from `E.002` option G-1. Goals get their behavior from a vocabulary of
+named parts (start, progress, tick, reset, threshold, complete, XP, phases).
+
+- The twelve goals become data; the per-ID goal handlers go away.
+- A turn-start goal pick becomes an engine step with a collector ask.
+- Goal IDs gain the `_core` prefix (`CORE-G-001`; `E.002` option I-1).
+- Absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`.
+
+**Covers:** the goal half of `E.002`. **Punts:** `F.013` (the `complete` predicate
+leaves it open). **Gates nothing** — `_core` goals serve both rulebooks before and
+after it.
 
 ## Per-initiative session shape
 
@@ -247,6 +309,8 @@ load**, not uniform:
   type this needs is one of the **deferred process-level items** (custom lore /
   ability-catalog session types); A.001.5 is the initiative that forces that gap, and
   the shape is settled when it is promoted, not here.
+- **A.001.7 / A.001.8 — shape set at promotion.** The `E.002` exploration already holds
+  their audit, options and recommendation, so their Discovery starts from it.
 
 ## Open-question routing
 
@@ -261,6 +325,7 @@ that owns it.
 | Exact `[ability]` sub-block nesting + fate of each dead field (A-side) | **A.001.2** |
 | Exact `[effect]` sub-block nesting + fate of each dead field (S-side) | **A.001.3** — *resolved in its Discovery:* an `[[effects]]` list of trigger / `filters` / `gates` / named param block; `[transport]` untouched, so ACD-5's hybrid stands |
 | Neutralization's flavor-vs-mechanic line + `_core` compose mechanics | **A.001.4** |
+| What `_core` holds: goals and tags, goals only, or a hybrid *(raised in the A.001.4 Discovery)* | **Resolved by AP-8** — goals only |
 | Precursor lore session — when it runs, how it seeds the canon | **A.001.5** (Effort 1) |
 | Custom session types (lore, ability-catalog) + `goals.md` no-op wording (process) | **Out-of-arc** (process backlog) |
 
@@ -294,8 +359,15 @@ Prerequisites — in-arc gates and the engine seams reached outside the registri
   is the game state, prompt, or subsystem the effect acts on. It gates nothing itself —
   A.001.5 may run before it, with a smaller primitive set available to the mechanical
   sort.
-- **"H.A.W.K playable" milestone ⟸ A.001.4.** A.001.4 doesn't gate authoring, but a
-  playable H.A.W.K needs goals/tags composed from `_core`.
+- **A.001.7 ⟸ A.001.3 + A.001.4.** Tags register through A.001.3's registrars, with
+  the faction as a second holder; A.001.4 supplies the strict loader.
+- **A.001.8 ⟸ A.001.4.** It edits the `_core` goals file and loader that A.001.4
+  makes.
+- **A.001.5's tag pass ⟸ A.001.7.** H.A.W.K tags are authored in A.001.7's data form,
+  so they get behavior from their own entries, not by reusing an SWN ID.
+- **"H.A.W.K playable" milestone ⟸ A.001.4 + A.001.5's tag pass.** A.001.4 doesn't
+  gate authoring, but a playable H.A.W.K needs goals composed from `_core` and its own
+  tags.
 - **Engine seam touched outside the registries:** A.001.3 wires the **movement phase**
   (turn engine) to consult `GrantedMovementAbilities` — the half-built seam the
   arc-discovery verified is defined but unconsumed.
@@ -304,10 +376,11 @@ Prerequisites — in-arc gates and the engine seams reached outside the registri
 
 Work this arc does not address (seeded by the arc-discovery Out-of-scope list):
 
-- **`B.002` (semantic table keys).** Goals/tags keep bare mechanic IDs; their handlers
-  keep firing, so `B.002` is not triggered.
-- **Goals authoring / tag mechanic changes.** Goals copy verbatim; the tag pass is
-  flavor-neutralization only.
+- **`B.002` (semantic table keys)** — superseded by AP-8. Rulebook prefixes on tag and
+  goal IDs (A.001.7, A.001.8) replace it, and its row is removed.
+- **Goals authoring** — no new goals. *(AP-8 moved tag and goal mechanic changes into
+  the arc as A.001.7 and A.001.8. A.001.4's D-2 changes goal text, so "goals copy
+  verbatim" no longer holds.)*
 - **Other rulebooks (WWN).** H.A.W.K is the first non-reference rulebook; WWN is the
   next beneficiary, not touched here.
 - **`spatial/` and `drift_costs.toml`.** Carried as-is from the SWN shape.
@@ -377,3 +450,36 @@ relevant arch page at pre-merge).
   `GrantedMovementAbilities`", because roll hooks fire in the Attack action alone
   (`RollWithHooks` has two call sites, both in `attack.go`), so widening them reaches
   Expand Influence and the A-side contest.
+- **AP-8 — `_core` holds goals only; tags stay in each rulebook; tags and goals become
+  data in two new initiatives, A.001.7 and A.001.8.** From the A.001.4 Discovery
+  session, with input from the `E.002` exploration. ACD-6 assumed every rulebook
+  composes the same goals *and* tags. Tags are setting identity, and once behavior
+  comes from data (`E.002` T-1), an H.A.W.K tag states its behavior in its own entry
+  and shares no record with SWN. Goals are the faction game's objective structure and
+  are near-neutral, so they stay shared. What this amends:
+  - **ACD-6 narrows to goals.** `_core` holds `goals.toml`; `tags.toml` stays in
+    `rulebooks/swn/`. Each folder supplies a whole file, so no merge-by-record loader
+    is needed. `T-011` need not be core: A.001.7 moves the government role to a data
+    marker.
+  - **ACD-7 narrows to goals and stays data-only.** No tag text changes, so the
+    `T-003`, `T-013` and `T-014` rules calls leave the arc.
+  - **A.001.4 gains the strict tag and goal loader** (unknown keys fail, duplicate IDs
+    refused), so ACD-6's "`rulebook.Load` is untouched" no longer holds for that one
+    change. It gives the compose a load-time duplicate-ID check.
+  - **Rulebook ID prefixes (`E.002` I-1) go to A.001.7 and A.001.8, not A.001.4.**
+    Today Go handlers look up the bare IDs, so prefixes in data alone would silently
+    stop Warlike, Seize Planet and the others. Prefixes in A.001.4 would also change
+    16 handler keys, `domain.TagPlanetaryGovernment` and `B.001`'s literal, and need a
+    save migration, which breaks ACD-7. A.001.7 and A.001.8 delete the ID-keyed
+    handlers, so Go changes only once. Rejected: prefixes in A.001.4 (`E.002` as
+    filed), and both the loader and the prefixes later (the loader is small and the
+    compose needs its duplicate check now).
+  - **A.001.7 and A.001.8 join the arc** (table, DAG, boundaries), and **A.001.5 gains
+    a tag pass** that depends on A.001.7. A.001.5 owns the lore canon (ACD-9), and tags
+    are setting identity. Rejected: a separate H.A.W.K tag initiative, and H.A.W.K tags
+    inside A.001.7.
+  - **`B.002` is superseded** by the prefixes.
+  - Rejected scopes: full core (every tag neutralized for both games; the setting tags
+    lose their identity and need per-tag rules calls), and the hybrid (core goals plus
+    the neutral tags; it needs a merge-by-record loader and `T-011` in core, and with
+    data-driven tags no tag needs to be shared).
