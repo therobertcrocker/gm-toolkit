@@ -70,8 +70,10 @@ directory. (Shape & why:
   unset or empty `GM_TOOLKIT_HOME` is an error, not a fallback.
 - **A rulebook** — GM-authored TOML (assets, tags, goals, drift costs) the engine
   reads all turn. The repo bundles a starter set at
-  [`rulebooks/swn/`](../../rulebooks/swn/); a campaign gets its own copy at create
-  time (below), so editing a campaign's rules never touches the bundled source.
+  [`rulebooks/swn/`](../../rulebooks/swn/), which pulls in the shared goals from
+  [`rulebooks/_core/`](../../rulebooks/_core/); a campaign gets its own copy at
+  create time (below), so editing a campaign's rules never touches the bundled
+  source.
 
 <br/>
 <br/>

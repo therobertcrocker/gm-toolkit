@@ -49,7 +49,8 @@ page that explains it — this list is the trap, not the rationale.
 
 The engine is exercised end-to-end by the `testharness`
 (`internal/faction/engine/testharness/`). `NewHarness(t)` scaffolds a temp
-campaign, copies the bundled `rulebooks/swn/` rulebook, and builds a *live* engine
+campaign, composes the bundled `rulebooks/swn/` rulebook (with the shared
+`rulebooks/_core/` goals), and builds a *live* engine
 wired to a `StubSpatialMap` (every location resolves), a `ScriptedCollector` (you
 queue the GM's decisions ahead of the run), and a `RecordingObserver`.
 
@@ -63,8 +64,9 @@ Scenario tests live in `testharness/scenarios/` —
 `full_cycle_test.go`, `hooks_test.go`, `tags_test.go`, `goal_lock_test.go`,
 `transport_lifecycle_test.go`, and kin. The nearest-shaped one is your fixture
 template: copy it, swap in your setup and assertions. The fixture rulebook is the
-real `rulebooks/swn/` at the repo root, so your data ID must exist there (or in a
-test rulebook you point the harness at) for the handler to fire.
+real `rulebooks/swn/` at the repo root, composed with `rulebooks/_core/`, so your
+data ID must exist in one of them (or in a test rulebook you point the harness
+at) for the handler to fire.
 
 <br/>
 <br/>

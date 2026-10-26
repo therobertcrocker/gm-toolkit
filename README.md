@@ -10,6 +10,8 @@ A fresh checkout doesn't ship a campaign. Create one before running the toolkit:
 
 This scaffolds the campaign directory, seeds it with the bundled SWN starter rulebook, and registers it as your active campaign. After this, `gm-toolkit faction` opens the TUI against your campaign.
 
+The SWN rulebook's `rulebook.toml` pulls in the shared goals from `rulebooks/_core/`, so the campaign gets both.
+
 If you receive another GM's campaign directory, register it without modifying its contents:
 
     gm-toolkit campaign register ~/incoming/their-campaign

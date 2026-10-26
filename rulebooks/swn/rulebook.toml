@@ -1,0 +1,2 @@
+# Folders composed into a campaign with this rulebook. Each path resolves from this folder.
+includes = ["../_core"]

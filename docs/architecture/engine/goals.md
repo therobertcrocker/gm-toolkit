@@ -27,8 +27,10 @@ type Handler interface {
 with the twelve standard goal handlers (Military Conquest, Planetary Seizure,
 Change Homeworld, …). This is the same handler-registry-keyed-by-data-ID pattern
 the tag and effect engines use. A faction's `ActiveGoal.GoalID` with no
-registered handler is a **data-only goal** — present in `goals.toml` for flavor,
-silently skipped, not an error (the fence-signed twin of the tag/effect skip).
+registered handler is a **data-only goal**: it is silently skipped, not an error
+(the fence-signed twin of the tag/effect skip). The goal definitions live in the
+shared `rulebooks/_core/goals.toml`, which the SWN rulebook composes into its
+campaigns.
 
 ### The lock taxonomy
 
@@ -76,7 +78,7 @@ capture or removal counts as progress; reactors do not see goal output.
 
 ### Worked example — Planetary Seizure
 
-`PlanetarySeizure` (G-004) exercises every mechanism across a multi-turn
+`PlanetarySeizure` (G-004, named World Seizure in `goals.toml`) exercises every mechanism across a multi-turn
 `ProcessPhase`:
 
 - **Phase 0 → 1:** the [`Seize Planet`](actions.md) action emits `GoalInitiated`
@@ -107,7 +109,7 @@ turn lock; the rest run `LockNone`. Completion awards XP per the rules in
 | Military Conquest (G-001) | Destroying rival **Force** assets in combat | Kills reach the faction's Force rating |
 | Commercial Expansion (G-002) | Destroying rival **Wealth** assets | Kills reach the faction's Wealth rating |
 | Intelligence Coup (G-003) | Destroying rival **Cunning** assets | Kills reach the faction's Cunning rating |
-| Planetary Seizure (G-004) | Multi-phase: clear, then occupy the target world | Occupation countdown elapses (grants the T-011 tag) |
+| World Seizure (G-004) | Multi-phase: clear, then occupy the target world | Occupation countdown elapses (grants the T-011 tag) |
 | Expand Influence (G-005) | Placing a Base on a world it held none on | The base is placed — single turn |
 | Blood the Enemy (G-006) | Dealing damage to rival assets and bases | Cumulative damage reaches Force + Cunning + Wealth |
 | Peaceable Kingdom (G-007) | Passing turns without attacking (resets to 0 if it attacks) | Four uninterrupted peaceful turns |
@@ -142,9 +144,11 @@ pattern paying off as near-identical small types.
   package because both `goal` (the engine) and `goals` (the handlers) reference
   them, and `goal` already imports `goals`. A shared leaf breaks the import cycle
   that putting the lock types in either package would create. (Frozen log 215.)
-- **Data-only goals are intentionally no-ops.** A goal ID in `goals.toml` with no
-  registered handler returns `LockNone` and no progress — flavor data a GM can add
-  without writing Go, the same silent-skip contract as tags and effects.
+- **Data-only goals are a silent skip, as an incremental seam.** A goal ID in
+  `goals.toml` with no registered handler returns `LockNone` and no progress, the
+  same silent-skip contract as tags and effects. This is not an end state: a goal
+  a GM adds without Go does nothing until goal behavior comes from data (A.001.8,
+  planned).
 - **Goals emit, never mutate.** Every handler returns `[]domain.Mutation`;
   completion, XP, ticks, phase advances, even a world's change of government are all
   expressed as mutations the orchestrator applies. The goal engine never touches

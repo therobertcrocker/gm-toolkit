@@ -88,6 +88,21 @@ sites, then the data move, the goal text, the docs and the sandbox re-seed.
 
 ## Decision Record — Execution
 
+- **C3 / Task 9 — the `sandbox` re-seed is pending Robert.** The `sandbox-claude`
+  re-seed ran as planned (`Copied 6 file(s)`, `goals.toml` matches `_core`, no
+  manifest copied). The `sandbox` re-seed was blocked: the auto-mode permission
+  check refused the overwrite of Robert's campaign. A check before the run showed
+  that every file in both sandbox rulebooks was byte-for-byte the same as the
+  pre-move `rulebooks/swn/`, so the re-seed only changes `goals.toml`. C3 therefore
+  does not hold the `campaigns/sandbox/rulebook/goals.toml` change. Robert runs the
+  `sandbox` command from Task 9, and the change lands as its own
+  `chore: re-seed sandbox from the composed rulebook` commit on this branch before
+  the merge.
+- **C3 / Task 10 — smoke check through the create wizard.** No faction in
+  `sandbox-claude` has an active goal, so the check used the create wizard's goal
+  list (one of the two routes the task names). The TUI started, and the list showed
+  "World Seizure". The wizard was discarded; no state changed.
+
 ---
 
 ## Shared Context
