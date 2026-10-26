@@ -104,8 +104,8 @@ func NewHarness(t *testing.T) *Harness {
 	if err != nil {
 		t.Fatalf("scaffold: %v", err)
 	}
-	if _, err := campaigns.CopyRulebook(camp, testRulebookDir(t), false); err != nil {
-		t.Fatalf("copy rulebook: %v", err)
+	if _, err := campaigns.ComposeRulebook(camp, testRulebookDir(t), false); err != nil {
+		t.Fatalf("compose rulebook: %v", err)
 	}
 	paths := camp.Paths()
 	rb, err := rulebook.Load(paths.FactionDataDir)

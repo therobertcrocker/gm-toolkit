@@ -1,8 +1,8 @@
 # Goals/Tags Neutralization + `_core` Home — Discovery
 
-> **Initiative:** `A.001.4`, in the [data-driven-rulebook arc](../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md).
+> **Initiative:** `A.001.4`, in the [data-driven-rulebook arc](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md).
 > Binding arc decisions: ACD-6 (one shared home, deduped at scaffold) and ACD-7
-> (neutralization is data-only), in the [arc-discovery](../arcs/data-driven-rulebook/data-driven-rulebook-arc-discovery.md).
+> (neutralization is data-only), in the [arc-discovery](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-discovery.md).
 > This doc does not re-open them. Its agenda is the one question the arc-plan routed
 > here (the flavor-vs-mechanic line, and the compose mechanics), plus internal slicing.
 >
@@ -47,10 +47,10 @@ goal data).
 ## Architecture Context
 
 Pages read:
-[architecture-overview](../../architecture/architecture-overview.md),
-[persistence](../../architecture/engine/persistence.md),
-[goals](../../architecture/engine/goals.md),
-[effect-mutation](../../architecture/engine/effect-mutation.md).
+[architecture-overview](../../../architecture/architecture-overview.md),
+[persistence](../../../architecture/engine/persistence.md),
+[goals](../../../architecture/engine/goals.md),
+[effect-mutation](../../../architecture/engine/effect-mutation.md).
 
 Key Decisions that constrain this design:
 

@@ -268,15 +268,6 @@ over 13 assets; the S-side maps cleanly onto the 5 existing hook categories), so
 - **The surface is visible in the data.** `[ability]` vs `[effect]` blocks (or
   typed profiles) tell a reader which engine owns a special without reading code.
 
-## Open reconciliations (carried into the arc)
-
-- **`goals.md` "intentional flavor" wording** — the data-only skip is an
-  incremental seam, not a deliberate end state; reconcile the wording at
-  pre-merge (already flagged in the discovery).
-- **Shared goals/tags source home** — every ruleset composes the *same* goals and
-  tags into its campaign dir. A `campaigns`/scaffold change (how `Scaffold` /
-  `CopyRulebook` compose), not a loader change. Separate arc effort.
-
 ## Dependencies
 
 **Depends on** `domain` (the ability/effect/transport shapes), the

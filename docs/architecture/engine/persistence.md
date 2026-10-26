@@ -46,9 +46,13 @@ an `Active` pointer. `ResolveActive` takes an optional override id, falls back t
 `Active`, and returns typed errors for the three failure modes a GM hits:
 `ErrNoActiveCampaign`, `ErrCampaignNotRegistered`, and `ErrCampaignRootMissing`
 (registered but the directory is gone). Creating a campaign is `Scaffold` (the
-tree + a `campaign.toml` manifest) followed by `CopyRulebook`, which walks a
-source rulebook directory and copies every `.toml` into the campaign's
-`rulebook/`, refusing to clobber existing files unless `replace` is set.
+tree + a `campaign.toml` manifest) followed by `ComposeRulebook`. It walks a
+source rulebook directory, plus each folder that the directory's `rulebook.toml`
+manifest names in `includes` (one level deep), and copies every `.toml` except
+the manifest into the campaign's `rulebook/`. Every check runs before any write:
+a file that two folders both supply is always refused (`ErrRulebookDuplicate`),
+and an existing campaign file is refused unless `replace` is set
+(`ErrRulebookConflict`). A folder with no manifest copies as a plain folder.
 
 ### Mutable state: `state.toml`
 
@@ -89,7 +93,8 @@ turn:
   ID across files. This lets a GM split assets across themed files
   (`core_assets.toml`, `homebrew_assets.toml`) that merge transparently.
 - **Tags, goals, drift costs** load from single files (`tags.toml`, `goals.toml`,
-  `drift_costs.toml`).
+  `drift_costs.toml`). The tag and goal loaders refuse unknown keys and a
+  duplicate ID, as the asset loader does.
 - Loading is also **validating conversion**: every TOML record is converted into
   a domain type, and an unknown faction stat, asset type, asset flag (`P`/`A`/`S`),
   or ability effect is a load-time error — bad rulebook data fails loudly at
@@ -144,6 +149,25 @@ because they live under `state/`, but their logic lives on those pages.
   `*_assets.toml` merge into one rulebook (duplicate IDs rejected), and every
   enum-like field is validated during conversion, so malformed rules fail at
   startup rather than during a turn.
+- **A rulebook names its shared folders, and one checked step composes them.** A
+  rulebook folder's `rulebook.toml` lists the folders it includes
+  (`includes = ["../_core"]`). Each path resolves from that folder, so the path is
+  GM data, not part of the binary. Includes are one level deep. `ComposeRulebook`
+  walks every folder, runs every check, and then copies, so a refused compose
+  writes nothing. A file that two folders both supply is always refused
+  (`ErrRulebookDuplicate`, which wraps `ErrRulebookConflict`), even with
+  `--replace`. `--replace` applies only to a clash with a file that is already in
+  the campaign. The manifest is never copied, so `rulebook.Load` knows nothing
+  about includes. Goals live in the shared `rulebooks/_core/`; tags stay in each
+  rulebook, because tags are setting identity. Rejected: a repeatable `--rules`
+  (every GM and test site repeats `_core`, and a second pass with `--replace`
+  silently overwrites the core file); a rulebook file that overrides an included
+  file (no present user). (A.001.4 Discovery D-1 and D-7; plan Decisions 2 to 6.)
+- **The tag and goal loaders are strict, as the asset loader is.** An unknown key
+  fails the load and a duplicate ID is refused. All three loaders share
+  `refuseUnknownKeys`. The TOML decoder drops unknown keys silently, so a misspelt
+  key would otherwise do nothing. The duplicate-ID check is the load-time partner
+  of the compose step's file-level refusal. (A.001.4 Discovery D-8.)
 
 ## Dependencies
 

@@ -1,21 +1,34 @@
 package rulebook
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-const testDataDir = "../../../rulebooks/swn"
-
-func TestLoad(t *testing.T) {
-	rb, err := Load(testDataDir)
+// loadShippedRulebook composes rulebooks/swn/ and the folders it includes into a
+// temp campaign, as campaign create does, and loads it.
+func loadShippedRulebook(t *testing.T) *Rulebook {
+	t.Helper()
+	camp := &campaigns.Campaign{Root: t.TempDir()}
+	if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/swn", false); err != nil {
+		t.Fatalf("compose shipped rulebook: %v", err)
+	}
+	rulebook, err := Load(camp.Paths().FactionDataDir)
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
+	return rulebook
+}
+
+func TestLoad(t *testing.T) {
+	rb := loadShippedRulebook(t)
 
 	t.Run("assets populated", func(t *testing.T) {
 		if len(rb.Assets) == 0 {
@@ -677,11 +690,56 @@ func TestLoadDuplicateAssetID(t *testing.T) {
 	}
 }
 
-func TestLoad_TransportBypasses(t *testing.T) {
-	rb, err := Load(testDataDir)
-	if err != nil {
-		t.Fatalf("Load() error: %v", err)
+func TestLoadTagsAndGoals_Strict(t *testing.T) {
+	loadTagFile := func(path string) error { _, err := loadTags(path); return err }
+	loadGoalFile := func(path string) error { _, err := loadGoals(path); return err }
+	cases := []struct {
+		name string
+		body string
+		load func(path string) error
+		want string
+	}{
+		{
+			name: "tag unknown key",
+			body: "[tags.Alpha]\nid = \"T-001\"\nname = \"Alpha\"\neffekt = \"none\"\n",
+			load: loadTagFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "tag duplicate ID",
+			body: "[tags.Alpha]\nid = \"T-001\"\n\n[tags.Beta]\nid = \"T-001\"\n",
+			load: loadTagFile,
+			want: `duplicate tag ID "T-001"`,
+		},
+		{
+			name: "goal unknown key",
+			body: "[goals.Alpha]\nid = \"G-001\"\nname = \"Alpha\"\ndificulty = \"low\"\n",
+			load: loadGoalFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "goal duplicate ID",
+			body: "[goals.Alpha]\nid = \"G-001\"\n\n[goals.Beta]\nid = \"G-001\"\n",
+			load: loadGoalFile,
+			want: `duplicate goal ID "G-001"`,
+		},
 	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "data.toml")
+			if err := os.WriteFile(path, []byte(testCase.body), 0o644); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+			err := testCase.load(path)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
+			}
+		})
+	}
+}
+
+func TestLoad_TransportBypasses(t *testing.T) {
+	rb := loadShippedRulebook(t)
 	for _, id := range []string{"SWN-F7-001", "SWN-W5-003"} {
 		def := rb.Assets[id]
 		if def == nil || def.Transport == nil || !def.Transport.IgnoresPermission {
@@ -694,10 +752,7 @@ func TestLoad_TransportBypasses(t *testing.T) {
 }
 
 func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
-	rb, err := Load(testDataDir)
-	if err != nil {
-		t.Fatalf("Load() error: %v", err)
-	}
+	rb := loadShippedRulebook(t)
 	want := []domain.EffectDefinition{{
 		Trigger: domain.TriggerPermissionGranted,
 		Effect:  domain.SpecialWithdrawPermission,
@@ -713,10 +768,7 @@ func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
 }
 
 func TestLoad_TransportLockdown(t *testing.T) {
-	rb, err := Load(testDataDir)
-	if err != nil {
-		t.Fatalf("Load() error: %v", err)
-	}
+	rb := loadShippedRulebook(t)
 	lockdown := rb.Assets["SWN-C6-001"]
 	wantAttack := &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning}
 	if !reflect.DeepEqual(lockdown.Attack, wantAttack) {

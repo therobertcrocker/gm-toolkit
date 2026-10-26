@@ -1,6 +1,7 @@
 package campaigns
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -8,7 +9,16 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 )
+
+const rulebookManifestFile = "rulebook.toml"
+
+// rulebookManifest is the on-disk form of a rulebook folder's rulebook.toml.
+type rulebookManifest struct {
+	Includes []string `toml:"includes"`
+}
 
 // Scaffold creates a fresh campaign directory tree at root and writes a
 // campaign.toml manifest. Directory layout is derived from Paths() so the two
@@ -43,41 +53,63 @@ func Scaffold(root, id, name string) (*Campaign, error) {
 	return camp, nil
 }
 
-// CopyRulebook copies every .toml file under srcDir into <campaign-root>/rulebook/
-// at the matching relative path. With replace=false, errors with ErrRulebookConflict
-// (wrapped, message listing all conflicts) if any destination already exists.
-// Returns the count of files copied.
-func CopyRulebook(c *Campaign, srcDir string, replace bool) (int, error) {
+// ComposeRulebook copies every .toml file under srcDir, and under each folder
+// that srcDir's rulebook.toml names in includes, into <campaign-root>/rulebook/
+// at the matching relative path. The manifest itself is not copied. Every check
+// runs before any write, so a refused compose copies nothing: a file that two
+// folders both supply errors with ErrRulebookDuplicate whatever replace says,
+// and with replace=false an existing destination errors with
+// ErrRulebookConflict. Returns the count of files copied.
+func ComposeRulebook(c *Campaign, srcDir string, replace bool) (int, error) {
+	folders, err := composeFolders(srcDir)
+	if err != nil {
+		return 0, err
+	}
 	destBase := filepath.Join(c.Root, "rulebook")
 
-	var conflicts []string
+	suppliedBy := make(map[string]string)
+	var duplicates, conflicts []string
 	var toCopy []struct{ src, dest string }
 
-	err := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
+	for _, folder := range folders {
+		err := filepath.WalkDir(folder, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(strings.ToLower(d.Name()), ".toml") {
+				return nil
+			}
+			rel, relErr := filepath.Rel(folder, path)
+			if relErr != nil {
+				return relErr
+			}
+			// deliberate: every folder's manifest is skipped, not only srcDir's, because includes are one level deep (A.001.4 D-1) and a manifest is never campaign data.
+			if rel == rulebookManifestFile {
+				return nil
+			}
+			if first, supplied := suppliedBy[rel]; supplied {
+				duplicates = append(duplicates, fmt.Sprintf("%s (%s and %s)", rel, first, folder))
+				return nil
+			}
+			suppliedBy[rel] = folder
+			dest := filepath.Join(destBase, rel)
+			if _, statErr := os.Stat(dest); statErr == nil {
+				conflicts = append(conflicts, rel)
+			}
+			toCopy = append(toCopy, struct{ src, dest string }{path, dest})
+			return nil
+		})
 		if err != nil {
-			return err
+			return 0, fmt.Errorf("walk %s: %w", folder, err)
 		}
-		if d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(strings.ToLower(d.Name()), ".toml") {
-			return nil
-		}
-		rel, relErr := filepath.Rel(srcDir, path)
-		if relErr != nil {
-			return relErr
-		}
-		dest := filepath.Join(destBase, rel)
-		if _, statErr := os.Stat(dest); statErr == nil {
-			conflicts = append(conflicts, rel)
-		}
-		toCopy = append(toCopy, struct{ src, dest string }{path, dest})
-		return nil
-	})
-	if err != nil {
-		return 0, fmt.Errorf("walk %s: %w", srcDir, err)
 	}
 
+	if len(duplicates) > 0 {
+		return 0, fmt.Errorf("%w: %s", ErrRulebookDuplicate, strings.Join(duplicates, ", "))
+	}
 	if len(conflicts) > 0 && !replace {
 		return 0, fmt.Errorf("%w in %s: %s", ErrRulebookConflict, destBase, strings.Join(conflicts, ", "))
 	}
@@ -90,6 +122,40 @@ func CopyRulebook(c *Campaign, srcDir string, replace bool) (int, error) {
 		copied++
 	}
 	return copied, nil
+}
+
+// composeFolders returns srcDir followed by each folder its rulebook.toml
+// includes, resolved from srcDir. With no manifest, srcDir is a plain folder.
+func composeFolders(srcDir string) ([]string, error) {
+	manifestPath := filepath.Join(srcDir, rulebookManifestFile)
+	var manifest rulebookManifest
+	metadata, err := toml.DecodeFile(manifestPath, &manifest)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []string{srcDir}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", manifestPath, err)
+	}
+	if undecoded := metadata.Undecoded(); len(undecoded) > 0 {
+		keys := make([]string, len(undecoded))
+		for i, key := range undecoded {
+			keys[i] = key.String()
+		}
+		return nil, fmt.Errorf("unknown keys in %s: %s", manifestPath, strings.Join(keys, ", "))
+	}
+	folders := []string{srcDir}
+	for _, include := range manifest.Includes {
+		folder := filepath.Join(srcDir, include)
+		info, statErr := os.Stat(folder)
+		if statErr != nil {
+			return nil, fmt.Errorf("include %q in %s: %w", include, manifestPath, statErr)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("include %q in %s: %s is not a directory", include, manifestPath, folder)
+		}
+		folders = append(folders, folder)
+	}
+	return folders, nil
 }
 
 func copyFile(src, dest string) error {

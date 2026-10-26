@@ -26,7 +26,7 @@ func TestSpotCheck_RenderedOutput(t *testing.T) {
 
 		dir := t.TempDir()
 		paths := &campaigns.Paths{
-			FactionDataDir: testDataDir,
+			FactionDataDir: composedRulebookDir(t),
 			StatePath:      filepath.Join(dir, "state.toml"),
 			HistoryPath:    filepath.Join(dir, "history.jsonl"),
 		}
