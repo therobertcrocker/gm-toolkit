@@ -49,20 +49,31 @@ holder (Effort 4).
    overview, Decision 2.
 
 2. **The three `R.023` contests roll through `RollWithHooks` with a nil collector:
-   automatic offers only. Letting them ask the GM is a follow-on row after the roll
-   card.** Robert's call. Resolves Open Question 1.
+   no one is asked, free extra dice are taken, and everything else waits. Letting
+   them ask the GM is a follow-on row after the roll card.** Robert's call. Resolves
+   Open Question 1.
    - Tripwire Cells and Panopticon Matrix run where there is no collector: a Cat 3
      reactor, the `on_purchase` phase route and the `turn_start` phase route.
      Lobbyists runs inside `contestGrant`, which holds a `PermissionCollector`, but
      not the roll collector.
-   - With a nil collector, `RollWithHooks` asks nothing. No Cat 1 offer is chosen.
-     An elective Cat 2 reroll is declined. A forced reroll still applies, so
-     Fanatical's 1s reroll in all three contests.
+   - With a nil collector, `RollWithHooks` asks nothing:
+     - **Cat 1:** it takes every offer with no limit (an empty `BudgetKey`) and skips
+       every offer with one. An extra die where the highest is kept is never worse
+       for the roller, so a free die is what any player picks. A once-per-turn die
+       (Machiavellian, Warlike) spent on a roll the player never chose could cost
+       them a later attack, so it waits. The offer filters run first, as today, so
+       Blackmail still removes tag dice.
+     - **Cat 2:** an elective reroll is declined. A forced reroll still applies, so
+       Fanatical's 1s reroll in all three contests.
    - The precedent is `dispatch.InterceptLethal`, where a nil collector asks nothing
-     and only automatic offers run (hooks Key Decision on Cat 6).
+     and only automatic offers run (hooks Key Decision on Cat 6). This decision adds
+     the free-die rule for Cat 1.
    - **D-7 is narrowed until the follow-on lands.** When `R.025` (the roll card) adds
      Psychic Academy's entry, it will not reach these three contests. Book of Secrets'
-     elective reroll does not reach them either.
+     elective reroll and once-per-turn tag dice do not reach them either.
+   - Found in review of this decision: the book calls Tripwire Cells' roll "a Cunning
+     vs. Cunning attack". Whether Machiavellian's once-per-turn die applies there is
+     for the follow-on row to ask; until then, its limit keeps it out.
    - **The follow-on is its own row, after `R.025`:** these three contests show the
      roll card. It decides who sees the card, and when, for a roll that fires after a
      batch, sometimes on another faction's turn. Lobbyists is the cheapest of the
@@ -114,6 +125,25 @@ holder (Effort 4).
      `remove_tag_dice` keeps working.
    - `domain.ScopeFaction` already exists as an effect scope. The Effort 1 plan checks
      whether a faction holder can use it before it adds a scope.
+
+6. **Perimeter Agency's detect die applies to three rolls: the A-side reveal ability,
+   Tripwire Cells and Panopticon Matrix.** Robert's call (rules reading). The text is
+   "roll an extra die when making a test to detect Stealthed assets". The discovery
+   counted only the A-side reveal ability (`ability/reveal_stealth.go`), which already
+   rolls through `RollWithHooks` with a collector.
+   - **Tripwire Cells:** the holder's Cells attack to strip a stealthed asset's
+     stealth. The die goes on the holder's attack roll.
+   - **Panopticon Matrix:** the stealthed rival tests to keep its stealth, and the
+     holder defends. The contest as a whole is a detection test, so the die goes on
+     the holder's defense roll.
+   - The die has no once-per-turn limit, so Decision 2's free-die rule takes it in
+     both contests with no one asked.
+   - The Effort 3 plan designs how the entry recognises a detection roll. It also
+     names the roll phase each contest roll carries. That phase decides which
+     existing dice reach the contests: Panopticon Matrix's own free die (`own_roll`,
+     phase `attack` or `defense`, Cunning) would reach its own contest under
+     `attack`/`defense`, but not under `contested`. The Effort 3 plan asks Robert
+     that reading. Reshapes the discovery's group C row for Perimeter Agency.
 
 ## Decision Record — Execution
 
@@ -240,10 +270,11 @@ reading the buyer's tags (D-12).
 and the Starship floor (D-9, D-10); the base Starship rule in `CanPurchase`
 (Decision 3), the waiver flag and its wizard toggle; Colonists (D-8) and Technical
 Expertise; Pirates' toll and its refusal at order time (D-6); Deep Rooted's
-self-removal (D-19); Exchange Consulate's XP roll (D-18); roll hooks on the
-stealth-detect contest; the three `R.023` contests on `RollWithHooks` with a nil
-collector (Decision 2, D-16); the Psychic Academy registrar and tests, with no data
-entry (D-7).
+self-removal (D-19); Exchange Consulate's XP roll (D-18); Perimeter Agency's detect
+die on the reveal ability, Tripwire Cells and Panopticon Matrix (Decision 6); the
+three `R.023` contests on `RollWithHooks` with a nil collector and the free-die rule
+(Decision 2, D-16); the Psychic Academy registrar and tests, with no data entry
+(D-7).
 
 **Depends on:** Effort 2.
 
