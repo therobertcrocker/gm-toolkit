@@ -2,7 +2,7 @@
 
 > **Initiative:** `E.002`, the pilot run of the Exploration (`E.`) type. `D.009` writes
 > the type's flow and template from what worked in this doc.
-> **Feeds:** the paused [`A.001.4` discovery](../discovery/A.001.4-goals-tags-core-discovery.md),
+> **Feeds:** the paused [`A.001.4` discovery](../discovery/completed/A.001.4-goals-tags-core-discovery.md),
 > which waits on the answer to "core, per-rulebook, or hybrid?".
 > **Status:** complete (reviewed by Robert). Session 1 (audit) wrote Current State
 > and Existing Patterns. Session 2 wrote In Plain Words, Options, Recommendation and

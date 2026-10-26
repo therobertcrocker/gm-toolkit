@@ -149,6 +149,25 @@ because they live under `state/`, but their logic lives on those pages.
   `*_assets.toml` merge into one rulebook (duplicate IDs rejected), and every
   enum-like field is validated during conversion, so malformed rules fail at
   startup rather than during a turn.
+- **A rulebook names its shared folders, and one checked step composes them.** A
+  rulebook folder's `rulebook.toml` lists the folders it includes
+  (`includes = ["../_core"]`). Each path resolves from that folder, so the path is
+  GM data, not part of the binary. Includes are one level deep. `ComposeRulebook`
+  walks every folder, runs every check, and then copies, so a refused compose
+  writes nothing. A file that two folders both supply is always refused
+  (`ErrRulebookDuplicate`, which wraps `ErrRulebookConflict`), even with
+  `--replace`. `--replace` applies only to a clash with a file that is already in
+  the campaign. The manifest is never copied, so `rulebook.Load` knows nothing
+  about includes. Goals live in the shared `rulebooks/_core/`; tags stay in each
+  rulebook, because tags are setting identity. Rejected: a repeatable `--rules`
+  (every GM and test site repeats `_core`, and a second pass with `--replace`
+  silently overwrites the core file); a rulebook file that overrides an included
+  file (no present user). (A.001.4 Discovery D-1 and D-7; plan Decisions 2 to 6.)
+- **The tag and goal loaders are strict, as the asset loader is.** An unknown key
+  fails the load and a duplicate ID is refused. All three loaders share
+  `refuseUnknownKeys`. The TOML decoder drops unknown keys silently, so a misspelt
+  key would otherwise do nothing. The duplicate-ID check is the load-time partner
+  of the compose step's file-level refusal. (A.001.4 Discovery D-8.)
 
 ## Dependencies
 

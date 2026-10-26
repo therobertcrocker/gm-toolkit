@@ -18,9 +18,9 @@
 
 ## Context / Goal
 
-- Discovery doc: [A.001.4-goals-tags-core-discovery.md](../discovery/A.001.4-goals-tags-core-discovery.md) (D-1 to D-13, binding)
-- Arc plan: [data-driven-rulebook-arc-plan.md](../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), the A.001.4 boundary and AP-8
-- Arch pages: [persistence](../../architecture/engine/persistence.md), [goals](../../architecture/engine/goals.md)
+- Discovery doc: [A.001.4-goals-tags-core-discovery.md](../../discovery/completed/A.001.4-goals-tags-core-discovery.md) (D-1 to D-13, binding)
+- Arc plan: [data-driven-rulebook-arc-plan.md](../../arcs/data-driven-rulebook/data-driven-rulebook-arc-plan.md), the A.001.4 boundary and AP-8
+- Arch pages: [persistence](../../../architecture/engine/persistence.md), [goals](../../../architecture/engine/goals.md)
 
 One phase, three commits: the strict loader, then the compose step with its test
 sites, then the data move, the goal text, the docs and the sandbox re-seed.
@@ -102,6 +102,11 @@ sites, then the data move, the goal text, the docs and the sandbox re-seed.
   `sandbox-claude` has an active goal, so the check used the create wizard's goal
   list (one of the two routes the task names). The TUI started, and the list showed
   "World Seizure". The wizard was discarded; no state changed.
+- **Pre-merge — D-7 graduates with D-1.** The pre-merge list in Shared Context
+  names D-1 and D-8 for `persistence.md`. The compose Key Decision also carries
+  D-7 (goals in `_core`, tags in each rulebook, because tags are setting
+  identity): it tells a reader why `_core` holds goals only, and that reason is
+  durable.
 
 ---
 
