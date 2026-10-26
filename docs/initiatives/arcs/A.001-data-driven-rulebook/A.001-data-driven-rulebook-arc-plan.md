@@ -13,10 +13,12 @@
 > candidate list), and the [ability & effect catalog](../../../architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
-> **Status:** signed off, and **amended twice since**. The A.001.3 Discovery split the
+> **Status:** signed off, and **amended three times since**. The A.001.3 Discovery split the
 > S side into two initiatives and reset A.001.3's boundary (AP-7). The A.001.4
 > Discovery narrowed `_core` to goals, kept tags per rulebook, and added A.001.7 and
-> A.001.8 from the `E.002` exploration (AP-8). Amendments are
+> A.001.8 from the `E.002` exploration (AP-8). The A.001.7 Discovery widened A.001.7
+> to all 20 SWN tags, including tags that grant actions or assets, and added a
+> dependency on A.001.2 (AP-9). Amendments are
 > recorded in the Decision Record and folded into the body, so this doc stays the
 > current arc shape rather than a snapshot of sign-off. Each initiative is registered in
 > `planned-work.md` and runs its own lifecycle (session-modes section 9).
@@ -31,7 +33,7 @@
 | **A.001.4** | Goals/tags neutralization + `_core` home | feature | — |
 | **A.001.5** | H.A.W.K asset authoring | feature | A.001.2, A.001.3, its own lore-seed effort; A.001.7 *(tag pass only)* |
 | **A.001.6** | S-flag rule extensions | feature | A.001.3 |
-| **A.001.7** | Data-driven tags | feature | A.001.3, A.001.4 |
+| **A.001.7** | Data-driven tags | feature | A.001.2 *(ability registry, Effort 4 only)*, A.001.3, A.001.4 |
 | **A.001.8** | Data-driven goals | feature | A.001.4 |
 
 > **A.001.6 was added after sign-off,** by the A.001.3 Discovery session (AP-7). The
@@ -41,13 +43,18 @@
 > **A.001.7 and A.001.8 were added after sign-off,** by the A.001.4 Discovery session
 > (AP-8), from the `E.002` exploration. A.001.4 keeps its name, but its scope is now
 > goals only: tags stay in each rulebook.
+>
+> **A.001.7 was widened after promotion,** by the A.001.7 Discovery session (AP-9). It
+> covers every SWN tag, so a tag that grants an action reaches A.001.2's ability
+> registry.
 
 The arc is a DAG, not a line: A.001.4 and A.001.5's lore-seed effort carry no
 dependency on the registries and can run from the start; the registries themselves are
 the only strictly-serial spine (A.001.1 → A.001.2 → A.001.3's relocate slice).
 A.001.6 hangs off A.001.3 and gates nothing — it completes the SWN S-side rather than
 unlocking anything downstream. A.001.7 and A.001.8 hang off A.001.4's strict loader.
-A.001.7 also reuses A.001.3's registrars and gates A.001.5's tag pass. A.001.8 gates
+A.001.7 also reuses A.001.3's registrars and A.001.2's ability registry (AP-9), and
+gates A.001.5's tag pass. A.001.8 gates
 nothing.
 
 ```mermaid
@@ -77,6 +84,7 @@ flowchart TD
   S --> Author
   S --> Rules
   S -- "registrars" --> Tags
+  A -- "ability registry" --> Tags
   Core -- "strict loader" --> Tags
   Core --> Goals
   Lore --> Author
@@ -248,21 +256,33 @@ Owns the living lore canon (ACD-9) and ships H.A.W.K's assets.
 (passes can't classify against primitives that aren't built), and the tag pass on
 A.001.7.
 
-### A.001.7 — Data-driven tags (feature) — depends A.001.3, A.001.4
+### A.001.7 — Data-driven tags (feature) — depends A.001.2, A.001.3, A.001.4
 
-Added by AP-8, from `E.002` option T-1. Tags get their behavior from rulebook data, as
-assets do.
+Added by AP-8, from `E.002` option T-1, and widened by AP-9. Tags get their behavior
+from rulebook data, as assets do. Four efforts; see the
+[A.001.7 discovery](../../discovery/A.001.7-data-driven-tags-discovery.md).
 
 - A tag record carries `[[tags.<Key>.effects]]` with the asset `EffectDefinition`. Each
-  registrar learns a second holder, the faction, beside the asset.
+  registrar learns a second holder, the faction, beside the asset. The effects engine
+  owns tag effects, and `engine/tag` goes away.
 - Factions hold tag IDs, not copies; the engine reads the definition from the rulebook.
-- The four Go handlers (`T-005`, `T-013`, `T-016`, `T-020`) and the inert tags that fit
-  become data. The government role moves from `domain.TagPlanetaryGovernment` to a
-  data marker.
+- All 20 SWN tags get their rules in data: the four Go handlers (`T-005`, `T-013`,
+  `T-016`, `T-020`) and every inert tag. The government role moves from
+  `domain.TagPlanetaryGovernment` to a data marker.
 - Tag IDs gain the rulebook prefix (`SWN-T-020`; `E.002` option I-1).
+- **Tags that grant actions or assets (AP-9).** A.001.2's ability registry learns the
+  faction holder, so Preceptor Archive grants Teach Planetary Population. Eugenics
+  Cult's Gengineered Slaves is an SWN asset with a `requires_tag` purchase field.
+- **New world and setting rules (AP-9).** A rulebook `settings.toml` holds per-setting
+  rule values; the drift costs move into it from `drift_costs.toml`. A base Starship
+  population floor lives there, and Colonists and Technical Expertise lower it for
+  their holder.
+- **Roll reach (AP-9).** The roll dispatcher reads the opponent's faction bucket, and
+  the bare contests of `R.023` move onto `RollWithHooks`.
 
-**Covers:** the tag half of `E.002`. **Punts:** tags that grant actions or assets
-(outside the S-side model; `E.002` lists them). **Gates:** A.001.5's tag pass.
+**Covers:** the tag half of `E.002`, every SWN tag, `B.042`, `R.023`, and `F.010`
+(closed at merge). **Punts:** Psychic Academy's data entry, to `R.025` (the roll card);
+A.001.7 builds its registrar. **Gates:** A.001.5's tag pass.
 
 ### A.001.8 — Data-driven goals (feature) — depends A.001.4
 
@@ -273,6 +293,8 @@ named parts (start, progress, tick, reset, threshold, complete, XP, phases).
 - A turn-start goal pick becomes an engine step with a collector ask.
 - Goal IDs gain the `_core` prefix (`CORE-G-001`; `E.002` option I-1).
 - Absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`.
+- Renames the goal references in tag data when goal IDs gain the prefix (AP-9):
+  Imperialists names Planetary Seizure, and Exchange Consulate names Peaceable Kingdom.
 
 **Covers:** the goal half of `E.002`. **Punts:** `F.013` (the `complete` predicate
 leaves it open). **Gates nothing** — `_core` goals serve both rulebooks before and
@@ -310,7 +332,8 @@ load**, not uniform:
   ability-catalog session types); A.001.5 is the initiative that forces that gap, and
   the shape is settled when it is promoted, not here.
 - **A.001.7 / A.001.8 — shape set at promotion.** The `E.002` exploration already holds
-  their audit, options and recommendation, so their Discovery starts from it.
+  their audit, options and recommendation, so their Discovery starts from it. The
+  A.001.7 Discovery set four efforts (AP-9).
 
 ## Open-question routing
 
@@ -361,6 +384,11 @@ Prerequisites — in-arc gates and the engine seams reached outside the registri
   sort.
 - **A.001.7 ⟸ A.001.3 + A.001.4.** Tags register through A.001.3's registrars, with
   the faction as a second holder; A.001.4 supplies the strict loader.
+- **A.001.7's Effort 4 ⟸ A.001.2** (AP-9). A tag that grants an action registers
+  through A.001.2's ability registry, with the faction as a second holder. A.001.2 is
+  complete, so this gates nothing today.
+- **A.001.8 renames goal references in A.001.7's tag data** (AP-9). Not a gate: the
+  references are checked at load, so a missed rename fails loud.
 - **A.001.8 ⟸ A.001.4.** It edits the `_core` goals file and loader that A.001.4
   makes.
 - **A.001.5's tag pass ⟸ A.001.7.** H.A.W.K tags are authored in A.001.7's data form,
@@ -383,7 +411,8 @@ Work this arc does not address (seeded by the arc-discovery Out-of-scope list):
   verbatim" no longer holds.)*
 - **Other rulebooks (WWN).** H.A.W.K is the first non-reference rulebook; WWN is the
   next beneficiary, not touched here.
-- **`spatial/` and `drift_costs.toml`.** Carried as-is from the SWN shape.
+- **`spatial/`.** Carried as-is from the SWN shape. *(AP-9 moves the drift costs from
+  `drift_costs.toml` into A.001.7's `settings.toml`; the values do not change.)*
 - **Formalizing custom session types** (lore, ability-catalog) as process additions —
   process-level, deferred to the process backlog.
 
@@ -483,3 +512,28 @@ relevant arch page at pre-merge).
     lose their identity and need per-tag rules calls), and the hybrid (core goals plus
     the neutral tags; it needs a merge-by-record loader and `T-011` in core, and with
     data-driven tags no tag needs to be shared).
+- **AP-9 — A.001.7 covers all 20 SWN tags, including tags that grant actions or
+  assets.** From the A.001.7 Discovery session (D-1), Robert's call. AP-8 punted those
+  tags as outside the S-side model. With every tag in scope, no SWN tag stays inert,
+  and A.001.5's tag pass gets the whole vocabulary. What this amends:
+  - **A.001.7 depends on A.001.2** for its Effort 4: the ability registry learns the
+    faction holder, so a tag can grant an action (Teach Planetary Population). An asset
+    that only a tag holder can buy is a definition field, `requires_tag`, not a hook
+    (hooks Key Decision on rules about assets not yet in play).
+  - **A rulebook `settings.toml` holds per-setting rule values**, and the drift costs
+    move into it. The base Starship population floor is the first new value. The
+    compose manifest (`rulebook.toml`) stays compose-only (A.001.4 D-1). This replaces
+    the out-of-arc line "`drift_costs.toml` carried as-is"; ACD-6 still holds, because
+    the settings stay rulebook-specific.
+  - **A.001.7 absorbs `B.042` and `R.023`, and closes `F.010`.** Scavengers' data form
+    states the owner filter `B.042` asks for. `R.023`'s contests move onto
+    `RollWithHooks` so that tag rerolls reach every roll.
+  - **The roll card is a new row, `R.025`, and it gates Psychic Academy's data entry.**
+    "Any rival roll, anywhere" asks the holder on every rival roll. A.001.7 builds the
+    registrar; `R.025` adds the entry. Gating only the entry keeps A.001.7 free of
+    driver work.
+  - **A.001.8 renames goal references in tag data** (Imperialists, Exchange Consulate).
+  - Rejected: the AP-8 boundary (four handlers and the S-side tags that fit), which
+    leaves five tags inert and sends A.001.5's tag pass to a smaller vocabulary; a
+    separate initiative for the action- and asset-granting tags, which would reopen the
+    faction holder on a second surface.

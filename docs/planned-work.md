@@ -11,6 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
+| `A.001.7` | Data-driven tags | `feature` | In-Progress | Tags carry `[[effects]]`; registrars accept a faction holder; factions hold tag IDs, not copies; the four Go handlers and the inert tags that fit become data; rulebook-prefixed tag IDs (`SWN-T-020`), superseding `B.002`; gates `A.001.5`'s tag pass; see `E.002` (T-1, I-1) |
 | `E.002` | Data-driven tags and goals | `exploration` | Complete | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
 
 
@@ -23,7 +24,6 @@ The queue of deferred items that are ready to become initiatives. These are scop
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass after `A.001.7` (AP-8); owns lore canon; see arc-plan |
-| `A.001.7` | Data-driven tags | `feature` | ready | Tags carry `[[effects]]`; registrars accept a faction holder; factions hold tag IDs, not copies; the four Go handlers and the inert tags that fit become data; rulebook-prefixed tag IDs (`SWN-T-020`), superseding `B.002`; gates `A.001.5`'s tag pass; see `E.002` (T-1, I-1) |
 | `A.001.8` | Data-driven goals | `feature` | ready | Goal vocabulary of named parts (start, progress, tick, reset, threshold, complete, XP, phases), a turn-start goal pick in the engine, the twelve goals as data, prefixed goal IDs (`CORE-G-001`); absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; see `E.002` (G-1, I-1) |
 
 
@@ -104,6 +104,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
 | `R.023` | Effect contests through roll hooks | when effects reach a collector | Tripwire Cells, Panopticon Matrix and Lobbyists roll bare 1d10 + stat (`contestPasses`), so Fanatical's and Book of Secrets' rerolls skip them; move all three onto `RollWithHooks` together once reactors and phase effects can reach a collector. `A.001.6` Effort 5 Decision 10. |
 | `R.024` | Clear inert `no_attack` records | when saves grow noisy | A Seditionists' `no_attack` stays on its target after the Seditionists die; `domain.AttackBlocked` skips it when read, so it only clutters saves. Clear it when its source leaves play. Deferred from `A.001.6` Effort 3 Decision 10. |
+| `R.025` | Roll card | after `A.001.7` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
 
 #### 3. Driver
 
@@ -252,7 +253,23 @@ This section contains detailed write-ups for each planned initiative, including 
 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
-**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](initiatives/arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `[[effects]]` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. **`A.001.6` complete** (the 14 remaining SWN S-flag assets: asset conditions, change of owner, special attacks, Cat 6 lethal interception, purchase qualities, the world government record, and permission at purchase and arrival, on `feature/s-flag-rule-extensions`; [plan](initiatives/_completed/_archive/implementation/s-flag-rule-extensions-plan.md)); every SWN S-flag asset now runs as data. **`A.001.4` complete** (the goals move to a shared `rulebooks/_core/` that a `rulebook.toml` manifest composes into each campaign, with setting-free goal text and a strict tag/goal loader, on `feature/goals-tags-core`; [plan](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.4-goals-tags-core/A.001.4-goals-tags-core-plan.md)). `A.001.5`, `A.001.7` and `A.001.8` are ready. The `A.001.4` Discovery added `A.001.7` (data-driven tags) and `A.001.8` (data-driven goals) from `E.002` (arc-plan AP-8).
+**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](initiatives/arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `[[effects]]` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. **`A.001.6` complete** (the 14 remaining SWN S-flag assets: asset conditions, change of owner, special attacks, Cat 6 lethal interception, purchase qualities, the world government record, and permission at purchase and arrival, on `feature/s-flag-rule-extensions`; [plan](initiatives/_completed/_archive/implementation/s-flag-rule-extensions-plan.md)); every SWN S-flag asset now runs as data. **`A.001.4` complete** (the goals move to a shared `rulebooks/_core/` that a `rulebook.toml` manifest composes into each campaign, with setting-free goal text and a strict tag/goal loader, on `feature/goals-tags-core`; [plan](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.4-goals-tags-core/A.001.4-goals-tags-core-plan.md)). `A.001.7` is in progress; `A.001.5` and `A.001.8` are ready. The `A.001.4` Discovery added `A.001.7` (data-driven tags) and `A.001.8` (data-driven goals) from `E.002` (arc-plan AP-8).
+
+<br />
+
+## A.001.7 — Data-Driven Tags
+
+**Feature** within the `A.001` arc (arc-plan AP-8). Recommended by `E.002` (T-1 for tags, I-1 for IDs); see the [exploration](initiatives/explorations/E.002-data-driven-tags-goals-exploration.md).
+
+**Problem** — Tags get their behavior from four Go handlers in `engine/tag/tags/` keyed on bare IDs (`T-005` Fanatical, `T-013` Preceptor Archive, `T-016` Scavengers, `T-020` Warlike), and `T-011` couples to the government record through `domain.TagPlanetaryGovernment`. The other 15 tags are inert text the GM applies by hand. A second rulebook gets a tag behavior only when it reuses an SWN ID. Factions also store full tag copies in state, so a rulebook change never reaches a tag a faction already holds.
+
+**Approach** — Reuse the asset `[[effects]]` model: a tag record carries `[[tags.<Key>.effects]]`, and each effect registrar learns a second holder, the faction (registers at `FactionScope`, checks at fire time that the faction still holds the tag, sets `FromTag` from the holder). Factions hold tag IDs and the engine reads the definition from the rulebook. The four handlers become data, then the inert tags that fit the vocabulary. The government role becomes a data marker. Tag IDs take the rulebook prefix (`SWN-T-020`); saves migrate.
+
+**Unlocks** — `A.001.5`'s H.A.W.K tag pass (tags authored as data, no Go); supersedes `B.002`; proves the faction holder before `A.001.8` reuses the effect filters for goals.
+
+**Trigger** — ready
+
+**Status** — In-Progress — promoted 2026-10-26 from Up Next on Robert's call; Discovery starts.
 
 <br />
 
