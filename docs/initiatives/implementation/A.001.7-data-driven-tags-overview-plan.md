@@ -165,8 +165,8 @@ holds only reversals of the decisions above. -->
 
 ### Branch and git cadence
 
-- Branch `feature/data-driven-tags`, cut from `main` at the first Effort 1 execution
-  session.
+- Branch `feature/data-driven-tags`, cut from `main` after this overview plan was
+  committed there. Every effort session runs on the branch, Plan sessions included.
 - Commit per session. At each effort boundary: an interim `/code-review` of the
   effort's diff, then `fix:` commits for its findings, then a squash of the effort's
   session commits into one `effort N` commit. Later fixes stay separate `fix:`
