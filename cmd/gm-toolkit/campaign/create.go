@@ -96,7 +96,7 @@ func newCreateCmd() *cobra.Command {
 			}
 
 			if rules != "" {
-				copied, err := campaigns.CopyRulebook(camp, rules, false)
+				copied, err := campaigns.ComposeRulebook(camp, rules, false)
 				if err != nil {
 					return fmt.Errorf("create: seed rulebook: %w", err)
 				}

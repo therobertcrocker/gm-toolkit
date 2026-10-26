@@ -31,8 +31,11 @@ func newAddRulesCmd() *cobra.Command {
 				}
 				return fmt.Errorf("add-rules: %w", err)
 			}
-			copied, err := campaigns.CopyRulebook(camp, source, replace)
+			copied, err := campaigns.ComposeRulebook(camp, source, replace)
 			if err != nil {
+				if errors.Is(err, campaigns.ErrRulebookDuplicate) {
+					return fmt.Errorf("add-rules: %w\n  hint: remove the file from one of the rulebook folders", err)
+				}
 				if errors.Is(err, campaigns.ErrRulebookConflict) {
 					return fmt.Errorf("add-rules: %w\n  hint: pass --replace to overwrite", err)
 				}
@@ -43,7 +46,7 @@ func newAddRulesCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&source, "rules", "", "source directory of TOML files (required)")
+	cmd.Flags().StringVar(&source, "rules", "", "rulebook directory to copy, with the folders its rulebook.toml includes (required)")
 	cmd.Flags().StringVar(&campaign, "campaign", "", "target campaign id (defaults to active)")
 	cmd.Flags().BoolVar(&replace, "replace", false, "overwrite conflicting files in destination")
 	_ = cmd.MarkFlagRequired("rules")

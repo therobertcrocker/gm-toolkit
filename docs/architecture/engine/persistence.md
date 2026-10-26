@@ -46,9 +46,13 @@ an `Active` pointer. `ResolveActive` takes an optional override id, falls back t
 `Active`, and returns typed errors for the three failure modes a GM hits:
 `ErrNoActiveCampaign`, `ErrCampaignNotRegistered`, and `ErrCampaignRootMissing`
 (registered but the directory is gone). Creating a campaign is `Scaffold` (the
-tree + a `campaign.toml` manifest) followed by `CopyRulebook`, which walks a
-source rulebook directory and copies every `.toml` into the campaign's
-`rulebook/`, refusing to clobber existing files unless `replace` is set.
+tree + a `campaign.toml` manifest) followed by `ComposeRulebook`. It walks a
+source rulebook directory, plus each folder that the directory's `rulebook.toml`
+manifest names in `includes` (one level deep), and copies every `.toml` except
+the manifest into the campaign's `rulebook/`. Every check runs before any write:
+a file that two folders both supply is always refused (`ErrRulebookDuplicate`),
+and an existing campaign file is refused unless `replace` is set
+(`ErrRulebookConflict`). A folder with no manifest copies as a plain folder.
 
 ### Mutable state: `state.toml`
 

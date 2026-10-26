@@ -8,16 +8,27 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-const testDataDir = "../../../rulebooks/swn"
-
-func TestLoad(t *testing.T) {
-	rb, err := Load(testDataDir)
+// loadShippedRulebook composes rulebooks/swn/ and the folders it includes into a
+// temp campaign, as campaign create does, and loads it.
+func loadShippedRulebook(t *testing.T) *Rulebook {
+	t.Helper()
+	camp := &campaigns.Campaign{Root: t.TempDir()}
+	if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/swn", false); err != nil {
+		t.Fatalf("compose shipped rulebook: %v", err)
+	}
+	rulebook, err := Load(camp.Paths().FactionDataDir)
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
+	return rulebook
+}
+
+func TestLoad(t *testing.T) {
+	rb := loadShippedRulebook(t)
 
 	t.Run("assets populated", func(t *testing.T) {
 		if len(rb.Assets) == 0 {
@@ -728,10 +739,7 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 }
 
 func TestLoad_TransportBypasses(t *testing.T) {
-	rb, err := Load(testDataDir)
-	if err != nil {
-		t.Fatalf("Load() error: %v", err)
-	}
+	rb := loadShippedRulebook(t)
 	for _, id := range []string{"SWN-F7-001", "SWN-W5-003"} {
 		def := rb.Assets[id]
 		if def == nil || def.Transport == nil || !def.Transport.IgnoresPermission {
@@ -744,10 +752,7 @@ func TestLoad_TransportBypasses(t *testing.T) {
 }
 
 func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
-	rb, err := Load(testDataDir)
-	if err != nil {
-		t.Fatalf("Load() error: %v", err)
-	}
+	rb := loadShippedRulebook(t)
 	want := []domain.EffectDefinition{{
 		Trigger: domain.TriggerPermissionGranted,
 		Effect:  domain.SpecialWithdrawPermission,
@@ -763,10 +768,7 @@ func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
 }
 
 func TestLoad_TransportLockdown(t *testing.T) {
-	rb, err := Load(testDataDir)
-	if err != nil {
-		t.Fatalf("Load() error: %v", err)
-	}
+	rb := loadShippedRulebook(t)
 	lockdown := rb.Assets["SWN-C6-001"]
 	wantAttack := &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning}
 	if !reflect.DeepEqual(lockdown.Attack, wantAttack) {

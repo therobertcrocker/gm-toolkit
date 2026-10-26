@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
@@ -58,7 +59,7 @@ func makeTOMLFixture(t *testing.T, files map[string]string) string {
 	return dir
 }
 
-func TestCopyRulebookCopiesFiles(t *testing.T) {
+func TestComposeRulebookCopiesFiles(t *testing.T) {
 	srcDir := makeTOMLFixture(t, map[string]string{
 		"goals.toml":          "[goals]\n",
 		"assets/cunning.toml": "[cunning]\n",
@@ -68,9 +69,9 @@ func TestCopyRulebookCopiesFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Scaffold: %v", err)
 	}
-	n, err := campaigns.CopyRulebook(camp, srcDir, false)
+	n, err := campaigns.ComposeRulebook(camp, srcDir, false)
 	if err != nil {
-		t.Fatalf("CopyRulebook: %v", err)
+		t.Fatalf("ComposeRulebook: %v", err)
 	}
 	if n != 2 {
 		t.Errorf("copied %d files, want 2", n)
@@ -83,37 +84,125 @@ func TestCopyRulebookCopiesFiles(t *testing.T) {
 	}
 }
 
-func TestCopyRulebookConflictNoReplace(t *testing.T) {
+func TestComposeRulebookConflictNoReplace(t *testing.T) {
 	srcDir := makeTOMLFixture(t, map[string]string{"goals.toml": "[goals]\n"})
 	root := t.TempDir()
 	camp, err := campaigns.Scaffold(root, "conflict-test", "Conflict Test")
 	if err != nil {
 		t.Fatalf("Scaffold: %v", err)
 	}
-	if _, err := campaigns.CopyRulebook(camp, srcDir, false); err != nil {
-		t.Fatalf("first CopyRulebook: %v", err)
+	if _, err := campaigns.ComposeRulebook(camp, srcDir, false); err != nil {
+		t.Fatalf("first ComposeRulebook: %v", err)
 	}
-	_, err = campaigns.CopyRulebook(camp, srcDir, false)
+	_, err = campaigns.ComposeRulebook(camp, srcDir, false)
 	if !errors.Is(err, campaigns.ErrRulebookConflict) {
 		t.Errorf("expected ErrRulebookConflict, got %v", err)
 	}
 }
 
-func TestCopyRulebookReplaceOverwrites(t *testing.T) {
+func TestComposeRulebookReplaceOverwrites(t *testing.T) {
 	srcDir := makeTOMLFixture(t, map[string]string{"goals.toml": "[goals]\n"})
 	root := t.TempDir()
 	camp, err := campaigns.Scaffold(root, "replace-test", "Replace Test")
 	if err != nil {
 		t.Fatalf("Scaffold: %v", err)
 	}
-	if _, err := campaigns.CopyRulebook(camp, srcDir, false); err != nil {
-		t.Fatalf("first CopyRulebook: %v", err)
+	if _, err := campaigns.ComposeRulebook(camp, srcDir, false); err != nil {
+		t.Fatalf("first ComposeRulebook: %v", err)
 	}
-	n, err := campaigns.CopyRulebook(camp, srcDir, true)
+	n, err := campaigns.ComposeRulebook(camp, srcDir, true)
 	if err != nil {
-		t.Fatalf("CopyRulebook with replace=true: %v", err)
+		t.Fatalf("ComposeRulebook with replace=true: %v", err)
 	}
 	if n != 1 {
 		t.Errorf("copied %d files, want 1", n)
+	}
+}
+
+func TestComposeRulebookCopiesIncludes(t *testing.T) {
+	fixture := makeTOMLFixture(t, map[string]string{
+		"swn/rulebook.toml": "includes = [\"../_core\"]\n",
+		"swn/tags.toml":     "[tags]\n",
+		"_core/goals.toml":  "[goals]\n",
+	})
+	root := t.TempDir()
+	camp, err := campaigns.Scaffold(root, "include-test", "Include Test")
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	n, err := campaigns.ComposeRulebook(camp, filepath.Join(fixture, "swn"), false)
+	if err != nil {
+		t.Fatalf("ComposeRulebook: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("copied %d files, want 2", n)
+	}
+	for _, name := range []string{"tags.toml", "goals.toml"} {
+		if _, err := os.Stat(filepath.Join(root, "rulebook", name)); err != nil {
+			t.Errorf("%s not copied: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "rulebook", "rulebook.toml")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("rulebook.toml copied into the campaign, want it left out (stat err = %v)", err)
+	}
+}
+
+func TestComposeRulebookRefusesDuplicateEvenWithReplace(t *testing.T) {
+	fixture := makeTOMLFixture(t, map[string]string{
+		"swn/rulebook.toml": "includes = [\"../_core\"]\n",
+		"swn/tags.toml":     "[tags]\n",
+		"swn/goals.toml":    "[goals]\n",
+		"_core/goals.toml":  "[goals]\n",
+	})
+	root := t.TempDir()
+	camp, err := campaigns.Scaffold(root, "duplicate-test", "Duplicate Test")
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	_, err = campaigns.ComposeRulebook(camp, filepath.Join(fixture, "swn"), true)
+	if !errors.Is(err, campaigns.ErrRulebookDuplicate) {
+		t.Fatalf("expected ErrRulebookDuplicate, got %v", err)
+	}
+	if !errors.Is(err, campaigns.ErrRulebookConflict) {
+		t.Errorf("ErrRulebookDuplicate does not wrap ErrRulebookConflict: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "rulebook", "tags.toml")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("tags.toml written by a refused compose (stat err = %v)", err)
+	}
+}
+
+func TestComposeRulebookRefusesMissingInclude(t *testing.T) {
+	fixture := makeTOMLFixture(t, map[string]string{
+		"swn/rulebook.toml": "includes = [\"../missing\"]\n",
+		"swn/tags.toml":     "[tags]\n",
+	})
+	root := t.TempDir()
+	camp, err := campaigns.Scaffold(root, "missing-test", "Missing Test")
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	_, err = campaigns.ComposeRulebook(camp, filepath.Join(fixture, "swn"), false)
+	if err == nil || !strings.Contains(err.Error(), `include "../missing"`) {
+		t.Fatalf("err = %v, want a missing-include error", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "rulebook", "tags.toml")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("tags.toml written by a refused compose (stat err = %v)", err)
+	}
+}
+
+func TestComposeRulebookRefusesUnknownManifestKey(t *testing.T) {
+	fixture := makeTOMLFixture(t, map[string]string{
+		"swn/rulebook.toml": "include = [\"../_core\"]\n",
+		"swn/tags.toml":     "[tags]\n",
+		"_core/goals.toml":  "[goals]\n",
+	})
+	root := t.TempDir()
+	camp, err := campaigns.Scaffold(root, "manifest-test", "Manifest Test")
+	if err != nil {
+		t.Fatalf("Scaffold: %v", err)
+	}
+	_, err = campaigns.ComposeRulebook(camp, filepath.Join(fixture, "swn"), false)
+	if err == nil || !strings.Contains(err.Error(), "unknown keys in") {
+		t.Fatalf("err = %v, want an unknown-key error", err)
 	}
 }

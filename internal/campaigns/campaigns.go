@@ -17,6 +17,7 @@ var (
 	ErrCampaignAlreadyExists = errors.New("campaign id already registered")
 	ErrRulebookEmpty         = errors.New("rulebook is empty")
 	ErrRulebookConflict      = errors.New("rulebook file conflict")
+	ErrRulebookDuplicate     = fmt.Errorf("%w: file supplied by two rulebook folders", ErrRulebookConflict)
 )
 
 // Manifest is the on-disk form of campaign.toml.

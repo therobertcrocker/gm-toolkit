@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -26,7 +27,11 @@ func TestNewWithRulebook_ValidatesEffects(t *testing.T) {
 // TestNewWithRulebook_ShippedRulebook catches an authored [[effects]] entry that
 // loads but fails registrar validation, which otherwise surfaces only at runtime.
 func TestNewWithRulebook_ShippedRulebook(t *testing.T) {
-	rb, err := rulebook.Load("../../../rulebooks/swn")
+	camp := &campaigns.Campaign{Root: t.TempDir()}
+	if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/swn", false); err != nil {
+		t.Fatalf("compose shipped rulebook: %v", err)
+	}
+	rb, err := rulebook.Load(camp.Paths().FactionDataDir)
 	if err != nil {
 		t.Fatalf("load shipped rulebook: %v", err)
 	}
