@@ -34,7 +34,7 @@ func registerBlackmail(factionState *state.FactionState, registry *hooks.Registr
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialRemoveTagDice].Register(effect.RegisterContext{
 		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["bm"], Def: &domain.AssetDefinition{ID: "SWN-C2-003", Name: "Blackmail"}},
-		Entry: blackmailEntry, Registry: registry,
+		Entry:  blackmailEntry, Registry: registry,
 	})
 	return registry.RollOfferFiltersAt(hooks.AssetScope("alpha", "bm"))[0].Hook
 }

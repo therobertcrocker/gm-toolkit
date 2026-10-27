@@ -27,7 +27,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				Coin:      5,
 				XP:        2,
 				Homeworld: domain.Location{WorldID: "Tartarus"},
-				Tags: []string{"SWN-T-001"},
+				Tags:      []string{"SWN-T-001"},
 				ActiveGoal: &domain.ActiveGoal{
 					GoalID: "G-001",
 				},

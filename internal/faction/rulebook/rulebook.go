@@ -587,10 +587,10 @@ type tagFile struct {
 }
 
 type tagRecord struct {
-	ID          string `toml:"id"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	Effect      string `toml:"effect"`
+	ID          string         `toml:"id"`
+	Name        string         `toml:"name"`
+	Description string         `toml:"description"`
+	Effect      string         `toml:"effect"`
 	Government  bool           `toml:"government"`
 	Effects     []effectRecord `toml:"effects"`
 }
