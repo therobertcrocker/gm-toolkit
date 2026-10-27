@@ -96,8 +96,8 @@
    filter, `min_tech_level`.** Planning call. The cost never goes below 0.
 
 9. **The government role is `government = true` on a tag record.** Planning call
-   (discovery group E). `Rulebook.GovernmentTagID()` names it. The loader refuses
-   two. A rulebook with none is valid: Planetary Seizure then changes the record
+   (discovery group E). The field `Rulebook.GovernmentTagID`, set by the loader,
+   names it (Decision Record 4). The loader refuses two. A rulebook with none is valid: Planetary Seizure then changes the record
    only, and the wizard hides the governed-world pick.
 
 10. **A held tag that the rulebook does not know registers nothing.** Planning
@@ -131,6 +131,14 @@
 3. **Phase 6, Commit 13: `engine/tag/tag.go` drops its `tags` import.** Not in the
    plan. With both handlers gone, `New` uses nothing from `tag/tags`, so the
    unused import fails `go build`. Commit 14 still deletes the whole package.
+4. **Interim review: the government tag ID is a `Rulebook` field, not a method.**
+   Robert's call. `GovernmentTagID()` sorted every tag key on each call, but
+   `loadTags` already finds the one government tag. `loadTags` now returns the ID,
+   and `Load` stores it in the exported field `GovernmentTagID`. An exported field,
+   not an unexported one behind the method: Go does not allow a field and a method
+   with one name, and test rulebooks built as literals (`goals/lock_test.go`) set
+   the field directly. Commit 2's task code shows the method as first built.
+   `scratch/checkseeds` reads the field (gitignored; not committed).
 
 ---
 

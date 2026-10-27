@@ -73,7 +73,7 @@ func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, facti
 		Cause:             "goal_completed",
 		CausedByFactionID: seizer.ID,
 	}}
-	governmentTagID := rulebook.GovernmentTagID()
+	governmentTagID := rulebook.GovernmentTagID
 	if governmentTagID == "" {
 		return mutations
 	}

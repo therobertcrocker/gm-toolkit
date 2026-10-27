@@ -460,7 +460,7 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("government tag", func(t *testing.T) {
-		if got := rb.GovernmentTagID(); got != "SWN-T-011" {
+		if got := rb.GovernmentTagID; got != "SWN-T-011" {
 			t.Errorf("GovernmentTagID = %q, want SWN-T-011", got)
 		}
 	})
@@ -709,7 +709,7 @@ func TestLoadDuplicateAssetID(t *testing.T) {
 }
 
 func TestLoadTagsAndGoals_Strict(t *testing.T) {
-	loadTagFile := func(path string) error { _, err := loadTags(path); return err }
+	loadTagFile := func(path string) error { _, _, err := loadTags(path); return err }
 	loadGoalFile := func(path string) error { _, err := loadGoals(path); return err }
 	cases := []struct {
 		name string
@@ -772,7 +772,7 @@ func TestLoadTags_Effects(t *testing.T) {
 	}
 	const header = "[tags.Warlike]\nid = \"SWN-T-020\"\nname = \"Warlike\"\n\n[[tags.Warlike.effects]]\ntrigger = \"own_roll\"\n"
 
-	tags, err := loadTags(write(header + "effect  = \"bonus_die\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n[tags.Warlike.effects.bonus_die]\nsides = 10\ncount = 1\n"))
+	tags, _, err := loadTags(write(header + "effect  = \"bonus_die\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n[tags.Warlike.effects.bonus_die]\nsides = 10\ncount = 1\n"))
 	if err != nil {
 		t.Fatalf("loadTags: %v", err)
 	}
@@ -786,7 +786,7 @@ func TestLoadTags_Effects(t *testing.T) {
 		t.Errorf("Effects = %+v, want %+v", got, want)
 	}
 
-	_, err = loadTags(write(header + "effect  = \"no_such_effect\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n"))
+	_, _, err = loadTags(write(header + "effect  = \"no_such_effect\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n"))
 	if err == nil || !strings.Contains(err.Error(), `tag "SWN-T-020"`) {
 		t.Errorf("loadTags: got %v, want an error naming the tag", err)
 	}

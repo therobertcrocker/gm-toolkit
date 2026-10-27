@@ -2,7 +2,6 @@ package rulebook
 
 import (
 	"fmt"
-	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,10 +13,11 @@ import (
 // Rulebook holds all static game data loaded from the data directory.
 // It is the authoritative source of rules for the faction engine.
 type Rulebook struct {
-	Assets     map[string]*domain.AssetDefinition
-	Tags       map[string]*domain.Tag
-	Goals      map[string]*domain.Goal
-	DriftCosts []int
+	Assets          map[string]*domain.AssetDefinition
+	Tags            map[string]*domain.Tag
+	GovernmentTagID string // the tag with government = true, or "" when there is none
+	Goals           map[string]*domain.Goal
+	DriftCosts      []int
 }
 
 // DriftCost returns the hex-equivalent crossing cost for the given drift rating.
@@ -29,17 +29,6 @@ func (rulebook *Rulebook) DriftCost(driftRating int) int {
 	return rulebook.DriftCosts[driftRating-1]
 }
 
-// GovernmentTagID names the tag with government = true, or "" when the rulebook
-// has none. The loader refuses two.
-func (rulebook *Rulebook) GovernmentTagID() string {
-	for _, tagID := range slices.Sorted(maps.Keys(rulebook.Tags)) {
-		if rulebook.Tags[tagID].Government {
-			return tagID
-		}
-	}
-	return ""
-}
-
 // Load reads all static data files from dataDir and returns a populated Rulebook.
 func Load(dataDir string) (*Rulebook, error) {
 	assets, err := loadAssets(dataDir)
@@ -47,7 +36,7 @@ func Load(dataDir string) (*Rulebook, error) {
 		return nil, fmt.Errorf("loading assets: %w", err)
 	}
 
-	tags, err := loadTags(filepath.Join(dataDir, "tags.toml"))
+	tags, governmentTagID, err := loadTags(filepath.Join(dataDir, "tags.toml"))
 	if err != nil {
 		return nil, fmt.Errorf("loading tags: %w", err)
 	}
@@ -63,10 +52,11 @@ func Load(dataDir string) (*Rulebook, error) {
 	}
 
 	return &Rulebook{
-		Assets:     assets,
-		Tags:       tags,
-		Goals:      goals,
-		DriftCosts: driftCosts,
+		Assets:          assets,
+		Tags:            tags,
+		GovernmentTagID: governmentTagID,
+		Goals:           goals,
+		DriftCosts:      driftCosts,
 	}, nil
 }
 
@@ -595,30 +585,30 @@ type tagRecord struct {
 	Effects     []effectRecord `toml:"effects"`
 }
 
-func loadTags(path string) (map[string]*domain.Tag, error) {
+func loadTags(path string) (map[string]*domain.Tag, string, error) {
 	var f tagFile
 	metadata, err := toml.DecodeFile(path, &f)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := refuseUnknownKeys(path, metadata); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	result := make(map[string]*domain.Tag, len(f.Tags))
 	government := ""
 	for _, r := range f.Tags {
 		if _, exists := result[r.ID]; exists {
-			return nil, fmt.Errorf("duplicate tag ID %q in %s", r.ID, path)
+			return nil, "", fmt.Errorf("duplicate tag ID %q in %s", r.ID, path)
 		}
 		if r.Government {
 			if government != "" {
-				return nil, fmt.Errorf("tags %q and %q both set government in %s", government, r.ID, path)
+				return nil, "", fmt.Errorf("tags %q and %q both set government in %s", government, r.ID, path)
 			}
 			government = r.ID
 		}
 		effects, err := convertEffects(r.Effects)
 		if err != nil {
-			return nil, fmt.Errorf("tag %q in %s: %w", r.ID, path, err)
+			return nil, "", fmt.Errorf("tag %q in %s: %w", r.ID, path, err)
 		}
 		result[r.ID] = &domain.Tag{
 			ID:          r.ID,
@@ -629,7 +619,7 @@ func loadTags(path string) (map[string]*domain.Tag, error) {
 			Effects:     effects,
 		}
 	}
-	return result, nil
+	return result, government, nil
 }
 
 // ---------------------------------------------------------------------------

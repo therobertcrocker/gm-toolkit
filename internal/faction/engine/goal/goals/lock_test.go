@@ -15,6 +15,7 @@ func makeLockRulebook() *rulebook.Rulebook {
 		Tags: map[string]*domain.Tag{
 			"SWN-T-011": {ID: "SWN-T-011", Name: "Planetary Government", Government: true},
 		},
+		GovernmentTagID: "SWN-T-011",
 	}
 }
 
