@@ -17,7 +17,7 @@ var rerollRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerOwnRoll: {
 			Owners: []domain.EffectOwner{domain.OwnerOwn},
-			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld},
+			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction},
 			Gates:  []domain.EffectGateName{domain.GateOncePer},
 		},
 		domain.TriggerEnemyRollAtMe: {
@@ -30,52 +30,63 @@ var rerollRegistrar = effect.Registrar{
 }
 
 func registerReroll(ctx effect.RegisterContext) {
-	source := ctx.Def.Name
+	source := ctx.Holder.Name()
 	if ctx.Entry.Trigger == domain.TriggerEnemyRollAtMe {
 		source += " (forced)"
 	}
 	ctx.Registry.RegisterRollResultHook(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialReroll)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialReroll),
 		&rerollHook{
-			ownerFactionID: ctx.Faction.ID,
-			assetID:        ctx.Asset.ID,
-			defID:          ctx.Def.ID,
-			source:         source,
-			trigger:        ctx.Entry.Trigger,
-			filters:        ctx.Entry.Filters,
-			oncePer:        ctx.Entry.Gates.OncePer,
-			params:         *ctx.Entry.Reroll,
+			holder:  refOf(ctx.Holder),
+			source:  source,
+			trigger: ctx.Entry.Trigger,
+			filters: ctx.Entry.Filters,
+			oncePer: ctx.Entry.Gates.OncePer,
+			params:  *ctx.Entry.Reroll,
 		},
 	)
 }
 
 type rerollHook struct {
-	ownerFactionID string
-	assetID        string
-	defID          string
-	source         string
-	trigger        domain.EffectTrigger
-	filters        domain.EffectFilters
-	oncePer        domain.OncePerKey
-	params         domain.RerollParams
+	holder  holderRef
+	source  string
+	trigger domain.EffectTrigger
+	filters domain.EffectFilters
+	oncePer domain.OncePerKey
+	params  domain.RerollParams
 }
 
 func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollResult, factionState *state.FactionState, _ *rulebook.Rulebook) hooks.RerollDirective {
-	asset := liveAsset(factionState, hook.ownerFactionID, hook.assetID)
-	if !active(asset) || !rollMatches(ctx, hook.trigger, hook.ownerFactionID, asset, hook.filters) {
+	asset, live := hook.holder.live(factionState)
+	if !live || !rollMatches(ctx, hook.trigger, hook.holder.factionID, asset, hook.filters) {
 		return hooks.RerollDirective{}
 	}
 	forced := hook.trigger == domain.TriggerEnemyRollAtMe
 	directive := hooks.RerollDirective{
 		Source:   hook.source,
-		Indices:  pickDice(result.Dice, hook.params.Dice, forced),
+		Indices:  rerollIndices(result.Dice, hook.params, forced),
 		Elective: hook.params.Elective,
 	}
 	if hook.oncePer != "" {
-		directive.BudgetKey = budgetKey(hook.oncePer, domain.SpecialReroll, hook.trigger, hook.defID, hook.assetID, otherSideID(ctx, forced))
+		directive.BudgetKey = budgetKey(hook.oncePer, domain.SpecialReroll, hook.trigger, hook.holder.sourceID, hook.holder.assetID, otherSideID(ctx, forced))
 	}
 	return directive
+}
+
+// rerollIndices returns the dice a reroll targets: every die showing
+// params.Result (Fanatical's 1s), or else the params.Dice that pickDice picks.
+func rerollIndices(dice []int, params domain.RerollParams, forced bool) []int {
+	if params.Result == 0 {
+		return pickDice(dice, params.Dice, forced)
+	}
+	var indices []int
+	for i, die := range dice {
+		if die == params.Result {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 // pickDice returns the indices of the n dice a reroll targets: the owner's own

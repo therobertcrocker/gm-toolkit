@@ -25,7 +25,7 @@ var withdrawPermissionRegistrar = effect.Registrar{
 	Validate: validateWithdrawPermission,
 }
 
-func validateWithdrawPermission(entry domain.EffectDefinition) error {
+func validateWithdrawPermission(entry domain.EffectDefinition, _ effect.HolderKind) error {
 	if entry.Gates.Contest == nil || entry.Gates.Contest.Roller != domain.ContestRollerSelf {
 		return fmt.Errorf("needs a contest gate with roller %q", domain.ContestRollerSelf)
 	}
@@ -34,9 +34,9 @@ func validateWithdrawPermission(entry domain.EffectDefinition) error {
 
 func registerWithdrawPermission(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterPermissionContester(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialWithdrawPermission)+":"+ctx.Def.ID,
-		&permissionContester{owner: ctx.Faction, assetID: ctx.Asset.ID, contest: *ctx.Entry.Gates.Contest, roller: ctx.Roller},
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialWithdrawPermission),
+		&permissionContester{owner: ctx.Holder.Faction, holder: refOf(ctx.Holder), contest: *ctx.Entry.Gates.Contest, roller: ctx.Roller},
 	)
 }
 
@@ -45,14 +45,14 @@ func registerWithdrawPermission(ctx effect.RegisterContext) {
 // registration carried, as a reactor does.
 type permissionContester struct {
 	owner   *domain.Faction
-	assetID string
+	holder  holderRef
 	contest domain.EffectContest
 	roller  domain.Roller
 }
 
 func (contester *permissionContester) OfferContest(query hooks.PermissionQuery) *hooks.PermissionContest {
-	self := contester.owner.Assets[contester.assetID]
-	if !active(self) || query.Requester.ID == contester.owner.ID {
+	self, live := contester.holder.liveIn(contester.owner)
+	if !live || query.Requester.ID == contester.owner.ID {
 		return nil
 	}
 	if self.Location.WorldID == "" || self.Location.WorldID != query.WorldID {

@@ -458,7 +458,7 @@ func Build(
 				}
 				beat.GoalEvents = append(beat.GoalEvents, GoalEvent{
 					Kind:    GoalTagGained,
-					TagName: m.Tag.Name,
+					TagName: resolveTagName(m.TagID, rulebook),
 				})
 
 			case "tag_removed":
@@ -468,7 +468,7 @@ func Build(
 				}
 				loser := getOrCreateBeat(beats, m.FactionID, factionState)
 				seenFactionIDs[m.FactionID] = struct{}{}
-				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: m.Tag.Name})
+				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: resolveTagName(m.TagID, rulebook)})
 
 			case "world_government_changed":
 				var m domain.WorldGovernmentChanged

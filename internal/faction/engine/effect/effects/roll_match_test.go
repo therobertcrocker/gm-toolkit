@@ -61,4 +61,12 @@ func TestRollMatches(t *testing.T) {
 			}
 		})
 	}
+
+	faction := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}
+	if !rollMatches(hooks.RollContext{Actor: alpha, World: "Tartarus"}, domain.TriggerOwnRoll, "alpha", nil, faction) {
+		t.Error("faction scope: the owner's roll on any world, with no asset, does not match")
+	}
+	if rollMatches(hooks.RollContext{Actor: beta, World: "Tartarus"}, domain.TriggerOwnRoll, "alpha", nil, faction) {
+		t.Error("faction scope: a rival's roll matches")
+	}
 }

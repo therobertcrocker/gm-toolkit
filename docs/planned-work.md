@@ -105,6 +105,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.023` | Effect contests through roll hooks | when effects reach a collector | Tripwire Cells, Panopticon Matrix and Lobbyists roll bare 1d10 + stat (`contestPasses`), so Fanatical's and Book of Secrets' rerolls skip them; move all three onto `RollWithHooks` together once reactors and phase effects can reach a collector. `A.001.6` Effort 5 Decision 10. |
 | `R.024` | Clear inert `no_attack` records | when saves grow noisy | A Seditionists' `no_attack` stays on its target after the Seditionists die; `domain.AttackBlocked` skips it when read, so it only clutters saves. Clear it when its source leaves play. Deferred from `A.001.6` Effort 3 Decision 10. |
 | `R.025` | Roll card | after `A.001.7` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
+| `R.026` | Faux-data-driven effect audit | after `A.001.7` | Check each registrar and the engine code it feeds for rule values or references held in Go, not in the `[[effects]]` entry; move each into the entry. Known case: `lock_out`'s 1d4 fee (`arrival.go:58`) and asset-named cause (`:92`). `A.001.7` overview Decision 7. |
 
 #### 3. Driver
 

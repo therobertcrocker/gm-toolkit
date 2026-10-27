@@ -18,8 +18,9 @@ var rollPhaseNames = map[hooks.RollPhase]domain.EffectRollPhase{
 // fires on the owner's own roll; enemy_roll_at_me on a rival's roll made against
 // the owner. scope = "self" ties the roll to the declaring asset (rolling it for
 // own_roll, rolled against for enemy_roll_at_me); scope = "world" to any such roll
-// on the asset's world. The dispatcher reaches both sides' assets, so this check,
-// not the registration scope, is what keeps an entry to its own side.
+// on the asset's world; scope = "faction" to any such roll, so asset is nil for a
+// tag. The dispatcher reaches both sides, so this check, not the registration
+// scope, is what keeps an entry to its own side.
 func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFactionID string, asset *domain.Asset, filters domain.EffectFilters) bool {
 	if ctx.Actor == nil {
 		return false
@@ -48,6 +49,7 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 		if ctx.World == "" || ctx.World != asset.Location.WorldID {
 			return false
 		}
+	case domain.ScopeFaction:
 	default:
 		return false
 	}

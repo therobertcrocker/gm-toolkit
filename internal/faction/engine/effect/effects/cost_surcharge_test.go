@@ -49,7 +49,7 @@ func registerSurcharges(factionState *state.FactionState, entry domain.EffectDef
 	alpha := factionState.Factions["alpha"]
 	for _, asset := range domain.SortedAssets(alpha) {
 		effects.Registrars()[domain.SpecialCostSurcharge].Register(effect.RegisterContext{
-			Faction: alpha, Asset: asset, Def: localInvestmentsDef, Entry: entry, Registry: registry,
+			Holder: effect.Holder{Faction: alpha, Asset: asset, Def: localInvestmentsDef}, Entry: entry, Registry: registry,
 		})
 	}
 	return registry

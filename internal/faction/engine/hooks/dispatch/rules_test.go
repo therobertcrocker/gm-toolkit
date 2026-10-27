@@ -76,15 +76,15 @@ func TestResolveAssetCost_RivalAssetOnWorld(t *testing.T) {
 	}
 }
 
-func TestResolveAssetCost_OwnAssetOnWorldSkipped(t *testing.T) {
+func TestResolveAssetCost_BuyersOwnAssetAskedOnce(t *testing.T) {
 	registry := hooks.NewRegistry()
-	buyer := &domain.Faction{ID: "buyer"}
-	def := &domain.AssetDefinition{ID: "cheap", Cost: 5}
 	ownAsset := &domain.Asset{ID: "own-a1", OwnerID: "buyer"}
-	registry.RegisterAssetCostModifier(hooks.AssetScope("buyer", "own-a1"), "surcharge", &stubAssetCostModifier{delta: -1})
+	buyer := &domain.Faction{ID: "buyer", Assets: map[string]*domain.Asset{ownAsset.ID: ownAsset}}
+	def := &domain.AssetDefinition{ID: "cheap", Cost: 5}
+	registry.RegisterAssetCostModifier(hooks.AssetScope("buyer", "own-a1"), "discount", &stubAssetCostModifier{delta: 1})
 	got := ResolveAssetCost(registry, buyer, def, "Tartarus", 5, []*domain.Asset{ownAsset}).Cost
-	if got != 5 {
-		t.Errorf("ResolveAssetCost = %d, want 5 (buyer's own asset is not asked)", got)
+	if got != 4 {
+		t.Errorf("ResolveAssetCost = %d, want 4 (the buyer's own asset asked once, not again as a world asset)", got)
 	}
 }
 
@@ -197,6 +197,25 @@ func TestResolveTie_DefenderWins(t *testing.T) {
 	got := ResolveTie(registry, ctx, nil)
 	if got != hooks.TieDefenderWins {
 		t.Errorf("ResolveTie = %v, want TieDefenderWins", got)
+	}
+}
+
+func TestResolveTie_AssetResolverAnswers(t *testing.T) {
+	registry := hooks.NewRegistry()
+	attacker := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": {ID: "a1"}}}
+	registry.RegisterTieResolver(hooks.AssetScope("f1", "a1"), "asset", &stubTieResolver{outcome: hooks.TieAttackerWins})
+	if got := ResolveTie(registry, hooks.RollContext{Actor: attacker}, nil); got != hooks.TieAttackerWins {
+		t.Errorf("ResolveTie = %v, want TieAttackerWins from the attacker's asset", got)
+	}
+}
+
+func TestResolveTie_StandardDoesNotEndTheSearch(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterTieResolver(hooks.FactionScope("f1"), "silent", &stubTieResolver{outcome: hooks.TieStandard})
+	registry.RegisterTieResolver(hooks.FactionScope("f2"), "loses", &stubTieResolver{outcome: hooks.TieAttackerWins})
+	ctx := hooks.RollContext{Actor: &domain.Faction{ID: "f1"}, Opponent: &domain.Faction{ID: "f2"}}
+	if got := ResolveTie(registry, ctx, nil); got != hooks.TieAttackerWins {
+		t.Errorf("ResolveTie = %v, want the defender's TieAttackerWins past the attacker's TieStandard", got)
 	}
 }
 

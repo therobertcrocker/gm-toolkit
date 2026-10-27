@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag/tags"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -34,7 +33,7 @@ func blackmailState(blackmail *domain.Asset) *state.FactionState {
 func registerBlackmail(factionState *state.FactionState, registry *hooks.Registry) hooks.RollOfferFilter {
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialRemoveTagDice].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["bm"], Def: &domain.AssetDefinition{ID: "SWN-C2-003", Name: "Blackmail"},
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["bm"], Def: &domain.AssetDefinition{ID: "SWN-C2-003", Name: "Blackmail"}},
 		Entry: blackmailEntry, Registry: registry,
 	})
 	return registry.RollOfferFiltersAt(hooks.AssetScope("alpha", "bm"))[0].Hook
@@ -118,7 +117,15 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registerBlackmail(factionState, registry)
 	alpha, beta := factionState.Factions["alpha"], factionState.Factions["beta"]
-	tags.WarlikeHandler{}.Apply(beta, registry)
+	beta.Tags = []string{"SWN-T-020"}
+	warlike := bonusDieEntry(domain.EffectFilters{
+		Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+		Attribute: domain.StatForce, Phases: []domain.EffectRollPhase{domain.RollPhaseAttack},
+	}, 1)
+	warlike.Gates.OncePer = domain.OncePerOwnerFaction
+	effects.Registrars()[domain.SpecialBonusDie].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: beta, Tag: &domain.Tag{ID: "SWN-T-020", Name: "Warlike"}}, Entry: warlike, Registry: registry,
+	})
 	collector := &rollCollector{accept: true}
 
 	ctx := hooks.RollContext{
@@ -130,7 +137,7 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	if len(result.Dice) != 1 || collector.selections != 0 {
 		t.Errorf("dice %v, selections %d; want one die and no prompt", result.Dice, collector.selections)
 	}
-	if beta.HookBudgets["tag:Warlike"] != 0 {
-		t.Errorf("Warlike budget spent %d, want 0", beta.HookBudgets["tag:Warlike"])
+	if spent := beta.HookBudgets["effect:bonus_die:own_roll:SWN-T-020"]; spent != 0 {
+		t.Errorf("Warlike budget spent %d, want 0", spent)
 	}
 }

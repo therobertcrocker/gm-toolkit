@@ -330,16 +330,20 @@ func TestRollWithHooks_OpponentAssetHookOnWorldFires(t *testing.T) {
 	}
 }
 
-func TestRollWithHooks_OpponentFactionHookDoesNotFire(t *testing.T) {
+func TestRollWithHooks_OpponentFactionHookFires(t *testing.T) {
 	alpha := factionWithAssets("alpha", nil)
-	beta := factionWithAssets("beta", map[string]string{"b-1": "Krylos"})
+	beta := factionWithAssets("beta", nil)
 	registry := hooks.NewRegistry()
-	registry.RegisterRollModifier(hooks.FactionScope("beta"), "tag:Warlike", addDieModifier("tag:Warlike", ""))
+	registry.RegisterRollModifier(hooks.FactionScope("beta"), "beta-tag", addDieModifier("beta-tag", ""))
+	collector := &recordingCollector{}
 
-	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
-	if len(result.Dice) != 2 {
-		t.Fatalf("expected 2 dice (opponent faction hook left out), got %d", len(result.Dice))
+	if len(result.Dice) != 3 {
+		t.Fatalf("expected 3 dice (2 base + 1 from beta's faction hook), got %d", len(result.Dice))
+	}
+	if len(collector.offers) != 1 || collector.offers[0].FactionID != "beta" {
+		t.Errorf("expected one offer stamped FactionID beta, got %+v", collector.offers)
 	}
 }
 

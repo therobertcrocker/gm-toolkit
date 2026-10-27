@@ -118,7 +118,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			stealthCleared[defender.ID] = true
 		}
 
-		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState).Mutations...)
+		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState, rulebook).Mutations...)
 
 		attackResult := dispatch.RollWithHooks(
 			hooks.RollContext{
@@ -226,7 +226,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		// deliberate: own_defense_win needs an outright win, not a tie, because on a tie the attack also landed and the defense did not succeed (Decision 13).
 		if defenderWins && !attackerWins && defenderActive {
-			outcome := attack.fireMatchup(domain.TriggerOwnDefenseWin, defenderFaction, defender, defenderDef, faction, attacker, factionState)
+			outcome := attack.fireMatchup(domain.TriggerOwnDefenseWin, defenderFaction, defender, defenderDef, faction, attacker, factionState, rulebook)
 			attack.mutations = append(attack.mutations, outcome.Mutations...)
 			// deliberate: no prompt when the attacker has no damage and no counter, because its self-attack could do nothing (Decision Record 9).
 			canHurtItself := attackerDef.Attack.Damage != nil || attackerDef.Counter != nil
@@ -280,18 +280,17 @@ func (attack *AttackAction) Output() ([]domain.Mutation, error) {
 
 // fireMatchup raises the matchup route for the declaring asset. A nil effects
 // engine (action tests) raises nothing.
-func (attack *AttackAction) fireMatchup(trigger domain.EffectTrigger, faction *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, opponent *domain.Faction, opponentAsset *domain.Asset, factionState *state.FactionState) effect.MatchupOutcome {
+func (attack *AttackAction) fireMatchup(trigger domain.EffectTrigger, faction *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, opponent *domain.Faction, opponentAsset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) effect.MatchupOutcome {
 	if attack.effects == nil {
 		return effect.MatchupOutcome{}
 	}
 	return attack.effects.FireMatchup(trigger, effect.MatchupContext{
-		Faction:       faction,
+		Holder:        effect.Holder{Faction: faction, Asset: asset, Def: def},
 		Asset:         asset,
-		Def:           def,
 		Opponent:      opponent,
 		OpponentAsset: opponentAsset,
 		FactionState:  factionState,
-	})
+	}, rulebook)
 }
 
 // applyAssetDamage emits AssetHPDelta and, when the hit is lethal, the mutations

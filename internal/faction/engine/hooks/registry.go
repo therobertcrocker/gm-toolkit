@@ -204,6 +204,12 @@ func (registry *Registry) RollResultHooksAt(scope Scope) []RegisteredRollResultH
 	return registry.rollResultHooks[scope]
 }
 
+// TieResolversAt returns the Cat 5 hooks registered in one scope bucket.
+// ResolveTie decides which buckets a tie consults.
+func (registry *Registry) TieResolversAt(scope Scope) []RegisteredTieResolver {
+	return registry.tieResolvers[scope]
+}
+
 // RollOfferFiltersAt returns the Cat 1 offer filters registered in one scope bucket.
 func (registry *Registry) RollOfferFiltersAt(scope Scope) []RegisteredRollOfferFilter {
 	return registry.rollOfferFilters[scope]

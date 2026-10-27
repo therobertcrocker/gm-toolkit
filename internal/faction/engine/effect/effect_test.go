@@ -172,7 +172,7 @@ func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 		domain.SpecialCoinSteal: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnAttackHit: acceptsRivalWorld},
 			Register: func(ctx effect.RegisterContext) {
-				if ctx.Faction.ID != "alpha" || ctx.Asset.ID != "alpha-1" || ctx.Def.ID != "T-001" || ctx.Registry == nil || ctx.Roller != roller {
+				if ctx.Holder.Faction.ID != "alpha" || ctx.Holder.Asset.ID != "alpha-1" || ctx.Holder.ID() != "T-001" || ctx.Registry == nil || ctx.Roller != roller {
 					t.Errorf("RegisterContext = %+v", ctx)
 				}
 				registered = append(registered, ctx.Entry.Effect)
@@ -238,6 +238,19 @@ func noopFire(effect.FireContext) []domain.Mutation { return nil }
 func noopRegister(effect.RegisterContext) {}
 
 func noopMatchup(effect.MatchupContext) effect.MatchupOutcome { return effect.MatchupOutcome{} }
+
+func TestHolder_NamesItsSource(t *testing.T) {
+	faction := &domain.Faction{ID: "alpha"}
+	asset := effect.Holder{Faction: faction, Asset: &domain.Asset{ID: "a-1"}, Def: &domain.AssetDefinition{ID: "SWN-C7-002", Name: "Book of Secrets"}}
+	tag := effect.Holder{Faction: faction, Tag: &domain.Tag{ID: "SWN-T-020", Name: "Warlike"}}
+
+	if asset.Scope() != hooks.AssetScope("alpha", "a-1") || asset.HookID(domain.SpecialReroll) != "reroll:SWN-C7-002" || asset.Name() != "Book of Secrets" {
+		t.Errorf("asset holder: scope %+v, hook %q, name %q", asset.Scope(), asset.HookID(domain.SpecialReroll), asset.Name())
+	}
+	if tag.Scope() != hooks.FactionScope("alpha") || tag.HookID(domain.SpecialBonusDie) != "bonus_die:SWN-T-020" || tag.Name() != "Warlike" {
+		t.Errorf("tag holder: scope %+v, hook %q, name %q", tag.Scope(), tag.HookID(domain.SpecialBonusDie), tag.Name())
+	}
+}
 
 func validationRegistrars() map[domain.SpecialEffectType]effect.Registrar {
 	return map[domain.SpecialEffectType]effect.Registrar{
@@ -389,12 +402,76 @@ func TestRegisterEffectsList_Validates(t *testing.T) {
 	}
 }
 
+func TestCheckTagEffects_ScopeDecidesTheHolder(t *testing.T) {
+	acceptsOwnAny := effect.Accepts{
+		Owners: []domain.EffectOwner{domain.OwnerOwn},
+		Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction},
+		Gates:  []domain.EffectGateName{domain.GateOncePer},
+	}
+	registrars := map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialBonusDie: {Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnRoll: acceptsOwnAny}, Register: noopRegister},
+	}
+	entry := func(scope domain.EffectScope, oncePer domain.OncePerKey) domain.EffectDefinition {
+		return domain.EffectDefinition{Trigger: domain.TriggerOwnRoll, Effect: domain.SpecialBonusDie,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: scope}, Gates: domain.EffectGates{OncePer: oncePer}}
+	}
+	cases := []struct {
+		name    string
+		entry   domain.EffectDefinition
+		wantErr string
+	}{
+		{"faction scope", entry(domain.ScopeFaction, domain.OncePerOwnerFaction), ""},
+		{"self scope", entry(domain.ScopeSelf, ""), `scope "self" cannot apply`},
+		{"world scope", entry(domain.ScopeWorld, ""), `scope "world" cannot apply`},
+		{"once per asset", entry(domain.ScopeFaction, domain.OncePerAsset), `once_per "asset" cannot apply`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tag := &domain.Tag{ID: "SWN-T-020", Effects: []domain.EffectDefinition{tc.entry}}
+			err := effect.New(registrars, discardLog).CheckTagEffects(tag)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("CheckTagEffects: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) || !strings.Contains(err.Error(), `tag "SWN-T-020" effects[0]`) {
+				t.Fatalf("CheckTagEffects: got %v, want an error containing %q", err, tc.wantErr)
+			}
+		})
+	}
+
+	t.Run("an asset may use self scope", func(t *testing.T) {
+		def := &domain.AssetDefinition{ID: "T-001", Effects: []domain.EffectDefinition{entry(domain.ScopeSelf, domain.OncePerAsset)}}
+		if err := effect.New(registrars, discardLog).RegisterEffectsList(def); err != nil {
+			t.Errorf("RegisterEffectsList: %v", err)
+		}
+	})
+}
+
+func TestCheckTagEffects_AssetBoundRegistrarsRefuseATag(t *testing.T) {
+	engine := effect.New(effects.Registrars(), discardLog)
+	for name, entry := range map[string]domain.EffectDefinition{
+		"grant_movement": {Trigger: domain.TriggerMovementOptionsQuery, Effect: domain.SpecialGrantMovement,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}, GrantMovement: &domain.GrantMovementParams{}},
+		"ignore_coin_loss": {Trigger: domain.TriggerCoinLoss, Effect: domain.SpecialIgnoreCoinLoss,
+			Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := engine.CheckTagEffects(&domain.Tag{ID: "SWN-T-008", Effects: []domain.EffectDefinition{entry}})
+			if err == nil || !strings.Contains(err.Error(), "a tag cannot hold this effect yet") {
+				t.Errorf("CheckTagEffects: got %v, want the tag refusal", err)
+			}
+		})
+	}
+}
+
 func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 	registrars := map[domain.SpecialEffectType]effect.Registrar{
 		domain.SpecialCoinGain: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnSelf},
 			Fire: func(ctx effect.FireContext) []domain.Mutation {
-				return []domain.Mutation{domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: 1, Cause: ctx.Asset.ID}}
+				return []domain.Mutation{domain.CoinDelta{FactionID: ctx.Holder.Faction.ID, Delta: 1, Cause: ctx.Asset.ID}}
 			},
 		},
 	}
@@ -424,7 +501,7 @@ func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 
 func TestFirePurchase_FiresOnPurchaseEntriesOnly(t *testing.T) {
 	coinPerTrigger := func(ctx effect.FireContext) []domain.Mutation {
-		return []domain.Mutation{domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: 1, Cause: string(ctx.Entry.Trigger)}}
+		return []domain.Mutation{domain.CoinDelta{FactionID: ctx.Holder.Faction.ID, Delta: 1, Cause: string(ctx.Entry.Trigger)}}
 	}
 	registrars := map[domain.SpecialEffectType]effect.Registrar{
 		domain.SpecialApplyStealth: {
@@ -492,7 +569,7 @@ func TestFireMatchup_FiresEntriesOfTheTriggerAndOrsCounterstrike(t *testing.T) {
 	coinPerEffect := func(counterstrike bool) func(effect.MatchupContext) effect.MatchupOutcome {
 		return func(ctx effect.MatchupContext) effect.MatchupOutcome {
 			return effect.MatchupOutcome{
-				Mutations:     []domain.Mutation{domain.CoinDelta{FactionID: ctx.Faction.ID, Delta: 1, Cause: string(ctx.Entry.Effect)}},
+				Mutations:     []domain.Mutation{domain.CoinDelta{FactionID: ctx.Holder.Faction.ID, Delta: 1, Cause: string(ctx.Entry.Effect)}},
 				Counterstrike: counterstrike,
 			}
 		}
@@ -517,10 +594,10 @@ func TestFireMatchup_FiresEntriesOfTheTriggerAndOrsCounterstrike(t *testing.T) {
 		{Trigger: domain.TriggerOwnDefenseWin, Effect: domain.SpecialReroll, Filters: ownSelf},
 	}}
 	engine := effect.New(registrars, discardLog)
-	ctx := effect.MatchupContext{Faction: &domain.Faction{ID: "alpha"}, Def: def}
+	ctx := effect.MatchupContext{Holder: effect.Holder{Faction: &domain.Faction{ID: "alpha"}, Def: def}}
 
 	t.Run("own_attack fires its one entry", func(t *testing.T) {
-		got := engine.FireMatchup(domain.TriggerOwnAttack, ctx)
+		got := engine.FireMatchup(domain.TriggerOwnAttack, ctx, &rulebook.Rulebook{})
 		want := effect.MatchupOutcome{Mutations: []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "block_ability"}}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("outcome = %+v, want %+v", got, want)
@@ -528,7 +605,7 @@ func TestFireMatchup_FiresEntriesOfTheTriggerAndOrsCounterstrike(t *testing.T) {
 	})
 
 	t.Run("own_defense_win fires both entries and ors Counterstrike", func(t *testing.T) {
-		got := engine.FireMatchup(domain.TriggerOwnDefenseWin, ctx)
+		got := engine.FireMatchup(domain.TriggerOwnDefenseWin, ctx, &rulebook.Rulebook{})
 		want := effect.MatchupOutcome{
 			Mutations: []domain.Mutation{
 				domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "capture_target"},
@@ -540,4 +617,82 @@ func TestFireMatchup_FiresEntriesOfTheTriggerAndOrsCounterstrike(t *testing.T) {
 			t.Errorf("outcome = %+v, want %+v", got, want)
 		}
 	})
+}
+
+var acceptsOwnFaction = effect.Accepts{Owners: []domain.EffectOwner{domain.OwnerOwn}, Scopes: []domain.EffectScope{domain.ScopeFaction}}
+
+// tagRoutes records the holder of every entry each route runs.
+func tagRoutes(seen *[]string) map[domain.SpecialEffectType]effect.Registrar {
+	name := func(holder effect.Holder) string {
+		if holder.Tag != nil {
+			return "tag:" + holder.Tag.ID
+		}
+		return "asset:" + holder.Asset.ID
+	}
+	return map[domain.SpecialEffectType]effect.Registrar{
+		domain.SpecialBonusDie: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnRoll: acceptsOwnFaction},
+			Register: func(ctx effect.RegisterContext) { *seen = append(*seen, "register "+name(ctx.Holder)) },
+		},
+		domain.SpecialCoinGain: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnFaction},
+			Fire: func(ctx effect.FireContext) []domain.Mutation {
+				*seen = append(*seen, "turn_start "+name(ctx.Holder))
+				return nil
+			},
+		},
+		domain.SpecialApplyStealth: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOnPurchase: acceptsOwnFaction},
+			Fire: func(ctx effect.FireContext) []domain.Mutation {
+				*seen = append(*seen, "on_purchase "+name(ctx.Holder)+" bought "+ctx.Asset.ID)
+				return nil
+			},
+		},
+		domain.SpecialBlockAbility: {
+			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerOwnAttack: acceptsOwnFaction},
+			Matchup: func(ctx effect.MatchupContext) effect.MatchupOutcome {
+				*seen = append(*seen, "own_attack "+name(ctx.Holder)+" fighting "+ctx.Asset.ID)
+				return effect.MatchupOutcome{}
+			},
+		},
+	}
+}
+
+func TestTagEntries_RunOnEveryRouteAfterTheAssets(t *testing.T) {
+	entries := []domain.EffectDefinition{
+		{Trigger: domain.TriggerOwnRoll, Effect: domain.SpecialBonusDie, Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}},
+		{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialCoinGain, Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}},
+		{Trigger: domain.TriggerOnPurchase, Effect: domain.SpecialApplyStealth, Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}},
+		{Trigger: domain.TriggerOwnAttack, Effect: domain.SpecialBlockAbility, Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}},
+	}
+	def := &domain.AssetDefinition{ID: "T-001", Effects: entries}
+	tag := &domain.Tag{ID: "SWN-T-099", Effects: entries}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}, Tags: map[string]*domain.Tag{tag.ID: tag}}
+	asset := &domain.Asset{ID: "a-1", DefinitionID: def.ID, Ready: true, Maintained: true, CurrentHP: 1}
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-404", tag.ID}, Assets: map[string]*domain.Asset{"a-1": asset}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha}}
+
+	var seen []string
+	engine := effect.New(tagRoutes(&seen), discardLog)
+	if err := engine.RegisterEffectsList(def); err != nil {
+		t.Fatalf("RegisterEffectsList: %v", err)
+	}
+	if err := engine.CheckTagEffects(tag); err != nil {
+		t.Fatalf("CheckTagEffects: %v", err)
+	}
+
+	engine.ApplyAll(factionState, rb, hooks.NewRegistry(), nil, discardLog)
+	engine.FireTurnStart(alpha, factionState, rb, nil)
+	engine.FirePurchase(alpha, &domain.Asset{ID: "a-2", DefinitionID: "unknown"}, factionState, rb, nil)
+	engine.FireMatchup(domain.TriggerOwnAttack, effect.MatchupContext{Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Asset: asset}, rb)
+
+	want := []string{
+		"register asset:a-1", "register tag:SWN-T-099",
+		"turn_start asset:a-1", "turn_start tag:SWN-T-099",
+		"on_purchase tag:SWN-T-099 bought a-2",
+		"own_attack asset:a-1 fighting a-1", "own_attack tag:SWN-T-099 fighting a-1",
+	}
+	if !reflect.DeepEqual(seen, want) {
+		t.Errorf("routes:\n got  %v\n want %v", seen, want)
+	}
 }

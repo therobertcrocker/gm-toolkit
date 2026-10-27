@@ -32,7 +32,7 @@ func seizeOffer(t *testing.T, factionState *state.FactionState, ctx hooks.Lethal
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialSeizeTarget].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["ht"], Def: &domain.AssetDefinition{ID: "SWN-W7-002"}, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["ht"], Def: &domain.AssetDefinition{ID: "SWN-W7-002"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialSeizeTarget,

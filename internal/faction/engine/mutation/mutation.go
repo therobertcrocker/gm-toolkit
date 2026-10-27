@@ -247,18 +247,17 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			}
 		case domain.TagAdded:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				tag := v.Tag
-				faction.Tags = append(faction.Tags, &tag)
+				faction.Tags = append(faction.Tags, v.TagID)
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
 		case domain.TagRemoved:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				index := slices.IndexFunc(faction.Tags, func(tag *domain.Tag) bool { return tag.ID == v.Tag.ID })
+				index := slices.Index(faction.Tags, v.TagID)
 				if index >= 0 {
 					faction.Tags = slices.Delete(faction.Tags, index, index+1)
 				} else {
-					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.Tag.ID})
+					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.TagID})
 				}
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})

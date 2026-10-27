@@ -58,9 +58,10 @@ func (PlanetarySeizure) CheckLock(faction *domain.Faction, factionState *state.F
 }
 
 // takeGovernment makes seizer the ruler of worldID (overview Decision 10): the
-// record changes hands, the seizer gains T-011 unless it holds it, and a previous
-// ruler that governs no other world loses the tag it holds. A seizer that already
-// rules the world changes nothing.
+// record changes hands, the seizer gains the government tag unless it holds it,
+// and a previous ruler that governs no other world loses it. A seizer that already
+// rules the world changes nothing. A rulebook with no government tag changes the
+// record only.
 func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	if previousRuler == seizer.ID {
 		return nil
@@ -72,23 +73,18 @@ func takeGovernment(seizer *domain.Faction, worldID, previousRuler string, facti
 		Cause:             "goal_completed",
 		CausedByFactionID: seizer.ID,
 	}}
-	if !seizer.HasTag(domain.TagPlanetaryGovernment) {
-		var tag domain.Tag
-		if found, ok := rulebook.Tags[domain.TagPlanetaryGovernment]; ok {
-			tag = *found
-		}
-		mutations = append(mutations, domain.TagAdded{FactionID: seizer.ID, Tag: tag, Cause: "goal_completed", CausedByFactionID: seizer.ID})
-	}
-	previous := factionState.Factions[previousRuler]
-	if previous == nil || !slices.Equal(factionState.WorldsRuledBy(previousRuler), []string{worldID}) {
+	governmentTagID := rulebook.GovernmentTagID()
+	if governmentTagID == "" {
 		return mutations
 	}
-	for _, held := range previous.Tags {
-		if held.ID == domain.TagPlanetaryGovernment {
-			return append(mutations, domain.TagRemoved{FactionID: previousRuler, Tag: *held, Cause: "goal_completed", CausedByFactionID: seizer.ID})
-		}
+	if !seizer.HasTag(governmentTagID) {
+		mutations = append(mutations, domain.TagAdded{FactionID: seizer.ID, TagID: governmentTagID, Cause: "goal_completed", CausedByFactionID: seizer.ID})
 	}
-	return mutations
+	previous := factionState.Factions[previousRuler]
+	if previous == nil || !previous.HasTag(governmentTagID) || !slices.Equal(factionState.WorldsRuledBy(previousRuler), []string{worldID}) {
+		return mutations
+	}
+	return append(mutations, domain.TagRemoved{FactionID: previousRuler, TagID: governmentTagID, Cause: "goal_completed", CausedByFactionID: seizer.ID})
 }
 
 func (PlanetarySeizure) UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook, _ *world.Index) []domain.Mutation {

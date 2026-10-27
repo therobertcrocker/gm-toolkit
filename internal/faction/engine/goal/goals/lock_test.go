@@ -13,7 +13,7 @@ import (
 func makeLockRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{
 		Tags: map[string]*domain.Tag{
-			"T-011": {ID: "T-011", Name: "Planetary Government"},
+			"SWN-T-011": {ID: "SWN-T-011", Name: "Planetary Government", Government: true},
 		},
 	}
 }
@@ -166,17 +166,16 @@ func makeOccupationState() (*state.FactionState, *domain.Faction) {
 		},
 		Assets: map[string]*domain.Asset{"a1": {ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}},
 	}
-	rival := &domain.Faction{ID: "f2", Force: 4, Cunning: 4, Wealth: 4,
-		Tags: []*domain.Tag{{ID: domain.TagPlanetaryGovernment, Name: "Planetary Government"}}}
+	rival := &domain.Faction{ID: "f2", Force: 4, Cunning: 4, Wealth: 4, Tags: []string{"SWN-T-011"}}
 	return &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}, faction
 }
 
 func TestPlanetarySeizure_CompletionTakesTheGovernment(t *testing.T) {
-	tag := domain.Tag{ID: domain.TagPlanetaryGovernment, Name: "Planetary Government"}
+	const tagID = "SWN-T-011"
 	changed := func(from string) domain.WorldGovernmentChanged {
 		return domain.WorldGovernmentChanged{WorldID: "Krylos", FromFactionID: from, ToFactionID: "f1", Cause: "goal_completed", CausedByFactionID: "f1"}
 	}
-	gained := domain.TagAdded{FactionID: "f1", Tag: tag, Cause: "goal_completed", CausedByFactionID: "f1"}
+	gained := domain.TagAdded{FactionID: "f1", TagID: tagID, Cause: "goal_completed", CausedByFactionID: "f1"}
 	completed := func(xp int) []domain.Mutation {
 		return []domain.Mutation{
 			domain.GoalCompleted{FactionID: "f1", GoalID: "G-004", XPAwarded: xp},
@@ -193,7 +192,7 @@ func TestPlanetarySeizure_CompletionTakesTheGovernment(t *testing.T) {
 			name:        "a rival's last world",
 			governments: map[string]string{"Krylos": "f2"},
 			want: append([]domain.Mutation{changed("f2"), gained,
-				domain.TagRemoved{FactionID: "f2", Tag: tag, Cause: "goal_completed", CausedByFactionID: "f1"}}, completed(2)...),
+				domain.TagRemoved{FactionID: "f2", TagID: tagID, Cause: "goal_completed", CausedByFactionID: "f1"}}, completed(2)...),
 		},
 		{
 			name:        "the rival keeps another world",
@@ -212,7 +211,7 @@ func TestPlanetarySeizure_CompletionTakesTheGovernment(t *testing.T) {
 			factionState, faction := makeOccupationState()
 			factionState.Governments = tc.governments
 			if tc.seizerTag {
-				faction.Tags = []*domain.Tag{&tag}
+				faction.Tags = []string{tagID}
 			}
 
 			_, mutations := PlanetarySeizure{}.CheckLock(faction, factionState, makeLockRulebook())
@@ -227,5 +226,19 @@ func TestPlanetarySeizure_CompletionTakesTheGovernment(t *testing.T) {
 				t.Errorf("completion = %+v, want %+v", mutations[1:], tc.want)
 			}
 		})
+	}
+}
+
+func TestPlanetarySeizure_NoGovernmentTagChangesTheRecordOnly(t *testing.T) {
+	factionState, faction := makeOccupationState()
+	factionState.Governments = map[string]string{"Krylos": "f2"}
+
+	_, mutations := PlanetarySeizure{}.CheckLock(faction, factionState, &rulebook.Rulebook{})
+
+	for _, mutation := range mutations {
+		switch mutation.(type) {
+		case domain.TagAdded, domain.TagRemoved:
+			t.Errorf("mutation %+v, want no tag change without a government tag", mutation)
+		}
 	}
 }

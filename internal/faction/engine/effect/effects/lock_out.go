@@ -5,7 +5,6 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -27,46 +26,41 @@ var lockOutRegistrar = effect.Registrar{
 }
 
 func registerLockOut(ctx effect.RegisterContext) {
-	ctx.Registry.RegisterMutationReactor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialLockOut)+":"+ctx.Def.ID,
-		&lockOutReactor{factionID: ctx.Faction.ID, assetID: ctx.Asset.ID},
-	)
+	ctx.Registry.RegisterMutationReactor(ctx.Holder.Scope(), ctx.Holder.HookID(domain.SpecialLockOut), &lockOutReactor{holder: refOf(ctx.Holder)})
 }
 
 type lockOutReactor struct {
-	factionID string
-	assetID   string
+	holder holderRef
 }
 
 func (reactor *lockOutReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
-	self := liveAsset(factionState, reactor.factionID, reactor.assetID)
-	if !active(self) {
+	self, live := reactor.holder.live(factionState)
+	if !live {
 		return nil
 	}
 	// deliberate: no lock from a Lockdown the batch removes or captures, because its condition would apply after its removal and miss.
-	if domain.RemovesOrMoves(mutations, reactor.assetID) {
+	if domain.RemovesOrMoves(mutations, reactor.holder.assetID) {
 		return nil
 	}
 	var struck []string
 	var locks []domain.Mutation
-	for _, targetID := range hitTargets(mutations, reactor.assetID, false) {
+	for _, targetID := range hitTargets(mutations, reactor.holder.assetID, false) {
 		if slices.Contains(struck, targetID) {
 			continue
 		}
 		struck = append(struck, targetID)
 		locks = append(locks, domain.AssetConditionApplied{
-			FactionID: reactor.factionID,
-			AssetID:   reactor.assetID,
+			FactionID: reactor.holder.factionID,
+			AssetID:   reactor.holder.assetID,
 			Condition: domain.Condition{
 				Kind:            domain.ConditionLockedOut,
-				SourceAssetID:   reactor.assetID,
+				SourceAssetID:   reactor.holder.assetID,
 				TargetFactionID: targetID,
 				// deliberate: the hit's world, not wherever the Lockdown goes later, because the book locks "that planet" (Effort 5 Decision Record 5).
 				WorldID: self.Location.WorldID,
 			},
 			Cause:             string(domain.SpecialLockOut),
-			CausedByFactionID: reactor.factionID,
+			CausedByFactionID: reactor.holder.factionID,
 		})
 	}
 	return locks

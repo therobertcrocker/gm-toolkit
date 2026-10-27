@@ -15,18 +15,21 @@ func TestNewFaction(t *testing.T) {
 		RegionHex: spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 1, R: 2}},
 	}
 	goal := &domain.Goal{ID: "goal-expand", Name: "Expand Influence"}
-	tag := &domain.Tag{ID: "tag-warlike", Name: "Warlike"}
 
 	faction := domain.NewFaction(
 		"test-faction", "Test Faction",
 		domain.ScaleMinor,
 		domain.StatForce, domain.StatCunning, domain.StatWealth,
-		[]*domain.Tag{tag},
+		[]string{"SWN-T-020"},
 		goal,
 		homeworld,
 		nil,
 		10,
 	)
+
+	if !faction.HasTag("SWN-T-020") || len(faction.Tags) != 1 {
+		t.Errorf("Tags = %v, want [SWN-T-020]", faction.Tags)
+	}
 
 	primaryRating, secondaryRating, tertiaryRating := domain.RatingsFromScale(domain.ScaleMinor)
 

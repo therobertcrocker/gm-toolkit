@@ -22,21 +22,16 @@ var seizeTargetRegistrar = effect.Registrar{
 }
 
 func registerSeizeTarget(ctx effect.RegisterContext) {
-	ctx.Registry.RegisterLethalInterceptor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialSeizeTarget)+":"+ctx.Def.ID,
-		&seizeTargetInterceptor{factionID: ctx.Faction.ID, assetID: ctx.Asset.ID},
-	)
+	ctx.Registry.RegisterLethalInterceptor(ctx.Holder.Scope(), ctx.Holder.HookID(domain.SpecialSeizeTarget), &seizeTargetInterceptor{holder: refOf(ctx.Holder)})
 }
 
 type seizeTargetInterceptor struct {
-	factionID string
-	assetID   string
+	holder holderRef
 }
 
 func (interceptor *seizeTargetInterceptor) OfferInterception(ctx hooks.LethalContext) *hooks.Interception {
-	self := liveAsset(ctx.FactionState, interceptor.factionID, interceptor.assetID)
-	if !active(self) || ctx.Striker == nil || ctx.Striker.ID != self.ID || ctx.Target.OwnerID == self.OwnerID {
+	self, live := interceptor.holder.live(ctx.FactionState)
+	if !live || ctx.Striker == nil || ctx.Striker.ID != self.ID || ctx.Target.OwnerID == self.OwnerID {
 		return nil
 	}
 	cause := domain.SpecialSeizeTarget

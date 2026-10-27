@@ -6,12 +6,12 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// ResolveAssetCost runs the buyer's own AssetCostModifiers, then those registered
-// against every asset standing on world — including a rival's, because a cost
-// hook may belong to a faction other than the buyer (Local Investments). Hooks
-// run in registration order, chaining outputs so each sees the previous result.
-// onWorld is the assets on world in ID order (world.AssetsOnWorld), so the chain
-// is the same every run; a nil slice adds nothing.
+// ResolveAssetCost runs the buyer's global and faction AssetCostModifiers, then
+// those of each of the buyer's own assets in ID order, then those registered
+// against every rival asset standing on world, because a cost hook may belong to
+// another faction (Local Investments). Hooks chain, each seeing the previous
+// result. onWorld is the assets on world in ID order (world.AssetsOnWorld), so the
+// chain is the same every run; a nil slice adds nothing.
 func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *domain.AssetDefinition, world string, baseCost int, onWorld []*domain.Asset) hooks.AssetCostQuery {
 	query := &hooks.AssetCostQuery{Cost: baseCost, Applied: map[string]bool{}}
 	if registry == nil {
@@ -19,6 +19,11 @@ func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *doma
 	}
 	for _, registered := range registry.AssetCostModifiersFor(buyer.ID, "") {
 		registered.Hook.ModifyAssetCost(buyer, def, world, query)
+	}
+	for _, asset := range domain.SortedAssets(buyer) {
+		for _, registered := range registry.AssetCostModifiersForAsset(buyer.ID, asset.ID) {
+			registered.Hook.ModifyAssetCost(buyer, def, world, query)
+		}
 	}
 	for _, asset := range onWorld {
 		if asset.OwnerID == buyer.ID {
@@ -179,19 +184,31 @@ func ResolveRepairCost(registry *hooks.Registry, repairer *domain.Faction, asset
 	return max(0, query.Cost)
 }
 
-// ResolveTie consults registered TieResolvers for the attacker, then the
-// defender; first registration wins. Returns TieStandard when no resolvers
-// match.
+// ResolveTie asks the global hooks, then the attacker's side, then the defender's:
+// on each side its faction's hooks, then each of its assets' in ID order. The first
+// answer that is not TieStandard wins, because with asset buckets in the walk a
+// resolver that does not match must not end the search (Effort 1 Decision 4).
+// TieStandard when none answers.
 func ResolveTie(registry *hooks.Registry, ctx hooks.RollContext, factionState *state.FactionState) hooks.TieOutcome {
 	if registry == nil {
 		return hooks.TieStandard
 	}
-	resolvers := registry.TieResolversFor(ctx.Actor.ID, "")
-	if len(resolvers) == 0 && ctx.Opponent != nil {
-		resolvers = registry.TieResolversFor(ctx.Opponent.ID, "")
+	scopes := []hooks.Scope{hooks.GlobalScope()}
+	for _, side := range []*domain.Faction{ctx.Actor, ctx.Opponent} {
+		if side == nil {
+			continue
+		}
+		scopes = append(scopes, hooks.FactionScope(side.ID))
+		for _, asset := range domain.SortedAssets(side) {
+			scopes = append(scopes, hooks.AssetScope(side.ID, asset.ID))
+		}
 	}
-	if len(resolvers) == 0 {
-		return hooks.TieStandard
+	for _, scope := range scopes {
+		for _, registered := range registry.TieResolversAt(scope) {
+			if outcome := registered.Hook.ResolveTie(ctx, factionState); outcome != hooks.TieStandard {
+				return outcome
+			}
+		}
 	}
-	return resolvers[0].Hook.ResolveTie(ctx, factionState)
+	return hooks.TieStandard
 }

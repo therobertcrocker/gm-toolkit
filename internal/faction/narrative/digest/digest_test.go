@@ -505,12 +505,13 @@ func TestTagAdded(t *testing.T) {
 			}),
 			mutRec(t, "tag_added", domain.TagAdded{
 				FactionID: "faction-a",
-				Tag:       domain.Tag{ID: "tag-1", Name: "Guerrilla Tactics"},
+				TagID:     "tag-1",
 				Cause:     "goal_completed",
 			}),
 		),
 	}
-	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), nil)
+	rb := &rulebook.Rulebook{Tags: map[string]*domain.Tag{"tag-1": {ID: "tag-1", Name: "Guerrilla Tactics"}}}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), rb)
 	beat := findBeat(d, "faction-a")
 	var found bool
 	for _, ge := range beat.GoalEvents {
@@ -1093,11 +1094,12 @@ func TestGovernmentChangeAndTagLoss(t *testing.T) {
 				WorldID: "Krylos", FromFactionID: "f2", ToFactionID: "f1", Cause: "goal_completed", CausedByFactionID: "f1",
 			}),
 			mutRec(t, "tag_removed", domain.TagRemoved{
-				FactionID: "f2", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment, Name: "Planetary Government"},
+				FactionID: "f2", TagID: "SWN-T-011",
 				Cause: "goal_completed", CausedByFactionID: "f1",
 			}),
 		),
 	}
+	// deliberate: no rulebook, so the line falls back to the bare ID (Effort 1 Decision 10).
 	cycleDigest := buildOne(t, records, factionState, nil)
 
 	ruler := findBeat(cycleDigest, "f1")
@@ -1108,7 +1110,7 @@ func TestGovernmentChangeAndTagLoss(t *testing.T) {
 	}
 	loser := findBeat(cycleDigest, "f2")
 	if loser == nil || !slices.ContainsFunc(loser.GoalEvents, func(event GoalEvent) bool {
-		return event.Kind == GoalTagLost && event.TagName == "Planetary Government"
+		return event.Kind == GoalTagLost && event.TagName == "SWN-T-011"
 	}) {
 		t.Errorf("f2 beat = %+v, want a GoalTagLost event", loser)
 	}

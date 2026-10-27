@@ -27,9 +27,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				Coin:      5,
 				XP:        2,
 				Homeworld: domain.Location{WorldID: "Tartarus"},
-				Tags: []*domain.Tag{
-					{ID: "T-001", Name: "Colonists", Description: "Settler faction", Effect: "+1 Wealth"},
-				},
+				Tags: []string{"SWN-T-001"},
 				ActiveGoal: &domain.ActiveGoal{
 					GoalID: "G-001",
 				},
@@ -107,11 +105,8 @@ func TestFactionStateRoundTrip(t *testing.T) {
 		t.Errorf("Faction.Homeworld: got %q, want %q", got.Homeworld.WorldID, want.Homeworld.WorldID)
 	}
 
-	if len(got.Tags) != 1 {
-		t.Fatalf("Faction.Tags: got %d, want 1", len(got.Tags))
-	}
-	if got.Tags[0].ID != want.Tags[0].ID || got.Tags[0].Name != want.Tags[0].Name {
-		t.Errorf("Faction.Tags[0]: got %+v, want %+v", got.Tags[0], want.Tags[0])
+	if !reflect.DeepEqual(got.Tags, want.Tags) {
+		t.Errorf("Faction.Tags: got %v, want %v", got.Tags, want.Tags)
 	}
 
 	if got.ActiveGoal == nil {
@@ -209,6 +204,17 @@ func TestLoadMissingFile(t *testing.T) {
 	}
 	if s == nil {
 		t.Fatal("Load() on missing file should return empty state, got nil")
+	}
+}
+
+func TestLoad_RefusesTagCopies(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	body := "[factions.alpha]\nid = \"alpha\"\ntags = [{ id = \"T-011\", name = \"Planetary Government\" }]\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("writing fixture: %v", err)
+	}
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "tags") {
+		t.Fatalf("Load = %v, want an error naming the tags key", err)
 	}
 }
 

@@ -168,6 +168,7 @@ scope = "self"
 		entry("own_attack_hit", "self_damage", `amount = "1d4"`)+
 		entry("own_roll", "bonus_die", "sides = 10\ncount = 1")+
 		entry("own_roll", "reroll", "dice = 1\nelective = true")+
+		entry("own_roll", "reroll", "result = 1")+
 		entry("tech_level_query", "tech_level_floor", "level = 4")+
 		entry("asset_cost_query", "cost_surcharge", "amount = 1")+
 		entry("attack_eligibility_query", "restrict_attack", `side = "defense"`+"\n"+`allow = "only_listed"`))
@@ -175,8 +176,8 @@ scope = "self"
 		t.Fatalf("loadAssets: %v", err)
 	}
 	effects := assets["T-001"].Effects
-	if len(effects) != 6 {
-		t.Fatalf("effects: got %d, want 6", len(effects))
+	if len(effects) != 7 {
+		t.Fatalf("effects: got %d, want 7", len(effects))
 	}
 	checks := []struct {
 		name string
@@ -186,9 +187,10 @@ scope = "self"
 		{"self_damage", effects[0].SelfDamage, &domain.SelfDamageParams{Amount: domain.DiceRoll{NumDice: 1, Sides: 4}}},
 		{"bonus_die", effects[1].BonusDie, &domain.BonusDieParams{Sides: 10, Count: 1}},
 		{"reroll", effects[2].Reroll, &domain.RerollParams{Dice: 1, Elective: true}},
-		{"tech_level_floor", effects[3].TechLevelFloor, &domain.TechLevelFloorParams{Level: 4}},
-		{"cost_surcharge", effects[4].CostSurcharge, &domain.CostSurchargeParams{Amount: 1}},
-		{"restrict_attack", effects[5].RestrictAttack, &domain.RestrictAttackParams{Side: domain.RestrictDefense, Allow: domain.AllowOnlyListed}},
+		{"reroll result", effects[3].Reroll, &domain.RerollParams{Result: 1}},
+		{"tech_level_floor", effects[4].TechLevelFloor, &domain.TechLevelFloorParams{Level: 4}},
+		{"cost_surcharge", effects[5].CostSurcharge, &domain.CostSurchargeParams{Amount: 1}},
+		{"restrict_attack", effects[6].RestrictAttack, &domain.RestrictAttackParams{Side: domain.RestrictDefense, Allow: domain.AllowOnlyListed}},
 	}
 	for _, check := range checks {
 		if !reflect.DeepEqual(check.got, check.want) {
@@ -453,7 +455,19 @@ effect  = "reroll"` + filters + `
 [assets.Machine.effects.reroll]
 dice = 0
 `,
-			wantErr: "reroll dice must be > 0, got 0",
+			wantErr: "reroll needs exactly one of dice or result > 0, got dice 0 and result 0",
+		},
+		{
+			name: "reroll with dice and result",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_roll"
+effect  = "reroll"` + filters + `
+[assets.Machine.effects.reroll]
+dice   = 1
+result = 1
+`,
+			wantErr: "reroll needs exactly one of dice or result > 0, got dice 1 and result 1",
 		},
 		{
 			name: "tech_level_floor with zero level",

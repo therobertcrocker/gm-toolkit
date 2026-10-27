@@ -32,5 +32,7 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialGrantPermission:    grantPermissionRegistrar,
 		domain.SpecialWithdrawPermission: withdrawPermissionRegistrar,
 		domain.SpecialLockOut:            lockOutRegistrar,
+		domain.SpecialLoseTies:           loseTiesRegistrar,
+		domain.SpecialCostDiscount:       costDiscountRegistrar,
 	}
 }

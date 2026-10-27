@@ -6,7 +6,6 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -44,7 +43,7 @@ func fireClearStealth(ctx effect.FireContext) []domain.Mutation {
 	}
 	var cleared []domain.Mutation
 	for _, factionID := range slices.Sorted(maps.Keys(ctx.FactionState.Factions)) {
-		if factionID == ctx.Faction.ID {
+		if factionID == ctx.Holder.Faction.ID {
 			continue
 		}
 		target := ctx.FactionState.Factions[factionID]
@@ -55,14 +54,14 @@ func fireClearStealth(ctx effect.FireContext) []domain.Mutation {
 			if ctx.Entry.Filters.Stealthy != nil && asset.Stealthy != *ctx.Entry.Filters.Stealthy {
 				continue
 			}
-			if ctx.Entry.Gates.Contest != nil && !contestPasses(*ctx.Entry.Gates.Contest, ctx.Faction, target, ctx.Roller) {
+			if ctx.Entry.Gates.Contest != nil && !contestPasses(*ctx.Entry.Gates.Contest, ctx.Holder.Faction, target, ctx.Roller) {
 				continue
 			}
 			cleared = append(cleared, domain.AssetStealthCleared{
 				FactionID:         target.ID,
 				AssetID:           asset.ID,
 				Cause:             string(domain.SpecialClearStealth),
-				CausedByFactionID: ctx.Faction.ID,
+				CausedByFactionID: ctx.Holder.Faction.ID,
 			})
 		}
 	}
@@ -71,32 +70,31 @@ func fireClearStealth(ctx effect.FireContext) []domain.Mutation {
 
 func registerClearStealth(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterMutationReactor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialClearStealth)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialClearStealth),
 		&clearStealthReactor{
-			ownerFactionID: ctx.Faction.ID,
-			assetID:        ctx.Asset.ID,
-			stealthy:       ctx.Entry.Filters.Stealthy,
-			contest:        ctx.Entry.Gates.Contest,
-			roller:         ctx.Roller,
+			holder:   refOf(ctx.Holder),
+			stealthy: ctx.Entry.Filters.Stealthy,
+			contest:  ctx.Entry.Gates.Contest,
+			roller:   ctx.Roller,
 		},
 	)
 }
 
 type clearStealthReactor struct {
-	ownerFactionID string
-	assetID        string
-	stealthy       *bool
-	contest        *domain.EffectContest
-	roller         domain.Roller
+	holder   holderRef
+	stealthy *bool
+	contest  *domain.EffectContest
+	roller   domain.Roller
 }
 
 func (reactor *clearStealthReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
-	owner := factionState.Factions[reactor.ownerFactionID]
-	if owner == nil || !active(owner.Assets[reactor.assetID]) {
+	self, live := reactor.holder.live(factionState)
+	if !live {
 		return nil
 	}
-	worldID := owner.Assets[reactor.assetID].Location.WorldID
+	owner := factionState.Factions[reactor.holder.factionID]
+	worldID := self.Location.WorldID
 	if worldID == "" {
 		return nil
 	}

@@ -22,17 +22,20 @@ type effectRecord struct {
 	GrantMovement  *grantMovementRecord  `toml:"grant_movement"`
 	CaptureTarget  *amountRecord         `toml:"capture_target"`
 	DiscountRepair *discountRepairRecord `toml:"discount_repair"`
+	CostDiscount   *costDiscountRecord   `toml:"cost_discount"`
 }
 
 type effectFiltersRecord struct {
-	Owner     string   `toml:"owner"`
-	Scope     string   `toml:"scope"`
-	Attribute string   `toml:"attribute"`
-	Phase     []string `toml:"phase"`
-	Action    string   `toml:"action"`
-	AssetType []string `toml:"asset_type"`
-	Category  []string `toml:"category"`
-	Stealthy  *bool    `toml:"stealthy"`
+	Owner        string   `toml:"owner"`
+	Scope        string   `toml:"scope"`
+	Attribute    string   `toml:"attribute"`
+	Phase        []string `toml:"phase"`
+	Action       string   `toml:"action"`
+	AssetType    []string `toml:"asset_type"`
+	Category     []string `toml:"category"`
+	Stealthy     *bool    `toml:"stealthy"`
+	MinTechLevel int      `toml:"min_tech_level"`
+	CausedBy     string   `toml:"caused_by"`
 }
 
 type effectGatesRecord struct {
@@ -58,6 +61,7 @@ type bonusDieRecord struct {
 
 type rerollRecord struct {
 	Dice     int  `toml:"dice"`
+	Result   int  `toml:"result"`
 	Elective bool `toml:"elective"`
 }
 
@@ -82,6 +86,10 @@ type discountRepairRecord struct {
 	Amount int `toml:"amount"`
 }
 
+type costDiscountRecord struct {
+	Amount int `toml:"amount"`
+}
+
 var (
 	effectTriggers = []domain.EffectTrigger{
 		domain.TriggerTurnStart, domain.TriggerOnPurchase, domain.TriggerOwnAttackHit,
@@ -89,7 +97,8 @@ var (
 		domain.TriggerStealthArrival, domain.TriggerCoinLoss, domain.TriggerTechLevelQuery,
 		domain.TriggerAssetCostQuery, domain.TriggerMovementOptionsQuery,
 		domain.TriggerAttackEligibilityQuery, domain.TriggerOwnAttack, domain.TriggerOwnDefenseWin, domain.TriggerLethalDamage, domain.TriggerRepairCostQuery,
-		domain.TriggerPermissionQuery, domain.TriggerPermissionGranted,
+		domain.TriggerPermissionQuery, domain.TriggerPermissionGranted, domain.TriggerAttackTie,
+		domain.TriggerAssetDestroyed,
 	}
 	specialEffects = []domain.SpecialEffectType{
 		domain.SpecialCoinGain, domain.SpecialCoinSteal, domain.SpecialIgnoreCoinLoss,
@@ -100,7 +109,7 @@ var (
 		domain.SpecialCounterstrike, domain.SpecialShelterAsset, domain.SpecialSacrificeSelf,
 		domain.SpecialRestoreAsset, domain.SpecialDiscountRepair, domain.SpecialSeizeTarget,
 		domain.SpecialGrantStealth, domain.SpecialGrantPermission, domain.SpecialWithdrawPermission,
-		domain.SpecialLockOut,
+		domain.SpecialLockOut, domain.SpecialLoseTies, domain.SpecialCostDiscount,
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
 	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction}
@@ -175,13 +184,23 @@ func convertEffectFilters(record effectFiltersRecord) (domain.EffectFilters, err
 	if err != nil {
 		return domain.EffectFilters{}, err
 	}
-	filters := domain.EffectFilters{Owner: owner, Scope: scope, Action: record.Action, Stealthy: record.Stealthy}
+	if record.MinTechLevel < 0 {
+		return domain.EffectFilters{}, fmt.Errorf("filters.min_tech_level must be >= 0, got %d", record.MinTechLevel)
+	}
+	filters := domain.EffectFilters{Owner: owner, Scope: scope, Action: record.Action, Stealthy: record.Stealthy, MinTechLevel: record.MinTechLevel}
 	if record.Attribute != "" {
 		attribute, err := toFactionStat(record.Attribute)
 		if err != nil {
 			return domain.EffectFilters{}, fmt.Errorf("filters.attribute: %w", err)
 		}
 		filters.Attribute = attribute
+	}
+	if record.CausedBy != "" {
+		causedBy, err := toEnum("filters.caused_by", record.CausedBy, effectOwners)
+		if err != nil {
+			return domain.EffectFilters{}, err
+		}
+		filters.CausedBy = causedBy
 	}
 	for i, value := range record.Phase {
 		phase, err := toEnum("roll phase", value, effectRollPhases)
@@ -277,6 +296,9 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	if record.DiscountRepair != nil {
 		present = append(present, domain.SpecialDiscountRepair)
 	}
+	if record.CostDiscount != nil {
+		present = append(present, domain.SpecialCostDiscount)
+	}
 	return present
 }
 
@@ -315,10 +337,11 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 		if record.Reroll == nil {
 			return missingParamBlock(definition.Effect)
 		}
-		if record.Reroll.Dice <= 0 {
-			return fmt.Errorf("reroll dice must be > 0, got %d", record.Reroll.Dice)
+		dice, result := record.Reroll.Dice, record.Reroll.Result
+		if dice < 0 || result < 0 || (dice > 0) == (result > 0) {
+			return fmt.Errorf("reroll needs exactly one of dice or result > 0, got dice %d and result %d", dice, result)
 		}
-		definition.Reroll = &domain.RerollParams{Dice: record.Reroll.Dice, Elective: record.Reroll.Elective}
+		definition.Reroll = &domain.RerollParams{Dice: dice, Result: result, Elective: record.Reroll.Elective}
 	case domain.SpecialTechLevelFloor:
 		if record.TechLevelFloor == nil {
 			return missingParamBlock(definition.Effect)
@@ -374,6 +397,14 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return fmt.Errorf("discount_repair amount must be > 0, got %d", record.DiscountRepair.Amount)
 		}
 		definition.DiscountRepair = &domain.DiscountRepairParams{Amount: record.DiscountRepair.Amount}
+	case domain.SpecialCostDiscount:
+		if record.CostDiscount == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		if record.CostDiscount.Amount <= 0 {
+			return fmt.Errorf("cost_discount amount must be > 0, got %d", record.CostDiscount.Amount)
+		}
+		definition.CostDiscount = &domain.CostDiscountParams{Amount: record.CostDiscount.Amount}
 	}
 	return nil
 }

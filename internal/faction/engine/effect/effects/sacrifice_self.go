@@ -22,21 +22,16 @@ var sacrificeSelfRegistrar = effect.Registrar{
 }
 
 func registerSacrificeSelf(ctx effect.RegisterContext) {
-	ctx.Registry.RegisterLethalInterceptor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialSacrificeSelf)+":"+ctx.Def.ID,
-		&sacrificeSelfInterceptor{factionID: ctx.Faction.ID, assetID: ctx.Asset.ID},
-	)
+	ctx.Registry.RegisterLethalInterceptor(ctx.Holder.Scope(), ctx.Holder.HookID(domain.SpecialSacrificeSelf), &sacrificeSelfInterceptor{holder: refOf(ctx.Holder)})
 }
 
 type sacrificeSelfInterceptor struct {
-	factionID string
-	assetID   string
+	holder holderRef
 }
 
 func (interceptor *sacrificeSelfInterceptor) OfferInterception(ctx hooks.LethalContext) *hooks.Interception {
-	self := liveAsset(ctx.FactionState, interceptor.factionID, interceptor.assetID)
-	if !guardsTarget(self, ctx, nil) {
+	self, live := interceptor.holder.live(ctx.FactionState)
+	if !live || !guardsTarget(self, ctx, nil) {
 		return nil
 	}
 	cause := domain.SpecialSacrificeSelf

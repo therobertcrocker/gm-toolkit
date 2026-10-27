@@ -450,12 +450,30 @@ func TestLoad(t *testing.T) {
 		if len(rb.Tags) == 0 {
 			t.Fatal("expected tags to be loaded, got none")
 		}
-		tag, ok := rb.Tags["T-001"]
+		tag, ok := rb.Tags["SWN-T-001"]
 		if !ok {
-			t.Fatal("expected tag T-001 (Colonists) to be present")
+			t.Fatal("expected tag SWN-T-001 (Colonists) to be present")
 		}
 		if tag.Name != "Colonists" {
 			t.Errorf("tag name: got %q, want %q", tag.Name, "Colonists")
+		}
+	})
+
+	t.Run("government tag", func(t *testing.T) {
+		if got := rb.GovernmentTagID(); got != "SWN-T-011" {
+			t.Errorf("GovernmentTagID = %q, want SWN-T-011", got)
+		}
+	})
+
+	t.Run("preceptor archive discount", func(t *testing.T) {
+		want := []domain.EffectDefinition{{
+			Trigger:      domain.TriggerAssetCostQuery,
+			Effect:       domain.SpecialCostDiscount,
+			Filters:      domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, MinTechLevel: 4},
+			CostDiscount: &domain.CostDiscountParams{Amount: 1},
+		}}
+		if got := rb.Tags["SWN-T-013"].Effects; !reflect.DeepEqual(got, want) {
+			t.Errorf("Preceptor Archive effects = %+v, want %+v", got, want)
 		}
 	})
 
@@ -712,6 +730,12 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 			want: `duplicate tag ID "T-001"`,
 		},
 		{
+			name: "two government tags",
+			body: "[tags.Alpha]\nid = \"T-001\"\ngovernment = true\n\n[tags.Beta]\nid = \"T-002\"\ngovernment = true\n",
+			load: loadTagFile,
+			want: "both set government",
+		},
+		{
 			name: "goal unknown key",
 			body: "[goals.Alpha]\nid = \"G-001\"\nname = \"Alpha\"\ndificulty = \"low\"\n",
 			load: loadGoalFile,
@@ -735,6 +759,36 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
 			}
 		})
+	}
+}
+
+func TestLoadTags_Effects(t *testing.T) {
+	write := func(body string) string {
+		path := filepath.Join(t.TempDir(), "tags.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatalf("writing fixture: %v", err)
+		}
+		return path
+	}
+	const header = "[tags.Warlike]\nid = \"SWN-T-020\"\nname = \"Warlike\"\n\n[[tags.Warlike.effects]]\ntrigger = \"own_roll\"\n"
+
+	tags, err := loadTags(write(header + "effect  = \"bonus_die\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n[tags.Warlike.effects.bonus_die]\nsides = 10\ncount = 1\n"))
+	if err != nil {
+		t.Fatalf("loadTags: %v", err)
+	}
+	want := []domain.EffectDefinition{{
+		Trigger:  domain.TriggerOwnRoll,
+		Effect:   domain.SpecialBonusDie,
+		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}
+	if got := tags["SWN-T-020"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Effects = %+v, want %+v", got, want)
+	}
+
+	_, err = loadTags(write(header + "effect  = \"no_such_effect\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n"))
+	if err == nil || !strings.Contains(err.Error(), `tag "SWN-T-020"`) {
+		t.Errorf("loadTags: got %v, want an error naming the tag", err)
 	}
 }
 

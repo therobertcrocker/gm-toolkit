@@ -20,7 +20,7 @@ func treacheryReactors(t *testing.T, factionState *state.FactionState, assetID s
 	alpha := factionState.Factions["alpha"]
 	asset := alpha.Assets[assetID]
 	effects.Registrars()[domain.SpecialCaptureTarget].Register(effect.RegisterContext{
-		Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-C7-003"}, Registry: registry, Roller: fixedRoller{value: 1},
+		Holder: effect.Holder{Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-C7-003"}}, Registry: registry, Roller: fixedRoller{value: 1},
 		Entry: domain.EffectDefinition{
 			Trigger:       domain.TriggerOwnAttackHit,
 			Effect:        domain.SpecialCaptureTarget,

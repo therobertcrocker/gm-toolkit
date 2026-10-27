@@ -26,16 +26,15 @@ var selfDamageRegistrar = effect.Registrar{
 
 func registerSelfDamage(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterMutationReactor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialSelfDamage)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialSelfDamage),
 		&selfDamageReactor{
-			factionID: ctx.Faction.ID,
-			assetID:   ctx.Asset.ID,
-			def:       ctx.Def,
-			counter:   ctx.Entry.Trigger == domain.TriggerOwnCounterHit,
-			amount:    ctx.Entry.SelfDamage.Amount,
-			roller:    ctx.Roller,
-			registry:  ctx.Registry,
+			holder:   refOf(ctx.Holder),
+			def:      ctx.Holder.Def,
+			counter:  ctx.Entry.Trigger == domain.TriggerOwnCounterHit,
+			amount:   ctx.Entry.SelfDamage.Amount,
+			roller:   ctx.Roller,
+			registry: ctx.Registry,
 		},
 	)
 }
@@ -43,25 +42,20 @@ func registerSelfDamage(ctx effect.RegisterContext) {
 // selfDamageReactor keeps its definition and the registry, because a lethal
 // self-hit asks the Cat 6 interceptors (D-10).
 type selfDamageReactor struct {
-	factionID string
-	assetID   string
-	def       *domain.AssetDefinition
-	counter   bool
-	amount    domain.DiceRoll
-	roller    domain.Roller
-	registry  *hooks.Registry
+	holder   holderRef
+	def      *domain.AssetDefinition
+	counter  bool
+	amount   domain.DiceRoll
+	roller   domain.Roller
+	registry *hooks.Registry
 }
 
 func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
-	if len(hitTargets(mutations, reactor.assetID, reactor.counter)) == 0 {
+	if len(hitTargets(mutations, reactor.holder.assetID, reactor.counter)) == 0 {
 		return nil
 	}
-	faction := factionState.Factions[reactor.factionID]
-	if faction == nil {
-		return nil
-	}
-	asset := faction.Assets[reactor.assetID]
-	if !active(asset) {
+	asset, live := reactor.holder.live(factionState)
+	if !live {
 		return nil
 	}
 	effectiveHP, removed := batchHP(mutations, asset)
@@ -70,11 +64,11 @@ func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, facti
 	}
 	damage := reactor.amount.Roll(reactor.roller)
 	extra := []domain.Mutation{domain.AssetHPDelta{
-		FactionID:         reactor.factionID,
-		AssetID:           reactor.assetID,
+		FactionID:         reactor.holder.factionID,
+		AssetID:           reactor.holder.assetID,
 		Delta:             -damage,
 		Cause:             string(domain.SpecialSelfDamage),
-		CausedByFactionID: reactor.factionID,
+		CausedByFactionID: reactor.holder.factionID,
 	}}
 	if effectiveHP-damage <= 0 {
 		// deliberate: only automatic interceptors, not elective ones, because a reactor has no collector to ask (D-10).
@@ -90,10 +84,10 @@ func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, facti
 			return append(extra, saved...)
 		}
 		extra = append(extra, domain.AssetRemoved{
-			FactionID:         reactor.factionID,
-			AssetID:           reactor.assetID,
+			FactionID:         reactor.holder.factionID,
+			AssetID:           reactor.holder.assetID,
 			Cause:             string(domain.SpecialSelfDamage),
-			CausedByFactionID: reactor.factionID,
+			CausedByFactionID: reactor.holder.factionID,
 		})
 	}
 	return extra

@@ -40,9 +40,9 @@ holder (Effort 4).
    eight readers, plus the holder, four handlers becoming data, the government flag
    and the re-seed. Each effort plan is written just before its effort executes,
    against code that exists. Effort 2 is a dependency of Efforts 3 and 4, because it
-   opens the opponent's faction bucket to the roll dispatcher and adds the `homeworld`
-   scope. Psychic Academy (Effort 3), Colonists' homeworld TL floor (Effort 3) and the
-   Eugenics Cult defense die (Effort 4) need one or both. Efforts 3 and 4 do not
+   adds the `homeworld` scope, which Colonists' homeworld TL floor (Effort 3) needs.
+   The opponent's faction bucket on rolls, which Psychic Academy (Effort 3) and the
+   Eugenics Cult defense die (Effort 4) need, moved to Effort 1 (R-2). Efforts 3 and 4 do not
    depend on each other, but both change `dispatch.ResolveWorldTechLevel` and
    `domain.CanPurchase`, so they run in sequence. Rejected: the Effort 1 spec in this
    file (too large); Effort 4 before Effort 3 (no gain). Same shape as the A.001.6
@@ -109,7 +109,9 @@ holder (Effort 4).
    way. The TUI turn formatter has no tag case today
    (`tui/views/turn/execution/format.go:181`), so it does not change.
 
-5. **The faction holder's shape is the Effort 1 plan's to design, under five fixed
+5. **Replaced by the Effort 1 plan, Decisions 1 and 2** (Decision Record R-1).
+   Constraints 2 to 5 below hold in the new design; constraint 1 does not.
+   **The faction holder's shape is the Effort 1 plan's to design, under five fixed
    constraints.** Found in planning: 22 registrar files read `ctx.Asset` or `ctx.Def`
    for the hook ID, the offer's `Source` name and the budget key. Only the registrars
    that tags use change. The constraints:
@@ -145,10 +147,50 @@ holder (Effort 4).
      `attack`/`defense`, but not under `contested`. The Effort 3 plan asks Robert
      that reading. Reshapes the discovery's group C row for Perimeter Agency.
 
+7. **A new effect takes its rule values and references from its `[[effects]]`
+   entry. Engine code holds none.** Robert's call, 2026-10-26, binding on every
+   effort plan. A rule value is a number, a die or a threshold. A reference names
+   another record: a goal ID, a tag ID, an asset ID. The registrar reads each one
+   from the entry.
+   - **The test:** a second asset or tag can use the effect with TOML only. An
+     effect with one user is correct. An effect that a second user cannot share
+     is not data-driven.
+   - **The known breach is `lock_out`.** Its entry has no block. Its 1d4 fee is
+     `e.Rand.Roll(4)` in `engine/arrival.go:58`, and the fee's cause is the
+     asset name `"transport_lockdown"` (`arrival.go:92`). The `R.026` row audits
+     the existing effects for this pattern; this initiative does not fix it.
+   - **Where it applies here:** Preceptor Archive's discount (`cost_discount`,
+     Effort 1); Pirates' toll (Effort 3, D-6), which charges at arrival beside the
+     lockdown fee, so its amount must not copy the `lock_out` pattern; Exchange
+     Consulate's XP roll (D-18: the die, the threshold and the goal ID); Deep
+     Rooted's self-removal (D-19).
+   - Rejected: a fix of `lock_out` in Effort 3, beside the Pirates toll. It is
+     outside the tags scope, and the audit can find other cases first.
+
 ## Decision Record — Execution
 
-<!-- Empty at plan time. Each effort plan carries its own Decision Record; this one
-holds only reversals of the decisions above. -->
+<!-- Each effort plan carries its own Decision Record; this one holds only
+reversals of the decisions above. -->
+
+- **R-1 — Effects are blind to their holder; scope decides the holder (Effort 1
+  Plan session, 2026-10-26).** Robert's call. Replaces Decision 5's constraint 1
+  ("a registrar that a tag does not use stays unchanged") and the discovery's
+  "`Accepts` names its holders". Every registrar signs up and checks at fire time
+  through one `effect.Holder`, so a tag can hold any effect whose scope needs no
+  asset. A tag entry with scope `self` or `world` is refused; `grant_movement` and
+  `ignore_coin_loss` refuse a tag until an effort defines their tag meaning.
+  Rationale: a new tag should need no code where its rule can be said with
+  existing effects. See Effort 1 plan, Decisions 1 to 3.
+- **R-2 — Every dispatcher gap closes in Effort 1 (Effort 1 Plan session,
+  2026-10-26).** Robert's call. The opponent's faction bucket on rolls (the
+  `rollScopes` fence-sign) moves from Effort 2 to Effort 1, as do the phase routes
+  reading held tags (`FirePurchase` reads the buyer's tags). `ResolveTie` and
+  `ResolveAssetCost` also ask asset buckets. Effort 2 keeps Secretive's
+  `apply_stealth` at `scope = "faction"` and Mercenary Group's self-move mode,
+  which lifts the `grant_movement` refusal. See Effort 1 plan, Decision 4.
+- **R-3 — `faction` scope lands with the tag that needs it; a sweep audit follows
+  Effort 4 (Effort 1 Plan session, 2026-10-26).** Robert's call. A follow-on row
+  joins `planned-work.md` at pre-merge.
 
 ---
 
@@ -156,8 +198,8 @@ holds only reversals of the decisions above. -->
 
 | # | Effort | Scope | File |
 |---|--------|-------|------|
-| 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; the faction holder in the effects engine; the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) *(to be written)* |
-| 2 | Bonus dice and simple grants | `bonus_die` filters (defense phase, asset TL, `homeworld` scope, goal target world); the opponent's faction bucket on rolls; Mercenary Group; Secretive | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) *(to be written)* |
+| 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; effects blind to their holder (`effect.Holder`, R-1); tag entries loaded, checked, registered and fired; every dispatcher gap closed (R-2); the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox-claude re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) |
+| 2 | Bonus dice and simple grants | `bonus_die` filters (defense phase, asset TL, `homeworld` scope, goal target world); Mercenary Group's self-move mode; Secretive | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) *(to be written)* |
 | 3 | New effects, world and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates; Deep Rooted; Exchange Consulate; roll hooks on the detect and `R.023` contests; the Psychic Academy registrar | [`-effort-3-plan.md`](./A.001.7-data-driven-tags-effort-3-plan.md) *(to be written)* |
 | 4 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | [`-effort-4-plan.md`](./A.001.7-data-driven-tags-effort-4-plan.md) *(to be written)* |
 
@@ -200,8 +242,8 @@ the code before it relies on them.
   `lose_ties` at a faction holder needs no dispatcher change. (Effort 1)
 - **Roll reach.** Only `rollScopes` (`hooks/dispatch/roll.go`) leaves the opponent's
   faction bucket out, under a fence-sign whose reason is the Go tag hooks. Effort 1
-  deletes those hooks; Effort 2 changes `rollScopes` and removes the fence-sign.
-  Between the two, a tag entry reaches only its holder's own rolls. (Effort 2)
+  deletes those hooks, then changes `rollScopes` and removes the fence-sign (R-2).
+  (Effort 1)
 - **Purchase checks.** Both purchase paths call `domain.CanPurchase`
   (`domain/asset.go:406`) with `PurchaseTerms{Cost, TechCap}` (Decision 3). (Efforts 3
   and 4)
@@ -216,12 +258,17 @@ the code before it relies on them.
 ### Pre-merge additions
 
 - **Graduate to Key Decisions:** the faction holder and the deletion of `engine/tag`
-  (effect-mutation); the opponent's faction bucket on rolls, which replaces the
+  (effect-mutation); rule values and references live in the entry, not in engine
+  code (effect-mutation, Decision 7); the opponent's faction bucket on rolls, which replaces the
   "never the opponent's faction bucket" decision, and the nil-collector roll
   (hooks); tag IDs held by factions, `settings.toml` and the government role flag
   (persistence); tag names resolved from the rulebook (narrative-digest).
 - **`planned-work.md`:** close `B.042`, `F.010` and `R.023` (D-2, D-3, D-16). Add the
-  follow-on row from Decision 2. Remove A.001.7.
+  follow-on row from Decision 2, and the registrar `faction`-scope sweep audit
+  (R-3). Remove A.001.7.
+- **Graduate to Key Decisions (from R-1 and R-2):** effects blind to their holder
+  and scope deciding the holder (effect-mutation, hooks); the tie and asset-cost
+  walks (hooks).
 - **Arc plan:** A.001.5's tag pass is no longer gated.
 
 ## Out of Scope
@@ -238,13 +285,16 @@ the code before it relies on them.
 
 ### Effort 1 — Holder foundation
 
-**Scope:** discovery Design Summary, Effort 1. Tag IDs become `SWN-T-001` to
-`SWN-T-020`, and factions hold IDs (D-20); the tag record accepts `[[effects]]`;
-`Accepts` names its holders; the faction holder registers at `FactionScope` and
-checks at fire time that the faction still holds the tag (Decision 5); the four Go
-handlers become data with `B.042`'s owner filter (D-2); `government = true` replaces
-`domain.TagPlanetaryGovernment`; the digest and Manage detail read names from the
-rulebook (Decision 4); `engine/tag` is deleted (D-14); sandbox re-seed (D-4).
+**Scope:** discovery Design Summary, Effort 1, as amended by R-1 and R-2. Tag IDs
+become `SWN-T-001` to `SWN-T-020`, and factions hold IDs (D-20); the tag record
+accepts `[[effects]]`; every registrar signs up and checks at fire time through
+`effect.Holder`, and scope decides which holder an entry may have (R-1); a tag's
+hooks register at `FactionScope` and check that the faction still holds the tag;
+the opponent's faction bucket on rolls, the phase routes over held tags, and the
+tie and asset-cost walks (R-2); the four Go handlers become data with `B.042`'s
+owner filter (D-2); `government = true` replaces `domain.TagPlanetaryGovernment`;
+the digest and Manage detail read names from the rulebook (Decision 4);
+`engine/tag` is deleted (D-14); sandbox-claude re-seed (D-4).
 
 **Depends on:** nothing in this initiative.
 
@@ -253,12 +303,12 @@ and the holder are separate seams.
 
 ### Effort 2 — Bonus dice and simple grants
 
-**Scope:** discovery Design Summary, Effort 2. `bonus_die` filters for the defense
-phase, the asset's tech level, the `homeworld` scope and the active goal's target
-world (D-5); the roll dispatcher reads the opponent's faction bucket, and the
-`rollScopes` fence-sign goes; Mercenary Group through `grant_movement` at a faction
-holder; Secretive through `apply_stealth` at `on_purchase`, with `FirePurchase`
-reading the buyer's tags (D-12).
+**Scope:** discovery Design Summary, Effort 2, as amended by R-2. `bonus_die`
+filters for the defense phase, the asset's tech level, the `homeworld` scope and the
+active goal's target world (D-5); Mercenary Group through `grant_movement` with a
+self-move mode, which lifts its tag refusal (Effort 1 Decision 2); Secretive through
+`apply_stealth` at `on_purchase` with `scope = "faction"` (D-12). `FirePurchase`
+already reads the buyer's tags (Effort 1).
 
 **Depends on:** Effort 1.
 

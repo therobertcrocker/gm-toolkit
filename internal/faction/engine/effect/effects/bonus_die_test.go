@@ -62,7 +62,7 @@ func registerBonusDie(factionState *state.FactionState, assetID string, def *dom
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialBonusDie].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets[assetID], Def: def, Entry: entry, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets[assetID], Def: def}, Entry: entry, Registry: registry,
 	})
 	return registry
 }
@@ -164,4 +164,58 @@ func TestBonusDie_EndToEndThroughDispatcher(t *testing.T) {
 			t.Errorf("Sum = %d, selections = %d; want %d and 0", result.Sum, collector.selections, 3+beta.Cunning)
 		}
 	})
+}
+
+func TestBonusDie_TagHolderOffersAFromTagDieOncePerTurn(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-020"}}
+	beta := &domain.Faction{ID: "beta"}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": beta}}
+	entry := bonusDieEntry(domain.EffectFilters{
+		Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+		Attribute: domain.StatForce, Phases: []domain.EffectRollPhase{domain.RollPhaseAttack},
+	}, 1)
+	entry.Gates.OncePer = domain.OncePerOwnerFaction
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialBonusDie].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-020", Name: "Warlike"}}, Entry: entry, Registry: registry,
+	})
+	hook := registry.RollModifiersAt(hooks.FactionScope("alpha"))[0].Hook
+	attack := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Force", World: "Krylos"}
+
+	offers := hook.OfferModifiers(attack, factionState, nil)
+	if len(offers) != 1 || !offers[0].FromTag || offers[0].Source != "Warlike" || offers[0].BudgetKey != "effect:bonus_die:own_roll:SWN-T-020" {
+		t.Fatalf("offers = %+v, want one FromTag Warlike offer with the tag's budget key", offers)
+	}
+
+	collector := &rollCollector{accept: true}
+	first := dispatch.RollWithHooks(attack, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &seqRoller{values: []int{2, 9}}, alpha, factionState, nil)
+	second := dispatch.RollWithHooks(attack, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &seqRoller{values: []int{2}}, alpha, factionState, nil)
+	if first.Sum != 9 || second.Sum != 2 {
+		t.Errorf("sums = %d, %d; want 9 (die taken) then 2 (spent for the turn)", first.Sum, second.Sum)
+	}
+
+	alpha.Tags = nil
+	if offers := hook.OfferModifiers(attack, factionState, nil); len(offers) != 0 {
+		t.Errorf("offers after the tag is dropped = %+v, want none", offers)
+	}
+}
+
+func TestBonusDie_TagReachesNoRivalRollAgainstItsOwner(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-020"}}
+	beta := &domain.Faction{ID: "beta"}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": beta}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialBonusDie].Register(effect.RegisterContext{
+		Holder:   effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-020", Name: "Warlike"}},
+		Entry:    bonusDieEntry(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction}, 1),
+		Registry: registry,
+	})
+	collector := &rollCollector{accept: true}
+	betaAttacks := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, Attribute: "Force", World: "Krylos"}
+
+	result := dispatch.RollWithHooks(betaAttacks, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &seqRoller{values: []int{3}}, beta, factionState, nil)
+
+	if result.Sum != 3 || collector.selections != 0 {
+		t.Errorf("Sum = %d, selections = %d; want 3 and 0: alpha's tag is read but does not serve beta", result.Sum, collector.selections)
+	}
 }

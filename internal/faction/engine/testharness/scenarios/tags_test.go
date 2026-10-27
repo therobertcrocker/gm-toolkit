@@ -15,7 +15,7 @@ import (
 func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-016"}}
+	alpha.Tags = []string{"SWN-T-016"}
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
@@ -50,8 +50,8 @@ func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	}
 
 	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
-	if _, ok := testharness.FindMutationByTypeAndCause(records, "coin_delta", "scavengers"); !ok {
-		t.Error("expected coin_delta with cause=scavengers in history")
+	if _, ok := testharness.FindMutationByTypeAndCause(records, "coin_delta", "coin_gain"); !ok {
+		t.Error("expected coin_delta with cause=coin_gain in history")
 	}
 }
 
@@ -88,8 +88,8 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 	}
 
 	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
-	if _, ok := testharness.FindMutationByTypeAndCause(records, "coin_delta", "scavengers"); ok {
-		t.Error("expected no coin_delta with cause=scavengers when Scavengers tag is absent")
+	if _, ok := testharness.FindMutationByTypeAndCause(records, "coin_delta", "coin_gain"); ok {
+		t.Error("expected no coin_delta with cause=coin_gain when Scavengers tag is absent")
 	}
 }
 
@@ -107,7 +107,7 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 1, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-020"}}
+	alpha.Tags = []string{"SWN-T-020"}
 	h.AddFaction("beta", "Tartarus", 4, 3, 2)
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{2, 9, 5, 3}}
@@ -140,9 +140,10 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 	testharness.CheckStep(t, "beta asset destroyed by Warlike-boosted attack", len(h.FactionState.Factions["beta"].Assets) == 0,
 		"beta should have no assets after attack")
 
+	const warlikeBudget = "effect:bonus_die:own_roll:SWN-T-020"
 	budgets := h.FactionState.Factions["alpha"].HookBudgets
-	testharness.CheckStep(t, "Warlike budget consumed once", budgets["tag:Warlike"] == 1,
-		fmt.Sprintf("HookBudgets[tag:Warlike] = %d, want 1", budgets["tag:Warlike"]))
+	testharness.CheckStep(t, "Warlike budget consumed once", budgets[warlikeBudget] == 1,
+		fmt.Sprintf("HookBudgets[%s] = %d, want 1", warlikeBudget, budgets[warlikeBudget]))
 }
 
 // --- scenario N+2: Fanatical tag — auto-reroll 1s ---
@@ -157,7 +158,7 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 func TestFanatical_RerollsOnesInAttack(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-005"}}
+	alpha.Tags = []string{"SWN-T-005"}
 	h.AddFaction("beta", "Tartarus", 2, 3, 2)
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{1, 9, 6, 3}}
@@ -203,7 +204,7 @@ func TestFanatical_RerollsOnesInAttack(t *testing.T) {
 func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 1, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-005"}}
+	alpha.Tags = []string{"SWN-T-005"}
 	h.AddFaction("beta", "Tartarus", 4, 3, 2)
 
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{6, 3, 3}}
@@ -251,7 +252,7 @@ func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
 func TestPreceptorArchive_ReducesCostOnTL4Asset(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 2, 3, 2)
-	alpha.Tags = []*domain.Tag{{ID: "T-013"}}
+	alpha.Tags = []string{"SWN-T-013"}
 	alpha.Coin = 4
 
 	h.Collector.SelectActionFn = func(_ *domain.Faction, available []action.Action) (action.Action, error) {

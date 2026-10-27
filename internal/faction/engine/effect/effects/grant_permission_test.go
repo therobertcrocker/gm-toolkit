@@ -13,7 +13,7 @@ func registerPopularMovement(t *testing.T, owner *domain.Faction, movement *doma
 	t.Helper()
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialGrantPermission].Register(effect.RegisterContext{
-		Faction: owner, Asset: movement, Def: &domain.AssetDefinition{ID: "SWN-C7-001"}, Registry: registry,
+		Holder: effect.Holder{Faction: owner, Asset: movement, Def: &domain.AssetDefinition{ID: "SWN-C7-001"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerPermissionQuery,
 			Effect:  domain.SpecialGrantPermission,

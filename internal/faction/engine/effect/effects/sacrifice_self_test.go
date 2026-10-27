@@ -32,7 +32,7 @@ func falseFrontOffer(t *testing.T, factionState *state.FactionState, ctx hooks.L
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialSacrificeSelf].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["ff"], Def: &domain.AssetDefinition{ID: "SWN-C1-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["ff"], Def: &domain.AssetDefinition{ID: "SWN-C1-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialSacrificeSelf,

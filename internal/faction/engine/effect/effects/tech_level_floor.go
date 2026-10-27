@@ -5,7 +5,6 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 )
 
 // techLevelFloorRegistrar reads owner = "own" as "the owner is buying", scope =
@@ -24,11 +23,11 @@ var techLevelFloorRegistrar = effect.Registrar{
 
 func registerTechLevelFloor(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterWorldTechLevelModifier(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialTechLevelFloor)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialTechLevelFloor),
 		&techLevelFloorModifier{
-			owner:      ctx.Faction,
-			assetID:    ctx.Asset.ID,
+			owner:      ctx.Holder.Faction,
+			holder:     refOf(ctx.Holder),
 			scope:      ctx.Entry.Filters.Scope,
 			categories: ctx.Entry.Filters.Categories,
 			level:      ctx.Entry.TechLevelFloor.Level,
@@ -40,15 +39,15 @@ func registerTechLevelFloor(ctx effect.RegisterContext) {
 // FactionState (Decision Record 19).
 type techLevelFloorModifier struct {
 	owner      *domain.Faction
-	assetID    string
+	holder     holderRef
 	scope      domain.EffectScope
 	categories []domain.FactionStat
 	level      int
 }
 
 func (modifier *techLevelFloorModifier) ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int {
-	asset := modifier.owner.Assets[modifier.assetID]
-	if !active(asset) || faction.ID != modifier.owner.ID {
+	asset, live := modifier.holder.liveIn(modifier.owner)
+	if !live || faction.ID != modifier.owner.ID {
 		return baseTL
 	}
 	if modifier.scope == domain.ScopeWorld && asset.Location.WorldID != world {

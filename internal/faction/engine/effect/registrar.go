@@ -25,9 +25,17 @@ type Registrar struct {
 	Register func(RegisterContext)
 	Fire     func(FireContext) []domain.Mutation
 	Matchup  func(MatchupContext) MatchupOutcome
-	Validate func(domain.EffectDefinition) error
+	Validate func(domain.EffectDefinition, HolderKind) error
 	Targets  func(TargetContext) []*domain.Asset
 }
+
+// HolderKind is what declared an entry, as engine construction checks it.
+type HolderKind int
+
+const (
+	HolderAsset HolderKind = iota
+	HolderTag
+)
 
 type Accepts struct {
 	Owners  []domain.EffectOwner
@@ -36,23 +44,64 @@ type Accepts struct {
 	Gates   []domain.EffectGateName
 }
 
+// Holder is who declared an [[effects]] entry: an asset through its definition,
+// or a faction through a tag (Tag set, Asset and Def nil). A registrar reads its
+// holder only through this value, so one registrar serves both. A quality's
+// purchase has a Def and no Asset.
+type Holder struct {
+	Faction *domain.Faction
+	Asset   *domain.Asset
+	Def     *domain.AssetDefinition
+	Tag     *domain.Tag
+}
+
+// ID names the source in a hook ID and a budget key: the definition ID, or the
+// tag ID.
+func (holder Holder) ID() string {
+	if holder.Tag != nil {
+		return holder.Tag.ID
+	}
+	return holder.Def.ID
+}
+
+// Name is the source's display name, for an offer's Source.
+func (holder Holder) Name() string {
+	if holder.Tag != nil {
+		return holder.Tag.Name
+	}
+	return holder.Def.Name
+}
+
+// Scope is the registry bucket the holder's hooks go in: its asset's, or its
+// faction's for a tag.
+func (holder Holder) Scope() hooks.Scope {
+	if holder.Tag != nil {
+		return hooks.FactionScope(holder.Faction.ID)
+	}
+	return hooks.AssetScope(holder.Faction.ID, holder.Asset.ID)
+}
+
+// HookID names a registered hook for diagnostics.
+func (holder Holder) HookID(effectName domain.SpecialEffectType) string {
+	return string(effectName) + ":" + holder.ID()
+}
+
 // RegisterContext carries Roller because a Cat 3 reactor's OnMutations takes none;
 // a reactor that rolls dice keeps this one.
 type RegisterContext struct {
-	Faction  *domain.Faction
-	Asset    *domain.Asset
-	Def      *domain.AssetDefinition
+	Holder   Holder
 	Entry    domain.EffectDefinition
 	Registry *hooks.Registry
 	Roller   domain.Roller
 }
 
 // FireContext carries FactionState because a phase effect may reach other
-// factions' assets (Panopticon Matrix tests every rival on its world).
+// factions' assets (Panopticon Matrix tests every rival on its world). Asset is
+// the subject: the bought asset, a quality's target, or at turn start the
+// holder's own asset.
 type FireContext struct {
-	Faction      *domain.Faction
+	Holder       Holder
 	Asset        *domain.Asset
-	Def          *domain.AssetDefinition
 	Entry        domain.EffectDefinition
 	Roller       domain.Roller
 	FactionState *state.FactionState
@@ -68,12 +117,12 @@ type TargetContext struct {
 	Rulebook *rulebook.Rulebook
 }
 
-// MatchupContext is one matchup of the Attack action, seen from the declaring
-// asset: its attacker for own_attack, its defender for own_defense_win.
+// MatchupContext is one matchup of the Attack action, seen from one side. Asset is
+// that side's fighting asset: its attacker for own_attack, its defender for
+// own_defense_win. Holder declared the entry.
 type MatchupContext struct {
-	Faction       *domain.Faction
+	Holder        Holder
 	Asset         *domain.Asset
-	Def           *domain.AssetDefinition
 	Entry         domain.EffectDefinition
 	Opponent      *domain.Faction
 	OpponentAsset *domain.Asset
@@ -116,9 +165,7 @@ func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.
 		}
 		// deliberate: no nil check on Register, because RegisterEffectsList rejects a hook-route entry without one.
 		handler.registrars[entry.Effect].Register(RegisterContext{
-			Faction:  faction,
-			Asset:    asset,
-			Def:      handler.def,
+			Holder:   Holder{Faction: faction, Asset: asset, Def: handler.def},
 			Entry:    entry,
 			Registry: hookRegistry,
 			Roller:   roller,
@@ -126,7 +173,7 @@ func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.
 	}
 }
 
-func (e *EffectsEngine) validateEntry(entry domain.EffectDefinition) error {
+func (e *EffectsEngine) validateEntry(entry domain.EffectDefinition, holder HolderKind) error {
 	registrar, ok := e.registrars[entry.Effect]
 	if !ok {
 		return fmt.Errorf("effect %q has no registrar", entry.Effect)
@@ -155,6 +202,13 @@ func (e *EffectsEngine) validateEntry(entry domain.EffectDefinition) error {
 	if !slices.Contains(accepts.Scopes, entry.Filters.Scope) {
 		return fmt.Errorf("effect %q does not accept scope %q for trigger %q", entry.Effect, entry.Filters.Scope, entry.Trigger)
 	}
+	// deliberate: scope decides the holder, not a holders list, because self and world measure from the declaring asset and a tag has none (Effort 1 Decision 2).
+	if holder == HolderTag && (entry.Filters.Scope == domain.ScopeSelf || entry.Filters.Scope == domain.ScopeWorld) {
+		return fmt.Errorf("effect %q: a tag has no asset, so scope %q cannot apply", entry.Effect, entry.Filters.Scope)
+	}
+	if holder == HolderTag && entry.Gates.OncePer == domain.OncePerAsset {
+		return fmt.Errorf("effect %q: a tag has no asset, so once_per %q cannot apply", entry.Effect, domain.OncePerAsset)
+	}
 	for _, filter := range entry.Filters.Used() {
 		if !slices.Contains(accepts.Filters, filter) {
 			return fmt.Errorf("effect %q does not accept filter %q for trigger %q", entry.Effect, filter, entry.Trigger)
@@ -166,7 +220,7 @@ func (e *EffectsEngine) validateEntry(entry domain.EffectDefinition) error {
 		}
 	}
 	if registrar.Validate != nil {
-		if err := registrar.Validate(entry); err != nil {
+		if err := registrar.Validate(entry, holder); err != nil {
 			return fmt.Errorf("effect %q: %w", entry.Effect, err)
 		}
 	}

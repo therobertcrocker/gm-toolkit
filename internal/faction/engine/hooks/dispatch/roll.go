@@ -11,9 +11,9 @@ import (
 
 // RollWithHooks executes a dice roll with Cat 1 (RollModifier) hooks applied
 // before rolling and Cat 2 (RollResultHook) hooks applied after. It consults the
-// buckets rollScopes lists, so an opponent's asset hooks and hooks on the roll's
-// world reach the roll. Each offer and directive is stamped with the faction that
-// registered it, and its budget is read and spent on that faction.
+// buckets rollScopes lists, so the opponent's faction and asset hooks and hooks on
+// the roll's world reach the roll. Each offer and directive is stamped with the
+// faction that registered it, and its budget is read and spent on that faction.
 func RollWithHooks(
 	ctx hooks.RollContext,
 	baseRoll domain.DiceRoll,
@@ -109,12 +109,14 @@ func RollWithHooks(
 }
 
 // rollScopes lists the registry buckets a roll consults, in order: global, the
-// roller's faction, the roller's assets, then the opponent's assets.
-// deliberate: the opponent's faction bucket is left out, not added, because tag hooks register there and assume the roll is their own faction's (Fanatical would reroll the opponent's 1s).
+// roller's faction, the roller's assets, the opponent's faction, then the
+// opponent's assets. Every S hook checks its owner relation itself (rollMatches),
+// so a hook in the opponent's bucket acts only on rolls made against its owner.
 func rollScopes(ctx hooks.RollContext, roller *domain.Faction) []hooks.Scope {
 	scopes := []hooks.Scope{hooks.GlobalScope(), hooks.FactionScope(roller.ID)}
 	scopes = append(scopes, assetScopes(roller, ctx.World, ctx.Asset)...)
 	if ctx.Opponent != nil {
+		scopes = append(scopes, hooks.FactionScope(ctx.Opponent.ID))
 		scopes = append(scopes, assetScopes(ctx.Opponent, ctx.World, ctx.OpponentAsset)...)
 	}
 	return scopes

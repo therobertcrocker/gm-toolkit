@@ -40,7 +40,7 @@ func registerFloor(factionState *state.FactionState, entry domain.EffectDefiniti
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialTechLevelFloor].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["lab"], Def: laboratoryDef, Entry: entry, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["lab"], Def: laboratoryDef}, Entry: entry, Registry: registry,
 	})
 	return registry
 }
@@ -125,5 +125,23 @@ func TestTechLevelFloor_NeverLowers(t *testing.T) {
 	registry := registerFloor(factionState, techLevelFloorEntry(domain.ScopeWorld, 4))
 	if got := alphaTechLevel(factionState, registry, forceAsset, "Tartarus", 5); got != 5 {
 		t.Errorf("tech level = %d, want 5 (a floor never lowers)", got)
+	}
+}
+
+func TestTechLevelFloor_TagHolderRaisesEveryWorldWhileHeld(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-018"}, Assets: map[string]*domain.Asset{}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialTechLevelFloor].Register(effect.RegisterContext{
+		Holder:   effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-018", Name: "Technical Expertise"}},
+		Entry:    techLevelFloorEntry(domain.ScopeFaction, 4),
+		Registry: registry,
+	})
+
+	if got := dispatch.ResolveWorldTechLevel(registry, alpha, forceAsset, "Krylos", 2); got != 4 {
+		t.Errorf("tech level = %d, want 4 while the tag is held", got)
+	}
+	alpha.Tags = nil
+	if got := dispatch.ResolveWorldTechLevel(registry, alpha, forceAsset, "Krylos", 2); got != 2 {
+		t.Errorf("tech level = %d, want 2 after the tag is dropped", got)
 	}
 }

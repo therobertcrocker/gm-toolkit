@@ -24,6 +24,20 @@ func TestNewWithRulebook_ValidatesEffects(t *testing.T) {
 	}
 }
 
+func TestNewWithRulebook_ValidatesTagEffects(t *testing.T) {
+	tag := &domain.Tag{ID: "SWN-T-020", Effects: []domain.EffectDefinition{{
+		Trigger:  domain.TriggerOwnRoll,
+		Effect:   domain.SpecialBonusDie,
+		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Tags: map[string]*domain.Tag{tag.ID: tag}}
+	_, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler))
+	if err == nil || !strings.Contains(err.Error(), `tag "SWN-T-020" effects[0]`) || !strings.Contains(err.Error(), "a tag has no asset") {
+		t.Fatalf("got %v, want a tag validation error naming the entry", err)
+	}
+}
+
 // TestNewWithRulebook_ShippedRulebook catches an authored [[effects]] entry that
 // loads but fails registrar validation, which otherwise surfaces only at runtime.
 func TestNewWithRulebook_ShippedRulebook(t *testing.T) {

@@ -48,6 +48,16 @@ func resolveGoalName(goalID string, rulebook *rulebook.Rulebook) string {
 	return goalID
 }
 
+func resolveTagName(tagID string, rulebook *rulebook.Rulebook) string {
+	if rulebook == nil {
+		return tagID
+	}
+	if tag, ok := rulebook.Tags[tagID]; ok {
+		return tag.Name
+	}
+	return tagID
+}
+
 func resolveBaseLocation(factionID, baseID string, factionState *state.FactionState) string {
 	if factionState == nil {
 		return ""

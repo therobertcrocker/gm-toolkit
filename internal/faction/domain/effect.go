@@ -30,6 +30,8 @@ const (
 	SpecialGrantPermission    SpecialEffectType = "grant_permission"
 	SpecialWithdrawPermission SpecialEffectType = "withdraw_permission"
 	SpecialLockOut            SpecialEffectType = "lock_out"
+	SpecialLoseTies           SpecialEffectType = "lose_ties"
+	SpecialCostDiscount       SpecialEffectType = "cost_discount"
 )
 
 type EffectTrigger string
@@ -53,6 +55,8 @@ const (
 	TriggerLethalDamage           EffectTrigger = "lethal_damage"
 	TriggerPermissionQuery        EffectTrigger = "permission_query"
 	TriggerPermissionGranted      EffectTrigger = "permission_granted"
+	TriggerAttackTie              EffectTrigger = "attack_tie"
+	TriggerAssetDestroyed         EffectTrigger = "asset_destroyed"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -78,12 +82,14 @@ const (
 type EffectFilterName string
 
 const (
-	FilterAttribute EffectFilterName = "attribute"
-	FilterPhase     EffectFilterName = "phase"
-	FilterAction    EffectFilterName = "action"
-	FilterAssetType EffectFilterName = "asset_type"
-	FilterCategory  EffectFilterName = "category"
-	FilterStealthy  EffectFilterName = "stealthy"
+	FilterAttribute    EffectFilterName = "attribute"
+	FilterPhase        EffectFilterName = "phase"
+	FilterAction       EffectFilterName = "action"
+	FilterAssetType    EffectFilterName = "asset_type"
+	FilterCategory     EffectFilterName = "category"
+	FilterStealthy     EffectFilterName = "stealthy"
+	FilterMinTechLevel EffectFilterName = "min_tech_level"
+	FilterCausedBy     EffectFilterName = "caused_by"
 )
 
 type EffectGateName string
@@ -140,14 +146,16 @@ const (
 // absent filter. Stealthy is a pointer because "stealthy = false" is a real
 // filter, distinct from no filter.
 type EffectFilters struct {
-	Owner      EffectOwner
-	Scope      EffectScope
-	Attribute  FactionStat
-	Phases     []EffectRollPhase
-	Action     string
-	AssetTypes []AssetType
-	Categories []FactionStat
-	Stealthy   *bool
+	Owner        EffectOwner
+	Scope        EffectScope
+	Attribute    FactionStat
+	Phases       []EffectRollPhase
+	Action       string
+	AssetTypes   []AssetType
+	Categories   []FactionStat
+	Stealthy     *bool
+	MinTechLevel int
+	CausedBy     EffectOwner
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
@@ -169,6 +177,12 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	}
 	if filters.Stealthy != nil {
 		present = append(present, FilterStealthy)
+	}
+	if filters.MinTechLevel > 0 {
+		present = append(present, FilterMinTechLevel)
+	}
+	if filters.CausedBy != "" {
+		present = append(present, FilterCausedBy)
 	}
 	return present
 }
@@ -215,8 +229,11 @@ type BonusDieParams struct {
 	Count int
 }
 
+// RerollParams picks the dice a reroll targets: the Dice lowest (a forced
+// reroll's highest), or every die showing Result. Exactly one is set.
 type RerollParams struct {
 	Dice     int
+	Result   int
 	Elective bool
 }
 
@@ -245,6 +262,10 @@ type DiscountRepairParams struct {
 	Amount int
 }
 
+type CostDiscountParams struct {
+	Amount int
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -264,4 +285,5 @@ type EffectDefinition struct {
 	GrantMovement  *GrantMovementParams
 	CaptureTarget  *CaptureTargetParams
 	DiscountRepair *DiscountRepairParams
+	CostDiscount   *CostDiscountParams
 }

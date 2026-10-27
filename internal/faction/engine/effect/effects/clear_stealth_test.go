@@ -55,7 +55,7 @@ func tripwireReactor(t *testing.T, factionState *state.FactionState, roller doma
 	alpha := factionState.Factions["alpha"]
 	stealthy := true
 	effects.Registrars()[domain.SpecialClearStealth].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C4-003"}, Registry: registry, Roller: roller,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C4-003"}}, Registry: registry, Roller: roller,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerStealthArrival,
 			Effect:  domain.SpecialClearStealth,
@@ -237,7 +237,7 @@ func TestClearStealth_OpenAssetIgnoredWithoutStealthyFilter(t *testing.T) {
 		roller := &seqRoller{}
 		registry := hooks.NewRegistry()
 		effects.Registrars()[domain.SpecialClearStealth].Register(effect.RegisterContext{
-			Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C4-003"}, Registry: registry, Roller: roller,
+			Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C4-003"}}, Registry: registry, Roller: roller,
 			Entry: domain.EffectDefinition{Trigger: domain.TriggerStealthArrival, Effect: domain.SpecialClearStealth, Filters: unfiltered},
 		})
 		reactor := registry.MutationReactorsForAsset("alpha", "cells")[0].Hook
@@ -253,7 +253,7 @@ func TestClearStealth_OpenAssetIgnoredWithoutStealthyFilter(t *testing.T) {
 		alpha := factionState.Factions["alpha"]
 		roller := &seqRoller{}
 		got := effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{
-			Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}, Roller: roller, FactionState: factionState,
+			Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}}, Asset: alpha.Assets["cells"], Roller: roller, FactionState: factionState,
 			Entry: domain.EffectDefinition{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialClearStealth, Filters: unfiltered, Gates: domain.EffectGates{Contest: matrixContest}},
 		})
 		if len(got) != 0 {
@@ -276,7 +276,7 @@ func fireMatrix(factionState *state.FactionState, contest *domain.EffectContest,
 	alpha := factionState.Factions["alpha"]
 	stealthy := true
 	return effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{
-		Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}, Roller: roller, FactionState: factionState,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}}, Asset: alpha.Assets["cells"], Roller: roller, FactionState: factionState,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerTurnStart,
 			Effect:  domain.SpecialClearStealth,

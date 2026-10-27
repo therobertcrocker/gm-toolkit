@@ -22,16 +22,17 @@ const (
 	ScaleHegemon FactionScale = "hegemon"
 )
 
+// Tag is one rulebook tag. Government marks the tag a faction holds while it
+// governs at least one world; the government record says which (A.001.6
+// overview Decision 10).
 type Tag struct {
-	ID          string `toml:"id"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	Effect      string `toml:"effect"`
+	ID          string
+	Name        string
+	Description string
+	Effect      string
+	Government  bool
+	Effects     []EffectDefinition
 }
-
-// TagPlanetaryGovernment marks a faction that governs at least one world; the
-// government record says which (A.001.6 overview Decision 10).
-const TagPlanetaryGovernment = "T-011"
 
 type Goal struct {
 	ID          string `toml:"id"`
@@ -62,7 +63,7 @@ type Faction struct {
 	Coin                    int               `toml:"coin"`
 	XP                      int               `toml:"xp"`
 	Homeworld               Location          `toml:"homeworld"`
-	Tags                    []*Tag            `toml:"tags"`
+	Tags                    []string          `toml:"tags"`
 	ActiveGoal              *ActiveGoal       `toml:"active_goal"`
 	Assets                  map[string]*Asset `toml:"assets"`
 	Bases                   []*Base           `toml:"bases"`
@@ -72,7 +73,7 @@ type Faction struct {
 
 // HasTag reports whether the faction holds the tag with ID tagID.
 func (faction *Faction) HasTag(tagID string) bool {
-	return slices.ContainsFunc(faction.Tags, func(tag *Tag) bool { return tag.ID == tagID })
+	return slices.Contains(faction.Tags, tagID)
 }
 
 // Clone deep-copies a faction so a caller can apply mutations to the copy without
@@ -93,13 +94,7 @@ func (faction *Faction) Clone() *Faction {
 			clone.Bases[i] = &baseCopy
 		}
 	}
-	if faction.Tags != nil {
-		clone.Tags = make([]*Tag, len(faction.Tags))
-		for i, tag := range faction.Tags {
-			tagCopy := *tag
-			clone.Tags[i] = &tagCopy
-		}
-	}
+	clone.Tags = slices.Clone(faction.Tags)
 	if faction.ActiveGoal != nil {
 		goalCopy := *faction.ActiveGoal
 		clone.ActiveGoal = &goalCopy
@@ -200,7 +195,7 @@ func NewFaction(
 	id, name string,
 	scale FactionScale,
 	primaryStat, secondaryStat, tertiaryStat FactionStat,
-	tags []*Tag,
+	tagIDs []string,
 	goal *Goal,
 	homeworld Location,
 	assets []*Asset,
@@ -216,7 +211,7 @@ func NewFaction(
 		ID:        id,
 		Name:      name,
 		Scale:     scale,
-		Tags:      tags,
+		Tags:      tagIDs,
 		Coin:      coin,
 		Homeworld: homeworld,
 		Assets:    make(map[string]*Asset, len(assets)),

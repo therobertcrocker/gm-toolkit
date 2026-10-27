@@ -1094,7 +1094,7 @@ func TestAttack_FalseFrontSpentOnce(t *testing.T) {
 	f2.Assets["ff"] = falseFront
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialSacrificeSelf].Register(effect.RegisterContext{
-		Faction: f2, Asset: falseFront, Def: &domain.AssetDefinition{ID: "SWN-C1-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: f2, Asset: falseFront, Def: &domain.AssetDefinition{ID: "SWN-C1-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialSacrificeSelf,
@@ -1172,7 +1172,7 @@ func TestAttack_InterceptedDefenderCountersOnTie(t *testing.T) {
 // as the SWN data declares it.
 func registerSeizeTarget(registry *hooks.Registry, faction *domain.Faction, asset *domain.Asset) {
 	effects.Registrars()[domain.SpecialSeizeTarget].Register(effect.RegisterContext{
-		Faction: faction, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-W7-002"}, Registry: registry,
+		Holder: effect.Holder{Faction: faction, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-W7-002"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialSeizeTarget,
@@ -1193,7 +1193,7 @@ func TestAttack_BoltholesBeforeHostileTakeover(t *testing.T) {
 	f2.Assets["bolt"] = boltholes
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialShelterAsset].Register(effect.RegisterContext{
-		Faction: f2, Asset: boltholes, Def: &domain.AssetDefinition{ID: "SWN-C5-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: f2, Asset: boltholes, Def: &domain.AssetDefinition{ID: "SWN-C5-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialShelterAsset,

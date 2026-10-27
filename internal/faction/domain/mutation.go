@@ -250,22 +250,21 @@ type HomeworldChanged struct {
 
 func (m HomeworldChanged) Type() string { return "homeworld_changed" }
 
-// TagAdded grants a tag to a faction. The full Tag is embedded so Apply does
-// not need a Rulebook lookup.
+// TagAdded grants a tag to a faction. A reader that needs the name reads the
+// rulebook (A.001.7 overview Decision 4).
 type TagAdded struct {
 	FactionID         string `json:"faction_id"`
-	Tag               Tag    `json:"tag"`
+	TagID             string `json:"tag_id"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
 func (m TagAdded) Type() string { return "tag_added" }
 
-// TagRemoved takes one tag from a faction. The full Tag rides along, as on
-// TagAdded, so the digest can name it after the faction no longer holds it.
+// TagRemoved takes one tag from a faction.
 type TagRemoved struct {
 	FactionID         string `json:"faction_id"`
-	Tag               Tag    `json:"tag"`
+	TagID             string `json:"tag_id"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }

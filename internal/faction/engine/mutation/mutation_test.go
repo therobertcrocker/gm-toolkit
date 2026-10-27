@@ -319,19 +319,31 @@ func TestMutationEngine_WorldGovernmentChanged(t *testing.T) {
 
 func TestMutationEngine_TagRemoved(t *testing.T) {
 	s := newMutationTestState()
-	s.Factions["f1"].Tags = []*domain.Tag{{ID: "T-001"}, {ID: domain.TagPlanetaryGovernment}}
+	s.Factions["f1"].Tags = []string{"SWN-T-001", "SWN-T-011"}
 	me := New(slog.New(slog.DiscardHandler))
-	removal := domain.TagRemoved{FactionID: "f1", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment}}
+	removal := domain.TagRemoved{FactionID: "f1", TagID: "SWN-T-011"}
 
 	if err := me.Apply(s, []domain.Mutation{removal}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	if tags := s.Factions["f1"].Tags; len(tags) != 1 || tags[0].ID != "T-001" {
-		t.Errorf("Tags = %v, want [T-001]", tags)
+	if tags := s.Factions["f1"].Tags; len(tags) != 1 || tags[0] != "SWN-T-001" {
+		t.Errorf("Tags = %v, want [SWN-T-001]", tags)
 	}
 	err := me.Apply(s, []domain.Mutation{removal}, slog.New(slog.DiscardHandler))
-	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != domain.TagPlanetaryGovernment {
-		t.Errorf("removing a tag not held = %v, want one miss naming %s", err, domain.TagPlanetaryGovernment)
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != "SWN-T-011" {
+		t.Errorf("removing a tag not held = %v, want one miss naming SWN-T-011", err)
+	}
+}
+
+func TestMutationEngine_TagAdded(t *testing.T) {
+	s := newMutationTestState()
+	me := New(slog.New(slog.DiscardHandler))
+
+	if err := me.Apply(s, []domain.Mutation{domain.TagAdded{FactionID: "f1", TagID: "SWN-T-020"}}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if !s.Factions["f1"].HasTag("SWN-T-020") {
+		t.Errorf("Tags = %v, want SWN-T-020 held", s.Factions["f1"].Tags)
 	}
 }
 

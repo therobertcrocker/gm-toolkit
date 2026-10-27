@@ -18,15 +18,17 @@ var grantMovementRegistrar = effect.Registrar{
 		},
 	},
 	Register: registerGrantMovement,
+	// deliberate: refuse a tag, not accept it, because the range is measured from the declaring asset; Effort 2's self-move mode lifts this (Effort 1 Decision 2).
+	Validate: refuseTagHolder,
 }
 
 func registerGrantMovement(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterAssetMovementGranter(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialGrantMovement)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialGrantMovement),
 		&movementGranter{
-			owner:    ctx.Faction,
-			assetID:  ctx.Asset.ID,
+			owner:    ctx.Holder.Faction,
+			holder:   refOf(ctx.Holder),
 			relocate: ctx.Entry.GrantMovement.Relocate,
 		},
 	)
@@ -36,7 +38,7 @@ func registerGrantMovement(ctx effect.RegisterContext) {
 // Record 19), so a grant from an asset removed or made inactive mid-cycle lapses.
 type movementGranter struct {
 	owner    *domain.Faction
-	assetID  string
+	holder   holderRef
 	relocate domain.RelocateParams
 }
 
@@ -44,8 +46,8 @@ func (granter *movementGranter) GrantMovementAbilities(faction *domain.Faction) 
 	if faction.ID != granter.owner.ID {
 		return nil
 	}
-	asset := granter.owner.Assets[granter.assetID]
-	if !active(asset) {
+	asset, live := granter.holder.liveIn(granter.owner)
+	if !live {
 		return nil
 	}
 	return []hooks.MovementAbility{{Source: asset, Relocate: granter.relocate}}

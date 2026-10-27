@@ -26,12 +26,10 @@ var restoreAssetRegistrar = effect.Registrar{
 
 func registerRestoreAsset(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterLethalInterceptor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialRestoreAsset)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialRestoreAsset),
 		&restoreAssetInterceptor{
-			factionID:  ctx.Faction.ID,
-			assetID:    ctx.Asset.ID,
-			defID:      ctx.Def.ID,
+			holder:     refOf(ctx.Holder),
 			assetTypes: ctx.Entry.Filters.AssetTypes,
 			oncePer:    ctx.Entry.Gates.OncePer,
 		},
@@ -39,16 +37,14 @@ func registerRestoreAsset(ctx effect.RegisterContext) {
 }
 
 type restoreAssetInterceptor struct {
-	factionID  string
-	assetID    string
-	defID      string
+	holder     holderRef
 	assetTypes []domain.AssetType
 	oncePer    domain.OncePerKey
 }
 
 func (interceptor *restoreAssetInterceptor) OfferInterception(ctx hooks.LethalContext) *hooks.Interception {
-	self := liveAsset(ctx.FactionState, interceptor.factionID, interceptor.assetID)
-	if !guardsTarget(self, ctx, interceptor.assetTypes) || ctx.TargetDef == nil {
+	self, live := interceptor.holder.live(ctx.FactionState)
+	if !live || !guardsTarget(self, ctx, interceptor.assetTypes) || ctx.TargetDef == nil {
 		return nil
 	}
 	cause := domain.SpecialRestoreAsset
@@ -56,7 +52,7 @@ func (interceptor *restoreAssetInterceptor) OfferInterception(ctx hooks.LethalCo
 	price := ctx.TargetDef.HalfPrice()
 	budget := ""
 	if interceptor.oncePer != "" {
-		budget = budgetKey(interceptor.oncePer, cause, domain.TriggerLethalDamage, interceptor.defID, self.ID, ctx.Target.OwnerID)
+		budget = budgetKey(interceptor.oncePer, cause, domain.TriggerLethalDamage, interceptor.holder.sourceID, self.ID, ctx.Target.OwnerID)
 	}
 	return &hooks.Interception{
 		Source:    self,

@@ -160,7 +160,7 @@ func (m *Model) synthesize() *domain.Faction {
 		id, m.data.name,
 		m.data.scale,
 		m.data.primaryStat, m.data.secondaryStat, m.data.tertiaryStat,
-		m.data.selectedTags,
+		tagIDs(m.data.selectedTags),
 		m.data.selectedGoal,
 		homeworld,
 		assets,
@@ -293,7 +293,7 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 }
 
 func pickedGovernmentTag(tags []*domain.Tag) bool {
-	return slices.ContainsFunc(tags, func(tag *domain.Tag) bool { return tag.ID == domain.TagPlanetaryGovernment })
+	return slices.ContainsFunc(tags, func(tag *domain.Tag) bool { return tag.Government })
 }
 
 // governableWorldOptions lists the worlds no other faction governs, the homeworld
@@ -374,6 +374,14 @@ func tagsToOptions(tags map[string]*domain.Tag) []huh.Option[*domain.Tag] {
 		options[i] = huh.NewOption(tag.Name, tag)
 	}
 	return options
+}
+
+func tagIDs(tags []*domain.Tag) []string {
+	ids := make([]string, len(tags))
+	for i, tag := range tags {
+		ids[i] = tag.ID
+	}
+	return ids
 }
 
 func goalsToOptions(goals map[string]*domain.Goal) []huh.Option[*domain.Goal] {

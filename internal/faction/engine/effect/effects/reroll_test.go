@@ -54,7 +54,7 @@ func registerBook(factionState *state.FactionState, registry *hooks.Registry, en
 	alpha := factionState.Factions["alpha"]
 	for _, entry := range entries {
 		effects.Registrars()[domain.SpecialReroll].Register(effect.RegisterContext{
-			Faction: alpha, Asset: alpha.Assets["bos"], Def: bookOfSecretsDef, Entry: entry, Registry: registry,
+			Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["bos"], Def: bookOfSecretsDef}, Entry: entry, Registry: registry,
 		})
 	}
 	var registered []hooks.RollResultHook
@@ -210,5 +210,34 @@ func TestReroll_NoOncePerGateHasNoBudgetKey(t *testing.T) {
 
 	if len(directive.Indices) != 1 || directive.BudgetKey != "" {
 		t.Errorf("directive = %+v, want one index and an empty BudgetKey", directive)
+	}
+}
+
+func TestReroll_TagHolderRerollsEveryDieShowingTheResult(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-005"}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": {ID: "beta"}}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialReroll].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-005", Name: "Fanatical"}},
+		Entry: domain.EffectDefinition{
+			Trigger: domain.TriggerOwnRoll, Effect: domain.SpecialReroll,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+			Reroll:  &domain.RerollParams{Result: 1},
+		},
+		Registry: registry,
+	})
+	hook := registry.RollResultHooksAt(hooks.FactionScope("alpha"))[0].Hook
+	roll := rollOn(factionState, "alpha", "beta", "Tartarus")
+
+	directive := hook.OnRollResult(roll, hooks.RollResult{Dice: []int{1, 5, 1}}, factionState, nil)
+	if !reflect.DeepEqual(directive.Indices, []int{0, 2}) || directive.Elective || directive.BudgetKey != "" || directive.Source != "Fanatical" {
+		t.Errorf("directive = %+v, want indices [0 2], forced, unlimited, from Fanatical", directive)
+	}
+	if directive := hook.OnRollResult(rollOn(factionState, "beta", "alpha", "Tartarus"), hooks.RollResult{Dice: []int{1}}, factionState, nil); len(directive.Indices) != 0 {
+		t.Errorf("rival's roll: directive = %+v, want none", directive)
+	}
+	alpha.Tags = nil
+	if directive := hook.OnRollResult(roll, hooks.RollResult{Dice: []int{1}}, factionState, nil); len(directive.Indices) != 0 {
+		t.Errorf("dropped tag: directive = %+v, want none", directive)
 	}
 }

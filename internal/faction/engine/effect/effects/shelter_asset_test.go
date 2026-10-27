@@ -43,7 +43,7 @@ func registerBoltholes(factionState *state.FactionState) *hooks.Registry {
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialShelterAsset].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["bolt"], Def: boltholesDef, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["bolt"], Def: boltholesDef}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialShelterAsset,

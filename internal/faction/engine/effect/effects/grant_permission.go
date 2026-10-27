@@ -21,22 +21,22 @@ var grantPermissionRegistrar = effect.Registrar{
 
 func registerGrantPermission(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterPermissionGranter(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialGrantPermission)+":"+ctx.Def.ID,
-		&permissionGranter{owner: ctx.Faction, assetID: ctx.Asset.ID},
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialGrantPermission),
+		&permissionGranter{owner: ctx.Holder.Faction, holder: refOf(ctx.Holder)},
 	)
 }
 
 // permissionGranter holds its owner, not its asset: a Cat 4 hook gets no
 // FactionState (Effort 2 Decision Record 19).
 type permissionGranter struct {
-	owner   *domain.Faction
-	assetID string
+	owner  *domain.Faction
+	holder holderRef
 }
 
 func (granter *permissionGranter) GrantsPermission(query hooks.PermissionQuery) bool {
-	self := granter.owner.Assets[granter.assetID]
-	if !active(self) || query.Requester.ID != granter.owner.ID {
+	self, live := granter.holder.liveIn(granter.owner)
+	if !live || query.Requester.ID != granter.owner.ID {
 		return false
 	}
 	return self.Location.WorldID != "" && self.Location.WorldID == query.WorldID

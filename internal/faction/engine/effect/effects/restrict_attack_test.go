@@ -56,7 +56,7 @@ func restriction(def *domain.AssetDefinition, entry domain.EffectDefinition) (*h
 	alpha := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{asset.ID: asset}}
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialRestrictAttack].Register(effect.RegisterContext{
-		Faction: alpha, Asset: asset, Def: def, Entry: entry, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Entry: entry, Registry: registry,
 	})
 	return registry, asset
 }

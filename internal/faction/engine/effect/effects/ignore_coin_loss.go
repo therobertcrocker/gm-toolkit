@@ -3,7 +3,6 @@ package effects
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -19,40 +18,38 @@ var ignoreCoinLossRegistrar = effect.Registrar{
 		},
 	},
 	Register: registerIgnoreCoinLoss,
+	// deliberate: refuse a tag, not accept it, because only the lowest-ID active copy reacts and a tag has no copies (Effort 1 Decision 2).
+	Validate: refuseTagHolder,
 }
 
 func registerIgnoreCoinLoss(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterMutationReactor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialIgnoreCoinLoss)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialIgnoreCoinLoss),
 		&ignoreCoinLossReactor{
-			ownerFactionID: ctx.Faction.ID,
-			assetID:        ctx.Asset.ID,
-			defID:          ctx.Def.ID,
-			trigger:        ctx.Entry.Trigger,
-			oncePer:        ctx.Entry.Gates.OncePer,
+			holder:  refOf(ctx.Holder),
+			trigger: ctx.Entry.Trigger,
+			oncePer: ctx.Entry.Gates.OncePer,
 		},
 	)
 }
 
 type ignoreCoinLossReactor struct {
-	ownerFactionID string
-	assetID        string
-	defID          string
-	trigger        domain.EffectTrigger
-	oncePer        domain.OncePerKey
+	holder  holderRef
+	trigger domain.EffectTrigger
+	oncePer domain.OncePerKey
 }
 
 // OnMutations absorbs each loss another faction imposed on the owner, one per
 // copy whose budget is unspent, by paying the loss back.
 func (reactor *ignoreCoinLossReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
-	owner := factionState.Factions[reactor.ownerFactionID]
+	owner := factionState.Factions[reactor.holder.factionID]
 	if owner == nil {
 		return nil
 	}
-	copies := activeAssetsOfDefinition(owner, reactor.defID)
+	copies := activeAssetsOfDefinition(owner, reactor.holder.sourceID)
 	// deliberate: only the lowest-ID active copy reacts, for all active copies, because sibling reactors cannot see each other's output in one dispatch round and would absorb the same loss twice.
-	if len(copies) == 0 || copies[0].ID != reactor.assetID {
+	if len(copies) == 0 || copies[0].ID != reactor.holder.assetID {
 		return nil
 	}
 	var extra []domain.Mutation
@@ -63,7 +60,7 @@ func (reactor *ignoreCoinLossReactor) OnMutations(mutations []domain.Mutation, f
 			continue
 		}
 		if reactor.oncePer != "" {
-			for next < len(copies) && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialIgnoreCoinLoss, reactor.trigger, reactor.defID, copies[next].ID, loss.CausedByFactionID)) {
+			for next < len(copies) && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialIgnoreCoinLoss, reactor.trigger, reactor.holder.sourceID, copies[next].ID, loss.CausedByFactionID)) {
 				next++
 			}
 			if next == len(copies) {

@@ -12,7 +12,7 @@ import (
 func buyStealthed(asset *domain.Asset) []domain.Mutation {
 	alpha := &domain.Faction{ID: "alpha"}
 	return effects.Registrars()[domain.SpecialApplyStealth].Fire(effect.FireContext{
-		Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-F5-003"},
+		Holder: effect.Holder{Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-F5-003"}}, Asset: asset,
 		Entry: domain.EffectDefinition{Trigger: domain.TriggerOnPurchase, Effect: domain.SpecialApplyStealth, Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf}},
 	})
 }

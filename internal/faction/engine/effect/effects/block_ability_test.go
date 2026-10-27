@@ -12,9 +12,10 @@ import (
 func TestBlockAbility_PutsNoAbilityOnTheAttackedAsset(t *testing.T) {
 	alpha := &domain.Faction{ID: "alpha"}
 	beta := &domain.Faction{ID: "beta"}
+	saboteurs := activeAsset("saboteurs", "SWN-C2-002")
 	got := effects.Registrars()[domain.SpecialBlockAbility].Matchup(effect.MatchupContext{
-		Faction:       alpha,
-		Asset:         activeAsset("saboteurs", "SWN-C2-002"),
+		Holder:        effect.Holder{Faction: alpha, Asset: saboteurs},
+		Asset:         saboteurs,
 		Opponent:      beta,
 		OpponentAsset: activeAsset("informers", "SWN-C1-002"),
 	})

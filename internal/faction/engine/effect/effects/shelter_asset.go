@@ -28,25 +28,21 @@ var shelterAssetRegistrar = effect.Registrar{
 }
 
 func registerShelterAsset(ctx effect.RegisterContext) {
-	scope := hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID)
-	source := string(domain.SpecialShelterAsset) + ":" + ctx.Def.ID
-	ctx.Registry.RegisterLethalInterceptor(scope, source, &shelterAssetInterceptor{
-		factionID:  ctx.Faction.ID,
-		assetID:    ctx.Asset.ID,
-		assetTypes: ctx.Entry.Filters.AssetTypes,
-	})
-	ctx.Registry.RegisterMutationReactor(scope, source, &shelterLossReactor{assetID: ctx.Asset.ID})
+	scope := ctx.Holder.Scope()
+	source := ctx.Holder.HookID(domain.SpecialShelterAsset)
+	holder := refOf(ctx.Holder)
+	ctx.Registry.RegisterLethalInterceptor(scope, source, &shelterAssetInterceptor{holder: holder, assetTypes: ctx.Entry.Filters.AssetTypes})
+	ctx.Registry.RegisterMutationReactor(scope, source, &shelterLossReactor{holder: holder})
 }
 
 type shelterAssetInterceptor struct {
-	factionID  string
-	assetID    string
+	holder     holderRef
 	assetTypes []domain.AssetType
 }
 
 func (interceptor *shelterAssetInterceptor) OfferInterception(ctx hooks.LethalContext) *hooks.Interception {
-	self := liveAsset(ctx.FactionState, interceptor.factionID, interceptor.assetID)
-	if !guardsTarget(self, ctx, interceptor.assetTypes) {
+	self, live := interceptor.holder.live(ctx.FactionState)
+	if !live || !guardsTarget(self, ctx, interceptor.assetTypes) {
 		return nil
 	}
 	cause := domain.SpecialShelterAsset
@@ -69,17 +65,17 @@ var shelterLossCauses = []string{"attack", string(domain.SpecialCounterstrike), 
 // shelterLossReactor destroys the assets its Boltholes shelters when damage
 // destroys the Boltholes. A sale or a refit does not (Effort 2 Decision 13).
 type shelterLossReactor struct {
-	assetID string
+	holder holderRef
 }
 
 func (reactor *shelterLossReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
 	for _, mutation := range mutations {
 		removed, ok := mutation.(domain.AssetRemoved)
-		if !ok || removed.AssetID != reactor.assetID || !slices.Contains(shelterLossCauses, removed.Cause) {
+		if !ok || removed.AssetID != reactor.holder.assetID || !slices.Contains(shelterLossCauses, removed.Cause) {
 			continue
 		}
 		// deliberate: no active check, because a disabled or unready Boltholes that is destroyed still takes its sheltered assets with it.
-		sheltered := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: reactor.assetID}
+		sheltered := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: reactor.holder.assetID}
 		var extra []domain.Mutation
 		// deliberate: every faction, not only the Boltholes' owner, because a capture moves the Boltholes but not the assets it shelters.
 		for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {

@@ -2,6 +2,7 @@ package rulebook
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -26,6 +27,17 @@ func (rulebook *Rulebook) DriftCost(driftRating int) int {
 		return rulebook.DriftCosts[0]
 	}
 	return rulebook.DriftCosts[driftRating-1]
+}
+
+// GovernmentTagID names the tag with government = true, or "" when the rulebook
+// has none. The loader refuses two.
+func (rulebook *Rulebook) GovernmentTagID() string {
+	for _, tagID := range slices.Sorted(maps.Keys(rulebook.Tags)) {
+		if rulebook.Tags[tagID].Government {
+			return tagID
+		}
+	}
+	return ""
 }
 
 // Load reads all static data files from dataDir and returns a populated Rulebook.
@@ -579,6 +591,8 @@ type tagRecord struct {
 	Name        string `toml:"name"`
 	Description string `toml:"description"`
 	Effect      string `toml:"effect"`
+	Government  bool           `toml:"government"`
+	Effects     []effectRecord `toml:"effects"`
 }
 
 func loadTags(path string) (map[string]*domain.Tag, error) {
@@ -591,15 +605,28 @@ func loadTags(path string) (map[string]*domain.Tag, error) {
 		return nil, err
 	}
 	result := make(map[string]*domain.Tag, len(f.Tags))
+	government := ""
 	for _, r := range f.Tags {
 		if _, exists := result[r.ID]; exists {
 			return nil, fmt.Errorf("duplicate tag ID %q in %s", r.ID, path)
+		}
+		if r.Government {
+			if government != "" {
+				return nil, fmt.Errorf("tags %q and %q both set government in %s", government, r.ID, path)
+			}
+			government = r.ID
+		}
+		effects, err := convertEffects(r.Effects)
+		if err != nil {
+			return nil, fmt.Errorf("tag %q in %s: %w", r.ID, path, err)
 		}
 		result[r.ID] = &domain.Tag{
 			ID:          r.ID,
 			Name:        r.Name,
 			Description: r.Description,
 			Effect:      r.Effect,
+			Government:  r.Government,
+			Effects:     effects,
 		}
 	}
 	return result, nil

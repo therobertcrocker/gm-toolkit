@@ -26,7 +26,7 @@ func registerLobbyists(t *testing.T, owner *domain.Faction, lobbyists *domain.As
 	t.Helper()
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialWithdrawPermission].Register(effect.RegisterContext{
-		Faction: owner, Asset: lobbyists, Def: &domain.AssetDefinition{ID: "SWN-C2-001"}, Registry: registry, Roller: roller,
+		Holder: effect.Holder{Faction: owner, Asset: lobbyists, Def: &domain.AssetDefinition{ID: "SWN-C2-001"}}, Registry: registry, Roller: roller,
 		Entry: lobbyistsEntry(),
 	})
 	contesters := registry.PermissionContestersForAsset(owner.ID, lobbyists.ID)
