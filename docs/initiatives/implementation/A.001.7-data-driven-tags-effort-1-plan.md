@@ -139,6 +139,16 @@
    with one name, and test rulebooks built as literals (`goals/lock_test.go`) set
    the field directly. Commit 2's task code shows the method as first built.
    `scratch/checkseeds` reads the field (gitignored; not committed).
+5. **Interim review: the Expand Influence free attack asks `ResolveTie`.** Robert's
+   rules call. Fanatical's "always loses ties during attacks" covers the free
+   Attack on a new Base. Before, `baseAttack.resolve` landed every tie with a
+   hard-coded `>=`, so a Fanatical rival's tied free attack still hit. This was
+   older than Effort 1, but `lose_ties` (Decision 7) made it reachable from data.
+   The tie now asks both sides' resolvers as `attack.go` does: a Fanatical rival
+   misses a tie; a Fanatical expanding faction still takes the hit.
+6. **Interim review: `caused_by = "any"` stays valid.** Robert's call. It loads
+   through `effectOwners` and reads as "no filter" in `onSide`, as `owner = "any"`
+   does. Neither the loader nor `Accepts` refuses it.
 
 ---
 

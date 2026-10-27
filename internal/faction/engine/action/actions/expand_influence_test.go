@@ -247,6 +247,64 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	}
 }
 
+// TestExpandInfluence_FreeAttackTieAsksResolvers: a tied free attack asks the tie
+// resolvers of both sides. Fanatical on the rival (attacker) makes it miss; on the
+// expanding faction (defender) it still lands.
+// Rolls: [5]=factionRoll, [5]=rivalRoll, [6]=attackRoll, [6]=defenseRoll, [4]=damage.
+func TestExpandInfluence_FreeAttackTieAsksResolvers(t *testing.T) {
+	cases := []struct {
+		name          string
+		resolverScope hooks.Scope
+		outcome       hooks.TieOutcome
+		wantMutations int
+	}{
+		{name: "no resolver: the tie lands", wantMutations: 4},
+		{name: "rival loses ties: the attack misses", resolverScope: hooks.FactionScope("f2"), outcome: hooks.TieDefenderWins, wantMutations: 2},
+		{name: "expander loses ties: the attack lands", resolverScope: hooks.FactionScope("f1"), outcome: hooks.TieAttackerWins, wantMutations: 4},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			rulebook := makeExpandRulebook()
+
+			f2Asset := &domain.Asset{
+				ID: "a2", DefinitionID: "force-unit", OwnerID: "f2",
+				Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 8, Ready: true, Maintained: true,
+			}
+			faction := &domain.Faction{ID: "f1", Coin: 5, MaxHP: 10, Assets: map[string]*domain.Asset{}}
+			rival := &domain.Faction{ID: "f2", Assets: map[string]*domain.Asset{"a2": f2Asset}}
+			factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
+
+			registry := hooks.NewRegistry()
+			if testCase.outcome != hooks.TieStandard {
+				registry.RegisterTieResolver(testCase.resolverScope, "fanatical", &stubTieResolverForAttack{outcome: testCase.outcome})
+			}
+
+			order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
+			collector := mocks.NewMockCollector(ctrl)
+			collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
+			collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
+			collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
+
+			roller := &fixedRoller{values: []int{5, 5, 6, 6, 4}}
+			act := NewExpandInfluence(collector, roller, registry, indexFromState(factionState), nil)
+			if err := act.Inputs(faction, factionState, rulebook); err != nil {
+				t.Fatalf("Inputs: %v", err)
+			}
+			if err := act.Resolve(faction, factionState, rulebook); err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			mutations, err := act.Output()
+			if err != nil {
+				t.Fatalf("Output: %v", err)
+			}
+			if len(mutations) != testCase.wantMutations {
+				t.Fatalf("len(mutations) = %d, want %d; got %v", len(mutations), testCase.wantMutations, mutations)
+			}
+		})
+	}
+}
+
 // TestExpandInfluence_SpecialAttackerNotOffered: the rival's only asset has a
 // special attack, so no base attackers are offered (no SelectBaseAttackers EXPECT)
 // and the new Base takes no damage. Rolls: factionRoll=5, rivalRoll=5 (tie).
