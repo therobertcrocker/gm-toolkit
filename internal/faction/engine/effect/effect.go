@@ -132,38 +132,27 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *sta
 		if def == nil {
 			continue
 		}
-		for _, entry := range def.Effects {
-			if entry.Trigger != domain.TriggerTurnStart {
-				continue
-			}
-			// deliberate: no nil check on Fire, because the rulebook is fixed after NewWithRulebook, so every definition here passed RegisterEffectsList, which rejects a phase-route entry without one.
-			mutations = append(mutations, e.registrars[entry.Effect].Fire(FireContext{
-				Holder:       Holder{Faction: faction, Asset: asset, Def: def},
-				Asset:        asset,
-				Entry:        entry,
-				Roller:       roller,
-				FactionState: factionState,
-			})...)
-		}
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerTurnStart, asset, factionState, roller)...)
 	}
 	for _, tag := range heldTags(faction, rulebook) {
-		mutations = append(mutations, e.fireTag(faction, tag, domain.TriggerTurnStart, nil, factionState, roller)...)
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerTurnStart, nil, factionState, roller)...)
 	}
 	return mutations
 }
 
-// fireTag runs tag's entries for trigger through each registrar's phase route.
-// asset is the subject: the bought asset at purchase, nil at turn start.
-func (e *EffectsEngine) fireTag(faction *domain.Faction, tag *domain.Tag, trigger domain.EffectTrigger, asset *domain.Asset, factionState *state.FactionState, roller domain.Roller) []domain.Mutation {
+// fireEntries runs holder's entries for trigger through each registrar's phase
+// route. subject is the asset the event is about: the bought asset at purchase, the
+// holder's own asset at turn start, nil for a tag at turn start.
+func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefinition, trigger domain.EffectTrigger, subject *domain.Asset, factionState *state.FactionState, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
-	for _, entry := range tag.Effects {
+	for _, entry := range entries {
 		if entry.Trigger != trigger {
 			continue
 		}
-		// deliberate: no nil check on Fire, because CheckTagEffects rejects a phase-route entry without one.
+		// deliberate: no nil check on Fire, because the rulebook is fixed after NewWithRulebook, which ran RegisterEffectsList on every definition and CheckTagEffects on every tag; both reject a phase-route entry without one.
 		mutations = append(mutations, e.registrars[entry.Effect].Fire(FireContext{
-			Holder:       Holder{Faction: faction, Tag: tag},
-			Asset:        asset,
+			Holder:       holder,
+			Asset:        subject,
 			Entry:        entry,
 			Roller:       roller,
 			FactionState: factionState,
@@ -180,22 +169,10 @@ func (e *EffectsEngine) fireTag(faction *domain.Faction, tag *domain.Tag, trigge
 func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	if def := rulebook.Assets[asset.DefinitionID]; def != nil {
-		for _, entry := range def.Effects {
-			if entry.Trigger != domain.TriggerOnPurchase {
-				continue
-			}
-			// deliberate: no nil check on Fire, because RegisterEffectsList rejects a phase-route entry without one.
-			mutations = append(mutations, e.registrars[entry.Effect].Fire(FireContext{
-				Holder:       Holder{Faction: faction, Asset: asset, Def: def},
-				Asset:        asset,
-				Entry:        entry,
-				Roller:       roller,
-				FactionState: factionState,
-			})...)
-		}
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerOnPurchase, asset, factionState, roller)...)
 	}
 	for _, tag := range heldTags(faction, rulebook) {
-		mutations = append(mutations, e.fireTag(faction, tag, domain.TriggerOnPurchase, asset, factionState, roller)...)
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerOnPurchase, asset, factionState, roller)...)
 	}
 	return mutations
 }
