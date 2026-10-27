@@ -70,7 +70,7 @@ func (rollState *RollState) ExtraDice() []int {
 type ModifierOffer struct {
 	Source      string
 	Description string
-	BudgetKey   string           // namespaced, e.g. "tag:Warlike"; empty = unlimited
+	BudgetKey   string           // namespaced, e.g. "effect:bonus_die:own_roll:SWN-T-020"; empty = unlimited
 	Apply       func(*RollState) // expands the dice pool before rolling
 	FactionID   string
 	FromTag     bool // a tag's bonus die; Blackmail strips these
