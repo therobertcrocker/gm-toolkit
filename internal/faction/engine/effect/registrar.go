@@ -149,6 +149,12 @@ func IsPhaseTrigger(trigger domain.EffectTrigger) bool {
 	return trigger == domain.TriggerTurnStart || trigger == domain.TriggerOnPurchase
 }
 
+// IsHookTrigger reports whether trigger fires through a hook registered at cycle
+// start: every trigger that is neither a phase nor a matchup trigger.
+func IsHookTrigger(trigger domain.EffectTrigger) bool {
+	return !IsPhaseTrigger(trigger) && !IsMatchupTrigger(trigger)
+}
+
 // effectsListHandler holds a definition's whole [[effects]] list, because the
 // engine keys handlers by definition and one definition may declare several effects.
 type effectsListHandler struct {
@@ -160,7 +166,7 @@ func (handler *effectsListHandler) AssetDefinitionID() string { return handler.d
 
 func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller domain.Roller) {
 	for _, entry := range handler.def.Effects {
-		if IsPhaseTrigger(entry.Trigger) || IsMatchupTrigger(entry.Trigger) {
+		if !IsHookTrigger(entry.Trigger) {
 			continue
 		}
 		// deliberate: no nil check on Register, because RegisterEffectsList rejects a hook-route entry without one.

@@ -76,7 +76,7 @@ func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rul
 		}
 		for _, tag := range heldTags(faction, rulebook) {
 			for _, entry := range tag.Effects {
-				if IsPhaseTrigger(entry.Trigger) || IsMatchupTrigger(entry.Trigger) {
+				if !IsHookTrigger(entry.Trigger) {
 					continue
 				}
 				// deliberate: no nil check on Register, because NewWithRulebook ran CheckTagEffects on every tag, which rejects a hook-route entry without one.
