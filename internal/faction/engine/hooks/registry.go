@@ -309,17 +309,6 @@ func (registry *Registry) AssetMovementGrantersForAsset(factionID, assetInstance
 	return registry.assetMovementGranters[AssetScope(factionID, assetInstanceID)]
 }
 
-// TieResolversFor returns all Cat 5 hooks matching the given faction and asset.
-func (registry *Registry) TieResolversFor(factionID, assetInstanceID string) []RegisteredTieResolver {
-	var result []RegisteredTieResolver
-	result = append(result, registry.tieResolvers[GlobalScope()]...)
-	result = append(result, registry.tieResolvers[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.tieResolvers[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
-}
-
 // LethalInterceptorsForAsset returns the Cat 6 hooks registered against one asset
 // instance. Every interceptor is an asset's, so there is no global or faction lookup.
 func (registry *Registry) LethalInterceptorsForAsset(factionID, assetInstanceID string) []RegisteredLethalInterceptor {
