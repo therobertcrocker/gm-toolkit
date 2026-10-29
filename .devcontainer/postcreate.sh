@@ -6,7 +6,5 @@ set -e
 # Install Go tools
 go install github.com/air-verse/air@latest
 
-# Install Node.js and Claude Code
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs
-sudo npm install -g @anthropic-ai/claude-code
+# Install Claude Code (native installer: it owns ~/.local, so it can update itself)
+curl -fsSL https://claude.ai/install.sh | bash
