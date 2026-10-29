@@ -30,7 +30,7 @@
     "source=${localEnv:HOME}/.claude-devcontainer,target=/home/vscode/.claude,type=bind"
   ],
   "containerEnv": {
+    // deliberate: moves .claude.json inside the mount, so login and project trust survive a rebuild
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   }
-
 }
