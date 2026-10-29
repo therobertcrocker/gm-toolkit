@@ -125,6 +125,11 @@ from the Windows host:
 Everything else in the container is lost on a rebuild: side clones, `/tmp`,
 shell history and the `gh` login.
 
+The shell prompt (zsh and starship) is not in this repo. It comes from the
+[dotfiles repo](https://github.com/therobertcrocker/dotfiles), which VS Code
+installs into every new container when your VS Code **user** settings name it.
+If a rebuild gives you a plain bash prompt, check those settings first.
+
 <br/>
 
 ## Rebuild the container
