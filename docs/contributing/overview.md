@@ -110,6 +110,51 @@ adds it to the registry without copying or modifying its contents.
 <br/>
 <br/>
 
+# The devcontainer
+
+The repo runs in a VS Code devcontainer (`.devcontainer/`). The container itself
+is disposable. Only two paths survive a rebuild, because they are bind mounts
+from the Windows host:
+
+- **`/workspaces/gm-toolkit`** — the repo
+- **`~/.claude`** — all Claude Code state: memories, login, settings, plugins and
+  transcripts. The host folder is `%USERPROFILE%\.claude-devcontainer`, shared by
+  every project container. `CLAUDE_CONFIG_DIR` points here, so `.claude.json`
+  lives inside the mount too
+
+Everything else in the container is lost on a rebuild: side clones, `/tmp`,
+shell history and the `gh` login.
+
+<br/>
+
+## Rebuild the container
+
+**Before:**
+
+1. Commit and push anything outside the two mounts that you want to keep.
+2. Close every Claude Code session.
+3. On a new machine or Windows profile only: create
+   `%USERPROFILE%\.claude-devcontainer` first. The container does not start
+   without the bind source. An empty folder means a fresh Claude login with no
+   memories.
+
+**Rebuild:** in VS Code, run **Dev Containers: Rebuild Container**.
+
+**After:**
+
+1. Check the Claude state before you start `claude`:
+   ```sh
+   echo $CLAUDE_CONFIG_DIR                                       # /home/vscode/.claude
+   ls ~/.claude/projects/-workspaces-gm-toolkit/memory | wc -l   # not 0
+   ```
+2. Log in to GitHub: `gh auth login`. (Plain `git push` works without it,
+   because VS Code injects a credential helper.)
+3. Clone the side repos you need again.
+4. If the rebuild changed `.devcontainer/devcontainer-lock.json`, commit it.
+
+<br/>
+<br/>
+
 # The extension pattern
 
 Four of the engine's sub-engines — **tag**, **effect**, **goal**, and (with a
