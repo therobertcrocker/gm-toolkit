@@ -4,12 +4,12 @@
 > ordered initiatives — the DAG, each initiative's boundary, where every arc-discovery
 > open question and reconciliation item lands, what gates what, and what the arc does
 > not touch. It does **not** re-open the cross-cutting decisions; those are settled in
-> the [arc-discovery](data-driven-rulebook-arc-discovery.md) (ACD-1…ACD-9) and bind
+> the [arc-discovery](A.001-data-driven-rulebook-arc-discovery.md) (ACD-1…ACD-9) and bind
 > every initiative below.
 >
-> **Inputs:** the [arc-discovery](data-driven-rulebook-arc-discovery.md) (binding —
+> **Inputs:** the [arc-discovery](A.001-data-driven-rulebook-arc-discovery.md) (binding —
 > its Per-initiative seed, Open Questions, and Reconciliation items are the raw
-> material here), the [arc-concept](data-driven-rulebook-arc-concept.md) (non-binding
+> material here), the [arc-concept](A.001-data-driven-rulebook-arc-concept.md) (non-binding
 > candidate list), and the [ability & effect catalog](../../../architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
@@ -140,7 +140,7 @@ attack (S-side), rerouted to A.001.3 (AP-6).
 
 > Boundary reset by the A.001.3 Discovery (AP-7). The text below replaces the
 > sign-off version, which assumed the whole S side was one initiative. Full detail in
-> the [discovery doc](../../discovery/completed/s-flag-effect-registry-discovery.md).
+> the [discovery doc](../../_completed/_archive/discovery/s-flag-effect-registry-discovery.md).
 
 Build the data-driven S-side model and ship every effect that is a **hook or a rule
 query**. An S-flag ability is declared as *trigger → filters → gates → effect*; the
