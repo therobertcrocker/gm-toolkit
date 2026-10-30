@@ -3,9 +3,10 @@
 {
   "name": "gm-toolkit",
   "image": "mcr.microsoft.com/devcontainers/go:2-1.26-trixie",
-  "features": {
+    "features": {
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/jungaretti/features/make:1": {}
+    "ghcr.io/jungaretti/features/make:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "customizations": {
     "vscode": {
@@ -25,5 +26,11 @@
     }
   },
   "postCreateCommand": "bash .devcontainer/postcreate.sh",
+  "mounts": [
+    "source=${localEnv:HOME}/.claude-devcontainer,target=/home/vscode/.claude,type=bind"
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  }
 
 }
