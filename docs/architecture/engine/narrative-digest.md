@@ -16,7 +16,7 @@ agnostic, so renderers can multiply without touching the analysis.
 Both layers are **built and unit-tested but not yet wired to any frontend** —
 nothing in `cmd/` or the TUI currently surfaces a recap. Exposing it (a CLI
 command and/or a TUI view) is tracked as `F.021` in
-[planned-work](../../dev_journals/faction-manager/planned-work.md). The page below
+[planned-work](../../planned-work.md). The page below
 describes the engine-side machinery that exists today.
 
 ## Shape

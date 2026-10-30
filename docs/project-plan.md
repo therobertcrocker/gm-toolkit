@@ -1,6 +1,6 @@
 # GM Toolkit — Project Plan
 
-Tracks planned tools within the gm-toolkit suite. Each tool is its own binary (`cmd/<tool>`) with domain logic under `internal/<tool>`. Feature-level planning for individual tools lives in their own `planned-work.md` within the relevant dev journal.
+Tracks planned tools within the gm-toolkit suite. Each tool is its own binary (`cmd/<tool>`) with domain logic under `internal/<tool>`. Feature-level planning for every tool lives in the one tracker, [`planned-work.md`](planned-work.md).
 
 <br/>
 

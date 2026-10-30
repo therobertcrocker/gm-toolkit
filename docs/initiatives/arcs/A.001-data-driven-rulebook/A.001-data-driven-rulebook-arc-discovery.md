@@ -6,7 +6,7 @@
 > data, how the surface split shows up in the data, the shared `_core` home for
 > goals/tags, and the catalog as binding input.
 >
-> **Inputs mined (not re-derived):** the [arc concept](data-driven-rulebook-arc-concept.md),
+> **Inputs mined (not re-derived):** the [arc concept](A.001-data-driven-rulebook-arc-concept.md),
 > the [arc-shaped discovery](../../discovery/hawk-rulebook-discovery.md), and the
 > [ability & effect catalog](../../../architecture/engine/ability-catalog.md).
 >
