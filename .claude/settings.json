@@ -19,5 +19,14 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "gestalt": {
+      "source": { "source": "git", "url": "https://github.com/therobertcrocker/gestalt.git" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "gestalt@gestalt": true
   }
 }

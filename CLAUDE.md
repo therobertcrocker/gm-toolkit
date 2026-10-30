@@ -1,5 +1,9 @@
 # GM Toolkit — Claude Instructions
 
+@~/.claude/plugins/marketplaces/gestalt/plugins/gestalt/rules/working-together.md
+@~/.claude/plugins/marketplaces/gestalt/plugins/gestalt/rules/git-and-delivery.md
+@~/.claude/plugins/marketplaces/gestalt/plugins/gestalt/rules/code-and-docs.md
+
 ## Collaboration
 
 1. Design is always collaborative. Implementation first pass is usually Claude's.
