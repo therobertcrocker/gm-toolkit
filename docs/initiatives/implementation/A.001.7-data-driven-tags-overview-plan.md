@@ -191,6 +191,15 @@ reversals of the decisions above. -->
 - **R-3 — `faction` scope lands with the tag that needs it; a sweep audit follows
   Effort 4 (Effort 1 Plan session, 2026-10-26).** Robert's call. A follow-on row
   joins `planned-work.md` at pre-merge.
+- **R-4 — Mercenary Group is a speed floor, not a movement grant (Effort 2 Plan
+  session, 2026-10-27).** Robert's call. Replaces R-2's clause "Effort 2 keeps …
+  Mercenary Group's self-move mode, which lifts the `grant_movement` refusal".
+  Moves in this engine are speed orders; the movement redesign replaced
+  action-based self-moves with `Speed`, and `grant_movement` is a free move
+  (Transit Web). A new `speed_floor` effect raises the speed of each of the
+  holder's assets to the entry's value, read by the movement tick and the movable
+  list. `grant_movement` keeps refusing a tag. A floored asset still rides a
+  transport by its definition's speed. See Effort 2 plan, Decisions 7 to 9.
 
 ---
 
@@ -199,7 +208,7 @@ reversals of the decisions above. -->
 | # | Effort | Scope | File |
 |---|--------|-------|------|
 | 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; effects blind to their holder (`effect.Holder`, R-1); tag entries loaded, checked, registered and fired; every dispatcher gap closed (R-2); the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox-claude re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) |
-| 2 | Bonus dice and simple grants | `bonus_die` filters (defense phase, asset TL, `homeworld` scope, goal target world); Mercenary Group's self-move mode; Secretive | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) *(to be written)* |
+| 2 | Bonus dice and simple grants | Eight tag dice through new roll vocabulary (`homeworld` scope; `opponent_attribute`, `tech_level`, `opponent_tech_level` and `goal` filters); Secretive; Mercenary Group as a `speed_floor` (R-4) | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) |
 | 3 | New effects, world and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates; Deep Rooted; Exchange Consulate; roll hooks on the detect and `R.023` contests; the Psychic Academy registrar | [`-effort-3-plan.md`](./A.001.7-data-driven-tags-effort-3-plan.md) *(to be written)* |
 | 4 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | [`-effort-4-plan.md`](./A.001.7-data-driven-tags-effort-4-plan.md) *(to be written)* |
 
@@ -303,12 +312,14 @@ and the holder are separate seams.
 
 ### Effort 2 — Bonus dice and simple grants
 
-**Scope:** discovery Design Summary, Effort 2, as amended by R-2. `bonus_die`
-filters for the defense phase, the asset's tech level, the `homeworld` scope and the
-active goal's target world (D-5); Mercenary Group through `grant_movement` with a
-self-move mode, which lifts its tag refusal (Effort 1 Decision 2); Secretive through
-`apply_stealth` at `on_purchase` with `scope = "faction"` (D-12). `FirePurchase`
-already reads the buyer's tags (Effort 1).
+**Scope:** discovery Design Summary, Effort 2, as amended by R-2 and R-4. Eight
+`bonus_die` tag entries, through the `homeworld` scope and four new roll filters:
+`opponent_attribute` (the stat the other side rolls, a new `RollContext` field),
+`tech_level` and `opponent_tech_level` (each side's asset definition), and `goal`
+(the active goal's target world, D-5); Secretive through `apply_stealth` at
+`on_purchase` with `scope = "faction"` (D-12); Mercenary Group through a new
+`speed_floor` effect read by the movement phase (R-4). `FirePurchase` already
+reads the buyer's tags (Effort 1).
 
 **Depends on:** Effort 1.
 
