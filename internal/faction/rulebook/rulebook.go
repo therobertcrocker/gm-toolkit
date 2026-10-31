@@ -2,6 +2,7 @@ package rulebook
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -44,6 +45,9 @@ func Load(dataDir string) (*Rulebook, error) {
 	goals, err := loadGoals(filepath.Join(dataDir, "goals.toml"))
 	if err != nil {
 		return nil, fmt.Errorf("loading goals: %w", err)
+	}
+	if err := checkGoalReferences(assets, tags, goals); err != nil {
+		return nil, fmt.Errorf("checking goal references: %w", err)
 	}
 
 	driftCosts, err := loadDriftCosts(filepath.Join(dataDir, "drift_costs.toml"))
@@ -659,6 +663,30 @@ func loadGoals(path string) (map[string]*domain.Goal, error) {
 		}
 	}
 	return result, nil
+}
+
+// checkGoalReferences refuses an [[effects]] entry whose goal filter names a goal
+// the rulebook does not have: a data-to-data reference (D-5), checked once here.
+func checkGoalReferences(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, goals map[string]*domain.Goal) error {
+	check := func(holder string, entries []domain.EffectDefinition) error {
+		for i, entry := range entries {
+			if goal := entry.Filters.Goal; goal != "" && goals[goal] == nil {
+				return fmt.Errorf("%s effects[%d]: unknown goal %q", holder, i, goal)
+			}
+		}
+		return nil
+	}
+	for _, id := range slices.Sorted(maps.Keys(assets)) {
+		if err := check(fmt.Sprintf("asset %q", id), assets[id].Effects); err != nil {
+			return err
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(tags)) {
+		if err := check(fmt.Sprintf("tag %q", id), tags[id].Effects); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------

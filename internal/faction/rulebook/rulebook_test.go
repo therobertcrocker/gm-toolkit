@@ -792,6 +792,85 @@ func TestLoadTags_Effects(t *testing.T) {
 	}
 }
 
+// tagBonusDie is the shipped form of a tag's extra d10, keep highest.
+func tagBonusDie(filters domain.EffectFilters, oncePer domain.OncePerKey) []domain.EffectDefinition {
+	return []domain.EffectDefinition{{
+		Trigger:  domain.TriggerOwnRoll,
+		Effect:   domain.SpecialBonusDie,
+		Filters:  filters,
+		Gates:    domain.EffectGates{OncePer: oncePer},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}
+}
+
+func TestLoad_TagBonusDice(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	attack := []domain.EffectRollPhase{domain.RollPhaseAttack}
+	defense := []domain.EffectRollPhase{domain.RollPhaseDefense}
+	zero, five := 0, 5
+	cases := []struct {
+		tagID string
+		want  []domain.EffectDefinition
+	}{
+		{"SWN-T-007", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Attribute: domain.StatCunning}, domain.OncePerOwnerFaction)},
+		{"SWN-T-012", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Attribute: domain.StatWealth}, domain.OncePerOwnerFaction)},
+		{"SWN-T-002", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeHomeworld, Phases: defense}, "")},
+		{"SWN-T-019", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatCunning}, domain.OncePerOwnerFaction)},
+		{"SWN-T-004", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatWealth}, domain.OncePerOwnerFaction)},
+		{"SWN-T-015", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, TechLevel: &zero}, domain.OncePerOwnerFaction)},
+		{"SWN-T-009", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, OpponentTechLevel: &five}, domain.OncePerOwnerFaction)},
+		{"SWN-T-006", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Goal: "G-004"}, "")},
+	}
+	for _, tc := range cases {
+		if got := rb.Tags[tc.tagID].Effects; !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s effects = %+v, want %+v", tc.tagID, got, tc.want)
+		}
+	}
+}
+
+func TestLoad_SecretiveStealthsPurchases(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := []domain.EffectDefinition{{
+		Trigger: domain.TriggerOnPurchase,
+		Effect:  domain.SpecialApplyStealth,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+	}}
+	if got := rb.Tags["SWN-T-017"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Secretive effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestCheckGoalReferences(t *testing.T) {
+	goals := map[string]*domain.Goal{"G-004": {ID: "G-004"}}
+	naming := func(goal string) []domain.EffectDefinition {
+		return []domain.EffectDefinition{{Filters: domain.EffectFilters{Goal: goal}}}
+	}
+	if err := checkGoalReferences(nil, map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: naming("G-004")}}, goals); err != nil {
+		t.Errorf("known goal: err = %v, want nil", err)
+	}
+	err := checkGoalReferences(nil, map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: naming("G-404")}}, goals)
+	if err == nil || !strings.Contains(err.Error(), `tag "T-1" effects[0]: unknown goal "G-404"`) {
+		t.Errorf("unknown goal on a tag: err = %v, want it named", err)
+	}
+	err = checkGoalReferences(map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Effects: naming("G-404")}}, nil, goals)
+	if err == nil || !strings.Contains(err.Error(), `asset "A-1" effects[0]: unknown goal "G-404"`) {
+		t.Errorf("unknown goal on an asset: err = %v, want it named", err)
+	}
+}
+
+func TestLoad_MercenaryGroupSpeedFloor(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := []domain.EffectDefinition{{
+		Trigger:    domain.TriggerSpeedQuery,
+		Effect:     domain.SpecialSpeedFloor,
+		Filters:    domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		SpeedFloor: &domain.SpeedFloorParams{Speed: 1},
+	}}
+	if got := rb.Tags["SWN-T-008"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Mercenary Group effects = %+v, want %+v", got, want)
+	}
+}
+
 func TestLoad_TransportBypasses(t *testing.T) {
 	rb := loadShippedRulebook(t)
 	for _, id := range []string{"SWN-F7-001", "SWN-W5-003"} {

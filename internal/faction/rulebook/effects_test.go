@@ -602,3 +602,71 @@ scope = "world"
 		t.Fatalf("err = %v, want a grant_stealth quality error", err)
 	}
 }
+
+func TestConvertEffectFilters_OpponentAttribute(t *testing.T) {
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", OpponentAttribute: "Cunning"})
+	if err != nil || filters.OpponentAttribute != domain.StatCunning {
+		t.Errorf("filters = %+v, err = %v; want opponent attribute Cunning", filters, err)
+	}
+	if !reflect.DeepEqual(filters.Used(), []domain.EffectFilterName{domain.FilterOpponentAttribute}) {
+		t.Errorf("Used() = %v, want [opponent_attribute]", filters.Used())
+	}
+	_, err = convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", OpponentAttribute: "Charm"})
+	if err == nil || !strings.Contains(err.Error(), "filters.opponent_attribute") {
+		t.Errorf("err = %v, want a filters.opponent_attribute error", err)
+	}
+}
+
+func TestConvertEffectFilters_TechLevels(t *testing.T) {
+	zero, five := 0, 5
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", TechLevel: &zero, OpponentTechLevel: &five})
+	if err != nil || filters.TechLevel == nil || *filters.TechLevel != 0 || filters.OpponentTechLevel == nil || *filters.OpponentTechLevel != 5 {
+		t.Errorf("filters = %+v, err = %v; want tech level 0 and opponent tech level 5", filters, err)
+	}
+	if want := []domain.EffectFilterName{domain.FilterTechLevel, domain.FilterOpponentTechLevel}; !reflect.DeepEqual(filters.Used(), want) {
+		t.Errorf("Used() = %v, want %v: tech_level = 0 is a filter", filters.Used(), want)
+	}
+	negative := -1
+	for _, record := range []effectFiltersRecord{
+		{Owner: "own", Scope: "faction", TechLevel: &negative},
+		{Owner: "own", Scope: "faction", OpponentTechLevel: &negative},
+	} {
+		if _, err := convertEffectFilters(record); err == nil || !strings.Contains(err.Error(), "must be >= 0") {
+			t.Errorf("err = %v, want a negative tech level refused", err)
+		}
+	}
+}
+
+func TestConvertEffectFilters_Goal(t *testing.T) {
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", Goal: "G-004"})
+	if err != nil || filters.Goal != "G-004" {
+		t.Errorf("filters = %+v, err = %v; want goal G-004", filters, err)
+	}
+	if !reflect.DeepEqual(filters.Used(), []domain.EffectFilterName{domain.FilterGoal}) {
+		t.Errorf("Used() = %v, want [goal]", filters.Used())
+	}
+}
+
+func TestLoadEffects_SpeedFloor(t *testing.T) {
+	entry := func(speed string) string {
+		return effectTestAsset + `
+[[assets.Machine.effects]]
+trigger = "speed_query"
+effect  = "speed_floor"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "faction"
+[assets.Machine.effects.speed_floor]
+speed = ` + speed + "\n"
+	}
+	assets, err := loadAssetsFromTOML(t, entry("1"))
+	if err != nil {
+		t.Fatalf("loadAssets: %v", err)
+	}
+	if got := assets["T-001"].Effects[0].SpeedFloor; !reflect.DeepEqual(got, &domain.SpeedFloorParams{Speed: 1}) {
+		t.Errorf("SpeedFloor = %+v, want speed 1", got)
+	}
+	if _, err := loadAssetsFromTOML(t, entry("0")); err == nil || !strings.Contains(err.Error(), "speed_floor speed must be > 0") {
+		t.Errorf("err = %v, want speed 0 refused", err)
+	}
+}

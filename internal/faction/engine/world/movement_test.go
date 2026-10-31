@@ -104,7 +104,7 @@ func TestTickMovementOrders_InAssetIDOrder(t *testing.T) {
 			CurrentOrder: &domain.MovementOrder{AssetID: id, Path: path}}
 	}
 
-	mutations, err := regionWorldEngine(t).TickMovementOrders(faction, reviseRulebook(), slog.New(slog.DiscardHandler))
+	mutations, err := regionWorldEngine(t).TickMovementOrders(faction, reviseRulebook(), nil, slog.New(slog.DiscardHandler))
 
 	if err != nil {
 		t.Fatalf("TickMovementOrders: %v", err)

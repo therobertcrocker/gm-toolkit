@@ -13,18 +13,21 @@ const (
 )
 
 // RollContext carries the full context of a roll being processed by hooks.
-// Asset is the rolling asset and OpponentAsset the asset on the other side;
-// either is nil when no asset stands there (a faction test, a Base defending).
-// Action is the action's Name().
+// Attribute is the stat this roll uses and OpponentAttribute the stat the other
+// side rolls against it; OpponentAttribute is empty when no roll opposes this one
+// (a faction test). Asset is the rolling asset and OpponentAsset the asset on the
+// other side; either is nil when no asset stands there (a faction test, a Base
+// defending). Action is the action's Name().
 type RollContext struct {
-	Phase         RollPhase
-	Actor         *domain.Faction
-	Opponent      *domain.Faction
-	Attribute     string
-	Asset         *domain.Asset
-	OpponentAsset *domain.Asset
-	World         string
-	Action        string
+	Phase             RollPhase
+	Actor             *domain.Faction
+	Opponent          *domain.Faction
+	Attribute         string
+	OpponentAttribute string
+	Asset             *domain.Asset
+	OpponentAsset     *domain.Asset
+	World             string
+	Action            string
 }
 
 // RollResult holds the per-die breakdown of a completed roll.

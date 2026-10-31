@@ -93,6 +93,27 @@ func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, de
 	return tl
 }
 
+// ResolveAssetSpeed returns the speed of a def asset that faction owns: the
+// definition's own, run through faction's AssetSpeedModifiers, then those
+// registered against each asset faction owns, in asset ID order. A speed floor
+// serves its owner only, so a rival's assets are never asked. Returns def.Speed
+// when registry is nil.
+func ResolveAssetSpeed(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition) int {
+	if registry == nil {
+		return def.Speed
+	}
+	speed := def.Speed
+	for _, registered := range registry.AssetSpeedModifiersFor(faction.ID, "") {
+		speed = registered.Hook.ModifyAssetSpeed(faction, def, speed)
+	}
+	for _, asset := range domain.SortedAssets(faction) {
+		for _, registered := range registry.AssetSpeedModifiersForAsset(faction.ID, asset.ID) {
+			speed = registered.Hook.ModifyAssetSpeed(faction, def, speed)
+		}
+	}
+	return speed
+}
+
 // ResolveAttackEligibility reports whether query.Attacker may deal damage to
 // query.Defender. The striker's hooks (global, faction and asset) answer as
 // query.Side. On an attack, the target's asset hooks then answer as defense; a

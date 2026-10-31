@@ -23,19 +23,24 @@ type effectRecord struct {
 	CaptureTarget  *amountRecord         `toml:"capture_target"`
 	DiscountRepair *discountRepairRecord `toml:"discount_repair"`
 	CostDiscount   *costDiscountRecord   `toml:"cost_discount"`
+	SpeedFloor     *speedFloorRecord     `toml:"speed_floor"`
 }
 
 type effectFiltersRecord struct {
-	Owner        string   `toml:"owner"`
-	Scope        string   `toml:"scope"`
-	Attribute    string   `toml:"attribute"`
-	Phase        []string `toml:"phase"`
-	Action       string   `toml:"action"`
-	AssetType    []string `toml:"asset_type"`
-	Category     []string `toml:"category"`
-	Stealthy     *bool    `toml:"stealthy"`
-	MinTechLevel int      `toml:"min_tech_level"`
-	CausedBy     string   `toml:"caused_by"`
+	Owner             string   `toml:"owner"`
+	Scope             string   `toml:"scope"`
+	Attribute         string   `toml:"attribute"`
+	OpponentAttribute string   `toml:"opponent_attribute"`
+	Phase             []string `toml:"phase"`
+	Action            string   `toml:"action"`
+	AssetType         []string `toml:"asset_type"`
+	Category          []string `toml:"category"`
+	Stealthy          *bool    `toml:"stealthy"`
+	MinTechLevel      int      `toml:"min_tech_level"`
+	TechLevel         *int     `toml:"tech_level"`
+	OpponentTechLevel *int     `toml:"opponent_tech_level"`
+	CausedBy          string   `toml:"caused_by"`
+	Goal              string   `toml:"goal"`
 }
 
 type effectGatesRecord struct {
@@ -90,6 +95,10 @@ type costDiscountRecord struct {
 	Amount int `toml:"amount"`
 }
 
+type speedFloorRecord struct {
+	Speed int `toml:"speed"`
+}
+
 var (
 	effectTriggers = []domain.EffectTrigger{
 		domain.TriggerTurnStart, domain.TriggerOnPurchase, domain.TriggerOwnAttackHit,
@@ -98,7 +107,7 @@ var (
 		domain.TriggerAssetCostQuery, domain.TriggerMovementOptionsQuery,
 		domain.TriggerAttackEligibilityQuery, domain.TriggerOwnAttack, domain.TriggerOwnDefenseWin, domain.TriggerLethalDamage, domain.TriggerRepairCostQuery,
 		domain.TriggerPermissionQuery, domain.TriggerPermissionGranted, domain.TriggerAttackTie,
-		domain.TriggerAssetDestroyed,
+		domain.TriggerAssetDestroyed, domain.TriggerSpeedQuery,
 	}
 	specialEffects = []domain.SpecialEffectType{
 		domain.SpecialCoinGain, domain.SpecialCoinSteal, domain.SpecialIgnoreCoinLoss,
@@ -109,10 +118,10 @@ var (
 		domain.SpecialCounterstrike, domain.SpecialShelterAsset, domain.SpecialSacrificeSelf,
 		domain.SpecialRestoreAsset, domain.SpecialDiscountRepair, domain.SpecialSeizeTarget,
 		domain.SpecialGrantStealth, domain.SpecialGrantPermission, domain.SpecialWithdrawPermission,
-		domain.SpecialLockOut, domain.SpecialLoseTies, domain.SpecialCostDiscount,
+		domain.SpecialLockOut, domain.SpecialLoseTies, domain.SpecialCostDiscount, domain.SpecialSpeedFloor,
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
-	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction}
+	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeFaction}
 	effectRollPhases = []domain.EffectRollPhase{
 		domain.RollPhaseAttack, domain.RollPhaseDefense, domain.RollPhaseFactionTest, domain.RollPhaseContested,
 	}
@@ -187,13 +196,30 @@ func convertEffectFilters(record effectFiltersRecord) (domain.EffectFilters, err
 	if record.MinTechLevel < 0 {
 		return domain.EffectFilters{}, fmt.Errorf("filters.min_tech_level must be >= 0, got %d", record.MinTechLevel)
 	}
-	filters := domain.EffectFilters{Owner: owner, Scope: scope, Action: record.Action, Stealthy: record.Stealthy, MinTechLevel: record.MinTechLevel}
+	if record.TechLevel != nil && *record.TechLevel < 0 {
+		return domain.EffectFilters{}, fmt.Errorf("filters.tech_level must be >= 0, got %d", *record.TechLevel)
+	}
+	if record.OpponentTechLevel != nil && *record.OpponentTechLevel < 0 {
+		return domain.EffectFilters{}, fmt.Errorf("filters.opponent_tech_level must be >= 0, got %d", *record.OpponentTechLevel)
+	}
+	filters := domain.EffectFilters{
+		Owner: owner, Scope: scope, Action: record.Action, Stealthy: record.Stealthy,
+		MinTechLevel: record.MinTechLevel, TechLevel: record.TechLevel, OpponentTechLevel: record.OpponentTechLevel,
+		Goal: record.Goal,
+	}
 	if record.Attribute != "" {
 		attribute, err := toFactionStat(record.Attribute)
 		if err != nil {
 			return domain.EffectFilters{}, fmt.Errorf("filters.attribute: %w", err)
 		}
 		filters.Attribute = attribute
+	}
+	if record.OpponentAttribute != "" {
+		opponentAttribute, err := toFactionStat(record.OpponentAttribute)
+		if err != nil {
+			return domain.EffectFilters{}, fmt.Errorf("filters.opponent_attribute: %w", err)
+		}
+		filters.OpponentAttribute = opponentAttribute
 	}
 	if record.CausedBy != "" {
 		causedBy, err := toEnum("filters.caused_by", record.CausedBy, effectOwners)
@@ -298,6 +324,9 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	}
 	if record.CostDiscount != nil {
 		present = append(present, domain.SpecialCostDiscount)
+	}
+	if record.SpeedFloor != nil {
+		present = append(present, domain.SpecialSpeedFloor)
 	}
 	return present
 }
@@ -405,6 +434,14 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return fmt.Errorf("cost_discount amount must be > 0, got %d", record.CostDiscount.Amount)
 		}
 		definition.CostDiscount = &domain.CostDiscountParams{Amount: record.CostDiscount.Amount}
+	case domain.SpecialSpeedFloor:
+		if record.SpeedFloor == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		if record.SpeedFloor.Speed <= 0 {
+			return fmt.Errorf("speed_floor speed must be > 0, got %d", record.SpeedFloor.Speed)
+		}
+		definition.SpeedFloor = &domain.SpeedFloorParams{Speed: record.SpeedFloor.Speed}
 	}
 	return nil
 }

@@ -10,6 +10,17 @@ name = "Deep Rooted"
 description = "This faction has been part of a world's life for time out of mind."
 effect = "Roll one additional d10 when defending against attacks on assets on their homeworld. Lost if the faction ever changes homeworlds."
 
+[[tags.DeepRooted.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.DeepRooted.effects.filters]
+owner = "own"
+scope = "homeworld"
+phase = ["defense"]
+[tags.DeepRooted.effects.bonus_die]
+sides = 10
+count = 1
+
 [tags.EugenicsCult]
 id = "SWN-T-003"
 name = "Eugenics Cult"
@@ -21,6 +32,20 @@ id = "SWN-T-004"
 name = "Exchange Consulate"
 description = "This faction is led through or has close ties with the Exchange Consulate."
 effect = "When completing a Peaceable Kingdom goal, roll 1d6; on 4+ gain a bonus XP. Once per turn, roll an extra d10 when defending against a Wealth attack."
+
+[[tags.ExchangeConsulate.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.ExchangeConsulate.effects.filters]
+owner              = "own"
+scope              = "faction"
+phase              = ["defense"]
+opponent_attribute = "Wealth"
+[tags.ExchangeConsulate.effects.gates]
+once_per = "owner_faction"
+[tags.ExchangeConsulate.effects.bonus_die]
+sides = 10
+count = 1
 
 [tags.Fanatical]
 id = "SWN-T-005"
@@ -51,11 +76,37 @@ name = "Imperialists"
 description = "This faction nurses wild dreams of controlling the sector."
 effect = "May roll an extra d10 for attacks made as part of a Seize Planet action."
 
+[[tags.Imperialists.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.Imperialists.effects.filters]
+owner = "own"
+scope = "faction"
+phase = ["attack"]
+goal  = "G-004"
+[tags.Imperialists.effects.bonus_die]
+sides = 10
+count = 1
+
 [tags.Machiavellian]
 id = "SWN-T-007"
 name = "Machiavellian"
 description = "This faction's meat and drink is intrigue."
 effect = "Once per turn, roll an additional d10 when making a Cunning attack."
+
+[[tags.Machiavellian.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.Machiavellian.effects.filters]
+owner     = "own"
+scope     = "faction"
+phase     = ["attack"]
+attribute = "Cunning"
+[tags.Machiavellian.effects.gates]
+once_per = "owner_faction"
+[tags.Machiavellian.effects.bonus_die]
+sides = 10
+count = 1
 
 [tags.MercenaryGroup]
 id = "SWN-T-008"
@@ -63,11 +114,34 @@ name = "Mercenary Group"
 description = "The faction sells its services to the highest bidder and is an extremely mobile organization."
 effect = "All faction assets gain a special ability: as an action, the asset may move itself to any world within one hex."
 
+[[tags.MercenaryGroup.effects]]
+trigger = "speed_query"
+effect  = "speed_floor"
+[tags.MercenaryGroup.effects.filters]
+owner = "own"
+scope = "faction"
+[tags.MercenaryGroup.effects.speed_floor]
+speed = 1
+
 [tags.PerimeterAgency]
 id = "SWN-T-009"
 name = "Perimeter Agency"
 description = "This faction is or is closely tied to an Agency of the enigmatic Perimeter organization."
 effect = "Once per turn, roll an additional d10 when attacking an asset that requires tech level 5. Roll an extra die when making a test to detect Stealthed assets."
+
+[[tags.PerimeterAgency.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.PerimeterAgency.effects.filters]
+owner               = "own"
+scope               = "faction"
+phase               = ["attack"]
+opponent_tech_level = 5
+[tags.PerimeterAgency.effects.gates]
+once_per = "owner_faction"
+[tags.PerimeterAgency.effects.bonus_die]
+sides = 10
+count = 1
 
 [tags.Pirates]
 id = "SWN-T-010"
@@ -87,6 +161,20 @@ id = "SWN-T-012"
 name = "Plutocratic"
 description = "This faction prizes wealth above all else."
 effect = "Once per turn, roll an additional d10 when making a Wealth attack."
+
+[[tags.Plutocratic.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.Plutocratic.effects.filters]
+owner     = "own"
+scope     = "faction"
+phase     = ["attack"]
+attribute = "Wealth"
+[tags.Plutocratic.effects.gates]
+once_per = "owner_faction"
+[tags.Plutocratic.effects.bonus_die]
+sides = 10
+count = 1
 
 [tags.PreceptorArchive]
 id = "SWN-T-013"
@@ -115,6 +203,20 @@ id = "SWN-T-015"
 name = "Savage"
 description = "This faction is accustomed to surviving without the benefits of advanced technology."
 effect = "Once per turn, roll an extra die when defending with an asset that requires tech level 0 to purchase."
+
+[[tags.Savage.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.Savage.effects.filters]
+owner      = "own"
+scope      = "faction"
+phase      = ["defense"]
+tech_level = 0
+[tags.Savage.effects.gates]
+once_per = "owner_faction"
+[tags.Savage.effects.bonus_die]
+sides = 10
+count = 1
 
 [tags.Scavengers]
 id = "SWN-T-016"
@@ -147,6 +249,13 @@ name = "Secretive"
 description = "This faction is marked by elaborate protocols of secrecy and misdirection."
 effect = "All assets purchased by this faction automatically begin Stealthed."
 
+[[tags.Secretive.effects]]
+trigger = "on_purchase"
+effect  = "apply_stealth"
+[tags.Secretive.effects.filters]
+owner = "own"
+scope = "faction"
+
 [tags.TechnicalExpertise]
 id = "SWN-T-018"
 name = "Technical Expertise"
@@ -158,6 +267,20 @@ id = "SWN-T-019"
 name = "Theocratic"
 description = "The faction is fueled by fierce certainty that God is with them."
 effect = "Once per turn, roll an extra d10 when defending against a Cunning attack."
+
+[[tags.Theocratic.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.Theocratic.effects.filters]
+owner              = "own"
+scope              = "faction"
+phase              = ["defense"]
+opponent_attribute = "Cunning"
+[tags.Theocratic.effects.gates]
+once_per = "owner_faction"
+[tags.Theocratic.effects.bonus_die]
+sides = 10
+count = 1
 
 [tags.Warlike]
 id = "SWN-T-020"

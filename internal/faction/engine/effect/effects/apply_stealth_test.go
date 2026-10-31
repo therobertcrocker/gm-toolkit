@@ -1,12 +1,14 @@
 package effects_test
 
 import (
+	"log/slog"
 	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
 func buyStealthed(asset *domain.Asset) []domain.Mutation {
@@ -45,5 +47,32 @@ func TestApplyStealth(t *testing.T) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestApplyStealth_SecretiveStealthsEveryPurchase: a tag entry at faction scope
+// passes the engine's check and stealths any asset its faction buys.
+func TestApplyStealth_SecretiveStealthsEveryPurchase(t *testing.T) {
+	secretive := &domain.Tag{ID: "SWN-T-017", Name: "Secretive", Effects: []domain.EffectDefinition{{
+		Trigger: domain.TriggerOnPurchase,
+		Effect:  domain.SpecialApplyStealth,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+	}}}
+	engine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+	if err := engine.CheckTagEffects(secretive); err != nil {
+		t.Fatalf("CheckTagEffects: %v", err)
+	}
+	rb := &rulebook.Rulebook{
+		Assets: map[string]*domain.AssetDefinition{"SWN-W1-001": {ID: "SWN-W1-001"}},
+		Tags:   map[string]*domain.Tag{secretive.ID: secretive},
+	}
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{secretive.ID}}
+	bought := &domain.Asset{ID: "franchise", DefinitionID: "SWN-W1-001", OwnerID: "alpha"}
+
+	got := engine.FirePurchase(alpha, bought, nil, rb, nil)
+
+	want := []domain.Mutation{domain.AssetStealthApplied{FactionID: "alpha", AssetID: "franchise", Cause: "apply_stealth", CausedByFactionID: "alpha"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("mutations = %+v, want %+v", got, want)
 	}
 }

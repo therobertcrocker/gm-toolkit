@@ -10,6 +10,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
@@ -363,7 +364,7 @@ func (e *Engine) runMovementPhase(
 	}
 
 	worldLog := phaseLog.With("engine", "world")
-	tickMutations, err := e.World.TickMovementOrders(faction, e.Rulebook, worldLog)
+	tickMutations, err := e.World.TickMovementOrders(faction, e.Rulebook, e.Hooks, worldLog)
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -410,7 +411,7 @@ func (e *Engine) runMovementPhase(
 		observer.OnMovementTicked(faction, tickMutations)
 	}
 
-	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook, worldLog)
+	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook, e.Hooks, worldLog)
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -744,9 +745,10 @@ func prepareMovementDecisions(
 	collector PhaseCollector,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,
+	registry *hooks.Registry,
 	worldLog *slog.Logger,
 ) ([]domain.Mutation, error) {
-	eligible := eligibleMovableAssets(faction, rulebook)
+	eligible := eligibleMovableAssets(faction, rulebook, registry)
 	if len(eligible) == 0 {
 		return nil, nil
 	}
@@ -756,6 +758,10 @@ func prepareMovementDecisions(
 	}
 	if len(decisions) == 0 {
 		return nil, nil
+	}
+	ordered := make(map[string]bool, len(decisions))
+	for _, decision := range decisions {
+		ordered[decision.AssetID] = true
 	}
 
 	for i, decision := range decisions {
@@ -770,7 +776,10 @@ func prepareMovementDecisions(
 		if def == nil || def.Transport == nil {
 			continue
 		}
-		cargoEligible := eligibleCargoForTransport(faction, asset, def.Transport, rulebook)
+		// deliberate: an asset ordered in this batch is not offered as cargo, because a speed floor (Mercenary Group) lets an immobile asset take its own order (Effort 2 Decision 8).
+		cargoEligible := slices.DeleteFunc(eligibleCargoForTransport(faction, asset, def.Transport, rulebook), func(cargo *domain.Asset) bool {
+			return ordered[cargo.ID]
+		})
 		cargoSelected, err := collector.SelectTransportCargo(asset, cargoEligible, def.Transport)
 		if err != nil {
 			return nil, fmt.Errorf("selecting transport cargo: %w", err)
@@ -795,12 +804,12 @@ func prepareMovementDecisions(
 	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, worldLog)
 }
 
-func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Asset {
+func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry) []*domain.Asset {
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		def := rulebook.Assets[asset.DefinitionID]
 		// deliberate: a sheltered asset stays put, not moves, because Boltholes make it unusable until repaired (Effort 2 Decision 11).
-		if def != nil && def.Speed > 0 && !asset.HasCondition(domain.ConditionSheltered) {
+		if def != nil && dispatch.ResolveAssetSpeed(registry, faction, def) > 0 && !asset.HasCondition(domain.ConditionSheltered) {
 			eligible = append(eligible, asset)
 		}
 	}
@@ -814,6 +823,7 @@ func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset,
 			continue
 		}
 		def := rulebook.Assets[asset.DefinitionID]
+		// deliberate: the definition's speed, not the resolved one, because a speed floor adds a way to move and does not take the ride away (Effort 2 Decision 8).
 		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) {
 			continue
 		}

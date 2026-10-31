@@ -57,9 +57,9 @@ type rerollHook struct {
 	params  domain.RerollParams
 }
 
-func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollResult, factionState *state.FactionState, _ *rulebook.Rulebook) hooks.RerollDirective {
+func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollResult, factionState *state.FactionState, rulebook *rulebook.Rulebook) hooks.RerollDirective {
 	asset, live := hook.holder.live(factionState)
-	if !live || !rollMatches(ctx, hook.trigger, hook.holder.factionID, asset, hook.filters) {
+	if !live || !rollMatches(ctx, hook.trigger, hook.holder.factionID, asset, hook.filters, rulebook) {
 		return hooks.RerollDirective{}
 	}
 	forced := hook.trigger == domain.TriggerEnemyRollAtMe

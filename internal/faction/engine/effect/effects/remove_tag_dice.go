@@ -40,7 +40,8 @@ type tagDiceFilter struct {
 
 func (filter *tagDiceFilter) FilterOffers(ctx hooks.RollContext, offers []hooks.ModifierOffer, factionState *state.FactionState) []hooks.ModifierOffer {
 	asset, live := filter.holder.live(factionState)
-	if !live || !rollMatches(ctx, filter.trigger, filter.holder.factionID, asset, filter.filters) {
+	// deliberate: a nil rulebook, not a threaded one, because removeTagDiceRegistrar accepts no tech-level filter, the only filter that reads it (Effort 2 Decision 6).
+	if !live || !rollMatches(ctx, filter.trigger, filter.holder.factionID, asset, filter.filters, nil) {
 		return offers
 	}
 	var kept []hooks.ModifierOffer

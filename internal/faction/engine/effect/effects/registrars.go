@@ -34,5 +34,6 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialLockOut:            lockOutRegistrar,
 		domain.SpecialLoseTies:           loseTiesRegistrar,
 		domain.SpecialCostDiscount:       costDiscountRegistrar,
+		domain.SpecialSpeedFloor:         speedFloorRegistrar,
 	}
 }

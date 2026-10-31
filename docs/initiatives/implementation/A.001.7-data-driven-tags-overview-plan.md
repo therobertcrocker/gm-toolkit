@@ -205,12 +205,12 @@ reversals of the decisions above. -->
 
 ## Effort Summary
 
-| # | Effort | Scope | File |
-|---|--------|-------|------|
-| 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; effects blind to their holder (`effect.Holder`, R-1); tag entries loaded, checked, registered and fired; every dispatcher gap closed (R-2); the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox-claude re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) |
-| 2 | Bonus dice and simple grants | Eight tag dice through new roll vocabulary (`homeworld` scope; `opponent_attribute`, `tech_level`, `opponent_tech_level` and `goal` filters); Secretive; Mercenary Group as a `speed_floor` (R-4) | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) |
-| 3 | New effects, world and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates; Deep Rooted; Exchange Consulate; roll hooks on the detect and `R.023` contests; the Psychic Academy registrar | [`-effort-3-plan.md`](./A.001.7-data-driven-tags-effort-3-plan.md) *(to be written)* |
-| 4 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | [`-effort-4-plan.md`](./A.001.7-data-driven-tags-effort-4-plan.md) *(to be written)* |
+| Done | # | Effort | Scope | File |
+|------|---|--------|-------|------|
+| [x] | 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; effects blind to their holder (`effect.Holder`, R-1); tag entries loaded, checked, registered and fired; every dispatcher gap closed (R-2); the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox-claude re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) |
+| [x] | 2 | Bonus dice and simple grants | Eight tag dice through new roll vocabulary (`homeworld` scope; `opponent_attribute`, `tech_level`, `opponent_tech_level` and `goal` filters); Secretive; Mercenary Group as a `speed_floor` (R-4) | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) |
+| [ ] | 3 | New effects, world and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates; Deep Rooted; Exchange Consulate; roll hooks on the detect and `R.023` contests; the Psychic Academy registrar | [`-effort-3-plan.md`](./A.001.7-data-driven-tags-effort-3-plan.md) *(to be written)* |
+| [ ] | 4 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | [`-effort-4-plan.md`](./A.001.7-data-driven-tags-effort-4-plan.md) *(to be written)* |
 
 ## Shared Context
 

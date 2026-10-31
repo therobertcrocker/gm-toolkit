@@ -50,6 +50,12 @@ type WorldTechLevelModifier interface {
 	ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int
 }
 
+// AssetSpeedModifier adjusts the speed, in hexes a turn, of an asset faction
+// owns, read by the movement phase (Cat 4).
+type AssetSpeedModifier interface {
+	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int) int
+}
+
 // AttackSide names which part of a fight an eligibility hook answers for.
 type AttackSide string
 

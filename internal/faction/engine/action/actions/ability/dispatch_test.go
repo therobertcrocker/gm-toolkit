@@ -467,3 +467,39 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 		t.Errorf("expected no mutations for stub handler, got %v", mutations)
 	}
 }
+
+// contextLog records every RollContext a roll shows its hooks, and offers nothing.
+type contextLog struct{ contexts []hooks.RollContext }
+
+func (log *contextLog) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
+	log.contexts = append(log.contexts, ctx)
+	return nil
+}
+
+// TestDispatch_ContestRollsNameTheOpposingStat: each contest roll carries the stat
+// the other side rolls.
+func TestDispatch_ContestRollsNameTheOpposingStat(t *testing.T) {
+	faction, asset, def, factionState := makeDispatchFixture()
+	targetFaction := factionState.Factions["f2"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
+
+	recorder := &contextLog{}
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
+
+	if _, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, registry, factionState, NewView(factionState), nil, nil); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(recorder.contexts) != 2 {
+		t.Fatalf("recorded %d roll contexts, want 2: %+v", len(recorder.contexts), recorder.contexts)
+	}
+	attack, defense := recorder.contexts[0], recorder.contexts[1]
+	if attack.OpponentAttribute == "" || attack.OpponentAttribute != defense.Attribute || defense.OpponentAttribute != attack.Attribute {
+		t.Errorf("contest stats: attack %q vs %q, defense %q vs %q; want each roll to name the other's stat",
+			attack.Attribute, attack.OpponentAttribute, defense.Attribute, defense.OpponentAttribute)
+	}
+}

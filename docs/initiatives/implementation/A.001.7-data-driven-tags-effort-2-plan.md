@@ -55,7 +55,8 @@
 
 3. **`OpponentAttribute` is set on every roll that another roll opposes.**
    Planning call. A field set on some rolls and not others fails a filter with no
-   error. Sites: the Attack action (both rolls), Expand Influence (the rival's
+   error. Sites: the Attack action (both rolls, and both rolls of the
+   counterstrike self-attack; Decision Record 2), Expand Influence (the rival's
    contested roll, and both rolls of the free attack), and the A-side ability
    contest (both rolls). The faction's own Expand Influence roll has no opponent
    and stays empty. When Effort 3 moves the `R.023` contests onto
@@ -125,6 +126,29 @@
 
 ## Decision Record — Execution
 
+1. **Phase 1, Commit 3: Secretive has no full-turn scenario test. Deferred, not
+   missed.** The plan's tests call `FirePurchase` directly
+   (`TestApplyStealth_SecretiveStealthsEveryPurchase`) and check the shipped entry
+   (`TestLoad_SecretiveStealthsPurchases`). No scripted turn buys an asset as a
+   Secretive faction. The Buy Asset path from purchase to `AssetStealthApplied` is
+   already covered by `TestEffects_PsychicAssassinsBoughtStealthed`, and that
+   path does not change for a tag holder. For the interim review to decide: add a
+   Secretive scenario, or leave it.
+
+2. **Phase 2, Commit 4: the counterstrike's rolls carry `OpponentAttribute` too.**
+   Robert's call (rules reading). Decision 3's site list missed `counterstrike` in
+   `attack.go`: the attacker's attack stat against its own defense stat, so the two
+   rolls oppose each other. Set on both, as `attribute` already is. At the table: a
+   Theocratic attacker counterstruck on a Cunning attack rolls its d10 on the
+   self-defense roll and spends its once-per-turn die. Leaving it empty would make
+   `opponent_attribute` silently never match there, the miss Decision 3 warns
+   about. Test: `TestAttack_CounterstrikeRollsNameTheOpposingStat`. Decision 3's
+   site list now names it; Task 2 below does not repeat the edit.
+
+3. **Phase 2, Commit 4: gofmt realigns `bonusDieRegistrar`.** Task 7 splits
+   `Filters` over three lines, so gofmt drops the shared alignment of `Owners`,
+   `Scopes` and `Gates`. Applied as gofmt leaves it.
+
 ---
 
 ## Shared Context
@@ -162,16 +186,16 @@
 
 **Overview**
 
-- **Phase 1 — Data-only tags and the homeworld scope**
+- [x] **Phase 1 — Data-only tags and the homeworld scope**
   - Commit 1 — `feat: Machiavellian and Plutocratic as rulebook data` (2 tasks)
   - Commit 2 — `feat: Deep Rooted's homeworld defense die` (6 tasks)
   - Commit 3 — `feat: Secretive as rulebook data` (3 tasks)
-- **Phase 2 — The opposing stat**
+- [x] **Phase 2 — The opposing stat**
   - Commit 4 — `feat: Theocratic and Exchange Consulate defend against the attack's stat` (9 tasks)
-- **Phase 3 — Tech-level and goal dice**
+- [x] **Phase 3 — Tech-level and goal dice**
   - Commit 5 — `feat: Savage and Perimeter Agency read each side's tech level` (7 tasks)
   - Commit 6 — `feat: Imperialists' die on its Planetary Seizure target` (7 tasks)
-- **Phase 4 — Mercenary Group**
+- [x] **Phase 4 — Mercenary Group**
   - Commit 7 — `feat: a speed floor rule hook` (8 tasks)
   - Commit 8 — `feat: Mercenary Group as rulebook data` (5 tasks)
 

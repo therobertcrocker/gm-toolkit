@@ -32,6 +32,7 @@ const (
 	SpecialLockOut            SpecialEffectType = "lock_out"
 	SpecialLoseTies           SpecialEffectType = "lose_ties"
 	SpecialCostDiscount       SpecialEffectType = "cost_discount"
+	SpecialSpeedFloor         SpecialEffectType = "speed_floor"
 )
 
 type EffectTrigger string
@@ -57,6 +58,7 @@ const (
 	TriggerPermissionGranted      EffectTrigger = "permission_granted"
 	TriggerAttackTie              EffectTrigger = "attack_tie"
 	TriggerAssetDestroyed         EffectTrigger = "asset_destroyed"
+	TriggerSpeedQuery             EffectTrigger = "speed_query"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -72,9 +74,10 @@ const (
 type EffectScope string
 
 const (
-	ScopeSelf    EffectScope = "self"
-	ScopeWorld   EffectScope = "world"
-	ScopeFaction EffectScope = "faction"
+	ScopeSelf      EffectScope = "self"
+	ScopeWorld     EffectScope = "world"
+	ScopeHomeworld EffectScope = "homeworld"
+	ScopeFaction   EffectScope = "faction"
 )
 
 // EffectFilterName names an optional filter. owner and scope are not listed: every
@@ -82,14 +85,18 @@ const (
 type EffectFilterName string
 
 const (
-	FilterAttribute    EffectFilterName = "attribute"
-	FilterPhase        EffectFilterName = "phase"
-	FilterAction       EffectFilterName = "action"
-	FilterAssetType    EffectFilterName = "asset_type"
-	FilterCategory     EffectFilterName = "category"
-	FilterStealthy     EffectFilterName = "stealthy"
-	FilterMinTechLevel EffectFilterName = "min_tech_level"
-	FilterCausedBy     EffectFilterName = "caused_by"
+	FilterAttribute         EffectFilterName = "attribute"
+	FilterOpponentAttribute EffectFilterName = "opponent_attribute"
+	FilterPhase             EffectFilterName = "phase"
+	FilterAction            EffectFilterName = "action"
+	FilterAssetType         EffectFilterName = "asset_type"
+	FilterCategory          EffectFilterName = "category"
+	FilterStealthy          EffectFilterName = "stealthy"
+	FilterMinTechLevel      EffectFilterName = "min_tech_level"
+	FilterCausedBy          EffectFilterName = "caused_by"
+	FilterTechLevel         EffectFilterName = "tech_level"
+	FilterOpponentTechLevel EffectFilterName = "opponent_tech_level"
+	FilterGoal              EffectFilterName = "goal"
 )
 
 type EffectGateName string
@@ -143,25 +150,33 @@ const (
 )
 
 // EffectFilters narrows which events fire an entry. A zero optional field is an
-// absent filter. Stealthy is a pointer because "stealthy = false" is a real
-// filter, distinct from no filter.
+// absent filter. Stealthy, TechLevel and OpponentTechLevel are pointers because
+// "stealthy = false" and "tech_level = 0" are real filters, distinct from no
+// filter.
 type EffectFilters struct {
-	Owner        EffectOwner
-	Scope        EffectScope
-	Attribute    FactionStat
-	Phases       []EffectRollPhase
-	Action       string
-	AssetTypes   []AssetType
-	Categories   []FactionStat
-	Stealthy     *bool
-	MinTechLevel int
-	CausedBy     EffectOwner
+	Owner             EffectOwner
+	Scope             EffectScope
+	Attribute         FactionStat
+	OpponentAttribute FactionStat
+	Phases            []EffectRollPhase
+	Action            string
+	AssetTypes        []AssetType
+	Categories        []FactionStat
+	Stealthy          *bool
+	MinTechLevel      int
+	TechLevel         *int
+	OpponentTechLevel *int
+	CausedBy          EffectOwner
+	Goal              string
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
 	var present []EffectFilterName
 	if filters.Attribute != "" {
 		present = append(present, FilterAttribute)
+	}
+	if filters.OpponentAttribute != "" {
+		present = append(present, FilterOpponentAttribute)
 	}
 	if len(filters.Phases) > 0 {
 		present = append(present, FilterPhase)
@@ -181,8 +196,17 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	if filters.MinTechLevel > 0 {
 		present = append(present, FilterMinTechLevel)
 	}
+	if filters.TechLevel != nil {
+		present = append(present, FilterTechLevel)
+	}
+	if filters.OpponentTechLevel != nil {
+		present = append(present, FilterOpponentTechLevel)
+	}
 	if filters.CausedBy != "" {
 		present = append(present, FilterCausedBy)
+	}
+	if filters.Goal != "" {
+		present = append(present, FilterGoal)
 	}
 	return present
 }
@@ -266,6 +290,10 @@ type CostDiscountParams struct {
 	Amount int
 }
 
+type SpeedFloorParams struct {
+	Speed int
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -286,4 +314,5 @@ type EffectDefinition struct {
 	CaptureTarget  *CaptureTargetParams
 	DiscountRepair *DiscountRepairParams
 	CostDiscount   *CostDiscountParams
+	SpeedFloor     *SpeedFloorParams
 }

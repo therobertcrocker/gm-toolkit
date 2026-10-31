@@ -12,14 +12,18 @@ import (
 
 // bonusDieRegistrar reads owner = "own" as "the owner is rolling". scope =
 // "self" is a roll by the declaring asset; "world" any owner roll on its world;
-// "faction" any owner roll anywhere. A tag's die is FromTag, so Blackmail strips it.
+// "homeworld" any owner roll on the owner's homeworld; "faction" any owner roll
+// anywhere. A tag's die is FromTag, so Blackmail strips it.
 var bonusDieRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerOwnRoll: {
-			Owners:  []domain.EffectOwner{domain.OwnerOwn},
-			Scopes:  []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction},
-			Filters: []domain.EffectFilterName{domain.FilterAttribute, domain.FilterPhase, domain.FilterAction},
-			Gates:   []domain.EffectGateName{domain.GateOncePer},
+			Owners: []domain.EffectOwner{domain.OwnerOwn},
+			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeFaction},
+			Filters: []domain.EffectFilterName{
+				domain.FilterAttribute, domain.FilterOpponentAttribute, domain.FilterPhase, domain.FilterAction,
+				domain.FilterTechLevel, domain.FilterOpponentTechLevel, domain.FilterGoal,
+			},
+			Gates: []domain.EffectGateName{domain.GateOncePer},
 		},
 	},
 	Register: registerBonusDie,
@@ -49,9 +53,9 @@ type bonusDieModifier struct {
 	params  domain.BonusDieParams
 }
 
-func (modifier *bonusDieModifier) OfferModifiers(ctx hooks.RollContext, factionState *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
+func (modifier *bonusDieModifier) OfferModifiers(ctx hooks.RollContext, factionState *state.FactionState, rulebook *rulebook.Rulebook) []hooks.ModifierOffer {
 	asset, live := modifier.holder.live(factionState)
-	if !live || !rollMatches(ctx, modifier.trigger, modifier.holder.factionID, asset, modifier.filters) {
+	if !live || !rollMatches(ctx, modifier.trigger, modifier.holder.factionID, asset, modifier.filters, rulebook) {
 		return nil
 	}
 	params := modifier.params

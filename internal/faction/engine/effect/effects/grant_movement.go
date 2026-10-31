@@ -18,7 +18,7 @@ var grantMovementRegistrar = effect.Registrar{
 		},
 	},
 	Register: registerGrantMovement,
-	// deliberate: refuse a tag, not accept it, because the range is measured from the declaring asset; Effort 2's self-move mode lifts this (Effort 1 Decision 2).
+	// deliberate: refuse a tag, not accept it, because the range is measured from the declaring asset and a tag has none; Mercenary Group is a speed floor, not a grant (Effort 2 Decision 7).
 	Validate: refuseTagHolder,
 }
 
