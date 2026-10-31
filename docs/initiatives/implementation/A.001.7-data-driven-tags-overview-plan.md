@@ -3,8 +3,9 @@
 ## In Plain Words
 
 - **What:** the overview plan for making all 20 SWN tags work from rulebook data, as
-  assets do. It records the decisions that all four efforts share, sets their order,
-  and says which efforts get their own Plan session (all four). It holds no code spec.
+  assets do. It records the decisions that all five efforts share, sets their order,
+  and says which efforts get their own Plan session (all five; R-5 split the old
+  Effort 3). It holds no code spec.
 - **Why:** today a tag works only when Go code knows its bare ID, and 16 of the 20
   tags do nothing in play. The discovery designed the fix. This plan session re-read
   the code, answered the discovery's three open questions, and fixed the order of
@@ -16,10 +17,11 @@
 
 ## Context / Goal
 
-Build the four efforts the [discovery](../discovery/A.001.7-data-driven-tags-discovery.md)
+Build the efforts the [discovery](../discovery/A.001.7-data-driven-tags-discovery.md)
 designed: the faction holder and tag IDs (Effort 1), bonus dice and simple grants
-(Effort 2), new effects with world and setting rules (Effort 3), and the A-side tag
-holder (Effort 4).
+(Effort 2), contest rolls and reactions (Effort 3), world and setting rules
+(Effort 4), and the A-side tag holder (Effort 5). The discovery's four efforts
+became five when R-5 split its Effort 3.
 
 - Arc: [data-driven-rulebook](../arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md),
   initiative A.001.7, as amended by AP-9.
@@ -46,7 +48,10 @@ holder (Effort 4).
    depend on each other, but both change `dispatch.ResolveWorldTechLevel` and
    `domain.CanPurchase`, so they run in sequence. Rejected: the Effort 1 spec in this
    file (too large); Effort 4 before Effort 3 (no gain). Same shape as the A.001.6
-   overview, Decision 2.
+   overview, Decision 2. **Amended by R-5:** the old Effort 3 is now Efforts 3 and
+   4, and the old Effort 4 is Effort 5. DAG `1 → 2 → {3, 4} → 5`; run order
+   `1 → 2 → 3 → 4 → 5`. Effort numbers in the decisions below name the old
+   slicing where R-5 says so.
 
 2. **The three `R.023` contests roll through `RollWithHooks` with a nil collector:
    no one is asked, free extra dice are taken, and everything else waits. Letting
@@ -200,6 +205,18 @@ reversals of the decisions above. -->
   holder's assets to the entry's value, read by the movement tick and the movable
   list. `grant_movement` keeps refusing a tag. A floored asset still rides a
   transport by its definition's speed. See Effort 2 plan, Decisions 7 to 9.
+- **R-5 — The old Effort 3 splits at the roll/world seam (Effort 3 Plan session,
+  2026-10-31).** Robert's call. The old Effort 3 held about 14 pieces of work, past
+  one plan's budget. Effort 3 is now contest rolls and reactions: the `R.023`
+  contests on `RollWithHooks`, Perimeter Agency's detect die, the Psychic Academy
+  registrar, Deep Rooted's loss and Exchange Consulate's XP roll. A new Effort 4
+  holds the world and setting rules: `settings.toml`, the Starship rule and its
+  waiver, Colonists, Technical Expertise and Pirates, with its own Plan session.
+  The old Effort 4 becomes Effort 5. Decision 1's "Efforts 3 and 4" (the
+  `ResolveWorldTechLevel` and `CanPurchase` overlap) now means Efforts 4 and 5;
+  Decision 3's "Effort 3 plan" means the Effort 4 plan, and its "Effort 4 plan"
+  the Effort 5 plan. The free die's reading in Decision 6 stays with Effort 3. See
+  Effort 3 plan, Decision 1.
 
 ---
 
@@ -209,8 +226,9 @@ reversals of the decisions above. -->
 |------|---|--------|-------|------|
 | [x] | 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; effects blind to their holder (`effect.Holder`, R-1); tag entries loaded, checked, registered and fired; every dispatcher gap closed (R-2); the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox-claude re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) |
 | [x] | 2 | Bonus dice and simple grants | Eight tag dice through new roll vocabulary (`homeworld` scope; `opponent_attribute`, `tech_level`, `opponent_tech_level` and `goal` filters); Secretive; Mercenary Group as a `speed_floor` (R-4) | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) |
-| [ ] | 3 | New effects, world and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates; Deep Rooted; Exchange Consulate; roll hooks on the detect and `R.023` contests; the Psychic Academy registrar | [`-effort-3-plan.md`](./A.001.7-data-driven-tags-effort-3-plan.md) *(to be written)* |
-| [ ] | 4 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | [`-effort-4-plan.md`](./A.001.7-data-driven-tags-effort-4-plan.md) *(to be written)* |
+| [ ] | 3 | Contest rolls and reactions | The `R.023` contests on `RollWithHooks` with no collector; Perimeter Agency's detect die; the Psychic Academy registrar (`rival_roll`); goal events reach reactors; Deep Rooted's loss; Exchange Consulate's XP roll | [`A.001.7.E3-…-plan.md`](./A.001.7.E3-data-driven-tags-plan.md) |
+| [ ] | 4 | World and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates | `A.001.7.E4-data-driven-tags-plan.md` *(to be written)* |
+| [ ] | 5 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | `A.001.7.E5-data-driven-tags-plan.md` *(to be written)* |
 
 ## Shared Context
 
@@ -254,15 +272,15 @@ the code before it relies on them.
   deletes those hooks, then changes `rollScopes` and removes the fence-sign (R-2).
   (Effort 1)
 - **Purchase checks.** Both purchase paths call `domain.CanPurchase`
-  (`domain/asset.go:406`) with `PurchaseTerms{Cost, TechCap}` (Decision 3). (Efforts 3
-  and 4)
+  (`domain/asset.go:406`) with `PurchaseTerms{Cost, TechCap}` (Decision 3). (Efforts 4
+  and 5, after R-5)
 - **Contests.** `contestPasses` (`effect/effects/contest.go`) is called from
   `clear_stealth.go:58` (phase route), `clear_stealth.go:117` (reactor) and
   `withdraw_permission.go:67` (Lobbyists). Its fence-sign names the missing
   collector; Decision 2 replaces it. (Effort 3)
 - **Settings.** `rulebook.Load` reads `drift_costs.toml` through `loadDriftCosts`
   (`rulebook/rulebook.go:561`) into `Rulebook.DriftCosts`, read by `DriftCost`. D-10
-  folds it into `settings.toml`. (Effort 3)
+  folds it into `settings.toml`. (Effort 4, after R-5)
 
 ### Pre-merge additions
 
@@ -325,23 +343,31 @@ reads the buyer's tags (Effort 1).
 
 **Own Plan session:** yes (Decision 1).
 
-### Effort 3 — New effects, world and setting rules
+### Effort 3 — Contest rolls and reactions
 
-**Scope:** discovery Design Summary, Effort 3. `settings.toml` with the drift costs
-and the Starship floor (D-9, D-10); the base Starship rule in `CanPurchase`
-(Decision 3), the waiver flag and its wizard toggle; Colonists (D-8) and Technical
-Expertise; Pirates' toll and its refusal at order time (D-6); Deep Rooted's
-self-removal (D-19); Exchange Consulate's XP roll (D-18); Perimeter Agency's detect
-die on the reveal ability, Tripwire Cells and Panopticon Matrix (Decision 6); the
-three `R.023` contests on `RollWithHooks` with a nil collector and the free-die rule
-(Decision 2, D-16); the Psychic Academy registrar and tests, with no data entry
-(D-7).
+**Scope:** half of the discovery's Effort 3 (R-5). The three `R.023` contests on
+`RollWithHooks` with a nil collector and the free-die rule (Decision 2, D-16);
+Perimeter Agency's detect die on the reveal ability, Tripwire Cells and Panopticon
+Matrix (Decision 6); the Psychic Academy registrar and tests, with no data entry
+(D-7); goal mutations reach the reactors; Deep Rooted's self-removal (D-19);
+Exchange Consulate's XP roll (D-18).
 
 **Depends on:** Effort 2.
 
+**Own Plan session:** yes (Decision 1). Written: [`A.001.7.E3-data-driven-tags-plan.md`](./A.001.7.E3-data-driven-tags-plan.md).
+
+### Effort 4 — World and setting rules
+
+**Scope:** the other half of the discovery's Effort 3 (R-5). `settings.toml` with
+the drift costs and the Starship floor (D-9, D-10); the base Starship rule in
+`CanPurchase` (Decision 3), the waiver flag and its wizard toggle; Colonists (D-8)
+and Technical Expertise; Pirates' toll and its refusal at order time (D-6).
+
+**Depends on:** Effort 2. Runs after Effort 3 (R-5).
+
 **Own Plan session:** yes (Decision 1).
 
-### Effort 4 — A-side tag holder
+### Effort 5 — A-side tag holder
 
 **Scope:** discovery Design Summary, Effort 4. The ability registry (`A.001.2`)
 accepts a faction holder, so a tag can grant an action; Teach Planetary Population
@@ -349,6 +375,6 @@ and its per-faction world TL record, read by `ResolveWorldTechLevel` (D-11);
 Gengineered Slaves in `force_assets.toml` with `requires_tag`, checked in
 `CanPurchase` (Decision 3, D-13); the Eugenics Cult die.
 
-**Depends on:** Effort 2. Runs after Effort 3 (Decision 1).
+**Depends on:** Effort 2. Runs after Effort 4 (Decision 1, R-5).
 
 **Own Plan session:** yes (Decision 1).
