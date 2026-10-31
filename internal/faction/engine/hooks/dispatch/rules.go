@@ -93,25 +93,27 @@ func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, de
 	return tl
 }
 
-// ResolveAssetSpeed returns the speed of a def asset that faction owns: the
-// definition's own, run through faction's AssetSpeedModifiers, then those
+// AssetSpeedResolver returns the speed of an asset faction owns, by definition:
+// the definition's own, run through faction's AssetSpeedModifiers, then those
 // registered against each asset faction owns, in asset ID order. A speed floor
-// serves its owner only, so a rival's assets are never asked. Returns def.Speed
-// when registry is nil.
-func ResolveAssetSpeed(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition) int {
+// serves its owner only, so a rival's assets are never asked. The modifiers are
+// gathered once, so one resolver serves a whole pass over faction's assets. With
+// a nil registry it returns the definition's speed.
+func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(*domain.AssetDefinition) int {
 	if registry == nil {
-		return def.Speed
+		return func(definition *domain.AssetDefinition) int { return definition.Speed }
 	}
-	speed := def.Speed
-	for _, registered := range registry.AssetSpeedModifiersFor(faction.ID, "") {
-		speed = registered.Hook.ModifyAssetSpeed(faction, def, speed)
-	}
+	modifiers := registry.AssetSpeedModifiersFor(faction.ID)
 	for _, asset := range domain.SortedAssets(faction) {
-		for _, registered := range registry.AssetSpeedModifiersForAsset(faction.ID, asset.ID) {
-			speed = registered.Hook.ModifyAssetSpeed(faction, def, speed)
-		}
+		modifiers = append(modifiers, registry.AssetSpeedModifiersForAsset(faction.ID, asset.ID)...)
 	}
-	return speed
+	return func(definition *domain.AssetDefinition) int {
+		speed := definition.Speed
+		for _, registered := range modifiers {
+			speed = registered.Hook.ModifyAssetSpeed(faction, definition, speed)
+		}
+		return speed
+	}
 }
 
 // ResolveAttackEligibility reports whether query.Attacker may deal damage to

@@ -29,23 +29,23 @@ func TestSpeedFloor_RaisesTheOwnersSlowAssets(t *testing.T) {
 	starship := &domain.AssetDefinition{ID: "starship", Speed: 3}
 
 	cases := []struct {
-		name    string
-		faction *domain.Faction
-		def     *domain.AssetDefinition
-		want    int
+		name       string
+		faction    *domain.Faction
+		definition *domain.AssetDefinition
+		want       int
 	}{
 		{"a speed-0 asset gains the floor", alpha, facility, 1},
 		{"a faster asset keeps its speed", alpha, starship, 3},
 		{"a rival's asset is not raised", beta, facility, 0},
 	}
 	for _, tc := range cases {
-		if got := dispatch.ResolveAssetSpeed(registry, tc.faction, tc.def); got != tc.want {
+		if got := dispatch.AssetSpeedResolver(registry, tc.faction)(tc.definition); got != tc.want {
 			t.Errorf("%s: speed = %d, want %d", tc.name, got, tc.want)
 		}
 	}
 
 	alpha.Tags = nil
-	if got := dispatch.ResolveAssetSpeed(registry, alpha, facility); got != 0 {
+	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility); got != 0 {
 		t.Errorf("speed after the tag is dropped = %d, want 0", got)
 	}
 }

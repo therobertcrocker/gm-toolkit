@@ -52,6 +52,8 @@
      `bonus_die` accepts, the rolling side is the owner.
    - A Base of Influence is no asset, so a Base defending gives Savage no die, and
      an attack on a Base gives Perimeter Agency none.
+   - `goal` matches only a roll against a rival, so the counterstrike's
+     self-attack gets no Imperialists die (Decision Record 6).
 
 3. **`OpponentAttribute` is set on every roll that another roll opposes.**
    Planning call. A field set on some rolls and not others fails a filter with no
@@ -86,8 +88,8 @@
      hex" becomes speed 1.
    - A new effect `speed_floor` on a new trigger `speed_query` (owner `own`, scope
      `faction`). It is a Cat 4 `AssetSpeedModifier`, read by a new
-     `dispatch.ResolveAssetSpeed`, which walks the owner's global, faction and
-     asset buckets as `ResolveWorldTechLevel` does. The entry carries the speed
+     `dispatch.AssetSpeedResolver` (Decision Record 7), which walks the owner's
+     global, faction and asset buckets as `ResolveWorldTechLevel` does. The entry carries the speed
      (`[speed_floor] speed = 1`, overview Decision 7). An asset with a higher speed
      keeps it.
    - `grant_movement` keeps refusing a tag; its fence-sign changes to say why.
@@ -95,13 +97,16 @@
 8. **A floored asset still rides a transport.** Robert's call. Cargo eligibility
    keeps reading the definition's own speed, so a Mercenary facility may crawl one
    hex or take a transport. New guard: an asset that gets its own order in this
-   decision batch is not offered as cargo. This amends the world-movement Key
+   decision batch is not offered as cargo, and an asset riding a transport in
+   flight is not offered as a mover (Decision Record 4). This amends the world-movement Key
    Decision "Only immobile assets can be cargo" at pre-merge.
 
 9. **Two readers resolve speed: the tick and the movable list.** Planning call.
-   `TickMovementOrders` takes the hook registry and advances each order by
-   `ResolveAssetSpeed`; without that, a floored facility's order never moves.
-   `eligibleMovableAssets` offers an asset whose resolved speed is above 0. `world`
+   `TickMovementOrders` takes the hook registry and advances each order by the
+   resolved speed; without that, a floored facility's order never moves. Each
+   builds one `AssetSpeedResolver` per pass (Decision Record 7).
+   `eligibleMovableAssets` offers an asset whose resolved speed is above 0, or
+   that holds an open order (Decision Record 5). `world`
    imports `hooks/dispatch`, as `relocate` does; there is no cycle.
 
 10. **Secretive's second stealth line is accepted.** Robert's call. Psychic
@@ -133,7 +138,9 @@
    Secretive faction. The Buy Asset path from purchase to `AssetStealthApplied` is
    already covered by `TestEffects_PsychicAssassinsBoughtStealthed`, and that
    path does not change for a tag holder. For the interim review to decide: add a
-   Secretive scenario, or leave it.
+   Secretive scenario, or leave it. **Resolved at the interim review:** added.
+   `TestSecretive_PurchaseStartsStealthed` buys a Franchise, which has no stealth
+   of its own, through a full turn.
 
 2. **Phase 2, Commit 4: the counterstrike's rolls carry `OpponentAttribute` too.**
    Robert's call (rules reading). Decision 3's site list missed `counterstrike` in
@@ -148,6 +155,42 @@
 3. **Phase 2, Commit 4: gofmt realigns `bonusDieRegistrar`.** Task 7 splits
    `Filters` over three lines, so gofmt drops the shared alignment of `Owners`,
    `Scopes` and `Gates`. Applied as gofmt leaves it.
+
+4. **Interim review: cargo in flight is not a mover.** Decision 8's guard covered
+   one decision batch only. A floored facility riding a transport that was still
+   in flight was offered as a mover the next turn, and its own order then fought
+   `cargoFollows`. Cargo carries no order of its own, so `eligibleMovableAssets`
+   now skips any asset listed in another order's `CargoAssetIDs`. Decision 8 now
+   says so. Test: `TestEligibleMovableAssets_SkipsCargoInFlight`.
+
+5. **Interim review: an open order stays cancellable at speed 0.** If the floor
+   goes away (a `TagRemoved`, or an asset-held floor whose holder stops working),
+   the resolved speed drops to 0. The tick then adds 0 every turn, and
+   `eligibleMovableAssets` dropped the asset, so the player could neither cancel
+   nor revise the order. The list now keeps any asset with an open order,
+   whatever its speed. Only a once-floored asset can hold an order at speed 0, so
+   no other asset changes. Decision 9 now says so. Test:
+   `TestEligibleMovableAssets_KeepsAnOpenOrderAfterTheFloorGoes`.
+
+6. **Interim review: the `goal` filter needs a rival.** Robert's call (rules
+   reading). The counterstrike's self-attack roll is the attacker's own
+   `PhaseAttack` roll on the target world, so Imperialists' die fired on it and
+   made the faction likelier to hurt its own asset. "Attacks made as part of a
+   Seize Planet action" are attacks on someone, so `goal` now matches only a roll
+   with an `Opponent`. The counterstrike rolls carry none by design (overview
+   Decision 9). The Attack action and Expand Influence's free attack both set one,
+   so they still match. Defense dice on the counterstrike (Deep Rooted, Savage,
+   Theocratic) stay, Robert's call: they help the faction resist its own asset, as
+   Decision Record 2 read for Theocratic. Decision 2 now says so. Test: the
+   `TestRollMatches` goal cases.
+
+7. **Interim review: one speed resolver per pass.** `ResolveAssetSpeed` sorted
+   every asset the faction owns on each call, and both readers called it once
+   per asset. `dispatch.AssetSpeedResolver(registry, faction)` now gathers the
+   modifiers once and returns a function of the definition; the tick and the
+   movable list each build one per pass. Same answers, one sort per pass.
+   Decisions 7 and 9 now name it. The Phase 4 task listings below keep the
+   pre-review `ResolveAssetSpeed` shape as executed. Test: `TestAssetSpeedResolver`.
 
 ---
 

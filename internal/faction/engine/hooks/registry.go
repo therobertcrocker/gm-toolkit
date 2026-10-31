@@ -289,14 +289,12 @@ func (registry *Registry) WorldTechLevelModifiersForAsset(factionID, assetInstan
 	return registry.worldTechLevelModifiers[AssetScope(factionID, assetInstanceID)]
 }
 
-// AssetSpeedModifiersFor returns all Cat 4 speed hooks matching the given faction and asset.
-func (registry *Registry) AssetSpeedModifiersFor(factionID, assetInstanceID string) []RegisteredAssetSpeedModifier {
+// AssetSpeedModifiersFor returns the global and faction Cat 4 speed hooks; the
+// asset buckets come from AssetSpeedModifiersForAsset.
+func (registry *Registry) AssetSpeedModifiersFor(factionID string) []RegisteredAssetSpeedModifier {
 	var result []RegisteredAssetSpeedModifier
 	result = append(result, registry.assetSpeedModifiers[GlobalScope()]...)
 	result = append(result, registry.assetSpeedModifiers[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.assetSpeedModifiers[AssetScope(factionID, assetInstanceID)]...)
-	}
 	return result
 }
 

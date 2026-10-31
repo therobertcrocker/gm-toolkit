@@ -331,3 +331,29 @@ func TestPreceptorArchive_NoBonusWithoutTag(t *testing.T) {
 	testharness.CheckStep(t, "alpha Coin charged full cost without Preceptor tag", alpha.Coin == wantCoin,
 		fmt.Sprintf("alpha.Coin = %d, want %d", alpha.Coin, wantCoin))
 }
+
+// --- scenario N+5: Secretive tag — every purchase starts stealthed ---
+
+func TestSecretive_PurchaseStartsStealthed(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 5, 3, 2)
+	alpha.Tags = []string{"SWN-T-017"}
+	alpha.Coin = 20
+	scriptPurchase(t, h, alpha, testharness.DefFranchise)
+
+	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	franchise := findByDefinition(alpha, testharness.DefFranchise)
+	if franchise == nil {
+		t.Fatal("no Franchise in alpha's roster")
+	}
+	testharness.CheckStep(t, "the Franchise is stealthed", franchise.Stealthy, "a Secretive faction's Franchise is not stealthy")
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
+	_, found := testharness.FindMutationByTypeAndCause(records, "asset_stealth_applied", "apply_stealth")
+	testharness.CheckStep(t, "asset_stealth_applied(cause=apply_stealth) in history", found, "no asset_stealth_applied found")
+}

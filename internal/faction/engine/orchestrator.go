@@ -805,11 +805,28 @@ func prepareMovementDecisions(
 }
 
 func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry) []*domain.Asset {
+	// Cargo has no order of its own: only its transport's order lists it.
+	riding := make(map[string]bool)
+	for _, asset := range faction.Assets {
+		if asset.CurrentOrder != nil {
+			for _, cargoID := range asset.CurrentOrder.CargoAssetIDs {
+				riding[cargoID] = true
+			}
+		}
+	}
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
+		if riding[asset.ID] {
+			continue
+		}
 		def := rulebook.Assets[asset.DefinitionID]
 		// deliberate: a sheltered asset stays put, not moves, because Boltholes make it unusable until repaired (Effort 2 Decision 11).
-		if def != nil && dispatch.ResolveAssetSpeed(registry, faction, def) > 0 && !asset.HasCondition(domain.ConditionSheltered) {
+		if def == nil || asset.HasCondition(domain.ConditionSheltered) {
+			continue
+		}
+		// deliberate: an open order keeps the asset listed at speed 0, not drops it, because a lost speed floor would freeze the order with no way to cancel it (Effort 2 Decision Record 5).
+		if asset.CurrentOrder != nil || speedOf(def) > 0 {
 			eligible = append(eligible, asset)
 		}
 	}

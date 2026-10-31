@@ -76,3 +76,26 @@ func TestApplyStealth_SecretiveStealthsEveryPurchase(t *testing.T) {
 		t.Errorf("mutations = %+v, want %+v", got, want)
 	}
 }
+
+func TestApplyStealth_ValidateRefusesFactionScopeOnAnAsset(t *testing.T) {
+	cases := map[string]struct {
+		scope   domain.EffectScope
+		wantErr bool
+	}{
+		"faction scope is refused": {scope: domain.ScopeFaction, wantErr: true},
+		"self scope is accepted":   {scope: domain.ScopeSelf, wantErr: false},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			definition := &domain.AssetDefinition{ID: "stealthy", Effects: []domain.EffectDefinition{{
+				Trigger: domain.TriggerOnPurchase,
+				Effect:  domain.SpecialApplyStealth,
+				Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: testCase.scope},
+			}}}
+			err := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler)).RegisterEffectsList(definition)
+			if (err != nil) != testCase.wantErr {
+				t.Errorf("RegisterEffectsList error = %v, wantErr %v", err, testCase.wantErr)
+			}
+		})
+	}
+}

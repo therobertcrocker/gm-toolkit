@@ -82,10 +82,11 @@ func TestRollMatches(t *testing.T) {
 		{"tech level, no rolling asset", domain.TriggerOwnRoll, withPrimitive, hooks.RollContext{Actor: alpha}, false},
 		{"opponent tech level match", domain.TriggerOwnRoll, againstAdvanced, hooks.RollContext{Actor: alpha, OpponentAsset: advanced}, true},
 		{"opponent tech level mismatch", domain.TriggerOwnRoll, againstAdvanced, hooks.RollContext{Actor: alpha, OpponentAsset: primitive}, false},
-		{"goal target world", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, World: "Krylos"}, true},
-		{"off the goal target", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, World: "Tartarus"}, false},
-		{"another goal", domain.TriggerOwnRoll, otherGoal, hooks.RollContext{Actor: alpha, World: "Krylos"}, false},
-		{"goal target not yet chosen", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: planning, World: ""}, false},
+		{"goal target world", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Krylos"}, true},
+		{"goal target, no rival (counterstrike)", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, World: "Krylos"}, false},
+		{"off the goal target", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Tartarus"}, false},
+		{"another goal", domain.TriggerOwnRoll, otherGoal, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Krylos"}, false},
+		{"goal target not yet chosen", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: planning, Opponent: beta, World: ""}, false},
 		{"unknown trigger", domain.TriggerTurnStart, self, hooks.RollContext{Actor: alpha, Asset: declaring}, false},
 	}
 	for _, tc := range cases {

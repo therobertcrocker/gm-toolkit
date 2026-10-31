@@ -25,8 +25,8 @@ var rollPhaseNames = map[hooks.RollPhase]domain.EffectRollPhase{
 // what keeps an entry to its own side. attribute reads the stat this roll uses;
 // opponent_attribute the stat the other side rolls against it. tech_level reads
 // the rolling asset's definition, opponent_tech_level the other side's; neither
-// matches without a rulebook. goal matches a roll on the target world of the
-// owner's active goal.
+// matches without a rulebook. goal matches a roll against a rival on the target
+// world of the owner's active goal.
 func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFactionID string, asset *domain.Asset, filters domain.EffectFilters, rulebook *rulebook.Rulebook) bool {
 	if ctx.Actor == nil {
 		return false
@@ -79,7 +79,8 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 	if !techLevelMatches(ctx.Asset, filters.TechLevel, rulebook) || !techLevelMatches(ctx.OpponentAsset, filters.OpponentTechLevel, rulebook) {
 		return false
 	}
-	if filters.Goal != "" && !onGoalTarget(owner, filters.Goal, ctx.World) {
+	// deliberate: a goal roll needs a rival, not only the target world, because the counterstrike rolls the attacker against itself with no Opponent (Effort 2 Decision Record 6).
+	if filters.Goal != "" && (ctx.Opponent == nil || !onGoalTarget(owner, filters.Goal, ctx.World)) {
 		return false
 	}
 	return true
@@ -101,6 +102,6 @@ func techLevelMatches(asset *domain.Asset, want *int, rulebook *rulebook.Ruleboo
 	if asset == nil || rulebook == nil {
 		return false
 	}
-	def := rulebook.Assets[asset.DefinitionID]
-	return def != nil && def.TechLevel == *want
+	definition := rulebook.Assets[asset.DefinitionID]
+	return definition != nil && definition.TechLevel == *want
 }

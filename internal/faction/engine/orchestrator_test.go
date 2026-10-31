@@ -287,6 +287,37 @@ func TestEligibleMovableAssets_ReadsTheResolvedSpeed(t *testing.T) {
 	}
 }
 
+func TestEligibleMovableAssets_SkipsCargoInFlight(t *testing.T) {
+	rider := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha"}
+	transport := &domain.Asset{
+		ID: "transport-1", DefinitionID: "transport-def", OwnerID: "alpha",
+		CurrentOrder: &domain.MovementOrder{CargoAssetIDs: []string{rider.ID}},
+	}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, rider.ID: rider}}
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
+
+	eligible := eligibleMovableAssets(faction, transportRulebook(), registry)
+
+	if len(eligible) != 1 || eligible[0].ID != "transport-1" {
+		t.Errorf("eligible = %v, want only transport-1: sf-1 rides it", eligible)
+	}
+}
+
+func TestEligibleMovableAssets_KeepsAnOpenOrderAfterTheFloorGoes(t *testing.T) {
+	stranded := &domain.Asset{
+		ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha",
+		CurrentOrder: &domain.MovementOrder{Destination: domain.Location{WorldID: "world-b"}},
+	}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{stranded.ID: stranded}}
+
+	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
+
+	if len(eligible) != 1 || eligible[0].ID != "sf-1" {
+		t.Errorf("eligible = %v, want sf-1: its order must stay cancellable at speed 0", eligible)
+	}
+}
+
 func TestPrepareMovementDecisions_AnOrderedAssetIsNotCargo(t *testing.T) {
 	rb := transportRulebook()
 	loc := domain.Location{WorldID: "world-a"}

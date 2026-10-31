@@ -339,9 +339,9 @@ func TestEffects_TransitWebMovesForOneCoin(t *testing.T) {
 		fmt.Sprintf("asset_moved(cause=ability) = %d, want 2", moves))
 }
 
-// scriptPsychicAssassinsPurchase makes the faction's action a Buy Asset of Psychic
-// Assassins on its homeworld; every other faction skips its action.
-func scriptPsychicAssassinsPurchase(t *testing.T, h *testharness.Harness, buyer *domain.Faction) {
+// scriptPurchase makes the faction's action a Buy Asset of definitionID on its
+// homeworld; every other faction skips its action.
+func scriptPurchase(t *testing.T, h *testharness.Harness, buyer *domain.Faction, definitionID string) {
 	t.Helper()
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != buyer.ID {
@@ -357,11 +357,11 @@ func scriptPsychicAssassinsPurchase(t *testing.T, h *testharness.Harness, buyer 
 	}
 	h.Collector.SelectBuyOrderFn = func(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
 		for _, def := range purchasablePerWorld[buyer.Homeworld.WorldID] {
-			if def.ID == testharness.DefPsychicAssassins {
+			if def.ID == definitionID {
 				return action.BuyOrder{World: buyer.Homeworld.WorldID, Definition: def}, nil
 			}
 		}
-		t.Fatal("Psychic Assassins not purchasable on the homeworld")
+		t.Fatalf("%s not purchasable on the homeworld", definitionID)
 		return action.BuyOrder{}, nil
 	}
 }
@@ -379,7 +379,7 @@ func TestEffects_PsychicAssassinsBoughtStealthed(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 5, 3, 2)
 	alpha.Coin = 20
-	scriptPsychicAssassinsPurchase(t, h, alpha)
+	scriptPurchase(t, h, alpha, testharness.DefPsychicAssassins)
 
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
@@ -404,7 +404,7 @@ func TestEffects_TripwireCellsCatchAStealthedPurchase(t *testing.T) {
 	alpha.Coin = 20
 	beta := h.AddFaction("beta", "Krylos", 2, 4, 2)
 	addActiveAsset(beta, "cells", testharness.DefTripwireCells, "Tartarus")
-	scriptPsychicAssassinsPurchase(t, h, alpha)
+	scriptPurchase(t, h, alpha, testharness.DefPsychicAssassins)
 
 	// The Cells' contest: beta 10+cunning(4) = 14 vs alpha 1+cunning(3) = 4, so beta wins.
 	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1}}

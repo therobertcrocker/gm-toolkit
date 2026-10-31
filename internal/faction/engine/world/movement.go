@@ -32,6 +32,7 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 	var mutations []domain.Mutation
 	log.Info("ticking movement orders")
 
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	for _, asset := range domain.SortedAssets(faction) {
 		if asset.CurrentOrder == nil {
 			continue
@@ -40,7 +41,7 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 		if !ok {
 			return nil, fmt.Errorf("TickMovementOrders: unknown asset definition %q", asset.DefinitionID)
 		}
-		newStepIdx := asset.CurrentOrder.StepIdx + dispatch.ResolveAssetSpeed(registry, faction, def)
+		newStepIdx := asset.CurrentOrder.StepIdx + speedOf(def)
 		log.Debug("ticking movement order for asset", "asset_id", asset.ID, "from_hex", asset.Location.RegionHex, "to_hex", asset.CurrentOrder.Destination.RegionHex)
 		if newStepIdx >= len(asset.CurrentOrder.Path)-1 {
 			mutations = append(mutations, domain.MovementOrderCompleted{
