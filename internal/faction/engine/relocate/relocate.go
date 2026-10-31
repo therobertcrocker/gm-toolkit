@@ -156,7 +156,7 @@ func askLanding(request Request, order action.RelocateOrder) (*domain.Permission
 	if def == nil {
 		return nil, nil
 	}
-	return dispatch.RequestArrivalPermission(request.Registry, request.Collector, request.FactionState, request.Faction, order.Asset, def, order.DestinationWorld, domain.PermissionCauseRelocate)
+	return dispatch.RequestArrivalPermission(request.Registry, request.Collector, request.FactionState, request.Rulebook, request.Faction, order.Asset, def, order.DestinationWorld, domain.PermissionCauseRelocate)
 }
 
 // lockedOutRemoved returns the worlds a relocate may land on: candidateWorlds less

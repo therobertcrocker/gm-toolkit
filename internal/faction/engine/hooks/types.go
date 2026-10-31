@@ -19,6 +19,9 @@ const (
 // contested faction test (an ability contest) sets it. Asset is the rolling asset
 // and OpponentAsset the asset on the other side; either is nil when no asset
 // stands there (a faction test, a Base defending). Action is the action's Name().
+// Detection marks a roll made by the side testing to detect Stealthed assets: the
+// actor of a reveal ability, or the declaring side of a stealth-clearing contest.
+// The side resisting detection never sets it (Effort 3 Decision 5).
 type RollContext struct {
 	Phase             RollPhase
 	Actor             *domain.Faction
@@ -29,6 +32,7 @@ type RollContext struct {
 	OpponentAsset     *domain.Asset
 	World             string
 	Action            string
+	Detection         bool
 }
 
 // RollResult holds the per-die breakdown of a completed roll.

@@ -33,6 +33,8 @@ const (
 	SpecialLoseTies           SpecialEffectType = "lose_ties"
 	SpecialCostDiscount       SpecialEffectType = "cost_discount"
 	SpecialSpeedFloor         SpecialEffectType = "speed_floor"
+	SpecialRemoveTag          SpecialEffectType = "remove_tag"
+	SpecialXPRoll             SpecialEffectType = "xp_roll"
 )
 
 type EffectTrigger string
@@ -59,6 +61,9 @@ const (
 	TriggerAttackTie              EffectTrigger = "attack_tie"
 	TriggerAssetDestroyed         EffectTrigger = "asset_destroyed"
 	TriggerSpeedQuery             EffectTrigger = "speed_query"
+	TriggerRivalRoll              EffectTrigger = "rival_roll"
+	TriggerHomeworldChanged       EffectTrigger = "homeworld_changed"
+	TriggerGoalCompleted          EffectTrigger = "goal_completed"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -97,6 +102,7 @@ const (
 	FilterTechLevel         EffectFilterName = "tech_level"
 	FilterOpponentTechLevel EffectFilterName = "opponent_tech_level"
 	FilterGoal              EffectFilterName = "goal"
+	FilterDetection         EffectFilterName = "detection"
 )
 
 type EffectGateName string
@@ -135,6 +141,17 @@ const (
 	ContestRollerTarget ContestRoller = "target"
 )
 
+// ContestRoll names the roll phases an effect contest rolls with, as the book
+// words it: an attack and its defense (Tripwire Cells' "Cunning vs. Cunning
+// attack"), or a faction test and its contested roll (Panopticon Matrix's and
+// Lobbyists' "test"), as the A-side gate rolls.
+type ContestRoll string
+
+const (
+	ContestRollAttack ContestRoll = "attack"
+	ContestRollTest   ContestRoll = "test"
+)
+
 type RestrictSide string
 
 const (
@@ -152,7 +169,7 @@ const (
 // EffectFilters narrows which events fire an entry. A zero optional field is an
 // absent filter. Stealthy, TechLevel and OpponentTechLevel are pointers because
 // "stealthy = false" and "tech_level = 0" are real filters, distinct from no
-// filter.
+// filter. Detection is a plain bool: only "detection = true" filters.
 type EffectFilters struct {
 	Owner             EffectOwner
 	Scope             EffectScope
@@ -168,6 +185,7 @@ type EffectFilters struct {
 	OpponentTechLevel *int
 	CausedBy          EffectOwner
 	Goal              string
+	Detection         bool
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
@@ -208,6 +226,9 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	if filters.Goal != "" {
 		present = append(present, FilterGoal)
 	}
+	if filters.Detection {
+		present = append(present, FilterDetection)
+	}
 	return present
 }
 
@@ -234,6 +255,7 @@ func (gates EffectGates) Used() []EffectGateName {
 type EffectContest struct {
 	Contest
 	Roller ContestRoller
+	Roll   ContestRoll
 }
 
 type CoinGainParams struct {
@@ -294,6 +316,13 @@ type SpeedFloorParams struct {
 	Speed int
 }
 
+// XPRollParams is a bonus-XP roll: roll Die, and on Target or more gain Amount XP.
+type XPRollParams struct {
+	Die    DiceRoll
+	Target int
+	Amount int
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -315,4 +344,5 @@ type EffectDefinition struct {
 	DiscountRepair *DiscountRepairParams
 	CostDiscount   *CostDiscountParams
 	SpeedFloor     *SpeedFloorParams
+	XPRoll         *XPRollParams
 }

@@ -1,6 +1,8 @@
 package dispatch
 
 import (
+	"maps"
+	"slices"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -14,6 +16,8 @@ import (
 // buckets rollScopes lists, so the opponent's faction and asset hooks and hooks on
 // the roll's world reach the roll. Each offer and directive is stamped with the
 // faction that registered it, and its budget is read and spent on that faction.
+// A nil collector asks no one: Cat 1 takes every offer with no budget and skips
+// the rest, and Cat 2 declines every elective reroll (overview Decision 2).
 func RollWithHooks(
 	ctx hooks.RollContext,
 	baseRoll domain.DiceRoll,
@@ -26,7 +30,7 @@ func RollWithHooks(
 ) hooks.RollResult {
 	var scopes []hooks.Scope
 	if registry != nil {
-		scopes = rollScopes(ctx, faction)
+		scopes = rollScopes(ctx, faction, factionState)
 	}
 
 	// Cat 1: gather modifier offers, run offer filters, filter by budget, let collector choose.
@@ -47,7 +51,11 @@ func RollWithHooks(
 			}
 		}
 		offers := offersBudgetFilter(allOffers, faction, factionState)
-		if len(offers) > 0 {
+		switch {
+		case len(offers) == 0:
+		case collector == nil:
+			chosen = freeOffers(offers)
+		default:
 			chosen = collector.SelectModifiers(offers)
 		}
 	}
@@ -92,7 +100,7 @@ func RollWithHooks(
 			if owner.BudgetSpent(directive.BudgetKey) {
 				continue
 			}
-			if directive.Elective && !collector.ConfirmReroll(directive) {
+			if directive.Elective && (collector == nil || !collector.ConfirmReroll(directive)) {
 				continue
 			}
 			for _, idx := range directive.Indices {
@@ -109,15 +117,27 @@ func RollWithHooks(
 }
 
 // rollScopes lists the registry buckets a roll consults, in order: global, the
-// roller's faction, the roller's assets, the opponent's faction, then the
-// opponent's assets. Every S hook checks its owner relation itself (rollMatches),
-// so a hook in the opponent's bucket acts only on rolls made against its owner.
-func rollScopes(ctx hooks.RollContext, roller *domain.Faction) []hooks.Scope {
+// roller's faction, the roller's assets, the opponent's faction, the opponent's
+// assets, then every other faction's faction bucket in ID order. Every S hook
+// checks its owner relation itself (rollMatches), so a hook in the opponent's
+// bucket acts only on rolls made against its owner, and a bystander's only
+// through rival_roll (Effort 3 Decision 7). A bystander's asset buckets are never
+// read: only a tag holds rival_roll.
+func rollScopes(ctx hooks.RollContext, roller *domain.Faction, factionState *state.FactionState) []hooks.Scope {
 	scopes := []hooks.Scope{hooks.GlobalScope(), hooks.FactionScope(roller.ID)}
 	scopes = append(scopes, assetScopes(roller, ctx.World, ctx.Asset)...)
 	if ctx.Opponent != nil {
 		scopes = append(scopes, hooks.FactionScope(ctx.Opponent.ID))
 		scopes = append(scopes, assetScopes(ctx.Opponent, ctx.World, ctx.OpponentAsset)...)
+	}
+	if factionState == nil {
+		return scopes
+	}
+	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
+		if factionID == roller.ID || (ctx.Opponent != nil && factionID == ctx.Opponent.ID) {
+			continue
+		}
+		scopes = append(scopes, hooks.FactionScope(factionID))
 	}
 	return scopes
 }
@@ -176,6 +196,19 @@ func offersBudgetFilter(offers []hooks.ModifierOffer, roller *domain.Faction, fa
 		filtered = append(filtered, offer)
 	}
 	return filtered
+}
+
+// freeOffers returns the offers with no budget: what a roll with no one to ask
+// takes. An extra die where the highest is kept never hurts the roller, while a
+// once-per-turn die spent on a roll no one chose could cost a later one.
+func freeOffers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
+	var free []hooks.ModifierOffer
+	for _, offer := range offers {
+		if offer.BudgetKey == "" {
+			free = append(free, offer)
+		}
+	}
+	return free
 }
 
 func diceSum(dice []int) int {

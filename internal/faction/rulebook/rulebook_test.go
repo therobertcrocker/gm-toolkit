@@ -814,12 +814,24 @@ func TestLoad_TagBonusDice(t *testing.T) {
 	}{
 		{"SWN-T-007", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Attribute: domain.StatCunning}, domain.OncePerOwnerFaction)},
 		{"SWN-T-012", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Attribute: domain.StatWealth}, domain.OncePerOwnerFaction)},
-		{"SWN-T-002", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeHomeworld, Phases: defense}, "")},
+		{"SWN-T-002", append(tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeHomeworld, Phases: defense}, ""), domain.EffectDefinition{
+			Trigger: domain.TriggerHomeworldChanged,
+			Effect:  domain.SpecialRemoveTag,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		})},
 		{"SWN-T-019", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatCunning}, domain.OncePerOwnerFaction)},
-		{"SWN-T-004", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatWealth}, domain.OncePerOwnerFaction)},
+		{"SWN-T-004", append(tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatWealth}, domain.OncePerOwnerFaction), domain.EffectDefinition{
+			Trigger: domain.TriggerGoalCompleted,
+			Effect:  domain.SpecialXPRoll,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-007"},
+			XPRoll:  &domain.XPRollParams{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
+		})},
 		{"SWN-T-015", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, TechLevel: &zero}, domain.OncePerOwnerFaction)},
-		{"SWN-T-009", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, OpponentTechLevel: &five}, domain.OncePerOwnerFaction)},
-		{"SWN-T-006", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Goal: "G-004"}, "")},
+		{"SWN-T-009", append(
+			tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, OpponentTechLevel: &five}, domain.OncePerOwnerFaction),
+			tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, "")...,
+		)},
+		{"SWN-T-006", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Goal: "G-004", Action: "Attack"}, "")},
 	}
 	for _, tc := range cases {
 		if got := rb.Tags[tc.tagID].Effects; !reflect.DeepEqual(got, tc.want) {
@@ -893,6 +905,7 @@ func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
 		Gates: domain.EffectGates{Contest: &domain.EffectContest{
 			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
 			Roller:  domain.ContestRollerSelf,
+			Roll:    domain.ContestRollTest,
 		}},
 	}}
 	if got := rb.Assets["SWN-C2-001"].Effects; !reflect.DeepEqual(got, want) {
@@ -920,5 +933,29 @@ func TestLoad_TransportLockdown(t *testing.T) {
 	}
 	if rb.Assets["SWN-W5-003"].Transport.IgnoresLockdown {
 		t.Error("Blockade Runners ignore the lockdown, want them caught")
+	}
+}
+
+func TestLoad_ContestRolls(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	cases := []struct {
+		name    string
+		assetID string
+		want    domain.ContestRoll
+	}{
+		{"Tripwire Cells", "SWN-C4-003", domain.ContestRollAttack},
+		{"Panopticon Matrix", "SWN-C8-001", domain.ContestRollTest},
+		{"Lobbyists", "SWN-C2-001", domain.ContestRollTest},
+	}
+	for _, tc := range cases {
+		var got domain.ContestRoll
+		for _, entry := range rb.Assets[tc.assetID].Effects {
+			if entry.Gates.Contest != nil {
+				got = entry.Gates.Contest.Roll
+			}
+		}
+		if got != tc.want {
+			t.Errorf("%s contest roll = %q, want %q", tc.name, got, tc.want)
+		}
 	}
 }

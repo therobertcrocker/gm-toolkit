@@ -69,7 +69,7 @@ func (e *Engine) arrivalHold(faction *domain.Faction, factionState *state.Factio
 		if def == nil || requester == nil {
 			continue
 		}
-		refusal, err := dispatch.RequestArrivalPermission(e.Hooks, collector, factionState, requester, asset, def, order.Destination.WorldID, domain.PermissionCauseArrival)
+		refusal, err := dispatch.RequestArrivalPermission(e.Hooks, collector, factionState, e.Rulebook, requester, asset, def, order.Destination.WorldID, domain.PermissionCauseArrival)
 		if err != nil {
 			return nil, 0, err
 		}

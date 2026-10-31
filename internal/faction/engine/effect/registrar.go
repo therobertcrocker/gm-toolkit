@@ -98,13 +98,17 @@ type RegisterContext struct {
 // FireContext carries FactionState because a phase effect may reach other
 // factions' assets (Panopticon Matrix tests every rival on its world). Asset is
 // the subject: the bought asset, a quality's target, or at turn start the
-// holder's own asset.
+// holder's own asset. Registry and Rulebook ride along because a contest gate
+// rolls through the roll hooks (Effort 3 Decision 3); FireQuality leaves them
+// nil, as no quality rolls.
 type FireContext struct {
 	Holder       Holder
 	Asset        *domain.Asset
 	Entry        domain.EffectDefinition
 	Roller       domain.Roller
 	FactionState *state.FactionState
+	Registry     *hooks.Registry
+	Rulebook     *rulebook.Rulebook
 }
 
 // TargetContext is a quality's purchase before it is made: the buyer, the world it

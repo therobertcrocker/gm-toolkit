@@ -89,6 +89,7 @@ owner = "rival"
 scope = "world"
 [assets.Lobbyists.effects.gates.contest]
 roller        = "self"
+roll          = "test"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 
@@ -307,6 +308,7 @@ scope    = "world"
 stealthy = true
 [assets.TripwireCells.effects.gates.contest]
 roller        = "self"
+roll          = "attack"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 
@@ -583,5 +585,6 @@ scope    = "world"
 stealthy = true
 [assets.PanopticonMatrix.effects.gates.contest]
 roller        = "target"
+roll          = "test"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"

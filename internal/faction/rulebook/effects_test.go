@@ -66,6 +66,7 @@ once_per = "target_faction"
 no_stack = true
 [assets.Machine.effects.gates.contest]
 roller        = "target"
+roll          = "test"
 attacker_stat = "Cunning"
 defender_stat = "Wealth"
 [assets.Machine.effects.coin_steal]
@@ -123,6 +124,7 @@ scope = "self"
 				Contest: &domain.EffectContest{
 					Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth},
 					Roller:  domain.ContestRollerTarget,
+					Roll:    domain.ContestRollTest,
 				},
 			},
 			CoinSteal: &domain.CoinStealParams{Amount: domain.DiceRoll{NumDice: 1, Sides: 4}},
@@ -423,6 +425,44 @@ attacker_stat = "Cunning"
 defender_stat = "Cunning"
 `,
 			wantErr: `unknown contest roller: ""`,
+		},
+		{
+			name: "contest without a roll",
+			body: `
+[[assets.Machine.effects]]
+trigger = "stealth_arrival"
+effect  = "clear_stealth"` + filters + `
+[assets.Machine.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+`,
+			wantErr: `unknown contest roll: ""`,
+		},
+		{
+			name: "xp_roll with a flat die",
+			body: `
+[[assets.Machine.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"` + filters + `
+[assets.Machine.effects.xp_roll]
+die    = "4"
+target = 4
+amount = 1
+`,
+			wantErr: `xp_roll die: invalid dice notation: "4"`,
+		},
+		{
+			name: "xp_roll with no target",
+			body: `
+[[assets.Machine.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"` + filters + `
+[assets.Machine.effects.xp_roll]
+die    = "1d6"
+amount = 1
+`,
+			wantErr: "xp_roll target and amount must be > 0",
 		},
 		{
 			name: "grant_movement without a relocate block",

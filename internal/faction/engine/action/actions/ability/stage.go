@@ -95,6 +95,7 @@ func passesGate(
 	attack := dispatch.RollWithHooks(
 		hooks.RollContext{
 			Phase:             hooks.PhaseFactionTest,
+			Detection:         step.Effect == domain.EffectRevealStealth,
 			Actor:             faction,
 			Opponent:          defender,
 			Attribute:         string(step.Contest.AttackerStat),

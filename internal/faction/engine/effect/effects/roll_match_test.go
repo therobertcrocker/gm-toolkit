@@ -87,6 +87,11 @@ func TestRollMatches(t *testing.T) {
 		{"off the goal target", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Tartarus"}, false},
 		{"another goal", domain.TriggerOwnRoll, otherGoal, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Krylos"}, false},
 		{"goal target not yet chosen", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: planning, Opponent: beta, World: ""}, false},
+		{"detection, a detecting roll", domain.TriggerOwnRoll, domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, hooks.RollContext{Actor: alpha, Detection: true}, true},
+		{"detection, any other roll", domain.TriggerOwnRoll, domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, hooks.RollContext{Actor: alpha}, false},
+		{"rival roll, a bystander's roll", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: beta, Opponent: gamma, World: "Tartarus"}, true},
+		{"rival roll, against the owner", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: beta, Opponent: alpha}, true},
+		{"rival roll, the owner's own roll", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: alpha, Opponent: beta}, false},
 		{"unknown trigger", domain.TriggerTurnStart, self, hooks.RollContext{Actor: alpha, Asset: declaring}, false},
 	}
 	for _, tc := range cases {

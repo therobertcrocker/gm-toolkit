@@ -488,7 +488,7 @@ func TestFireTurnStart_FiresActiveTurnStartEntriesInAssetOrder(t *testing.T) {
 		"a-destroyed":    {ID: "a-destroyed", DefinitionID: def.ID, Ready: true, Maintained: true, CurrentHP: 0},
 	}}
 
-	mutations := effect.New(registrars, discardLog).FireTurnStart(faction, nil, rb, nil)
+	mutations := effect.New(registrars, discardLog).FireTurnStart(faction, nil, rb, nil, nil)
 
 	var causes []string
 	for _, mutation := range mutations {
@@ -523,7 +523,7 @@ func TestFirePurchase_FiresOnPurchaseEntriesOnly(t *testing.T) {
 
 	t.Run("only the purchase entry fires", func(t *testing.T) {
 		bought := &domain.Asset{ID: "a-1", DefinitionID: def.ID, Ready: false, CurrentHP: 1}
-		got := engine.FirePurchase(faction, bought, nil, rb, nil)
+		got := engine.FirePurchase(faction, bought, nil, rb, nil, nil)
 		want := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "on_purchase"}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("mutations = %+v, want %+v", got, want)
@@ -532,7 +532,7 @@ func TestFirePurchase_FiresOnPurchaseEntriesOnly(t *testing.T) {
 
 	t.Run("an unknown definition fires nothing", func(t *testing.T) {
 		unknown := &domain.Asset{ID: "a-2", DefinitionID: "T-404"}
-		if got := engine.FirePurchase(faction, unknown, nil, rb, nil); got != nil {
+		if got := engine.FirePurchase(faction, unknown, nil, rb, nil, nil); got != nil {
 			t.Errorf("mutations = %+v, want nil", got)
 		}
 	})
@@ -558,7 +558,7 @@ func TestFireTurnStart_PassesFactionStateToThePhaseRoute(t *testing.T) {
 	}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": faction}}
 
-	effect.New(registrars, discardLog).FireTurnStart(faction, factionState, rb, nil)
+	effect.New(registrars, discardLog).FireTurnStart(faction, factionState, rb, nil, nil)
 
 	if seen != factionState {
 		t.Errorf("FireContext.FactionState = %p, want the state passed in (%p)", seen, factionState)
@@ -682,8 +682,8 @@ func TestTagEntries_RunOnEveryRouteAfterTheAssets(t *testing.T) {
 	}
 
 	engine.ApplyAll(factionState, rb, hooks.NewRegistry(), nil, discardLog)
-	engine.FireTurnStart(alpha, factionState, rb, nil)
-	engine.FirePurchase(alpha, &domain.Asset{ID: "a-2", DefinitionID: "unknown"}, factionState, rb, nil)
+	engine.FireTurnStart(alpha, factionState, rb, nil, nil)
+	engine.FirePurchase(alpha, &domain.Asset{ID: "a-2", DefinitionID: "unknown"}, factionState, rb, nil, nil)
 	engine.FireMatchup(domain.TriggerOwnAttack, effect.MatchupContext{Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Asset: asset}, rb)
 
 	want := []string{

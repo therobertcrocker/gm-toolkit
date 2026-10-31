@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -10,11 +11,17 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// rerollRegistrar reads own_roll as the owner rerolling its own dice, and
-// enemy_roll_at_me as the owner forcing a rival rolling against it to reroll.
-// owner and scope read as in rollMatches.
+// rerollRegistrar reads own_roll as the owner rerolling its own dice,
+// enemy_roll_at_me as the owner forcing a rival rolling against it to reroll, and
+// rival_roll as the owner forcing any rival's roll, anywhere, to reroll
+// (Psychic Academy, D-7). owner and scope read as in rollMatches.
 var rerollRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
+		domain.TriggerRivalRoll: {
+			Owners: []domain.EffectOwner{domain.OwnerRival},
+			Scopes: []domain.EffectScope{domain.ScopeFaction},
+			Gates:  []domain.EffectGateName{domain.GateOncePer},
+		},
 		domain.TriggerOwnRoll: {
 			Owners: []domain.EffectOwner{domain.OwnerOwn},
 			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction},
@@ -27,11 +34,28 @@ var rerollRegistrar = effect.Registrar{
 		},
 	},
 	Register: registerReroll,
+	Validate: validateReroll,
+}
+
+// validateReroll keeps rival_roll to a tag: the dispatcher reads a bystander's
+// faction bucket only, so an asset's rival_roll hook would never reach a roll its
+// faction takes no part in (Effort 3 Decision 7).
+func validateReroll(entry domain.EffectDefinition, holder effect.HolderKind) error {
+	if entry.Trigger == domain.TriggerRivalRoll && holder != effect.HolderTag {
+		return fmt.Errorf("only a tag can hold trigger %q", domain.TriggerRivalRoll)
+	}
+	return nil
+}
+
+// forcedTrigger reports whether trigger forces a rival's roll: one made against
+// the owner, or any rival's roll at all.
+func forcedTrigger(trigger domain.EffectTrigger) bool {
+	return trigger == domain.TriggerEnemyRollAtMe || trigger == domain.TriggerRivalRoll
 }
 
 func registerReroll(ctx effect.RegisterContext) {
 	source := ctx.Holder.Name()
-	if ctx.Entry.Trigger == domain.TriggerEnemyRollAtMe {
+	if forcedTrigger(ctx.Entry.Trigger) {
 		source += " (forced)"
 	}
 	ctx.Registry.RegisterRollResultHook(
@@ -62,7 +86,7 @@ func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollRes
 	if !live || !rollMatches(ctx, hook.trigger, hook.holder.factionID, asset, hook.filters, rulebook) {
 		return hooks.RerollDirective{}
 	}
-	forced := hook.trigger == domain.TriggerEnemyRollAtMe
+	forced := forcedTrigger(hook.trigger)
 	directive := hooks.RerollDirective{
 		Source:   hook.source,
 		Indices:  rerollIndices(result.Dice, hook.params, forced),

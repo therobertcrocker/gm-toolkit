@@ -122,7 +122,7 @@ func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset,
 // order, then on the tags it holds, through each registrar's phase route. A direct
 // definition read, not a hook: turn start is a phase event the orchestrator raises
 // once per turn.
-func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	for _, asset := range domain.SortedAssets(faction) {
 		if !asset.Active() {
@@ -132,10 +132,10 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *sta
 		if def == nil {
 			continue
 		}
-		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerTurnStart, asset, factionState, roller)...)
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerTurnStart, asset, factionState, rulebook, hookRegistry, roller)...)
 	}
 	for _, tag := range heldTags(faction, rulebook) {
-		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerTurnStart, nil, factionState, roller)...)
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerTurnStart, nil, factionState, rulebook, hookRegistry, roller)...)
 	}
 	return mutations
 }
@@ -143,7 +143,7 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *sta
 // fireEntries runs holder's entries for trigger through each registrar's phase
 // route. subject is the asset the event is about: the bought asset at purchase, the
 // holder's own asset at turn start, nil for a tag at turn start.
-func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefinition, trigger domain.EffectTrigger, subject *domain.Asset, factionState *state.FactionState, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefinition, trigger domain.EffectTrigger, subject *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	for _, entry := range entries {
 		if entry.Trigger != trigger {
@@ -156,6 +156,8 @@ func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefini
 			Entry:        entry,
 			Roller:       roller,
 			FactionState: factionState,
+			Registry:     hookRegistry,
+			Rulebook:     rulebook,
 		})...)
 	}
 	return mutations
@@ -166,13 +168,13 @@ func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefini
 // not a hook: the asset was bought mid-turn, so it has no hooks until the next
 // cycle. No active check: a bought asset is never ready, and its purchase effect is
 // part of what was bought.
-func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	if def := rulebook.Assets[asset.DefinitionID]; def != nil {
-		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerOnPurchase, asset, factionState, roller)...)
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerOnPurchase, asset, factionState, rulebook, hookRegistry, roller)...)
 	}
 	for _, tag := range heldTags(faction, rulebook) {
-		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerOnPurchase, asset, factionState, roller)...)
+		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerOnPurchase, asset, factionState, rulebook, hookRegistry, roller)...)
 	}
 	return mutations
 }

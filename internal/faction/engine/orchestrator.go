@@ -178,6 +178,21 @@ func (e *Engine) runGoalLockPhase(
 	phaseLog.Info("phase begin")
 
 	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook, phaseLog.With("engine", "goal"))
+	if len(lockMutations) > 0 {
+		var err error
+		// deliberate: reactors read the lock's mutations, not only action and movement batches, because a goal completion or homeworld change is an event a rule reacts to (Effort 3 Decision 6).
+		lockMutations, err = dispatch.MutationReactors(e.Hooks, faction, lockMutations, factionState, e.Rulebook)
+		if err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return lock, nil
+			}
+			phaseLog.Error("failure", "err", err)
+			observer.OnError(faction, err)
+			return lock, err
+		}
+	}
 	observer.OnGoalLockApplied(faction, lock, lockMutations)
 
 	if len(lockMutations) > 0 {
@@ -230,7 +245,7 @@ func (e *Engine) runBookkeepingPhase(
 		if liftMutations, err = e.runConditionLifts(faction, factionState, paths, collectors.Phase, observer, phaseLog); err != nil {
 			return err
 		}
-		startMutations = append(turn.ExpireConditions(factionState, faction.ID), e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Rand)...)
+		startMutations = append(turn.ExpireConditions(factionState, faction.ID), e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Hooks, e.Rand)...)
 		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
 			if !factionErrors.IsRecoverable(err) {
 				phaseLog.Error("failure", "err", err)
@@ -542,7 +557,22 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
-	combined = append(combined, e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))...)
+	goalMutations := e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
+	if len(goalMutations) > 0 {
+		// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
+		goalMutations, err = dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
+		if err != nil {
+			if factionErrors.IsRecoverable(err) {
+				phaseLog.Warn("recoverable failure", "err", err)
+				observer.OnError(faction, err)
+				return nil // continue past this sub-engine call
+			}
+			phaseLog.Error("failure", "err", err)
+			observer.OnError(faction, err)
+			return err
+		}
+	}
+	combined = append(combined, goalMutations...)
 
 	if err := e.applyAndRecord(factionState, faction, combined, paths, phaseLog); err != nil {
 		if factionErrors.IsRecoverable(err) {
@@ -667,7 +697,7 @@ func (e *Engine) firePurchaseEffects(faction *domain.Faction, actionMutations []
 		if !ok || (added.Cause != "buy" && added.Cause != "ability") {
 			continue
 		}
-		mutations = append(mutations, e.Effect.FirePurchase(faction, &added.Asset, factionState, e.Rulebook, e.Rand)...)
+		mutations = append(mutations, e.Effect.FirePurchase(faction, &added.Asset, factionState, e.Rulebook, e.Hooks, e.Rand)...)
 	}
 	return mutations
 }

@@ -69,7 +69,7 @@ func TestApplyStealth_SecretiveStealthsEveryPurchase(t *testing.T) {
 	alpha := &domain.Faction{ID: "alpha", Tags: []string{secretive.ID}}
 	bought := &domain.Asset{ID: "franchise", DefinitionID: "SWN-W1-001", OwnerID: "alpha"}
 
-	got := engine.FirePurchase(alpha, bought, nil, rb, nil)
+	got := engine.FirePurchase(alpha, bought, nil, rb, nil, nil)
 
 	want := []domain.Mutation{domain.AssetStealthApplied{FactionID: "alpha", AssetID: "franchise", Cause: "apply_stealth", CausedByFactionID: "alpha"}}
 	if !reflect.DeepEqual(got, want) {

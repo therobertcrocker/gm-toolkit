@@ -38,7 +38,7 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	if def == nil {
 		return nil, fmt.Errorf("purchase_enabler: %w", action.ErrNoSelection)
 	}
-	refusal, err := dispatch.RequestPermission(ctx.Registry, ctx.Collector, ctx.FactionState, ctx.Faction, def, worldID, "ability")
+	refusal, err := dispatch.RequestPermission(ctx.Registry, ctx.Collector, ctx.FactionState, ctx.Rulebook, ctx.Faction, def, worldID, "ability")
 	if err != nil {
 		return nil, fmt.Errorf("purchase_enabler: %w", err)
 	}

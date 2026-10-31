@@ -90,7 +90,7 @@ func TestWithdrawPermission_WinsContestRollsCunning(t *testing.T) {
 			alpha, bravo, lobbyists := lobbyistsFixture()
 			contester := registerLobbyists(t, alpha, lobbyists, &seqRoller{values: tc.rolls})
 
-			if got := contester.WinsContest(hooks.PermissionQuery{Requester: bravo, WorldID: "Krylos"}); got != tc.want {
+			if got := contester.WinsContest(hooks.PermissionQuery{Requester: bravo, WorldID: "Krylos"}, nil, nil); got != tc.want {
 				t.Errorf("WinsContest = %v, want %v (Cunning 3 vs 2)", got, tc.want)
 			}
 		})

@@ -65,7 +65,7 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, factionState *state.FactionS
 	ba.factionID = faction.ID
 	ba.buyOrder = order
 
-	refusal, err := dispatch.RequestPermission(ba.registry, ba.collector, factionState, faction, order.Definition, order.World, "buy")
+	refusal, err := dispatch.RequestPermission(ba.registry, ba.collector, factionState, rulebook, faction, order.Definition, order.World, "buy")
 	if err != nil {
 		return fmt.Errorf("buy asset: %w", err)
 	}

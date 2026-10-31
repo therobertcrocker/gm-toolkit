@@ -57,7 +57,7 @@ func (ra *RefitAsset) Inputs(faction *domain.Faction, factionState *state.Factio
 	}
 	ra.factionID = faction.ID
 	ra.refitOrder = order
-	refusal, err := dispatch.RequestPermission(ra.registry, ra.collector, factionState, faction, order.NewDefinition, order.OldAsset.Location.WorldID, "refit")
+	refusal, err := dispatch.RequestPermission(ra.registry, ra.collector, factionState, rulebook, faction, order.NewDefinition, order.OldAsset.Location.WorldID, "refit")
 	if err != nil {
 		return fmt.Errorf("refit asset: %w", err)
 	}

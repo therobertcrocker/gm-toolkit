@@ -17,7 +17,8 @@ var rollPhaseNames = map[hooks.RollPhase]domain.EffectRollPhase{
 
 // rollMatches reports whether a roll fires an entry declared on asset. own_roll
 // fires on the owner's own roll; enemy_roll_at_me on a rival's roll made against
-// the owner. scope = "self" ties the roll to the declaring asset (rolling it for
+// the owner; rival_roll on any rival's roll, whether or not the owner is in it.
+// scope = "self" ties the roll to the declaring asset (rolling it for
 // own_roll, rolled against for enemy_roll_at_me); scope = "world" to any such roll
 // on the asset's world; scope = "homeworld" to any such roll on the owner's
 // homeworld; scope = "faction" to any such roll, so asset is nil for a tag. The
@@ -26,7 +27,8 @@ var rollPhaseNames = map[hooks.RollPhase]domain.EffectRollPhase{
 // opponent_attribute the stat the other side rolls against it. tech_level reads
 // the rolling asset's definition, opponent_tech_level the other side's; neither
 // matches without a rulebook. goal matches a roll against a rival on the target
-// world of the owner's active goal.
+// world of the owner's active goal. detection matches only a roll made by the
+// side testing to detect stealth.
 func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFactionID string, asset *domain.Asset, filters domain.EffectFilters, rulebook *rulebook.Rulebook) bool {
 	if ctx.Actor == nil {
 		return false
@@ -44,6 +46,9 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 			return false
 		}
 		owner, subject = ctx.Opponent, ctx.OpponentAsset
+	case domain.TriggerRivalRoll:
+		// deliberate: return here, not read scope or filters, because the owner takes no part in the roll and the registrar accepts only scope faction and no filters (Effort 3 Decision 7).
+		return ctx.Actor.ID != ownerFactionID
 	default:
 		return false
 	}
@@ -74,6 +79,9 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 		return false
 	}
 	if filters.Action != "" && ctx.Action != filters.Action {
+		return false
+	}
+	if filters.Detection && !ctx.Detection {
 		return false
 	}
 	if !techLevelMatches(ctx.Asset, filters.TechLevel, rulebook) || !techLevelMatches(ctx.OpponentAsset, filters.OpponentTechLevel, rulebook) {

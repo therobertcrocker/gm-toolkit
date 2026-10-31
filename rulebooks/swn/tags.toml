@@ -21,6 +21,13 @@ phase = ["defense"]
 sides = 10
 count = 1
 
+[[tags.DeepRooted.effects]]
+trigger = "homeworld_changed"
+effect  = "remove_tag"
+[tags.DeepRooted.effects.filters]
+owner = "own"
+scope = "faction"
+
 [tags.EugenicsCult]
 id = "SWN-T-003"
 name = "Eugenics Cult"
@@ -46,6 +53,18 @@ once_per = "owner_faction"
 [tags.ExchangeConsulate.effects.bonus_die]
 sides = 10
 count = 1
+
+[[tags.ExchangeConsulate.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"
+[tags.ExchangeConsulate.effects.filters]
+owner = "own"
+scope = "faction"
+goal  = "G-007"
+[tags.ExchangeConsulate.effects.xp_roll]
+die    = "1d6"
+target = 4
+amount = 1
 
 [tags.Fanatical]
 id = "SWN-T-005"
@@ -80,10 +99,11 @@ effect = "May roll an extra d10 for attacks made as part of a Seize Planet actio
 trigger = "own_roll"
 effect  = "bonus_die"
 [tags.Imperialists.effects.filters]
-owner = "own"
-scope = "faction"
-phase = ["attack"]
-goal  = "G-004"
+owner  = "own"
+scope  = "faction"
+phase  = ["attack"]
+goal   = "G-004"
+action = "Attack"
 [tags.Imperialists.effects.bonus_die]
 sides = 10
 count = 1
@@ -139,6 +159,17 @@ phase               = ["attack"]
 opponent_tech_level = 5
 [tags.PerimeterAgency.effects.gates]
 once_per = "owner_faction"
+[tags.PerimeterAgency.effects.bonus_die]
+sides = 10
+count = 1
+
+[[tags.PerimeterAgency.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.PerimeterAgency.effects.filters]
+owner     = "own"
+scope     = "faction"
+detection = true
 [tags.PerimeterAgency.effects.bonus_die]
 sides = 10
 count = 1

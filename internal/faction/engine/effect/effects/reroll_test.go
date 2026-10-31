@@ -1,6 +1,7 @@
 package effects_test
 
 import (
+	"log/slog"
 	"reflect"
 	"strings"
 	"testing"
@@ -239,5 +240,51 @@ func TestReroll_TagHolderRerollsEveryDieShowingTheResult(t *testing.T) {
 	alpha.Tags = nil
 	if directive := hook.OnRollResult(roll, hooks.RollResult{Dice: []int{1}}, factionState, nil); len(directive.Indices) != 0 {
 		t.Errorf("dropped tag: directive = %+v, want none", directive)
+	}
+}
+
+func psychicAcademyEntry() domain.EffectDefinition {
+	return domain.EffectDefinition{
+		Trigger: domain.TriggerRivalRoll,
+		Effect:  domain.SpecialReroll,
+		Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction},
+		Gates:   domain.EffectGates{OncePer: domain.OncePerOwnerFaction},
+		Reroll:  &domain.RerollParams{Dice: 1, Elective: true},
+	}
+}
+
+func TestReroll_RivalRollForcesABystandersHighestDie(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-014"}, HookBudgets: map[string]int{}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": {ID: "beta"}, "gamma": {ID: "gamma"}}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialReroll].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-014", Name: "Psychic Academy"}}, Entry: psychicAcademyEntry(), Registry: registry,
+	})
+	collector := &rollCollector{accept: true}
+
+	result := rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "beta", "gamma", "Krylos"), 8, 2)
+
+	if result.Sum != 2 || collector.rerolls != 1 {
+		t.Errorf("Sum = %d, rerolls asked = %d; want 2 and 1: alpha forces beta's 8 to be rerolled", result.Sum, collector.rerolls)
+	}
+	if alpha.HookBudgets["effect:reroll:rival_roll:SWN-T-014"] != 1 {
+		t.Errorf("alpha's HookBudgets = %v, want the rival_roll budget spent", alpha.HookBudgets)
+	}
+
+	own := rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "alpha", "beta", "Krylos"), 8)
+	if own.Sum != 8 || collector.rerolls != 1 {
+		t.Errorf("alpha's own roll: Sum = %d, rerolls asked = %d; want 8 and still 1", own.Sum, collector.rerolls)
+	}
+}
+
+func TestReroll_RivalRollIsForTagsOnly(t *testing.T) {
+	engine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+	asset := &domain.AssetDefinition{ID: "SWN-X", Effects: []domain.EffectDefinition{psychicAcademyEntry()}}
+	if err := engine.RegisterEffectsList(asset); err == nil || !strings.Contains(err.Error(), "only a tag") {
+		t.Errorf("asset holder: err = %v, want an only-a-tag refusal", err)
+	}
+	tag := &domain.Tag{ID: "SWN-T-014", Effects: []domain.EffectDefinition{psychicAcademyEntry()}}
+	if err := engine.CheckTagEffects(tag); err != nil {
+		t.Errorf("tag holder: err = %v, want none", err)
 	}
 }

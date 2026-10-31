@@ -133,6 +133,15 @@
 
 ## Decision Record — Execution
 
+1. **Phase 4, Commit 7: the digest's goal line leaves out Exchange Consulate's
+   bonus XP. Deferred, not missed.** `digest/build.go` adds every `XPAwarded` to
+   the beat's `XPGained`, so the total is right. But it folds an `XPAwarded` into
+   the goal line only when `GoalCompleted.XPAwarded` is zero, and `completeGoal`
+   sets it to 1. So the line reads "completed Peaceable Kingdom (+1 XP)" when the
+   faction gained 2. The TUI turn list shows only the `GoalCompleted` line too.
+   For the effort-close review to decide: fold the `xp_roll` award into the goal
+   line, show it as its own beat, or leave it.
+
 ---
 
 ## Shared Context
@@ -174,15 +183,15 @@
 
 **Overview**
 
-- [ ] **Phase 1 — What the contests need**
+- [x] **Phase 1 — What the contests need**
   - Commit 1 — `feat: a roll with no collector takes only free dice` (2 tasks)
   - Commit 2 — `refactor: carry the roll key, registry and rulebook to the effect contests` (11 tasks)
-- [ ] **Phase 2 — Contests roll through the hooks**
+- [x] **Phase 2 — Contests roll through the hooks**
   - Commit 3 — `feat: the three effect contests roll through the hooks` (5 tasks)
-- [ ] **Phase 3 — Detection and a reroll on any rival's roll**
+- [x] **Phase 3 — Detection and a reroll on any rival's roll**
   - Commit 4 — `feat: Perimeter Agency's detect die` (10 tasks)
   - Commit 5 — `feat: a reroll forced on any rival's roll` (6 tasks)
-- [ ] **Phase 4 — Goal events reach reactors**
+- [x] **Phase 4 — Goal events reach reactors**
   - Commit 6 — `feat: Deep Rooted is lost on a homeworld change` (7 tasks)
   - Commit 7 — `feat: Exchange Consulate's XP roll` (7 tasks)
 

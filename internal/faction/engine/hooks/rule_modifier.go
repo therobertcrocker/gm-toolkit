@@ -1,6 +1,10 @@
 package hooks
 
-import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+import (
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+)
 
 // MovementAbility is a free relocation a granter offers its faction this turn.
 // Source is the granting asset; range is measured from it.
@@ -125,8 +129,9 @@ type PermissionContest struct {
 // PermissionContester contests a permission granted to a rival (Cat 4).
 // OfferContest returns nil when the grant is not its to contest. It never
 // prompts: the dispatcher asks the owner, and on a yes calls WinsContest, which
-// rolls the hook's own test against the requester.
+// rolls the hook's own test against the requester. WinsContest gets the state and
+// rulebook because the test rolls through the roll hooks (Effort 3 Decision 3).
 type PermissionContester interface {
 	OfferContest(query PermissionQuery) *PermissionContest
-	WinsContest(query PermissionQuery) bool
+	WinsContest(query PermissionQuery, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool
 }
