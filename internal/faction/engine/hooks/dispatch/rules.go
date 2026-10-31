@@ -1,6 +1,9 @@
 package dispatch
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -114,6 +117,81 @@ func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(
 		}
 		return speed
 	}
+}
+
+// ArrivalTolls returns the tolls one of mover's assets owes on landing on world:
+// one per rule that charges, each paid to the faction that registered it. It asks
+// every faction but mover, in ID order, its faction bucket and then its own
+// assets' buckets in ID order, because a toll is a rival's effect (Effort 4
+// Decision 8). Who skips a toll is the caller's to decide.
+func ArrivalTolls(registry *hooks.Registry, factions map[string]*domain.Faction, mover *domain.Faction, world string) []hooks.ArrivalToll {
+	if registry == nil || mover == nil {
+		return nil
+	}
+	var tolls []hooks.ArrivalToll
+	for _, factionID := range slices.Sorted(maps.Keys(factions)) {
+		if factionID == mover.ID {
+			continue
+		}
+		rules := slices.Clone(registry.ArrivalTollRulesAt(hooks.FactionScope(factionID)))
+		for _, asset := range domain.SortedAssets(factions[factionID]) {
+			rules = append(rules, registry.ArrivalTollRulesAt(hooks.AssetScope(factionID, asset.ID))...)
+		}
+		for _, registered := range rules {
+			if amount := registered.Hook.ArrivalToll(mover, world); amount > 0 {
+				tolls = append(tolls, hooks.ArrivalToll{FactionID: factionID, Amount: amount})
+			}
+		}
+	}
+	return tolls
+}
+
+// TollTotal is the Coin tolls charge in all.
+func TollTotal(tolls []hooks.ArrivalToll) int {
+	total := 0
+	for _, toll := range tolls {
+		total += toll.Amount
+	}
+	return total
+}
+
+// TollCharges pays each toll from payerID to the faction that charges it: a loss
+// and a gain, both caused by that faction, as a steal is, so a Bank absorbs the
+// loss and the holder keeps the gain (Effort 4 Decision 8).
+func TollCharges(payerID string, tolls []hooks.ArrivalToll) []domain.Mutation {
+	var charges []domain.Mutation
+	for _, toll := range tolls {
+		charges = append(charges,
+			domain.CoinDelta{FactionID: payerID, Delta: -toll.Amount, Cause: string(domain.SpecialArrivalToll), CausedByFactionID: toll.FactionID},
+			domain.CoinDelta{FactionID: toll.FactionID, Delta: toll.Amount, Cause: string(domain.SpecialArrivalToll), CausedByFactionID: toll.FactionID},
+		)
+	}
+	return charges
+}
+
+// ResolvePopulationFloor returns the least world population on which faction may
+// buy def: the setting's floor for def's type, run through faction's
+// PopulationFloorModifiers, then those of each asset it owns in asset ID order. A
+// floor serves its owner only, so a rival's assets are never asked. A waived
+// faction, or a type with no floor in floors, needs none (Effort 4 Decision 4).
+func ResolvePopulationFloor(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition, floors map[domain.AssetType]int) int {
+	baseFloor := floors[def.Type]
+	if faction.PopulationWaiver || baseFloor == 0 {
+		return 0
+	}
+	if registry == nil {
+		return baseFloor
+	}
+	floor := baseFloor
+	for _, registered := range registry.PopulationFloorModifiersFor(faction.ID) {
+		floor = registered.Hook.ModifyPopulationFloor(faction, def, baseFloor, floor)
+	}
+	for _, asset := range domain.SortedAssets(faction) {
+		for _, registered := range registry.PopulationFloorModifiersForAsset(faction.ID, asset.ID) {
+			floor = registered.Hook.ModifyPopulationFloor(faction, def, baseFloor, floor)
+		}
+	}
+	return floor
 }
 
 // ResolveAttackEligibility reports whether query.Attacker may deal damage to

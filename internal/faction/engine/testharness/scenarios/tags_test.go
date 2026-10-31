@@ -417,3 +417,61 @@ func TestExchangeConsulate_BonusXPOnPeaceableKingdom(t *testing.T) {
 		})
 	}
 }
+
+// --- scenario N+8: Colonists and Technical Expertise — Starships on a small world ---
+
+func TestPopulationFloor_TagsOpenASmallWorldToStarships(t *testing.T) {
+	cases := []struct {
+		name  string
+		tags  []string
+		offer bool
+	}{
+		{"no tag: the setting's 500,000 floor", nil, false},
+		{"Colonists: 20% of the floor", []string{"SWN-T-001"}, true},
+		{"Technical Expertise: 2% of the floor", []string{"SWN-T-018"}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := testharness.NewHarness(t)
+			h.SpatialMap.Populations = map[string]int{"Tartarus": 150_000}
+			alpha := h.AddFaction("alpha", "Tartarus", 3, 3, 3)
+			alpha.Tags = tc.tags
+			alpha.Coin = 20
+			offered := false
+			h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+				if faction.ID != "alpha" {
+					return nil, nil
+				}
+				for _, candidate := range available {
+					if candidate.Name() == "Buy Asset" {
+						return candidate, nil
+					}
+				}
+				t.Fatal("Buy Asset not available")
+				return nil, nil
+			}
+			h.Collector.SelectBuyOrderFn = func(purchasable map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+				var fallback *domain.AssetDefinition
+				for _, def := range purchasable["Tartarus"] {
+					if def.ID == testharness.DefSmugglers {
+						offered = true
+					}
+					if def.ID == testharness.DefSecurityPersonnel {
+						fallback = def
+					}
+				}
+				return action.BuyOrder{World: "Tartarus", Definition: fallback}, nil
+			}
+
+			if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+				t.Fatalf("Turn.Start: %v", err)
+			}
+			if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+				t.Fatalf("RunCycle: %v", err)
+			}
+
+			testharness.CheckStep(t, "Smugglers offered on a world of 150,000", offered == tc.offer,
+				fmt.Sprintf("Smugglers offered = %v, want %v", offered, tc.offer))
+		})
+	}
+}

@@ -1,8 +1,28 @@
 [tags.Colonists]
 id = "SWN-T-001"
 name = "Colonists"
+homeworld_government = true
 description = "This faction is a fresh colony on an otherwise largely untouched planet."
 effect = "Has all benefits of Planetary Government for its homeworld. Homeworld treated as at least tech level 4. Colonies under 100,000 citizens cannot build Spaceship-type assets."
+
+[[tags.Colonists.effects]]
+trigger = "tech_level_query"
+effect  = "tech_level_floor"
+[tags.Colonists.effects.filters]
+owner = "own"
+scope = "homeworld"
+[tags.Colonists.effects.tech_level_floor]
+level = 4
+
+[[tags.Colonists.effects]]
+trigger = "population_floor_query"
+effect  = "population_floor"
+[tags.Colonists.effects.filters]
+owner      = "own"
+scope      = "faction"
+asset_type = ["Starship"]
+[tags.Colonists.effects.population_floor]
+percent = 20
 
 [tags.DeepRooted]
 id = "SWN-T-002"
@@ -180,6 +200,15 @@ name = "Pirates"
 description = "This faction is a scourge of the spacelanes."
 effect = "Any movement of an asset onto a world that has a Base of Influence for this faction costs one extra Coin, paid to this faction."
 
+[[tags.Pirates.effects]]
+trigger = "arrival_query"
+effect  = "arrival_toll"
+[tags.Pirates.effects.filters]
+owner = "rival"
+scope = "base"
+[tags.Pirates.effects.arrival_toll]
+amount = 1
+
 [tags.PlanetaryGovernment]
 id = "SWN-T-011"
 name = "Planetary Government"
@@ -292,6 +321,25 @@ id = "SWN-T-018"
 name = "Technical Expertise"
 description = "The faction is staffed by large numbers of expert engineers and scientists."
 effect = "Treats all planets with a Base of Influence as at least tech level 4. Can build Starship-type assets on any world with at least ten thousand occupants."
+
+[[tags.TechnicalExpertise.effects]]
+trigger = "tech_level_query"
+effect  = "tech_level_floor"
+[tags.TechnicalExpertise.effects.filters]
+owner = "own"
+scope = "base"
+[tags.TechnicalExpertise.effects.tech_level_floor]
+level = 4
+
+[[tags.TechnicalExpertise.effects]]
+trigger = "population_floor_query"
+effect  = "population_floor"
+[tags.TechnicalExpertise.effects.filters]
+owner      = "own"
+scope      = "faction"
+asset_type = ["Starship"]
+[tags.TechnicalExpertise.effects.population_floor]
+percent = 2
 
 [tags.Theocratic]
 id = "SWN-T-019"

@@ -37,5 +37,7 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialSpeedFloor:         speedFloorRegistrar,
 		domain.SpecialRemoveTag:          removeTagRegistrar,
 		domain.SpecialXPRoll:             xpRollRegistrar,
+		domain.SpecialPopulationFloor:    populationFloorRegistrar,
+		domain.SpecialArrivalToll:        arrivalTollRegistrar,
 	}
 }

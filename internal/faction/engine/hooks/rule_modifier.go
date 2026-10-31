@@ -60,6 +60,26 @@ type AssetSpeedModifier interface {
 	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int) int
 }
 
+// ArrivalToll is the Coin a landing asset owes FactionID, the faction that
+// charges it.
+type ArrivalToll struct {
+	FactionID string
+	Amount    int
+}
+
+// ArrivalTollRule charges mover for one of its assets landing on world (Cat 4).
+// It returns 0 when it charges nothing.
+type ArrivalTollRule interface {
+	ArrivalToll(mover *domain.Faction, world string) int
+}
+
+// PopulationFloorModifier lowers the world population faction needs to buy def
+// (Cat 4). baseFloor is the setting's floor for def's type; floor is the chain's
+// answer so far.
+type PopulationFloorModifier interface {
+	ModifyPopulationFloor(faction *domain.Faction, def *domain.AssetDefinition, baseFloor, floor int) int
+}
+
 // AttackSide names which part of a fight an eligibility hook answers for.
 type AttackSide string
 

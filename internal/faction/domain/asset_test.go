@@ -268,3 +268,24 @@ func TestLockedOutBy_TwoHoldersNameTheFirstByID(t *testing.T) {
 		}
 	}
 }
+
+func TestCanPurchase_PopulationFloor(t *testing.T) {
+	faction := &domain.Faction{ID: "f1", Coin: 10, Wealth: 3}
+	def := &domain.AssetDefinition{ID: "ship", Category: domain.StatWealth, Cost: 5, TechLevel: 4, Type: domain.TypeStarship}
+	cases := []struct {
+		name       string
+		population int
+		floor      int
+		want       bool
+	}{
+		{"no floor", 0, 0, true},
+		{"the world reaches the floor", 500000, 500000, true},
+		{"the world is too small", 499999, 500000, false},
+	}
+	for _, tc := range cases {
+		terms := domain.PurchaseTerms{Cost: 5, TechCap: 5, Population: tc.population, PopulationFloor: tc.floor}
+		if got := domain.CanPurchase(faction, def, terms); got != tc.want {
+			t.Errorf("%s: CanPurchase = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

@@ -2,6 +2,7 @@ package ability
 
 import (
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -68,19 +69,28 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 
 // eligiblePurchaseDefs returns the rulebook definitions an enabler purchase may buy:
 // matching category and not a quality (which adds no asset to place), required tech
-// level at or below the cap, the faction meeting the
-// min rating, and affordable at the surcharged price. A P-flagged def is offered; its
-// permission is asked after the pick (D-35). Name-sorted for a deterministic candidate
-// order.
+// level at or below the cap, the faction meeting the min rating, affordable at the
+// surcharged price, and the acting asset's world populous enough for the def's type.
+// A P-flagged def is offered; its permission is asked after the pick (D-35).
+// Name-sorted for a deterministic candidate order. No world engine, or an unknown
+// world, imposes no population floor (math.MaxInt).
 func eligiblePurchaseDefs(ctx StepContext, params *domain.PurchaseParams) []*domain.AssetDefinition {
+	population := math.MaxInt
+	if ctx.WorldEngine != nil {
+		if loc, ok := ctx.WorldEngine.Location(ctx.Asset.Location.WorldID); ok {
+			population = loc.Population()
+		}
+	}
 	var eligible []*domain.AssetDefinition
 	for _, def := range ctx.Rulebook.Assets {
 		if def.Category != params.Category || def.Quality {
 			continue
 		}
 		terms := domain.PurchaseTerms{
-			Cost:    enablerQuote(ctx, def, params).Cost,
-			TechCap: params.MaxTechLevel,
+			Cost:            enablerQuote(ctx, def, params).Cost,
+			TechCap:         params.MaxTechLevel,
+			Population:      population,
+			PopulationFloor: dispatch.ResolvePopulationFloor(ctx.Registry, ctx.Faction, def, ctx.Rulebook.PurchasePopulation),
 		}
 		if domain.CanPurchase(ctx.Faction, def, terms) {
 			eligible = append(eligible, def)

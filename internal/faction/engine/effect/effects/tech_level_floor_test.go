@@ -145,3 +145,38 @@ func TestTechLevelFloor_TagHolderRaisesEveryWorldWhileHeld(t *testing.T) {
 		t.Errorf("tech level = %d, want 2 after the tag is dropped", got)
 	}
 }
+
+func registerTagFloor(faction *domain.Faction, tag *domain.Tag, scope domain.EffectScope) *hooks.Registry {
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialTechLevelFloor].Register(effect.RegisterContext{
+		Holder:   effect.Holder{Faction: faction, Tag: tag},
+		Entry:    techLevelFloorEntry(scope, 4),
+		Registry: registry,
+	})
+	return registry
+}
+
+func TestTechLevelFloor_HomeworldScopeRaisesTheHomeworldOnly(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-001"}, Homeworld: tartarus, Assets: map[string]*domain.Asset{}}
+	registry := registerTagFloor(alpha, &domain.Tag{ID: "SWN-T-001", Name: "Colonists"}, domain.ScopeHomeworld)
+
+	if got := dispatch.ResolveWorldTechLevel(registry, alpha, forceAsset, "Tartarus", 2); got != 4 {
+		t.Errorf("homeworld tech level = %d, want 4", got)
+	}
+	if got := dispatch.ResolveWorldTechLevel(registry, alpha, forceAsset, "Krylos", 2); got != 2 {
+		t.Errorf("other world tech level = %d, want 2", got)
+	}
+}
+
+func TestTechLevelFloor_BaseScopeRaisesWorldsWithABase(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-018"}, Homeworld: tartarus, Assets: map[string]*domain.Asset{},
+		Bases: []*domain.Base{{ID: "alpha-krylos", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}}}
+	registry := registerTagFloor(alpha, &domain.Tag{ID: "SWN-T-018", Name: "Technical Expertise"}, domain.ScopeBase)
+
+	if got := dispatch.ResolveWorldTechLevel(registry, alpha, forceAsset, "Krylos", 2); got != 4 {
+		t.Errorf("tech level on a Base world = %d, want 4", got)
+	}
+	if got := dispatch.ResolveWorldTechLevel(registry, alpha, forceAsset, "Hadrian", 2); got != 2 {
+		t.Errorf("tech level with no Base = %d, want 2", got)
+	}
+}

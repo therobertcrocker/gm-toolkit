@@ -103,7 +103,8 @@ became five when R-5 split its Effort 3.
    Starship floor; each caller fills them, for the buy world or for the acting
    asset's world. The Effort 3 plan names the fields and designs how the floor is
    resolved (setting base, tag percentages, the waiver flag). The Effort 4 plan adds
-   the `requires_tag` check to the same function.
+   the `requires_tag` check to the same function. **Amended by R-6:** the Starship
+   floor is a population floor per asset type, in `settings.toml`.
 
 4. **The digest names a tag from the rulebook; `TagAdded` and `TagRemoved` carry the
    ID only.** Robert's call. Resolves Open Question 3. `digest.Build` already takes
@@ -217,6 +218,17 @@ reversals of the decisions above. -->
   Decision 3's "Effort 3 plan" means the Effort 4 plan, and its "Effort 4 plan"
   the Effort 5 plan. The free die's reading in Decision 6 stays with Effort 3. See
   Effort 3 plan, Decision 1.
+- **R-6 — The Starship floor is a population floor per asset type, and Decision 7
+  binds every rule site (Effort 4 Plan session, 2026-10-31).** Robert's call.
+  Decision 3's "the base Starship rule" and "the buyer's Starship floor" now read
+  as the asset type's population floor: `settings.toml` holds
+  `[purchase_population] Starship = 500000`, `CanPurchase` names no asset type, and
+  the tag effect is `population_floor` with `percent` and the `asset_type` filter.
+  D-9's waiver is `population_waiver` and waives every floor. Decision 7 covers
+  settings keys, domain checks, loaders and resolvers, not only effect entries, and
+  `R.026` widens to audit them. Rationale: `def.Type == TypeStarship` in
+  `CanPurchase` would be a rulebook reference held in engine code. See Effort 4
+  plan, Decisions 2, 3 and 5.
 
 ---
 
@@ -227,7 +239,7 @@ reversals of the decisions above. -->
 | [x] | 1 | Holder foundation | Tag IDs with the `SWN-` prefix, held as IDs; effects blind to their holder (`effect.Holder`, R-1); tag entries loaded, checked, registered and fired; every dispatcher gap closed (R-2); the four Go handlers as data; `government = true`; `engine/tag` deleted; sandbox-claude re-seed | [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md) |
 | [x] | 2 | Bonus dice and simple grants | Eight tag dice through new roll vocabulary (`homeworld` scope; `opponent_attribute`, `tech_level`, `opponent_tech_level` and `goal` filters); Secretive; Mercenary Group as a `speed_floor` (R-4) | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) |
 | [x] | 3 | Contest rolls and reactions | The `R.023` contests on `RollWithHooks` with no collector; Perimeter Agency's detect die; the Psychic Academy registrar (`rival_roll`); goal events reach reactors; Deep Rooted's loss; Exchange Consulate's XP roll | [`A.001.7.E3-…-plan.md`](./A.001.7.E3-data-driven-tags-plan.md) |
-| [ ] | 4 | World and setting rules | `settings.toml`; the base Starship rule and its waiver; Colonists and Technical Expertise; Pirates | `A.001.7.E4-data-driven-tags-plan.md` *(to be written)* |
+| [x] | 4 | World and setting rules | `settings.toml`; the population floor per asset type and its waiver (R-6); Colonists and Technical Expertise; Pirates | [`A.001.7.E4-…-plan.md`](./A.001.7.E4-data-driven-tags-plan.md) |
 | [ ] | 5 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | `A.001.7.E5-data-driven-tags-plan.md` *(to be written)* |
 
 ## Shared Context
@@ -372,7 +384,7 @@ and Technical Expertise; Pirates' toll and its refusal at order time (D-6).
 
 **Depends on:** Effort 2. Runs after Effort 3 (R-5).
 
-**Own Plan session:** yes (Decision 1).
+**Own Plan session:** yes (Decision 1). Written: [`A.001.7.E4-data-driven-tags-plan.md`](./A.001.7.E4-data-driven-tags-plan.md).
 
 ### Effort 5 — A-side tag holder
 

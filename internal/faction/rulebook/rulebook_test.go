@@ -736,6 +736,12 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 			want: "both set government",
 		},
 		{
+			name: "homeworld government with no government tag",
+			body: "[tags.Alpha]\nid = \"T-001\"\nhomeworld_government = true\n",
+			load: loadTagFile,
+			want: "sets homeworld_government",
+		},
+		{
 			name: "goal unknown key",
 			body: "[goals.Alpha]\nid = \"G-001\"\nname = \"Alpha\"\ndificulty = \"low\"\n",
 			load: loadGoalFile,
@@ -957,5 +963,102 @@ func TestLoad_ContestRolls(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("%s contest roll = %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+func TestLoadSettings(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "drift costs left out", body: "[purchase_population]\nStarship = 500000\n", want: "drift_costs is required"},
+		{name: "unknown key", body: "drift_costs = [5]\nstarship_floor = 500000\n", want: "unknown keys in"},
+		{name: "unknown asset type", body: "drift_costs = [5]\n[purchase_population]\nSpaceship = 500000\n", want: "purchase_population"},
+		{name: "floor not above 0", body: "drift_costs = [5]\n[purchase_population]\nStarship = 0\n", want: "must be > 0"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "settings.toml")
+			if err := os.WriteFile(path, []byte(testCase.body), 0o644); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+			_, _, err := loadSettings(path)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
+			}
+		})
+	}
+}
+
+func TestLoadSettings_OptionalKeyLeftOut(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.toml")
+	if err := os.WriteFile(path, []byte("drift_costs = [3, 2]\n"), 0o644); err != nil {
+		t.Fatalf("writing fixture: %v", err)
+	}
+	driftCosts, purchasePopulation, err := loadSettings(path)
+	if err != nil {
+		t.Fatalf("loadSettings: %v", err)
+	}
+	if !reflect.DeepEqual(driftCosts, []int{3, 2}) {
+		t.Errorf("drift costs = %v, want [3 2]", driftCosts)
+	}
+	if len(purchasePopulation) != 0 {
+		t.Errorf("purchase population = %v, want no floor for any type", purchasePopulation)
+	}
+}
+
+func TestLoad_ShippedSettings(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	if !reflect.DeepEqual(rb.DriftCosts, []int{5, 4, 3, 2, 1}) {
+		t.Errorf("drift costs = %v, want [5 4 3 2 1]", rb.DriftCosts)
+	}
+	want := map[domain.AssetType]int{domain.TypeStarship: 500000}
+	if !reflect.DeepEqual(rb.PurchasePopulation, want) {
+		t.Errorf("purchase population = %v, want %v", rb.PurchasePopulation, want)
+	}
+}
+
+func TestLoad_ColonistsAndTechnicalExpertise(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	floor := func(scope domain.EffectScope) domain.EffectDefinition {
+		return domain.EffectDefinition{
+			Trigger:        domain.TriggerTechLevelQuery,
+			Effect:         domain.SpecialTechLevelFloor,
+			Filters:        domain.EffectFilters{Owner: domain.OwnerOwn, Scope: scope},
+			TechLevelFloor: &domain.TechLevelFloorParams{Level: 4},
+		}
+	}
+	population := func(percent int) domain.EffectDefinition {
+		return domain.EffectDefinition{
+			Trigger: domain.TriggerPopulationFloorQuery,
+			Effect:  domain.SpecialPopulationFloor,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+				AssetTypes: []domain.AssetType{domain.TypeStarship}},
+			PopulationFloor: &domain.PopulationFloorParams{Percent: percent},
+		}
+	}
+	colonists := rb.Tags["SWN-T-001"]
+	if !colonists.HomeworldGovernment {
+		t.Error("Colonists does not set homeworld_government")
+	}
+	if want := []domain.EffectDefinition{floor(domain.ScopeHomeworld), population(20)}; !reflect.DeepEqual(colonists.Effects, want) {
+		t.Errorf("Colonists effects = %+v, want %+v", colonists.Effects, want)
+	}
+	if want := []domain.EffectDefinition{floor(domain.ScopeBase), population(2)}; !reflect.DeepEqual(rb.Tags["SWN-T-018"].Effects, want) {
+		t.Errorf("Technical Expertise effects = %+v, want %+v", rb.Tags["SWN-T-018"].Effects, want)
+	}
+}
+
+func TestLoad_PiratesToll(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := []domain.EffectDefinition{{
+		Trigger:     domain.TriggerArrivalQuery,
+		Effect:      domain.SpecialArrivalToll,
+		Filters:     domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeBase},
+		ArrivalToll: &domain.ArrivalTollParams{Amount: 1},
+	}}
+	if got := rb.Tags["SWN-T-010"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Pirates effects = %+v, want %+v", got, want)
 	}
 }

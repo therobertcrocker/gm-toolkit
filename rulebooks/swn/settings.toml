@@ -1,0 +1,10 @@
+# Setting rules for this rulebook. drift_costs is required; every other key is
+# optional, and a key left out turns its rule off.
+
+# drift_costs[i] = hex-equivalent crossing cost for drift rating (i+1)
+drift_costs = [5, 4, 3, 2, 1]
+
+# The least world population on which an asset of each type may be bought. A
+# type left out has no floor. Quote a type with a space: "Military Unit".
+[purchase_population]
+Starship = 500000

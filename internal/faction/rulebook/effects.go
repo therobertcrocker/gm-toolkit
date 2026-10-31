@@ -7,24 +7,26 @@ import (
 )
 
 type effectRecord struct {
-	Trigger        string                `toml:"trigger"`
-	Effect         string                `toml:"effect"`
-	Filters        *effectFiltersRecord  `toml:"filters"`
-	Gates          *effectGatesRecord    `toml:"gates"`
-	CoinGain       *amountRecord         `toml:"coin_gain"`
-	CoinSteal      *amountRecord         `toml:"coin_steal"`
-	SelfDamage     *amountRecord         `toml:"self_damage"`
-	BonusDie       *bonusDieRecord       `toml:"bonus_die"`
-	Reroll         *rerollRecord         `toml:"reroll"`
-	TechLevelFloor *techLevelFloorRecord `toml:"tech_level_floor"`
-	CostSurcharge  *costSurchargeRecord  `toml:"cost_surcharge"`
-	RestrictAttack *restrictAttackRecord `toml:"restrict_attack"`
-	GrantMovement  *grantMovementRecord  `toml:"grant_movement"`
-	CaptureTarget  *amountRecord         `toml:"capture_target"`
-	DiscountRepair *discountRepairRecord `toml:"discount_repair"`
-	CostDiscount   *costDiscountRecord   `toml:"cost_discount"`
-	SpeedFloor     *speedFloorRecord     `toml:"speed_floor"`
-	XPRoll         *xpRollRecord         `toml:"xp_roll"`
+	Trigger         string                 `toml:"trigger"`
+	Effect          string                 `toml:"effect"`
+	Filters         *effectFiltersRecord   `toml:"filters"`
+	Gates           *effectGatesRecord     `toml:"gates"`
+	CoinGain        *amountRecord          `toml:"coin_gain"`
+	CoinSteal       *amountRecord          `toml:"coin_steal"`
+	SelfDamage      *amountRecord          `toml:"self_damage"`
+	BonusDie        *bonusDieRecord        `toml:"bonus_die"`
+	Reroll          *rerollRecord          `toml:"reroll"`
+	TechLevelFloor  *techLevelFloorRecord  `toml:"tech_level_floor"`
+	CostSurcharge   *costSurchargeRecord   `toml:"cost_surcharge"`
+	RestrictAttack  *restrictAttackRecord  `toml:"restrict_attack"`
+	GrantMovement   *grantMovementRecord   `toml:"grant_movement"`
+	CaptureTarget   *amountRecord          `toml:"capture_target"`
+	DiscountRepair  *discountRepairRecord  `toml:"discount_repair"`
+	CostDiscount    *costDiscountRecord    `toml:"cost_discount"`
+	SpeedFloor      *speedFloorRecord      `toml:"speed_floor"`
+	XPRoll          *xpRollRecord          `toml:"xp_roll"`
+	PopulationFloor *populationFloorRecord `toml:"population_floor"`
+	ArrivalToll     *arrivalTollRecord     `toml:"arrival_toll"`
 }
 
 type effectFiltersRecord struct {
@@ -102,6 +104,14 @@ type speedFloorRecord struct {
 	Speed int `toml:"speed"`
 }
 
+type arrivalTollRecord struct {
+	Amount int `toml:"amount"`
+}
+
+type populationFloorRecord struct {
+	Percent int `toml:"percent"`
+}
+
 type xpRollRecord struct {
 	Die    string `toml:"die"`
 	Target int    `toml:"target"`
@@ -117,7 +127,8 @@ var (
 		domain.TriggerAttackEligibilityQuery, domain.TriggerOwnAttack, domain.TriggerOwnDefenseWin, domain.TriggerLethalDamage, domain.TriggerRepairCostQuery,
 		domain.TriggerPermissionQuery, domain.TriggerPermissionGranted, domain.TriggerAttackTie,
 		domain.TriggerAssetDestroyed, domain.TriggerSpeedQuery, domain.TriggerRivalRoll,
-		domain.TriggerHomeworldChanged, domain.TriggerGoalCompleted,
+		domain.TriggerHomeworldChanged, domain.TriggerGoalCompleted, domain.TriggerPopulationFloorQuery,
+		domain.TriggerArrivalQuery,
 	}
 	specialEffects = []domain.SpecialEffectType{
 		domain.SpecialCoinGain, domain.SpecialCoinSteal, domain.SpecialIgnoreCoinLoss,
@@ -129,10 +140,10 @@ var (
 		domain.SpecialRestoreAsset, domain.SpecialDiscountRepair, domain.SpecialSeizeTarget,
 		domain.SpecialGrantStealth, domain.SpecialGrantPermission, domain.SpecialWithdrawPermission,
 		domain.SpecialLockOut, domain.SpecialLoseTies, domain.SpecialCostDiscount, domain.SpecialSpeedFloor,
-		domain.SpecialRemoveTag, domain.SpecialXPRoll,
+		domain.SpecialRemoveTag, domain.SpecialXPRoll, domain.SpecialPopulationFloor, domain.SpecialArrivalToll,
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
-	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeFaction}
+	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeFaction, domain.ScopeBase}
 	effectRollPhases = []domain.EffectRollPhase{
 		domain.RollPhaseAttack, domain.RollPhaseDefense, domain.RollPhaseFactionTest, domain.RollPhaseContested,
 	}
@@ -348,6 +359,12 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	if record.XPRoll != nil {
 		present = append(present, domain.SpecialXPRoll)
 	}
+	if record.PopulationFloor != nil {
+		present = append(present, domain.SpecialPopulationFloor)
+	}
+	if record.ArrivalToll != nil {
+		present = append(present, domain.SpecialArrivalToll)
+	}
 	return present
 }
 
@@ -477,6 +494,22 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return fmt.Errorf("xp_roll target and amount must be > 0, got %d and %d", record.XPRoll.Target, record.XPRoll.Amount)
 		}
 		definition.XPRoll = &domain.XPRollParams{Die: *die, Target: record.XPRoll.Target, Amount: record.XPRoll.Amount}
+	case domain.SpecialPopulationFloor:
+		if record.PopulationFloor == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		if record.PopulationFloor.Percent <= 0 || record.PopulationFloor.Percent > 100 {
+			return fmt.Errorf("population_floor percent must be 1 to 100, got %d", record.PopulationFloor.Percent)
+		}
+		definition.PopulationFloor = &domain.PopulationFloorParams{Percent: record.PopulationFloor.Percent}
+	case domain.SpecialArrivalToll:
+		if record.ArrivalToll == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		if record.ArrivalToll.Amount <= 0 {
+			return fmt.Errorf("arrival_toll amount must be > 0, got %d", record.ArrivalToll.Amount)
+		}
+		definition.ArrivalToll = &domain.ArrivalTollParams{Amount: record.ArrivalToll.Amount}
 	}
 	return nil
 }

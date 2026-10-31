@@ -525,3 +525,30 @@ func TestBuyAsset_PurchasePermissionAsksForARaise(t *testing.T) {
 		t.Errorf("mutations[0] = %T, want PermissionRefused", mutations[0])
 	}
 }
+
+func TestPurchasableDefinitions_PopulationFloorPerType(t *testing.T) {
+	worldHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
+	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
+	rb := &rulebook.Rulebook{
+		Assets: map[string]*domain.AssetDefinition{
+			"ship":  {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeStarship},
+			"plant": {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeFacility},
+		},
+		PurchasePopulation: map[domain.AssetType]int{domain.TypeStarship: 500000},
+	}
+	faction := &domain.Faction{ID: "f1", Coin: 5, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}, Assets: map[string]*domain.Asset{}}
+
+	defs := purchasableDefinitions(faction, rb, "a", worldEngine, hooks.NewRegistry(), nil)
+	if len(defs) != 1 || defs[0].ID != "plant" {
+		var ids []string
+		for _, def := range defs {
+			ids = append(ids, def.ID)
+		}
+		t.Errorf("purchasable = %v, want [plant] (the empty world is below the Starship floor)", ids)
+	}
+
+	faction.PopulationWaiver = true
+	if defs := purchasableDefinitions(faction, rb, "a", worldEngine, hooks.NewRegistry(), nil); len(defs) != 2 {
+		t.Errorf("purchasable with the waiver = %d defs, want 2", len(defs))
+	}
+}

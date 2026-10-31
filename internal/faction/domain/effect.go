@@ -35,6 +35,8 @@ const (
 	SpecialSpeedFloor         SpecialEffectType = "speed_floor"
 	SpecialRemoveTag          SpecialEffectType = "remove_tag"
 	SpecialXPRoll             SpecialEffectType = "xp_roll"
+	SpecialPopulationFloor    SpecialEffectType = "population_floor"
+	SpecialArrivalToll        SpecialEffectType = "arrival_toll"
 )
 
 type EffectTrigger string
@@ -64,6 +66,8 @@ const (
 	TriggerRivalRoll              EffectTrigger = "rival_roll"
 	TriggerHomeworldChanged       EffectTrigger = "homeworld_changed"
 	TriggerGoalCompleted          EffectTrigger = "goal_completed"
+	TriggerPopulationFloorQuery   EffectTrigger = "population_floor_query"
+	TriggerArrivalQuery           EffectTrigger = "arrival_query"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -83,6 +87,9 @@ const (
 	ScopeWorld     EffectScope = "world"
 	ScopeHomeworld EffectScope = "homeworld"
 	ScopeFaction   EffectScope = "faction"
+	// ScopeBase is every world where the owner has a Base of Influence (Effort 4
+	// Decision 6).
+	ScopeBase EffectScope = "base"
 )
 
 // EffectFilterName names an optional filter. owner and scope are not listed: every
@@ -316,6 +323,16 @@ type SpeedFloorParams struct {
 	Speed int
 }
 
+// ArrivalTollParams is the Coin a landing rival asset pays the holder.
+type ArrivalTollParams struct {
+	Amount int
+}
+
+// PopulationFloorParams is a holder's floor as a percent of the setting's.
+type PopulationFloorParams struct {
+	Percent int
+}
+
 // XPRollParams is a bonus-XP roll: roll Die, and on Target or more gain Amount XP.
 type XPRollParams struct {
 	Die    DiceRoll
@@ -327,22 +344,24 @@ type XPRollParams struct {
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
 type EffectDefinition struct {
-	Trigger        EffectTrigger
-	Effect         SpecialEffectType
-	Filters        EffectFilters
-	Gates          EffectGates
-	CoinGain       *CoinGainParams
-	CoinSteal      *CoinStealParams
-	SelfDamage     *SelfDamageParams
-	BonusDie       *BonusDieParams
-	Reroll         *RerollParams
-	TechLevelFloor *TechLevelFloorParams
-	CostSurcharge  *CostSurchargeParams
-	RestrictAttack *RestrictAttackParams
-	GrantMovement  *GrantMovementParams
-	CaptureTarget  *CaptureTargetParams
-	DiscountRepair *DiscountRepairParams
-	CostDiscount   *CostDiscountParams
-	SpeedFloor     *SpeedFloorParams
-	XPRoll         *XPRollParams
+	Trigger         EffectTrigger
+	Effect          SpecialEffectType
+	Filters         EffectFilters
+	Gates           EffectGates
+	CoinGain        *CoinGainParams
+	CoinSteal       *CoinStealParams
+	SelfDamage      *SelfDamageParams
+	BonusDie        *BonusDieParams
+	Reroll          *RerollParams
+	TechLevelFloor  *TechLevelFloorParams
+	CostSurcharge   *CostSurchargeParams
+	RestrictAttack  *RestrictAttackParams
+	GrantMovement   *GrantMovementParams
+	CaptureTarget   *CaptureTargetParams
+	DiscountRepair  *DiscountRepairParams
+	CostDiscount    *CostDiscountParams
+	SpeedFloor      *SpeedFloorParams
+	XPRoll          *XPRollParams
+	PopulationFloor *PopulationFloorParams
+	ArrivalToll     *ArrivalTollParams
 }

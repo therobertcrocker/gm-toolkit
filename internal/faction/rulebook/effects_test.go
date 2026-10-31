@@ -710,3 +710,30 @@ speed = ` + speed + "\n"
 		t.Errorf("err = %v, want speed 0 refused", err)
 	}
 }
+
+func TestLoadTags_PopulationFloorPercent(t *testing.T) {
+	entry := "[[tags.Alpha.effects]]\ntrigger = \"population_floor_query\"\neffect = \"population_floor\"\n" +
+		"[tags.Alpha.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n"
+	cases := []struct {
+		name  string
+		block string
+		want  string
+	}{
+		{name: "no block", block: "", want: "population_floor"},
+		{name: "zero", block: "[tags.Alpha.effects.population_floor]\npercent = 0\n", want: "1 to 100"},
+		{name: "over 100", block: "[tags.Alpha.effects.population_floor]\npercent = 101\n", want: "1 to 100"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "tags.toml")
+			body := "[tags.Alpha]\nid = \"T-001\"\n" + entry + testCase.block
+			if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+			_, _, err := loadTags(path)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
+			}
+		})
+	}
+}

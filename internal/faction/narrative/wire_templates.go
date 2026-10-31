@@ -110,6 +110,9 @@ var holdTemplates = map[domain.HoldReason][]string{
 	domain.HoldLockdownUnpaid: {
 		"{faction}'s {asset} cannot pay its way through the shipping lockdown at {world} and waits in orbit.",
 	},
+	domain.HoldTollUnpaid: {
+		"{faction}'s {asset} cannot pay the pirates' toll at {world} and waits in orbit.",
+	},
 }
 
 var acquisitionTemplates = []string{

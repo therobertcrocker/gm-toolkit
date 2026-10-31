@@ -24,14 +24,17 @@ const (
 
 // Tag is one rulebook tag. Government marks the tag a faction holds while it
 // governs at least one world; the government record says which (A.001.6
-// overview Decision 10).
+// overview Decision 10). HomeworldGovernment marks a tag whose holder governs
+// its homeworld from creation and holds the Government tag with it (Colonists,
+// Effort 4 Decision 7).
 type Tag struct {
-	ID          string
-	Name        string
-	Description string
-	Effect      string
-	Government  bool
-	Effects     []EffectDefinition
+	ID                  string
+	Name                string
+	Description         string
+	Effect              string
+	Government          bool
+	HomeworldGovernment bool
+	Effects             []EffectDefinition
 }
 
 type Goal struct {
@@ -69,11 +72,19 @@ type Faction struct {
 	Bases                   []*Base           `toml:"bases"`
 	HookBudgets             map[string]int    `toml:"hook_budgets,omitempty"`
 	PendingPurchaseDiscount int               `toml:"pending_purchase_discount,omitempty"`
+	// PopulationWaiver lifts every purchase-population floor: another power provides
+	// or supports the faction's ships (D-9, Effort 4 Decision 5).
+	PopulationWaiver bool `toml:"population_waiver,omitempty"`
 }
 
 // HasTag reports whether the faction holds the tag with ID tagID.
 func (faction *Faction) HasTag(tagID string) bool {
 	return slices.Contains(faction.Tags, tagID)
+}
+
+// HasBaseOn reports whether the faction has a Base of Influence on worldID.
+func (faction *Faction) HasBaseOn(worldID string) bool {
+	return slices.ContainsFunc(faction.Bases, func(base *Base) bool { return base.Location.WorldID == worldID })
 }
 
 // Clone deep-copies a faction so a caller can apply mutations to the copy without

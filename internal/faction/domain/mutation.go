@@ -462,6 +462,8 @@ const (
 	HoldLockdownPaid HoldReason = "lockdown_paid"
 	// HoldLockdownUnpaid: the faction cannot pay the 1d4 yet (overview Decision 15).
 	HoldLockdownUnpaid HoldReason = "lockdown_unpaid"
+	// HoldTollUnpaid: an owner aboard cannot pay its arrival tolls yet (Effort 4 Decision 10).
+	HoldTollUnpaid HoldReason = "toll_unpaid"
 )
 
 // MovementOrderHeld keeps an order that would complete at the last hex before its

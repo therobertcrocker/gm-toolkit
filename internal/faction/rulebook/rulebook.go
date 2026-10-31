@@ -19,6 +19,9 @@ type Rulebook struct {
 	GovernmentTagID string // the tag with government = true, or "" when there is none
 	Goals           map[string]*domain.Goal
 	DriftCosts      []int
+	// PurchasePopulation is the least world population on which an asset of each
+	// type may be bought; a type with no entry has no floor (settings.toml).
+	PurchasePopulation map[domain.AssetType]int
 }
 
 // DriftCost returns the hex-equivalent crossing cost for the given drift rating.
@@ -50,17 +53,18 @@ func Load(dataDir string) (*Rulebook, error) {
 		return nil, fmt.Errorf("checking goal references: %w", err)
 	}
 
-	driftCosts, err := loadDriftCosts(filepath.Join(dataDir, "drift_costs.toml"))
+	driftCosts, purchasePopulation, err := loadSettings(filepath.Join(dataDir, "settings.toml"))
 	if err != nil {
-		return nil, fmt.Errorf("loading drift costs: %w", err)
+		return nil, fmt.Errorf("loading settings: %w", err)
 	}
 
 	return &Rulebook{
-		Assets:          assets,
-		Tags:            tags,
-		GovernmentTagID: governmentTagID,
-		Goals:           goals,
-		DriftCosts:      driftCosts,
+		Assets:             assets,
+		Tags:               tags,
+		GovernmentTagID:    governmentTagID,
+		Goals:              goals,
+		DriftCosts:         driftCosts,
+		PurchasePopulation: purchasePopulation,
 	}, nil
 }
 
@@ -557,19 +561,41 @@ func convertTransport(r *transportRecord) (*domain.TransportProfile, error) {
 }
 
 // ---------------------------------------------------------------------------
-// Drift Costs
+// Settings
 // ---------------------------------------------------------------------------
 
-type driftCostFile struct {
-	DriftCosts []int `toml:"drift_costs"`
+// settingsRecord lists every setting rule the engine reads, for every rulebook. A
+// required key is a plain field loadSettings checks; an optional key is a pointer
+// or a map, nil when the setting leaves it out (Effort 4 Decision 1).
+type settingsRecord struct {
+	DriftCosts         []int          `toml:"drift_costs"`
+	PurchasePopulation map[string]int `toml:"purchase_population"`
 }
 
-func loadDriftCosts(path string) ([]int, error) {
-	var f driftCostFile
-	if _, err := toml.DecodeFile(path, &f); err != nil {
-		return nil, err
+func loadSettings(path string) ([]int, map[domain.AssetType]int, error) {
+	var record settingsRecord
+	metadata, err := toml.DecodeFile(path, &record)
+	if err != nil {
+		return nil, nil, err
 	}
-	return f.DriftCosts, nil
+	if err := refuseUnknownKeys(path, metadata); err != nil {
+		return nil, nil, err
+	}
+	if len(record.DriftCosts) == 0 {
+		return nil, nil, fmt.Errorf("%s: drift_costs is required", path)
+	}
+	purchasePopulation := make(map[domain.AssetType]int, len(record.PurchasePopulation))
+	for name, floor := range record.PurchasePopulation {
+		assetType, err := toAssetType(name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: purchase_population: %w", path, err)
+		}
+		if floor <= 0 {
+			return nil, nil, fmt.Errorf("%s: purchase_population %q must be > 0, got %d", path, name, floor)
+		}
+		purchasePopulation[assetType] = floor
+	}
+	return record.DriftCosts, purchasePopulation, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -581,12 +607,13 @@ type tagFile struct {
 }
 
 type tagRecord struct {
-	ID          string         `toml:"id"`
-	Name        string         `toml:"name"`
-	Description string         `toml:"description"`
-	Effect      string         `toml:"effect"`
-	Government  bool           `toml:"government"`
-	Effects     []effectRecord `toml:"effects"`
+	ID                  string         `toml:"id"`
+	Name                string         `toml:"name"`
+	Description         string         `toml:"description"`
+	Effect              string         `toml:"effect"`
+	Government          bool           `toml:"government"`
+	HomeworldGovernment bool           `toml:"homeworld_government"`
+	Effects             []effectRecord `toml:"effects"`
 }
 
 func loadTags(path string) (map[string]*domain.Tag, string, error) {
@@ -615,12 +642,18 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 			return nil, "", fmt.Errorf("tag %q in %s: %w", r.ID, path, err)
 		}
 		result[r.ID] = &domain.Tag{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			Effect:      r.Effect,
-			Government:  r.Government,
-			Effects:     effects,
+			ID:                  r.ID,
+			Name:                r.Name,
+			Description:         r.Description,
+			Effect:              r.Effect,
+			Government:          r.Government,
+			HomeworldGovernment: r.HomeworldGovernment,
+			Effects:             effects,
+		}
+	}
+	for _, tag := range result {
+		if tag.HomeworldGovernment && government == "" {
+			return nil, "", fmt.Errorf("tag %q sets homeworld_government, but no tag in %s sets government", tag.ID, path)
 		}
 	}
 	return result, government, nil

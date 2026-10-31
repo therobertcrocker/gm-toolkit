@@ -8,13 +8,15 @@ import (
 )
 
 // techLevelFloorRegistrar reads owner = "own" as "the owner is buying", scope =
-// "world" as "the declaring asset stands on the purchase world", and scope =
-// "faction" as "any world". category narrows which definitions the floor serves.
+// "world" as "the declaring asset stands on the purchase world", scope =
+// "homeworld" as "the owner's homeworld" (Colonists), scope = "base" as "a world
+// with the owner's Base" (Technical Expertise), and scope = "faction" as "any
+// world". category narrows which definitions the floor serves.
 var techLevelFloorRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerTechLevelQuery: {
 			Owners:  []domain.EffectOwner{domain.OwnerOwn},
-			Scopes:  []domain.EffectScope{domain.ScopeWorld, domain.ScopeFaction},
+			Scopes:  []domain.EffectScope{domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeBase, domain.ScopeFaction},
 			Filters: []domain.EffectFilterName{domain.FilterCategory},
 		},
 	},
@@ -50,8 +52,19 @@ func (modifier *techLevelFloorModifier) ModifyWorldTechLevel(faction *domain.Fac
 	if !live || faction.ID != modifier.owner.ID {
 		return baseTL
 	}
-	if modifier.scope == domain.ScopeWorld && asset.Location.WorldID != world {
-		return baseTL
+	switch modifier.scope {
+	case domain.ScopeWorld:
+		if asset.Location.WorldID != world {
+			return baseTL
+		}
+	case domain.ScopeHomeworld:
+		if modifier.owner.Homeworld.WorldID != world {
+			return baseTL
+		}
+	case domain.ScopeBase:
+		if !modifier.owner.HasBaseOn(world) {
+			return baseTL
+		}
 	}
 	if len(modifier.categories) > 0 && !slices.Contains(modifier.categories, def.Category) {
 		return baseTL

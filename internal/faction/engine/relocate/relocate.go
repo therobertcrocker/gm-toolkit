@@ -96,6 +96,10 @@ func Run(request Request) ([]domain.Mutation, error) {
 	if request.Faction.Coin < params.CoinCost {
 		return nil, fmt.Errorf("relocate: %w: need %d, have %d", ErrInsufficientCoin, params.CoinCost, request.Faction.Coin)
 	}
+	destinations = affordableDestinations(request, destinations)
+	if len(destinations) == 0 {
+		return nil, fmt.Errorf("relocate: every destination's toll is more than the faction holds: %w", ErrInsufficientCoin)
+	}
 
 	orders, err := request.Collector.SelectRelocateOrders(request.Acting, candidates, destinations, maxAssets)
 	if err != nil {
@@ -107,7 +111,11 @@ func Run(request Request) ([]domain.Mutation, error) {
 	if params.MaxAssets > 0 && len(orders) > params.MaxAssets {
 		return nil, fmt.Errorf("relocate: %d assets selected, at most %d allowed", len(orders), params.MaxAssets)
 	}
-	if cost := totalCost(params, len(orders)); request.Faction.Coin < cost {
+	cost := totalCost(params, len(orders))
+	for _, order := range orders {
+		cost += dispatch.TollTotal(orderTolls(request, order))
+	}
+	if request.Faction.Coin < cost {
 		return nil, fmt.Errorf("relocate: %w: need %d, have %d", ErrInsufficientCoin, cost, request.Faction.Coin)
 	}
 	// deliberate: every pick is checked before the first ask, not by BuildRelocateMutations after it, because an ask prompts, may roll a Lobbyists contest and may set the withdrawal bar.
@@ -144,6 +152,7 @@ func Run(request Request) ([]domain.Mutation, error) {
 			return nil, fmt.Errorf("relocate: %w", err)
 		}
 		mutations = append(mutations, muts...)
+		mutations = append(mutations, dispatch.TollCharges(request.Faction.ID, orderTolls(request, order))...)
 		moved++
 	}
 	return mutations, nil
@@ -170,6 +179,29 @@ func lockedOutRemoved(request Request, candidateWorlds []string) []string {
 	return slices.DeleteFunc(slices.Clone(candidateWorlds), func(worldID string) bool {
 		return domain.LockedOutBy(request.FactionState.Factions, worldID, request.Faction.ID) != ""
 	})
+}
+
+// affordableDestinations drops each world whose tolls, beside the relocate's own
+// cost for one asset, are more than the faction holds: a mover with no Coin cannot
+// order the move (D-6).
+func affordableDestinations(request Request, destinations []string) []string {
+	if request.FactionState == nil {
+		return destinations
+	}
+	return slices.DeleteFunc(slices.Clone(destinations), func(worldID string) bool {
+		// deliberate: stealth is not read here, so a short purse can lose a world a stealthed asset would reach free, because the filter keeps one number per world (Effort 4 Decision 11).
+		tolls := dispatch.ArrivalTolls(request.Registry, request.FactionState.Factions, request.Faction, worldID)
+		return request.Faction.Coin < request.Params.CoinCost+dispatch.TollTotal(tolls)
+	})
+}
+
+// orderTolls returns the tolls order's asset owes on landing. A stealthed asset
+// owes none (Effort 4 Decision 9).
+func orderTolls(request Request, order action.RelocateOrder) []hooks.ArrivalToll {
+	if request.FactionState == nil || order.Asset.Stealthy {
+		return nil
+	}
+	return dispatch.ArrivalTolls(request.Registry, request.FactionState.Factions, request.Faction, order.DestinationWorld)
 }
 
 // eligibleAssets returns the faction's assets that an other-scope relocation may

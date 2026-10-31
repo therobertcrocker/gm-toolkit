@@ -22,6 +22,7 @@ import (
 
 const (
 	DefSecurityPersonnel = "SWN-F1-001"
+	DefSmugglers         = "SWN-C1-001"
 	DefHeavyDropAssets   = "SWN-F2-001"
 	DefPsychicAssassins  = "SWN-F5-003"
 	DefPartyMachine      = "SWN-C4-001"
@@ -51,12 +52,25 @@ type StubSpatialMap struct {
 	// Worlds, when set, are the worlds AllWorlds returns. Every stub location shares the
 	// zero hex, so each one is at distance 0 from every other and in range of any relocate.
 	Worlds []string
+	// Populations overrides a world's population; any other world has stubPopulation.
+	Populations map[string]int
 }
+
+// stubPopulation is above the SWN Starship floor, so no purchase is refused for its
+// world's size unless a test sets Populations.
+const stubPopulation = 1_000_000
 
 var _ world.HexRouter = (*StubSpatialMap)(nil)
 
 func (s *StubSpatialMap) Location(id string) (spatial.Location, bool) {
-	return &stubLocation{id: id}, true
+	return &stubLocation{id: id, population: s.populationOf(id)}, true
+}
+
+func (s *StubSpatialMap) populationOf(id string) int {
+	if population, ok := s.Populations[id]; ok {
+		return population
+	}
+	return stubPopulation
 }
 
 func (s *StubSpatialMap) Distance(_, _ spatial.RegionHex, _ int) (int, error) {
@@ -80,19 +94,22 @@ func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]s
 func (s *StubSpatialMap) AllWorlds() []spatial.Location {
 	locations := make([]spatial.Location, 0, len(s.Worlds))
 	for _, id := range s.Worlds {
-		locations = append(locations, &stubLocation{id: id})
+		locations = append(locations, &stubLocation{id: id, population: s.populationOf(id)})
 	}
 	return locations
 }
 
-type stubLocation struct{ id string }
+type stubLocation struct {
+	id         string
+	population int
+}
 
 var _ spatial.RegionLocation = (*stubLocation)(nil)
 
 func (l *stubLocation) ID() string                   { return l.id }
 func (l *stubLocation) Name() string                 { return l.id }
 func (l *stubLocation) TechLevel() int               { return 5 }
-func (l *stubLocation) Population() int              { return 0 }
+func (l *stubLocation) Population() int              { return l.population }
 func (l *stubLocation) Coords() (q, r int)           { return 0, 0 }
 func (l *stubLocation) RegionID() string             { return "" }
 func (l *stubLocation) RegionHex() spatial.RegionHex { return spatial.RegionHex{} }

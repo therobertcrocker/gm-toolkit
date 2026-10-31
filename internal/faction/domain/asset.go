@@ -394,15 +394,20 @@ func NewPurchasedAsset(factions map[string]*Faction, faction *Faction, def *Asse
 // action and the purchase_enabler ability: Cost is the price to test affordability against
 // (base cost for a buy, surcharged for an enabler); TechCap is the highest required tech
 // level a def may carry (the target world's tech level for a buy, the enabler's own cap for
-// an enabler). The shared checks themselves live in CanPurchase so the two paths can't drift.
+// an enabler). Population is the purchase world's, and PopulationFloor the least the buyer
+// needs for def's type (dispatch.ResolvePopulationFloor). The shared checks themselves live
+// in CanPurchase so the two paths can't drift.
 type PurchaseTerms struct {
-	Cost    int
-	TechCap int
+	Cost            int
+	TechCap         int
+	Population      int
+	PopulationFloor int
 }
 
 // CanPurchase reports whether the faction may buy def under terms: it can afford Cost, meets
-// the def's minimum category rating, and the def's required tech level is within TechCap.
-// Government permission is asked after the choice, not here (D-35).
+// the def's minimum category rating, the def's required tech level is within TechCap, and
+// the world's Population reaches PopulationFloor. Government permission is asked after the
+// choice, not here (D-35).
 func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bool {
 	switch {
 	case faction.Coin < terms.Cost:
@@ -410,6 +415,8 @@ func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bo
 	case def.MinRating > faction.StatScore(def.Category):
 		return false
 	case def.TechLevel > terms.TechCap:
+		return false
+	case terms.Population < terms.PopulationFloor:
 		return false
 	}
 	return true
