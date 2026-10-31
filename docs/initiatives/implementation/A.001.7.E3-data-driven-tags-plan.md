@@ -150,8 +150,9 @@
    `contestPasses` asks `dispatch.ResolveTie` when a `roll = "attack"` contest
    ties. `TieAttackerWins` gives the tie to the attacker; any other answer keeps
    it with the defender, as before. A `test` contest never asks: a test is not an
-   attack. The Phase 2 code spec below predates this. The A-side gate has the
-   same gap; it is outside this effort.
+   attack. The Phase 2 code spec below predates this. The A-side gate
+   (`passesGate`) rolls a test, so it asks no tie resolver; Effort 5 checks
+   whether the book words any ability contest as an attack.
 
 3. **Effort close: `rival_roll` asks the wrong player. Deferred.** From the effort
    review. `RollWithHooks` confirms an elective reroll through the roller's

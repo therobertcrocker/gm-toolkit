@@ -281,6 +281,13 @@ the code before it relies on them.
 - **Settings.** `rulebook.Load` reads `drift_costs.toml` through `loadDriftCosts`
   (`rulebook/rulebook.go:561`) into `Rulebook.DriftCosts`, read by `DriftCost`. D-10
   folds it into `settings.toml`. (Effort 4, after R-5)
+- **Ability contest ties.** The A-side gate, `passesGate`
+  (`action/actions/ability/stage.go`), always rolls a faction test and its contested
+  roll, and gives ties to the defender with no tie resolver. Effort 3 gave an
+  `attack` effect contest `ResolveTie`, so Fanatical's `lose_ties` reaches Tripwire
+  Cells (Effort 3 Decision Record 2). Check whether the book words any ability
+  contest as an attack; if it does, that gate needs the `roll` key and
+  `ResolveTie` too. Found at the Effort 3 close (2026-10-31). (Effort 5)
 
 ### Pre-merge additions
 
