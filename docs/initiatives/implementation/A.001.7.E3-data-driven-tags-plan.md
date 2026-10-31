@@ -74,6 +74,8 @@
      Deep Rooted's die when the target defends on its homeworld, and Panopticon's
      own Cunning die when its owner's Cells share its world. Every once-per-turn
      die waits.
+   - An `attack` contest's tie asks the tie resolvers, so Fanatical's `lose_ties`
+     reaches Tripwire too (Decision Record 2).
    - **Imperialists' die keeps to the Attack action.** Robert's call (rules
      reading). Effort 2's `goal` filter matches any attack on a rival on the
      Planetary Seizure target world, so Tripwire's attack would get the free die.
@@ -140,7 +142,34 @@
    sets it to 1. So the line reads "completed Peaceable Kingdom (+1 XP)" when the
    faction gained 2. The TUI turn list shows only the `GoalCompleted` line too.
    For the effort-close review to decide: fold the `xp_roll` award into the goal
-   line, show it as its own beat, or leave it.
+   line, show it as its own beat, or leave it. Settled in Decision Record 4.
+
+2. **Effort close: an `attack` contest's tie asks the tie resolvers.** Robert's
+   call (rules reading), from the effort review. Fanatical "always loses ties
+   during attacks", and Tripwire Cells is an attack (Decision 4), so
+   `contestPasses` asks `dispatch.ResolveTie` when a `roll = "attack"` contest
+   ties. `TieAttackerWins` gives the tie to the attacker; any other answer keeps
+   it with the defender, as before. A `test` contest never asks: a test is not an
+   attack. The Phase 2 code spec below predates this. The A-side gate has the
+   same gap; it is outside this effort.
+
+3. **Effort close: `rival_roll` asks the wrong player. Deferred.** From the effort
+   review. `RollWithHooks` confirms an elective reroll through the roller's
+   collector, so the Academy's forced reroll on a rival is confirmed by that
+   rival, not by the Academy's owner, and a contest with no collector always
+   declines it. A non-elective `rival_roll` with a once-per-turn gate would fire
+   on the first rival roll of the turn and spend the budget. No `tags.toml` entry
+   uses `rival_roll` yet (Decision 7, D-7), so nothing plays wrong today. Asking
+   the owner needs a design: a second collector on the roll, or the owner's
+   collector found from the registry. The effort that gives Psychic Academy its
+   entry settles it.
+
+4. **Effort close: the XP lines tell the whole total.** Robert's call ("the XP line
+   should be accurate"), settling Decision Record 1. The digest adds an
+   `XPAwarded` with cause `xp_roll` to the latest `GoalCompleted` of the beat, so
+   the goal line reads "+2 XP". The TUI turn list formats one mutation at a time
+   and cannot fold, so it shows the bonus on its own line, "bonus XP +1", and
+   still hides every other `XPAwarded`.
 
 ---
 

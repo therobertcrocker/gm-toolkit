@@ -455,6 +455,30 @@ func TestGoalCompleted(t *testing.T) {
 	}
 }
 
+func TestGoalCompleted_XPRollBonusJoinsTheGoalLine(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "goal_completed", domain.GoalCompleted{
+				FactionID: "faction-a", GoalID: "goal-1", XPAwarded: 1, Cause: "goal_completed",
+			}),
+			mutRec(t, "xp_awarded", domain.XPAwarded{
+				FactionID: "faction-a", Amount: 1, Cause: "goal_completed",
+			}),
+			mutRec(t, "xp_awarded", domain.XPAwarded{
+				FactionID: "faction-a", Amount: 1, Cause: string(domain.SpecialXPRoll), CausedByFactionID: "faction-a",
+			}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), minRulebook(map[string]string{"goal-1": "Peaceable Kingdom"}))
+	beat := findBeat(d, "faction-a")
+	if beat.XPGained != 2 {
+		t.Errorf("want XPGained 2, got %d", beat.XPGained)
+	}
+	if len(beat.GoalEvents) != 1 || beat.GoalEvents[0].XPAwarded != 2 {
+		t.Errorf("want 1 GoalCompleted event with XPAwarded 2, got %+v", beat.GoalEvents)
+	}
+}
+
 func TestGoalAbandoned(t *testing.T) {
 	records := []domain.EventRecord{
 		eventRec("faction-a",

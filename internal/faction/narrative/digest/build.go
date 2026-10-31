@@ -432,11 +432,22 @@ func Build(
 					return CycleDigest{}, err
 				}
 				beat.XPGained += m.Amount
-				// Fold into matching GoalCompleted if XPAwarded wasn't set by the mutation.
-				for i := range beat.GoalEvents {
-					if beat.GoalEvents[i].Kind == GoalCompleted && beat.GoalEvents[i].XPAwarded == 0 {
-						beat.GoalEvents[i].XPAwarded = m.Amount
-						break
+				// A goal's xp_roll bonus follows its completion in the batch, so it
+				// adds to the latest GoalCompleted.
+				if m.Cause == string(domain.SpecialXPRoll) {
+					for i := len(beat.GoalEvents) - 1; i >= 0; i-- {
+						if beat.GoalEvents[i].Kind == GoalCompleted {
+							beat.GoalEvents[i].XPAwarded += m.Amount
+							break
+						}
+					}
+				} else {
+					// Fold into matching GoalCompleted if XPAwarded wasn't set by the mutation.
+					for i := range beat.GoalEvents {
+						if beat.GoalEvents[i].Kind == GoalCompleted && beat.GoalEvents[i].XPAwarded == 0 {
+							beat.GoalEvents[i].XPAwarded = m.Amount
+							break
+						}
 					}
 				}
 

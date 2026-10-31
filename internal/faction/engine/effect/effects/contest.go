@@ -33,7 +33,8 @@ type contestRoll struct {
 // whether the effect applies. With roller "self" the declaring faction attacks
 // and must win; with "target" the affected faction tests to keep what it has, and
 // the effect applies when that test fails. Ties go to the defender, as in the
-// A-side gate. roll "attack" rolls an attack and its defense; roll "test" a
+// A-side gate, unless an attack's tie resolver gives the tie to the attacker
+// (Fanatical). roll "attack" rolls an attack and its defense; roll "test" a
 // faction test and its contested roll, as the A-side gate does (Effort 3
 // Decision 4).
 func contestPasses(roll contestRoll) bool {
@@ -49,6 +50,10 @@ func contestPasses(roll contestRoll) bool {
 	attack := roll.side(attackPhase, attacker, defender, attackerAsset, defenderAsset, attackerStat, defenderStat)
 	defense := roll.side(defensePhase, defender, attacker, defenderAsset, attackerAsset, defenderStat, attackerStat)
 	attackerWins := attack > defense
+	if attack == defense && roll.contest.Roll == domain.ContestRollAttack {
+		tieCtx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: attacker, Opponent: defender, Asset: attackerAsset, World: roll.world}
+		attackerWins = dispatch.ResolveTie(roll.registry, tieCtx, roll.factionState) == hooks.TieAttackerWins
+	}
 	if roll.contest.Roller == domain.ContestRollerTarget {
 		return !attackerWins
 	}

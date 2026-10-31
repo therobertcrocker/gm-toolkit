@@ -111,6 +111,50 @@ func TestContestPasses_RollPhasesAndSides(t *testing.T) {
 	}
 }
 
+func TestContestPasses_AttackTiesAskTheTieResolvers(t *testing.T) {
+	cases := []struct {
+		name      string
+		fanatical string
+		roll      domain.ContestRoll
+		want      bool
+	}{
+		{"an attack: a Fanatical defender loses the tie", "beta", domain.ContestRollAttack, true},
+		{"an attack: a Fanatical attacker loses the tie", "alpha", domain.ContestRollAttack, false},
+		{"a test: a Fanatical defender still wins the tie", "beta", domain.ContestRollTest, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			declaring := &domain.Faction{ID: "alpha", Cunning: 1}
+			target := &domain.Faction{ID: "beta", Cunning: 1}
+			factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": declaring, "beta": target}}
+			holder := factionState.Factions[tc.fanatical]
+			holder.Tags = []string{"F"}
+			registry := hooks.NewRegistry()
+			loseTiesRegistrar.Register(effect.RegisterContext{
+				Holder: effect.Holder{Faction: holder, Tag: &domain.Tag{ID: "F", Name: "Fanatical"}},
+				Entry: domain.EffectDefinition{
+					Trigger: domain.TriggerAttackTie,
+					Effect:  domain.SpecialLoseTies,
+					Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+				},
+				Registry: registry,
+			})
+			roll := contestRoll{
+				contest:      cunningContest(domain.ContestRollerSelf, tc.roll),
+				declaring:    declaring,
+				target:       target,
+				registry:     registry,
+				factionState: factionState,
+				roller:       &pairRoller{values: []int{5, 5}},
+			}
+
+			if got := contestPasses(roll); got != tc.want {
+				t.Errorf("contestPasses = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestContestPasses_TakesOnlyFreeDice(t *testing.T) {
 	declaring := &domain.Faction{ID: "alpha", Cunning: 1, Tags: []string{"T"}, HookBudgets: map[string]int{}}
 	target := &domain.Faction{ID: "beta", Cunning: 1}
