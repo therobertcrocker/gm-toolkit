@@ -85,7 +85,7 @@
 
 7. **Colonists' government role is the tag marker `homeworld_government = true`.**
    Planning call (D-8, overview Decision 7). The loader refuses the marker when no
-   tag sets `government`. The wizard: refuses a homeworld-government tag picked
+   tag sets `government`, and on a tag that sets `government` too. The wizard: refuses a homeworld-government tag picked
    with the government tag (Robert's call); refuses a homeworld another faction
    governs; adds the government tag's ID; and writes the homeworld as the governed
    world, so `CreateFaction` adds the record entry.
@@ -105,6 +105,8 @@
      Landers) covers its whole order, cargo included, as it does for the lockdown.
      Blockade Runners pay.
    - Each asset aboard pays for itself, from its current owner.
+   - `dispatch.AssetArrivalTolls` holds the stealth and owner rules once, for
+     drift arrivals and relocates alike.
 
 10. **A drift arrival checks the toll after the lockdown and before the
     government, and holds unpaid until it can pay.** Robert's call (the hold);
@@ -120,7 +122,8 @@
     (`ErrInsufficientCoin` when none is left). The total check after the picks adds
     each order's tolls; each order that moves pays its own. The pre-filter does not
     read stealth, so a short purse can lose a world a stealthed asset would reach
-    free (planning call: one number per world).
+    free (planning call: one number per world). An asset picked for the world it
+    already stands on owes no toll.
 
 12. **The wizard's starting-asset picker stays on the raw world TL.** Robert's call.
     It has no hooks registry, so Colonists' TL4 homeworld and the population floor
@@ -158,6 +161,28 @@
   asked, so a faction can be refused with `ErrInsufficientCoin` for an order the
   government would then refuse anyway. `totalCost` already counts refused orders
   the same way, so the toll follows it. Left as is.
+- **Effort close, the review fixes.** The interim review's picks changed these
+  plan points:
+  - **A world's population is required in the map source.** The spatial builder
+    refuses a `[[worlds]]` entry with no `population`. A missing key read as 0
+    and silently blocked every floored purchase on the world. TL keeps its old
+    gap; out of scope.
+  - **The toll rules live once, in `dispatch.AssetArrivalTolls`.** Drift
+    arrivals and relocates each held a copy of "stealth pays nothing, the owner
+    pays". Relocate now works out each order's tolls once, for the check and the
+    charge. Decision 9 updated.
+  - **An other-scope relocate to the asset's own world owes no toll.** The check
+    sits in `relocate.orderTolls`, not the shared helper: only a relocate can
+    pick an asset's own world, and a held drift order sits at the edge with no
+    world. Decision 11 updated.
+  - **The loader refuses one tag that sets both `government` and
+    `homeworld_government`.** The wizard could never accept such a tag. Decision 7
+    updated.
+  - **The unpaid-toll wire names no tag.** "the pirates' toll" became "the toll
+    to land", since any rulebook entry may charge one (Decision 3).
+- **Effort close, review findings left alone.** The tracked sandbox's missing
+  `settings.toml` stays Robert's (D-4). The private base lookup in `goals` stays,
+  per Decision 6.
 
 ---
 

@@ -505,6 +505,28 @@ func TestArrivalTolls_EveryRivalChargesInIDOrder(t *testing.T) {
 	}
 }
 
+func TestAssetArrivalTolls(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterArrivalTollRule(hooks.FactionScope("bravo"), "pirates", &stubToll{world: "Krylos", amount: 1})
+	factions := map[string]*domain.Faction{"alpha": {ID: "alpha"}, "bravo": {ID: "bravo"}}
+
+	cases := []struct {
+		name  string
+		asset *domain.Asset
+		want  []hooks.ArrivalToll
+	}{
+		{"landing asset owes its owner's tolls", &domain.Asset{ID: "a1", OwnerID: "alpha", Location: domain.Location{WorldID: "Hadrian"}}, []hooks.ArrivalToll{{FactionID: "bravo", Amount: 1}}},
+		{"stealthed asset owes none", &domain.Asset{ID: "a1", OwnerID: "alpha", Stealthy: true, Location: domain.Location{WorldID: "Hadrian"}}, nil},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := AssetArrivalTolls(registry, factions, testCase.asset, "Krylos"); !reflect.DeepEqual(got, testCase.want) {
+				t.Errorf("tolls = %+v, want %+v", got, testCase.want)
+			}
+		})
+	}
+}
+
 func TestTollCharges_PairsALossAndAGainCausedByTheHolder(t *testing.T) {
 	got := TollCharges("alpha", []hooks.ArrivalToll{{FactionID: "bravo", Amount: 1}})
 	want := []domain.Mutation{

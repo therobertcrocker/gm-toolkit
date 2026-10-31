@@ -26,7 +26,7 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 	worldID := ctx.Asset.Location.WorldID
 	candidates := eligiblePurchaseDefs(ctx, params)
 	if len(candidates) == 0 {
-		return nil, fmt.Errorf("purchase_enabler: no affordable %s assets at tech level %d or below", params.Category, params.MaxTechLevel)
+		return nil, fmt.Errorf("purchase_enabler: no %s assets at tech level %d or below that the faction can afford, has the rating for, and may buy on a world of this population", params.Category, params.MaxTechLevel)
 	}
 	options := make([]action.PurchaseEnablerOption, len(candidates))
 	for i, candidate := range candidates {
@@ -77,8 +77,8 @@ func purchaseEnabler(ctx StepContext) ([]domain.Mutation, error) {
 func eligiblePurchaseDefs(ctx StepContext, params *domain.PurchaseParams) []*domain.AssetDefinition {
 	population := math.MaxInt
 	if ctx.WorldEngine != nil {
-		if loc, ok := ctx.WorldEngine.Location(ctx.Asset.Location.WorldID); ok {
-			population = loc.Population()
+		if location, ok := ctx.WorldEngine.Location(ctx.Asset.Location.WorldID); ok {
+			population = location.Population()
 		}
 	}
 	var eligible []*domain.AssetDefinition

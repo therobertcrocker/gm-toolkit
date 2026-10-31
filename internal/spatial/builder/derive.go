@@ -183,7 +183,7 @@ func (state *derivation) placeWorlds(layout *layoutFile, data *dataFile) ([]deri
 		state.regions[regionID].hexes[axial] = true
 		state.cellRegion[coord] = regionID
 		out = append(out, derivedWorld{
-			ID: world.ID, Name: world.Name, TechLevel: world.TechLevel, Population: world.Population,
+			ID: world.ID, Name: world.Name, TechLevel: world.TechLevel, Population: *world.Population,
 			Region: regionID, Coord: axial,
 		})
 	}

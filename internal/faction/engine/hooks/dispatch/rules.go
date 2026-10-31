@@ -146,6 +146,16 @@ func ArrivalTolls(registry *hooks.Registry, factions map[string]*domain.Faction,
 	return tolls
 }
 
+// AssetArrivalTolls returns the tolls asset owes on landing on world, paid by its
+// current owner (Effort 4 Decision 9).
+func AssetArrivalTolls(registry *hooks.Registry, factions map[string]*domain.Faction, asset *domain.Asset, world string) []hooks.ArrivalToll {
+	// deliberate: a stealthed asset pays no toll, though it still pays a lockdown, because Robert reads the toll as a levy on what the holder can see (Effort 4 Decision 9).
+	if asset.Stealthy {
+		return nil
+	}
+	return ArrivalTolls(registry, factions, factions[asset.OwnerID], world)
+}
+
 // TollTotal is the Coin tolls charge in all.
 func TollTotal(tolls []hooks.ArrivalToll) int {
 	total := 0

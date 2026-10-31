@@ -655,6 +655,9 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 		if tag.HomeworldGovernment && government == "" {
 			return nil, "", fmt.Errorf("tag %q sets homeworld_government, but no tag in %s sets government", tag.ID, path)
 		}
+		if tag.HomeworldGovernment && tag.Government {
+			return nil, "", fmt.Errorf("tag %q in %s sets both government and homeworld_government", tag.ID, path)
+		}
 	}
 	return result, government, nil
 }

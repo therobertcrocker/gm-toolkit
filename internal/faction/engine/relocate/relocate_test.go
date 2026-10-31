@@ -685,3 +685,25 @@ func TestRun_TollWorldPaysTheHolder(t *testing.T) {
 		t.Errorf("last mutations = %+v, want the toll pair %+v", got, want)
 	}
 }
+
+func TestRun_AssetPickedForItsOwnWorldPaysNoToll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	request, _ := tollRequest(t, 5, collector)
+	request.Params.Scope = domain.RelocateOther
+	stayer := &domain.Asset{ID: "x1", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "mid", RegionHex: relocHex("r1", 2)}}
+	request.Faction.Assets["x1"] = stayer
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: stayer, DestinationWorld: "mid"}}, nil)
+
+	mutations, err := Run(request)
+
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, mutation := range mutations {
+		if delta, ok := mutation.(domain.CoinDelta); ok && delta.Cause == "arrival_toll" {
+			t.Errorf("toll charged: %+v, want none (the asset already stands on mid)", delta)
+		}
+	}
+}

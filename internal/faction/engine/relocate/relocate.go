@@ -112,8 +112,10 @@ func Run(request Request) ([]domain.Mutation, error) {
 		return nil, fmt.Errorf("relocate: %d assets selected, at most %d allowed", len(orders), params.MaxAssets)
 	}
 	cost := totalCost(params, len(orders))
-	for _, order := range orders {
-		cost += dispatch.TollTotal(orderTolls(request, order))
+	tolls := make([][]hooks.ArrivalToll, len(orders))
+	for i, order := range orders {
+		tolls[i] = orderTolls(request, order)
+		cost += dispatch.TollTotal(tolls[i])
 	}
 	if request.Faction.Coin < cost {
 		return nil, fmt.Errorf("relocate: %w: need %d, have %d", ErrInsufficientCoin, cost, request.Faction.Coin)
@@ -127,7 +129,7 @@ func Run(request Request) ([]domain.Mutation, error) {
 
 	var mutations []domain.Mutation
 	moved := 0
-	for _, order := range orders {
+	for i, order := range orders {
 		loc, ok := request.World.Location(order.DestinationWorld)
 		if !ok {
 			return nil, fmt.Errorf("relocate: unknown destination world %q", order.DestinationWorld)
@@ -152,7 +154,7 @@ func Run(request Request) ([]domain.Mutation, error) {
 			return nil, fmt.Errorf("relocate: %w", err)
 		}
 		mutations = append(mutations, muts...)
-		mutations = append(mutations, dispatch.TollCharges(request.Faction.ID, orderTolls(request, order))...)
+		mutations = append(mutations, dispatch.TollCharges(order.Asset.OwnerID, tolls[i])...)
 		moved++
 	}
 	return mutations, nil
@@ -195,13 +197,14 @@ func affordableDestinations(request Request, destinations []string) []string {
 	})
 }
 
-// orderTolls returns the tolls order's asset owes on landing. A stealthed asset
-// owes none (Effort 4 Decision 9).
+// orderTolls returns the tolls order's asset owes on landing. An other-scope
+// relocate may pick the world an asset already stands on; that asset lands nowhere
+// and owes none.
 func orderTolls(request Request, order action.RelocateOrder) []hooks.ArrivalToll {
-	if request.FactionState == nil || order.Asset.Stealthy {
+	if request.FactionState == nil || order.Asset.Location.WorldID == order.DestinationWorld {
 		return nil
 	}
-	return dispatch.ArrivalTolls(request.Registry, request.FactionState.Factions, request.Faction, order.DestinationWorld)
+	return dispatch.AssetArrivalTolls(request.Registry, request.FactionState.Factions, order.Asset, order.DestinationWorld)
 }
 
 // eligibleAssets returns the faction's assets that an other-scope relocation may

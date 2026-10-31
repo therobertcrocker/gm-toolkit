@@ -99,11 +99,7 @@ func (e *Engine) tollCharges(factionState *state.FactionState, assets []*domain.
 	var charges []domain.Mutation
 	owed := map[string]int{}
 	for _, asset := range assets {
-		// deliberate: a stealthed asset pays no toll, though it still pays a lockdown, because Robert reads the toll as a levy on what the holder can see (Effort 4 Decision 9).
-		if asset.Stealthy {
-			continue
-		}
-		tolls := dispatch.ArrivalTolls(e.Hooks, factionState.Factions, factionState.Factions[asset.OwnerID], worldID)
+		tolls := dispatch.AssetArrivalTolls(e.Hooks, factionState.Factions, asset, worldID)
 		if len(tolls) == 0 {
 			continue
 		}
