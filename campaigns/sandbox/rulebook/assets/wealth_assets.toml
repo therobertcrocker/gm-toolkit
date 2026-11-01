@@ -377,6 +377,7 @@ counter = ""
 description = "Operatives deployed to confuse enemy factions into untimely investments. As an ability action, test Cunning vs. Wealth against a rival faction's asset; if successful, the target faction must immediately pay half that asset's purchase cost (rounded down) or have it become disabled until the price is paid."
 
 [assets.Marketers.ability]
+roll = "test"
 attacker_stat = "Cunning"
 defender_stat = "Wealth"
 effect = "disable_asset"

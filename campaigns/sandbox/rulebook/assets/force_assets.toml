@@ -57,6 +57,26 @@ attacker_stat = "Force"
 defender_stat = "Force"
 damage = "1d6"
 
+[assets.GengineeredSlaves]
+id = "SWN-F1-004"
+name = "Gengineered Slaves"
+category = "Force"
+min_rating = 1
+hp = 6
+cost = 2
+maintenance = 0
+tech_level = 4
+type = "Military Unit"
+flags = []
+counter = "1d4"
+description = "Genetically engineered servitors bred by a eugenics cult for labor and war. Only a faction with the Eugenics Cult tag can buy them."
+requires_tag = "SWN-T-003"
+
+[assets.GengineeredSlaves.attack]
+attacker_stat = "Force"
+defender_stat = "Force"
+damage = "1d6"
+
 [assets.HeavyDropAssets]
 id = "SWN-F2-001"
 name = "Heavy Drop Assets"
