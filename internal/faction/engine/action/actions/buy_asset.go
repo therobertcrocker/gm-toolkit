@@ -65,7 +65,7 @@ func (ba *BuyAsset) Inputs(faction *domain.Faction, factionState *state.FactionS
 	ba.factionID = faction.ID
 	ba.buyOrder = order
 
-	refusal, err := dispatch.RequestPermission(ba.registry, ba.collector, factionState, faction, order.Definition, order.World, "buy")
+	refusal, err := dispatch.RequestPermission(ba.registry, ba.collector, factionState, rulebook, faction, order.Definition, order.World, "buy")
 	if err != nil {
 		return fmt.Errorf("buy asset: %w", err)
 	}
@@ -163,17 +163,20 @@ func availableWorlds(faction *domain.Faction) []string {
 
 // purchasableDefinitions returns the definitions the faction may buy on fragmentID via
 // domain.CanPurchase: affordable at the cost Resolve will charge, meeting the minimum
-// attribute rating, and within the world's tech level. A quality also needs a target on
-// the world (D-22). A P-flagged def is offered everywhere; Inputs asks its permission
-// after the choice (D-35). An unknown world imposes no tech ceiling (math.MaxInt).
+// attribute rating, within the world's tech level, and on a world populous enough for the
+// def's type. A quality also needs a target on the world (D-22). A P-flagged def is offered
+// everywhere; Inputs asks its permission after the choice (D-35). With no world engine there
+// is no tech ceiling and no population floor (math.MaxInt).
 func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook, fragmentID string, worldEngine *world.WorldEngine, registry *hooks.Registry, effectsEngine *effect.EffectsEngine) []*domain.AssetDefinition {
 	worldTechLevel := math.MaxInt
+	worldPopulation := math.MaxInt
 	if worldEngine != nil {
 		loc, ok := worldEngine.Location(fragmentID)
 		if !ok {
 			return nil
 		}
 		worldTechLevel = loc.TechLevel()
+		worldPopulation = loc.Population()
 	}
 
 	onWorld := world.AssetsOnWorld(worldEngine, fragmentID)
@@ -187,7 +190,13 @@ func purchasableDefinitions(faction *domain.Faction, rulebook *rulebook.Rulebook
 			techCap = dispatch.ResolveWorldTechLevel(registry, faction, def, fragmentID, worldTechLevel)
 		}
 		cost := dispatch.ResolveAssetCost(registry, faction, def, fragmentID, def.Cost, onWorld).Cost
-		if domain.CanPurchase(faction, def, domain.PurchaseTerms{Cost: cost, TechCap: techCap}) {
+		terms := domain.PurchaseTerms{
+			Cost:            cost,
+			TechCap:         techCap,
+			Population:      worldPopulation,
+			PopulationFloor: dispatch.ResolvePopulationFloor(registry, faction, def, rulebook.PurchasePopulation),
+		}
+		if domain.CanPurchase(faction, def, terms) {
 			result = append(result, def)
 		}
 	}

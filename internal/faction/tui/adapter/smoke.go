@@ -88,7 +88,7 @@ func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook)
 func (SmokeActionCollector) SelectAssetToLose(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
 }
-func (SmokeActionCollector) SelectAbilityTarget(_ *domain.Asset, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+func (SmokeActionCollector) SelectAbilityTarget(_ domain.AbilityHolder, _ domain.AbilityStep, _ domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 	return domain.AbilityTarget{}, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) SelectRelocateOrders(_ *domain.Asset, _ []*domain.Asset, _ []string, _ int) ([]action.RelocateOrder, error) {
@@ -136,7 +136,7 @@ func (SmokeActionCollector) ConfirmRivalFreeAttack(_ *domain.Faction, _, _ int) 
 func (SmokeActionCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable
 }
-func (SmokeActionCollector) SelectAbilityAssets(_ *domain.Faction, _ []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+func (SmokeActionCollector) SelectAbilityHolders(_ *domain.Faction, _ []domain.AbilityHolder, _ *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
 	return nil, action.ErrActionUnavailable
 }
 func (SmokeActionCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {

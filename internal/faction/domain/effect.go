@@ -30,6 +30,13 @@ const (
 	SpecialGrantPermission    SpecialEffectType = "grant_permission"
 	SpecialWithdrawPermission SpecialEffectType = "withdraw_permission"
 	SpecialLockOut            SpecialEffectType = "lock_out"
+	SpecialLoseTies           SpecialEffectType = "lose_ties"
+	SpecialCostDiscount       SpecialEffectType = "cost_discount"
+	SpecialSpeedFloor         SpecialEffectType = "speed_floor"
+	SpecialRemoveTag          SpecialEffectType = "remove_tag"
+	SpecialXPRoll             SpecialEffectType = "xp_roll"
+	SpecialPopulationFloor    SpecialEffectType = "population_floor"
+	SpecialArrivalToll        SpecialEffectType = "arrival_toll"
 )
 
 type EffectTrigger string
@@ -53,6 +60,14 @@ const (
 	TriggerLethalDamage           EffectTrigger = "lethal_damage"
 	TriggerPermissionQuery        EffectTrigger = "permission_query"
 	TriggerPermissionGranted      EffectTrigger = "permission_granted"
+	TriggerAttackTie              EffectTrigger = "attack_tie"
+	TriggerAssetDestroyed         EffectTrigger = "asset_destroyed"
+	TriggerSpeedQuery             EffectTrigger = "speed_query"
+	TriggerRivalRoll              EffectTrigger = "rival_roll"
+	TriggerHomeworldChanged       EffectTrigger = "homeworld_changed"
+	TriggerGoalCompleted          EffectTrigger = "goal_completed"
+	TriggerPopulationFloorQuery   EffectTrigger = "population_floor_query"
+	TriggerArrivalQuery           EffectTrigger = "arrival_query"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -68,9 +83,13 @@ const (
 type EffectScope string
 
 const (
-	ScopeSelf    EffectScope = "self"
-	ScopeWorld   EffectScope = "world"
-	ScopeFaction EffectScope = "faction"
+	ScopeSelf      EffectScope = "self"
+	ScopeWorld     EffectScope = "world"
+	ScopeHomeworld EffectScope = "homeworld"
+	ScopeFaction   EffectScope = "faction"
+	// ScopeBase is every world where the owner has a Base of Influence (Effort 4
+	// Decision 6).
+	ScopeBase EffectScope = "base"
 )
 
 // EffectFilterName names an optional filter. owner and scope are not listed: every
@@ -78,12 +97,20 @@ const (
 type EffectFilterName string
 
 const (
-	FilterAttribute EffectFilterName = "attribute"
-	FilterPhase     EffectFilterName = "phase"
-	FilterAction    EffectFilterName = "action"
-	FilterAssetType EffectFilterName = "asset_type"
-	FilterCategory  EffectFilterName = "category"
-	FilterStealthy  EffectFilterName = "stealthy"
+	FilterAttribute         EffectFilterName = "attribute"
+	FilterOpponentAttribute EffectFilterName = "opponent_attribute"
+	FilterPhase             EffectFilterName = "phase"
+	FilterAction            EffectFilterName = "action"
+	FilterAssetType         EffectFilterName = "asset_type"
+	FilterCategory          EffectFilterName = "category"
+	FilterStealthy          EffectFilterName = "stealthy"
+	FilterMinTechLevel      EffectFilterName = "min_tech_level"
+	FilterCausedBy          EffectFilterName = "caused_by"
+	FilterTechLevel         EffectFilterName = "tech_level"
+	FilterOpponentTechLevel EffectFilterName = "opponent_tech_level"
+	FilterGoal              EffectFilterName = "goal"
+	FilterDetection         EffectFilterName = "detection"
+	FilterAssetDefinition   EffectFilterName = "asset_definition"
 )
 
 type EffectGateName string
@@ -122,6 +149,18 @@ const (
 	ContestRollerTarget ContestRoller = "target"
 )
 
+// ContestRoll names the roll phases a contest rolls with, as the book words it: an
+// attack and its defense (Tripwire Cells', Informers' and Seductress' "Cunning vs.
+// Cunning attack"), or a faction test and its contested roll (Panopticon Matrix's,
+// Lobbyists' and Marketers' "test"). An attack contest's tie asks the tie
+// resolvers; a test's never does.
+type ContestRoll string
+
+const (
+	ContestRollAttack ContestRoll = "attack"
+	ContestRollTest   ContestRoll = "test"
+)
+
 type RestrictSide string
 
 const (
@@ -137,23 +176,37 @@ const (
 )
 
 // EffectFilters narrows which events fire an entry. A zero optional field is an
-// absent filter. Stealthy is a pointer because "stealthy = false" is a real
-// filter, distinct from no filter.
+// absent filter. Stealthy, TechLevel and OpponentTechLevel are pointers because
+// "stealthy = false" and "tech_level = 0" are real filters, distinct from no
+// filter. Detection is a plain bool: only "detection = true" filters.
 type EffectFilters struct {
-	Owner      EffectOwner
-	Scope      EffectScope
-	Attribute  FactionStat
-	Phases     []EffectRollPhase
-	Action     string
-	AssetTypes []AssetType
-	Categories []FactionStat
-	Stealthy   *bool
+	Owner             EffectOwner
+	Scope             EffectScope
+	Attribute         FactionStat
+	OpponentAttribute FactionStat
+	Phases            []EffectRollPhase
+	Action            string
+	AssetTypes        []AssetType
+	Categories        []FactionStat
+	Stealthy          *bool
+	MinTechLevel      int
+	TechLevel         *int
+	OpponentTechLevel *int
+	CausedBy          EffectOwner
+	Goal              string
+	Detection         bool
+	// AssetDefinition names the rolling asset's definition ID (the Eugenics Cult
+	// die on Gengineered Slaves).
+	AssetDefinition string
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
 	var present []EffectFilterName
 	if filters.Attribute != "" {
 		present = append(present, FilterAttribute)
+	}
+	if filters.OpponentAttribute != "" {
+		present = append(present, FilterOpponentAttribute)
 	}
 	if len(filters.Phases) > 0 {
 		present = append(present, FilterPhase)
@@ -169,6 +222,27 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	}
 	if filters.Stealthy != nil {
 		present = append(present, FilterStealthy)
+	}
+	if filters.MinTechLevel > 0 {
+		present = append(present, FilterMinTechLevel)
+	}
+	if filters.TechLevel != nil {
+		present = append(present, FilterTechLevel)
+	}
+	if filters.OpponentTechLevel != nil {
+		present = append(present, FilterOpponentTechLevel)
+	}
+	if filters.CausedBy != "" {
+		present = append(present, FilterCausedBy)
+	}
+	if filters.Goal != "" {
+		present = append(present, FilterGoal)
+	}
+	if filters.Detection {
+		present = append(present, FilterDetection)
+	}
+	if filters.AssetDefinition != "" {
+		present = append(present, FilterAssetDefinition)
 	}
 	return present
 }
@@ -215,8 +289,11 @@ type BonusDieParams struct {
 	Count int
 }
 
+// RerollParams picks the dice a reroll targets: the Dice lowest (a forced
+// reroll's highest), or every die showing Result. Exactly one is set.
 type RerollParams struct {
 	Dice     int
+	Result   int
 	Elective bool
 }
 
@@ -245,23 +322,53 @@ type DiscountRepairParams struct {
 	Amount int
 }
 
+type CostDiscountParams struct {
+	Amount int
+}
+
+type SpeedFloorParams struct {
+	Speed int
+}
+
+// ArrivalTollParams is the Coin a landing rival asset pays the holder.
+type ArrivalTollParams struct {
+	Amount int
+}
+
+// PopulationFloorParams is a holder's floor as a percent of the setting's.
+type PopulationFloorParams struct {
+	Percent int
+}
+
+// XPRollParams is a bonus-XP roll: roll Die, and on Target or more gain Amount XP.
+type XPRollParams struct {
+	Die    DiceRoll
+	Target int
+	Amount int
+}
+
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
 type EffectDefinition struct {
-	Trigger        EffectTrigger
-	Effect         SpecialEffectType
-	Filters        EffectFilters
-	Gates          EffectGates
-	CoinGain       *CoinGainParams
-	CoinSteal      *CoinStealParams
-	SelfDamage     *SelfDamageParams
-	BonusDie       *BonusDieParams
-	Reroll         *RerollParams
-	TechLevelFloor *TechLevelFloorParams
-	CostSurcharge  *CostSurchargeParams
-	RestrictAttack *RestrictAttackParams
-	GrantMovement  *GrantMovementParams
-	CaptureTarget  *CaptureTargetParams
-	DiscountRepair *DiscountRepairParams
+	Trigger         EffectTrigger
+	Effect          SpecialEffectType
+	Filters         EffectFilters
+	Gates           EffectGates
+	CoinGain        *CoinGainParams
+	CoinSteal       *CoinStealParams
+	SelfDamage      *SelfDamageParams
+	BonusDie        *BonusDieParams
+	Reroll          *RerollParams
+	TechLevelFloor  *TechLevelFloorParams
+	CostSurcharge   *CostSurchargeParams
+	RestrictAttack  *RestrictAttackParams
+	GrantMovement   *GrantMovementParams
+	CaptureTarget   *CaptureTargetParams
+	DiscountRepair  *DiscountRepairParams
+	CostDiscount    *CostDiscountParams
+	SpeedFloor      *SpeedFloorParams
+	XPRoll          *XPRollParams
+	PopulationFloor *PopulationFloorParams
+	ArrivalToll     *ArrivalTollParams
 }

@@ -25,7 +25,7 @@ func lockOutReactor(t *testing.T, factionState *state.FactionState) hooks.Mutati
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialLockOut].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["lock"], Def: &domain.AssetDefinition{ID: "SWN-C6-001"}, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["lock"], Def: &domain.AssetDefinition{ID: "SWN-C6-001"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerOwnAttackHit,
 			Effect:  domain.SpecialLockOut,

@@ -242,6 +242,10 @@ func TestRenderGoalEvent_GovernmentAndTagLoss(t *testing.T) {
 	if !strings.Contains(governed, "Alpha") || !strings.Contains(governed, "Krylos") {
 		t.Errorf("governed line = %q, want the faction and the world", governed)
 	}
+	raised := renderGoalEvent(digest.GoalEvent{Kind: digest.GoalTechLevelRaised, ToWorld: "Backwater", TechLevel: 4}, "Alpha", rng)
+	if !strings.Contains(raised, "Alpha") || !strings.Contains(raised, "Backwater") || !strings.Contains(raised, "4") {
+		t.Errorf("tech level line = %q, want the faction, the world and the level", raised)
+	}
 	lost := renderGoalEvent(digest.GoalEvent{Kind: digest.GoalTagLost, TagName: "Planetary Government"}, "Bravo", rng)
 	if !strings.Contains(lost, "Bravo") || !strings.Contains(lost, "Planetary Government") {
 		t.Errorf("tag-lost line = %q, want the faction and the tag", lost)

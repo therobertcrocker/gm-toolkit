@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -78,7 +79,7 @@ func TestRequestPermission(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			collector := &stubPermissionCollector{grant: tc.grant}
 
-			refusal, err := RequestPermission(nil, collector, factionState, requester, tc.def, tc.world, "buy")
+			refusal, err := RequestPermission(nil, collector, factionState, nil, requester, tc.def, tc.world, "buy")
 
 			if err != nil {
 				t.Fatalf("RequestPermission: %v", err)
@@ -105,7 +106,7 @@ func TestRequestPermission_AGrantHookIsNotAsked(t *testing.T) {
 	collector := &stubPermissionCollector{}
 	def := &domain.AssetDefinition{ID: "gunships", Flags: []domain.AssetFlag{domain.FlagPermission}}
 
-	refusal, err := RequestPermission(registry, collector, factionState, requester, def, "Krylos", "buy")
+	refusal, err := RequestPermission(registry, collector, factionState, nil, requester, def, "Krylos", "buy")
 
 	if err != nil || refusal != nil {
 		t.Errorf("RequestPermission = (%+v, %v), want a grant", refusal, err)
@@ -158,7 +159,7 @@ func TestRequestArrivalPermission(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			collector := &stubPermissionCollector{}
 
-			refusal, err := RequestArrivalPermission(nil, collector, factionState, requester, tc.asset, tc.def, tc.world, domain.PermissionCauseArrival)
+			refusal, err := RequestArrivalPermission(nil, collector, factionState, nil, requester, tc.asset, tc.def, tc.world, domain.PermissionCauseArrival)
 
 			if err != nil {
 				t.Fatalf("RequestArrivalPermission: %v", err)
@@ -186,7 +187,7 @@ func (stub *stubContester) OfferContest(hooks.PermissionQuery) *hooks.Permission
 	return &hooks.PermissionContest{Source: stub.source}
 }
 
-func (stub *stubContester) WinsContest(hooks.PermissionQuery) bool {
+func (stub *stubContester) WinsContest(hooks.PermissionQuery, *state.FactionState, *rulebook.Rulebook) bool {
 	stub.rolled++
 	return stub.wins
 }
@@ -227,7 +228,7 @@ func TestRequestPermission_LobbyistsContestAGrant(t *testing.T) {
 			collector := &stubPermissionCollector{contest: tc.contest}
 
 			// Tartarus is the requester's own world: the grant is automatic (D-6), and still contested (D-29).
-			refusal, err := RequestPermission(registry, collector, factionState, requester, permissionDef, "Tartarus", "buy")
+			refusal, err := RequestPermission(registry, collector, factionState, nil, requester, permissionDef, "Tartarus", "buy")
 
 			if err != nil {
 				t.Fatalf("RequestPermission: %v", err)
@@ -258,7 +259,7 @@ func TestRequestPermission_ContestWalkStopsAtTheFirstWin(t *testing.T) {
 	first := lobbyistsOf(registry, ruler, "lob-a", false)
 	collector := &stubPermissionCollector{contest: true}
 
-	refusal, err := RequestPermission(registry, collector, factionState, requester, permissionDef, "Tartarus", "buy")
+	refusal, err := RequestPermission(registry, collector, factionState, nil, requester, permissionDef, "Tartarus", "buy")
 
 	if err != nil {
 		t.Fatalf("RequestPermission: %v", err)
@@ -297,7 +298,7 @@ func TestRequestPermission_NoContestWithoutAGrant(t *testing.T) {
 			lobbyistsOf(registry, ruler, "lob", true)
 			collector := &stubPermissionCollector{contest: true}
 
-			if _, err := RequestPermission(registry, collector, factionState, requester, tc.def, tc.world, "buy"); err != nil {
+			if _, err := RequestPermission(registry, collector, factionState, nil, requester, tc.def, tc.world, "buy"); err != nil {
 				t.Fatalf("RequestPermission: %v", err)
 			}
 			if len(collector.offered) != 0 {
@@ -329,7 +330,7 @@ func TestRequestPermission_TheRulerDoesNotContestItsOwnYes(t *testing.T) {
 			collector := &stubPermissionCollector{grant: true, contest: true}
 
 			// Krylos is the ruler's (f2) world.
-			if _, err := RequestPermission(registry, collector, factionState, requester, permissionDef, "Krylos", "buy"); err != nil {
+			if _, err := RequestPermission(registry, collector, factionState, nil, requester, permissionDef, "Krylos", "buy"); err != nil {
 				t.Fatalf("RequestPermission: %v", err)
 			}
 			if len(collector.offered) != tc.wantOffered {
@@ -345,7 +346,7 @@ func TestRequestPermission_AWithdrawalBarsTheWorldThisTurn(t *testing.T) {
 	requester.SpendBudget(PermissionWithdrawnKey("Krylos", "f2"))
 	collector := &stubPermissionCollector{grant: true}
 
-	refusal, err := RequestArrivalPermission(nil, collector, factionState, requester, &domain.Asset{}, permissionDef, "Krylos", domain.PermissionCauseArrival)
+	refusal, err := RequestArrivalPermission(nil, collector, factionState, nil, requester, &domain.Asset{}, permissionDef, "Krylos", domain.PermissionCauseArrival)
 
 	if err != nil {
 		t.Fatalf("RequestArrivalPermission: %v", err)
@@ -357,7 +358,7 @@ func TestRequestPermission_AWithdrawalBarsTheWorldThisTurn(t *testing.T) {
 	if len(collector.asked) != 0 {
 		t.Errorf("asked = %+v, want no ask while barred", collector.asked)
 	}
-	if refusal, _ := RequestArrivalPermission(nil, collector, factionState, requester, &domain.Asset{}, permissionDef, "Hadrian", domain.PermissionCauseArrival); refusal != nil || len(collector.asked) != 1 {
+	if refusal, _ := RequestArrivalPermission(nil, collector, factionState, nil, requester, &domain.Asset{}, permissionDef, "Hadrian", domain.PermissionCauseArrival); refusal != nil || len(collector.asked) != 1 {
 		t.Errorf("Hadrian: refusal = %+v, asked %d; want another world asked as usual", refusal, len(collector.asked))
 	}
 }

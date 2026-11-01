@@ -187,7 +187,7 @@ func TestUseAssetAbility_Resolve_Informers_AttackerWins(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: actingAsset}}, nil)
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
@@ -215,7 +215,7 @@ func TestUseAssetAbility_Resolve_Informers_Tie(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: actingAsset}}, nil)
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
@@ -236,7 +236,7 @@ func TestUseAssetAbility_Resolve_Informers_DefenderWins(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: actingAsset}}, nil)
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
@@ -273,7 +273,7 @@ func TestUseAssetAbility_LaterAssetSeesEarlierCoin(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{first, second}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: first}, {Asset: second}}, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
 
@@ -317,9 +317,9 @@ func TestUseAssetAbility_SecondMarketersFizzles(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{first, second}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: first}, {Asset: second}}, nil)
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+		DoAndReturn(func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 			return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: candidates.Assets[0]}, nil
 		}).Times(1)
 	collector.EXPECT().ConfirmPayment(gomock.Any()).Return(false, nil).Times(1)
@@ -366,9 +366,9 @@ func TestUseAssetAbility_TwoMonopoliesSeeTheFirstLevy(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{first, second}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: first}, {Asset: second}}, nil)
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+		DoAndReturn(func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 			return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: candidates.Factions[0]}, nil
 		}).Times(2)
 	collector.EXPECT().SelectAssetToLose(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -397,12 +397,46 @@ func TestUseAssetAbility_Resolve_NilAbility(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityAssets(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{actingAsset}, nil)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: actingAsset}}, nil)
 	collector.EXPECT().ConfirmAbilityApplied(gomock.Any(), gomock.Any()).Return(false, nil)
 
 	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
 
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for nil-ability asset, got %v", mutations)
+	}
+}
+
+// TestUseAssetAbility_TagHolder: f1 holds a tag whose ability is a purchase
+// discount and no A-flag asset. The tag is the only candidate, and using it grants
+// the rolled discount from the faction, with no asset.
+func TestUseAssetAbility_TagHolder(t *testing.T) {
+	tag := &domain.Tag{ID: "T-1", Name: "Brokers", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect: domain.EffectPurchaseDiscount,
+		Target: domain.TargetNone,
+		Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 4}},
+	}}}}
+	book := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Tags: map[string]*domain.Tag{"T-1": tag, "T-2": {ID: "T-2"}}}
+	faction := &domain.Faction{ID: "f1", Tags: []string{"T-2", "T-1"}, Assets: map[string]*domain.Asset{}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ *domain.Faction, candidates []domain.AbilityHolder, _ *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
+			if want := []domain.AbilityHolder{{Tag: tag}}; !reflect.DeepEqual(candidates, want) {
+				t.Errorf("candidates = %+v, want only the tag with an ability", candidates)
+			}
+			return candidates, nil
+		})
+
+	if !NewUseAssetAbility(collector, nil, nil, nil).Validate(faction, factionState, book) {
+		t.Fatal("Validate = false, want true for a held tag ability")
+	}
+	mutations := runAbility(t, collector, &fixedRoller{values: []int{3}}, faction, factionState, book)
+
+	want := []domain.Mutation{domain.PurchaseDiscountGranted{FactionID: "f1", Amount: 3, Cause: "ability", CausedByFactionID: "f1"}}
+	if !reflect.DeepEqual(mutations, want) {
+		t.Errorf("mutations = %+v, want %+v", mutations, want)
 	}
 }

@@ -27,11 +27,11 @@ var discountRepairRegistrar = effect.Registrar{
 
 func registerDiscountRepair(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterRepairCostModifier(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialDiscountRepair)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialDiscountRepair),
 		&discountRepairModifier{
-			owner:      ctx.Faction,
-			assetID:    ctx.Asset.ID,
+			owner:      ctx.Holder.Faction,
+			holder:     refOf(ctx.Holder),
 			noStack:    ctx.Entry.Gates.NoStack,
 			amount:     ctx.Entry.DiscountRepair.Amount,
 			assetTypes: ctx.Entry.Filters.AssetTypes,
@@ -43,15 +43,15 @@ func registerDiscountRepair(ctx effect.RegisterContext) {
 // FactionState (Decision Record 19).
 type discountRepairModifier struct {
 	owner      *domain.Faction
-	assetID    string
+	holder     holderRef
 	noStack    bool
 	amount     int
 	assetTypes []domain.AssetType
 }
 
 func (modifier *discountRepairModifier) ModifyRepairCost(repairer *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, query *hooks.RepairCostQuery) {
-	self := modifier.owner.Assets[modifier.assetID]
-	if !active(self) || repairer.ID != modifier.owner.ID {
+	self, live := modifier.holder.liveIn(modifier.owner)
+	if !live || repairer.ID != modifier.owner.ID {
 		return
 	}
 	if self.Location.WorldID == "" || asset.Location.WorldID != self.Location.WorldID {

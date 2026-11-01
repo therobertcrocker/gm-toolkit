@@ -450,12 +450,30 @@ func TestLoad(t *testing.T) {
 		if len(rb.Tags) == 0 {
 			t.Fatal("expected tags to be loaded, got none")
 		}
-		tag, ok := rb.Tags["T-001"]
+		tag, ok := rb.Tags["SWN-T-001"]
 		if !ok {
-			t.Fatal("expected tag T-001 (Colonists) to be present")
+			t.Fatal("expected tag SWN-T-001 (Colonists) to be present")
 		}
 		if tag.Name != "Colonists" {
 			t.Errorf("tag name: got %q, want %q", tag.Name, "Colonists")
+		}
+	})
+
+	t.Run("government tag", func(t *testing.T) {
+		if got := rb.GovernmentTagID; got != "SWN-T-011" {
+			t.Errorf("GovernmentTagID = %q, want SWN-T-011", got)
+		}
+	})
+
+	t.Run("preceptor archive discount", func(t *testing.T) {
+		want := []domain.EffectDefinition{{
+			Trigger:      domain.TriggerAssetCostQuery,
+			Effect:       domain.SpecialCostDiscount,
+			Filters:      domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, MinTechLevel: 4},
+			CostDiscount: &domain.CostDiscountParams{Amount: 1},
+		}}
+		if got := rb.Tags["SWN-T-013"].Effects; !reflect.DeepEqual(got, want) {
+			t.Errorf("Preceptor Archive effects = %+v, want %+v", got, want)
 		}
 	})
 
@@ -646,6 +664,7 @@ func TestLoad(t *testing.T) {
 func TestConvertAbilityStep_DisableAssetNeedsAnAssetTarget(t *testing.T) {
 	_, err := loadAssetsFromTOML(t, effectTestAsset+`
 [assets.Machine.ability]
+roll = "test"
 attacker_stat = "Cunning"
 defender_stat = "Wealth"
 effect = "disable_asset"
@@ -670,6 +689,7 @@ target = "asset"
 func TestConvertAbilityStep_LevyCoinRefusesAContest(t *testing.T) {
 	_, err := loadAssetsFromTOML(t, effectTestAsset+`
 [assets.Machine.ability]
+roll = "test"
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 effect = "levy_coin"
@@ -691,7 +711,7 @@ func TestLoadDuplicateAssetID(t *testing.T) {
 }
 
 func TestLoadTagsAndGoals_Strict(t *testing.T) {
-	loadTagFile := func(path string) error { _, err := loadTags(path); return err }
+	loadTagFile := func(path string) error { _, _, err := loadTags(path); return err }
 	loadGoalFile := func(path string) error { _, err := loadGoals(path); return err }
 	cases := []struct {
 		name string
@@ -710,6 +730,24 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 			body: "[tags.Alpha]\nid = \"T-001\"\n\n[tags.Beta]\nid = \"T-001\"\n",
 			load: loadTagFile,
 			want: `duplicate tag ID "T-001"`,
+		},
+		{
+			name: "two government tags",
+			body: "[tags.Alpha]\nid = \"T-001\"\ngovernment = true\n\n[tags.Beta]\nid = \"T-002\"\ngovernment = true\n",
+			load: loadTagFile,
+			want: "both set government",
+		},
+		{
+			name: "homeworld government with no government tag",
+			body: "[tags.Alpha]\nid = \"T-001\"\nhomeworld_government = true\n",
+			load: loadTagFile,
+			want: "sets homeworld_government",
+		},
+		{
+			name: "one tag sets government and homeworld government",
+			body: "[tags.Alpha]\nid = \"T-001\"\ngovernment = true\nhomeworld_government = true\n",
+			load: loadTagFile,
+			want: "sets both government and homeworld_government",
 		},
 		{
 			name: "goal unknown key",
@@ -738,6 +776,166 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 	}
 }
 
+func TestLoadTags_Effects(t *testing.T) {
+	write := func(body string) string {
+		path := filepath.Join(t.TempDir(), "tags.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatalf("writing fixture: %v", err)
+		}
+		return path
+	}
+	const header = "[tags.Warlike]\nid = \"SWN-T-020\"\nname = \"Warlike\"\n\n[[tags.Warlike.effects]]\ntrigger = \"own_roll\"\n"
+
+	tags, _, err := loadTags(write(header + "effect  = \"bonus_die\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n[tags.Warlike.effects.bonus_die]\nsides = 10\ncount = 1\n"))
+	if err != nil {
+		t.Fatalf("loadTags: %v", err)
+	}
+	want := []domain.EffectDefinition{{
+		Trigger:  domain.TriggerOwnRoll,
+		Effect:   domain.SpecialBonusDie,
+		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}
+	if got := tags["SWN-T-020"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Effects = %+v, want %+v", got, want)
+	}
+
+	_, _, err = loadTags(write(header + "effect  = \"no_such_effect\"\n[tags.Warlike.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n"))
+	if err == nil || !strings.Contains(err.Error(), `tag "SWN-T-020"`) {
+		t.Errorf("loadTags: got %v, want an error naming the tag", err)
+	}
+}
+
+// tagBonusDie is the shipped form of a tag's extra d10, keep highest.
+func tagBonusDie(filters domain.EffectFilters, oncePer domain.OncePerKey) []domain.EffectDefinition {
+	return []domain.EffectDefinition{{
+		Trigger:  domain.TriggerOwnRoll,
+		Effect:   domain.SpecialBonusDie,
+		Filters:  filters,
+		Gates:    domain.EffectGates{OncePer: oncePer},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}
+}
+
+func TestLoad_TagBonusDice(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	attack := []domain.EffectRollPhase{domain.RollPhaseAttack}
+	defense := []domain.EffectRollPhase{domain.RollPhaseDefense}
+	zero, five := 0, 5
+	cases := []struct {
+		tagID string
+		want  []domain.EffectDefinition
+	}{
+		{"SWN-T-007", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Attribute: domain.StatCunning}, domain.OncePerOwnerFaction)},
+		{"SWN-T-012", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Attribute: domain.StatWealth}, domain.OncePerOwnerFaction)},
+		{"SWN-T-002", append(tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeHomeworld, Phases: defense}, ""), domain.EffectDefinition{
+			Trigger: domain.TriggerHomeworldChanged,
+			Effect:  domain.SpecialRemoveTag,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		})},
+		{"SWN-T-019", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatCunning}, domain.OncePerOwnerFaction)},
+		{"SWN-T-004", append(tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatWealth}, domain.OncePerOwnerFaction), domain.EffectDefinition{
+			Trigger: domain.TriggerGoalCompleted,
+			Effect:  domain.SpecialXPRoll,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-007"},
+			XPRoll:  &domain.XPRollParams{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
+		})},
+		{"SWN-T-015", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, TechLevel: &zero}, domain.OncePerOwnerFaction)},
+		{"SWN-T-009", append(
+			tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, OpponentTechLevel: &five}, domain.OncePerOwnerFaction),
+			tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, "")...,
+		)},
+		{"SWN-T-006", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Goal: "G-004", Action: "Attack"}, "")},
+	}
+	for _, tc := range cases {
+		if got := rb.Tags[tc.tagID].Effects; !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s effects = %+v, want %+v", tc.tagID, got, tc.want)
+		}
+	}
+}
+
+func TestLoad_SecretiveStealthsPurchases(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := []domain.EffectDefinition{{
+		Trigger: domain.TriggerOnPurchase,
+		Effect:  domain.SpecialApplyStealth,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+	}}
+	if got := rb.Tags["SWN-T-017"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Secretive effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestCheckReferences(t *testing.T) {
+	goals := map[string]*domain.Goal{"G-004": {ID: "G-004"}}
+	tags := map[string]*domain.Tag{"T-1": {ID: "T-1"}}
+	assets := map[string]*domain.AssetDefinition{"A-1": {ID: "A-1"}}
+	naming := func(filters domain.EffectFilters) []domain.EffectDefinition {
+		return []domain.EffectDefinition{{Filters: filters}}
+	}
+	withTag := func(entries []domain.EffectDefinition) map[string]*domain.Tag {
+		return map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: entries}}
+	}
+
+	if err := checkReferences(assets, withTag(naming(domain.EffectFilters{Goal: "G-004", AssetDefinition: "A-1"})), goals); err != nil {
+		t.Errorf("known references: err = %v, want nil", err)
+	}
+	cases := []struct {
+		name   string
+		assets map[string]*domain.AssetDefinition
+		tags   map[string]*domain.Tag
+		want   string
+	}{
+		{"unknown goal on a tag", assets, withTag(naming(domain.EffectFilters{Goal: "G-404"})), `tag "T-1" effects[0]: unknown goal "G-404"`},
+		{"unknown goal on an asset", map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Effects: naming(domain.EffectFilters{Goal: "G-404"})}}, tags, `asset "A-1" effects[0]: unknown goal "G-404"`},
+		{"unknown asset definition", assets, withTag(naming(domain.EffectFilters{AssetDefinition: "A-404"})), `tag "T-1" effects[0]: unknown asset "A-404"`},
+		{"unknown required tag", map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", RequiresTag: "T-404"}}, tags, `asset "A-1": requires_tag names unknown tag "T-404"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkReferences(tc.assets, tc.tags, goals)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestLoad_EugenicsCult(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	slaves := rb.Assets["SWN-F1-004"]
+	if slaves == nil || slaves.RequiresTag != "SWN-T-003" || slaves.Type != domain.TypeMilitaryUnit {
+		t.Fatalf("Gengineered Slaves = %+v, want a Military Unit that requires SWN-T-003", slaves)
+	}
+	want := []domain.EffectDefinition{{
+		Trigger: domain.TriggerOwnRoll,
+		Effect:  domain.SpecialBonusDie,
+		Filters: domain.EffectFilters{
+			Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+			Phases:          []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+			AssetDefinition: "SWN-F1-004",
+		},
+		Gates:    domain.EffectGates{OncePer: domain.OncePerOwnerFaction},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}
+	if got := rb.Tags["SWN-T-003"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Eugenics Cult effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoad_MercenaryGroupSpeedFloor(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := []domain.EffectDefinition{{
+		Trigger:    domain.TriggerSpeedQuery,
+		Effect:     domain.SpecialSpeedFloor,
+		Filters:    domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		SpeedFloor: &domain.SpeedFloorParams{Speed: 1},
+	}}
+	if got := rb.Tags["SWN-T-008"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Mercenary Group effects = %+v, want %+v", got, want)
+	}
+}
+
 func TestLoad_TransportBypasses(t *testing.T) {
 	rb := loadShippedRulebook(t)
 	for _, id := range []string{"SWN-F7-001", "SWN-W5-003"} {
@@ -758,7 +956,7 @@ func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
 		Effect:  domain.SpecialWithdrawPermission,
 		Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld},
 		Gates: domain.EffectGates{Contest: &domain.EffectContest{
-			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning, Roll: domain.ContestRollTest},
 			Roller:  domain.ContestRollerSelf,
 		}},
 	}}
@@ -787,5 +985,245 @@ func TestLoad_TransportLockdown(t *testing.T) {
 	}
 	if rb.Assets["SWN-W5-003"].Transport.IgnoresLockdown {
 		t.Error("Blockade Runners ignore the lockdown, want them caught")
+	}
+}
+
+func TestLoad_ContestRolls(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	cases := []struct {
+		name    string
+		assetID string
+		want    domain.ContestRoll
+	}{
+		{"Tripwire Cells", "SWN-C4-003", domain.ContestRollAttack},
+		{"Panopticon Matrix", "SWN-C8-001", domain.ContestRollTest},
+		{"Lobbyists", "SWN-C2-001", domain.ContestRollTest},
+	}
+	for _, tc := range cases {
+		var got domain.ContestRoll
+		for _, entry := range rb.Assets[tc.assetID].Effects {
+			if entry.Gates.Contest != nil {
+				got = entry.Gates.Contest.Roll
+			}
+		}
+		if got != tc.want {
+			t.Errorf("%s contest roll = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestLoadSettings(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "drift costs left out", body: "[purchase_population]\nStarship = 500000\n", want: "drift_costs is required"},
+		{name: "unknown key", body: "drift_costs = [5]\nstarship_floor = 500000\n", want: "unknown keys in"},
+		{name: "unknown asset type", body: "drift_costs = [5]\n[purchase_population]\nSpaceship = 500000\n", want: "purchase_population"},
+		{name: "floor not above 0", body: "drift_costs = [5]\n[purchase_population]\nStarship = 0\n", want: "must be > 0"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "settings.toml")
+			if err := os.WriteFile(path, []byte(testCase.body), 0o644); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+			_, _, err := loadSettings(path)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
+			}
+		})
+	}
+}
+
+func TestLoadSettings_OptionalKeyLeftOut(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.toml")
+	if err := os.WriteFile(path, []byte("drift_costs = [3, 2]\n"), 0o644); err != nil {
+		t.Fatalf("writing fixture: %v", err)
+	}
+	driftCosts, purchasePopulation, err := loadSettings(path)
+	if err != nil {
+		t.Fatalf("loadSettings: %v", err)
+	}
+	if !reflect.DeepEqual(driftCosts, []int{3, 2}) {
+		t.Errorf("drift costs = %v, want [3 2]", driftCosts)
+	}
+	if len(purchasePopulation) != 0 {
+		t.Errorf("purchase population = %v, want no floor for any type", purchasePopulation)
+	}
+}
+
+func TestLoad_ShippedSettings(t *testing.T) {
+	shipped := loadShippedRulebook(t)
+	if !reflect.DeepEqual(shipped.DriftCosts, []int{5, 4, 3, 2, 1}) {
+		t.Errorf("drift costs = %v, want [5 4 3 2 1]", shipped.DriftCosts)
+	}
+	want := map[domain.AssetType]int{domain.TypeStarship: 500000}
+	if !reflect.DeepEqual(shipped.PurchasePopulation, want) {
+		t.Errorf("purchase population = %v, want %v", shipped.PurchasePopulation, want)
+	}
+}
+
+func TestLoad_ColonistsAndTechnicalExpertise(t *testing.T) {
+	shipped := loadShippedRulebook(t)
+	floor := func(scope domain.EffectScope) domain.EffectDefinition {
+		return domain.EffectDefinition{
+			Trigger:        domain.TriggerTechLevelQuery,
+			Effect:         domain.SpecialTechLevelFloor,
+			Filters:        domain.EffectFilters{Owner: domain.OwnerOwn, Scope: scope},
+			TechLevelFloor: &domain.TechLevelFloorParams{Level: 4},
+		}
+	}
+	population := func(percent int) domain.EffectDefinition {
+		return domain.EffectDefinition{
+			Trigger: domain.TriggerPopulationFloorQuery,
+			Effect:  domain.SpecialPopulationFloor,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+				AssetTypes: []domain.AssetType{domain.TypeStarship}},
+			PopulationFloor: &domain.PopulationFloorParams{Percent: percent},
+		}
+	}
+	colonists := shipped.Tags["SWN-T-001"]
+	if !colonists.HomeworldGovernment {
+		t.Error("Colonists does not set homeworld_government")
+	}
+	if want := []domain.EffectDefinition{floor(domain.ScopeHomeworld), population(20)}; !reflect.DeepEqual(colonists.Effects, want) {
+		t.Errorf("Colonists effects = %+v, want %+v", colonists.Effects, want)
+	}
+	if want := []domain.EffectDefinition{floor(domain.ScopeBase), population(2)}; !reflect.DeepEqual(shipped.Tags["SWN-T-018"].Effects, want) {
+		t.Errorf("Technical Expertise effects = %+v, want %+v", shipped.Tags["SWN-T-018"].Effects, want)
+	}
+}
+
+func TestLoad_PiratesToll(t *testing.T) {
+	shipped := loadShippedRulebook(t)
+	want := []domain.EffectDefinition{{
+		Trigger:     domain.TriggerArrivalQuery,
+		Effect:      domain.SpecialArrivalToll,
+		Filters:     domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeBase},
+		ArrivalToll: &domain.ArrivalTollParams{Amount: 1},
+	}}
+	if got := shipped.Tags["SWN-T-010"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Pirates effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadTags_Ability(t *testing.T) {
+	load := func(ability string) (map[string]*domain.Tag, error) {
+		path := filepath.Join(t.TempDir(), "tags.toml")
+		body := "[tags.Alpha]\nid = \"T-001\"\nname = \"Alpha\"\n\n[tags.Alpha.ability]\n" + ability
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatalf("writing fixture: %v", err)
+		}
+		tags, _, err := loadTags(path)
+		return tags, err
+	}
+
+	tags, err := load("effect = \"purchase_discount\"\ndie = \"1d4\"\n")
+	if err != nil {
+		t.Fatalf("an asset-free effect: %v", err)
+	}
+	want := &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect: domain.EffectPurchaseDiscount,
+		Target: domain.TargetNone,
+		Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 4}, Outcomes: []domain.AbilityOutcome{}},
+	}}}
+	if got := tags["T-001"].Ability; !reflect.DeepEqual(got, want) {
+		t.Errorf("ability = %+v, want %+v", got, want)
+	}
+
+	refused := []struct {
+		name    string
+		ability string
+		want    string
+	}{
+		{"an effect that reads the asset", "effect = \"levy_coin\"\ntarget = \"faction\"\n", `cannot carry effect "levy_coin"`},
+		{"a contest", "effect = \"purchase_discount\"\nroll = \"test\"\nattacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\n", "cannot hold a contest"},
+		{"a target the asset picks from", "effect = \"coin_delta\"\ntarget = \"asset\"\ndie = \"1d6\"\n", `cannot target "asset"`},
+		{"a loss row", "effect = \"coin_delta\"\ndie = \"1d6\"\n[[tags.Alpha.ability.outcomes]]\nfrom = 1\nto = 1\ncoin = -1\n", "no asset to destroy"},
+		{"a destroy row", "effect = \"coin_delta\"\ndie = \"1d6\"\n[[tags.Alpha.ability.outcomes]]\nfrom = 1\nto = 1\ndestroy_self = true\n", "no asset to destroy"},
+	}
+	for _, tc := range refused {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := load(tc.ability)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestConvertAbilityStep_RaiseTechLevel(t *testing.T) {
+	const header = "\n[assets.Machine.ability]\neffect = \"raise_tech_level\"\n"
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"no world target", "die = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "raise_tech_level requires"},
+		{"no block", "target = \"world\"\ndie = \"1d12\"\n", "raise_tech_level requires"},
+		{"no tech level", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\n", "tech_level > 0"},
+		{"a coin row", "target = \"world\"\ndie = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\ncoin = 1\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "carry no coin"},
+		{"no outcome rows", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "at least one outcome row"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, effectTestAsset+header+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestConvertAbilityStep_RaiseTechLevelBlockOnAnotherEffect(t *testing.T) {
+	body := "\n[assets.Machine.ability]\neffect = \"coin_delta\"\ndie = \"1d6\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n"
+	_, err := loadAssetsFromTOML(t, effectTestAsset+body)
+	if err == nil || !strings.Contains(err.Error(), "needs effect = \"raise_tech_level\"") {
+		t.Fatalf("err = %v, want it to name the raise_tech_level effect", err)
+	}
+}
+
+func TestLoad_PreceptorArchiveTeaches(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect:         domain.EffectRaiseTechLevel,
+		Target:         domain.TargetWorld,
+		Roll:           &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 12}, Outcomes: []domain.AbilityOutcome{{From: 12, To: 12}}},
+		RaiseTechLevel: &domain.RaiseTechLevelParams{CoinCost: 2, TechLevel: 4},
+	}}}
+	if got := rb.Tags["SWN-T-013"].Ability; !reflect.DeepEqual(got, want) {
+		t.Errorf("Preceptor Archive ability = %+v, want %+v", got, want)
+	}
+}
+
+func TestConvertAbilityStep_ContestRoll(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"a contest with no roll", "attacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\neffect = \"reveal_stealth\"\ntarget = \"faction\"\n", `a contest needs roll`},
+		{"a roll with no contest", "roll = \"attack\"\neffect = \"coin_delta\"\ndie = \"1d6\"\n", "needs a contest"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, effectTestAsset+"\n[assets.Machine.ability]\n"+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+
+	rb := loadShippedRulebook(t)
+	rolls := map[string]domain.ContestRoll{"SWN-C1-002": domain.ContestRollAttack, "SWN-W5-001": domain.ContestRollTest}
+	for id, want := range rolls {
+		if got := rb.Assets[id].Ability.Steps[0].Contest.Roll; got != want {
+			t.Errorf("%s contest roll = %q, want %q", id, got, want)
+		}
+	}
+	if got := rb.Assets["SWN-C2-004"].Ability.Steps[1].Contest.Roll; got != domain.ContestRollAttack {
+		t.Errorf("Seductress contest roll = %q, want attack", got)
 	}
 }

@@ -115,12 +115,13 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		}
 		rivalRoll := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:     hooks.PhaseContested,
-				Actor:     rival,
-				Opponent:  faction,
-				Attribute: string(domain.StatCunning),
-				World:     ei.order.World,
-				Action:    ei.Name(),
+				Phase:             hooks.PhaseContested,
+				Actor:             rival,
+				Opponent:          faction,
+				Attribute:         string(domain.StatCunning),
+				OpponentAttribute: string(domain.StatCunning),
+				World:             ei.order.World,
+				Action:            ei.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: rival.Cunning},
 			ei.registry, ei.collector, ei.roller, rival, factionState, rulebook,
@@ -209,32 +210,39 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 		worldID := target.Location.WorldID
 		attackRoll := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:     hooks.PhaseAttack,
-				Actor:     rival,
-				Opponent:  ownerFaction,
-				Attribute: string(attackerDef.Attack.AttackerStat),
-				Asset:     attacker,
-				World:     worldID,
-				Action:    ba.action,
+				Phase:             hooks.PhaseAttack,
+				Actor:             rival,
+				Opponent:          ownerFaction,
+				Attribute:         string(attackerDef.Attack.AttackerStat),
+				OpponentAttribute: string(domain.StatCunning),
+				Asset:             attacker,
+				World:             worldID,
+				Action:            ba.action,
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(rival, attackerDef.Attack.AttackerStat)},
 			ba.registry, ba.collector, ba.roller, rival, factionState, rulebook,
 		).Sum
 		defenseRoll := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:         hooks.PhaseDefense,
-				Actor:         ownerFaction,
-				Opponent:      rival,
-				Attribute:     string(domain.StatCunning),
-				OpponentAsset: attacker,
-				World:         worldID,
-				Action:        ba.action,
+				Phase:             hooks.PhaseDefense,
+				Actor:             ownerFaction,
+				Opponent:          rival,
+				Attribute:         string(domain.StatCunning),
+				OpponentAttribute: string(attackerDef.Attack.AttackerStat),
+				OpponentAsset:     attacker,
+				World:             worldID,
+				Action:            ba.action,
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(ownerFaction, domain.StatCunning)},
 			ba.registry, ba.collector, ba.roller, ownerFaction, factionState, rulebook,
 		).Sum
 
-		if attackRoll >= defenseRoll {
+		hits := attackRoll > defenseRoll
+		if attackRoll == defenseRoll {
+			tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: hooks.PhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
+			hits = tieOutcome != hooks.TieDefenderWins
+		}
+		if hits {
 			damage := attackerDef.Attack.Damage.Roll(ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.

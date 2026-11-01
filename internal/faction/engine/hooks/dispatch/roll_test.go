@@ -330,16 +330,20 @@ func TestRollWithHooks_OpponentAssetHookOnWorldFires(t *testing.T) {
 	}
 }
 
-func TestRollWithHooks_OpponentFactionHookDoesNotFire(t *testing.T) {
+func TestRollWithHooks_OpponentFactionHookFires(t *testing.T) {
 	alpha := factionWithAssets("alpha", nil)
-	beta := factionWithAssets("beta", map[string]string{"b-1": "Krylos"})
+	beta := factionWithAssets("beta", nil)
 	registry := hooks.NewRegistry()
-	registry.RegisterRollModifier(hooks.FactionScope("beta"), "tag:Warlike", addDieModifier("tag:Warlike", ""))
+	registry.RegisterRollModifier(hooks.FactionScope("beta"), "beta-tag", addDieModifier("beta-tag", ""))
+	collector := &recordingCollector{}
 
-	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
-	if len(result.Dice) != 2 {
-		t.Fatalf("expected 2 dice (opponent faction hook left out), got %d", len(result.Dice))
+	if len(result.Dice) != 3 {
+		t.Fatalf("expected 3 dice (2 base + 1 from beta's faction hook), got %d", len(result.Dice))
+	}
+	if len(collector.offers) != 1 || collector.offers[0].FactionID != "beta" {
+		t.Errorf("expected one offer stamped FactionID beta, got %+v", collector.offers)
 	}
 }
 
@@ -517,5 +521,62 @@ func TestRollWithHooks_CapturedAssetOldBucketDoesNotFire(t *testing.T) {
 				t.Fatalf("expected 2 dice (old bucket unreached), got %d", len(result.Dice))
 			}
 		})
+	}
+}
+
+func TestRollWithHooks_NilCollectorTakesOnlyFreeOffers(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "free", addDieModifier("free", ""))
+	registry.RegisterRollModifier(hooks.GlobalScope(), "limited", addDieModifier("limited", "tag:Warlike"))
+	faction := newFaction("A")
+
+	result := RollWithHooks(rollCtx(), baseRoll(), registry, nil, &fixedRoller{values: []int{5, 7, 6}}, faction, nil, nil)
+
+	if len(result.Dice) != 3 {
+		t.Fatalf("expected 3 dice (2 base + the free die), got %d", len(result.Dice))
+	}
+	if faction.HookBudgets["tag:Warlike"] != 0 {
+		t.Errorf("expected the limited offer skipped and its budget unspent, got %d", faction.HookBudgets["tag:Warlike"])
+	}
+}
+
+func TestRollWithHooks_NilCollectorDeclinesElectiveRerolls(t *testing.T) {
+	cases := []struct {
+		name     string
+		elective bool
+		want     int
+	}{
+		{"a forced reroll applies", false, 9},
+		{"an elective reroll is declined", true, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			registry := hooks.NewRegistry()
+			registry.RegisterRollResultHook(hooks.GlobalScope(), "reroll", stubResultHook{directive: hooks.RerollDirective{
+				Source: "reroll", Indices: []int{0}, Elective: tc.elective,
+			}})
+
+			result := RollWithHooks(rollCtx(), baseRoll(), registry, nil, &fixedRoller{values: []int{1, 7, 9}}, newFaction("A"), nil, nil)
+
+			if result.Dice[0] != tc.want {
+				t.Errorf("die 0 = %d, want %d", result.Dice[0], tc.want)
+			}
+		})
+	}
+}
+
+func TestRollWithHooks_BystanderFactionHookFires(t *testing.T) {
+	alpha := factionWithAssets("alpha", nil)
+	beta := factionWithAssets("beta", nil)
+	gamma := factionWithAssets("gamma", map[string]string{"g-1": "Krylos"})
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.FactionScope("gamma"), "gamma-tag", addDieModifier("gamma-tag", ""))
+	registry.RegisterRollModifier(hooks.AssetScope("gamma", "g-1"), "g-1", addDieModifier("g-1", ""))
+	collector := &recordingCollector{}
+
+	RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta, gamma), nil)
+
+	if len(collector.offers) != 1 || collector.offers[0].Source != "gamma-tag" || collector.offers[0].FactionID != "gamma" {
+		t.Errorf("offers = %+v, want only gamma's faction hook, stamped gamma: a bystander's assets are not read", collector.offers)
 	}
 }

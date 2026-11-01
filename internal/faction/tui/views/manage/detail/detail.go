@@ -101,7 +101,12 @@ func (m Model) renderBody() string {
 	if len(f.Tags) == 0 {
 		b.WriteString("  " + styles.Dim.Render("none") + "\n")
 	}
-	for _, tag := range f.Tags {
+	for _, tagID := range f.Tags {
+		tag, known := m.rulebook.Tags[tagID]
+		if !known {
+			b.WriteString("  " + styles.Strong.Render(tagID) + "\n")
+			continue
+		}
 		b.WriteString("  " + styles.Strong.Render(tag.Name) + "\n")
 		b.WriteString(m.wrap(tag.Description, 4, styles.Label) + "\n")
 		if tag.Effect != "" {

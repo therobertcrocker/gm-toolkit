@@ -33,9 +33,7 @@ func registerWeb(t *testing.T) (*hooks.Registry, *domain.Faction, *domain.Factio
 	beta := &domain.Faction{ID: "beta", Assets: map[string]*domain.Asset{}}
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialGrantMovement].Register(effect.RegisterContext{
-		Faction: alpha,
-		Asset:   web,
-		Def:     transitWebDef,
+		Holder: effect.Holder{Faction: alpha, Asset: web, Def: transitWebDef},
 		Entry: domain.EffectDefinition{
 			Trigger:       domain.TriggerMovementOptionsQuery,
 			Effect:        domain.SpecialGrantMovement,

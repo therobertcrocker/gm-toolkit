@@ -15,7 +15,7 @@ func registerDiscount(t *testing.T, owner *domain.Faction, medicalCenter *domain
 	t.Helper()
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialDiscountRepair].Register(effect.RegisterContext{
-		Faction: owner, Asset: medicalCenter, Def: &domain.AssetDefinition{ID: "SWN-W4-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: owner, Asset: medicalCenter, Def: &domain.AssetDefinition{ID: "SWN-W4-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger:        domain.TriggerRepairCostQuery,
 			Effect:         domain.SpecialDiscountRepair,

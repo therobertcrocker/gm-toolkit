@@ -118,18 +118,19 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			stealthCleared[defender.ID] = true
 		}
 
-		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState).Mutations...)
+		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState, rulebook).Mutations...)
 
 		attackResult := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:         hooks.PhaseAttack,
-				Actor:         faction,
-				Opponent:      defenderFaction,
-				Attribute:     string(attackerDef.Attack.AttackerStat),
-				Asset:         attacker,
-				OpponentAsset: defender,
-				World:         attacker.Location.WorldID,
-				Action:        attack.Name(),
+				Phase:             hooks.PhaseAttack,
+				Actor:             faction,
+				Opponent:          defenderFaction,
+				Attribute:         string(attackerDef.Attack.AttackerStat),
+				OpponentAttribute: string(attackerDef.Attack.DefenderStat),
+				Asset:             attacker,
+				OpponentAsset:     defender,
+				World:             attacker.Location.WorldID,
+				Action:            attack.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
 			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
@@ -138,14 +139,15 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		defResult := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:         hooks.PhaseDefense,
-				Actor:         defenderFaction,
-				Opponent:      faction,
-				Attribute:     string(attackerDef.Attack.DefenderStat),
-				Asset:         defender,
-				OpponentAsset: attacker,
-				World:         attacker.Location.WorldID,
-				Action:        attack.Name(),
+				Phase:             hooks.PhaseDefense,
+				Actor:             defenderFaction,
+				Opponent:          faction,
+				Attribute:         string(attackerDef.Attack.DefenderStat),
+				OpponentAttribute: string(attackerDef.Attack.AttackerStat),
+				Asset:             defender,
+				OpponentAsset:     attacker,
+				World:             attacker.Location.WorldID,
+				Action:            attack.Name(),
 			},
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
 			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
@@ -226,7 +228,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		// deliberate: own_defense_win needs an outright win, not a tie, because on a tie the attack also landed and the defense did not succeed (Decision 13).
 		if defenderWins && !attackerWins && defenderActive {
-			outcome := attack.fireMatchup(domain.TriggerOwnDefenseWin, defenderFaction, defender, defenderDef, faction, attacker, factionState)
+			outcome := attack.fireMatchup(domain.TriggerOwnDefenseWin, defenderFaction, defender, defenderDef, faction, attacker, factionState, rulebook)
 			attack.mutations = append(attack.mutations, outcome.Mutations...)
 			// deliberate: no prompt when the attacker has no damage and no counter, because its self-attack could do nothing (Decision Record 9).
 			canHurtItself := attackerDef.Attack.Damage != nil || attackerDef.Counter != nil
@@ -253,12 +255,12 @@ func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *dom
 	worldID := attacker.Location.WorldID
 	// deliberate: Opponent nil, not faction, because Actor == Opponent would ask every asset hook on the world twice (overview Decision 9).
 	attackRoll := dispatch.RollWithHooks(
-		hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Attribute: string(attackerDef.Attack.AttackerStat), Asset: attacker, World: worldID, Action: attack.Name()},
+		hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Attribute: string(attackerDef.Attack.AttackerStat), OpponentAttribute: string(attackerDef.Attack.DefenderStat), Asset: attacker, World: worldID, Action: attack.Name()},
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
 		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 	).Sum
 	defenseRoll := dispatch.RollWithHooks(
-		hooks.RollContext{Phase: hooks.PhaseDefense, Actor: faction, Attribute: string(attackerDef.Attack.DefenderStat), Asset: attacker, World: worldID, Action: attack.Name()},
+		hooks.RollContext{Phase: hooks.PhaseDefense, Actor: faction, Attribute: string(attackerDef.Attack.DefenderStat), OpponentAttribute: string(attackerDef.Attack.AttackerStat), Asset: attacker, World: worldID, Action: attack.Name()},
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.DefenderStat)},
 		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 	).Sum
@@ -280,18 +282,17 @@ func (attack *AttackAction) Output() ([]domain.Mutation, error) {
 
 // fireMatchup raises the matchup route for the declaring asset. A nil effects
 // engine (action tests) raises nothing.
-func (attack *AttackAction) fireMatchup(trigger domain.EffectTrigger, faction *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, opponent *domain.Faction, opponentAsset *domain.Asset, factionState *state.FactionState) effect.MatchupOutcome {
+func (attack *AttackAction) fireMatchup(trigger domain.EffectTrigger, faction *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, opponent *domain.Faction, opponentAsset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) effect.MatchupOutcome {
 	if attack.effects == nil {
 		return effect.MatchupOutcome{}
 	}
 	return attack.effects.FireMatchup(trigger, effect.MatchupContext{
-		Faction:       faction,
+		Holder:        effect.Holder{Faction: faction, Asset: asset, Def: def},
 		Asset:         asset,
-		Def:           def,
 		Opponent:      opponent,
 		OpponentAsset: opponentAsset,
 		FactionState:  factionState,
-	})
+	}, rulebook)
 }
 
 // applyAssetDamage emits AssetHPDelta and, when the hit is lethal, the mutations

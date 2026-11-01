@@ -1,2 +1,0 @@
-# drift_costs[i] = hex-equivalent crossing cost for drift rating (i+1)
-drift_costs = [5, 4, 3, 2, 1]

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -10,14 +11,20 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// rerollRegistrar reads own_roll as the owner rerolling its own dice, and
-// enemy_roll_at_me as the owner forcing a rival rolling against it to reroll.
-// owner and scope read as in rollMatches.
+// rerollRegistrar reads own_roll as the owner rerolling its own dice,
+// enemy_roll_at_me as the owner forcing a rival rolling against it to reroll, and
+// rival_roll as the owner forcing any rival's roll, anywhere, to reroll
+// (Psychic Academy, D-7). owner and scope read as in rollMatches.
 var rerollRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
+		domain.TriggerRivalRoll: {
+			Owners: []domain.EffectOwner{domain.OwnerRival},
+			Scopes: []domain.EffectScope{domain.ScopeFaction},
+			Gates:  []domain.EffectGateName{domain.GateOncePer},
+		},
 		domain.TriggerOwnRoll: {
 			Owners: []domain.EffectOwner{domain.OwnerOwn},
-			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld},
+			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeFaction},
 			Gates:  []domain.EffectGateName{domain.GateOncePer},
 		},
 		domain.TriggerEnemyRollAtMe: {
@@ -27,55 +34,84 @@ var rerollRegistrar = effect.Registrar{
 		},
 	},
 	Register: registerReroll,
+	Validate: validateReroll,
+}
+
+// validateReroll keeps rival_roll to a tag: the dispatcher reads a bystander's
+// faction bucket only, so an asset's rival_roll hook would never reach a roll its
+// faction takes no part in (Effort 3 Decision 7). An asset's own_roll entry stays
+// on its world for the same reason.
+func validateReroll(entry domain.EffectDefinition, holder effect.HolderKind) error {
+	if entry.Trigger == domain.TriggerRivalRoll && holder != effect.HolderTag {
+		return fmt.Errorf("only a tag can hold trigger %q", domain.TriggerRivalRoll)
+	}
+	return refuseAssetWideRollScope(entry, holder)
+}
+
+// forcedTrigger reports whether trigger forces a rival's roll: one made against
+// the owner, or any rival's roll at all.
+func forcedTrigger(trigger domain.EffectTrigger) bool {
+	return trigger == domain.TriggerEnemyRollAtMe || trigger == domain.TriggerRivalRoll
 }
 
 func registerReroll(ctx effect.RegisterContext) {
-	source := ctx.Def.Name
-	if ctx.Entry.Trigger == domain.TriggerEnemyRollAtMe {
+	source := ctx.Holder.Name()
+	if forcedTrigger(ctx.Entry.Trigger) {
 		source += " (forced)"
 	}
 	ctx.Registry.RegisterRollResultHook(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialReroll)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialReroll),
 		&rerollHook{
-			ownerFactionID: ctx.Faction.ID,
-			assetID:        ctx.Asset.ID,
-			defID:          ctx.Def.ID,
-			source:         source,
-			trigger:        ctx.Entry.Trigger,
-			filters:        ctx.Entry.Filters,
-			oncePer:        ctx.Entry.Gates.OncePer,
-			params:         *ctx.Entry.Reroll,
+			holder:  refOf(ctx.Holder),
+			source:  source,
+			trigger: ctx.Entry.Trigger,
+			filters: ctx.Entry.Filters,
+			oncePer: ctx.Entry.Gates.OncePer,
+			params:  *ctx.Entry.Reroll,
 		},
 	)
 }
 
 type rerollHook struct {
-	ownerFactionID string
-	assetID        string
-	defID          string
-	source         string
-	trigger        domain.EffectTrigger
-	filters        domain.EffectFilters
-	oncePer        domain.OncePerKey
-	params         domain.RerollParams
+	holder  holderRef
+	source  string
+	trigger domain.EffectTrigger
+	filters domain.EffectFilters
+	oncePer domain.OncePerKey
+	params  domain.RerollParams
 }
 
-func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollResult, factionState *state.FactionState, _ *rulebook.Rulebook) hooks.RerollDirective {
-	asset := liveAsset(factionState, hook.ownerFactionID, hook.assetID)
-	if !active(asset) || !rollMatches(ctx, hook.trigger, hook.ownerFactionID, asset, hook.filters) {
+func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollResult, factionState *state.FactionState, rulebook *rulebook.Rulebook) hooks.RerollDirective {
+	asset, live := hook.holder.live(factionState)
+	if !live || !rollMatches(ctx, hook.trigger, hook.holder.factionID, asset, hook.filters, rulebook) {
 		return hooks.RerollDirective{}
 	}
-	forced := hook.trigger == domain.TriggerEnemyRollAtMe
+	forced := forcedTrigger(hook.trigger)
 	directive := hooks.RerollDirective{
 		Source:   hook.source,
-		Indices:  pickDice(result.Dice, hook.params.Dice, forced),
+		Indices:  rerollIndices(result.Dice, hook.params, forced),
 		Elective: hook.params.Elective,
 	}
 	if hook.oncePer != "" {
-		directive.BudgetKey = budgetKey(hook.oncePer, domain.SpecialReroll, hook.trigger, hook.defID, hook.assetID, otherSideID(ctx, forced))
+		directive.BudgetKey = budgetKey(hook.oncePer, domain.SpecialReroll, hook.trigger, hook.holder.sourceID, hook.holder.assetID, otherSideID(ctx, forced))
 	}
 	return directive
+}
+
+// rerollIndices returns the dice a reroll targets: every die showing
+// params.Result (Fanatical's 1s), or else the params.Dice that pickDice picks.
+func rerollIndices(dice []int, params domain.RerollParams, forced bool) []int {
+	if params.Result == 0 {
+		return pickDice(dice, params.Dice, forced)
+	}
+	var indices []int
+	for i, die := range dice {
+		if die == params.Result {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 // pickDice returns the indices of the n dice a reroll targets: the owner's own

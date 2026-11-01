@@ -53,7 +53,7 @@ func stealReactors(t *testing.T, factionState *state.FactionState, stealBook *ru
 	for _, asset := range domain.SortedAssets(alpha) {
 		def := stealBook.Assets[asset.DefinitionID]
 		effects.Registrars()[domain.SpecialCoinSteal].Register(effect.RegisterContext{
-			Faction: alpha, Asset: asset, Def: def, Entry: def.Effects[0], Registry: registry, Roller: roller,
+			Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Entry: def.Effects[0], Registry: registry, Roller: roller,
 		})
 		for _, registered := range registry.MutationReactorsForAsset("alpha", asset.ID) {
 			reactors = append(reactors, registered.Hook)

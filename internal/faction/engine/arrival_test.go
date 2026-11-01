@@ -28,6 +28,9 @@ func arrivalRulebook() *rulebook.Rulebook {
 		"troops":  {ID: "troops", Name: "Troops", Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
 		"militia": {ID: "militia", Name: "Militia", Type: domain.TypeMilitaryUnit},
 		"mercs":   {ID: "mercs", Name: "Mercs", Speed: 2, Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"landers": {ID: "landers", Name: "Landers", Speed: 3, Transport: &domain.TransportProfile{
+			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.TypeMilitaryUnit}, IgnoresLockdown: true,
+		}},
 	}}
 }
 
@@ -294,5 +297,98 @@ func TestCheckArrivals_TwoLockdownsCannotSpendTheSameCoin(t *testing.T) {
 	}
 	if want := []domain.HoldReason{domain.HoldLockdownPaid, domain.HoldLockdownUnpaid}; !reflect.DeepEqual(reasons, want) {
 		t.Errorf("hold reasons = %v, want %v (4 Coin pays one 3-Coin fee)", reasons, want)
+	}
+}
+
+// stubPirates charges 1 Coin on every world but its owner's own assets.
+type stubPirates struct{ ownerID string }
+
+func (stub *stubPirates) ArrivalToll(mover *domain.Faction, _ string) int {
+	if mover.ID == stub.ownerID {
+		return 0
+	}
+	return 1
+}
+
+func TestCheckArrivals_Tolls(t *testing.T) {
+	toll := func(payerID string) []domain.Mutation {
+		return []domain.Mutation{
+			domain.CoinDelta{FactionID: payerID, Delta: -1, Cause: "arrival_toll", CausedByFactionID: "bravo"},
+			domain.CoinDelta{FactionID: "bravo", Delta: 1, Cause: "arrival_toll", CausedByFactionID: "bravo"},
+		}
+	}
+	cases := []struct {
+		name          string
+		carrierDef    string
+		coin          int
+		stealthyCargo bool
+		capturedCargo bool
+		wantTolls     []string
+		wantHeld      bool
+	}{
+		{name: "carrier and cargo each pay", carrierDef: "ship", coin: 5, wantTolls: []string{"alpha", "alpha"}},
+		{name: "a stealthed rider pays nothing", carrierDef: "ship", coin: 5, stealthyCargo: true, wantTolls: []string{"alpha"}},
+		{name: "a captured rider's owner pays for it", carrierDef: "ship", coin: 5, capturedCargo: true, wantTolls: []string{"alpha", "charlie"}},
+		{name: "a lockdown bypass covers the whole order", carrierDef: "landers", coin: 5},
+		{name: "an owner who cannot pay holds the order", carrierDef: "ship", coin: 1, wantHeld: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eng, factionState, alpha, completed := arrivalFixture(tc.carrierDef, "militia", 3)
+			delete(factionState.Governments, "Krylos")
+			alpha.Coin = tc.coin
+			alpha.Assets["c1"].Stealthy = tc.stealthyCargo
+			if tc.capturedCargo {
+				rider := alpha.Assets["c1"]
+				delete(alpha.Assets, "c1")
+				rider.OwnerID = "charlie"
+				factionState.Factions["charlie"] = &domain.Faction{ID: "charlie", Coin: 5, Assets: map[string]*domain.Asset{"c1": rider}}
+			}
+			eng.Hooks.RegisterArrivalTollRule(hooks.FactionScope("bravo"), "pirates", &stubPirates{ownerID: "bravo"})
+
+			got, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{completed}, &minimalPhaseCollector{})
+
+			if err != nil {
+				t.Fatalf("checkArrivals: %v", err)
+			}
+			if tc.wantHeld {
+				want := []domain.Mutation{domain.MovementOrderHeld{FactionID: "alpha", AssetID: "t1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: arrivalHex(1), Reason: domain.HoldTollUnpaid, Cause: domain.CauseMovementTick, CausedByFactionID: "alpha"}}
+				if !reflect.DeepEqual(got, want) {
+					t.Errorf("mutations = %+v, want %+v", got, want)
+				}
+				return
+			}
+			want := []domain.Mutation{completed}
+			for _, payerID := range tc.wantTolls {
+				want = append(want, toll(payerID)...)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("mutations = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestCheckArrivals_TwoTollsCannotSpendTheSameCoin(t *testing.T) {
+	eng, factionState, alpha, first := arrivalFixture("ship", "", 3)
+	delete(factionState.Governments, "Krylos")
+	alpha.Coin = 1
+	second := alpha.Assets["t1"].Clone()
+	second.ID = "t2"
+	second.CurrentOrder.AssetID = "t2"
+	second.DefinitionID = "militia"
+	alpha.Assets["t2"] = second
+	secondCompleted := first
+	secondCompleted.AssetID = "t2"
+	eng.Hooks.RegisterArrivalTollRule(hooks.FactionScope("bravo"), "pirates", &stubPirates{ownerID: "bravo"})
+
+	got, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{first, secondCompleted}, &minimalPhaseCollector{})
+
+	if err != nil {
+		t.Fatalf("checkArrivals: %v", err)
+	}
+	held, ok := got[len(got)-1].(domain.MovementOrderHeld)
+	if !ok || held.AssetID != "t2" || held.Reason != domain.HoldTollUnpaid {
+		t.Errorf("last mutation = %+v, want t2 held unpaid: the first toll spent the one Coin", got[len(got)-1])
 	}
 }

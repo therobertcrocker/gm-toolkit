@@ -15,7 +15,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/tag"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -41,7 +40,6 @@ type Engine struct {
 	Rand     domain.Roller
 	Hooks    *hooks.Registry
 	Turn     *turn.TurnEngine
-	Tag      *tag.TagEngine
 	Effect   *effect.EffectsEngine
 	Mutation *mutation.MutationEngine
 	Action   *action.ActionEngine
@@ -56,7 +54,6 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine
 	e.Mutation = mutation.New(log)
 	e.Action = action.New(log)
 	e.Goal = goal.New(log)
-	e.Tag = tag.New(log)
 	e.Effect = effect.New(effects.Registrars(), log)
 	for _, defID := range slices.Sorted(maps.Keys(rulebook.Assets)) {
 		def := rulebook.Assets[defID]
@@ -69,6 +66,11 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine
 			if err := e.Effect.RegisterEffectsList(def); err != nil {
 				return nil, fmt.Errorf("engine: %w", err)
 			}
+		}
+	}
+	for _, tagID := range slices.Sorted(maps.Keys(rulebook.Tags)) {
+		if err := e.Effect.CheckTagEffects(rulebook.Tags[tagID]); err != nil {
+			return nil, fmt.Errorf("engine: %w", err)
 		}
 	}
 	actions.RegisterDefaultActions(e.Action, func() domain.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook, e.Effect)

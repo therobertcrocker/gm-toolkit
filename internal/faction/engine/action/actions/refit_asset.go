@@ -2,11 +2,13 @@ package actions
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -15,26 +17,28 @@ import (
 // pays the cost difference (minimum 0); the new asset starts at full HP and
 // is inactive until the start of the next turn.
 // A replacement that needs permission asks the world's government after the
-// choice (D-23). Tech-level filtering is deferred.
+// choice (D-23). The other purchase rules of the asset's world (tech level,
+// population floor, a required tag) are checked through domain.CanPurchase.
 type RefitAsset struct {
-	collector  action.Collector
-	registry   *hooks.Registry
-	factionID  string
-	refitOrder action.RefitOrder
-	refusal    *domain.PermissionRefused
-	newAsset   domain.Asset
-	costDelta  int
+	collector   action.Collector
+	registry    *hooks.Registry
+	worldEngine *world.WorldEngine
+	factionID   string
+	refitOrder  action.RefitOrder
+	refusal     *domain.PermissionRefused
+	newAsset    domain.Asset
+	costDelta   int
 }
 
-func NewRefitAsset(collector action.Collector, registry *hooks.Registry) *RefitAsset {
-	return &RefitAsset{collector: collector, registry: registry}
+func NewRefitAsset(collector action.Collector, registry *hooks.Registry, worldEngine *world.WorldEngine) *RefitAsset {
+	return &RefitAsset{collector: collector, registry: registry, worldEngine: worldEngine}
 }
 
 func (ra *RefitAsset) Name() string { return "Refit Asset" }
 
 func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, asset := range faction.Assets {
-		if len(validRefitReplacements(faction, asset, rulebook)) > 0 {
+		if len(validRefitReplacements(faction, asset, rulebook, ra.worldEngine, ra.registry)) > 0 {
 			return true
 		}
 	}
@@ -44,7 +48,7 @@ func (ra *RefitAsset) Validate(faction *domain.Faction, _ *state.FactionState, r
 func (ra *RefitAsset) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	var options []action.RefitOption
 	for _, asset := range faction.Assets {
-		replacements := validRefitReplacements(faction, asset, rulebook)
+		replacements := validRefitReplacements(faction, asset, rulebook, ra.worldEngine, ra.registry)
 		if len(replacements) == 0 {
 			continue
 		}
@@ -57,7 +61,7 @@ func (ra *RefitAsset) Inputs(faction *domain.Faction, factionState *state.Factio
 	}
 	ra.factionID = faction.ID
 	ra.refitOrder = order
-	refusal, err := dispatch.RequestPermission(ra.registry, ra.collector, factionState, faction, order.NewDefinition, order.OldAsset.Location.WorldID, "refit")
+	refusal, err := dispatch.RequestPermission(ra.registry, ra.collector, factionState, rulebook, faction, order.NewDefinition, order.OldAsset.Location.WorldID, "refit")
 	if err != nil {
 		return fmt.Errorf("refit asset: %w", err)
 	}
@@ -108,9 +112,10 @@ func (ra *RefitAsset) Output() ([]domain.Mutation, error) {
 }
 
 // validRefitReplacements returns definitions the faction could refit oldAsset
-// into: same category, different definition, attribute meets MinRating, and
-// faction can afford the cost delta.
-func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rulebook *rulebook.Rulebook) []*domain.AssetDefinition {
+// into: same category, different definition, and buyable on the asset's world
+// through domain.CanPurchase at the cost delta, as Buy Asset checks it. With no
+// world engine there is no tech ceiling and no population floor (math.MaxInt).
+func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine, registry *hooks.Registry) []*domain.AssetDefinition {
 	// deliberate: no refit for a sheltered asset, because the new asset starts at full HP and would skip the repair Boltholes asks for (Effort 2 Decision Record 5).
 	if oldAsset.HasCondition(domain.ConditionSheltered) {
 		return nil
@@ -123,6 +128,17 @@ func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rul
 	if !ok {
 		return nil
 	}
+	worldID := oldAsset.Location.WorldID
+	worldTechLevel := math.MaxInt
+	worldPopulation := math.MaxInt
+	if worldEngine != nil {
+		location, ok := worldEngine.Location(worldID)
+		if !ok {
+			return nil
+		}
+		worldTechLevel = location.TechLevel()
+		worldPopulation = location.Population()
+	}
 	var result []*domain.AssetDefinition
 	for _, def := range rulebook.Assets {
 		if def.ID == oldDef.ID || def.Quality {
@@ -131,14 +147,19 @@ func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rul
 		if def.Category != oldDef.Category {
 			continue
 		}
-		if statScore(faction, def.Category) < def.MinRating {
-			continue
+		techCap := worldTechLevel
+		if worldEngine != nil {
+			techCap = dispatch.ResolveWorldTechLevel(registry, faction, def, worldID, worldTechLevel)
 		}
-		delta := max(0, def.Cost-oldDef.Cost)
-		if faction.Coin < delta {
-			continue
+		terms := domain.PurchaseTerms{
+			Cost:            max(0, def.Cost-oldDef.Cost),
+			TechCap:         techCap,
+			Population:      worldPopulation,
+			PopulationFloor: dispatch.ResolvePopulationFloor(registry, faction, def, rulebook.PurchasePopulation),
 		}
-		result = append(result, def)
+		if domain.CanPurchase(faction, def, terms) {
+			result = append(result, def)
+		}
 	}
 	return result
 }

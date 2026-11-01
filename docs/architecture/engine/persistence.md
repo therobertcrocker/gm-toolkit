@@ -127,15 +127,19 @@ because they live under `state/`, but their logic lives on those pages.
   rules and the current snapshot; line-delimited JSON suits an ever-growing
   append-only event log. The formats match their access patterns. (Frozen log
   1–18.)
-- **The government record holds which worlds a faction rules; the `T-011` tag
+- **The government record holds which worlds a faction rules; the government tag
   says whether it rules any.** `FactionState.Governments` maps a world ID to the
   ruling faction's ID. A world with no entry is independent, and the GM answers
   for its government. A nil map reads as empty, so an older `state.toml` loads
   with every world independent and needs no migration. The record and the tag hold
   different facts, so neither is a copy of the other, and every writer keeps them
   coupled: Planetary Seizure adds the tag with a faction's first world and removes
-  it with its last; faction create writes the entry for a T-011 pick and refuses a
-  world another faction governs; faction delete clears the entries. A homeworld is
+  it with its last; faction create writes the entry for a government-tag pick, or
+  for the homeworld with a `homeworld_government` tag (Colonists), and refuses a
+  world another faction governs; faction delete clears the entries. The government
+  tag is the one marked `government = true` in the data (`Rulebook.GovernmentTagID`),
+  not a Go constant; the loader refuses a second one, and a tag that sets both
+  flags (A.001.7 Effort 1 Decision Record 4; Effort 4 Decision 7). A homeworld is
   not a government and never enters the record. Rejected: the tag as a label that
   nothing reads; a tag instance per world (a `Tag` stops being a rulebook copy).
   (A.001.6 overview Decisions 8 and 10; Effort 4 Decisions 4, 7 and 15, Decision
@@ -163,6 +167,22 @@ because they live under `state/`, but their logic lives on those pages.
   (every GM and test site repeats `_core`, and a second pass with `--replace`
   silently overwrites the core file); a rulebook file that overrides an included
   file (no present user). (A.001.4 Discovery D-1 and D-7; plan Decisions 2 to 6.)
+- **Factions hold tag IDs, and tag IDs carry the rulebook prefix.**
+  `Faction.Tags` is a list of IDs (`tags = ["SWN-T-020"]`), and `TagAdded` and
+  `TagRemoved` carry the ID. Every reader that needs a name, text or effects reads
+  the rulebook, so a rulebook change reaches a tag a faction already holds, as a
+  definition change reaches a held asset. A held ID the rulebook does not know is
+  skipped. Saves of the old shape moved by a sandbox re-seed, with no migration
+  code. Rejected: a full `Tag` copy in state (it froze the rules at pick time).
+  (A.001.7 discovery D-4 and D-20; `E.002` I-1.)
+- **Per-setting rule values live in `settings.toml`.** A rulebook folder supplies
+  `settings.toml`, composed like any other data file; `rulebook.Load` requires it.
+  It holds the drift costs (once `drift_costs.toml`) and the least world
+  population per asset type (`[purchase_population] Starship = 500000`).
+  `drift_costs` is required; any other key left out turns its rule off, and an
+  unknown key fails the load. `rulebook.toml` stays compose-only, because its include
+  paths mean nothing inside a campaign. Older campaigns re-compose. (A.001.7
+  discovery D-10; overview R-6.)
 - **The tag and goal loaders are strict, as the asset loader is.** An unknown key
   fails the load and a duplicate ID is refused. All three loaders share
   `refuseUnknownKeys`. The TOML decoder drops unknown keys silently, so a misspelt

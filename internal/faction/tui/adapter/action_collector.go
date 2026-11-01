@@ -2,6 +2,8 @@ package adapter
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -42,6 +44,16 @@ func (a *Adapter) ownerNames(assets []*domain.Asset) map[string]string {
 		}
 		if faction := a.factionState.Factions[asset.OwnerID]; faction != nil {
 			names[asset.OwnerID] = faction.Name
+		}
+	}
+	return names
+}
+
+func (a *Adapter) worldNames(worldIDs []string) map[string]string {
+	names := make(map[string]string, len(worldIDs))
+	for _, worldID := range worldIDs {
+		if location, ok := a.engine.World.Location(worldID); ok {
+			names[worldID] = location.Name()
 		}
 	}
 	return names
@@ -93,11 +105,11 @@ func (a *actionCollector) SelectAssetToLose(faction *domain.Faction, assets []*d
 
 // --- action.Collector: action-unique (recoverable-stubbed until each action's commit) ---
 
-func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+func (a *actionCollector) SelectAbilityTarget(holder domain.AbilityHolder, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 	switch step.Target {
 	case domain.TargetFaction:
 		raw, err := a.adapter.ask(AskSelectFactionTestTarget, nil, SelectFactionTestTargetPayload{
-			Asset:      asset,
+			Asset:      holder.Asset,
 			Effect:     step.Effect,
 			Candidates: candidates.Factions,
 		})
@@ -108,7 +120,7 @@ func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.A
 		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, nil
 	case domain.TargetAsset:
 		raw, err := a.adapter.ask(AskSelectAbilityAssetTarget, nil, SelectAbilityAssetTargetPayload{
-			Asset:      asset,
+			Asset:      holder.Asset,
 			Effect:     step.Effect,
 			Candidates: candidates.Assets,
 			OwnerNames: a.adapter.ownerNames(candidates.Assets),
@@ -118,8 +130,20 @@ func (a *actionCollector) SelectAbilityTarget(asset *domain.Asset, step domain.A
 		}
 		chosen, _ := raw.(*domain.Asset)
 		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: chosen}, nil
+	case domain.TargetWorld:
+		raw, err := a.adapter.ask(AskSelectAbilityWorldTarget, nil, SelectAbilityWorldTargetPayload{
+			Holder:     holder,
+			Effect:     step.Effect,
+			Worlds:     candidates.Worlds,
+			WorldNames: a.adapter.worldNames(candidates.Worlds),
+		})
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		chosen, _ := raw.(string)
+		return domain.AbilityTarget{Kind: domain.TargetWorld, World: chosen}, nil
 	default:
-		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported yet", step.Target)
+		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported", step.Target)
 	}
 }
 func (a *actionCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
@@ -129,17 +153,11 @@ func (a *actionCollector) SelectRelocateOrders(acting *domain.Asset, candidates 
 // selectRelocateOrders asks the relocate overlay. The action collector (a spent
 // relocate ability) and the phase collector (a free movement grant) share it.
 func (a *Adapter) selectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {
-	names := make(map[string]string, len(candidateWorlds))
-	for _, worldID := range candidateWorlds {
-		if loc, ok := a.engine.World.Location(worldID); ok {
-			names[worldID] = loc.Name()
-		}
-	}
 	raw, err := a.ask(AskSelectRelocateOrders, nil, SelectRelocateOrdersPayload{
 		Acting:          acting,
 		Candidates:      candidates,
 		CandidateWorlds: candidateWorlds,
-		WorldNames:      names,
+		WorldNames:      a.worldNames(candidateWorlds),
 		MaxAssets:       maxAssets,
 	})
 	if err != nil {
@@ -195,15 +213,9 @@ func (a *actionCollector) SelectBuyOrder(purchasablePerWorld map[string][]*domai
 	if faction := a.adapter.currentFaction(); faction != nil {
 		coin = faction.Coin
 	}
-	names := make(map[string]string, len(purchasablePerWorld))
-	for worldID := range purchasablePerWorld {
-		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
-			names[worldID] = loc.Name()
-		}
-	}
 	raw, err := a.adapter.ask(AskSelectBuyOrder, nil, SelectBuyOrderPayload{
 		PurchasableByWorld: purchasablePerWorld,
-		WorldNames:         names,
+		WorldNames:         a.adapter.worldNames(slices.Collect(maps.Keys(purchasablePerWorld))),
 		Coin:               coin,
 	})
 	if err != nil {
@@ -333,15 +345,9 @@ func (a *Adapter) confirmPayment(offer hooks.PaymentOffer) (bool, error) {
 	return paid, nil
 }
 func (a *actionCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
-	names := make(map[string]string, len(eligibleNewBaseWorlds))
-	for _, worldID := range eligibleNewBaseWorlds {
-		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
-			names[worldID] = loc.Name()
-		}
-	}
 	raw, err := a.adapter.ask(AskSelectExpandInfluenceOrder, faction, SelectExpandInfluenceOrderPayload{
 		NewBaseWorlds:  eligibleNewBaseWorlds,
-		WorldNames:     names,
+		WorldNames:     a.adapter.worldNames(eligibleNewBaseWorlds),
 		ReinforceBases: deriveReinforceTargets(faction),
 		Coin:           faction.Coin,
 	})
@@ -402,12 +408,12 @@ func deriveReinforceTargets(faction *domain.Faction) []ReinforceTarget {
 	}
 	return targets
 }
-func (a *actionCollector) SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, rb *rulebook.Rulebook) ([]*domain.Asset, error) {
-	raw, err := a.adapter.ask(AskSelectAbilityAssets, faction, SelectAbilityAssetsPayload{Candidates: candidates})
+func (a *actionCollector) SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, rulebook *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
+	raw, err := a.adapter.ask(AskSelectAbilityHolders, faction, SelectAbilityHoldersPayload{Candidates: candidates})
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.([]*domain.Asset)
+	chosen, _ := raw.([]domain.AbilityHolder)
 	return chosen, nil
 }
 func (a *actionCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
@@ -450,15 +456,9 @@ func deriveBribeTargets(factionState *state.FactionState, factionID string) ([]*
 }
 func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
 	worlds := deriveContestedWorlds(faction, factionState, a.adapter.engine.World.Index)
-	names := make(map[string]string, len(worlds))
-	for _, worldID := range worlds {
-		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
-			names[worldID] = loc.Name()
-		}
-	}
 	raw, err := a.adapter.ask(AskSelectSeizeTarget, faction, SelectSeizeTargetPayload{
 		Worlds:     worlds,
-		WorldNames: names,
+		WorldNames: a.adapter.worldNames(worlds),
 	})
 	if err != nil {
 		return "", err
@@ -494,15 +494,9 @@ func deriveContestedWorlds(faction *domain.Faction, factionState *state.FactionS
 }
 func (a *actionCollector) SelectChangeHomeworldTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
 	worlds := deriveHomeworldTargets(faction, a.adapter.engine.World, a.adapter.engine.Rulebook)
-	names := make(map[string]string, len(worlds))
-	for _, worldID := range worlds {
-		if loc, ok := a.adapter.engine.World.Location(worldID); ok {
-			names[worldID] = loc.Name()
-		}
-	}
 	raw, err := a.adapter.ask(AskSelectChangeHomeworldTarget, faction, SelectChangeHomeworldTargetPayload{
 		Worlds:     worlds,
-		WorldNames: names,
+		WorldNames: a.adapter.worldNames(worlds),
 	})
 	if err != nil {
 		return "", err

@@ -3,6 +3,7 @@ package relocate
 import (
 	"errors"
 	"log/slog"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -618,5 +619,91 @@ func TestRun_IllegalPickAsksNothing(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Run = nil, want the out-of-range pick rejected")
+	}
+}
+
+// stubPirates charges 1 Coin to every faction but its owner, on "mid" only.
+type stubPirates struct{}
+
+func (stubPirates) ArrivalToll(mover *domain.Faction, world string) int {
+	if mover.ID == "pirate" || world != "mid" {
+		return 0
+	}
+	return 1
+}
+
+func tollRequest(t *testing.T, coin int, collector *mocks.MockCollector) (Request, *domain.Asset) {
+	t.Helper()
+	acting := &domain.Asset{ID: "sf", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
+	faction := &domain.Faction{ID: "f1", Coin: coin, Assets: map[string]*domain.Asset{"sf": acting}}
+	registry := hooks.NewRegistry()
+	registry.RegisterArrivalTollRule(hooks.FactionScope("pirate"), "pirates", stubPirates{})
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "pirate": {ID: "pirate"}}}
+	params := &domain.RelocateParams{Scope: domain.RelocateSelf, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1}
+	return Request{
+		Faction: faction, Acting: acting, Params: params, World: relocEngine(), Rulebook: relocRulebook(),
+		Registry: registry, FactionState: factionState, Collector: collector,
+	}, acting
+}
+
+func TestRun_UnaffordableTollWorldIsNotADestination(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	request, acting := tollRequest(t, 1, collector)
+	var offered []string
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ *domain.Asset, _ []*domain.Asset, worlds []string, _ int) ([]action.RelocateOrder, error) {
+			offered = worlds
+			return []action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil
+		})
+
+	if _, err := Run(request); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if slices.Contains(offered, "mid") || !slices.Contains(offered, "near") {
+		t.Errorf("destinations = %v, want near and not mid (1 Coin pays the move, not the toll)", offered)
+	}
+}
+
+func TestRun_TollWorldPaysTheHolder(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	request, acting := tollRequest(t, 5, collector)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "mid"}}, nil)
+
+	mutations, err := Run(request)
+
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	want := []domain.Mutation{
+		domain.CoinDelta{FactionID: "f1", Delta: -1, Cause: "arrival_toll", CausedByFactionID: "pirate"},
+		domain.CoinDelta{FactionID: "pirate", Delta: 1, Cause: "arrival_toll", CausedByFactionID: "pirate"},
+	}
+	if got := mutations[len(mutations)-2:]; !reflect.DeepEqual(got, want) {
+		t.Errorf("last mutations = %+v, want the toll pair %+v", got, want)
+	}
+}
+
+func TestRun_AssetPickedForItsOwnWorldPaysNoToll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	request, _ := tollRequest(t, 5, collector)
+	request.Params.Scope = domain.RelocateOther
+	stayer := &domain.Asset{ID: "x1", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "mid", RegionHex: relocHex("r1", 2)}}
+	request.Faction.Assets["x1"] = stayer
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: stayer, DestinationWorld: "mid"}}, nil)
+
+	mutations, err := Run(request)
+
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, mutation := range mutations {
+		if delta, ok := mutation.(domain.CoinDelta); ok && delta.Cause == "arrival_toll" {
+			t.Errorf("toll charged: %+v, want none (the asset already stands on mid)", delta)
+		}
 	}
 }

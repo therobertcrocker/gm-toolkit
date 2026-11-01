@@ -13,18 +13,26 @@ const (
 )
 
 // RollContext carries the full context of a roll being processed by hooks.
-// Asset is the rolling asset and OpponentAsset the asset on the other side;
-// either is nil when no asset stands there (a faction test, a Base defending).
-// Action is the action's Name().
+// Attribute is the stat this roll uses and OpponentAttribute the stat the other
+// side rolls against it; OpponentAttribute is empty when no single roll opposes
+// this one (Expand Influence's own roll, compared against each rival in turn); a
+// contested faction test (an ability contest) sets it. Asset is the rolling asset
+// and OpponentAsset the asset on the other side; either is nil when no asset
+// stands there (a faction test, a Base defending). Action is the action's Name().
+// Detection marks a roll made by the side testing to detect Stealthed assets: the
+// actor of a reveal ability, or the declaring side of a stealth-clearing contest.
+// The side resisting detection never sets it (Effort 3 Decision 5).
 type RollContext struct {
-	Phase         RollPhase
-	Actor         *domain.Faction
-	Opponent      *domain.Faction
-	Attribute     string
-	Asset         *domain.Asset
-	OpponentAsset *domain.Asset
-	World         string
-	Action        string
+	Phase             RollPhase
+	Actor             *domain.Faction
+	Opponent          *domain.Faction
+	Attribute         string
+	OpponentAttribute string
+	Asset             *domain.Asset
+	OpponentAsset     *domain.Asset
+	World             string
+	Action            string
+	Detection         bool
 }
 
 // RollResult holds the per-die breakdown of a completed roll.
@@ -70,7 +78,7 @@ func (rollState *RollState) ExtraDice() []int {
 type ModifierOffer struct {
 	Source      string
 	Description string
-	BudgetKey   string           // namespaced, e.g. "tag:Warlike"; empty = unlimited
+	BudgetKey   string           // namespaced, e.g. "effect:bonus_die:own_roll:SWN-T-020"; empty = unlimited
 	Apply       func(*RollState) // expands the dice pool before rolling
 	FactionID   string
 	FromTag     bool // a tag's bonus die; Blackmail strips these

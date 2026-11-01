@@ -455,6 +455,30 @@ func TestGoalCompleted(t *testing.T) {
 	}
 }
 
+func TestGoalCompleted_XPRollBonusJoinsTheGoalLine(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "goal_completed", domain.GoalCompleted{
+				FactionID: "faction-a", GoalID: "goal-1", XPAwarded: 1, Cause: "goal_completed",
+			}),
+			mutRec(t, "xp_awarded", domain.XPAwarded{
+				FactionID: "faction-a", Amount: 1, Cause: "goal_completed",
+			}),
+			mutRec(t, "xp_awarded", domain.XPAwarded{
+				FactionID: "faction-a", Amount: 1, Cause: string(domain.SpecialXPRoll), CausedByFactionID: "faction-a",
+			}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), minRulebook(map[string]string{"goal-1": "Peaceable Kingdom"}))
+	beat := findBeat(d, "faction-a")
+	if beat.XPGained != 2 {
+		t.Errorf("want XPGained 2, got %d", beat.XPGained)
+	}
+	if len(beat.GoalEvents) != 1 || beat.GoalEvents[0].XPAwarded != 2 {
+		t.Errorf("want 1 GoalCompleted event with XPAwarded 2, got %+v", beat.GoalEvents)
+	}
+}
+
 func TestGoalAbandoned(t *testing.T) {
 	records := []domain.EventRecord{
 		eventRec("faction-a",
@@ -505,12 +529,13 @@ func TestTagAdded(t *testing.T) {
 			}),
 			mutRec(t, "tag_added", domain.TagAdded{
 				FactionID: "faction-a",
-				Tag:       domain.Tag{ID: "tag-1", Name: "Guerrilla Tactics"},
+				TagID:     "tag-1",
 				Cause:     "goal_completed",
 			}),
 		),
 	}
-	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), nil)
+	rb := &rulebook.Rulebook{Tags: map[string]*domain.Tag{"tag-1": {ID: "tag-1", Name: "Guerrilla Tactics"}}}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), rb)
 	beat := findBeat(d, "faction-a")
 	var found bool
 	for _, ge := range beat.GoalEvents {
@@ -1093,11 +1118,12 @@ func TestGovernmentChangeAndTagLoss(t *testing.T) {
 				WorldID: "Krylos", FromFactionID: "f2", ToFactionID: "f1", Cause: "goal_completed", CausedByFactionID: "f1",
 			}),
 			mutRec(t, "tag_removed", domain.TagRemoved{
-				FactionID: "f2", Tag: domain.Tag{ID: domain.TagPlanetaryGovernment, Name: "Planetary Government"},
+				FactionID: "f2", TagID: "SWN-T-011",
 				Cause: "goal_completed", CausedByFactionID: "f1",
 			}),
 		),
 	}
+	// deliberate: no rulebook, so the line falls back to the bare ID (Effort 1 Decision 10).
 	cycleDigest := buildOne(t, records, factionState, nil)
 
 	ruler := findBeat(cycleDigest, "f1")
@@ -1108,7 +1134,7 @@ func TestGovernmentChangeAndTagLoss(t *testing.T) {
 	}
 	loser := findBeat(cycleDigest, "f2")
 	if loser == nil || !slices.ContainsFunc(loser.GoalEvents, func(event GoalEvent) bool {
-		return event.Kind == GoalTagLost && event.TagName == "Planetary Government"
+		return event.Kind == GoalTagLost && event.TagName == "SWN-T-011"
 	}) {
 		t.Errorf("f2 beat = %+v, want a GoalTagLost event", loser)
 	}
@@ -1213,5 +1239,21 @@ func TestLockedOutIsAConditionOnTheCrossEvent(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("Cross = %+v, want f1 → f2 carrying locked_out", cycleDigest.Cross)
+	}
+}
+
+func TestWorldTechLevelRaised(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha"})
+	records := []domain.EventRecord{
+		eventRec("f1", mutRec(t, "world_tech_level_raised", domain.WorldTechLevelRaised{
+			FactionID: "f1", WorldID: "Backwater", TechLevel: 4, Cause: "ability", CausedByFactionID: "f1",
+		})),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+	beat := findBeat(cycleDigest, "f1")
+	if beat == nil || !slices.ContainsFunc(beat.GoalEvents, func(event GoalEvent) bool {
+		return event.Kind == GoalTechLevelRaised && event.ToWorld == "Backwater" && event.TechLevel == 4
+	}) {
+		t.Errorf("f1 beat = %+v, want a GoalTechLevelRaised event for Backwater at 4", beat)
 	}
 }

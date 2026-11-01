@@ -178,34 +178,34 @@ func (mr *MockCollectorMockRecorder) RequestPermission(request any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestPermission", reflect.TypeOf((*MockCollector)(nil).RequestPermission), request)
 }
 
-// SelectAbilityAssets mocks base method.
-func (m *MockCollector) SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, arg2 *rulebook.Rulebook) ([]*domain.Asset, error) {
+// SelectAbilityHolders mocks base method.
+func (m *MockCollector) SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, arg2 *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectAbilityAssets", faction, candidates, arg2)
-	ret0, _ := ret[0].([]*domain.Asset)
+	ret := m.ctrl.Call(m, "SelectAbilityHolders", faction, candidates, arg2)
+	ret0, _ := ret[0].([]domain.AbilityHolder)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SelectAbilityAssets indicates an expected call of SelectAbilityAssets.
-func (mr *MockCollectorMockRecorder) SelectAbilityAssets(faction, candidates, arg2 any) *gomock.Call {
+// SelectAbilityHolders indicates an expected call of SelectAbilityHolders.
+func (mr *MockCollectorMockRecorder) SelectAbilityHolders(faction, candidates, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAbilityAssets", reflect.TypeOf((*MockCollector)(nil).SelectAbilityAssets), faction, candidates, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAbilityHolders", reflect.TypeOf((*MockCollector)(nil).SelectAbilityHolders), faction, candidates, arg2)
 }
 
 // SelectAbilityTarget mocks base method.
-func (m *MockCollector) SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+func (m *MockCollector) SelectAbilityTarget(holder domain.AbilityHolder, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectAbilityTarget", asset, step, candidates)
+	ret := m.ctrl.Call(m, "SelectAbilityTarget", holder, step, candidates)
 	ret0, _ := ret[0].(domain.AbilityTarget)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SelectAbilityTarget indicates an expected call of SelectAbilityTarget.
-func (mr *MockCollectorMockRecorder) SelectAbilityTarget(asset, step, candidates any) *gomock.Call {
+func (mr *MockCollectorMockRecorder) SelectAbilityTarget(holder, step, candidates any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAbilityTarget", reflect.TypeOf((*MockCollector)(nil).SelectAbilityTarget), asset, step, candidates)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectAbilityTarget", reflect.TypeOf((*MockCollector)(nil).SelectAbilityTarget), holder, step, candidates)
 }
 
 // SelectAsset mocks base method.

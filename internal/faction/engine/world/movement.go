@@ -5,6 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
@@ -24,10 +26,13 @@ type MovementDecision struct {
 	CargoAssetIDs []string
 }
 
-func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook *rulebook.Rulebook, log *slog.Logger) ([]domain.Mutation, error) {
+// TickMovementOrders advances each open order of faction's assets by the asset's
+// speed, as registry's speed floors resolve it (Mercenary Group).
+func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry, log *slog.Logger) ([]domain.Mutation, error) {
 	var mutations []domain.Mutation
 	log.Info("ticking movement orders")
 
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	for _, asset := range domain.SortedAssets(faction) {
 		if asset.CurrentOrder == nil {
 			continue
@@ -36,7 +41,7 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 		if !ok {
 			return nil, fmt.Errorf("TickMovementOrders: unknown asset definition %q", asset.DefinitionID)
 		}
-		newStepIdx := asset.CurrentOrder.StepIdx + def.Speed
+		newStepIdx := asset.CurrentOrder.StepIdx + speedOf(def)
 		log.Debug("ticking movement order for asset", "asset_id", asset.ID, "from_hex", asset.Location.RegionHex, "to_hex", asset.CurrentOrder.Destination.RegionHex)
 		if newStepIdx >= len(asset.CurrentOrder.Path)-1 {
 			mutations = append(mutations, domain.MovementOrderCompleted{

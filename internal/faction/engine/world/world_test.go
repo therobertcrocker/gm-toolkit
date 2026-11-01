@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -169,7 +170,7 @@ func TestTickMovementOrders_NoOrders(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(1), slog.New(slog.DiscardHandler))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(1), nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -183,7 +184,7 @@ func TestTickMovementOrders_MidFlight(t *testing.T) {
 	dest := domain.Location{WorldID: "beta"}
 	faction := factionWithOrder(0, makePath(5), dest)
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(1), slog.New(slog.DiscardHandler))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(1), nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -204,7 +205,7 @@ func TestTickMovementOrders_Completion(t *testing.T) {
 	dest := domain.Location{WorldID: "beta"}
 	faction := factionWithOrder(3, makePath(5), dest)
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(2), slog.New(slog.DiscardHandler))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(2), nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -267,7 +268,7 @@ func TestTickMovementOrders_MultiHexPerTick(t *testing.T) {
 	dest := domain.Location{WorldID: "beta"}
 	faction := factionWithOrder(0, makePath(10), dest)
 
-	mutations, err := we.TickMovementOrders(faction, testRulebook(3), slog.New(slog.DiscardHandler))
+	mutations, err := we.TickMovementOrders(faction, testRulebook(3), nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -280,5 +281,30 @@ func TestTickMovementOrders_MultiHexPerTick(t *testing.T) {
 	}
 	if progressed.NewStepIdx != 3 {
 		t.Errorf("expected NewStepIdx=3, got %d", progressed.NewStepIdx)
+	}
+}
+
+// speedFloor stands in for Mercenary Group's speed_floor hook.
+type speedFloor struct{ floor int }
+
+func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+	return max(speed, floor.floor)
+}
+
+func TestTickMovementOrders_ReadsTheResolvedSpeed(t *testing.T) {
+	we := world.NewWithMap(&stubMap{}, slog.New(slog.DiscardHandler))
+	faction := factionWithOrder(0, makePath(5), domain.Location{WorldID: "beta"})
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
+
+	mutations, err := we.TickMovementOrders(faction, testRulebook(0), registry, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(mutations) != 1 {
+		t.Fatalf("expected 1 mutation, got %d", len(mutations))
+	}
+	if progressed, ok := mutations[0].(domain.MovementOrderProgressed); !ok || progressed.NewStepIdx != 1 {
+		t.Errorf("mutation = %+v, want progress to step 1: a speed-0 asset under a floor of 1", mutations[0])
 	}
 }

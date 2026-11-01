@@ -328,6 +328,27 @@ func TestPurchasableDefinitions_TechCapResolvesPerDefinition(t *testing.T) {
 	}
 }
 
+// TestPurchasableDefinitions_ReadsTheWorldTechLevelRecord: on a TL5 world, a
+// raise_tech_level record of 6 for the buyer offers a TL6 def, keyed by the same
+// world ID Buy Asset passes; a rival without the record is not offered it.
+func TestPurchasableDefinitions_ReadsTheWorldTechLevelRecord(t *testing.T) {
+	worldHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
+	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"force-tl6": {ID: "force-tl6", Category: domain.StatForce, Cost: 1, TechLevel: 6},
+	}}
+	buyer := func(record map[string]int) *domain.Faction {
+		return &domain.Faction{ID: "f1", Coin: 5, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}, WorldTechLevels: record}
+	}
+
+	if defs := purchasableDefinitions(buyer(map[string]int{"a": 6}), rb, "a", worldEngine, hooks.NewRegistry(), nil); len(defs) != 1 {
+		t.Errorf("purchasable with the record = %d defs, want 1", len(defs))
+	}
+	if defs := purchasableDefinitions(buyer(nil), rb, "a", worldEngine, hooks.NewRegistry(), nil); len(defs) != 0 {
+		t.Errorf("purchasable without the record = %d defs, want 0", len(defs))
+	}
+}
+
 func stealthBuyRulebook() *rulebook.Rulebook {
 	stealthy := false
 	return &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
@@ -523,5 +544,32 @@ func TestBuyAsset_PurchasePermissionAsksForARaise(t *testing.T) {
 	}
 	if _, ok := mutations[0].(domain.PermissionRefused); !ok {
 		t.Errorf("mutations[0] = %T, want PermissionRefused", mutations[0])
+	}
+}
+
+func TestPurchasableDefinitions_PopulationFloorPerType(t *testing.T) {
+	worldHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
+	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
+	populationRulebook := &rulebook.Rulebook{
+		Assets: map[string]*domain.AssetDefinition{
+			"ship":  {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeStarship},
+			"plant": {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeFacility},
+		},
+		PurchasePopulation: map[domain.AssetType]int{domain.TypeStarship: 500000},
+	}
+	faction := &domain.Faction{ID: "f1", Coin: 5, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}, Assets: map[string]*domain.Asset{}}
+
+	defs := purchasableDefinitions(faction, populationRulebook, "a", worldEngine, hooks.NewRegistry(), nil)
+	if len(defs) != 1 || defs[0].ID != "plant" {
+		var ids []string
+		for _, def := range defs {
+			ids = append(ids, def.ID)
+		}
+		t.Errorf("purchasable = %v, want [plant] (the empty world is below the Starship floor)", ids)
+	}
+
+	faction.PopulationWaiver = true
+	if defs := purchasableDefinitions(faction, populationRulebook, "a", worldEngine, hooks.NewRegistry(), nil); len(defs) != 2 {
+		t.Errorf("purchasable with the waiver = %d defs, want 2", len(defs))
 	}
 }

@@ -3,7 +3,6 @@ package effects
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -24,34 +23,29 @@ var coinStealRegistrar = effect.Registrar{
 
 func registerCoinSteal(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterMutationReactor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialCoinSteal)+":"+ctx.Def.ID,
-		&coinStealReactor{
-			ownerFactionID: ctx.Faction.ID,
-			assetID:        ctx.Asset.ID,
-			roller:         ctx.Roller,
-		},
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialCoinSteal),
+		&coinStealReactor{holder: refOf(ctx.Holder), roller: ctx.Roller},
 	)
 }
 
 // coinStealReactor reads its entries from the rulebook, not from registration,
 // because the lead thief runs the entries of every thief its faction owns.
 type coinStealReactor struct {
-	ownerFactionID string
-	assetID        string
-	roller         domain.Roller
+	holder holderRef
+	roller domain.Roller
 }
 
 // OnMutations steals for every hit an active thief of the owner landed, in batch
 // order, and caps each steal at what the target has left after earlier steals.
 func (reactor *coinStealReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
-	owner := factionState.Factions[reactor.ownerFactionID]
+	owner := factionState.Factions[reactor.holder.factionID]
 	if owner == nil {
 		return nil
 	}
 	thieves := activeAssetsWithEffect(owner, rulebook, domain.SpecialCoinSteal)
 	// deliberate: only the lowest-ID active thief reacts, for every thief of every definition, because sibling reactors cannot see each other's output in one dispatch round and would together take more Coin than the target has.
-	if len(thieves) == 0 || thieves[0].ID != reactor.assetID {
+	if len(thieves) == 0 || thieves[0].ID != reactor.holder.assetID {
 		return nil
 	}
 	remaining := make(map[string]int)

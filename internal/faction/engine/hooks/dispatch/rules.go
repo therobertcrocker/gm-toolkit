@@ -1,17 +1,20 @@
 package dispatch
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// ResolveAssetCost runs the buyer's own AssetCostModifiers, then those registered
-// against every asset standing on world — including a rival's, because a cost
-// hook may belong to a faction other than the buyer (Local Investments). Hooks
-// run in registration order, chaining outputs so each sees the previous result.
-// onWorld is the assets on world in ID order (world.AssetsOnWorld), so the chain
-// is the same every run; a nil slice adds nothing.
+// ResolveAssetCost runs the buyer's global and faction AssetCostModifiers, then
+// those of each of the buyer's own assets in ID order, then those registered
+// against every rival asset standing on world, because a cost hook may belong to
+// another faction (Local Investments). Hooks chain, each seeing the previous
+// result. onWorld is the assets on world in ID order (world.AssetsOnWorld), so the
+// chain is the same every run; a nil slice adds nothing.
 func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *domain.AssetDefinition, world string, baseCost int, onWorld []*domain.Asset) hooks.AssetCostQuery {
 	query := &hooks.AssetCostQuery{Cost: baseCost, Applied: map[string]bool{}}
 	if registry == nil {
@@ -19,6 +22,11 @@ func ResolveAssetCost(registry *hooks.Registry, buyer *domain.Faction, def *doma
 	}
 	for _, registered := range registry.AssetCostModifiersFor(buyer.ID, "") {
 		registered.Hook.ModifyAssetCost(buyer, def, world, query)
+	}
+	for _, asset := range domain.SortedAssets(buyer) {
+		for _, registered := range registry.AssetCostModifiersForAsset(buyer.ID, asset.ID) {
+			registered.Hook.ModifyAssetCost(buyer, def, world, query)
+		}
 	}
 	for _, asset := range onWorld {
 		if asset.OwnerID == buyer.ID {
@@ -68,15 +76,18 @@ func ResolveMaintenanceCost(registry *hooks.Registry, owner *domain.Faction, ass
 	return cost
 }
 
-// ResolveWorldTechLevel runs faction's own WorldTechLevelModifiers, then those
-// registered against each asset faction owns, in asset ID order. A tech-level
-// floor serves its owner only, so a rival's assets are never asked; each
-// asset-scoped hook decides whether its reach covers world and def.
+// ResolveWorldTechLevel starts from the higher of baseTL and faction's own record
+// for world (raise_tech_level, D-11), then runs faction's own
+// WorldTechLevelModifiers, then those registered against each asset faction owns,
+// in asset ID order. A tech-level floor serves its owner only, so a rival's assets
+// are never asked; each asset-scoped hook decides whether its reach covers world
+// and def. A nil def asks for the level that holds for every purchase, so a
+// category-limited floor does not count.
 func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int {
+	tl := max(baseTL, faction.WorldTechLevels[world])
 	if registry == nil {
-		return baseTL
+		return tl
 	}
-	tl := baseTL
 	for _, registered := range registry.WorldTechLevelModifiersFor(faction.ID, "") {
 		tl = registered.Hook.ModifyWorldTechLevel(faction, def, world, tl)
 	}
@@ -86,6 +97,114 @@ func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, de
 		}
 	}
 	return tl
+}
+
+// AssetSpeedResolver returns the speed of an asset faction owns, by definition:
+// the definition's own, run through faction's AssetSpeedModifiers, then those
+// registered against each asset faction owns, in asset ID order. A speed floor
+// serves its owner only, so a rival's assets are never asked. The modifiers are
+// gathered once, so one resolver serves a whole pass over faction's assets. With
+// a nil registry it returns the definition's speed.
+func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(*domain.AssetDefinition) int {
+	if registry == nil {
+		return func(definition *domain.AssetDefinition) int { return definition.Speed }
+	}
+	modifiers := registry.AssetSpeedModifiersFor(faction.ID)
+	for _, asset := range domain.SortedAssets(faction) {
+		modifiers = append(modifiers, registry.AssetSpeedModifiersForAsset(faction.ID, asset.ID)...)
+	}
+	return func(definition *domain.AssetDefinition) int {
+		speed := definition.Speed
+		for _, registered := range modifiers {
+			speed = registered.Hook.ModifyAssetSpeed(faction, definition, speed)
+		}
+		return speed
+	}
+}
+
+// ArrivalTolls returns the tolls one of mover's assets owes on landing on world:
+// one per rule that charges, each paid to the faction that registered it. It asks
+// every faction but mover, in ID order, its faction bucket and then its own
+// assets' buckets in ID order, because a toll is a rival's effect (Effort 4
+// Decision 8). Who skips a toll is the caller's to decide.
+func ArrivalTolls(registry *hooks.Registry, factions map[string]*domain.Faction, mover *domain.Faction, world string) []hooks.ArrivalToll {
+	if registry == nil || mover == nil {
+		return nil
+	}
+	var tolls []hooks.ArrivalToll
+	for _, factionID := range slices.Sorted(maps.Keys(factions)) {
+		if factionID == mover.ID {
+			continue
+		}
+		rules := slices.Clone(registry.ArrivalTollRulesAt(hooks.FactionScope(factionID)))
+		for _, asset := range domain.SortedAssets(factions[factionID]) {
+			rules = append(rules, registry.ArrivalTollRulesAt(hooks.AssetScope(factionID, asset.ID))...)
+		}
+		for _, registered := range rules {
+			if amount := registered.Hook.ArrivalToll(mover, world); amount > 0 {
+				tolls = append(tolls, hooks.ArrivalToll{FactionID: factionID, Amount: amount})
+			}
+		}
+	}
+	return tolls
+}
+
+// AssetArrivalTolls returns the tolls asset owes on landing on world, paid by its
+// current owner (Effort 4 Decision 9).
+func AssetArrivalTolls(registry *hooks.Registry, factions map[string]*domain.Faction, asset *domain.Asset, world string) []hooks.ArrivalToll {
+	// deliberate: a stealthed asset pays no toll, though it still pays a lockdown, because Robert reads the toll as a levy on what the holder can see (Effort 4 Decision 9).
+	if asset.Stealthy {
+		return nil
+	}
+	return ArrivalTolls(registry, factions, factions[asset.OwnerID], world)
+}
+
+// TollTotal is the Coin tolls charge in all.
+func TollTotal(tolls []hooks.ArrivalToll) int {
+	total := 0
+	for _, toll := range tolls {
+		total += toll.Amount
+	}
+	return total
+}
+
+// TollCharges pays each toll from payerID to the faction that charges it: a loss
+// and a gain, both caused by that faction, as a steal is, so a Bank absorbs the
+// loss and the holder keeps the gain (Effort 4 Decision 8).
+func TollCharges(payerID string, tolls []hooks.ArrivalToll) []domain.Mutation {
+	var charges []domain.Mutation
+	for _, toll := range tolls {
+		charges = append(charges,
+			domain.CoinDelta{FactionID: payerID, Delta: -toll.Amount, Cause: string(domain.SpecialArrivalToll), CausedByFactionID: toll.FactionID},
+			domain.CoinDelta{FactionID: toll.FactionID, Delta: toll.Amount, Cause: string(domain.SpecialArrivalToll), CausedByFactionID: toll.FactionID},
+		)
+	}
+	return charges
+}
+
+// ResolvePopulationFloor returns the least world population on which faction may
+// buy def: the setting's floor for def's type, run through faction's
+// PopulationFloorModifiers, then those of each asset it owns in asset ID order. A
+// floor serves its owner only, so a rival's assets are never asked. A waived
+// faction, or a type with no floor in floors, needs none (Effort 4 Decision 4).
+func ResolvePopulationFloor(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition, floors map[domain.AssetType]int) int {
+	baseFloor := floors[def.Type]
+	if faction.PopulationWaiver || baseFloor == 0 {
+		return 0
+	}
+	if registry == nil {
+		return baseFloor
+	}
+	floor := baseFloor
+	for _, registered := range registry.PopulationFloorModifiersFor(faction.ID) {
+		floor = registered.Hook.ModifyPopulationFloor(faction, def, baseFloor, floor)
+	}
+	for _, asset := range domain.SortedAssets(faction) {
+		for _, registered := range registry.PopulationFloorModifiersForAsset(faction.ID, asset.ID) {
+			floor = registered.Hook.ModifyPopulationFloor(faction, def, baseFloor, floor)
+		}
+	}
+	return floor
 }
 
 // ResolveAttackEligibility reports whether query.Attacker may deal damage to
@@ -179,19 +298,31 @@ func ResolveRepairCost(registry *hooks.Registry, repairer *domain.Faction, asset
 	return max(0, query.Cost)
 }
 
-// ResolveTie consults registered TieResolvers for the attacker, then the
-// defender; first registration wins. Returns TieStandard when no resolvers
-// match.
+// ResolveTie asks the global hooks, then the attacker's side, then the defender's:
+// on each side its faction's hooks, then each of its assets' in ID order. The first
+// answer that is not TieStandard wins, because with asset buckets in the walk a
+// resolver that does not match must not end the search (Effort 1 Decision 4).
+// TieStandard when none answers.
 func ResolveTie(registry *hooks.Registry, ctx hooks.RollContext, factionState *state.FactionState) hooks.TieOutcome {
 	if registry == nil {
 		return hooks.TieStandard
 	}
-	resolvers := registry.TieResolversFor(ctx.Actor.ID, "")
-	if len(resolvers) == 0 && ctx.Opponent != nil {
-		resolvers = registry.TieResolversFor(ctx.Opponent.ID, "")
+	scopes := []hooks.Scope{hooks.GlobalScope()}
+	for _, side := range []*domain.Faction{ctx.Actor, ctx.Opponent} {
+		if side == nil {
+			continue
+		}
+		scopes = append(scopes, hooks.FactionScope(side.ID))
+		for _, asset := range domain.SortedAssets(side) {
+			scopes = append(scopes, hooks.AssetScope(side.ID, asset.ID))
+		}
 	}
-	if len(resolvers) == 0 {
-		return hooks.TieStandard
+	for _, scope := range scopes {
+		for _, registered := range registry.TieResolversAt(scope) {
+			if outcome := registered.Hook.ResolveTie(ctx, factionState); outcome != hooks.TieStandard {
+				return outcome
+			}
+		}
 	}
-	return resolvers[0].Hook.ResolveTie(ctx, factionState)
+	return hooks.TieStandard
 }

@@ -8,44 +8,46 @@ import (
 )
 
 // checkArrivals decides, for each order the tick completes, whether it may land,
-// and returns the tick's mutations with each held completion replaced by the hold
-// (D-24, D-27). The government asked is the one ruling at arrival. It keeps a
-// running total of the Coin the tick's lockdowns spend, so two arrivals cannot
-// spend the same Coin. It runs between the tick and its reactors, so the transport
-// reactor moves the cargo to the edge with its carrier (D-28).
+// and returns the tick's mutations with each completion replaced by what the
+// arrival does (D-24, D-27). The government asked is the one ruling at arrival. It
+// keeps a running total of the Coin each faction spends this tick on lockdowns and
+// tolls, so two arrivals cannot spend the same Coin. It runs between the tick and
+// its reactors, so the transport reactor moves the cargo to the edge with its
+// carrier (D-28).
 func (e *Engine) checkArrivals(faction *domain.Faction, factionState *state.FactionState, tickMutations []domain.Mutation, collector hooks.PermissionCollector) ([]domain.Mutation, error) {
 	checked := make([]domain.Mutation, 0, len(tickMutations))
-	spent := 0
+	spent := map[string]int{}
 	for _, mutation := range tickMutations {
 		completed, ok := mutation.(domain.MovementOrderCompleted)
 		if !ok {
 			checked = append(checked, mutation)
 			continue
 		}
-		hold, cost, err := e.arrivalHold(faction, factionState, completed, collector, faction.Coin-spent)
+		arrival, costs, err := e.resolveArrival(faction, factionState, completed, collector, spent)
 		if err != nil {
 			return nil, err
 		}
-		spent += cost
-		if hold == nil {
-			checked = append(checked, mutation)
-			continue
+		for payerID, cost := range costs {
+			spent[payerID] += cost
 		}
-		checked = append(checked, hold...)
+		checked = append(checked, arrival...)
 	}
 	return checked, nil
 }
 
-// arrivalHold decides one arriving order. A Transport Lockdown on the destination
-// comes first (Effort 5 Decision 14). Then the government is asked for each asset
-// aboard, the carrier first, then its cargo in manifest order, each for its own
-// owner; the first refusal holds the whole order (D-28). coin is what the faction
-// can still spend this tick. It returns the mutations that replace the completion
-// and the Coin they spend, or nil when everything aboard may land.
-func (e *Engine) arrivalHold(faction *domain.Faction, factionState *state.FactionState, completed domain.MovementOrderCompleted, collector hooks.PermissionCollector, coin int) ([]domain.Mutation, int, error) {
+// resolveArrival decides one arriving order and returns the mutations that take
+// the completion's place, with the Coin each faction spends on them. A Transport
+// Lockdown on the destination comes first (Effort 5 Decision 14), then the tolls,
+// then the government, asked for each asset aboard, the carrier first, then its
+// cargo in manifest order, each for its own owner; the first refusal holds the
+// whole order (D-28). The tolls come before the government so a faction that
+// cannot pay is never asked (Effort 4 Decision 10). spent is the Coin each faction
+// has spent this tick. An order that lands keeps its completion and pays its
+// tolls after it.
+func (e *Engine) resolveArrival(faction *domain.Faction, factionState *state.FactionState, completed domain.MovementOrderCompleted, collector hooks.PermissionCollector, spent map[string]int) ([]domain.Mutation, map[string]int, error) {
 	carrier := faction.Assets[completed.AssetID]
 	if carrier == nil || carrier.CurrentOrder == nil {
-		return nil, 0, nil
+		return []domain.Mutation{completed}, nil, nil
 	}
 	order := carrier.CurrentOrder
 	var profile *domain.TransportProfile
@@ -55,29 +57,56 @@ func (e *Engine) arrivalHold(faction *domain.Faction, factionState *state.Factio
 	ignoresLockdown := profile != nil && profile.IgnoresLockdown
 	if !order.LockdownPaid && !ignoresLockdown {
 		if lockerID := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockerID != "" {
-			hold, cost := lockdownHold(completed, order, lockerID, e.Rand.Roll(4), coin)
-			return hold, cost, nil
+			hold, cost := lockdownHold(completed, order, lockerID, e.Rand.Roll(4), faction.Coin-spent[faction.ID])
+			return hold, map[string]int{faction.ID: cost}, nil
+		}
+	}
+	assets := aboard(factionState, carrier)
+	var tolls []domain.Mutation
+	owed := map[string]int{}
+	// deliberate: the carrier's lockdown bypass covers every toll aboard, cargo included, because Robert reads the toll as shipping pressure, as a lockdown is (Effort 4 Decision 9).
+	if !ignoresLockdown {
+		tolls, owed = e.tollCharges(factionState, assets, order.Destination.WorldID)
+	}
+	for payerID, amount := range owed {
+		if factionState.Factions[payerID].Coin-spent[payerID] < amount {
+			return []domain.Mutation{holdAtEdge(completed, order, domain.HoldTollUnpaid)}, nil, nil
 		}
 	}
 	// deliberate: the carrier's bypass covers its cargo, because the book lets these transports land "any one … asset" past the government's objection (D-25).
-	if profile != nil && profile.IgnoresPermission {
-		return nil, 0, nil
+	if profile == nil || !profile.IgnoresPermission {
+		for _, asset := range assets {
+			def := e.Rulebook.Assets[asset.DefinitionID]
+			requester := factionState.Factions[asset.OwnerID]
+			if def == nil || requester == nil {
+				continue
+			}
+			refusal, err := dispatch.RequestArrivalPermission(e.Hooks, collector, factionState, e.Rulebook, requester, asset, def, order.Destination.WorldID, domain.PermissionCauseArrival)
+			if err != nil {
+				return nil, nil, err
+			}
+			if refusal != nil {
+				return []domain.Mutation{*refusal, holdAtEdge(completed, order, domain.HoldRefused)}, nil, nil
+			}
+		}
 	}
-	for _, asset := range aboard(factionState, carrier) {
-		def := e.Rulebook.Assets[asset.DefinitionID]
-		requester := factionState.Factions[asset.OwnerID]
-		if def == nil || requester == nil {
+	return append([]domain.Mutation{completed}, tolls...), owed, nil
+}
+
+// tollCharges returns the tolls the assets aboard owe on landing at worldID, each
+// paid by the asset's current owner, and the Coin each owner owes in all.
+func (e *Engine) tollCharges(factionState *state.FactionState, assets []*domain.Asset, worldID string) ([]domain.Mutation, map[string]int) {
+	var charges []domain.Mutation
+	owed := map[string]int{}
+	for _, asset := range assets {
+		tolls := dispatch.AssetArrivalTolls(e.Hooks, factionState.Factions, asset, worldID)
+		if len(tolls) == 0 {
 			continue
 		}
-		refusal, err := dispatch.RequestArrivalPermission(e.Hooks, collector, factionState, requester, asset, def, order.Destination.WorldID, domain.PermissionCauseArrival)
-		if err != nil {
-			return nil, 0, err
-		}
-		if refusal != nil {
-			return []domain.Mutation{*refusal, holdAtEdge(completed, order, domain.HoldRefused)}, 0, nil
-		}
+		charges = append(charges, dispatch.TollCharges(asset.OwnerID, tolls)...)
+		owed[asset.OwnerID] += dispatch.TollTotal(tolls)
 	}
-	return nil, 0, nil
+	return charges, owed
 }
 
 // lockdownHold charges the order's 1d4 fee and holds it a turn at the edge; a

@@ -1,12 +1,16 @@
 package actions
 
 import (
+	"log/slog"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
@@ -28,7 +32,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 	t.Run("no assets", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction has no assets")
 		}
 	})
@@ -38,7 +42,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		// delta = 4-2 = 2; Coin=1 < 2 → no valid replacement
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 1, Assets: map[string]*domain.Asset{"a1": asset}}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when faction cannot afford the cost delta")
 		}
 	})
@@ -48,7 +52,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"},
 			Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when the only asset is sheltered")
 		}
 	})
@@ -57,7 +61,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{RegionHex: spatial.RegionHex{RegionID: "drift"}}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected false when the only asset has no world")
 		}
 	})
@@ -70,7 +74,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		qualityRulebook.Assets["stealth"] = &domain.AssetDefinition{ID: "stealth", Category: domain.StatForce, Cost: 2, Quality: true}
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
-		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, qualityRulebook) {
+		if NewRefitAsset(mocks.NewMockCollector(ctrl), nil, nil).Validate(faction, nil, qualityRulebook) {
 			t.Error("expected false when the only other definition is a quality")
 		}
 	})
@@ -79,7 +83,7 @@ func TestRefitAsset_Validate(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		asset := &domain.Asset{ID: "a1", DefinitionID: "old-def", Location: domain.Location{WorldID: "Tartarus"}}
 		faction := &domain.Faction{ID: "f1", Force: 3, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
-		if !NewRefitAsset(mocks.NewMockCollector(ctrl), nil).Validate(faction, nil, rulebook) {
+		if !NewRefitAsset(mocks.NewMockCollector(ctrl), nil, nil).Validate(faction, nil, rulebook) {
 			t.Error("expected true when faction can afford the refit")
 		}
 	})
@@ -98,7 +102,7 @@ func TestRefitAsset_Output(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectRefitOrder(gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewRefitAsset(collector, nil)
+	act := NewRefitAsset(collector, nil, nil)
 	if err := act.Inputs(faction, nil, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -146,7 +150,7 @@ func TestRefitAsset_PermissionRefused(t *testing.T) {
 	collector.EXPECT().SelectRefitOrder(gomock.Any(), gomock.Any()).Return(action.RefitOrder{OldAsset: oldAsset, NewDefinition: newDef}, nil)
 	collector.EXPECT().RequestPermission(gomock.Any()).Return(false, nil)
 
-	act := NewRefitAsset(collector, nil)
+	act := NewRefitAsset(collector, nil, nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -160,5 +164,53 @@ func TestRefitAsset_PermissionRefused(t *testing.T) {
 	want := []domain.Mutation{domain.PermissionRefused{FactionID: "f1", WorldID: "Tartarus", DefinitionID: "new-def", Cause: "refit", CausedByFactionID: "f1"}}
 	if !reflect.DeepEqual(mutations, want) {
 		t.Errorf("mutations = %+v, want only the refusal record", mutations)
+	}
+}
+
+func TestValidRefitReplacements_RequiresTag(t *testing.T) {
+	rulebook := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"guards": {ID: "guards", Category: domain.StatForce, MinRating: 1, Cost: 2},
+		"slaves": {ID: "slaves", Category: domain.StatForce, MinRating: 1, Cost: 2, RequiresTag: "T-003"},
+	}}
+	asset := &domain.Asset{ID: "a1", DefinitionID: "guards", Location: domain.Location{WorldID: "Tartarus"}}
+	without := &domain.Faction{ID: "f1", Force: 1, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+	if got := validRefitReplacements(without, asset, rulebook, nil, nil); len(got) != 0 {
+		t.Errorf("replacements without the tag = %v, want none", got)
+	}
+	with := &domain.Faction{ID: "f1", Force: 1, Coin: 5, Tags: []string{"T-003"}, Assets: map[string]*domain.Asset{"a1": asset}}
+	if got := validRefitReplacements(with, asset, rulebook, nil, nil); len(got) != 1 || got[0].ID != "slaves" {
+		t.Errorf("replacements with the tag = %v, want slaves", got)
+	}
+}
+
+func TestValidRefitReplacements_ChecksTheWorldsPurchaseRules(t *testing.T) {
+	worldHex := spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 0, R: 0}}
+	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
+	refitRulebook := &rulebook.Rulebook{
+		Assets: map[string]*domain.AssetDefinition{
+			"freighter": {ID: "freighter", Category: domain.StatWealth, Cost: 1, TechLevel: 1, Type: domain.TypeFacility},
+			"plant":     {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeFacility},
+			"lab":       {ID: "lab", Category: domain.StatWealth, Cost: 1, TechLevel: 6, Type: domain.TypeFacility},
+			"ship":      {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeStarship},
+		},
+		PurchasePopulation: map[domain.AssetType]int{domain.TypeStarship: 500000},
+	}
+	asset := &domain.Asset{ID: "a1", DefinitionID: "freighter", Location: domain.Location{WorldID: "a", RegionHex: worldHex}}
+	faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+	replacementIDs := func() []string {
+		var ids []string
+		for _, def := range validRefitReplacements(faction, asset, refitRulebook, worldEngine, hooks.NewRegistry()) {
+			ids = append(ids, def.ID)
+		}
+		slices.Sort(ids)
+		return ids
+	}
+
+	if got, want := replacementIDs(), []string{"plant"}; !slices.Equal(got, want) {
+		t.Errorf("replacements = %v, want %v (lab is above the world's TL5, ship below its Starship floor)", got, want)
+	}
+	faction.PopulationWaiver = true
+	if got, want := replacementIDs(), []string{"plant", "ship"}; !slices.Equal(got, want) {
+		t.Errorf("replacements with the waiver = %v, want %v", got, want)
 	}
 }

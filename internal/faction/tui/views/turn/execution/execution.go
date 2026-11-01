@@ -355,12 +355,16 @@ var askEntries = map[adapter.AskKind]askEntry{
 		p := msg.Payload.(adapter.SelectBaseAttackersPayload)
 		return overlay.NewSelectBaseAttackers(p.Rival, p.Eligible, m.rulebook)
 	}},
-	adapter.AskSelectAbilityAssets: {"Ability Assets", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		return overlay.NewSelectAbilityAssets(msg.Payload.(adapter.SelectAbilityAssetsPayload).Candidates, m.rulebook)
+	adapter.AskSelectAbilityHolders: {"Abilities", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewSelectAbilityHolders(msg.Payload.(adapter.SelectAbilityHoldersPayload).Candidates, m.rulebook)
 	}},
 	adapter.AskConfirmAbilityApplied: {"Apply Ability?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.ConfirmAbilityAppliedPayload)
 		return overlay.NewConfirmAbilityApplied(p.Asset, p.Def)
+	}},
+	adapter.AskSelectAbilityWorldTarget: {"Ability Target", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		p := msg.Payload.(adapter.SelectAbilityWorldTargetPayload)
+		return overlay.NewSelectAbilityWorldTarget(p.Holder, p.Effect, p.Worlds, p.WorldNames, m.rulebook)
 	}},
 	adapter.AskSelectFactionTestTarget: {"Ability Target", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectFactionTestTargetPayload)

@@ -3,6 +3,7 @@ package narrative
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -150,6 +151,11 @@ func renderGoalEvent(ge digest.GoalEvent, factionName string, rng *rand.Rand) st
 		tmpl := pick(rng, goalTagLostTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 		return strings.ReplaceAll(result, "{tag}", ge.TagName)
+	case digest.GoalTechLevelRaised:
+		tmpl := pick(rng, goalTechLevelTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		result = strings.ReplaceAll(result, "{world}", ge.ToWorld)
+		return strings.ReplaceAll(result, "{level}", strconv.Itoa(ge.TechLevel))
 	}
 	return ""
 }

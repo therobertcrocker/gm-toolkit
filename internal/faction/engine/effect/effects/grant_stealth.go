@@ -52,9 +52,9 @@ func fireGrantStealth(ctx effect.FireContext) []domain.Mutation {
 		return nil
 	}
 	return []domain.Mutation{domain.AssetStealthApplied{
-		FactionID:         ctx.Faction.ID,
+		FactionID:         ctx.Holder.Faction.ID,
 		AssetID:           ctx.Asset.ID,
 		Cause:             string(domain.SpecialGrantStealth),
-		CausedByFactionID: ctx.Faction.ID,
+		CausedByFactionID: ctx.Holder.Faction.ID,
 	}}
 }

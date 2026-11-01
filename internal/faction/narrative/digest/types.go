@@ -91,6 +91,7 @@ const (
 	GoalTagGained
 	GoalWorldGoverned
 	GoalTagLost
+	GoalTechLevelRaised
 )
 
 type GoalEvent struct {
@@ -101,6 +102,7 @@ type GoalEvent struct {
 	FromWorld string
 	ToWorld   string
 	TagName   string
+	TechLevel int
 }
 
 type StealthEvent struct {

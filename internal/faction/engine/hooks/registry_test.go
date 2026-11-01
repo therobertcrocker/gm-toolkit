@@ -309,7 +309,7 @@ func TestTieResolver_RegistrationOrderPreserved(t *testing.T) {
 	registry.RegisterTieResolver(hooks.FactionScope("f1"), "src-A", hookA)
 	registry.RegisterTieResolver(hooks.FactionScope("f1"), "src-B", hookB)
 
-	result := registry.TieResolversFor("f1", "")
+	result := registry.TieResolversAt(hooks.FactionScope("f1"))
 	if len(result) != 2 || result[0].Source != "src-A" || result[1].Source != "src-B" {
 		t.Errorf("registration order not preserved: %v", result)
 	}
@@ -319,25 +319,14 @@ func TestTieResolver_FactionScopeFilters(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterTieResolver(hooks.FactionScope("f1"), "src", &stubTieResolver{})
 
-	if got := registry.TieResolversFor("f2", ""); len(got) != 0 {
+	if got := registry.TieResolversAt(hooks.FactionScope("f2")); len(got) != 0 {
 		t.Errorf("faction A hook must not appear for faction B")
-	}
-}
-
-func TestTieResolver_GlobalScopeMatchesAnyFaction(t *testing.T) {
-	registry := hooks.NewRegistry()
-	registry.RegisterTieResolver(hooks.GlobalScope(), "global", &stubTieResolver{})
-
-	for _, factionID := range []string{"f1", "f2"} {
-		if got := registry.TieResolversFor(factionID, ""); len(got) != 1 {
-			t.Errorf("global hook missing for faction %q", factionID)
-		}
 	}
 }
 
 func TestTieResolver_EmptyRegistryReturnsEmptySlice(t *testing.T) {
 	registry := hooks.NewRegistry()
-	got := registry.TieResolversFor("f1", "")
+	got := registry.TieResolversAt(hooks.FactionScope("f1"))
 	if len(got) != 0 {
 		t.Errorf("expected empty slice, got %d entries", len(got))
 	}

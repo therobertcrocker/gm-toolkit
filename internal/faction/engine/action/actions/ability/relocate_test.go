@@ -16,14 +16,24 @@ import (
 
 // relocRouter places worlds on a Q-line; hex distance = |ΔQ|. The full relocate
 // suite lives in engine/relocate; this copy serves the wiring and dispatch tests.
-type relocRouter struct{ worlds map[string]spatial.RegionHex }
+type relocRouter struct {
+	worlds     map[string]spatial.RegionHex
+	techLevels map[string]int // a world with no entry is TL 5
+}
 
 func (r *relocRouter) Location(id string) (spatial.Location, bool) {
 	hex, ok := r.worlds[id]
 	if !ok {
 		return nil, false
 	}
-	return &relocLoc{id: id, hex: hex}, true
+	return &relocLoc{id: id, hex: hex, techLevel: r.techLevelOf(id)}, true
+}
+
+func (r *relocRouter) techLevelOf(id string) int {
+	if techLevel, ok := r.techLevels[id]; ok {
+		return techLevel
+	}
+	return 5
 }
 
 func (r *relocRouter) Distance(from, to spatial.RegionHex, _ int) (int, error) {
@@ -53,7 +63,7 @@ func (r *relocRouter) Path(from, to spatial.RegionHex, _ int) ([]spatial.RegionH
 func (r *relocRouter) AllWorlds() []spatial.Location {
 	worlds := make([]spatial.Location, 0, len(r.worlds))
 	for id, hex := range r.worlds {
-		worlds = append(worlds, &relocLoc{id: id, hex: hex})
+		worlds = append(worlds, &relocLoc{id: id, hex: hex, techLevel: r.techLevelOf(id)})
 	}
 	return worlds
 }
@@ -61,13 +71,14 @@ func (r *relocRouter) AllWorlds() []spatial.Location {
 var _ world.HexRouter = (*relocRouter)(nil)
 
 type relocLoc struct {
-	id  string
-	hex spatial.RegionHex
+	id        string
+	hex       spatial.RegionHex
+	techLevel int
 }
 
 func (l *relocLoc) ID() string                   { return l.id }
 func (l *relocLoc) Name() string                 { return l.id }
-func (l *relocLoc) TechLevel() int               { return 5 }
+func (l *relocLoc) TechLevel() int               { return l.techLevel }
 func (l *relocLoc) Population() int              { return 0 }
 func (l *relocLoc) Coords() (int, int)           { return l.hex.Coord.Q, l.hex.Coord.R }
 func (l *relocLoc) RegionID() string             { return l.hex.RegionID }

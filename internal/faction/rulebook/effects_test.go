@@ -66,6 +66,7 @@ once_per = "target_faction"
 no_stack = true
 [assets.Machine.effects.gates.contest]
 roller        = "target"
+roll          = "test"
 attacker_stat = "Cunning"
 defender_stat = "Wealth"
 [assets.Machine.effects.coin_steal]
@@ -121,7 +122,7 @@ scope = "self"
 				OncePer: domain.OncePerTargetFaction,
 				NoStack: true,
 				Contest: &domain.EffectContest{
-					Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth},
+					Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth, Roll: domain.ContestRollTest},
 					Roller:  domain.ContestRollerTarget,
 				},
 			},
@@ -168,6 +169,7 @@ scope = "self"
 		entry("own_attack_hit", "self_damage", `amount = "1d4"`)+
 		entry("own_roll", "bonus_die", "sides = 10\ncount = 1")+
 		entry("own_roll", "reroll", "dice = 1\nelective = true")+
+		entry("own_roll", "reroll", "result = 1")+
 		entry("tech_level_query", "tech_level_floor", "level = 4")+
 		entry("asset_cost_query", "cost_surcharge", "amount = 1")+
 		entry("attack_eligibility_query", "restrict_attack", `side = "defense"`+"\n"+`allow = "only_listed"`))
@@ -175,8 +177,8 @@ scope = "self"
 		t.Fatalf("loadAssets: %v", err)
 	}
 	effects := assets["T-001"].Effects
-	if len(effects) != 6 {
-		t.Fatalf("effects: got %d, want 6", len(effects))
+	if len(effects) != 7 {
+		t.Fatalf("effects: got %d, want 7", len(effects))
 	}
 	checks := []struct {
 		name string
@@ -186,9 +188,10 @@ scope = "self"
 		{"self_damage", effects[0].SelfDamage, &domain.SelfDamageParams{Amount: domain.DiceRoll{NumDice: 1, Sides: 4}}},
 		{"bonus_die", effects[1].BonusDie, &domain.BonusDieParams{Sides: 10, Count: 1}},
 		{"reroll", effects[2].Reroll, &domain.RerollParams{Dice: 1, Elective: true}},
-		{"tech_level_floor", effects[3].TechLevelFloor, &domain.TechLevelFloorParams{Level: 4}},
-		{"cost_surcharge", effects[4].CostSurcharge, &domain.CostSurchargeParams{Amount: 1}},
-		{"restrict_attack", effects[5].RestrictAttack, &domain.RestrictAttackParams{Side: domain.RestrictDefense, Allow: domain.AllowOnlyListed}},
+		{"reroll result", effects[3].Reroll, &domain.RerollParams{Result: 1}},
+		{"tech_level_floor", effects[4].TechLevelFloor, &domain.TechLevelFloorParams{Level: 4}},
+		{"cost_surcharge", effects[5].CostSurcharge, &domain.CostSurchargeParams{Amount: 1}},
+		{"restrict_attack", effects[6].RestrictAttack, &domain.RestrictAttackParams{Side: domain.RestrictDefense, Allow: domain.AllowOnlyListed}},
 	}
 	for _, check := range checks {
 		if !reflect.DeepEqual(check.got, check.want) {
@@ -423,6 +426,44 @@ defender_stat = "Cunning"
 			wantErr: `unknown contest roller: ""`,
 		},
 		{
+			name: "contest without a roll",
+			body: `
+[[assets.Machine.effects]]
+trigger = "stealth_arrival"
+effect  = "clear_stealth"` + filters + `
+[assets.Machine.effects.gates.contest]
+roller        = "self"
+attacker_stat = "Cunning"
+defender_stat = "Cunning"
+`,
+			wantErr: `a contest needs roll`,
+		},
+		{
+			name: "xp_roll with a flat die",
+			body: `
+[[assets.Machine.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"` + filters + `
+[assets.Machine.effects.xp_roll]
+die    = "4"
+target = 4
+amount = 1
+`,
+			wantErr: `xp_roll die: invalid dice notation: "4"`,
+		},
+		{
+			name: "xp_roll with no target",
+			body: `
+[[assets.Machine.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"` + filters + `
+[assets.Machine.effects.xp_roll]
+die    = "1d6"
+amount = 1
+`,
+			wantErr: "xp_roll target and amount must be > 0",
+		},
+		{
 			name: "grant_movement without a relocate block",
 			body: `
 [[assets.Machine.effects]]
@@ -453,7 +494,19 @@ effect  = "reroll"` + filters + `
 [assets.Machine.effects.reroll]
 dice = 0
 `,
-			wantErr: "reroll dice must be > 0, got 0",
+			wantErr: "reroll needs exactly one of dice or result > 0, got dice 0 and result 0",
+		},
+		{
+			name: "reroll with dice and result",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_roll"
+effect  = "reroll"` + filters + `
+[assets.Machine.effects.reroll]
+dice   = 1
+result = 1
+`,
+			wantErr: "reroll needs exactly one of dice or result > 0, got dice 1 and result 1",
 		},
 		{
 			name: "tech_level_floor with zero level",
@@ -586,5 +639,100 @@ scope = "world"
 `)
 	if err == nil || !strings.Contains(err.Error(), "grant_stealth needs quality = true") {
 		t.Fatalf("err = %v, want a grant_stealth quality error", err)
+	}
+}
+
+func TestConvertEffectFilters_OpponentAttribute(t *testing.T) {
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", OpponentAttribute: "Cunning"})
+	if err != nil || filters.OpponentAttribute != domain.StatCunning {
+		t.Errorf("filters = %+v, err = %v; want opponent attribute Cunning", filters, err)
+	}
+	if !reflect.DeepEqual(filters.Used(), []domain.EffectFilterName{domain.FilterOpponentAttribute}) {
+		t.Errorf("Used() = %v, want [opponent_attribute]", filters.Used())
+	}
+	_, err = convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", OpponentAttribute: "Charm"})
+	if err == nil || !strings.Contains(err.Error(), "filters.opponent_attribute") {
+		t.Errorf("err = %v, want a filters.opponent_attribute error", err)
+	}
+}
+
+func TestConvertEffectFilters_TechLevels(t *testing.T) {
+	zero, five := 0, 5
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", TechLevel: &zero, OpponentTechLevel: &five})
+	if err != nil || filters.TechLevel == nil || *filters.TechLevel != 0 || filters.OpponentTechLevel == nil || *filters.OpponentTechLevel != 5 {
+		t.Errorf("filters = %+v, err = %v; want tech level 0 and opponent tech level 5", filters, err)
+	}
+	if want := []domain.EffectFilterName{domain.FilterTechLevel, domain.FilterOpponentTechLevel}; !reflect.DeepEqual(filters.Used(), want) {
+		t.Errorf("Used() = %v, want %v: tech_level = 0 is a filter", filters.Used(), want)
+	}
+	negative := -1
+	for _, record := range []effectFiltersRecord{
+		{Owner: "own", Scope: "faction", TechLevel: &negative},
+		{Owner: "own", Scope: "faction", OpponentTechLevel: &negative},
+	} {
+		if _, err := convertEffectFilters(record); err == nil || !strings.Contains(err.Error(), "must be >= 0") {
+			t.Errorf("err = %v, want a negative tech level refused", err)
+		}
+	}
+}
+
+func TestConvertEffectFilters_Goal(t *testing.T) {
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", Goal: "G-004"})
+	if err != nil || filters.Goal != "G-004" {
+		t.Errorf("filters = %+v, err = %v; want goal G-004", filters, err)
+	}
+	if !reflect.DeepEqual(filters.Used(), []domain.EffectFilterName{domain.FilterGoal}) {
+		t.Errorf("Used() = %v, want [goal]", filters.Used())
+	}
+}
+
+func TestLoadEffects_SpeedFloor(t *testing.T) {
+	entry := func(speed string) string {
+		return effectTestAsset + `
+[[assets.Machine.effects]]
+trigger = "speed_query"
+effect  = "speed_floor"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "faction"
+[assets.Machine.effects.speed_floor]
+speed = ` + speed + "\n"
+	}
+	assets, err := loadAssetsFromTOML(t, entry("1"))
+	if err != nil {
+		t.Fatalf("loadAssets: %v", err)
+	}
+	if got := assets["T-001"].Effects[0].SpeedFloor; !reflect.DeepEqual(got, &domain.SpeedFloorParams{Speed: 1}) {
+		t.Errorf("SpeedFloor = %+v, want speed 1", got)
+	}
+	if _, err := loadAssetsFromTOML(t, entry("0")); err == nil || !strings.Contains(err.Error(), "speed_floor speed must be > 0") {
+		t.Errorf("err = %v, want speed 0 refused", err)
+	}
+}
+
+func TestLoadTags_PopulationFloorPercent(t *testing.T) {
+	entry := "[[tags.Alpha.effects]]\ntrigger = \"population_floor_query\"\neffect = \"population_floor\"\n" +
+		"[tags.Alpha.effects.filters]\nowner = \"own\"\nscope = \"faction\"\n"
+	cases := []struct {
+		name  string
+		block string
+		want  string
+	}{
+		{name: "no block", block: "", want: "population_floor"},
+		{name: "zero", block: "[tags.Alpha.effects.population_floor]\npercent = 0\n", want: "1 to 100"},
+		{name: "over 100", block: "[tags.Alpha.effects.population_floor]\npercent = 101\n", want: "1 to 100"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "tags.toml")
+			body := "[tags.Alpha]\nid = \"T-001\"\n" + entry + testCase.block
+			if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+			_, _, err := loadTags(path)
+			if err == nil || !strings.Contains(err.Error(), testCase.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
+			}
+		})
 	}
 }

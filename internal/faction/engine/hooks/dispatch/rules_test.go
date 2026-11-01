@@ -1,6 +1,7 @@
 package dispatch
 
 import (
+	"reflect"
 	"slices"
 	"testing"
 
@@ -76,15 +77,15 @@ func TestResolveAssetCost_RivalAssetOnWorld(t *testing.T) {
 	}
 }
 
-func TestResolveAssetCost_OwnAssetOnWorldSkipped(t *testing.T) {
+func TestResolveAssetCost_BuyersOwnAssetAskedOnce(t *testing.T) {
 	registry := hooks.NewRegistry()
-	buyer := &domain.Faction{ID: "buyer"}
-	def := &domain.AssetDefinition{ID: "cheap", Cost: 5}
 	ownAsset := &domain.Asset{ID: "own-a1", OwnerID: "buyer"}
-	registry.RegisterAssetCostModifier(hooks.AssetScope("buyer", "own-a1"), "surcharge", &stubAssetCostModifier{delta: -1})
+	buyer := &domain.Faction{ID: "buyer", Assets: map[string]*domain.Asset{ownAsset.ID: ownAsset}}
+	def := &domain.AssetDefinition{ID: "cheap", Cost: 5}
+	registry.RegisterAssetCostModifier(hooks.AssetScope("buyer", "own-a1"), "discount", &stubAssetCostModifier{delta: 1})
 	got := ResolveAssetCost(registry, buyer, def, "Tartarus", 5, []*domain.Asset{ownAsset}).Cost
-	if got != 5 {
-		t.Errorf("ResolveAssetCost = %d, want 5 (buyer's own asset is not asked)", got)
+	if got != 4 {
+		t.Errorf("ResolveAssetCost = %d, want 4 (the buyer's own asset asked once, not again as a world asset)", got)
 	}
 }
 
@@ -159,6 +160,33 @@ func TestResolveWorldTechLevel_PassesDefinition(t *testing.T) {
 	}
 }
 
+// stubAssetSpeedModifier raises speed to a fixed floor.
+type stubAssetSpeedModifier struct{ floor int }
+
+func (stub stubAssetSpeedModifier) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+	return max(speed, stub.floor)
+}
+
+func TestAssetSpeedResolver(t *testing.T) {
+	definition := &domain.AssetDefinition{ID: "facility"}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": {ID: "a1", OwnerID: "f1"}}}
+	if got := AssetSpeedResolver(nil, faction)(definition); got != 0 {
+		t.Errorf("nil registry: speed = %d, want the definition's 0", got)
+	}
+
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.AssetScope("f1", "a1"), "own asset", stubAssetSpeedModifier{floor: 1})
+	registry.RegisterAssetSpeedModifier(hooks.AssetScope("rival", "r1"), "rival", stubAssetSpeedModifier{floor: 9})
+	if got := AssetSpeedResolver(registry, faction)(definition); got != 1 {
+		t.Errorf("speed = %d, want 1: the own asset's floor is asked, the rival's never", got)
+	}
+
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("f1"), "faction", stubAssetSpeedModifier{floor: 2})
+	if got := AssetSpeedResolver(registry, faction)(definition); got != 2 {
+		t.Errorf("speed = %d, want 2 from the faction's floor", got)
+	}
+}
+
 func TestResolveMaintenanceCost_NoModifiers(t *testing.T) {
 	registry := hooks.NewRegistry()
 	owner := &domain.Faction{ID: "f1"}
@@ -197,6 +225,25 @@ func TestResolveTie_DefenderWins(t *testing.T) {
 	got := ResolveTie(registry, ctx, nil)
 	if got != hooks.TieDefenderWins {
 		t.Errorf("ResolveTie = %v, want TieDefenderWins", got)
+	}
+}
+
+func TestResolveTie_AssetResolverAnswers(t *testing.T) {
+	registry := hooks.NewRegistry()
+	attacker := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": {ID: "a1"}}}
+	registry.RegisterTieResolver(hooks.AssetScope("f1", "a1"), "asset", &stubTieResolver{outcome: hooks.TieAttackerWins})
+	if got := ResolveTie(registry, hooks.RollContext{Actor: attacker}, nil); got != hooks.TieAttackerWins {
+		t.Errorf("ResolveTie = %v, want TieAttackerWins from the attacker's asset", got)
+	}
+}
+
+func TestResolveTie_StandardDoesNotEndTheSearch(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterTieResolver(hooks.FactionScope("f1"), "silent", &stubTieResolver{outcome: hooks.TieStandard})
+	registry.RegisterTieResolver(hooks.FactionScope("f2"), "loses", &stubTieResolver{outcome: hooks.TieAttackerWins})
+	ctx := hooks.RollContext{Actor: &domain.Faction{ID: "f1"}, Opponent: &domain.Faction{ID: "f2"}}
+	if got := ResolveTie(registry, ctx, nil); got != hooks.TieAttackerWins {
+		t.Errorf("ResolveTie = %v, want the defender's TieAttackerWins past the attacker's TieStandard", got)
 	}
 }
 
@@ -387,4 +434,125 @@ func TestResolveRepairCost(t *testing.T) {
 			t.Errorf("cost = %d, want 0", got)
 		}
 	})
+}
+
+// stubPopulationFloor answers percent of the setting's floor, never raising it.
+type stubPopulationFloor struct{ percent int }
+
+func (stub *stubPopulationFloor) ModifyPopulationFloor(_ *domain.Faction, _ *domain.AssetDefinition, baseFloor, floor int) int {
+	return min(floor, baseFloor*stub.percent/100)
+}
+
+func TestResolvePopulationFloor(t *testing.T) {
+	floors := map[domain.AssetType]int{domain.TypeStarship: 500000}
+	starship := &domain.AssetDefinition{ID: "ship", Type: domain.TypeStarship}
+	facility := &domain.AssetDefinition{ID: "plant", Type: domain.TypeFacility}
+	asset := &domain.Asset{ID: "a1", OwnerID: "f1"}
+
+	plain := &domain.Faction{ID: "f1"}
+	if got := ResolvePopulationFloor(hooks.NewRegistry(), plain, starship, floors); got != 500000 {
+		t.Errorf("setting floor = %d, want 500000", got)
+	}
+	if got := ResolvePopulationFloor(hooks.NewRegistry(), plain, facility, floors); got != 0 {
+		t.Errorf("type with no floor = %d, want 0", got)
+	}
+	waived := &domain.Faction{ID: "f1", PopulationWaiver: true}
+	if got := ResolvePopulationFloor(hooks.NewRegistry(), waived, starship, floors); got != 0 {
+		t.Errorf("waived = %d, want 0", got)
+	}
+
+	registry := hooks.NewRegistry()
+	registry.RegisterPopulationFloorModifier(hooks.FactionScope("f1"), "colonists", &stubPopulationFloor{percent: 20})
+	registry.RegisterPopulationFloorModifier(hooks.AssetScope("f1", "a1"), "expertise", &stubPopulationFloor{percent: 2})
+	registry.RegisterPopulationFloorModifier(hooks.AssetScope("rival", "r1"), "rival", &stubPopulationFloor{percent: 1})
+	owner := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
+	if got := ResolvePopulationFloor(registry, owner, starship, floors); got != 10000 {
+		t.Errorf("two floors = %d, want 10000 (the lowest wins; a rival's is never asked)", got)
+	}
+}
+
+// stubToll charges a fixed amount on one world.
+type stubToll struct {
+	world  string
+	amount int
+}
+
+func (stub *stubToll) ArrivalToll(_ *domain.Faction, world string) int {
+	if world != stub.world {
+		return 0
+	}
+	return stub.amount
+}
+
+func TestArrivalTolls_EveryRivalChargesInIDOrder(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterArrivalTollRule(hooks.FactionScope("zulu"), "pirates", &stubToll{world: "Krylos", amount: 1})
+	registry.RegisterArrivalTollRule(hooks.AssetScope("bravo", "b1"), "toll-asset", &stubToll{world: "Krylos", amount: 2})
+	registry.RegisterArrivalTollRule(hooks.FactionScope("alpha"), "own", &stubToll{world: "Krylos", amount: 5})
+	registry.RegisterArrivalTollRule(hooks.FactionScope("bravo"), "elsewhere", &stubToll{world: "Hadrian", amount: 3})
+	alpha := &domain.Faction{ID: "alpha"}
+	factions := map[string]*domain.Faction{
+		"alpha": alpha,
+		"bravo": {ID: "bravo", Assets: map[string]*domain.Asset{"b1": {ID: "b1", OwnerID: "bravo"}}},
+		"zulu":  {ID: "zulu"},
+	}
+
+	got := ArrivalTolls(registry, factions, alpha, "Krylos")
+
+	want := []hooks.ArrivalToll{{FactionID: "bravo", Amount: 2}, {FactionID: "zulu", Amount: 1}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("tolls = %+v, want %+v (the mover's own rule never charges it)", got, want)
+	}
+}
+
+func TestAssetArrivalTolls(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterArrivalTollRule(hooks.FactionScope("bravo"), "pirates", &stubToll{world: "Krylos", amount: 1})
+	factions := map[string]*domain.Faction{"alpha": {ID: "alpha"}, "bravo": {ID: "bravo"}}
+
+	cases := []struct {
+		name  string
+		asset *domain.Asset
+		want  []hooks.ArrivalToll
+	}{
+		{"landing asset owes its owner's tolls", &domain.Asset{ID: "a1", OwnerID: "alpha", Location: domain.Location{WorldID: "Hadrian"}}, []hooks.ArrivalToll{{FactionID: "bravo", Amount: 1}}},
+		{"stealthed asset owes none", &domain.Asset{ID: "a1", OwnerID: "alpha", Stealthy: true, Location: domain.Location{WorldID: "Hadrian"}}, nil},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := AssetArrivalTolls(registry, factions, testCase.asset, "Krylos"); !reflect.DeepEqual(got, testCase.want) {
+				t.Errorf("tolls = %+v, want %+v", got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestTollCharges_PairsALossAndAGainCausedByTheHolder(t *testing.T) {
+	got := TollCharges("alpha", []hooks.ArrivalToll{{FactionID: "bravo", Amount: 1}})
+	want := []domain.Mutation{
+		domain.CoinDelta{FactionID: "alpha", Delta: -1, Cause: "arrival_toll", CausedByFactionID: "bravo"},
+		domain.CoinDelta{FactionID: "bravo", Delta: 1, Cause: "arrival_toll", CausedByFactionID: "bravo"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("charges = %+v, want %+v", got, want)
+	}
+}
+
+func TestResolveWorldTechLevel_StartsFromTheFactionsRecord(t *testing.T) {
+	faction := &domain.Faction{ID: "f1", WorldTechLevels: map[string]int{"Backwater": 4}}
+	def := &domain.AssetDefinition{ID: "d"}
+	if got := ResolveWorldTechLevel(nil, faction, def, "Backwater", 2); got != 4 {
+		t.Errorf("recorded world, no registry = %d, want 4", got)
+	}
+	if got := ResolveWorldTechLevel(nil, faction, def, "Tartarus", 2); got != 2 {
+		t.Errorf("unrecorded world = %d, want 2", got)
+	}
+	if got := ResolveWorldTechLevel(nil, faction, def, "Backwater", 5); got != 5 {
+		t.Errorf("a world already above the record = %d, want 5", got)
+	}
+	registry := hooks.NewRegistry()
+	registry.RegisterWorldTechLevelModifier(hooks.FactionScope("f1"), "floor", &stubWorldTechLevelModifier{delta: 1})
+	if got := ResolveWorldTechLevel(registry, faction, def, "Backwater", 2); got != 5 {
+		t.Errorf("record then a hook = %d, want 5 (the hooks run on the record)", got)
+	}
 }

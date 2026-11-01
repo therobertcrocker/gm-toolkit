@@ -23,11 +23,11 @@ var costSurchargeRegistrar = effect.Registrar{
 
 func registerCostSurcharge(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterAssetCostModifier(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialCostSurcharge)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialCostSurcharge),
 		&costSurchargeModifier{
-			owner:   ctx.Faction,
-			assetID: ctx.Asset.ID,
+			owner:   ctx.Holder.Faction,
+			holder:  refOf(ctx.Holder),
 			noStack: ctx.Entry.Gates.NoStack,
 			amount:  ctx.Entry.CostSurcharge.Amount,
 		},
@@ -39,14 +39,14 @@ func registerCostSurcharge(ctx effect.RegisterContext) {
 // mid-cycle reads as nil from owner.Assets where a held asset pointer would not.
 type costSurchargeModifier struct {
 	owner   *domain.Faction
-	assetID string
+	holder  holderRef
 	noStack bool
 	amount  int
 }
 
 func (modifier *costSurchargeModifier) ModifyAssetCost(buyer *domain.Faction, _ *domain.AssetDefinition, world string, query *hooks.AssetCostQuery) {
-	asset := modifier.owner.Assets[modifier.assetID]
-	if !active(asset) || buyer.ID == modifier.owner.ID || asset.Location.WorldID != world {
+	asset, live := modifier.holder.liveIn(modifier.owner)
+	if !live || buyer.ID == modifier.owner.ID || asset.Location.WorldID != world {
 		return
 	}
 

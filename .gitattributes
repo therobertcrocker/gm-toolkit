@@ -1,0 +1,4 @@
+# Files are edited and run inside a Linux dev container. Keep LF line endings
+# everywhere, even when Windows git (core.autocrlf) checks them out: a CRLF
+# shell script fails in the container with "$'\r': command not found".
+* text=auto eol=lf

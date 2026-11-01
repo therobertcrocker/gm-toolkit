@@ -1,6 +1,10 @@
 package hooks
 
-import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+import (
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+)
 
 // MovementAbility is a free relocation a granter offers its faction this turn.
 // Source is the granting asset; range is measured from it.
@@ -45,9 +49,36 @@ type MaintenanceCostModifier interface {
 }
 
 // WorldTechLevelModifier adjusts the effective tech level of a world for a
-// specific faction, used by TL-gated asset purchase logic (Cat 4).
+// specific faction, used by TL-gated asset purchase logic (Cat 4). A nil def means
+// every purchase (Teach Planetary Population's world filter).
 type WorldTechLevelModifier interface {
 	ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int
+}
+
+// AssetSpeedModifier adjusts the speed, in hexes a turn, of an asset faction
+// owns, read by the movement phase (Cat 4).
+type AssetSpeedModifier interface {
+	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int) int
+}
+
+// ArrivalToll is the Coin a landing asset owes FactionID, the faction that
+// charges it.
+type ArrivalToll struct {
+	FactionID string
+	Amount    int
+}
+
+// ArrivalTollRule charges mover for one of its assets landing on world (Cat 4).
+// It returns 0 when it charges nothing.
+type ArrivalTollRule interface {
+	ArrivalToll(mover *domain.Faction, world string) int
+}
+
+// PopulationFloorModifier lowers the world population faction needs to buy def
+// (Cat 4). baseFloor is the setting's floor for def's type; floor is the chain's
+// answer so far.
+type PopulationFloorModifier interface {
+	ModifyPopulationFloor(faction *domain.Faction, def *domain.AssetDefinition, baseFloor, floor int) int
 }
 
 // AttackSide names which part of a fight an eligibility hook answers for.
@@ -119,8 +150,9 @@ type PermissionContest struct {
 // PermissionContester contests a permission granted to a rival (Cat 4).
 // OfferContest returns nil when the grant is not its to contest. It never
 // prompts: the dispatcher asks the owner, and on a yes calls WinsContest, which
-// rolls the hook's own test against the requester.
+// rolls the hook's own test against the requester. WinsContest gets the state and
+// rulebook because the test rolls through the roll hooks (Effort 3 Decision 3).
 type PermissionContester interface {
 	OfferContest(query PermissionQuery) *PermissionContest
-	WinsContest(query PermissionQuery) bool
+	WinsContest(query PermissionQuery, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool
 }

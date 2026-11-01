@@ -130,6 +130,8 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("asset %s -%s", mut.AssetID, mut.Condition.Kind), true
 	case domain.AssetOwnerChanged:
 		return fmt.Sprintf("asset %s captured by %s", mut.AssetID, mut.ToFactionID), true
+	case domain.WorldTechLevelRaised:
+		return fmt.Sprintf("%s counts as TL %d for purchases", mut.WorldID, mut.TechLevel), true
 	case domain.WorldGovernmentChanged:
 		if mut.ToFactionID == "" {
 			return fmt.Sprintf("%s → independent", mut.WorldID), true
@@ -153,6 +155,13 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("%s %d→%d", mut.Stat, mut.OldRating, mut.NewRating), true
 	case domain.GoalCompleted:
 		return fmt.Sprintf("goal completed (+%d XP)", mut.XPAwarded), true
+	case domain.XPAwarded:
+		// deliberate: surface an xp_roll bonus, fold the rest — the goal-completed
+		// line already reports a goal's own XP, a bonus roll has no other line.
+		if mut.Cause != string(domain.SpecialXPRoll) {
+			return "", false
+		}
+		return fmt.Sprintf("bonus XP %+d", mut.Amount), true
 	case domain.GoalAbandoned:
 		return "goal abandoned", true
 	case domain.HomeworldChanged:
@@ -178,7 +187,7 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		// Folded as bookkeeping noise or redundant with a surfaced line:
 		// GoalTurnsTick, GoalProgressed, GoalInitiated, GoalPhaseAdvanced,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
-		// XPSpent, XPAwarded, MovementOrderProgressed, InfluenceDelta, TagAdded,
+		// XPSpent, MovementOrderProgressed, InfluenceDelta, TagAdded,
 		// TagRemoved.
 		return "", false
 	}

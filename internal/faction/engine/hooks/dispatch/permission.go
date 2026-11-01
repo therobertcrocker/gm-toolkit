@@ -7,6 +7,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -22,8 +23,8 @@ func PermissionWithdrawnKey(worldID, withdrawerID string) string {
 // there, and returns the refusal record, or nil when the purchase may go ahead. A
 // definition that needs no permission is not asked about, nor is a purchase on the
 // requester's homeworld (Effort 4 Decision 15). cause names the purchase path on
-// the record.
-func RequestPermission(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, requester *domain.Faction, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
+// the record. rulebook reaches the roll hooks of a Lobbyists contest.
+func RequestPermission(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, rulebook *rulebook.Rulebook, requester *domain.Faction, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
 	if !def.NeedsPurchasePermission() {
 		return nil, nil
 	}
@@ -31,18 +32,18 @@ func RequestPermission(registry *hooks.Registry, collector hooks.PermissionColle
 	if worldID == requester.Homeworld.WorldID {
 		return nil, nil
 	}
-	return askGovernment(registry, collector, factionState, requester, def, worldID, cause)
+	return askGovernment(registry, collector, factionState, rulebook, requester, def, worldID, cause)
 }
 
 // RequestArrivalPermission asks worldID's government whether requester may land
 // asset there, at the end of a drift order or by a relocate (cause), and returns
 // the refusal record, or nil when the asset may land. An asset that needs no
 // permission is not asked about (AssetDefinition.NeedsArrivalPermission).
-func RequestArrivalPermission(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, requester *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
+func RequestArrivalPermission(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, rulebook *rulebook.Rulebook, requester *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
 	if !def.NeedsArrivalPermission(asset) {
 		return nil, nil
 	}
-	return askGovernment(registry, collector, factionState, requester, def, worldID, cause)
+	return askGovernment(registry, collector, factionState, rulebook, requester, def, worldID, cause)
 }
 
 // askGovernment refuses a request a withdrawal has barred this turn. It grants a
@@ -50,7 +51,7 @@ func RequestArrivalPermission(registry *hooks.Registry, collector hooks.Permissi
 // (Popular Movement); otherwise it asks the ruler's driver, or the GM for an
 // independent world (D-4). Every grant is then open to the rival Lobbyists on the
 // world (D-29), except the ruler's when the ruler said yes.
-func askGovernment(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, requester *domain.Faction, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
+func askGovernment(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, rulebook *rulebook.Rulebook, requester *domain.Faction, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
 	if withdrawerID := withdrawnBy(factionState, requester, worldID); withdrawerID != "" {
 		return refusal(requester, def, worldID, cause, withdrawerID, domain.RefusalBarred), nil
 	}
@@ -75,7 +76,7 @@ func askGovernment(registry *hooks.Registry, collector hooks.PermissionCollector
 		}
 		grantedBy = rulerID
 	}
-	return contestGrant(registry, collector, factionState, requester, grantedBy, def, worldID, cause)
+	return contestGrant(registry, collector, factionState, rulebook, requester, grantedBy, def, worldID, cause)
 }
 
 // withdrawnBy returns the faction whose Lobbyists withdrew requester's permission
@@ -99,7 +100,7 @@ func withdrawnBy(factionState *state.FactionState, requester *domain.Faction, wo
 // offer asks its owner whether to contest; on a yes the hook rolls, and the first
 // win withdraws the grant and bars the requester from that world until its next
 // turn. It returns the withdrawal, or nil when the grant stands.
-func contestGrant(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, requester *domain.Faction, grantedBy string, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
+func contestGrant(registry *hooks.Registry, collector hooks.PermissionCollector, factionState *state.FactionState, rulebook *rulebook.Rulebook, requester *domain.Faction, grantedBy string, def *domain.AssetDefinition, worldID, cause string) (*domain.PermissionRefused, error) {
 	if registry == nil || factionState == nil {
 		return nil, nil
 	}
@@ -121,7 +122,7 @@ func contestGrant(registry *hooks.Registry, collector hooks.PermissionCollector,
 				if err != nil {
 					return nil, fmt.Errorf("permission contest: %w", err)
 				}
-				if !contest || !registered.Hook.WinsContest(query) {
+				if !contest || !registered.Hook.WinsContest(query, factionState, rulebook) {
 					continue
 				}
 				// deliberate: mark the requester the state holds, not the real faction, because in Use Asset Ability that is the action's view, and nothing after the action phase asks.

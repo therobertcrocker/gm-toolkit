@@ -25,6 +25,20 @@ func (r *seqRoller) Roll(_ int) int {
 	return v
 }
 
+// dispatchRulebook returns base with def added, so Dispatch finds the acting
+// asset's definition. base is copied, not changed.
+func dispatchRulebook(base *rulebook.Rulebook, def *domain.AssetDefinition) *rulebook.Rulebook {
+	assets := map[string]*domain.AssetDefinition{def.ID: def}
+	if base != nil {
+		for id, existing := range base.Assets {
+			if id != def.ID {
+				assets[id] = existing
+			}
+		}
+	}
+	return &rulebook.Rulebook{Assets: assets}
+}
+
 func makeDispatchFixture() (*domain.Faction, *domain.Asset, *domain.AssetDefinition, *state.FactionState) {
 	stealthyTarget := &domain.Asset{
 		ID:           "t1",
@@ -100,7 +114,7 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), nil, nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -127,7 +141,7 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), nil, nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -175,7 +189,7 @@ func TestDispatch_ContestRollsThroughHooks(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), factionTestDieKey, factionTestDie{})
 
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 9, 8}}, registry, factionState, NewView(factionState), nil, nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 9, 8}}, registry, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -228,7 +242,7 @@ func TestDispatch_DefenseBudgetSpentOnRealDefender(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), defenseDieKey, defenseDie{})
 
-	if _, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3, 9}}, registry, factionState, view, nil, nil); err != nil {
+	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3, 9}}, registry, factionState, view, dispatchRulebook(nil, def), nil); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	if spent := factionState.Factions["f2"].HookBudgets[defenseDieKey]; spent != 1 {
@@ -247,7 +261,7 @@ func TestDispatch_RemovedActingAssetFizzles(t *testing.T) {
 	delete(view.Factions["f1"].Assets, asset.ID)
 
 	collector := mocks.NewMockCollector(gomock.NewController(t))
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, view, nil, nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, view, dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -314,7 +328,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), relocRulebook(), engine)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -346,7 +360,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins, reveal halts
-	mutations, err := Dispatch(faction, asset, def, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), relocRulebook(), engine)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -390,7 +404,7 @@ func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil).
 		Times(1)
 
-	_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{0}}, nil, factionState, NewView(factionState), relocRulebook(), relocEngine())
+	_, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{0}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), relocEngine())
 	if err == nil {
 		t.Fatal("Dispatch: expected insufficient-Coin error on step 2, got nil")
 	}
@@ -426,7 +440,7 @@ func TestDispatch_NoTargetsLeft_Fizzles(t *testing.T) {
 	}
 	collector := mocks.NewMockCollector(gomock.NewController(t))
 
-	mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), nil, nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -459,11 +473,47 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().ConfirmAbilityApplied(asset, def).Return(false, nil)
 
-	mutations, err := Dispatch(faction, asset, def, collector, nil, nil, factionState, NewView(factionState), nil, nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, nil, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for stub handler, got %v", mutations)
+	}
+}
+
+// contextLog records every RollContext a roll shows its hooks, and offers nothing.
+type contextLog struct{ contexts []hooks.RollContext }
+
+func (log *contextLog) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
+	log.contexts = append(log.contexts, ctx)
+	return nil
+}
+
+// TestDispatch_ContestRollsNameTheOpposingStat: each contest roll carries the stat
+// the other side rolls.
+func TestDispatch_ContestRollsNameTheOpposingStat(t *testing.T) {
+	faction, asset, def, factionState := makeDispatchFixture()
+	targetFaction := factionState.Factions["f2"]
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
+
+	recorder := &contextLog{}
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
+
+	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 8}}, registry, factionState, NewView(factionState), dispatchRulebook(nil, def), nil); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(recorder.contexts) != 2 {
+		t.Fatalf("recorded %d roll contexts, want 2: %+v", len(recorder.contexts), recorder.contexts)
+	}
+	attack, defense := recorder.contexts[0], recorder.contexts[1]
+	if attack.OpponentAttribute == "" || attack.OpponentAttribute != defense.Attribute || defense.OpponentAttribute != attack.Attribute {
+		t.Errorf("contest stats: attack %q vs %q, defense %q vs %q; want each roll to name the other's stat",
+			attack.Attribute, attack.OpponentAttribute, defense.Attribute, defense.OpponentAttribute)
 	}
 }

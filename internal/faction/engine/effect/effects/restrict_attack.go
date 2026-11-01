@@ -28,7 +28,7 @@ var restrictAttackRegistrar = effect.Registrar{
 // validateRestrictAttack refuses attribute with attack_and_counter: the attribute is
 // read from the striker's attack profile, and on that side the striker is the
 // declaring asset, so the filter would test the asset's own fixed profile.
-func validateRestrictAttack(entry domain.EffectDefinition) error {
+func validateRestrictAttack(entry domain.EffectDefinition, _ effect.HolderKind) error {
 	if entry.RestrictAttack != nil && entry.RestrictAttack.Side == domain.RestrictAttackAndCounter && entry.Filters.Attribute != "" {
 		return fmt.Errorf("filter %q is not allowed with side %q", domain.FilterAttribute, domain.RestrictAttackAndCounter)
 	}
@@ -37,11 +37,11 @@ func validateRestrictAttack(entry domain.EffectDefinition) error {
 
 func registerRestrictAttack(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterAttackEligibilityRule(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialRestrictAttack)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialRestrictAttack),
 		&restrictAttackRule{
-			owner:      ctx.Faction,
-			assetID:    ctx.Asset.ID,
+			owner:      ctx.Holder.Faction,
+			holder:     refOf(ctx.Holder),
 			side:       ctx.Entry.RestrictAttack.Side,
 			allow:      ctx.Entry.RestrictAttack.Allow,
 			assetTypes: ctx.Entry.Filters.AssetTypes,
@@ -55,7 +55,7 @@ func registerRestrictAttack(ctx effect.RegisterContext) {
 // FactionState (Decision Record 19).
 type restrictAttackRule struct {
 	owner      *domain.Faction
-	assetID    string
+	holder     holderRef
 	side       domain.RestrictSide
 	allow      domain.RestrictAllow
 	assetTypes []domain.AssetType
@@ -64,7 +64,7 @@ type restrictAttackRule struct {
 }
 
 func (rule *restrictAttackRule) MayFight(query hooks.AttackEligibilityQuery) bool {
-	if !active(rule.owner.Assets[rule.assetID]) {
+	if _, live := rule.holder.liveIn(rule.owner); !live {
 		return true
 	}
 	opponentDef, answers := rule.opponentDef(query)
@@ -87,7 +87,7 @@ func (rule *restrictAttackRule) opponentDef(query hooks.AttackEligibilityQuery) 
 	default:
 		return nil, false
 	}
-	if self.OwnerID != rule.owner.ID || self.ID != rule.assetID || opponent.OwnerID == rule.owner.ID {
+	if self.OwnerID != rule.owner.ID || self.ID != rule.holder.assetID || opponent.OwnerID == rule.owner.ID {
 		return nil, false
 	}
 	return opponentDef, true

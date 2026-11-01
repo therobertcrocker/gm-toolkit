@@ -5,7 +5,6 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -24,32 +23,30 @@ var captureTargetRegistrar = effect.Registrar{
 
 func registerCaptureTarget(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterMutationReactor(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialCaptureTarget)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialCaptureTarget),
 		&captureTargetReactor{
-			factionID: ctx.Faction.ID,
-			assetID:   ctx.Asset.ID,
-			coin:      ctx.Entry.CaptureTarget.Coin,
-			roller:    ctx.Roller,
+			holder: refOf(ctx.Holder),
+			coin:   ctx.Entry.CaptureTarget.Coin,
+			roller: ctx.Roller,
 		},
 	)
 }
 
 type captureTargetReactor struct {
-	factionID string
-	assetID   string
-	coin      domain.DiceRoll
-	roller    domain.Roller
+	holder holderRef
+	coin   domain.DiceRoll
+	roller domain.Roller
 }
 
 func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
-	self := liveAsset(factionState, reactor.factionID, reactor.assetID)
-	if !active(self) {
+	self, live := reactor.holder.live(factionState)
+	if !live {
 		return nil
 	}
 	allHits := hits(mutations, false)
 	for index, found := range allHits {
-		if found.strikerID != reactor.assetID || found.targetAssetID == "" {
+		if found.strikerID != reactor.holder.assetID || found.targetAssetID == "" {
 			continue
 		}
 		target := liveAsset(factionState, found.targetFactionID, found.targetAssetID)
@@ -57,7 +54,7 @@ func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, fa
 			return nil
 		}
 		// deliberate: fizzle, not spend, when an earlier capture took the target, because sibling reactors see only the original batch and a second owner change would miss (Effort 1 Decision Record 11).
-		if capturedEarlier(allHits, index, reactor.factionID, factionState, rulebook) {
+		if capturedEarlier(allHits, index, reactor.holder.factionID, factionState, rulebook) {
 			return nil
 		}
 		// deliberate: fizzle when the batch removes the target, not capture, because the owner change applies after the removal and would miss. A removal from a sibling reactor this round (Zealots) is not visible here and still misses.
@@ -73,11 +70,11 @@ func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, fa
 		var extra []domain.Mutation
 		// deliberate: skip the self-removal when the batch already removes this asset, not emit it twice, because on a tie the defender's counter can kill Treachery in the matchup it captures in (Decision 15).
 		if _, removed := batchHP(mutations, self); !removed {
-			extra = append(extra, domain.AssetRemoved{FactionID: reactor.factionID, AssetID: reactor.assetID, Cause: cause, CausedByFactionID: reactor.factionID})
+			extra = append(extra, domain.AssetRemoved{FactionID: reactor.holder.factionID, AssetID: reactor.holder.assetID, Cause: cause, CausedByFactionID: reactor.holder.factionID})
 		}
 		return append(extra,
-			domain.CoinDelta{FactionID: reactor.factionID, Delta: reactor.coin.Roll(reactor.roller), Cause: cause, CausedByFactionID: reactor.factionID},
-			domain.AssetOwnerChanged{FactionID: found.targetFactionID, AssetID: target.ID, ToFactionID: reactor.factionID, Cause: cause, CausedByFactionID: reactor.factionID},
+			domain.CoinDelta{FactionID: reactor.holder.factionID, Delta: reactor.coin.Roll(reactor.roller), Cause: cause, CausedByFactionID: reactor.holder.factionID},
+			domain.AssetOwnerChanged{FactionID: found.targetFactionID, AssetID: target.ID, ToFactionID: reactor.holder.factionID, Cause: cause, CausedByFactionID: reactor.holder.factionID},
 		)
 	}
 	return nil

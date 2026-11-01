@@ -45,7 +45,7 @@ func bankReactors(t *testing.T, factionState *state.FactionState, oncePer domain
 			continue
 		}
 		effects.Registrars()[domain.SpecialIgnoreCoinLoss].Register(effect.RegisterContext{
-			Faction: alpha, Asset: asset, Def: def, Entry: entry, Registry: registry,
+			Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Entry: entry, Registry: registry,
 		})
 		for _, registered := range registry.MutationReactorsForAsset("alpha", asset.ID) {
 			reactors = append(reactors, registered.Hook)

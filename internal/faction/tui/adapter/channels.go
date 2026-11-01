@@ -33,7 +33,7 @@ const (
 	AskSelectExpandInfluenceOrder
 	AskConfirmRivalFreeAttack
 	AskSelectBaseAttackers
-	AskSelectAbilityAssets
+	AskSelectAbilityHolders
 	AskConfirmAbilityApplied
 	AskSelectFactionTestTarget
 	AskSelectRelocateOrders
@@ -45,6 +45,7 @@ const (
 	AskConfirmSacrifice
 	AskRequestPermission
 	AskConfirmPermissionContest
+	AskSelectAbilityWorldTarget
 	// AskKindCount counts the kinds above; keep it last.
 	AskKindCount
 )
@@ -211,10 +212,16 @@ type SelectBaseAttackersPayload struct {
 	Rival    *domain.Faction
 	Eligible []*domain.Asset
 }
-type SelectAbilityAssetsPayload struct{ Candidates []*domain.Asset }
+type SelectAbilityHoldersPayload struct{ Candidates []domain.AbilityHolder }
 type ConfirmAbilityAppliedPayload struct {
 	Asset *domain.Asset
 	Def   *domain.AssetDefinition
+}
+type SelectAbilityWorldTargetPayload struct {
+	Holder     domain.AbilityHolder
+	Effect     domain.AbilityEffectType
+	Worlds     []string
+	WorldNames map[string]string // worldID -> display name (adapter-built)
 }
 type SelectFactionTestTargetPayload struct {
 	Asset      *domain.Asset

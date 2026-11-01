@@ -22,27 +22,26 @@ var removeTagDiceRegistrar = effect.Registrar{
 
 func registerRemoveTagDice(ctx effect.RegisterContext) {
 	ctx.Registry.RegisterRollOfferFilter(
-		hooks.AssetScope(ctx.Faction.ID, ctx.Asset.ID),
-		string(domain.SpecialRemoveTagDice)+":"+ctx.Def.ID,
+		ctx.Holder.Scope(),
+		ctx.Holder.HookID(domain.SpecialRemoveTagDice),
 		&tagDiceFilter{
-			ownerFactionID: ctx.Faction.ID,
-			assetID:        ctx.Asset.ID,
-			trigger:        ctx.Entry.Trigger,
-			filters:        ctx.Entry.Filters,
+			holder:  refOf(ctx.Holder),
+			trigger: ctx.Entry.Trigger,
+			filters: ctx.Entry.Filters,
 		},
 	)
 }
 
 type tagDiceFilter struct {
-	ownerFactionID string
-	assetID        string
-	trigger        domain.EffectTrigger
-	filters        domain.EffectFilters
+	holder  holderRef
+	trigger domain.EffectTrigger
+	filters domain.EffectFilters
 }
 
 func (filter *tagDiceFilter) FilterOffers(ctx hooks.RollContext, offers []hooks.ModifierOffer, factionState *state.FactionState) []hooks.ModifierOffer {
-	asset := liveAsset(factionState, filter.ownerFactionID, filter.assetID)
-	if !active(asset) || !rollMatches(ctx, filter.trigger, filter.ownerFactionID, asset, filter.filters) {
+	asset, live := filter.holder.live(factionState)
+	// deliberate: a nil rulebook, not a threaded one, because removeTagDiceRegistrar accepts no tech-level filter, the only filter that reads it (Effort 2 Decision 6).
+	if !live || !rollMatches(ctx, filter.trigger, filter.holder.factionID, asset, filter.filters, nil) {
 		return offers
 	}
 	var kept []hooks.ModifierOffer

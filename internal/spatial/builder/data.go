@@ -22,7 +22,7 @@ type worldEntry struct {
 	Name       string  `toml:"name"`
 	At         atGlyph `toml:"at"`
 	TechLevel  int     `toml:"tech_level"`
-	Population int     `toml:"population"`
+	Population *int    `toml:"population"`
 	Region     string  `toml:"region"`
 }
 
@@ -62,6 +62,12 @@ func parseData(srcDir string) (*dataFile, error) {
 	var data dataFile
 	if _, err := toml.DecodeFile(path, &data); err != nil {
 		return nil, dataErrorf("", "decode: %v", err)
+	}
+	for _, world := range data.Worlds {
+		// deliberate: a missing population is refused, not read as 0, because a 0 silently blocks every purchase with a population floor on the world.
+		if world.Population == nil {
+			return nil, dataErrorf(fmt.Sprintf("[[worlds]] id=%q", world.ID), "population is required")
+		}
 	}
 	return &data, nil
 }

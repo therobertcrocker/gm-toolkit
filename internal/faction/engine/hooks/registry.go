@@ -45,6 +45,24 @@ type RegisteredWorldTechLevelModifier struct {
 	Hook   WorldTechLevelModifier
 }
 
+type RegisteredAssetSpeedModifier struct {
+	Scope  Scope
+	Source string
+	Hook   AssetSpeedModifier
+}
+
+type RegisteredArrivalTollRule struct {
+	Scope  Scope
+	Source string
+	Hook   ArrivalTollRule
+}
+
+type RegisteredPopulationFloorModifier struct {
+	Scope  Scope
+	Source string
+	Hook   PopulationFloorModifier
+}
+
 type RegisteredAttackEligibilityRule struct {
 	Scope  Scope
 	Source string
@@ -84,6 +102,9 @@ type Registry struct {
 	assetCostModifiers       map[Scope][]RegisteredAssetCostModifier
 	maintenanceCostModifiers map[Scope][]RegisteredMaintenanceCostModifier
 	worldTechLevelModifiers  map[Scope][]RegisteredWorldTechLevelModifier
+	assetSpeedModifiers      map[Scope][]RegisteredAssetSpeedModifier
+	populationFloorModifiers map[Scope][]RegisteredPopulationFloorModifier
+	arrivalTollRules         map[Scope][]RegisteredArrivalTollRule
 	attackEligibilityRules   map[Scope][]RegisteredAttackEligibilityRule
 	assetMovementGranters    map[Scope][]RegisteredAssetMovementGranter
 	tieResolvers             map[Scope][]RegisteredTieResolver
@@ -110,6 +131,9 @@ func (registry *Registry) Reset() {
 	registry.assetCostModifiers = make(map[Scope][]RegisteredAssetCostModifier)
 	registry.maintenanceCostModifiers = make(map[Scope][]RegisteredMaintenanceCostModifier)
 	registry.worldTechLevelModifiers = make(map[Scope][]RegisteredWorldTechLevelModifier)
+	registry.assetSpeedModifiers = make(map[Scope][]RegisteredAssetSpeedModifier)
+	registry.populationFloorModifiers = make(map[Scope][]RegisteredPopulationFloorModifier)
+	registry.arrivalTollRules = make(map[Scope][]RegisteredArrivalTollRule)
 	registry.attackEligibilityRules = make(map[Scope][]RegisteredAttackEligibilityRule)
 	registry.assetMovementGranters = make(map[Scope][]RegisteredAssetMovementGranter)
 	registry.tieResolvers = make(map[Scope][]RegisteredTieResolver)
@@ -129,6 +153,9 @@ func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
 	delete(registry.assetCostModifiers, scope)
 	delete(registry.maintenanceCostModifiers, scope)
 	delete(registry.worldTechLevelModifiers, scope)
+	delete(registry.assetSpeedModifiers, scope)
+	delete(registry.populationFloorModifiers, scope)
+	delete(registry.arrivalTollRules, scope)
 	delete(registry.attackEligibilityRules, scope)
 	delete(registry.assetMovementGranters, scope)
 	delete(registry.tieResolvers, scope)
@@ -173,6 +200,21 @@ func (registry *Registry) RegisterWorldTechLevelModifier(scope Scope, source str
 	registry.worldTechLevelModifiers[scope] = append(registry.worldTechLevelModifiers[scope], RegisteredWorldTechLevelModifier{Scope: scope, Source: source, Hook: hook})
 }
 
+// RegisterAssetSpeedModifier registers a Cat 4 speed hook under the given scope.
+func (registry *Registry) RegisterAssetSpeedModifier(scope Scope, source string, hook AssetSpeedModifier) {
+	registry.assetSpeedModifiers[scope] = append(registry.assetSpeedModifiers[scope], RegisteredAssetSpeedModifier{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterArrivalTollRule registers a Cat 4 arrival-toll hook under the given scope.
+func (registry *Registry) RegisterArrivalTollRule(scope Scope, source string, hook ArrivalTollRule) {
+	registry.arrivalTollRules[scope] = append(registry.arrivalTollRules[scope], RegisteredArrivalTollRule{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterPopulationFloorModifier registers a Cat 4 population-floor hook under the given scope.
+func (registry *Registry) RegisterPopulationFloorModifier(scope Scope, source string, hook PopulationFloorModifier) {
+	registry.populationFloorModifiers[scope] = append(registry.populationFloorModifiers[scope], RegisteredPopulationFloorModifier{Scope: scope, Source: source, Hook: hook})
+}
+
 // RegisterAttackEligibilityRule registers a Cat 4 attack-eligibility hook under the given scope.
 func (registry *Registry) RegisterAttackEligibilityRule(scope Scope, source string, hook AttackEligibilityRule) {
 	registry.attackEligibilityRules[scope] = append(registry.attackEligibilityRules[scope], RegisteredAttackEligibilityRule{Scope: scope, Source: source, Hook: hook})
@@ -202,6 +244,12 @@ func (registry *Registry) RollModifiersAt(scope Scope) []RegisteredRollModifier 
 // RollResultHooksAt returns the Cat 2 hooks registered in one scope bucket.
 func (registry *Registry) RollResultHooksAt(scope Scope) []RegisteredRollResultHook {
 	return registry.rollResultHooks[scope]
+}
+
+// TieResolversAt returns the Cat 5 hooks registered in one scope bucket.
+// ResolveTie decides which buckets a tie consults.
+func (registry *Registry) TieResolversAt(scope Scope) []RegisteredTieResolver {
+	return registry.tieResolvers[scope]
 }
 
 // RollOfferFiltersAt returns the Cat 1 offer filters registered in one scope bucket.
@@ -269,6 +317,43 @@ func (registry *Registry) WorldTechLevelModifiersForAsset(factionID, assetInstan
 	return registry.worldTechLevelModifiers[AssetScope(factionID, assetInstanceID)]
 }
 
+// AssetSpeedModifiersFor returns the global and faction Cat 4 speed hooks; the
+// asset buckets come from AssetSpeedModifiersForAsset.
+func (registry *Registry) AssetSpeedModifiersFor(factionID string) []RegisteredAssetSpeedModifier {
+	var result []RegisteredAssetSpeedModifier
+	result = append(result, registry.assetSpeedModifiers[GlobalScope()]...)
+	result = append(result, registry.assetSpeedModifiers[FactionScope(factionID)]...)
+	return result
+}
+
+// AssetSpeedModifiersForAsset returns the Cat 4 speed hooks registered against one
+// asset instance, without the global or faction buckets.
+func (registry *Registry) AssetSpeedModifiersForAsset(factionID, assetInstanceID string) []RegisteredAssetSpeedModifier {
+	return registry.assetSpeedModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
+// ArrivalTollRulesAt returns the Cat 4 arrival-toll hooks of one bucket. There is
+// no ...For lookup: the toll dispatcher walks every rival faction's buckets, so a
+// global bucket would charge once per rival.
+func (registry *Registry) ArrivalTollRulesAt(scope Scope) []RegisteredArrivalTollRule {
+	return registry.arrivalTollRules[scope]
+}
+
+// PopulationFloorModifiersFor returns the global and faction Cat 4 population-floor
+// hooks; the asset buckets come from PopulationFloorModifiersForAsset.
+func (registry *Registry) PopulationFloorModifiersFor(factionID string) []RegisteredPopulationFloorModifier {
+	var result []RegisteredPopulationFloorModifier
+	result = append(result, registry.populationFloorModifiers[GlobalScope()]...)
+	result = append(result, registry.populationFloorModifiers[FactionScope(factionID)]...)
+	return result
+}
+
+// PopulationFloorModifiersForAsset returns the Cat 4 population-floor hooks
+// registered against one asset instance, without the global or faction buckets.
+func (registry *Registry) PopulationFloorModifiersForAsset(factionID, assetInstanceID string) []RegisteredPopulationFloorModifier {
+	return registry.populationFloorModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
 // AttackEligibilityRulesFor returns all Cat 4 attack-eligibility hooks matching the given faction and asset.
 func (registry *Registry) AttackEligibilityRulesFor(factionID, assetInstanceID string) []RegisteredAttackEligibilityRule {
 	var result []RegisteredAttackEligibilityRule
@@ -301,17 +386,6 @@ func (registry *Registry) AssetMovementGrantersFor(factionID, assetInstanceID st
 // against one asset instance, without the global or faction buckets.
 func (registry *Registry) AssetMovementGrantersForAsset(factionID, assetInstanceID string) []RegisteredAssetMovementGranter {
 	return registry.assetMovementGranters[AssetScope(factionID, assetInstanceID)]
-}
-
-// TieResolversFor returns all Cat 5 hooks matching the given faction and asset.
-func (registry *Registry) TieResolversFor(factionID, assetInstanceID string) []RegisteredTieResolver {
-	var result []RegisteredTieResolver
-	result = append(result, registry.tieResolvers[GlobalScope()]...)
-	result = append(result, registry.tieResolvers[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.tieResolvers[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
 }
 
 // LethalInterceptorsForAsset returns the Cat 6 hooks registered against one asset

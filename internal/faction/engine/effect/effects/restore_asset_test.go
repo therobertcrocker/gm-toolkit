@@ -34,7 +34,7 @@ func restoreOffer(t *testing.T, factionState *state.FactionState, ctx hooks.Leth
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
 	effects.Registrars()[domain.SpecialRestoreAsset].Register(effect.RegisterContext{
-		Faction: alpha, Asset: alpha.Assets["mc"], Def: &domain.AssetDefinition{ID: "SWN-W4-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["mc"], Def: &domain.AssetDefinition{ID: "SWN-W4-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialRestoreAsset,

@@ -432,11 +432,22 @@ func Build(
 					return CycleDigest{}, err
 				}
 				beat.XPGained += m.Amount
-				// Fold into matching GoalCompleted if XPAwarded wasn't set by the mutation.
-				for i := range beat.GoalEvents {
-					if beat.GoalEvents[i].Kind == GoalCompleted && beat.GoalEvents[i].XPAwarded == 0 {
-						beat.GoalEvents[i].XPAwarded = m.Amount
-						break
+				// A goal's xp_roll bonus follows its completion in the batch, so it
+				// adds to the latest GoalCompleted.
+				if m.Cause == string(domain.SpecialXPRoll) {
+					for i := len(beat.GoalEvents) - 1; i >= 0; i-- {
+						if beat.GoalEvents[i].Kind == GoalCompleted {
+							beat.GoalEvents[i].XPAwarded += m.Amount
+							break
+						}
+					}
+				} else {
+					// Fold into matching GoalCompleted if XPAwarded wasn't set by the mutation.
+					for i := range beat.GoalEvents {
+						if beat.GoalEvents[i].Kind == GoalCompleted && beat.GoalEvents[i].XPAwarded == 0 {
+							beat.GoalEvents[i].XPAwarded = m.Amount
+							break
+						}
 					}
 				}
 
@@ -458,7 +469,7 @@ func Build(
 				}
 				beat.GoalEvents = append(beat.GoalEvents, GoalEvent{
 					Kind:    GoalTagGained,
-					TagName: m.Tag.Name,
+					TagName: resolveTagName(m.TagID, rulebook),
 				})
 
 			case "tag_removed":
@@ -468,7 +479,14 @@ func Build(
 				}
 				loser := getOrCreateBeat(beats, m.FactionID, factionState)
 				seenFactionIDs[m.FactionID] = struct{}{}
-				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: m.Tag.Name})
+				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: resolveTagName(m.TagID, rulebook)})
+
+			case "world_tech_level_raised":
+				var m domain.WorldTechLevelRaised
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				beat.GoalEvents = append(beat.GoalEvents, GoalEvent{Kind: GoalTechLevelRaised, ToWorld: m.WorldID, TechLevel: m.TechLevel})
 
 			case "world_government_changed":
 				var m domain.WorldGovernmentChanged

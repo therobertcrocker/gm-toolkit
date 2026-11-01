@@ -10,15 +10,15 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
-// NewSelectAbilityAssets builds the multi-select of A-flagged assets whose
-// abilities the faction activates (committed up front, resolved in order).
-// Labels carry the ability effect. Answer: []*domain.Asset (uncapped). Esc cancels.
-func NewSelectAbilityAssets(candidates []*domain.Asset, rb *rulebook.Rulebook) MultiSelectOverlay[*domain.Asset] {
-	opts := make([]huh.Option[*domain.Asset], 0, len(candidates))
-	for _, asset := range candidates {
-		opts = append(opts, huh.NewOption(abilityLabel(asset, rb), asset))
+// NewSelectAbilityHolders builds the multi-select of the holders whose abilities
+// the faction activates (committed up front, resolved in order). Labels carry the
+// ability effect. Answer: []domain.AbilityHolder (uncapped). Esc cancels.
+func NewSelectAbilityHolders(candidates []domain.AbilityHolder, rulebook *rulebook.Rulebook) MultiSelectOverlay[domain.AbilityHolder] {
+	opts := make([]huh.Option[domain.AbilityHolder], 0, len(candidates))
+	for _, holder := range candidates {
+		opts = append(opts, huh.NewOption(abilityLabel(holder, rulebook), holder))
 	}
-	return NewMultiSelect[*domain.Asset]("Activate which abilities?", "", opts, 0)
+	return NewMultiSelect[domain.AbilityHolder]("Activate which abilities?", "", opts, 0)
 }
 
 // NewConfirmAbilityApplied is the per-asset acknowledgment. The engine discards
@@ -40,10 +40,15 @@ func NewSelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffect
 }
 
 // abilityLabel renders "<name> · <effect>" (or just the name when the definition
-// carries no ability effect — e.g. the structural-stub abilities).
-func abilityLabel(asset *domain.Asset, rb *rulebook.Rulebook) string {
-	name := assetName(asset, rb)
-	if def, ok := rb.Assets[asset.DefinitionID]; ok && def.Ability != nil && len(def.Ability.Steps) > 0 {
+// carries no ability effect — e.g. the structural-stub abilities). A tag's name
+// is marked "(tag)".
+func abilityLabel(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) string {
+	if holder.Tag != nil {
+		return fmt.Sprintf("%s (tag) · %s", holder.Tag.Name, holder.Tag.Ability.Steps[0].Effect)
+	}
+	asset := holder.Asset
+	name := assetName(asset, rulebook)
+	if def, ok := rulebook.Assets[asset.DefinitionID]; ok && def.Ability != nil && len(def.Ability.Steps) > 0 {
 		return fmt.Sprintf("%s · %s", name, def.Ability.Steps[0].Effect)
 	}
 	return name
@@ -76,4 +81,27 @@ func NewConfirmPayment(offer hooks.PaymentOffer, rb *rulebook.Rulebook) NoCancel
 		return NoCancelConfirm{NewConfirm(fmt.Sprintf("Pay %d Coin to restore %s at 1 HP?", offer.Amount, name), header, "Pay", "Let it be destroyed")}
 	}
 	return NoCancelConfirm{NewConfirm(fmt.Sprintf("Pay %d Coin, or %s is disabled?", offer.Amount, name), header, "Pay", "Take the disable")}
+}
+
+// holderName is an ability holder's display name: its tag's, or its asset's.
+func holderName(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) string {
+	if holder.Tag != nil {
+		return holder.Tag.Name
+	}
+	return assetName(holder.Asset, rulebook)
+}
+
+// NewSelectAbilityWorldTarget picks the world an ability acts on (Teach Planetary
+// Population). The header names the holder and the effect. Answer: string (world
+// ID). Esc cancels.
+func NewSelectAbilityWorldTarget(holder domain.AbilityHolder, effect domain.AbilityEffectType, worlds []string, worldNames map[string]string, rulebook *rulebook.Rulebook) SelectOverlay[string] {
+	opts := make([]huh.Option[string], 0, len(worlds))
+	for _, worldID := range worlds {
+		name := worldNames[worldID]
+		if name == "" {
+			name = worldID
+		}
+		opts = append(opts, huh.NewOption(name, worldID))
+	}
+	return NewSelect[string]("Target which world?", fmt.Sprintf("%s · %s", holderName(holder, rulebook), effect), opts)
 }

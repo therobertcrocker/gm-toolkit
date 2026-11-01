@@ -1094,7 +1094,7 @@ func TestAttack_FalseFrontSpentOnce(t *testing.T) {
 	f2.Assets["ff"] = falseFront
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialSacrificeSelf].Register(effect.RegisterContext{
-		Faction: f2, Asset: falseFront, Def: &domain.AssetDefinition{ID: "SWN-C1-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: f2, Asset: falseFront, Def: &domain.AssetDefinition{ID: "SWN-C1-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialSacrificeSelf,
@@ -1172,7 +1172,7 @@ func TestAttack_InterceptedDefenderCountersOnTie(t *testing.T) {
 // as the SWN data declares it.
 func registerSeizeTarget(registry *hooks.Registry, faction *domain.Faction, asset *domain.Asset) {
 	effects.Registrars()[domain.SpecialSeizeTarget].Register(effect.RegisterContext{
-		Faction: faction, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-W7-002"}, Registry: registry,
+		Holder: effect.Holder{Faction: faction, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-W7-002"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialSeizeTarget,
@@ -1193,7 +1193,7 @@ func TestAttack_BoltholesBeforeHostileTakeover(t *testing.T) {
 	f2.Assets["bolt"] = boltholes
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialShelterAsset].Register(effect.RegisterContext{
-		Faction: f2, Asset: boltholes, Def: &domain.AssetDefinition{ID: "SWN-C5-003"}, Registry: registry,
+		Holder: effect.Holder{Faction: f2, Asset: boltholes, Def: &domain.AssetDefinition{ID: "SWN-C5-003"}}, Registry: registry,
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialShelterAsset,
@@ -1245,5 +1245,88 @@ func TestAttack_HostileTakeoverCounterSeizesAttacker(t *testing.T) {
 	}
 	if !reflect.DeepEqual(mutations, want) {
 		t.Errorf("mutations = %+v, want %+v", mutations, want)
+	}
+}
+
+// TestAttack_RollsNameTheOpposingStat: each side's roll carries the stat the other
+// side rolls. The attacker's profile is Force vs. Cunning so the two differ. Rolls
+// [2, 9]: the defender wins and has no counter, so no third roll.
+func TestAttack_RollsNameTheOpposingStat(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	rulebook.Assets["force-attacker"].Attack.DefenderStat = domain.StatCunning
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, "force-defender-nocounter", false)
+	faction := factionState.Factions["f1"]
+
+	recorder := &contextRecorder{}
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+
+	runAttack(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook, registry)
+
+	if len(recorder.contexts) != 2 {
+		t.Fatalf("recorded %d roll contexts, want 2: %+v", len(recorder.contexts), recorder.contexts)
+	}
+	attack, defense := recorder.contexts[0], recorder.contexts[1]
+	if attack.Attribute != "Force" || attack.OpponentAttribute != "Cunning" {
+		t.Errorf("attack roll stats = %q vs %q, want Force vs Cunning", attack.Attribute, attack.OpponentAttribute)
+	}
+	if defense.Attribute != "Cunning" || defense.OpponentAttribute != "Force" {
+		t.Errorf("defense roll stats = %q vs %q, want Cunning vs Force", defense.Attribute, defense.OpponentAttribute)
+	}
+}
+
+// TestAttack_CounterstrikeRollsNameTheOpposingStat: the self-attack's two rolls
+// oppose each other, so each carries the other's stat (Decision Record 2). The
+// attacker's profile is Force vs. Cunning. Rolls [2, 9, 8, 3, 5]: d1 wins
+// outright, the counterstrike is confirmed, and the self-attack hits for 5.
+func TestAttack_CounterstrikeRollsNameTheOpposingStat(t *testing.T) {
+	rulebook := makeAttackRulebook()
+	rulebook.Assets["force-attacker"].Attack.DefenderStat = domain.StatCunning
+	comms := &domain.AssetDefinition{ID: "comms", HP: 8, Effects: []domain.EffectDefinition{{
+		Trigger: domain.TriggerOwnDefenseWin,
+		Effect:  domain.SpecialCounterstrike,
+		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+	}}}
+	rulebook.Assets[comms.ID] = comms
+	effectsEngine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+	if err := effectsEngine.RegisterEffectsList(comms); err != nil {
+		t.Fatalf("RegisterEffectsList: %v", err)
+	}
+	factionState, attackerAsset, defenderAsset := makeAttackState(8, 8, comms.ID, false)
+	attackerAsset.DefinitionID = "force-attacker"
+	faction := factionState.Factions["f1"]
+
+	recorder := &contextRecorder{}
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectAttackers(gomock.Any(), gomock.Any()).Return([]*domain.Asset{attackerAsset}, nil)
+	collector.EXPECT().SelectDefender(gomock.Any(), gomock.Any(), gomock.Any()).Return(defenderAsset, nil)
+	collector.EXPECT().ConfirmCounterstrike(factionState.Factions["f2"], defenderAsset, attackerAsset).Return(true, nil)
+
+	attack := NewAttack(collector, &fixedRoller{values: []int{2, 9, 8, 3, 5}}, registry, indexFromState(factionState), effectsEngine)
+	if err := attack.Inputs(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Inputs: %v", err)
+	}
+	if err := attack.Resolve(faction, factionState, rulebook); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	if len(recorder.contexts) != 4 {
+		t.Fatalf("recorded %d roll contexts, want 4: %+v", len(recorder.contexts), recorder.contexts)
+	}
+	selfAttack, selfDefense := recorder.contexts[2], recorder.contexts[3]
+	if selfAttack.Attribute != "Force" || selfAttack.OpponentAttribute != "Cunning" {
+		t.Errorf("self-attack roll stats = %q vs %q, want Force vs Cunning", selfAttack.Attribute, selfAttack.OpponentAttribute)
+	}
+	if selfDefense.Attribute != "Cunning" || selfDefense.OpponentAttribute != "Force" {
+		t.Errorf("self-defense roll stats = %q vs %q, want Cunning vs Force", selfDefense.Attribute, selfDefense.OpponentAttribute)
 	}
 }

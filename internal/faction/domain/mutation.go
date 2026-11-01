@@ -58,6 +58,18 @@ type PurchaseDiscountConsumed struct {
 
 func (m PurchaseDiscountConsumed) Type() string { return "purchase_discount_consumed" }
 
+// WorldTechLevelRaised records that WorldID counts as TechLevel for FactionID's
+// purchases (raise_tech_level, D-11). A lower value never replaces a higher one.
+type WorldTechLevelRaised struct {
+	FactionID         string `json:"faction_id"`
+	WorldID           string `json:"world_id"`
+	TechLevel         int    `json:"tech_level"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m WorldTechLevelRaised) Type() string { return "world_tech_level_raised" }
+
 // AssetMaintainedFlag updates the Maintained flag on a specific asset.
 type AssetMaintainedFlag struct {
 	FactionID         string `json:"faction_id"`
@@ -250,22 +262,21 @@ type HomeworldChanged struct {
 
 func (m HomeworldChanged) Type() string { return "homeworld_changed" }
 
-// TagAdded grants a tag to a faction. The full Tag is embedded so Apply does
-// not need a Rulebook lookup.
+// TagAdded grants a tag to a faction. A reader that needs the name reads the
+// rulebook (A.001.7 overview Decision 4).
 type TagAdded struct {
 	FactionID         string `json:"faction_id"`
-	Tag               Tag    `json:"tag"`
+	TagID             string `json:"tag_id"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
 
 func (m TagAdded) Type() string { return "tag_added" }
 
-// TagRemoved takes one tag from a faction. The full Tag rides along, as on
-// TagAdded, so the digest can name it after the faction no longer holds it.
+// TagRemoved takes one tag from a faction.
 type TagRemoved struct {
 	FactionID         string `json:"faction_id"`
-	Tag               Tag    `json:"tag"`
+	TagID             string `json:"tag_id"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
@@ -463,6 +474,8 @@ const (
 	HoldLockdownPaid HoldReason = "lockdown_paid"
 	// HoldLockdownUnpaid: the faction cannot pay the 1d4 yet (overview Decision 15).
 	HoldLockdownUnpaid HoldReason = "lockdown_unpaid"
+	// HoldTollUnpaid: an owner aboard cannot pay its arrival tolls yet (Effort 4 Decision 10).
+	HoldTollUnpaid HoldReason = "toll_unpaid"
 )
 
 // MovementOrderHeld keeps an order that would complete at the last hex before its

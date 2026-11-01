@@ -24,9 +24,9 @@ func matchupBlockAbility(ctx effect.MatchupContext) effect.MatchupOutcome {
 		Condition: domain.Condition{
 			Kind:            domain.ConditionNoAbility,
 			SourceAssetID:   ctx.Asset.ID,
-			ExpiresAtTurnOf: ctx.Faction.ID,
+			ExpiresAtTurnOf: ctx.Holder.Faction.ID,
 		},
 		Cause:             string(domain.SpecialBlockAbility),
-		CausedByFactionID: ctx.Faction.ID,
+		CausedByFactionID: ctx.Holder.Faction.ID,
 	}}}
 }

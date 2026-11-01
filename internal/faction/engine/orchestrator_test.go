@@ -206,7 +206,7 @@ func TestEligibleMovableAssets_SkipsSheltered(t *testing.T) {
 	sheltered := &domain.Asset{ID: "t-sheltered", DefinitionID: "transport-def", OwnerID: "alpha", Conditions: shelteredByBoltholes}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{free.ID: free, sheltered.ID: sheltered}}
 
-	eligible := eligibleMovableAssets(faction, transportRulebook())
+	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
 
 	if len(eligible) != 1 || eligible[0].ID != "t-free" {
 		t.Errorf("eligible = %v, want only t-free", eligible)
@@ -260,9 +260,95 @@ func TestPrepareMovementDecisions_MaxCargoViolation(t *testing.T) {
 	}
 
 	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
-	_, err := prepareMovementDecisions(faction, collector, we, rb, slog.New(slog.DiscardHandler))
+	_, err := prepareMovementDecisions(faction, collector, we, rb, nil, slog.New(slog.DiscardHandler))
 	if err == nil {
 		t.Fatal("expected error when collector returns more cargo than MaxCargo allows, got nil")
+	}
+}
+
+// speedFloor stands in for Mercenary Group's speed_floor hook.
+type speedFloor struct{ floor int }
+
+func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+	return max(speed, floor.floor)
+}
+
+func TestEligibleMovableAssets_ReadsTheResolvedSpeed(t *testing.T) {
+	special := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha"}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{special.ID: special}}
+	if eligible := eligibleMovableAssets(faction, transportRulebook(), nil); len(eligible) != 0 {
+		t.Errorf("eligible = %v, want none: sf-def has speed 0", eligible)
+	}
+
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
+	if eligible := eligibleMovableAssets(faction, transportRulebook(), registry); len(eligible) != 1 || eligible[0].ID != "sf-1" {
+		t.Errorf("eligible = %v, want sf-1 under a speed floor", eligible)
+	}
+}
+
+func TestEligibleMovableAssets_SkipsCargoInFlight(t *testing.T) {
+	rider := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha"}
+	transport := &domain.Asset{
+		ID: "transport-1", DefinitionID: "transport-def", OwnerID: "alpha",
+		CurrentOrder: &domain.MovementOrder{CargoAssetIDs: []string{rider.ID}},
+	}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, rider.ID: rider}}
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
+
+	eligible := eligibleMovableAssets(faction, transportRulebook(), registry)
+
+	if len(eligible) != 1 || eligible[0].ID != "transport-1" {
+		t.Errorf("eligible = %v, want only transport-1: sf-1 rides it", eligible)
+	}
+}
+
+func TestEligibleMovableAssets_KeepsAnOpenOrderAfterTheFloorGoes(t *testing.T) {
+	stranded := &domain.Asset{
+		ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha",
+		CurrentOrder: &domain.MovementOrder{Destination: domain.Location{WorldID: "world-b"}},
+	}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{stranded.ID: stranded}}
+
+	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
+
+	if len(eligible) != 1 || eligible[0].ID != "sf-1" {
+		t.Errorf("eligible = %v, want sf-1: its order must stay cancellable at speed 0", eligible)
+	}
+}
+
+func TestPrepareMovementDecisions_AnOrderedAssetIsNotCargo(t *testing.T) {
+	rb := transportRulebook()
+	loc := domain.Location{WorldID: "world-a"}
+	transport := &domain.Asset{ID: "transport-1", DefinitionID: "transport-def", OwnerID: "alpha", Location: loc}
+	walker := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc}
+	rider := &domain.Asset{ID: "sf-2", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, walker.ID: walker, rider.ID: rider}}
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
+
+	var offered []*domain.Asset
+	collector := &minimalPhaseCollector{
+		movementDecisionsFn: func(_ *domain.Faction, _ []*domain.Asset) ([]world.MovementDecision, error) {
+			return []world.MovementDecision{
+				{AssetID: "transport-1", Kind: world.MovementDecisionIssue, Destination: &domain.Location{WorldID: "world-c"}},
+				{AssetID: "sf-1", Kind: world.MovementDecisionIssue, Destination: &domain.Location{WorldID: "world-c"}},
+			}, nil
+		},
+		selectTransportCargo: func(_ *domain.Asset, eligible []*domain.Asset, _ *domain.TransportProfile) ([]*domain.Asset, error) {
+			offered = eligible
+			return nil, nil
+		},
+	}
+
+	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
+	// The stub map cannot path the orders, so the error is not the subject: the
+	// cargo offer is made before the orders are built.
+	_, _ = prepareMovementDecisions(faction, collector, we, rb, registry, slog.New(slog.DiscardHandler))
+
+	if len(offered) != 1 || offered[0].ID != "sf-2" {
+		t.Errorf("offered cargo = %v, want only sf-2: sf-1 has its own order", offered)
 	}
 }
 

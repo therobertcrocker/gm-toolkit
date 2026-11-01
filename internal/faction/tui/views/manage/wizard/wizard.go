@@ -25,18 +25,19 @@ import (
 // heap-allocated and shared between the Model and the form so that copying
 // the Model (value semantics) does not orphan the bindings.
 type formData struct {
-	name            string
-	scale           domain.FactionScale
-	primaryStat     domain.FactionStat
-	secondaryStat   domain.FactionStat
-	tertiaryStat    domain.FactionStat
-	selectedTags    []*domain.Tag
-	selectedGoal    *domain.Goal
-	homeworldID     string
-	governedWorldID string
-	primaryAssets   []*domain.AssetDefinition
-	secondaryAssets []*domain.AssetDefinition
-	coinStr         string
+	name             string
+	scale            domain.FactionScale
+	primaryStat      domain.FactionStat
+	secondaryStat    domain.FactionStat
+	tertiaryStat     domain.FactionStat
+	selectedTags     []*domain.Tag
+	selectedGoal     *domain.Goal
+	homeworldID      string
+	governedWorldID  string
+	populationWaiver bool
+	primaryAssets    []*domain.AssetDefinition
+	secondaryAssets  []*domain.AssetDefinition
+	coinStr          string
 }
 
 type Model struct {
@@ -115,10 +116,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	m.assetsForm = formModel.(*huh.Form)
 	if m.assetsForm.State == huh.StateCompleted {
 		faction := m.synthesize()
-		governedWorldID := ""
-		if pickedGovernmentTag(m.data.selectedTags) {
-			governedWorldID = m.data.governedWorldID
-		}
+		governedWorldID := governedWorld(m.data)
 		return m, func() tea.Msg { return msgs.CreatedMsg{Faction: faction, GovernedWorldID: governedWorldID} }
 	}
 	return m, cmd
@@ -156,16 +154,23 @@ func (m *Model) synthesize() *domain.Faction {
 	allPicked := append(m.data.primaryAssets, m.data.secondaryAssets...)
 	assets := instantiateAssets(allPicked, homeworld, tempFaction)
 
-	return domain.NewFaction(
+	tags := tagIDs(m.data.selectedTags)
+	if homeworldGovernmentTag(m.data.selectedTags) != nil && m.rulebook.GovernmentTagID != "" {
+		tags = append(tags, m.rulebook.GovernmentTagID)
+	}
+
+	faction := domain.NewFaction(
 		id, m.data.name,
 		m.data.scale,
 		m.data.primaryStat, m.data.secondaryStat, m.data.tertiaryStat,
-		m.data.selectedTags,
+		tags,
 		m.data.selectedGoal,
 		homeworld,
 		assets,
 		coin,
 	)
+	faction.PopulationWaiver = m.data.populationWaiver
+	return faction
 }
 
 // ---------------------------------------------------------------------------
@@ -240,7 +245,10 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 				if len(picked) > 2 {
 					return fmt.Errorf("at most 2 tags")
 				}
-				return nil
+				if tag := homeworldGovernmentTag(picked); tag != nil && pickedGovernmentTag(picked) {
+					return fmt.Errorf("%s already governs its homeworld; drop the government tag", tag.Name)
+				}
+				return homeworldGovernedElsewhere(picked, data.homeworldID, factionState)
 			}),
 	)
 
@@ -255,7 +263,10 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 		huh.NewSelect[string]().
 			Title("Homeworld").
 			Options(worldsToOptions(spatialMap)...).
-			Value(&data.homeworldID),
+			Value(&data.homeworldID).
+			Validate(func(worldID string) error {
+				return homeworldGovernedElsewhere(data.selectedTags, worldID, factionState)
+			}),
 	)
 
 	governmentGroup := huh.NewGroup(
@@ -266,6 +277,13 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 			}, &data.homeworldID).
 			Value(&data.governedWorldID),
 	).WithHideFunc(func() bool { return !pickedGovernmentTag(data.selectedTags) })
+
+	waiverGroup := huh.NewGroup(
+		huh.NewConfirm().
+			Title("Population waiver").
+			Description("Another power provides or supports this faction's ships, so it may buy assets on a world of any size").
+			Value(&data.populationWaiver),
+	)
 
 	coinGroup := huh.NewGroup(
 		huh.NewInput().
@@ -288,12 +306,47 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 		goalGroup,
 		homeworldGroup,
 		governmentGroup,
+		waiverGroup,
 		coinGroup,
 	).WithTheme(styles.FormTheme())
 }
 
 func pickedGovernmentTag(tags []*domain.Tag) bool {
-	return slices.ContainsFunc(tags, func(tag *domain.Tag) bool { return tag.ID == domain.TagPlanetaryGovernment })
+	return slices.ContainsFunc(tags, func(tag *domain.Tag) bool { return tag.Government })
+}
+
+// homeworldGovernmentTag returns the picked tag that governs its homeworld from
+// creation (Colonists), or nil.
+func homeworldGovernmentTag(tags []*domain.Tag) *domain.Tag {
+	for _, tag := range tags {
+		if tag.HomeworldGovernment {
+			return tag
+		}
+	}
+	return nil
+}
+
+// homeworldGovernedElsewhere refuses a homeworld-government tag (Colonists) on a
+// homeworld another faction governs. Both the tag picker and the homeworld select
+// ask it, so the refusal comes in whichever order the GM fills them.
+func homeworldGovernedElsewhere(tags []*domain.Tag, homeworldID string, factionState *state.FactionState) error {
+	if tag := homeworldGovernmentTag(tags); tag != nil && homeworldID != "" && factionState.Ruler(homeworldID) != "" {
+		return fmt.Errorf("another faction governs this world; %s needs its homeworld free", tag.Name)
+	}
+	return nil
+}
+
+// governedWorld is the world the new faction rules: the picked one for the
+// government tag, the homeworld for a homeworld-government tag, else none. The
+// tag picker refuses the two together (Effort 4 Decision 7).
+func governedWorld(data *formData) string {
+	switch {
+	case pickedGovernmentTag(data.selectedTags):
+		return data.governedWorldID
+	case homeworldGovernmentTag(data.selectedTags) != nil:
+		return data.homeworldID
+	}
+	return ""
 }
 
 // governableWorldOptions lists the worlds no other faction governs, the homeworld
@@ -316,9 +369,10 @@ func governableWorldOptions(spatialMap *spatial.RegionMap, factionState *state.F
 // buildAssetsForm constructs the asset-selection form after the main form
 // completes, so options are computed from the user's final scale/stats/homeworld.
 func buildAssetsForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+	pickedTags := tagIDs(data.selectedTags)
 	allDefs := make([]*domain.AssetDefinition, 0, len(rb.Assets))
 	for _, def := range rb.Assets {
-		if def.Quality {
+		if def.Quality || !def.TagRequirementMet(pickedTags) {
 			continue
 		}
 		allDefs = append(allDefs, def)
@@ -374,6 +428,14 @@ func tagsToOptions(tags map[string]*domain.Tag) []huh.Option[*domain.Tag] {
 		options[i] = huh.NewOption(tag.Name, tag)
 	}
 	return options
+}
+
+func tagIDs(tags []*domain.Tag) []string {
+	ids := make([]string, len(tags))
+	for i, tag := range tags {
+		ids[i] = tag.ID
+	}
+	return ids
 }
 
 func goalsToOptions(goals map[string]*domain.Goal) []huh.Option[*domain.Goal] {

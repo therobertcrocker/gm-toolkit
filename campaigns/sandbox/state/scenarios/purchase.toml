@@ -39,9 +39,7 @@ cycle_number = 1
   coin = 130
   xp = 0
   homeworld = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } }
-  tags = [
-    { id = "T-011", name = "Planetary Government", description = "This faction is the legitimate government of a planet.", effect = "Held while the faction governs at least one world; the campaign's government record lists each world it governs (one per planet controlled). On those worlds, the faction grants or refuses permission to buy or import assets marked as needing government permission." },
-  ]
+  tags = ["SWN-T-011"]
   bases = [
     { id = "iron-concord-homeworld", owner_id = "iron-concord", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } } },
   ]
@@ -184,9 +182,7 @@ cycle_number = 1
   coin = 20
   xp = 0
   homeworld = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  tags = [
-    { id = "T-011", name = "Planetary Government", description = "This faction is the legitimate government of a planet.", effect = "Held while the faction governs at least one world; the campaign's government record lists each world it governs (one per planet controlled). On those worlds, the faction grants or refuses permission to buy or import assets marked as needing government permission." },
-  ]
+  tags = ["SWN-T-011"]
   bases = [
     { id = "ashfall-homeworld", owner_id = "ashfall", current_hp = 15, max_hp = 15, influence = 0, ready = false, is_homeworld = true, location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } } },
   ]

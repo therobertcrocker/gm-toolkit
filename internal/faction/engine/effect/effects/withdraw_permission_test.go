@@ -26,7 +26,7 @@ func registerLobbyists(t *testing.T, owner *domain.Faction, lobbyists *domain.As
 	t.Helper()
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialWithdrawPermission].Register(effect.RegisterContext{
-		Faction: owner, Asset: lobbyists, Def: &domain.AssetDefinition{ID: "SWN-C2-001"}, Registry: registry, Roller: roller,
+		Holder: effect.Holder{Faction: owner, Asset: lobbyists, Def: &domain.AssetDefinition{ID: "SWN-C2-001"}}, Registry: registry, Roller: roller,
 		Entry: lobbyistsEntry(),
 	})
 	contesters := registry.PermissionContestersForAsset(owner.ID, lobbyists.ID)
@@ -90,7 +90,7 @@ func TestWithdrawPermission_WinsContestRollsCunning(t *testing.T) {
 			alpha, bravo, lobbyists := lobbyistsFixture()
 			contester := registerLobbyists(t, alpha, lobbyists, &seqRoller{values: tc.rolls})
 
-			if got := contester.WinsContest(hooks.PermissionQuery{Requester: bravo, WorldID: "Krylos"}); got != tc.want {
+			if got := contester.WinsContest(hooks.PermissionQuery{Requester: bravo, WorldID: "Krylos"}, nil, nil); got != tc.want {
 				t.Errorf("WinsContest = %v, want %v (Cunning 3 vs 2)", got, tc.want)
 			}
 		})

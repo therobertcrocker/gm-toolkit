@@ -50,10 +50,10 @@ func TestSeditionistsBlockAndMove(t *testing.T) {
 		}
 		return nil, nil
 	}
-	h.Collector.SelectAbilityAssetsFn = func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
-		return []*domain.Asset{seditionists}, nil
+	h.Collector.SelectAbilityHoldersFn = func(*domain.Faction, []domain.AbilityHolder, *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
+		return []domain.AbilityHolder{{Asset: seditionists}}, nil
 	}
-	h.Collector.SelectAbilityTargetFn = func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	h.Collector.SelectAbilityTargetFn = func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 		for _, candidate := range candidates.Assets {
 			if candidate.ID == target.ID {
 				return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: candidate}, nil
