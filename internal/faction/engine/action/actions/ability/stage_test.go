@@ -2,6 +2,7 @@ package ability
 
 import (
 	"errors"
+	"log/slog"
 	"maps"
 	"slices"
 	"testing"
@@ -9,7 +10,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 	"go.uber.org/mock/gomock"
 )
 
@@ -147,6 +150,40 @@ func TestResolveTarget_Asset(t *testing.T) {
 		_, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil, nil)
 		if !errors.Is(err, action.ErrNoSelection) {
 			t.Errorf("err = %v, want ErrNoSelection", err)
+		}
+	})
+}
+
+func TestResolveTarget_World(t *testing.T) {
+	engine := world.NewWithMap(&relocRouter{
+		worlds:     map[string]spatial.RegionHex{"near": relocHex("r1", 1), "mid": relocHex("r1", 2)},
+		techLevels: map[string]int{"near": 3, "mid": 4},
+	}, slog.New(slog.DiscardHandler))
+	base := func(world string) *domain.Base { return &domain.Base{Location: domain.Location{WorldID: world}} }
+	faction := &domain.Faction{ID: "f1", Coin: 2, Bases: []*domain.Base{base("near"), base("mid")}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+	holder := domain.AbilityHolder{Tag: &domain.Tag{ID: "T-013"}}
+
+	pick := func(t *testing.T, world string) (domain.AbilityTarget, error) {
+		collector := mocks.NewMockCollector(gomock.NewController(t))
+		collector.EXPECT().SelectAbilityTarget(holder, teachStep, gomock.Any()).
+			Return(domain.AbilityTarget{Kind: domain.TargetWorld, World: world}, nil)
+		return resolveTarget(teachStep, faction, holder, factionState, collector, engine, nil)
+	}
+
+	t.Run("a candidate world is the target", func(t *testing.T) {
+		target, err := pick(t, "near")
+		if err != nil {
+			t.Fatalf("resolveTarget: %v", err)
+		}
+		if target.Kind != domain.TargetWorld || target.World != "near" || target.Faction != faction {
+			t.Errorf("target = %+v, want {world, near, f1}", target)
+		}
+	})
+
+	t.Run("a world the filter left out is refused", func(t *testing.T) {
+		if _, err := pick(t, "mid"); err == nil {
+			t.Error("resolveTarget accepted mid, which is TL4 already, want an error")
 		}
 	})
 }

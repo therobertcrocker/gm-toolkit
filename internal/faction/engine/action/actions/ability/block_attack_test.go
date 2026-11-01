@@ -67,7 +67,7 @@ func TestDispatch_BlockAttack(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			faction, acting, def, factionState, rulebook := makeSeditionistsFixture(tc.coin)
+			faction, acting, _, factionState, rulebook := makeSeditionistsFixture(tc.coin)
 			if tc.alreadyOnC1 {
 				factionState.Factions["f3"].Assets["c1"].Conditions = []domain.Condition{attached}
 			}
@@ -85,7 +85,7 @@ func TestDispatch_BlockAttack(t *testing.T) {
 				})
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{3}}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{3}}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}

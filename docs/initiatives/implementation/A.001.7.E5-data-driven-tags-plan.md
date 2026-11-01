@@ -171,6 +171,16 @@
 - **Effort close, stricter `raise_tech_level` load checks.** A `raise_tech_level`
   step needs at least one outcome row. A `[raise_tech_level]` block under another
   effect fails to load and is no longer silently ignored.
+- **Initiative close: a picked world must be a candidate.** From the initiative
+  review. The `TargetWorld` branch of `resolveTarget` took any world the collector
+  returned, so a bad pick could pay 2 Coin and record TL4 on a world the filter
+  (Decision 4) left out. It now refuses a world outside `candidates.Worlds`. Test:
+  `TestResolveTarget_World`.
+- **Initiative close: `Dispatch` reads the asset's definition itself.** From the
+  initiative review. `Dispatch` took the holder and a separate `def` that callers
+  had to keep in step with `holder.Asset`. It now reads the definition from the
+  rulebook (`holderDefinition`; nil for a tag), and Use Asset Ability no longer
+  looks it up. The task listings above keep the `def` parameter as executed.
 
 ---
 

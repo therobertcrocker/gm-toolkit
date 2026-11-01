@@ -248,7 +248,7 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 				if tag := homeworldGovernmentTag(picked); tag != nil && pickedGovernmentTag(picked) {
 					return fmt.Errorf("%s already governs its homeworld; drop the government tag", tag.Name)
 				}
-				return nil
+				return homeworldGovernedElsewhere(picked, data.homeworldID, factionState)
 			}),
 	)
 
@@ -265,10 +265,7 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 			Options(worldsToOptions(spatialMap)...).
 			Value(&data.homeworldID).
 			Validate(func(worldID string) error {
-				if tag := homeworldGovernmentTag(data.selectedTags); tag != nil && factionState.Ruler(worldID) != "" {
-					return fmt.Errorf("another faction governs this world; %s needs its homeworld free", tag.Name)
-				}
-				return nil
+				return homeworldGovernedElsewhere(data.selectedTags, worldID, factionState)
 			}),
 	)
 
@@ -325,6 +322,16 @@ func homeworldGovernmentTag(tags []*domain.Tag) *domain.Tag {
 		if tag.HomeworldGovernment {
 			return tag
 		}
+	}
+	return nil
+}
+
+// homeworldGovernedElsewhere refuses a homeworld-government tag (Colonists) on a
+// homeworld another faction governs. Both the tag picker and the homeworld select
+// ask it, so the refusal comes in whichever order the GM fills them.
+func homeworldGovernedElsewhere(tags []*domain.Tag, homeworldID string, factionState *state.FactionState) error {
+	if tag := homeworldGovernmentTag(tags); tag != nil && homeworldID != "" && factionState.Ruler(homeworldID) != "" {
+		return fmt.Errorf("another faction governs this world; %s needs its homeworld free", tag.Name)
 	}
 	return nil
 }

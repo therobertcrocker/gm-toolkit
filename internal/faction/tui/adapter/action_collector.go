@@ -408,7 +408,7 @@ func deriveReinforceTargets(faction *domain.Faction) []ReinforceTarget {
 	}
 	return targets
 }
-func (a *actionCollector) SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, rb *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
+func (a *actionCollector) SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, rulebook *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
 	raw, err := a.adapter.ask(AskSelectAbilityHolders, faction, SelectAbilityHoldersPayload{Candidates: candidates})
 	if err != nil {
 		return nil, err

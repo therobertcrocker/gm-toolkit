@@ -63,23 +63,27 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 }
 
 // Dispatch runs a holder's ability as a sequence of steps: resolve the step's
-// target, run its gate, dispatch its terminal effect, collect the mutations. def
-// is an asset holder's definition, nil for a tag. Assets with no ability block, or
-// whose effect has no registered handler, fall through to confirmApplied (the
-// not-yet-built effects). The loader lets a tag carry only built effects.
+// target, run its gate, dispatch its terminal effect, collect the mutations. An
+// asset holder's definition is read from the rulebook; a tag has none. Assets with
+// no ability block, or whose effect has no registered handler, fall through to
+// confirmApplied (the not-yet-built effects). The loader lets a tag carry only
+// built effects.
 func Dispatch(
 	faction *domain.Faction,
 	holder domain.AbilityHolder,
-	def *domain.AssetDefinition,
 	collector action.Collector,
 	roller domain.Roller,
 	registry *hooks.Registry,
 	factionState *state.FactionState,
 	view *state.FactionState,
-	rb *rulebook.Rulebook,
+	rulebook *rulebook.Rulebook,
 	worldEngine *world.WorldEngine,
 ) ([]domain.Mutation, error) {
 	asset := holder.Asset
+	def, err := holderDefinition(holder, rulebook)
+	if err != nil {
+		return nil, err
+	}
 	abilityDefinition := holderAbility(holder, def)
 	if abilityDefinition == nil || len(abilityDefinition.Steps) == 0 {
 		return confirmApplied(asset, def, collector)
@@ -120,7 +124,7 @@ func Dispatch(
 			return nil, err
 		}
 		// deliberate: the real faction, not workingFaction, because a roll hook's budget spent on the view would be lost (Effort 3 plan, Decision 12).
-		passed, err := passesGate(step, faction, workingAsset, target, registry, collector, roller, factionState, rb)
+		passed, err := passesGate(step, faction, workingAsset, target, registry, collector, roller, factionState, rulebook)
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +143,7 @@ func Dispatch(
 			Target:       target,
 			RollResult:   resolveRoll(step, roller),
 			FactionState: view,
-			Rulebook:     rb,
+			Rulebook:     rulebook,
 			Collector:    collector,
 			WorldEngine:  worldEngine,
 			Registry:     registry,
@@ -162,6 +166,20 @@ func Dispatch(
 
 // holderAbility returns the ability a holder uses: its tag's, or its asset
 // definition's.
+// holderDefinition returns an asset holder's definition from the rulebook, or nil
+// for a tag, which has none.
+func holderDefinition(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) (*domain.AssetDefinition, error) {
+	if holder.Asset == nil {
+		return nil, nil
+	}
+	if rulebook != nil {
+		if def, ok := rulebook.Assets[holder.Asset.DefinitionID]; ok {
+			return def, nil
+		}
+	}
+	return nil, fmt.Errorf("ability: definition not found: %s", holder.Asset.DefinitionID)
+}
+
 func holderAbility(holder domain.AbilityHolder, def *domain.AssetDefinition) *domain.AbilityDefinition {
 	if holder.Tag != nil {
 		return holder.Tag.Ability

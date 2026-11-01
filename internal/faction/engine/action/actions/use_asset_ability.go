@@ -53,15 +53,7 @@ func (u *UseAssetAbility) Resolve(faction *domain.Faction, factionState *state.F
 	// deliberate: one view for the whole action, not one per asset, because the book lets one action use several assets and each must see what the earlier ones did (Effort 3 Decision 3).
 	view := ability.NewView(factionState)
 	for _, holder := range u.selected {
-		var def *domain.AssetDefinition
-		if holder.Asset != nil {
-			found, ok := rulebook.Assets[holder.Asset.DefinitionID]
-			if !ok {
-				return fmt.Errorf("use asset ability: definition not found: %s", holder.Asset.DefinitionID)
-			}
-			def = found
-		}
-		mutations, err := ability.Dispatch(faction, holder, def, u.collector, u.roller, u.registry, factionState, view, rulebook, u.world)
+		mutations, err := ability.Dispatch(faction, holder, u.collector, u.roller, u.registry, factionState, view, rulebook, u.world)
 		if err != nil {
 			return fmt.Errorf("use asset ability: %w", err)
 		}

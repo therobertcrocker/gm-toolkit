@@ -68,6 +68,9 @@ func resolveTarget(
 		if target.World == "" {
 			return domain.AbilityTarget{}, fmt.Errorf("%s: %w", step.Effect, action.ErrNoSelection)
 		}
+		if !slices.Contains(candidates.Worlds, target.World) {
+			return domain.AbilityTarget{}, fmt.Errorf("%s: world %s is not a candidate", step.Effect, target.World)
+		}
 		return domain.AbilityTarget{Kind: domain.TargetWorld, World: target.World, Faction: faction}, nil
 	default:
 		return domain.AbilityTarget{}, fmt.Errorf("ability target kind %q not supported", step.Target)

@@ -237,8 +237,12 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			ba.registry, ba.collector, ba.roller, ownerFaction, factionState, rulebook,
 		).Sum
 
-		tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: hooks.PhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
-		if attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins) {
+		hits := attackRoll > defenseRoll
+		if attackRoll == defenseRoll {
+			tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: hooks.PhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
+			hits = tieOutcome != hooks.TieDefenderWins
+		}
+		if hits {
 			damage := attackerDef.Attack.Damage.Roll(ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.

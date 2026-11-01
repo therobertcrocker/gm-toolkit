@@ -32,7 +32,7 @@ func RegisterDefaultActions(
 	ae.Register(func(c action.Collector) action.Action {
 		return NewBuyAsset(c, hookRegistry, worldEngine, effectsEngine)
 	})
-	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c, hookRegistry) })
+	ae.Register(func(c action.Collector) action.Action { return NewRefitAsset(c, hookRegistry, worldEngine) })
 	ae.Register(func(c action.Collector) action.Action {
 		return NewAttack(c, resolveRoller(), hookRegistry, worldIndex(worldEngine), effectsEngine)
 	})

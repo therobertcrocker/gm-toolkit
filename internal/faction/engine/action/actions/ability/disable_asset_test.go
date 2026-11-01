@@ -84,7 +84,7 @@ func TestDispatch_DisableAsset(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			faction, acting, def, factionState, rulebook := makeMarketersFixture(tc.targetDefID, tc.coin)
+			faction, acting, _, factionState, rulebook := makeMarketersFixture(tc.targetDefID, tc.coin)
 			ctrl := gomock.NewController(t)
 			collector := mocks.NewMockCollector(ctrl)
 			collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -103,7 +103,7 @@ func TestDispatch_DisableAsset(t *testing.T) {
 			}
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: tc.rolls}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: tc.rolls}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}

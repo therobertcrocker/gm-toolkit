@@ -59,9 +59,6 @@ func (interceptor *shelterAssetInterceptor) OfferInterception(ctx hooks.LethalCo
 	}
 }
 
-// shelterLossCauses are the removal causes that mean damage destroyed the asset.
-var shelterLossCauses = []string{"attack", string(domain.SpecialCounterstrike), string(domain.SpecialSelfDamage)}
-
 // shelterLossReactor destroys the assets its Boltholes shelters when damage
 // destroys the Boltholes. A sale or a refit does not (Effort 2 Decision 13).
 type shelterLossReactor struct {
@@ -71,7 +68,7 @@ type shelterLossReactor struct {
 func (reactor *shelterLossReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
 	for _, mutation := range mutations {
 		removed, ok := mutation.(domain.AssetRemoved)
-		if !ok || removed.AssetID != reactor.holder.assetID || !slices.Contains(shelterLossCauses, removed.Cause) {
+		if !ok || removed.AssetID != reactor.holder.assetID || !slices.Contains(combatLossCauses, removed.Cause) {
 			continue
 		}
 		// deliberate: no active check, because a disabled or unready Boltholes that is destroyed still takes its sheltered assets with it.

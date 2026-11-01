@@ -62,7 +62,7 @@ func TestCoinGain_ScavengersPaysOwnKillsAndLossesOnly(t *testing.T) {
 				Filters: filters, CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}}},
 		})
 	}
-	paid := func(removed domain.AssetRemoved) int {
+	paid := func(removed domain.Mutation) int {
 		emitted, err := dispatch.MutationReactors(registry, factionState.Factions["beta"], []domain.Mutation{removed}, factionState, nil)
 		if err != nil {
 			t.Fatalf("MutationReactors: %v", err)
@@ -78,14 +78,19 @@ func TestCoinGain_ScavengersPaysOwnKillsAndLossesOnly(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		removed domain.AssetRemoved
+		removed domain.Mutation
 		want    int
 	}{
 		{"own loss in an attack", domain.AssetRemoved{FactionID: "alpha", Cause: "attack", CausedByFactionID: "beta"}, 1},
 		{"own kill in an attack", domain.AssetRemoved{FactionID: "beta", Cause: "attack", CausedByFactionID: "alpha"}, 1},
 		{"own kill by Cracked Comms", domain.AssetRemoved{FactionID: "beta", Cause: "counterstrike", CausedByFactionID: "alpha"}, 1},
+		{"own loss to its own on-hit damage", domain.AssetRemoved{FactionID: "alpha", Cause: "self_damage", CausedByFactionID: "alpha"}, 1},
 		{"a fight between two others (B.042)", domain.AssetRemoved{FactionID: "beta", Cause: "attack", CausedByFactionID: "gamma"}, 0},
 		{"a sale", domain.AssetRemoved{FactionID: "alpha", Cause: "sell", CausedByFactionID: "alpha"}, 0},
+		{"own Base lost in an attack", domain.BaseDestroyed{FactionID: "alpha", Cause: "attack", CausedByFactionID: "beta"}, 1},
+		{"own Base lost to an expansion's free attack", domain.BaseDestroyed{FactionID: "alpha", Cause: "expand", CausedByFactionID: "beta"}, 1},
+		{"a rival Base destroyed", domain.BaseDestroyed{FactionID: "beta", Cause: "attack", CausedByFactionID: "alpha"}, 1},
+		{"a Base lost between two others", domain.BaseDestroyed{FactionID: "beta", Cause: "attack", CausedByFactionID: "gamma"}, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -53,6 +53,16 @@ func (ref holderRef) liveIn(owner *domain.Faction) (*domain.Asset, bool) {
 	return asset, active(asset)
 }
 
+// refuseAssetWideRollScope refuses a roll entry on an asset whose scope reaches past
+// the asset's world: the roll dispatcher reads asset buckets on the roll's world
+// only, so the hook would act as scope "world" with no error.
+func refuseAssetWideRollScope(entry domain.EffectDefinition, holder effect.HolderKind) error {
+	if holder == effect.HolderAsset && (entry.Filters.Scope == domain.ScopeFaction || entry.Filters.Scope == domain.ScopeHomeworld) {
+		return fmt.Errorf("an asset's roll hook is read on the roll's world only, so scope %q needs a tag", entry.Filters.Scope)
+	}
+	return nil
+}
+
 // refuseTagHolder is the Validate of a registrar whose faction scope still reads
 // the declaring asset, so a tag cannot hold it yet (Effort 1 Decision 2).
 func refuseTagHolder(_ domain.EffectDefinition, holder effect.HolderKind) error {

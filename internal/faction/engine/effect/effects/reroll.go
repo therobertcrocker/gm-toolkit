@@ -39,12 +39,13 @@ var rerollRegistrar = effect.Registrar{
 
 // validateReroll keeps rival_roll to a tag: the dispatcher reads a bystander's
 // faction bucket only, so an asset's rival_roll hook would never reach a roll its
-// faction takes no part in (Effort 3 Decision 7).
+// faction takes no part in (Effort 3 Decision 7). An asset's own_roll entry stays
+// on its world for the same reason.
 func validateReroll(entry domain.EffectDefinition, holder effect.HolderKind) error {
 	if entry.Trigger == domain.TriggerRivalRoll && holder != effect.HolderTag {
 		return fmt.Errorf("only a tag can hold trigger %q", domain.TriggerRivalRoll)
 	}
-	return nil
+	return refuseAssetWideRollScope(entry, holder)
 }
 
 // forcedTrigger reports whether trigger forces a rival's roll: one made against

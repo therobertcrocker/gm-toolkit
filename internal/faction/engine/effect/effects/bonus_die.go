@@ -28,6 +28,7 @@ var bonusDieRegistrar = effect.Registrar{
 		},
 	},
 	Register: registerBonusDie,
+	Validate: refuseAssetWideRollScope,
 }
 
 func registerBonusDie(ctx effect.RegisterContext) {

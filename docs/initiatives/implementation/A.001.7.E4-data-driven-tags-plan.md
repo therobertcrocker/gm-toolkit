@@ -183,6 +183,21 @@
 - **Effort close, review findings left alone.** The tracked sandbox's missing
   `settings.toml` stays Robert's (D-4). The private base lookup in `goals` stays,
   per Decision 6.
+- **Initiative close: Refit checks the world's purchase rules through
+  `CanPurchase`.** Robert's call, from the initiative review. Refit skipped the
+  population floor, so it could put a Starship on a world too small to buy one.
+  The book has a refit meet the new asset's purchase requirements, so
+  `validRefitReplacements` now builds `PurchaseTerms` for the asset's world (the
+  cost delta, the resolved TL, the population and the resolved floor) and asks
+  `CanPurchase`, as Buy Asset does. That also closes the older gap of no TL check
+  on a refit. `RefitAsset` takes the world engine. Test:
+  `TestValidRefitReplacements_ChecksTheWorldsPurchaseRules`.
+- **Initiative close: the wizard refuses Colonists on a governed homeworld in
+  either order.** From the initiative review. The check sat on the homeworld
+  select only, so a GM who went back and added Colonists after the pick learned of
+  it at `CreateFaction`. The tag picker now asks the same helper
+  (`homeworldGovernedElsewhere`) against the picked homeworld. Decision 7 is
+  unchanged. Test: `TestHomeworldGovernedElsewhere`.
 
 ---
 

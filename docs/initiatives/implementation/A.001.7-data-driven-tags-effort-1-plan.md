@@ -149,6 +149,21 @@
 6. **Interim review: `caused_by = "any"` stays valid.** Robert's call. It loads
    through `effectOwners` and reads as "no filter" in `onSide`, as `owner = "any"`
    does. Neither the loader nor `Accepts` refuses it.
+7. **Initiative close: an asset's roll entry cannot take scope `faction` or
+   `homeworld`.** From the initiative review. Decision 2 lets scope decide the
+   holder, and `bonus_die` and `reroll` accept both scopes, but `rollScopes` reads
+   an asset's bucket only on the roll's world. So an asset entry with either scope
+   loaded and then acted as scope `world`, with no error. Engine construction now
+   refuses it (`refuseAssetWideRollScope`); a tag still takes both. No shipped asset
+   used either. Test: `TestRefuseAssetWideRollScope`.
+8. **Initiative close: Scavengers counts self-damage deaths and Bases.** Robert's
+   rules call, from the initiative review. "Has one of their assets destroyed"
+   covers an asset killed by its own on-hit damage in a fight (Zealots), and a Base
+   of Influence counts as an asset, destroyed or lost. `coin_gain`'s
+   `asset_destroyed` reads `AssetRemoved` and `BaseDestroyed`, through one
+   `combatLossCauses` list (`attack`, `counterstrike`, `self_damage`, `expand`)
+   that Boltholes' shelter loss now shares. The owner filters of D-2 are
+   unchanged. Test: `TestCoinGain_ScavengersPaysOwnKillsAndLossesOnly`.
 
 ---
 
