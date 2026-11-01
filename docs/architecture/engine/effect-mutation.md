@@ -221,8 +221,8 @@ is the string written to history; the rules behind the numbers live in
   action leaves nothing in history, and a held arrival reads as a move. Each has an
   apply arm, a digest line and a TUI line. Precedent: `GoalInitiated`. (A.001.6
   overview Decision 22.)
-- **The rule layer registers hooks, it never dispatches.** Tag and effect engines
-  translate data into [hooks](hooks.md) and stop there; the orchestrator and the
+- **The rule layer registers hooks, it never dispatches.** The effects engine
+  translates asset and tag data into [hooks](hooks.md) and stops there; the orchestrator and the
   actions own every dispatch site. This is the same consumer-owned-registration pattern as the
   action factories, and it is what lets the hook framework grow without the
   orchestrator knowing which tags or effects exist.
@@ -238,8 +238,10 @@ is the string written to history; the rules behind the numbers live in
   batch, which covers Buy Asset and the purchase enabler with no effects engine in
   either action. The scan whitelists the causes `buy` and `ability`, so a refit or
   a new `AssetAdded` emitter fires nothing until someone decides it is a purchase.
-  (s-flag-effect-registry plan, Planning Decision 5; Effort 1 plan, Decisions 5
-  and 7; Effort 5 plan, Decisions 10 and 11.)
+  Both phase routes run the asset's entries, then those of each tag its faction
+  holds, so Secretive stealths every purchase with no hook. (s-flag-effect-registry
+  plan, Planning Decision 5; Effort 1 plan, Decisions 5 and 7; Effort 5 plan,
+  Decisions 10 and 11; A.001.7 overview R-2.)
 - **An S effect is data keyed on its effect name, and the registrar picks the
   hook category.** The `[[effects]]` data never names a hook category. Each
   registrar is a spec struct: the owners, scopes, filters and gates it accepts,
@@ -251,14 +253,36 @@ is the string written to history; the rules behind the numbers live in
   its implementations. Rejected: an interface with `Accepted*()` methods, which
   forces a no-op route on every single-route effect. (Effort 1 plan, Decision 1
   and Decision Record 10.)
+- **Effects are blind to their holder; the entry's scope decides who may hold
+  it.** An asset definition and a tag record carry the same `[[effects]]` list,
+  and one effects engine checks, registers and fires both: `engine/tag` and its
+  four Go handlers are gone. Every registrar signs up through one `effect.Holder`
+  (the faction, plus the asset or the tag), which names the hook ID, the offer
+  source and the budget key. A tag registers at `FactionScope`. Scopes `self` and
+  `world` measure from the declaring asset, so a tag entry with either is refused
+  at engine construction, as is `once_per = "asset"`. `ApplyAll` walks each
+  faction's assets, then its held tags. A new tag needs no Go when existing effects
+  can state its rule. Rejected: a registrar that lists its holders (each new
+  holder edits every registrar); a separate tag engine (two vocabularies for one
+  rule shape). (A.001.7 discovery D-14; overview R-1; Effort 1 plan, Decisions 1
+  to 3.)
+- **A rule value or reference lives in the entry, never in engine code.** A
+  number, a die, a threshold, or the ID of another record (a goal, a tag, an asset
+  type) is read from the `[[effects]]` entry or from `settings.toml`. The test: a
+  second asset or tag can use the effect with TOML only. So the population floor
+  names no asset type in Go (`population_floor` with an `asset_type` filter), and
+  `xp_roll` reads its die, threshold and goal from the entry. A reference is
+  checked at load. The known breach is `lock_out`'s 1d4 fee in `arrival.go`, left
+  for the `R.026` audit. (A.001.7 overview Decision 7 and R-6.)
 - **Framework first, handlers incremental — but a known S effect with no
   registrar fails loud.** The event-hooks effort shipped all five hook categories
   plus registry and dispatch, but only a proof-of-life handler per category —
   four tags, one asset feature. The data-only skip makes the partial state safe:
   unimplemented tags are inert rulebook data, not errors, so handlers can land
   one at a time without touching the orchestrator. (Frozen log 158–188, 227–235.)
-  The S side's effects list is stricter. An asset with no effects list is still
-  inert, but an entry that names an effect the engine cannot run is wrong data,
+  The S side's effects list is stricter, for an asset and a tag alike. An asset or
+  tag with no effects list is still inert, but an entry that names an effect the
+  engine cannot run is wrong data,
   not absent data. Engine construction checks every entry against its registrar
   (the loader cannot, because `rulebook` must not import `effects`), so
   `NewWithRulebook` returns an error. `Register` also rejects a second handler

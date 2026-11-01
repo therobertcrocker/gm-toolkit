@@ -355,8 +355,11 @@ flowchart LR
   error instead of hanging the turn. The other families cannot recurse.
 - **Cat 4 modifiers chain; Cat 5 resolvers do not.** Cost-style answers compose
   (each modifier sees the prior result), so several effects stack. A tie is a
-  single binary outcome, so the first registered resolver wins and the rest are
-  ignored. Attack eligibility is also yes or no, so it does not chain either: the
+  single binary outcome, so the first resolver that answers wins and the rest are
+  ignored. `ResolveTie` asks the global bucket, then each side's faction bucket and
+  each of its asset buckets in ID order, and skips a resolver that answers
+  `TieStandard`: with asset buckets in the walk, a resolver that does not match
+  must not end the search (A.001.7 Effort 1 Decision 4). Attack eligibility is also yes or no, so it does not chain either: the
   first hook that refuses ends the fight. A permission grant is yes or no too: the
   first granter that says yes grants, and the first contester that wins withdraws.
 - **Cat 6 replaces a removal before it is emitted; the hook offers and the
@@ -403,9 +406,14 @@ flowchart LR
   both rolls would split `RollWithHooks` into roll and post-roll calls at every
   call site, and Expand Influence compares one roll against N. A fence-sign at
   the dispatcher marks it. (s-flag Effort 3 plan, Decision 15.)
-- **Every S effect registers at asset scope, and checks that its asset is active
-  when it fires.** One scope rule means one lookup shape for every effect, and an
-  effect always knows the asset that declared it. The check runs at fire time,
+- **Every S effect registers at its holder's scope, and checks that its holder
+  still applies when it fires.** An asset's effect registers at asset scope and
+  checks that the asset is active; a tag's registers at faction scope and checks
+  that the live faction still holds the tag. The hook keeps IDs (`holderRef`), not
+  pointers, and reads them again at fire time. The rest of this decision is the
+  asset case, unchanged (A.001.7 overview R-1; Effort 1 Decision 3). One scope rule
+  per holder means one lookup shape, and an effect always knows the asset or tag
+  that declared it. The check runs at fire time,
   not at registration, because `ApplyAll` runs at cycle start while `Ready` flips
   at the owner's turn start and `Maintained` in each bookkeeping. The rule is
   `domain.Asset.Active()` (ready, maintained, alive, and neither sheltered nor
@@ -422,11 +430,15 @@ flowchart LR
   faction. The movement query is per faction (`GrantMovementAbilities(faction)`),
   and each `MovementAbility` names its `Source` asset, because one Transit Web
   moves many *other* assets. Asset cost differs on purpose: it also walks rival
-  assets on the purchase world, because a surcharge is a rival's effect.
-  Rejected: registration at faction scope. (s-flag-effect-registry plan,
+  assets on the purchase world, because a surcharge is a rival's effect. A tag's
+  hook sits in the faction bucket, which every one of these walks reads, so a tag
+  floor (Colonists, Technical Expertise) needs no new walk.
+  Rejected: an asset's effect registered at faction scope. (s-flag-effect-registry plan,
   Decision Record 14; Effort 5 plan, Decision 1.)
 - **A budget lives on its owner's `HookBudgets`, keyed by effect, trigger,
-  definition and (when `once_per` asks) target or asset.** `HookBudgets` is
+  definition or tag ID, and (when `once_per` asks) target or asset.** A tag's key
+  names the tag ID where an asset's names its definition
+  (`effect:bonus_die:own_roll:SWN-T-020`; A.001.7 Effort 1 Decision Record 2). `HookBudgets` is
   cleared in each faction's own bookkeeping, so a budget written to another
   faction's map would reset at an unpredictable point in the cycle. On the roll
   path the dispatcher stamps the owning faction (`FactionID`) on every offer and
@@ -434,15 +446,30 @@ flowchart LR
   not the roller's. The trigger is in the key so two entries of one definition
   (Book of Secrets) do not share a budget. (s-flag-effect-registry plan, Planning
   Decision 3; Effort 3 plan, Decisions 8 and 16.)
-- **The roll dispatcher reads asset buckets on the roll's world from both sides,
-  but never the opponent's faction bucket.** An S effect such as Book of Secrets
-  or Panopticon Matrix acts on a roll made by or against its owner on its world,
-  so the dispatcher gathers both sides' asset buckets there, plus the rolling and
-  opposing assets when they stand elsewhere. Tag hooks register at faction scope
-  and assume the roll is their own faction's (Fanatical rerolls every 1 without
-  checking the actor), so the opponent's faction bucket stays out. Each S roll
-  hook checks its owner relation against `ctx.Actor` / `ctx.Opponent` itself.
-  (s-flag Effort 3 plan, Decision 7.)
+- **The roll dispatcher reads every faction bucket, and asset buckets on the
+  roll's world from both sides.** An S effect such as Book of Secrets or
+  Panopticon Matrix acts on a roll made by or against its owner on its world, so
+  `rollScopes` gathers both sides' asset buckets there, plus the rolling and
+  opposing assets when they stand elsewhere. It also reads the opponent's faction
+  bucket (defense-die tags such as Deep Rooted) and every bystander's faction
+  bucket (Psychic Academy's `rival_roll`). Every roll hook checks its owner
+  relation against `ctx.Actor` / `ctx.Opponent` itself (`rollMatches`), so a hook
+  in another faction's bucket acts only on the rolls its entry names. An asset's
+  roll entry cannot take scope `faction` or `homeworld`, because its bucket is
+  read only on the roll's world. This replaces "never the opponent's faction
+  bucket", whose reason was the Go tag hooks that assumed every roll was their own;
+  `engine/tag` is gone. (s-flag Effort 3 plan, Decision 7; A.001.7 discovery D-7
+  and D-15, overview R-2, Effort 3 Decision 7, initiative close.)
+- **A roll with no collector asks no one.** A contest that fires inside a reactor
+  or a phase route (Tripwire Cells, Panopticon Matrix, Lobbyists) has no one to
+  ask, so `RollWithHooks` with a nil collector takes every Cat 1 offer with no
+  budget, skips every offer with one, declines every elective Cat 2 reroll and
+  still applies forced ones. A free die where the highest is kept never hurts the
+  roller; a once-per-turn die spent on a roll the player never chose could. Each
+  call site passes its collector as one argument, nil for now, so a later collector
+  is a one-line swap. Precedent: `InterceptLethal`'s nil collector. Rejected: a
+  collector on every reactor (changes every reactor's interface; the roll card,
+  `R.025`, would replace those prompts). (A.001.7 overview Decision 2.)
 - **Reactors in one dispatch round cannot see each other's output, so a shared
   limit needs a lead.** Every reactor in a round reads the same input batch and
   the state from before it. When several reactors draw on one limit — Banks on the

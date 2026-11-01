@@ -260,7 +260,7 @@ A.001.7.
 
 Added by AP-8, from `E.002` option T-1, and widened by AP-9. Tags get their behavior
 from rulebook data, as assets do. Four efforts; see the
-[A.001.7 discovery](../../discovery/A.001.7-data-driven-tags-discovery.md).
+[A.001.7 discovery](../../_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.7-data-driven-tags/A.001.7-data-driven-tags-discovery.md).
 
 - A tag record carries `[[tags.<Key>.effects]]` with the asset `EffectDefinition`. Each
   registrar learns a second holder, the faction, beside the asset. The effects engine
@@ -282,7 +282,7 @@ from rulebook data, as assets do. Four efforts; see the
 
 **Covers:** the tag half of `E.002`, every SWN tag, `B.042`, `R.023`, and `F.010`
 (closed at merge). **Punts:** Psychic Academy's data entry, to `R.025` (the roll card);
-A.001.7 builds its registrar. **Gates:** A.001.5's tag pass.
+A.001.7 builds its registrar. **Gates:** A.001.5's tag pass (met: A.001.7 complete).
 
 ### A.001.8 — Data-driven goals (feature) — depends A.001.4
 

@@ -26,7 +26,7 @@
   Decision 3 (one check in `CanPurchase`) and Decision 7 (values and references in
   the data) are built here. R-6 (this session) reshapes Decision 3's Starship floor
   into a population floor per asset type.
-- Discovery: [`A.001.7-data-driven-tags-discovery.md`](../discovery/A.001.7-data-driven-tags-discovery.md),
+- Discovery: [`A.001.7-data-driven-tags-discovery.md`](./A.001.7-data-driven-tags-discovery.md),
   D-6, D-8, D-9, D-10.
 - Effort 2 added the `homeworld` scope this effort's TL floor reuses.
 - Architecture read: persistence, world-movement, hooks.

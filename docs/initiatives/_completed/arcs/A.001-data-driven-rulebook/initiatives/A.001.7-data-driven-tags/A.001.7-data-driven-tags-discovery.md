@@ -1,7 +1,7 @@
 # Data-Driven Tags — Discovery
 
 > **Initiative:** `A.001.7`, a feature in the `A.001` arc (arc-plan AP-8).
-> **Input:** the [`E.002` exploration](../explorations/E.002-data-driven-tags-goals-exploration.md)
+> **Input:** the [`E.002` exploration](../../../../../explorations/E.002-data-driven-tags-goals-exploration.md)
 > (options T-1 for tags and I-1 for IDs, both recommended and taken into the arc).
 > **Status:** written; waits for Robert's sign-off. D-1 to D-20 are decided. The
 > arc plan carries D-1 as amendment AP-9.
@@ -58,9 +58,9 @@
 
 ## Architecture Context
 
-Pages read: [effect-mutation](../../architecture/engine/effect-mutation.md),
-[hooks](../../architecture/engine/hooks.md),
-[persistence](../../architecture/engine/persistence.md). Binding Key Decisions:
+Pages read: [effect-mutation](../../../../../../architecture/engine/effect-mutation.md),
+[hooks](../../../../../../architecture/engine/hooks.md),
+[persistence](../../../../../../architecture/engine/persistence.md). Binding Key Decisions:
 
 - **An S effect is data keyed on its effect name; the registrar picks the hook
   category** (effect-mutation). A tag entry uses the same `EffectDefinition` and the

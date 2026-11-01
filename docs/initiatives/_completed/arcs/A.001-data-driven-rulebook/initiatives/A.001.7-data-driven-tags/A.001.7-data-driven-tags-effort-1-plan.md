@@ -29,7 +29,7 @@
   Under Decision 7, every new effect here reads its values from its entry:
   `cost_discount` (amount, `min_tech_level`), `reroll` (`result`), `bonus_die`
   (`once_per`), `coin_gain` on `asset_destroyed` (amount, `caused_by`).
-- Discovery: [`A.001.7-data-driven-tags-discovery.md`](../discovery/A.001.7-data-driven-tags-discovery.md),
+- Discovery: [`A.001.7-data-driven-tags-discovery.md`](./A.001.7-data-driven-tags-discovery.md),
   Design Summary, Effort 1; D-2, D-4, D-14, D-20.
 - Architecture read: effect-mutation, hooks, persistence, narrative-digest.
 

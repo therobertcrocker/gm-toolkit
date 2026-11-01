@@ -25,7 +25,7 @@
   Decisions 2 (contests with no collector), 6 (Perimeter Agency's three rolls) and
   7 (values in the entry) are built here. R-5 (this session) splits the old
   Effort 3 in two.
-- Discovery: [`A.001.7-data-driven-tags-discovery.md`](../discovery/A.001.7-data-driven-tags-discovery.md),
+- Discovery: [`A.001.7-data-driven-tags-discovery.md`](./A.001.7-data-driven-tags-discovery.md),
   D-7, D-16, D-17, D-18, D-19.
 - Effort 2: [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md).
   Decision 3 there promised that the contests set `OpponentAttribute`.

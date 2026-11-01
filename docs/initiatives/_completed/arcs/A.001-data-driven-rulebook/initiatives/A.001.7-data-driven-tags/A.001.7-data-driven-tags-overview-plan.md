@@ -17,15 +17,15 @@
 
 ## Context / Goal
 
-Build the efforts the [discovery](../discovery/A.001.7-data-driven-tags-discovery.md)
+Build the efforts the [discovery](./A.001.7-data-driven-tags-discovery.md)
 designed: the faction holder and tag IDs (Effort 1), bonus dice and simple grants
 (Effort 2), contest rolls and reactions (Effort 3), world and setting rules
 (Effort 4), and the A-side tag holder (Effort 5). The discovery's four efforts
 became five when R-5 split its Effort 3.
 
-- Arc: [data-driven-rulebook](../arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md),
+- Arc: [data-driven-rulebook](../../../../../arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md),
   initiative A.001.7, as amended by AP-9.
-- Input: [`E.002` exploration](../explorations/E.002-data-driven-tags-goals-exploration.md),
+- Input: [`E.002` exploration](../../../../../explorations/E.002-data-driven-tags-goals-exploration.md),
   options T-1 (tags) and I-1 (IDs).
 - Discovery decisions D-1 to D-20 stand. The decisions below answer the discovery's
   Open Questions and fix the effort order. None of them changes a D-decision, except

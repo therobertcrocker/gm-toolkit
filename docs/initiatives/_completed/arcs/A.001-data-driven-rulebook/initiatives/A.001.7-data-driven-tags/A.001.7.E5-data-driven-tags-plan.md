@@ -27,7 +27,7 @@
   Decision 3 (one check in `CanPurchase`) gets `requires_tag`. Decision 7 (values
   and references in the data, widened by R-6) binds every new effect, field and
   filter here.
-- Discovery: [`A.001.7-data-driven-tags-discovery.md`](../discovery/A.001.7-data-driven-tags-discovery.md),
+- Discovery: [`A.001.7-data-driven-tags-discovery.md`](./A.001.7-data-driven-tags-discovery.md),
   D-1, D-11, D-13.
 - Hand-off from Effort 3 (overview Findings, "Ability contest ties"): the book
   words Informers' and Seductress' contests as "Cunning vs. Cunning attack".

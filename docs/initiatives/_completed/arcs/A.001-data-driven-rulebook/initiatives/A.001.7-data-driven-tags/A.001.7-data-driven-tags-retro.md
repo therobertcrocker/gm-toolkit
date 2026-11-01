@@ -18,7 +18,9 @@
 - **Rolls reach further.** The three bare contests (Tripwire Cells, Panopticon
   Matrix, Lobbyists) roll through the hook path, and a roll asks the opponent's tags
   too. Informers and Seductress roll as attacks, as the book words them.
-- **Scavengers pays only for its own fights** (`B.042`).
+- **Scavengers pays only for its own fights** (`B.042`), and counts a lost Base.
+- **Refit obeys the world's purchase rules** (tech level and population), as a
+  purchase does.
 
 ## 1 — Did we do what we set out to do?
 
@@ -41,6 +43,8 @@ landed.
   Expand Influence free attack asks the tie resolvers (Effort 1 Decision Record 5); a
   world's population is required in the map source (Effort 4 review); the goal line
   in the digest shows Exchange Consulate's bonus XP (Effort 3 Decision Record 4).
+  At this close: Refit asks `CanPurchase`, which closes its older missing TL check;
+  Scavengers counts self-damage deaths and Bases (Robert's rules call).
 - **Reshaped on the way:** effects became blind to their holder (R-1), wider than the
   discovery's "each registrar names its holders"; Mercenary Group became a speed
   floor, not a self-move (R-4); the Starship rule became a population floor per asset
@@ -136,11 +140,14 @@ architecture pages.
 |---|---|---|
 | Delivered | 4 | All 20 tags in data as promised; `rival_roll` shipped with a known wrong-player defect |
 | Plan held | 3 | Six overview reversals (R-1 to R-6) plus Effort 5's Decision 4; all made before or at review, none mid-commit |
-| Rework | | |
+| Rework | 3 | A fix pass at every effort close, none large; this close's review found 10, of which 8 were fixed: one real rule bypass (Refit), one silent misconfiguration (asset roll scopes) |
 | Fit | 4 | Follows the effect model and Decision 7; two hooks Key Decisions reversed on purpose but left stale on the pages |
 | Simplicity | 4 | One `effect.Holder` and one `holder.go` carry the whole tag side; 41 registrar files is the vocabulary's real size |
+| **Total** | **18 / 25** | Mean 3.6: above "as expected", held back by plan reversals and rework |
 
-**Verdict:** [filled after the review fixes]
+**Verdict:** Shipped what it promised, on a design simpler than the one it started
+from; the cost was in plan length and in architecture pages left stale until the
+close.
 
 **What surprised me:** the biggest design win (effects blind to their holder) came
 from a Plan session reading 22 registrars, not from the discovery.
@@ -153,4 +160,5 @@ from a Plan session reading 22 registrars, not from the discovery.
 | `R.027` | Registrar `faction`-scope sweep | -- | Audit every registrar for a `faction` scope that a tag would need; land each with the tag that uses it (`A.001.7` overview R-3). `grant_movement` and `ignore_coin_loss` still refuse a tag holder |
 | `B.043` | `rival_roll` asks the wrong player | with `R.025` | `RollWithHooks` confirms an elective reroll through the roller's collector, so Psychic Academy's reroll on a rival is confirmed by the rival; a once-per-turn gate would spend on the first rival roll. Settle before the Academy's entry lands (`A.001.7` Effort 3 Decision Record 3) |
 | `B.044` | World TL missing from map source reads as 0 | -- | The spatial builder now refuses a world with no `population` (`A.001.7` Effort 4 review), but a missing tech level still reads as 0, the gap that population had ("TL keeps its old gap"); check what it blocks and refuse it the same way |
+| `D.010` | Update architecture pages for data-driven tags | -- | The `A.001.7` close graduates Key Decisions only; the page bodies, diagrams and Dependencies still describe the tag engine, Go tag handlers, `drift_costs.toml` and the `T-011` constant. Refresh effect-mutation, hooks, persistence, goals and orchestrator against the source, and check narrative-digest, world-movement, actions and ability-catalog for tag holders, `settings.toml`, the toll, the speed floor and tag abilities |
 | `B.045` | Refused relocate still counts its toll | -- | Relocate's total check adds every order's tolls before the government is asked, so a faction can be refused for Coin on an order the government would refuse anyway; `totalCost` does the same. Left as is in `A.001.7` Effort 4 |

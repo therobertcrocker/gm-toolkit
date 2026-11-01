@@ -137,7 +137,9 @@ flowchart LR
 - **Names are resolved in the digest, with ID fallback.** IDs become display
   names once, in the digest, and fall back to the raw ID when the entity is gone
   — so a destroyed asset or deleted faction still renders sensibly and the
-  renderer never touches state.
+  renderer never touches state. A tag mutation carries the ID only, and
+  `resolveTagName` reads the name from the rulebook, with the same fallback, so a
+  tag that left the rulebook still renders (A.001.7 overview Decision 4).
 - **Headline selection is a total priority ladder with name tie-breaks.** A fixed
   precedence and deterministic ties make the lead story reproducible from the
   same history.

@@ -26,7 +26,7 @@
 - Effort 1: [`-effort-1-plan.md`](./A.001.7-data-driven-tags-effort-1-plan.md).
   Its holder (`effect.Holder`, `holderRef`), the tag routes and the opponent's
   faction bucket on rolls are in place.
-- Discovery: [`A.001.7-data-driven-tags-discovery.md`](../discovery/A.001.7-data-driven-tags-discovery.md),
+- Discovery: [`A.001.7-data-driven-tags-discovery.md`](./A.001.7-data-driven-tags-discovery.md),
   Design Summary, Effort 2; D-5, D-12, D-17.
 - Architecture read: hooks, effect-mutation, world-movement.
 
