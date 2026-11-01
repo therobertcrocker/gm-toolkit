@@ -1165,6 +1165,7 @@ func TestConvertAbilityStep_RaiseTechLevel(t *testing.T) {
 		{"no block", "target = \"world\"\ndie = \"1d12\"\n", "raise_tech_level requires"},
 		{"no tech level", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\n", "tech_level > 0"},
 		{"a coin row", "target = \"world\"\ndie = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\ncoin = 1\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "carry no coin"},
+		{"no outcome rows", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "at least one outcome row"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1173,6 +1174,14 @@ func TestConvertAbilityStep_RaiseTechLevel(t *testing.T) {
 				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestConvertAbilityStep_RaiseTechLevelBlockOnAnotherEffect(t *testing.T) {
+	body := "\n[assets.Machine.ability]\neffect = \"coin_delta\"\ndie = \"1d6\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n"
+	_, err := loadAssetsFromTOML(t, effectTestAsset+body)
+	if err == nil || !strings.Contains(err.Error(), "needs effect = \"raise_tech_level\"") {
+		t.Fatalf("err = %v, want it to name the raise_tech_level effect", err)
 	}
 }
 
@@ -1195,7 +1204,7 @@ func TestConvertAbilityStep_ContestRoll(t *testing.T) {
 		body string
 		want string
 	}{
-		{"a contest with no roll", "attacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\neffect = \"reveal_stealth\"\ntarget = \"faction\"\n", `unknown contest roll: ""`},
+		{"a contest with no roll", "attacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\neffect = \"reveal_stealth\"\ntarget = \"faction\"\n", `a contest needs roll`},
 		{"a roll with no contest", "roll = \"attack\"\neffect = \"coin_delta\"\ndie = \"1d6\"\n", "needs a contest"},
 	}
 	for _, tc := range cases {

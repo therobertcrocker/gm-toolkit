@@ -66,7 +66,7 @@ func (modifier *techLevelFloorModifier) ModifyWorldTechLevel(faction *domain.Fac
 			return baseTL
 		}
 	}
-	if len(modifier.categories) > 0 && !slices.Contains(modifier.categories, def.Category) {
+	if len(modifier.categories) > 0 && (def == nil || !slices.Contains(modifier.categories, def.Category)) {
 		return baseTL
 	}
 	return max(baseTL, modifier.level)

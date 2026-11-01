@@ -66,8 +66,12 @@
    `destroy_self`. An asset may carry it too.
 
 4. **Teach's targets are the Base worlds where it helps.** Robert's call (rules
-   reading). These are worlds where the acting faction has a Base of Influence,
-   whose raw TL is below the entry's `tech_level`, and that have no record yet. A
+   reading). These are worlds where the acting faction has a Base of Influence and
+   that do not yet count as the entry's `tech_level` for every purchase: the raw TL,
+   the faction's record and the tech-level floors that serve every category,
+   through `ResolveWorldTechLevel` with a nil definition. A category-limited floor
+   (Pretech Researchers, R&D Department) does not count. Revised at the effort
+   close; see the Decision Record. A
    faction that cannot pay `coin_cost` has no target, so the tag is not offered.
    When an earlier holder in the same action spends the Coin, the step fizzles
    (`errNoTargets`), as Seditionists does. With no world engine, no TL is known,
@@ -143,6 +147,30 @@
   the sandbox is Robert's and takes the new data when he re-composes it (D-4). Until
   then `--campaign sandbox` refuses to start. Commits 3 and 4 only add data, so they
   did not break the load.
+- **Effort close, Decision 4 reversed: Teach's targets read the floors.** Robert's
+  call. Before, a world was skipped when its raw TL reached the entry's `tech_level`
+  or when it had any record at all. So Teach was offered on worlds that Technical
+  Expertise, Colonists or Laboratory already lift to TL4, and the faction paid 2
+  Coin for nothing. A world with a lower record could also never be raised. Now
+  `raiseTechLevelWorlds` asks `ResolveWorldTechLevel` with a nil definition and skips
+  the world when the answer reaches `tech_level`. A nil definition means "every
+  purchase", so `techLevelFloorModifier` ignores a category-limited floor for it.
+  Teach raises the world for every category, so a world that only Pretech
+  Researchers covers is still worth teaching. `HasTargets`, `stepCandidates` and
+  `resolveTarget` now take the hook registry.
+- **Effort close, the handler's Coin check is an error.** The review said a faction
+  left short by an earlier holder rolls the die and fizzles in silence. It does not:
+  the target filter reads the view's Coin, so that case fizzles as `errNoTargets`
+  before any roll (Decision 4). The handler's own `return nil, nil` could not be
+  reached, so it is now an error that says the filter and the handler disagree.
+- **Effort close, a clearer missing-`roll` error.** A contest with no `roll`, on an
+  ability or an effect, now fails with `a contest needs roll (want one of [attack
+  test])`, not `unknown contest roll: ""`. There is still no default, because a
+  default to `test` would silently misroll an attack. The sandbox still needs a
+  re-compose.
+- **Effort close, stricter `raise_tech_level` load checks.** A `raise_tech_level`
+  step needs at least one outcome row. A `[raise_tech_level]` block under another
+  effect fails to load and is no longer silently ignored.
 
 ---
 

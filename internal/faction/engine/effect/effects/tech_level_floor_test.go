@@ -82,6 +82,17 @@ func TestTechLevelFloor_CategoryFilter(t *testing.T) {
 	if got := alphaTechLevel(factionState, registry, forceAsset, "Tartarus", 2); got != 2 {
 		t.Errorf("unlisted category: tech level = %d, want 2", got)
 	}
+	if got := alphaTechLevel(factionState, registry, nil, "Tartarus", 2); got != 2 {
+		t.Errorf("any purchase (nil def): tech level = %d, want 2 (a category floor serves only some purchases)", got)
+	}
+}
+
+func TestTechLevelFloor_AnyPurchaseKeepsAnUnfilteredFloor(t *testing.T) {
+	factionState, _ := floorState()
+	registry := registerFloor(factionState, techLevelFloorEntry(domain.ScopeWorld, 4))
+	if got := alphaTechLevel(factionState, registry, nil, "Tartarus", 2); got != 4 {
+		t.Errorf("any purchase (nil def): tech level = %d, want 4", got)
+	}
 }
 
 func TestTechLevelFloor_RivalQueryUnchanged(t *testing.T) {

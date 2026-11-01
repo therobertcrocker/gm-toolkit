@@ -436,7 +436,7 @@ roller        = "self"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 `,
-			wantErr: `unknown contest roll: ""`,
+			wantErr: `a contest needs roll`,
 		},
 		{
 			name: "xp_roll with a flat die",

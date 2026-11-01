@@ -37,11 +37,11 @@ func NewUseAssetAbility(collector action.Collector, roller domain.Roller, regist
 func (u *UseAssetAbility) Name() string { return "Use Asset Ability" }
 
 func (u *UseAssetAbility) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
-	return len(abilityCandidates(faction, factionState, rulebook, u.world)) > 0
+	return len(abilityCandidates(faction, factionState, rulebook, u.world, u.registry)) > 0
 }
 
 func (u *UseAssetAbility) Inputs(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
-	selected, err := u.collector.SelectAbilityHolders(faction, abilityCandidates(faction, factionState, rulebook, u.world), rulebook)
+	selected, err := u.collector.SelectAbilityHolders(faction, abilityCandidates(faction, factionState, rulebook, u.world, u.registry), rulebook)
 	if err != nil {
 		return fmt.Errorf("use asset ability: %w", err)
 	}
@@ -87,12 +87,12 @@ func hasActionFlag(def *domain.AssetDefinition) bool {
 // faction's A-flag assets in ID order, then its tags that carry an ability, in ID
 // order. A holder whose ability has no target now is not offered (Effort 3
 // Decision 4).
-func abilityCandidates(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine) []domain.AbilityHolder {
+func abilityCandidates(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine, registry *hooks.Registry) []domain.AbilityHolder {
 	var candidates []domain.AbilityHolder
 	for _, asset := range domain.SortedAssets(faction) {
 		def, ok := rulebook.Assets[asset.DefinitionID]
 		holder := domain.AbilityHolder{Asset: asset}
-		if ok && hasActionFlag(def) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) && ability.HasTargets(faction, holder, def.Ability, factionState, worldEngine) {
+		if ok && hasActionFlag(def) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) && ability.HasTargets(faction, holder, def.Ability, factionState, worldEngine, registry) {
 			candidates = append(candidates, holder)
 		}
 	}
@@ -102,7 +102,7 @@ func abilityCandidates(faction *domain.Faction, factionState *state.FactionState
 			continue
 		}
 		holder := domain.AbilityHolder{Tag: tag}
-		if ability.HasTargets(faction, holder, tag.Ability, factionState, worldEngine) {
+		if ability.HasTargets(faction, holder, tag.Ability, factionState, worldEngine, registry) {
 			candidates = append(candidates, holder)
 		}
 	}

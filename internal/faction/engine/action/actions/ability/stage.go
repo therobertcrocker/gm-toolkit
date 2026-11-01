@@ -27,8 +27,9 @@ func resolveTarget(
 	factionState *state.FactionState,
 	collector action.Collector,
 	worldEngine *world.WorldEngine,
+	registry *hooks.Registry,
 ) (domain.AbilityTarget, error) {
-	candidates, picks := stepCandidates(step, faction, holder.Asset, factionState, worldEngine)
+	candidates, picks := stepCandidates(step, faction, holder.Asset, factionState, worldEngine, registry)
 	if picks && candidates.Len() == 0 {
 		return domain.AbilityTarget{}, errNoTargets
 	}
@@ -229,18 +230,18 @@ func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, ac
 
 // HasTargets reports whether the first step of a holder's ability can pick a
 // target now. A step that picks no target always can.
-func HasTargets(faction *domain.Faction, holder domain.AbilityHolder, abilityDefinition *domain.AbilityDefinition, factionState *state.FactionState, worldEngine *world.WorldEngine) bool {
+func HasTargets(faction *domain.Faction, holder domain.AbilityHolder, abilityDefinition *domain.AbilityDefinition, factionState *state.FactionState, worldEngine *world.WorldEngine, registry *hooks.Registry) bool {
 	if abilityDefinition == nil || len(abilityDefinition.Steps) == 0 {
 		return true
 	}
 	// deliberate: only the first step, not every step, because a later step's candidates depend on what earlier steps change (Seductress moves before it reveals).
-	candidates, picks := stepCandidates(abilityDefinition.Steps[0], faction, holder.Asset, factionState, worldEngine)
+	candidates, picks := stepCandidates(abilityDefinition.Steps[0], faction, holder.Asset, factionState, worldEngine, registry)
 	return !picks || candidates.Len() > 0
 }
 
 // stepCandidates returns the candidates for a step that picks a faction, an asset
 // or a world. picks is false for a step that picks none of them.
-func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, worldEngine *world.WorldEngine) (candidates domain.AbilityTargetCandidates, picks bool) {
+func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, worldEngine *world.WorldEngine, registry *hooks.Registry) (candidates domain.AbilityTargetCandidates, picks bool) {
 	switch step.Target {
 	case domain.TargetFaction:
 		return domain.AbilityTargetCandidates{Factions: factionCandidates(step.Effect, faction.ID, acting, factionState)}, true
@@ -251,22 +252,23 @@ func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *do
 		if rule == nil {
 			return domain.AbilityTargetCandidates{}, true
 		}
-		return domain.AbilityTargetCandidates{Worlds: rule(step, faction, worldEngine)}, true
+		return domain.AbilityTargetCandidates{Worlds: rule(step, faction, worldEngine, registry)}, true
 	}
 	return domain.AbilityTargetCandidates{}, false
 }
 
 // worldTargetRules lists a step's world candidates by its effect. An effect with
 // no rule has none.
-var worldTargetRules = map[domain.AbilityEffectType]func(step domain.AbilityStep, faction *domain.Faction, worldEngine *world.WorldEngine) []string{
+var worldTargetRules = map[domain.AbilityEffectType]func(step domain.AbilityStep, faction *domain.Faction, worldEngine *world.WorldEngine, registry *hooks.Registry) []string{
 	domain.EffectRaiseTechLevel: raiseTechLevelWorlds,
 }
 
-// raiseTechLevelWorlds returns, sorted, the worlds where faction has a Base whose
-// own tech level is below the step's and that it has no record for yet; none when
-// faction cannot pay the cost (Effort 5 Decision 4). With no world engine no
-// world's tech level is known, so there are none.
-func raiseTechLevelWorlds(step domain.AbilityStep, faction *domain.Faction, worldEngine *world.WorldEngine) []string {
+// raiseTechLevelWorlds returns, sorted, the worlds where faction has a Base that
+// does not yet count as the step's tech level for every purchase (its record and
+// the floors that serve every category); none when faction cannot pay the cost
+// (Effort 5 Decision 4). With no world engine no world's tech level is known, so
+// there are none.
+func raiseTechLevelWorlds(step domain.AbilityStep, faction *domain.Faction, worldEngine *world.WorldEngine, registry *hooks.Registry) []string {
 	params := step.RaiseTechLevel
 	if worldEngine == nil || params == nil || faction.Coin < params.CoinCost {
 		return nil
@@ -274,11 +276,12 @@ func raiseTechLevelWorlds(step domain.AbilityStep, faction *domain.Faction, worl
 	var worlds []string
 	for _, base := range faction.Bases {
 		worldID := base.Location.WorldID
-		if slices.Contains(worlds, worldID) || faction.WorldTechLevels[worldID] > 0 {
+		if slices.Contains(worlds, worldID) {
 			continue
 		}
 		location, ok := worldEngine.Location(worldID)
-		if !ok || location.TechLevel() >= params.TechLevel {
+		// deliberate: a nil definition, not a real one, because Teach raises the world for every purchase, so a floor that serves only some categories leaves it worth teaching.
+		if !ok || dispatch.ResolveWorldTechLevel(registry, faction, nil, worldID, location.TechLevel()) >= params.TechLevel {
 			continue
 		}
 		worlds = append(worlds, worldID)

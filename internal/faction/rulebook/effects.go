@@ -293,7 +293,7 @@ func convertEffectGates(record *effectGatesRecord) (domain.EffectGates, error) {
 		if err != nil {
 			return domain.EffectGates{}, err
 		}
-		roll, err := toEnum("contest roll", contest.Roll, contestRolls)
+		roll, err := toContestRoll(contest.Roll)
 		if err != nil {
 			return domain.EffectGates{}, err
 		}
@@ -533,6 +533,14 @@ func convertAmount(effectType domain.SpecialEffectType, record *amountRecord) (d
 
 func missingParamBlock(effectType domain.SpecialEffectType) error {
 	return fmt.Errorf("effect %q requires a [%s] block", effectType, effectType)
+}
+
+// deliberate: a missing roll is an error, not a default to "test", because a default would silently misroll a contest the book words as an attack.
+func toContestRoll(value string) (domain.ContestRoll, error) {
+	if value == "" {
+		return "", fmt.Errorf("a contest needs roll (want one of %v)", contestRolls)
+	}
+	return toEnum("contest roll", value, contestRolls)
 }
 
 func toEnum[T ~string](kind, value string, allowed []T) (T, error) {

@@ -117,7 +117,7 @@ func TestResolveTarget_Asset(t *testing.T) {
 				return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: chosen}, nil
 			})
 
-		target, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil)
+		target, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil, nil)
 		if err != nil {
 			t.Fatalf("resolveTarget: %v", err)
 		}
@@ -131,7 +131,7 @@ func TestResolveTarget_Asset(t *testing.T) {
 		acting.Location.WorldID = "Empty"
 		collector := mocks.NewMockCollector(gomock.NewController(t))
 
-		_, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil)
+		_, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil, nil)
 		if !errors.Is(err, errNoTargets) {
 			t.Errorf("err = %v, want errNoTargets", err)
 		}
@@ -144,7 +144,7 @@ func TestResolveTarget_Asset(t *testing.T) {
 		collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(domain.AbilityTarget{Kind: domain.TargetAsset}, nil)
 
-		_, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil)
+		_, err := resolveTarget(step, factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, factionState, collector, nil, nil)
 		if !errors.Is(err, action.ErrNoSelection) {
 			t.Errorf("err = %v, want ErrNoSelection", err)
 		}
@@ -160,14 +160,14 @@ func TestHasTargets(t *testing.T) {
 	t.Run("asset target with no candidate", func(t *testing.T) {
 		factionState, acting := makeAssetTargetState()
 		acting.Location.WorldID = "Empty"
-		if HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, definition(assetStep), factionState, nil) {
+		if HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, definition(assetStep), factionState, nil, nil) {
 			t.Error("HasTargets = true, want false")
 		}
 	})
 
 	t.Run("asset target with a candidate", func(t *testing.T) {
 		factionState, acting := makeAssetTargetState()
-		if !HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, definition(assetStep), factionState, nil) {
+		if !HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, definition(assetStep), factionState, nil, nil) {
 			t.Error("HasTargets = false, want true")
 		}
 	})
@@ -177,7 +177,7 @@ func TestHasTargets(t *testing.T) {
 		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": acting}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": {ID: "f2"}}}
 		factionStep := domain.AbilityStep{Effect: domain.EffectRevealStealth, Target: domain.TargetFaction}
-		if !HasTargets(faction, domain.AbilityHolder{Asset: acting}, definition(factionStep), factionState, nil) {
+		if !HasTargets(faction, domain.AbilityHolder{Asset: acting}, definition(factionStep), factionState, nil, nil) {
 			t.Error("HasTargets = false, want true")
 		}
 	})
@@ -186,7 +186,7 @@ func TestHasTargets(t *testing.T) {
 		factionState, acting := makeAssetTargetState()
 		acting.Location.WorldID = "Empty"
 		relocateStep := domain.AbilityStep{Effect: domain.EffectRelocate, Target: domain.TargetNone}
-		if !HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, definition(relocateStep, assetStep), factionState, nil) {
+		if !HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Asset: acting}, definition(relocateStep, assetStep), factionState, nil, nil) {
 			t.Error("HasTargets = false, want true")
 		}
 	})

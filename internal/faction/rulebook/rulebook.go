@@ -362,7 +362,7 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		if err != nil {
 			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
 		}
-		roll, err := toEnum("contest roll", record.Roll, contestRolls)
+		roll, err := toContestRoll(record.Roll)
 		if err != nil {
 			return domain.AbilityStep{}, err
 		}
@@ -421,9 +421,15 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		if step.Target != domain.TargetWorld || step.Roll == nil || step.RaiseTechLevel == nil {
 			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level requires target = %q, a die and a [raise_tech_level] block", "world")
 		}
+		if len(step.Roll.Outcomes) == 0 {
+			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level needs at least one outcome row to mark a success")
+		}
 		if slices.ContainsFunc(step.Roll.Outcomes, func(outcome domain.AbilityOutcome) bool { return outcome.Coin != 0 || outcome.DestroySelf }) {
 			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level outcome rows mark a success; they carry no coin or destroy_self")
 		}
+	}
+	if step.RaiseTechLevel != nil && step.Effect != domain.EffectRaiseTechLevel {
+		return domain.AbilityStep{}, fmt.Errorf("a [raise_tech_level] block needs effect = %q, got %q", domain.EffectRaiseTechLevel, step.Effect)
 	}
 	if step.Effect == domain.EffectRevealStealth && step.Target != domain.TargetFaction {
 		return domain.AbilityStep{}, fmt.Errorf("reveal_stealth requires target = %q", "faction")

@@ -49,7 +49,8 @@ type MaintenanceCostModifier interface {
 }
 
 // WorldTechLevelModifier adjusts the effective tech level of a world for a
-// specific faction, used by TL-gated asset purchase logic (Cat 4).
+// specific faction, used by TL-gated asset purchase logic (Cat 4). A nil def means
+// every purchase (Teach Planetary Population's world filter).
 type WorldTechLevelModifier interface {
 	ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int
 }

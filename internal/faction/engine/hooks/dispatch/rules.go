@@ -81,7 +81,8 @@ func ResolveMaintenanceCost(registry *hooks.Registry, owner *domain.Faction, ass
 // WorldTechLevelModifiers, then those registered against each asset faction owns,
 // in asset ID order. A tech-level floor serves its owner only, so a rival's assets
 // are never asked; each asset-scoped hook decides whether its reach covers world
-// and def.
+// and def. A nil def asks for the level that holds for every purchase, so a
+// category-limited floor does not count.
 func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int {
 	tl := max(baseTL, faction.WorldTechLevels[world])
 	if registry == nil {
