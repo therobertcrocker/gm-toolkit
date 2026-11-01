@@ -1241,3 +1241,19 @@ func TestLockedOutIsAConditionOnTheCrossEvent(t *testing.T) {
 		t.Errorf("Cross = %+v, want f1 → f2 carrying locked_out", cycleDigest.Cross)
 	}
 }
+
+func TestWorldTechLevelRaised(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha"})
+	records := []domain.EventRecord{
+		eventRec("f1", mutRec(t, "world_tech_level_raised", domain.WorldTechLevelRaised{
+			FactionID: "f1", WorldID: "Backwater", TechLevel: 4, Cause: "ability", CausedByFactionID: "f1",
+		})),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+	beat := findBeat(cycleDigest, "f1")
+	if beat == nil || !slices.ContainsFunc(beat.GoalEvents, func(event GoalEvent) bool {
+		return event.Kind == GoalTechLevelRaised && event.ToWorld == "Backwater" && event.TechLevel == 4
+	}) {
+		t.Errorf("f1 beat = %+v, want a GoalTechLevelRaised event for Backwater at 4", beat)
+	}
+}

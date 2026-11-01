@@ -45,6 +45,7 @@ type effectFiltersRecord struct {
 	CausedBy          string   `toml:"caused_by"`
 	Goal              string   `toml:"goal"`
 	Detection         bool     `toml:"detection"`
+	AssetDefinition   string   `toml:"asset_definition"`
 }
 
 type effectGatesRecord struct {
@@ -228,7 +229,7 @@ func convertEffectFilters(record effectFiltersRecord) (domain.EffectFilters, err
 	filters := domain.EffectFilters{
 		Owner: owner, Scope: scope, Action: record.Action, Stealthy: record.Stealthy,
 		MinTechLevel: record.MinTechLevel, TechLevel: record.TechLevel, OpponentTechLevel: record.OpponentTechLevel,
-		Goal: record.Goal, Detection: record.Detection,
+		Goal: record.Goal, Detection: record.Detection, AssetDefinition: record.AssetDefinition,
 	}
 	if record.Attribute != "" {
 		attribute, err := toFactionStat(record.Attribute)
@@ -305,9 +306,8 @@ func convertEffectGates(record *effectGatesRecord) (domain.EffectGates, error) {
 			return domain.EffectGates{}, fmt.Errorf("contest defender_stat: %w", err)
 		}
 		gates.Contest = &domain.EffectContest{
-			Contest: domain.Contest{AttackerStat: attacker, DefenderStat: defender},
+			Contest: domain.Contest{AttackerStat: attacker, DefenderStat: defender, Roll: roll},
 			Roller:  roller,
-			Roll:    roll,
 		}
 	}
 	return gates, nil

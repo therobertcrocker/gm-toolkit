@@ -80,6 +80,11 @@ var goalGovernedTemplates = []string{
 	"A change of rule: {world} answers to {faction}.",
 }
 
+var goalTechLevelTemplates = []string{
+	"{world} now counts as tech level {level} for {faction}'s purchases.",
+	"{faction} can now buy on {world} as if it stood at tech level {level}.",
+}
+
 var goalTagLostTemplates = []string{
 	"{faction} lost the tag: {tag}.",
 	"{faction} no longer holds {tag}.",

@@ -219,3 +219,34 @@ func TestBonusDie_TagReachesNoRivalRollAgainstItsOwner(t *testing.T) {
 		t.Errorf("Sum = %d, selections = %d; want 3 and 0: alpha's tag is read but does not serve beta", result.Sum, collector.selections)
 	}
 }
+
+func TestBonusDie_EugenicsCultDieOnlyOnTheNamedAsset(t *testing.T) {
+	slaves := &domain.Asset{ID: "s1", OwnerID: "alpha", DefinitionID: "SWN-F1-004"}
+	guards := &domain.Asset{ID: "g1", OwnerID: "alpha", DefinitionID: "SWN-F1-001"}
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"SWN-T-003"}, Assets: map[string]*domain.Asset{"s1": slaves, "g1": guards}}
+	beta := &domain.Faction{ID: "beta"}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": beta}}
+	entry := bonusDieEntry(domain.EffectFilters{
+		Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+		Phases:          []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+		AssetDefinition: "SWN-F1-004",
+	}, 1)
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialBonusDie].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-003", Name: "Eugenics Cult"}}, Entry: entry, Registry: registry,
+	})
+	hook := registry.RollModifiersAt(hooks.FactionScope("alpha"))[0].Hook
+	roll := func(asset *domain.Asset, phase hooks.RollPhase) hooks.RollContext {
+		return hooks.RollContext{Phase: phase, Actor: alpha, Opponent: beta, Attribute: "Force", Asset: asset, World: "Krylos"}
+	}
+
+	if offers := hook.OfferModifiers(roll(slaves, hooks.PhaseAttack), factionState, nil); len(offers) != 1 || !offers[0].FromTag {
+		t.Errorf("Slaves attack offers = %+v, want one tag die", offers)
+	}
+	if offers := hook.OfferModifiers(roll(slaves, hooks.PhaseDefense), factionState, nil); len(offers) != 1 {
+		t.Errorf("Slaves defense offers = %+v, want one", offers)
+	}
+	if offers := hook.OfferModifiers(roll(guards, hooks.PhaseAttack), factionState, nil); len(offers) != 0 {
+		t.Errorf("another asset's attack offers = %+v, want none", offers)
+	}
+}

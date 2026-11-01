@@ -122,9 +122,8 @@ scope = "self"
 				OncePer: domain.OncePerTargetFaction,
 				NoStack: true,
 				Contest: &domain.EffectContest{
-					Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth},
+					Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth, Roll: domain.ContestRollTest},
 					Roller:  domain.ContestRollerTarget,
-					Roll:    domain.ContestRollTest,
 				},
 			},
 			CoinSteal: &domain.CoinStealParams{Amount: domain.DiceRoll{NumDice: 1, Sides: 4}},

@@ -481,6 +481,13 @@ func Build(
 				seenFactionIDs[m.FactionID] = struct{}{}
 				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: resolveTagName(m.TagID, rulebook)})
 
+			case "world_tech_level_raised":
+				var m domain.WorldTechLevelRaised
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				beat.GoalEvents = append(beat.GoalEvents, GoalEvent{Kind: GoalTechLevelRaised, ToWorld: m.WorldID, TechLevel: m.TechLevel})
+
 			case "world_government_changed":
 				var m domain.WorldGovernmentChanged
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {

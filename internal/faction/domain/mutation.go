@@ -58,6 +58,18 @@ type PurchaseDiscountConsumed struct {
 
 func (m PurchaseDiscountConsumed) Type() string { return "purchase_discount_consumed" }
 
+// WorldTechLevelRaised records that WorldID counts as TechLevel for FactionID's
+// purchases (raise_tech_level, D-11). A lower value never replaces a higher one.
+type WorldTechLevelRaised struct {
+	FactionID         string `json:"faction_id"`
+	WorldID           string `json:"world_id"`
+	TechLevel         int    `json:"tech_level"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m WorldTechLevelRaised) Type() string { return "world_tech_level_raised" }
+
 // AssetMaintainedFlag updates the Maintained flag on a specific asset.
 type AssetMaintainedFlag struct {
 	FactionID         string `json:"faction_id"`

@@ -35,6 +35,8 @@ type Tag struct {
 	Government          bool
 	HomeworldGovernment bool
 	Effects             []EffectDefinition
+	// Ability is a tag's action, used through Use Asset Ability; nil for most tags.
+	Ability *AbilityDefinition
 }
 
 type Goal struct {
@@ -75,6 +77,9 @@ type Faction struct {
 	// PopulationWaiver lifts every purchase-population floor: another power provides
 	// or supports the faction's ships (D-9, Effort 4 Decision 5).
 	PopulationWaiver bool `toml:"population_waiver,omitempty"`
+	// WorldTechLevels holds the worlds that count as a higher tech level for this
+	// faction's purchases, by world ID (raise_tech_level, D-11).
+	WorldTechLevels map[string]int `toml:"world_tech_levels,omitempty"`
 }
 
 // HasTag reports whether the faction holds the tag with ID tagID.
@@ -113,6 +118,9 @@ func (faction *Faction) Clone() *Faction {
 	if faction.HookBudgets != nil {
 		clone.HookBudgets = make(map[string]int, len(faction.HookBudgets))
 		maps.Copy(clone.HookBudgets, faction.HookBudgets)
+	}
+	if faction.WorldTechLevels != nil {
+		clone.WorldTechLevels = maps.Clone(faction.WorldTechLevels)
 	}
 	return &clone
 }

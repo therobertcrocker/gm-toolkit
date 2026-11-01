@@ -108,8 +108,8 @@ func (ra *RefitAsset) Output() ([]domain.Mutation, error) {
 }
 
 // validRefitReplacements returns definitions the faction could refit oldAsset
-// into: same category, different definition, attribute meets MinRating, and
-// faction can afford the cost delta.
+// into: same category, different definition, attribute meets MinRating, any
+// required tag held, and faction can afford the cost delta.
 func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rulebook *rulebook.Rulebook) []*domain.AssetDefinition {
 	// deliberate: no refit for a sheltered asset, because the new asset starts at full HP and would skip the repair Boltholes asks for (Effort 2 Decision Record 5).
 	if oldAsset.HasCondition(domain.ConditionSheltered) {
@@ -132,6 +132,9 @@ func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rul
 			continue
 		}
 		if statScore(faction, def.Category) < def.MinRating {
+			continue
+		}
+		if !def.TagRequirementMet(faction.Tags) {
 			continue
 		}
 		delta := max(0, def.Cost-oldDef.Cost)

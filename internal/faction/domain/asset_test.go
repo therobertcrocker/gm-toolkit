@@ -289,3 +289,14 @@ func TestCanPurchase_PopulationFloor(t *testing.T) {
 		}
 	}
 }
+
+func TestCanPurchase_RequiresTag(t *testing.T) {
+	def := &domain.AssetDefinition{ID: "slaves", Category: domain.StatForce, Cost: 2, TechLevel: 4, RequiresTag: "T-003"}
+	terms := domain.PurchaseTerms{Cost: 2, TechCap: 5}
+	if domain.CanPurchase(&domain.Faction{ID: "f1", Coin: 5, Force: 1}, def, terms) {
+		t.Error("CanPurchase = true without the tag, want false")
+	}
+	if !domain.CanPurchase(&domain.Faction{ID: "f1", Coin: 5, Force: 1, Tags: []string{"T-003"}}, def, terms) {
+		t.Error("CanPurchase = false with the tag, want true")
+	}
+}

@@ -43,7 +43,7 @@ type Harness struct {
 	SpatialMap   *StubSpatialMap
 }
 
-// StubSpatialMap accepts any location ID, returning TL 5 and distance 1.
+// StubSpatialMap accepts any location ID, returning TL 5 (or TechLevels) and distance 1.
 // Used by the test harness so the world index is always populated without
 // requiring real spatial data files. PathFn is overridable so scenario tests
 // can script multi-hex paths.
@@ -54,6 +54,8 @@ type StubSpatialMap struct {
 	Worlds []string
 	// Populations overrides a world's population; any other world has stubPopulation.
 	Populations map[string]int
+	// TechLevels overrides a world's tech level; any other world is TL 5.
+	TechLevels map[string]int
 }
 
 // stubPopulation is above the SWN Starship floor, so no purchase is refused for its
@@ -63,7 +65,14 @@ const stubPopulation = 1_000_000
 var _ world.HexRouter = (*StubSpatialMap)(nil)
 
 func (s *StubSpatialMap) Location(id string) (spatial.Location, bool) {
-	return &stubLocation{id: id, population: s.populationOf(id)}, true
+	return &stubLocation{id: id, population: s.populationOf(id), techLevel: s.techLevelOf(id)}, true
+}
+
+func (s *StubSpatialMap) techLevelOf(id string) int {
+	if techLevel, ok := s.TechLevels[id]; ok {
+		return techLevel
+	}
+	return 5
 }
 
 func (s *StubSpatialMap) populationOf(id string) int {
@@ -94,7 +103,7 @@ func (s *StubSpatialMap) Path(from, to spatial.RegionHex, crossingCost int) ([]s
 func (s *StubSpatialMap) AllWorlds() []spatial.Location {
 	locations := make([]spatial.Location, 0, len(s.Worlds))
 	for _, id := range s.Worlds {
-		locations = append(locations, &stubLocation{id: id, population: s.populationOf(id)})
+		locations = append(locations, &stubLocation{id: id, population: s.populationOf(id), techLevel: s.techLevelOf(id)})
 	}
 	return locations
 }
@@ -102,13 +111,14 @@ func (s *StubSpatialMap) AllWorlds() []spatial.Location {
 type stubLocation struct {
 	id         string
 	population int
+	techLevel  int
 }
 
 var _ spatial.RegionLocation = (*stubLocation)(nil)
 
 func (l *stubLocation) ID() string                   { return l.id }
 func (l *stubLocation) Name() string                 { return l.id }
-func (l *stubLocation) TechLevel() int               { return 5 }
+func (l *stubLocation) TechLevel() int               { return l.techLevel }
 func (l *stubLocation) Population() int              { return l.population }
 func (l *stubLocation) Coords() (q, r int)           { return 0, 0 }
 func (l *stubLocation) RegionID() string             { return "" }

@@ -130,6 +130,8 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("asset %s -%s", mut.AssetID, mut.Condition.Kind), true
 	case domain.AssetOwnerChanged:
 		return fmt.Sprintf("asset %s captured by %s", mut.AssetID, mut.ToFactionID), true
+	case domain.WorldTechLevelRaised:
+		return fmt.Sprintf("%s counts as TL %d for purchases", mut.WorldID, mut.TechLevel), true
 	case domain.WorldGovernmentChanged:
 		if mut.ToFactionID == "" {
 			return fmt.Sprintf("%s → independent", mut.WorldID), true

@@ -22,6 +22,7 @@ var bonusDieRegistrar = effect.Registrar{
 			Filters: []domain.EffectFilterName{
 				domain.FilterAttribute, domain.FilterOpponentAttribute, domain.FilterPhase, domain.FilterAction,
 				domain.FilterTechLevel, domain.FilterOpponentTechLevel, domain.FilterGoal, domain.FilterDetection,
+				domain.FilterAssetDefinition,
 			},
 			Gates: []domain.EffectGateName{domain.GateOncePer},
 		},

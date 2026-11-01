@@ -14,7 +14,7 @@ type Collector interface {
 	hooks.Collector
 	hooks.InterceptCollector
 	hooks.PermissionCollector
-	SelectAbilityTarget(asset *domain.Asset, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
+	SelectAbilityTarget(holder domain.AbilityHolder, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
 	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]RelocateOrder, error)
 	SelectPurchaseEnablerAsset(world string, candidates []PurchaseEnablerOption) (*domain.AssetDefinition, error)
 	SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error)
@@ -29,7 +29,7 @@ type Collector interface {
 	SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (ExpandInfluenceOrder, error)
 	ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error)
 	SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
-	SelectAbilityAssets(faction *domain.Faction, candidates []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
+	SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, rulebook *rulebook.Rulebook) ([]domain.AbilityHolder, error)
 	ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error)
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)

@@ -420,3 +420,24 @@ func TestMutationEngine_MovementOrderHeldMarksAPaidLockdown(t *testing.T) {
 		}
 	}
 }
+
+func TestMutationEngine_WorldTechLevelRaised(t *testing.T) {
+	s := newMutationTestState()
+	me := New(slog.New(slog.DiscardHandler))
+	apply := func(level int) {
+		t.Helper()
+		if err := me.Apply(s, []domain.Mutation{
+			domain.WorldTechLevelRaised{FactionID: "f1", WorldID: "Backwater", TechLevel: level},
+		}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply() unexpected error: %v", err)
+		}
+	}
+	apply(4)
+	if got := s.Factions["f1"].WorldTechLevels["Backwater"]; got != 4 {
+		t.Errorf("WorldTechLevels[Backwater] = %d, want 4", got)
+	}
+	apply(3)
+	if got := s.Factions["f1"].WorldTechLevels["Backwater"]; got != 4 {
+		t.Errorf("WorldTechLevels[Backwater] after a lower value = %d, want 4 kept", got)
+	}
+}

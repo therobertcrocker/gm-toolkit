@@ -19,8 +19,8 @@ import (
 // gate; a handler that is called has, by halt-on-failure, already passed its gate.
 type StepContext struct {
 	Faction      *domain.Faction
-	Asset        *domain.Asset
-	Def          *domain.AssetDefinition
+	Asset        *domain.Asset           // nil for a tag holder
+	Def          *domain.AssetDefinition // nil for a tag holder
 	Step         domain.AbilityStep
 	Target       domain.AbilityTarget
 	RollResult   int // resolved by the roll stage when Step.Roll != nil; 0 otherwise
@@ -59,15 +59,17 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectDisableAsset:     disableAsset,
 	domain.EffectBlockAttack:      blockAttack,
 	domain.EffectLevyCoin:         levyCoin,
+	domain.EffectRaiseTechLevel:   raiseTechLevel,
 }
 
-// Dispatch runs an asset's ability as a sequence of steps: resolve the step's
-// target, run its gate, dispatch its terminal effect, collect the mutations.
-// Assets with no ability block, or whose effect has no registered handler, fall
-// through to confirmApplied (the not-yet-built effects).
+// Dispatch runs a holder's ability as a sequence of steps: resolve the step's
+// target, run its gate, dispatch its terminal effect, collect the mutations. def
+// is an asset holder's definition, nil for a tag. Assets with no ability block, or
+// whose effect has no registered handler, fall through to confirmApplied (the
+// not-yet-built effects). The loader lets a tag carry only built effects.
 func Dispatch(
 	faction *domain.Faction,
-	asset *domain.Asset,
+	holder domain.AbilityHolder,
 	def *domain.AssetDefinition,
 	collector action.Collector,
 	roller domain.Roller,
@@ -77,14 +79,16 @@ func Dispatch(
 	rb *rulebook.Rulebook,
 	worldEngine *world.WorldEngine,
 ) ([]domain.Mutation, error) {
-	if def.Ability == nil || len(def.Ability.Steps) == 0 {
+	asset := holder.Asset
+	abilityDefinition := holderAbility(holder, def)
+	if abilityDefinition == nil || len(abilityDefinition.Steps) == 0 {
 		return confirmApplied(asset, def, collector)
 	}
 	// Pre-flight: if any step's effect is not yet built, the whole ability is a
 	// not-yet-built no-op. Bail before executing any step, so a built early step
 	// never half-applies (moves an asset, spends Coin) only to be discarded when a
 	// later unbuilt step short-circuits to confirmApplied.
-	for _, step := range def.Ability.Steps {
+	for _, step := range abilityDefinition.Steps {
 		if _, ok := handlers[step.Effect]; !ok {
 			return confirmApplied(asset, def, collector)
 		}
@@ -93,18 +97,21 @@ func Dispatch(
 	if workingFaction == nil {
 		return nil, fmt.Errorf("ability: acting faction %s not in the view", faction.ID)
 	}
-	workingAsset := workingFaction.Assets[asset.ID]
-	if workingAsset == nil {
-		// deliberate: fizzle, not act from real state, because an asset missing from the view was removed by an earlier asset in this action.
-		return nil, nil
+	var workingAsset *domain.Asset
+	if asset != nil {
+		workingAsset = workingFaction.Assets[asset.ID]
+		if workingAsset == nil {
+			// deliberate: fizzle, not act from real state, because an asset missing from the view was removed by an earlier asset in this action.
+			return nil, nil
+		}
 	}
 	discardLog := slog.New(slog.DiscardHandler)
 	mutationEngine := mutation.New(discardLog)
 
 	var mutations []domain.Mutation
-	for _, step := range def.Ability.Steps {
+	for _, step := range abilityDefinition.Steps {
 		handler := handlers[step.Effect]
-		target, err := resolveTarget(step, workingFaction, workingAsset, view, collector)
+		target, err := resolveTarget(step, workingFaction, domain.AbilityHolder{Asset: workingAsset, Tag: holder.Tag}, view, collector, worldEngine)
 		// deliberate: fizzle this asset, not fail the action, because an earlier asset in the same action may have used up the targets and its result must stand (Effort 3 Decision Record 1).
 		if errors.Is(err, errNoTargets) {
 			break
@@ -143,11 +150,23 @@ func Dispatch(
 		mutations = append(mutations, stepMutations...)
 		// deliberate: drop the projection's apply error, not return it, because Output() applies the same mutations against real state, where a genuine miss still surfaces.
 		_ = mutationEngine.Apply(view, stepMutations, discardLog)
+		if asset == nil {
+			continue
+		}
 		if updated, ok := workingFaction.Assets[asset.ID]; ok {
 			workingAsset = updated
 		}
 	}
 	return mutations, nil
+}
+
+// holderAbility returns the ability a holder uses: its tag's, or its asset
+// definition's.
+func holderAbility(holder domain.AbilityHolder, def *domain.AssetDefinition) *domain.AbilityDefinition {
+	if holder.Tag != nil {
+		return holder.Tag.Ability
+	}
+	return def.Ability
 }
 
 func confirmApplied(asset *domain.Asset, def *domain.AssetDefinition, collector action.Collector) ([]domain.Mutation, error) {

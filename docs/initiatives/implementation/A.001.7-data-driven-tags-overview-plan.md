@@ -240,7 +240,7 @@ reversals of the decisions above. -->
 | [x] | 2 | Bonus dice and simple grants | Eight tag dice through new roll vocabulary (`homeworld` scope; `opponent_attribute`, `tech_level`, `opponent_tech_level` and `goal` filters); Secretive; Mercenary Group as a `speed_floor` (R-4) | [`-effort-2-plan.md`](./A.001.7-data-driven-tags-effort-2-plan.md) |
 | [x] | 3 | Contest rolls and reactions | The `R.023` contests on `RollWithHooks` with no collector; Perimeter Agency's detect die; the Psychic Academy registrar (`rival_roll`); goal events reach reactors; Deep Rooted's loss; Exchange Consulate's XP roll | [`A.001.7.E3-…-plan.md`](./A.001.7.E3-data-driven-tags-plan.md) |
 | [x] | 4 | World and setting rules | `settings.toml`; the population floor per asset type and its waiver (R-6); Colonists and Technical Expertise; Pirates | [`A.001.7.E4-…-plan.md`](./A.001.7.E4-data-driven-tags-plan.md) |
-| [ ] | 5 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | `A.001.7.E5-data-driven-tags-plan.md` *(to be written)* |
+| [x] | 5 | A-side tag holder | The ability registry accepts a faction holder; Teach Planetary Population and its per-faction TL record; Gengineered Slaves, `requires_tag` and the Eugenics Cult die | [`A.001.7.E5-…-plan.md`](./A.001.7.E5-data-driven-tags-plan.md) |
 
 ## Shared Context
 
@@ -396,4 +396,4 @@ Gengineered Slaves in `force_assets.toml` with `requires_tag`, checked in
 
 **Depends on:** Effort 2. Runs after Effort 4 (Decision 1, R-5).
 
-**Own Plan session:** yes (Decision 1).
+**Own Plan session:** yes (Decision 1). Written: [`A.001.7.E5-data-driven-tags-plan.md`](./A.001.7.E5-data-driven-tags-plan.md).

@@ -47,7 +47,7 @@ func makeMonopolyFixture(coin int) (*domain.Faction, *domain.Asset, *domain.Asse
 func TestDispatch_LevyCoin(t *testing.T) {
 	selectF2 := func(collector *mocks.MockCollector) {
 		collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+			DoAndReturn(func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 				return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: candidates.Factions[0]}, nil
 			})
 	}
@@ -57,7 +57,7 @@ func TestDispatch_LevyCoin(t *testing.T) {
 		collector := mocks.NewMockCollector(gomock.NewController(t))
 		selectF2(collector)
 
-		mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
+		mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
 		if err != nil {
 			t.Fatalf("Dispatch: %v", err)
 		}
@@ -85,7 +85,7 @@ func TestDispatch_LevyCoin(t *testing.T) {
 				return assets[0], nil
 			})
 
-		mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), assetRulebook, nil)
+		mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), assetRulebook, nil)
 		if err != nil {
 			t.Fatalf("Dispatch: %v", err)
 		}
@@ -108,7 +108,7 @@ func TestDispatch_LevyCoin(t *testing.T) {
 				return assets[0], nil
 			})
 
-		if _, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), assetRulebook, nil); err != nil {
+		if _, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), assetRulebook, nil); err != nil {
 			t.Fatalf("Dispatch: %v", err)
 		}
 	})
@@ -119,7 +119,7 @@ func TestDispatch_LevyCoin(t *testing.T) {
 		selectF2(collector)
 		collector.EXPECT().SelectAssetToLose(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
 
-		_, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
+		_, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
 		if err == nil || errors.Is(err, action.ErrNoSelection) {
 			t.Errorf("err = %v, want a non-sentinel error", err)
 		}
@@ -131,7 +131,7 @@ func TestDispatch_LevyCoin(t *testing.T) {
 		selectF2(collector)
 		collector.EXPECT().SelectAssetToLose(gomock.Any(), gomock.Any(), gomock.Any()).Return(factionState.Factions["f2"].Assets["b3"], nil)
 
-		mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
+		mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), rulebook, nil)
 		if err == nil {
 			t.Errorf("err = nil, mutations = %+v; want an error for b3 on Hadrian", mutations)
 		}

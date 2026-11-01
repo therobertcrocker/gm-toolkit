@@ -109,10 +109,10 @@ func setupMarketersOnPartyMachine(t *testing.T) (*testharness.Harness, *domain.A
 		t.Fatal("Use Asset Ability not available for alpha")
 		return nil, nil
 	}
-	h.Collector.SelectAbilityAssetsFn = func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
-		return []*domain.Asset{marketers}, nil
+	h.Collector.SelectAbilityHoldersFn = func(*domain.Faction, []domain.AbilityHolder, *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
+		return []domain.AbilityHolder{{Asset: marketers}}, nil
 	}
-	h.Collector.SelectAbilityTargetFn = func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+	h.Collector.SelectAbilityTargetFn = func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 		for _, candidate := range candidates.Assets {
 			if candidate.ID == partyMachine.ID {
 				return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: candidate}, nil

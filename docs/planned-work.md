@@ -213,6 +213,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 |----|------|---------|--------|
 | `E.001` | Display translation ownership | after `A.001` | Engine data reaches the GM through label, feed and card code spread across `tui/` with no single owner, and the sandbox runs placed most UX findings there; explore the current design (presentation, drivers, Manage mode, `narrative/digest`) and brainstorm options, from fixing in place to a frontend-neutral layer. Starting reference: [layer map](https://claude.ai/artifact/6UjHPwdY3mq8oQ24HRqvU1). |
 | `E.003` | Old-TUI feature parity | -- | `798cd45` (2026-05-03) deleted the old TUI and turn command (27 files, about 4,400 lines) before the orchestrator refactor, and no one compared it against the rebuild; goal selection was lost that way (`B.039`). List what each deleted file did (`git show 798cd45^:<path>`), with most risk in `phases/` (goal select, resume, skip, summary, bookkeeping), `model.go` and `narrate.go`, compare against today's engine, TUI and Cobra commands, and file each gap as its own row. |
+| `E.004` | Unifying Dice and RollHooks | -- | Explore a unified approach to handling dice rolls and RollHooks in the engine, aiming to reduce duplication and improve consistency across different roll types. |
 
 ### Captured Ideas
 

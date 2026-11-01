@@ -475,3 +475,97 @@ func TestPopulationFloor_TagsOpenASmallWorldToStarships(t *testing.T) {
 		})
 	}
 }
+
+// --- scenario N+9: Preceptor Archive — Teach Planetary Population ---
+
+// TestPreceptorArchive_TeachPlanetaryPopulation: alpha holds Preceptor Archive and
+// a Base on Backwater (TL 2); Tartarus, its homeworld, has no Base. Use Asset
+// Ability offers the tag alone, and the world target offers Backwater alone. The
+// action pays 2 Coin either way; on a 12, Backwater counts as TL4 for alpha.
+func TestPreceptorArchive_TeachPlanetaryPopulation(t *testing.T) {
+	cases := []struct {
+		name   string
+		roll   int
+		wantTL int
+	}{
+		{"a 12 raises the world", 12, 4},
+		{"an 11 pays and raises nothing", 11, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := testharness.NewHarness(t)
+			h.SpatialMap.TechLevels = map[string]int{"Backwater": 2}
+			alpha := h.AddFaction("alpha", "Tartarus", 2, 3, 2)
+			alpha.Tags = []string{"SWN-T-013"}
+			alpha.Coin = 4
+			testharness.AddBase(alpha, "Backwater", 2)
+			h.Engine.Rand = &testharness.FixedRoller{Values: []int{tc.roll}}
+			var offered []domain.AbilityHolder
+			var worlds []string
+			h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Use Asset Ability")
+			h.Collector.SelectAbilityHoldersFn = func(_ *domain.Faction, candidates []domain.AbilityHolder, _ *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
+				offered = candidates
+				return candidates, nil
+			}
+			h.Collector.SelectAbilityTargetFn = func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+				worlds = candidates.Worlds
+				return domain.AbilityTarget{Kind: domain.TargetWorld, World: "Backwater"}, nil
+			}
+
+			runOrderedCycle(t, h, alpha.ID)
+
+			testharness.CheckStep(t, "the tag is the only holder offered", len(offered) == 1 && offered[0].Tag != nil && offered[0].Tag.ID == "SWN-T-013",
+				fmt.Sprintf("offered = %+v", offered))
+			testharness.CheckStep(t, "Backwater is the only world offered", len(worlds) == 1 && worlds[0] == "Backwater",
+				fmt.Sprintf("worlds = %v", worlds))
+			testharness.CheckStep(t, "the record matches the roll", alpha.WorldTechLevels["Backwater"] == tc.wantTL,
+				fmt.Sprintf("WorldTechLevels[Backwater] = %d, want %d", alpha.WorldTechLevels["Backwater"], tc.wantTL))
+			records := testharness.ReadHistory(t, h.Paths.HistoryPath)
+			_, paid := testharness.FindMutationByTypeAndCause(records, "coin_delta", "ability")
+			testharness.CheckStep(t, "the 2 Coin is paid", paid, "no coin_delta(cause=ability) in history")
+		})
+	}
+}
+
+// --- scenario N+10: Eugenics Cult — Gengineered Slaves and their die ---
+
+// TestEugenicsCult_OnlyTheTagBuysGengineeredSlaves: Buy Asset offers Gengineered
+// Slaves on Tartarus (TL 5) to a faction with Eugenics Cult, and not to one
+// without it.
+func TestEugenicsCult_OnlyTheTagBuysGengineeredSlaves(t *testing.T) {
+	cases := []struct {
+		name  string
+		tags  []string
+		offer bool
+	}{
+		{"no tag", nil, false},
+		{"Eugenics Cult", []string{"SWN-T-003"}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := testharness.NewHarness(t)
+			alpha := h.AddFaction("alpha", "Tartarus", 2, 2, 2)
+			alpha.Tags = tc.tags
+			alpha.Coin = 4
+			offered := false
+			h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Buy Asset")
+			h.Collector.SelectBuyOrderFn = func(purchasable map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
+				var fallback *domain.AssetDefinition
+				for _, def := range purchasable["Tartarus"] {
+					if def.ID == "SWN-F1-004" {
+						offered = true
+					}
+					if def.ID == testharness.DefSecurityPersonnel {
+						fallback = def
+					}
+				}
+				return action.BuyOrder{World: "Tartarus", Definition: fallback}, nil
+			}
+
+			runOrderedCycle(t, h, alpha.ID)
+
+			testharness.CheckStep(t, "Gengineered Slaves offered", offered == tc.offer,
+				fmt.Sprintf("offered = %v, want %v", offered, tc.offer))
+		})
+	}
+}

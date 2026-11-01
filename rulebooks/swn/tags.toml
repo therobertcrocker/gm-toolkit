@@ -54,6 +54,20 @@ name = "Eugenics Cult"
 description = "The forbidden maltech secrets of advanced human genetic manipulation are known to this faction."
 effect = "Can purchase the Gengineered Slaves asset (Force 1, 6HP, 2 cost, TL4, Attack Force vs Force 1d6, Counter 1d4). Once per turn, roll an extra d10 on an attack or defense by a Gengineered Slaves asset."
 
+[[tags.EugenicsCult.effects]]
+trigger = "own_roll"
+effect  = "bonus_die"
+[tags.EugenicsCult.effects.filters]
+owner            = "own"
+scope            = "faction"
+phase            = ["attack", "defense"]
+asset_definition = "SWN-F1-004"
+[tags.EugenicsCult.effects.gates]
+once_per = "owner_faction"
+[tags.EugenicsCult.effects.bonus_die]
+sides = 10
+count = 1
+
 [tags.ExchangeConsulate]
 id = "SWN-T-004"
 name = "Exchange Consulate"
@@ -251,6 +265,17 @@ scope          = "faction"
 min_tech_level = 4
 [tags.PreceptorArchive.effects.cost_discount]
 amount = 1
+
+[tags.PreceptorArchive.ability]
+effect = "raise_tech_level"
+target = "world"
+die    = "1d12"
+[[tags.PreceptorArchive.ability.outcomes]]
+from = 12
+to   = 12
+[tags.PreceptorArchive.ability.raise_tech_level]
+coin_cost  = 2
+tech_level = 4
 
 [tags.PsychicAcademy]
 id = "SWN-T-014"

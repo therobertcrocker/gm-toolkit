@@ -11,6 +11,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -22,21 +23,22 @@ var errNoTargets = errors.New("ability: no target left")
 func resolveTarget(
 	step domain.AbilityStep,
 	faction *domain.Faction,
-	asset *domain.Asset,
+	holder domain.AbilityHolder,
 	factionState *state.FactionState,
 	collector action.Collector,
+	worldEngine *world.WorldEngine,
 ) (domain.AbilityTarget, error) {
-	candidates, picks := stepCandidates(step, faction.ID, asset, factionState)
-	if picks && len(candidates.Factions)+len(candidates.Assets) == 0 {
+	candidates, picks := stepCandidates(step, faction, holder.Asset, factionState, worldEngine)
+	if picks && candidates.Len() == 0 {
 		return domain.AbilityTarget{}, errNoTargets
 	}
 	switch step.Target {
 	case domain.TargetNone:
 		return domain.AbilityTarget{Kind: domain.TargetNone}, nil
 	case domain.TargetSelf:
-		return domain.AbilityTarget{Kind: domain.TargetSelf, Asset: asset, Faction: faction}, nil
+		return domain.AbilityTarget{Kind: domain.TargetSelf, Asset: holder.Asset, Faction: faction}, nil
 	case domain.TargetFaction:
-		target, err := collector.SelectAbilityTarget(asset, step, candidates)
+		target, err := collector.SelectAbilityTarget(holder, step, candidates)
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
@@ -45,7 +47,7 @@ func resolveTarget(
 		}
 		return target, nil
 	case domain.TargetAsset:
-		target, err := collector.SelectAbilityTarget(asset, step, candidates)
+		target, err := collector.SelectAbilityTarget(holder, step, candidates)
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
@@ -57,14 +59,25 @@ func resolveTarget(
 			return domain.AbilityTarget{}, fmt.Errorf("%s: target owner %s not in state", step.Effect, target.Asset.OwnerID)
 		}
 		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: target.Asset, Faction: owner}, nil
+	case domain.TargetWorld:
+		target, err := collector.SelectAbilityTarget(holder, step, candidates)
+		if err != nil {
+			return domain.AbilityTarget{}, err
+		}
+		if target.World == "" {
+			return domain.AbilityTarget{}, fmt.Errorf("%s: %w", step.Effect, action.ErrNoSelection)
+		}
+		return domain.AbilityTarget{Kind: domain.TargetWorld, World: target.World, Faction: faction}, nil
 	default:
-		// deliberate: world targets are not unbuilt-by-oversight — no asset targets a world yet. See domain.TargetWorld.
-		return domain.AbilityTarget{}, fmt.Errorf("ability target kind %q not supported yet", step.Target)
+		return domain.AbilityTarget{}, fmt.Errorf("ability target kind %q not supported", step.Target)
 	}
 }
 
-// passesGate rolls the step's contest through the roll hooks. faction is the real
-// acting faction, so a budget a hook spends persists past this step.
+// passesGate rolls the step's contest through the roll hooks: an attack and its
+// defense for roll "attack", a faction test and its contested roll for "test".
+// Ties go to the defender, unless an attack's tie resolver gives the tie to the
+// attacker (Fanatical; Effort 5 Decision 10). faction is the real acting faction,
+// so a budget a hook spends persists past this step.
 func passesGate(
 	step domain.AbilityStep,
 	faction *domain.Faction,
@@ -92,9 +105,13 @@ func passesGate(
 	worldID := asset.Location.WorldID
 	// deliberate: a literal, not UseAssetAbility.Name(), because actions imports ability (import cycle).
 	const actionName = "Use Asset Ability"
+	attackPhase, defensePhase := hooks.PhaseFactionTest, hooks.PhaseContested
+	if step.Contest.Roll == domain.ContestRollAttack {
+		attackPhase, defensePhase = hooks.PhaseAttack, hooks.PhaseDefense
+	}
 	attack := dispatch.RollWithHooks(
 		hooks.RollContext{
-			Phase:             hooks.PhaseFactionTest,
+			Phase:             attackPhase,
 			Detection:         step.Effect == domain.EffectRevealStealth,
 			Actor:             faction,
 			Opponent:          defender,
@@ -110,7 +127,7 @@ func passesGate(
 	)
 	defense := dispatch.RollWithHooks(
 		hooks.RollContext{
-			Phase:             hooks.PhaseContested,
+			Phase:             defensePhase,
 			Actor:             defender,
 			Opponent:          faction,
 			Attribute:         string(step.Contest.DefenderStat),
@@ -123,6 +140,10 @@ func passesGate(
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defender, step.Contest.DefenderStat)},
 		registry, collector, roller, defender, factionState, rulebook,
 	)
+	if attack.Sum == defense.Sum && step.Contest.Roll == domain.ContestRollAttack {
+		tieCtx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Opponent: defender, Asset: asset, World: worldID, Action: actionName}
+		return dispatch.ResolveTie(registry, tieCtx, factionState) == hooks.TieAttackerWins, nil
+	}
 	return attack.Sum > defense.Sum, nil
 }
 
@@ -206,27 +227,64 @@ func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, ac
 	return candidates
 }
 
-// HasTargets reports whether the first step of def's ability can pick a target
-// now. A step that picks no target always can.
-func HasTargets(faction *domain.Faction, asset *domain.Asset, def *domain.AssetDefinition, factionState *state.FactionState) bool {
-	if def.Ability == nil || len(def.Ability.Steps) == 0 {
+// HasTargets reports whether the first step of a holder's ability can pick a
+// target now. A step that picks no target always can.
+func HasTargets(faction *domain.Faction, holder domain.AbilityHolder, abilityDefinition *domain.AbilityDefinition, factionState *state.FactionState, worldEngine *world.WorldEngine) bool {
+	if abilityDefinition == nil || len(abilityDefinition.Steps) == 0 {
 		return true
 	}
 	// deliberate: only the first step, not every step, because a later step's candidates depend on what earlier steps change (Seductress moves before it reveals).
-	candidates, picks := stepCandidates(def.Ability.Steps[0], faction.ID, asset, factionState)
-	return !picks || len(candidates.Factions)+len(candidates.Assets) > 0
+	candidates, picks := stepCandidates(abilityDefinition.Steps[0], faction, holder.Asset, factionState, worldEngine)
+	return !picks || candidates.Len() > 0
 }
 
-// stepCandidates returns the candidates for a step that picks a faction or an
-// asset. picks is false for a step that picks neither.
-func stepCandidates(step domain.AbilityStep, actingFactionID string, acting *domain.Asset, factionState *state.FactionState) (candidates domain.AbilityTargetCandidates, picks bool) {
+// stepCandidates returns the candidates for a step that picks a faction, an asset
+// or a world. picks is false for a step that picks none of them.
+func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, worldEngine *world.WorldEngine) (candidates domain.AbilityTargetCandidates, picks bool) {
 	switch step.Target {
 	case domain.TargetFaction:
-		return domain.AbilityTargetCandidates{Factions: factionCandidates(step.Effect, actingFactionID, acting, factionState)}, true
+		return domain.AbilityTargetCandidates{Factions: factionCandidates(step.Effect, faction.ID, acting, factionState)}, true
 	case domain.TargetAsset:
-		return domain.AbilityTargetCandidates{Assets: assetCandidates(step.Effect, actingFactionID, acting, factionState)}, true
+		return domain.AbilityTargetCandidates{Assets: assetCandidates(step.Effect, faction.ID, acting, factionState)}, true
+	case domain.TargetWorld:
+		rule := worldTargetRules[step.Effect]
+		if rule == nil {
+			return domain.AbilityTargetCandidates{}, true
+		}
+		return domain.AbilityTargetCandidates{Worlds: rule(step, faction, worldEngine)}, true
 	}
 	return domain.AbilityTargetCandidates{}, false
+}
+
+// worldTargetRules lists a step's world candidates by its effect. An effect with
+// no rule has none.
+var worldTargetRules = map[domain.AbilityEffectType]func(step domain.AbilityStep, faction *domain.Faction, worldEngine *world.WorldEngine) []string{
+	domain.EffectRaiseTechLevel: raiseTechLevelWorlds,
+}
+
+// raiseTechLevelWorlds returns, sorted, the worlds where faction has a Base whose
+// own tech level is below the step's and that it has no record for yet; none when
+// faction cannot pay the cost (Effort 5 Decision 4). With no world engine no
+// world's tech level is known, so there are none.
+func raiseTechLevelWorlds(step domain.AbilityStep, faction *domain.Faction, worldEngine *world.WorldEngine) []string {
+	params := step.RaiseTechLevel
+	if worldEngine == nil || params == nil || faction.Coin < params.CoinCost {
+		return nil
+	}
+	var worlds []string
+	for _, base := range faction.Bases {
+		worldID := base.Location.WorldID
+		if slices.Contains(worlds, worldID) || faction.WorldTechLevels[worldID] > 0 {
+			continue
+		}
+		location, ok := worldEngine.Location(worldID)
+		if !ok || location.TechLevel() >= params.TechLevel {
+			continue
+		}
+		worlds = append(worlds, worldID)
+	}
+	slices.Sort(worlds)
+	return worlds
 }
 
 // factionTargetRules narrows a step's faction candidates by its effect. An effect

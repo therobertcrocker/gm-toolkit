@@ -41,6 +41,7 @@ counter = ""
 description = "Minions that lace a planet's underworld, watchful for intruders. On a successful Cunning vs. Cunning attack, all Stealthed assets on the planet belonging to that faction are revealed. Can target a faction even if none of their assets are visible."
 
 [assets.Informers.ability]
+roll = "attack"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 effect = "reveal_stealth"
@@ -169,6 +170,7 @@ max_hex = 1
 [[assets.Seductress.ability.steps]]
 effect = "reveal_stealth"
 target = "faction"
+roll = "attack"
 attacker_stat = "Cunning"
 defender_stat = "Cunning"
 

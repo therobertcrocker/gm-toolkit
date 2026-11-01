@@ -43,6 +43,7 @@ func TestRollMatches(t *testing.T) {
 	seizure := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-004"}
 	otherGoal := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-001"}
 	rivalHomeworld := domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeHomeworld}
+	slavesRoll := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, AssetDefinition: "tl0"}
 
 	cases := []struct {
 		name    string
@@ -92,6 +93,9 @@ func TestRollMatches(t *testing.T) {
 		{"rival roll, a bystander's roll", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: beta, Opponent: gamma, World: "Tartarus"}, true},
 		{"rival roll, against the owner", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: beta, Opponent: alpha}, true},
 		{"rival roll, the owner's own roll", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: alpha, Opponent: beta}, false},
+		{"asset definition match", domain.TriggerOwnRoll, slavesRoll, hooks.RollContext{Actor: alpha, Asset: primitive}, true},
+		{"asset definition mismatch", domain.TriggerOwnRoll, slavesRoll, hooks.RollContext{Actor: alpha, Asset: advanced}, false},
+		{"asset definition, no rolling asset", domain.TriggerOwnRoll, slavesRoll, hooks.RollContext{Actor: alpha}, false},
 		{"unknown trigger", domain.TriggerTurnStart, self, hooks.RollContext{Actor: alpha, Asset: declaring}, false},
 	}
 	for _, tc := range cases {

@@ -110,6 +110,7 @@ const (
 	FilterOpponentTechLevel EffectFilterName = "opponent_tech_level"
 	FilterGoal              EffectFilterName = "goal"
 	FilterDetection         EffectFilterName = "detection"
+	FilterAssetDefinition   EffectFilterName = "asset_definition"
 )
 
 type EffectGateName string
@@ -148,10 +149,11 @@ const (
 	ContestRollerTarget ContestRoller = "target"
 )
 
-// ContestRoll names the roll phases an effect contest rolls with, as the book
-// words it: an attack and its defense (Tripwire Cells' "Cunning vs. Cunning
-// attack"), or a faction test and its contested roll (Panopticon Matrix's and
-// Lobbyists' "test"), as the A-side gate rolls.
+// ContestRoll names the roll phases a contest rolls with, as the book words it: an
+// attack and its defense (Tripwire Cells', Informers' and Seductress' "Cunning vs.
+// Cunning attack"), or a faction test and its contested roll (Panopticon Matrix's,
+// Lobbyists' and Marketers' "test"). An attack contest's tie asks the tie
+// resolvers; a test's never does.
 type ContestRoll string
 
 const (
@@ -193,6 +195,9 @@ type EffectFilters struct {
 	CausedBy          EffectOwner
 	Goal              string
 	Detection         bool
+	// AssetDefinition names the rolling asset's definition ID (the Eugenics Cult
+	// die on Gengineered Slaves).
+	AssetDefinition string
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
@@ -236,6 +241,9 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	if filters.Detection {
 		present = append(present, FilterDetection)
 	}
+	if filters.AssetDefinition != "" {
+		present = append(present, FilterAssetDefinition)
+	}
 	return present
 }
 
@@ -262,7 +270,6 @@ func (gates EffectGates) Used() []EffectGateName {
 type EffectContest struct {
 	Contest
 	Roller ContestRoller
-	Roll   ContestRoll
 }
 
 type CoinGainParams struct {

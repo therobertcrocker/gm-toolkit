@@ -49,8 +49,8 @@ func Load(dataDir string) (*Rulebook, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading goals: %w", err)
 	}
-	if err := checkGoalReferences(assets, tags, goals); err != nil {
-		return nil, fmt.Errorf("checking goal references: %w", err)
+	if err := checkReferences(assets, tags, goals); err != nil {
+		return nil, fmt.Errorf("checking references: %w", err)
 	}
 
 	driftCosts, purchasePopulation, err := loadSettings(filepath.Join(dataDir, "settings.toml"))
@@ -97,6 +97,7 @@ type assetRecord struct {
 	Effects            []effectRecord   `toml:"effects"`
 	Quality            bool             `toml:"quality"`
 	PurchasePermission bool             `toml:"purchase_permission"`
+	RequiresTag        string           `toml:"requires_tag"`
 }
 
 type transportRecord struct {
@@ -121,14 +122,21 @@ type abilityRecord struct {
 }
 
 type abilityStepRecord struct {
-	Effect       string          `toml:"effect"`
-	Target       string          `toml:"target"`
-	AttackerStat string          `toml:"attacker_stat"`
-	DefenderStat string          `toml:"defender_stat"`
-	Die          string          `toml:"die"`
-	Outcomes     []outcomeRecord `toml:"outcomes"`
-	Relocate     *relocateRecord `toml:"relocate"`
-	Purchase     *purchaseRecord `toml:"purchase"`
+	Effect         string                `toml:"effect"`
+	Target         string                `toml:"target"`
+	Roll           string                `toml:"roll"`
+	AttackerStat   string                `toml:"attacker_stat"`
+	DefenderStat   string                `toml:"defender_stat"`
+	Die            string                `toml:"die"`
+	Outcomes       []outcomeRecord       `toml:"outcomes"`
+	Relocate       *relocateRecord       `toml:"relocate"`
+	Purchase       *purchaseRecord       `toml:"purchase"`
+	RaiseTechLevel *raiseTechLevelRecord `toml:"raise_tech_level"`
+}
+
+type raiseTechLevelRecord struct {
+	CoinCost  int `toml:"coin_cost"`
+	TechLevel int `toml:"tech_level"`
 }
 
 type relocateRecord struct {
@@ -287,6 +295,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Effects:            effects,
 		Quality:            r.Quality,
 		PurchasePermission: r.PurchasePermission,
+		RequiresTag:        r.RequiresTag,
 	}, nil
 }
 
@@ -310,7 +319,7 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		return nil, nil
 	}
 	if len(r.Steps) > 0 {
-		if r.Effect != "" || r.AttackerStat != "" || r.DefenderStat != "" || r.Die != "" {
+		if r.Effect != "" || r.Roll != "" || r.AttackerStat != "" || r.DefenderStat != "" || r.Die != "" {
 			return nil, fmt.Errorf("use either a flat [ability] block or [[ability.steps]], not both")
 		}
 		steps := make([]domain.AbilityStep, 0, len(r.Steps))
@@ -353,7 +362,13 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		if err != nil {
 			return domain.AbilityStep{}, fmt.Errorf("defender_stat: %w", err)
 		}
-		step.Contest = &domain.Contest{AttackerStat: attacker, DefenderStat: defender}
+		roll, err := toEnum("contest roll", record.Roll, contestRolls)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		step.Contest = &domain.Contest{AttackerStat: attacker, DefenderStat: defender, Roll: roll}
+	} else if record.Roll != "" {
+		return domain.AbilityStep{}, fmt.Errorf("roll %q needs a contest (attacker_stat and defender_stat)", record.Roll)
 	}
 	if record.Die != "" {
 		die, err := parseDice(record.Die)
@@ -393,8 +408,22 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 			CostPercent:  purchase.CostPercent,
 		}
 	}
+	if raise := record.RaiseTechLevel; raise != nil {
+		if raise.CoinCost < 0 || raise.TechLevel <= 0 {
+			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level needs coin_cost >= 0 and tech_level > 0, got %d and %d", raise.CoinCost, raise.TechLevel)
+		}
+		step.RaiseTechLevel = &domain.RaiseTechLevelParams{CoinCost: raise.CoinCost, TechLevel: raise.TechLevel}
+	}
 	if step.Contest != nil && step.Roll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and roll; they are mutually exclusive")
+	}
+	if step.Effect == domain.EffectRaiseTechLevel {
+		if step.Target != domain.TargetWorld || step.Roll == nil || step.RaiseTechLevel == nil {
+			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level requires target = %q, a die and a [raise_tech_level] block", "world")
+		}
+		if slices.ContainsFunc(step.Roll.Outcomes, func(outcome domain.AbilityOutcome) bool { return outcome.Coin != 0 || outcome.DestroySelf }) {
+			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level outcome rows mark a success; they carry no coin or destroy_self")
+		}
 	}
 	if step.Effect == domain.EffectRevealStealth && step.Target != domain.TargetFaction {
 		return domain.AbilityStep{}, fmt.Errorf("reveal_stealth requires target = %q", "faction")
@@ -524,6 +553,8 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectBlockAttack, nil
 	case "levy_coin":
 		return domain.EffectLevyCoin, nil
+	case "raise_tech_level":
+		return domain.EffectRaiseTechLevel, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
@@ -614,6 +645,7 @@ type tagRecord struct {
 	Government          bool           `toml:"government"`
 	HomeworldGovernment bool           `toml:"homeworld_government"`
 	Effects             []effectRecord `toml:"effects"`
+	Ability             *abilityRecord `toml:"ability"`
 }
 
 func loadTags(path string) (map[string]*domain.Tag, string, error) {
@@ -641,6 +673,13 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 		if err != nil {
 			return nil, "", fmt.Errorf("tag %q in %s: %w", r.ID, path, err)
 		}
+		ability, err := convertAbility(r.Ability)
+		if err != nil {
+			return nil, "", fmt.Errorf("tag %q in %s: ability: %w", r.ID, path, err)
+		}
+		if err := checkTagAbility(ability); err != nil {
+			return nil, "", fmt.Errorf("tag %q in %s: %w", r.ID, path, err)
+		}
 		result[r.ID] = &domain.Tag{
 			ID:                  r.ID,
 			Name:                r.Name,
@@ -649,6 +688,7 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 			Government:          r.Government,
 			HomeworldGovernment: r.HomeworldGovernment,
 			Effects:             effects,
+			Ability:             ability,
 		}
 	}
 	for _, tag := range result {
@@ -660,6 +700,37 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 		}
 	}
 	return result, government, nil
+}
+
+// tagAbilityEffects are the ability effects a tag may carry: those that read no
+// acting asset (Effort 5 Decision 2). Every other effect reads the asset or its
+// world.
+var tagAbilityEffects = []domain.AbilityEffectType{domain.EffectCoinDelta, domain.EffectPurchaseDiscount, domain.EffectRaiseTechLevel}
+
+// checkTagAbility refuses a tag ability that needs an acting asset: an effect
+// outside tagAbilityEffects, a contest (it rolls from the asset's world), a target
+// the asset picks from, or an outcome row that destroys or charges the asset.
+func checkTagAbility(ability *domain.AbilityDefinition) error {
+	if ability == nil {
+		return nil
+	}
+	for i, step := range ability.Steps {
+		if !slices.Contains(tagAbilityEffects, step.Effect) {
+			return fmt.Errorf("ability step %d: a tag cannot carry effect %q", i, step.Effect)
+		}
+		if step.Contest != nil {
+			return fmt.Errorf("ability step %d: a tag ability cannot hold a contest", i)
+		}
+		if step.Target != domain.TargetNone && step.Target != domain.TargetWorld {
+			return fmt.Errorf("ability step %d: a tag ability cannot target %q", i, step.Target)
+		}
+		if step.Roll != nil && slices.ContainsFunc(step.Roll.Outcomes, func(outcome domain.AbilityOutcome) bool {
+			return outcome.DestroySelf || outcome.Coin < 0
+		}) {
+			return fmt.Errorf("ability step %d: a tag has no asset to destroy or to lose for an unpaid loss", i)
+		}
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -701,13 +772,18 @@ func loadGoals(path string) (map[string]*domain.Goal, error) {
 	return result, nil
 }
 
-// checkGoalReferences refuses an [[effects]] entry whose goal filter names a goal
-// the rulebook does not have: a data-to-data reference (D-5), checked once here.
-func checkGoalReferences(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, goals map[string]*domain.Goal) error {
+// checkReferences refuses a data-to-data reference to a record the rulebook does
+// not have, checked once here: an [[effects]] entry's goal filter (D-5) or
+// asset_definition filter (Effort 5 Decision 9), and an asset's requires_tag
+// (D-13).
+func checkReferences(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, goals map[string]*domain.Goal) error {
 	check := func(holder string, entries []domain.EffectDefinition) error {
 		for i, entry := range entries {
 			if goal := entry.Filters.Goal; goal != "" && goals[goal] == nil {
 				return fmt.Errorf("%s effects[%d]: unknown goal %q", holder, i, goal)
+			}
+			if definition := entry.Filters.AssetDefinition; definition != "" && assets[definition] == nil {
+				return fmt.Errorf("%s effects[%d]: unknown asset %q", holder, i, definition)
 			}
 		}
 		return nil
@@ -715,6 +791,9 @@ func checkGoalReferences(assets map[string]*domain.AssetDefinition, tags map[str
 	for _, id := range slices.Sorted(maps.Keys(assets)) {
 		if err := check(fmt.Sprintf("asset %q", id), assets[id].Effects); err != nil {
 			return err
+		}
+		if tag := assets[id].RequiresTag; tag != "" && tags[tag] == nil {
+			return fmt.Errorf("asset %q: requires_tag names unknown tag %q", id, tag)
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(tags)) {

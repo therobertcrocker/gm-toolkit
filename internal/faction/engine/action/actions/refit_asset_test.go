@@ -162,3 +162,19 @@ func TestRefitAsset_PermissionRefused(t *testing.T) {
 		t.Errorf("mutations = %+v, want only the refusal record", mutations)
 	}
 }
+
+func TestValidRefitReplacements_RequiresTag(t *testing.T) {
+	rulebook := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"guards": {ID: "guards", Category: domain.StatForce, MinRating: 1, Cost: 2},
+		"slaves": {ID: "slaves", Category: domain.StatForce, MinRating: 1, Cost: 2, RequiresTag: "T-003"},
+	}}
+	asset := &domain.Asset{ID: "a1", DefinitionID: "guards", Location: domain.Location{WorldID: "Tartarus"}}
+	without := &domain.Faction{ID: "f1", Force: 1, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+	if got := validRefitReplacements(without, asset, rulebook); len(got) != 0 {
+		t.Errorf("replacements without the tag = %v, want none", got)
+	}
+	with := &domain.Faction{ID: "f1", Force: 1, Coin: 5, Tags: []string{"T-003"}, Assets: map[string]*domain.Asset{"a1": asset}}
+	if got := validRefitReplacements(with, asset, rulebook); len(got) != 1 || got[0].ID != "slaves" {
+		t.Errorf("replacements with the tag = %v, want slaves", got)
+	}
+}

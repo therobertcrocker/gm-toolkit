@@ -66,6 +66,7 @@ const (
 	EffectDisableAsset     AbilityEffectType = "disable_asset"
 	EffectBlockAttack      AbilityEffectType = "block_attack"
 	EffectLevyCoin         AbilityEffectType = "levy_coin"
+	EffectRaiseTechLevel   AbilityEffectType = "raise_tech_level"
 )
 
 type RelocateScope string
@@ -122,6 +123,14 @@ type PurchaseParams struct {
 	CostPercent  int
 }
 
+// RaiseTechLevelParams configures a raise_tech_level step (Teach Planetary
+// Population): CoinCost is paid on every use; on a matching outcome row the target
+// world counts as TechLevel for the acting faction's purchases (D-11).
+type RaiseTechLevelParams struct {
+	CoinCost  int
+	TechLevel int
+}
+
 type TargetKind string
 
 const (
@@ -129,13 +138,15 @@ const (
 	TargetSelf    TargetKind = "self"
 	TargetFaction TargetKind = "faction"
 	TargetAsset   TargetKind = "asset"
-	// deliberate: TargetWorld is dormant vocab, not dead — no asset targets a world yet.
-	TargetWorld TargetKind = "world"
+	TargetWorld   TargetKind = "world"
 )
 
+// Contest is a stat contest: an ability's gate or an effect's. Roll names the roll
+// phases it uses, as the book words it (ContestRoll).
 type Contest struct {
 	AttackerStat FactionStat
 	DefenderStat FactionStat
+	Roll         ContestRoll
 }
 
 type RollTable struct {
@@ -150,12 +161,13 @@ type AbilityDefinition struct {
 }
 
 type AbilityStep struct {
-	Effect   AbilityEffectType
-	Target   TargetKind
-	Contest  *Contest
-	Roll     *RollTable
-	Relocate *RelocateParams
-	Purchase *PurchaseParams
+	Effect         AbilityEffectType
+	Target         TargetKind
+	Contest        *Contest
+	Roll           *RollTable
+	Relocate       *RelocateParams
+	Purchase       *PurchaseParams
+	RaiseTechLevel *RaiseTechLevelParams
 }
 
 type AbilityOutcome struct {
@@ -174,13 +186,24 @@ type AbilityTarget struct {
 	World   string
 }
 
+// AbilityHolder is who uses an ability: an A-flag asset, or its faction through a
+// tag (Tag set, Asset nil). Exactly one is set.
+type AbilityHolder struct {
+	Asset *Asset
+	Tag   *Tag
+}
+
 // AbilityTargetCandidates bundles the selectable options for a target stage; the
 // collector reads the slice matching the step's TargetKind.
 type AbilityTargetCandidates struct {
 	Factions []*Faction
 	Assets   []*Asset
-	// deliberate: Worlds is dormant, not dead. See TargetWorld.
-	Worlds []string
+	Worlds   []string
+}
+
+// Len counts every candidate, of any kind.
+func (candidates AbilityTargetCandidates) Len() int {
+	return len(candidates.Factions) + len(candidates.Assets) + len(candidates.Worlds)
 }
 
 type AssetDefinition struct {
@@ -209,6 +232,14 @@ type AssetDefinition struct {
 	// PurchasePermission asks the government to raise this asset, though moving it
 	// in needs none (Capital Fleet).
 	PurchasePermission bool
+	// RequiresTag names the tag a faction must hold to buy, refit into or start
+	// with this asset (Gengineered Slaves, D-13); empty for most assets.
+	RequiresTag string
+}
+
+// TagRequirementMet reports whether a holder of tagIDs meets def's RequiresTag.
+func (def *AssetDefinition) TagRequirementMet(tagIDs []string) bool {
+	return def.RequiresTag == "" || slices.Contains(tagIDs, def.RequiresTag)
 }
 
 // NeedsPurchasePermission reports whether buying def asks the world's government.
@@ -404,12 +435,14 @@ type PurchaseTerms struct {
 	PopulationFloor int
 }
 
-// CanPurchase reports whether the faction may buy def under terms: it can afford Cost, meets
-// the def's minimum category rating, the def's required tech level is within TechCap, and
-// the world's Population reaches PopulationFloor. Government permission is asked after the
-// choice, not here (D-35).
+// CanPurchase reports whether the faction may buy def under terms: it holds any tag def
+// requires, can afford Cost, meets the def's minimum category rating, the def's required
+// tech level is within TechCap, and the world's Population reaches PopulationFloor.
+// Government permission is asked after the choice, not here (D-35).
 func CanPurchase(faction *Faction, def *AssetDefinition, terms PurchaseTerms) bool {
 	switch {
+	case !def.TagRequirementMet(faction.Tags):
+		return false
 	case faction.Coin < terms.Cost:
 		return false
 	case def.MinRating > faction.StatScore(def.Category):

@@ -664,6 +664,7 @@ func TestLoad(t *testing.T) {
 func TestConvertAbilityStep_DisableAssetNeedsAnAssetTarget(t *testing.T) {
 	_, err := loadAssetsFromTOML(t, effectTestAsset+`
 [assets.Machine.ability]
+roll = "test"
 attacker_stat = "Cunning"
 defender_stat = "Wealth"
 effect = "disable_asset"
@@ -688,6 +689,7 @@ target = "asset"
 func TestConvertAbilityStep_LevyCoinRefusesAContest(t *testing.T) {
 	_, err := loadAssetsFromTOML(t, effectTestAsset+`
 [assets.Machine.ability]
+roll = "test"
 attacker_stat = "Wealth"
 defender_stat = "Wealth"
 effect = "levy_coin"
@@ -864,21 +866,60 @@ func TestLoad_SecretiveStealthsPurchases(t *testing.T) {
 	}
 }
 
-func TestCheckGoalReferences(t *testing.T) {
+func TestCheckReferences(t *testing.T) {
 	goals := map[string]*domain.Goal{"G-004": {ID: "G-004"}}
-	naming := func(goal string) []domain.EffectDefinition {
-		return []domain.EffectDefinition{{Filters: domain.EffectFilters{Goal: goal}}}
+	tags := map[string]*domain.Tag{"T-1": {ID: "T-1"}}
+	assets := map[string]*domain.AssetDefinition{"A-1": {ID: "A-1"}}
+	naming := func(filters domain.EffectFilters) []domain.EffectDefinition {
+		return []domain.EffectDefinition{{Filters: filters}}
 	}
-	if err := checkGoalReferences(nil, map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: naming("G-004")}}, goals); err != nil {
-		t.Errorf("known goal: err = %v, want nil", err)
+	withTag := func(entries []domain.EffectDefinition) map[string]*domain.Tag {
+		return map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: entries}}
 	}
-	err := checkGoalReferences(nil, map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: naming("G-404")}}, goals)
-	if err == nil || !strings.Contains(err.Error(), `tag "T-1" effects[0]: unknown goal "G-404"`) {
-		t.Errorf("unknown goal on a tag: err = %v, want it named", err)
+
+	if err := checkReferences(assets, withTag(naming(domain.EffectFilters{Goal: "G-004", AssetDefinition: "A-1"})), goals); err != nil {
+		t.Errorf("known references: err = %v, want nil", err)
 	}
-	err = checkGoalReferences(map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Effects: naming("G-404")}}, nil, goals)
-	if err == nil || !strings.Contains(err.Error(), `asset "A-1" effects[0]: unknown goal "G-404"`) {
-		t.Errorf("unknown goal on an asset: err = %v, want it named", err)
+	cases := []struct {
+		name   string
+		assets map[string]*domain.AssetDefinition
+		tags   map[string]*domain.Tag
+		want   string
+	}{
+		{"unknown goal on a tag", assets, withTag(naming(domain.EffectFilters{Goal: "G-404"})), `tag "T-1" effects[0]: unknown goal "G-404"`},
+		{"unknown goal on an asset", map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Effects: naming(domain.EffectFilters{Goal: "G-404"})}}, tags, `asset "A-1" effects[0]: unknown goal "G-404"`},
+		{"unknown asset definition", assets, withTag(naming(domain.EffectFilters{AssetDefinition: "A-404"})), `tag "T-1" effects[0]: unknown asset "A-404"`},
+		{"unknown required tag", map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", RequiresTag: "T-404"}}, tags, `asset "A-1": requires_tag names unknown tag "T-404"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkReferences(tc.assets, tc.tags, goals)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestLoad_EugenicsCult(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	slaves := rb.Assets["SWN-F1-004"]
+	if slaves == nil || slaves.RequiresTag != "SWN-T-003" || slaves.Type != domain.TypeMilitaryUnit {
+		t.Fatalf("Gengineered Slaves = %+v, want a Military Unit that requires SWN-T-003", slaves)
+	}
+	want := []domain.EffectDefinition{{
+		Trigger: domain.TriggerOwnRoll,
+		Effect:  domain.SpecialBonusDie,
+		Filters: domain.EffectFilters{
+			Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
+			Phases:          []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+			AssetDefinition: "SWN-F1-004",
+		},
+		Gates:    domain.EffectGates{OncePer: domain.OncePerOwnerFaction},
+		BonusDie: &domain.BonusDieParams{Sides: 10, Count: 1},
+	}}
+	if got := rb.Tags["SWN-T-003"].Effects; !reflect.DeepEqual(got, want) {
+		t.Errorf("Eugenics Cult effects = %+v, want %+v", got, want)
 	}
 }
 
@@ -915,9 +956,8 @@ func TestLoad_LobbyistsWithdrawPermission(t *testing.T) {
 		Effect:  domain.SpecialWithdrawPermission,
 		Filters: domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld},
 		Gates: domain.EffectGates{Contest: &domain.EffectContest{
-			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+			Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning, Roll: domain.ContestRollTest},
 			Roller:  domain.ContestRollerSelf,
-			Roll:    domain.ContestRollTest,
 		}},
 	}}
 	if got := rb.Assets["SWN-C2-001"].Effects; !reflect.DeepEqual(got, want) {
@@ -1066,5 +1106,115 @@ func TestLoad_PiratesToll(t *testing.T) {
 	}}
 	if got := shipped.Tags["SWN-T-010"].Effects; !reflect.DeepEqual(got, want) {
 		t.Errorf("Pirates effects = %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadTags_Ability(t *testing.T) {
+	load := func(ability string) (map[string]*domain.Tag, error) {
+		path := filepath.Join(t.TempDir(), "tags.toml")
+		body := "[tags.Alpha]\nid = \"T-001\"\nname = \"Alpha\"\n\n[tags.Alpha.ability]\n" + ability
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatalf("writing fixture: %v", err)
+		}
+		tags, _, err := loadTags(path)
+		return tags, err
+	}
+
+	tags, err := load("effect = \"purchase_discount\"\ndie = \"1d4\"\n")
+	if err != nil {
+		t.Fatalf("an asset-free effect: %v", err)
+	}
+	want := &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect: domain.EffectPurchaseDiscount,
+		Target: domain.TargetNone,
+		Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 4}, Outcomes: []domain.AbilityOutcome{}},
+	}}}
+	if got := tags["T-001"].Ability; !reflect.DeepEqual(got, want) {
+		t.Errorf("ability = %+v, want %+v", got, want)
+	}
+
+	refused := []struct {
+		name    string
+		ability string
+		want    string
+	}{
+		{"an effect that reads the asset", "effect = \"levy_coin\"\ntarget = \"faction\"\n", `cannot carry effect "levy_coin"`},
+		{"a contest", "effect = \"purchase_discount\"\nroll = \"test\"\nattacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\n", "cannot hold a contest"},
+		{"a target the asset picks from", "effect = \"coin_delta\"\ntarget = \"asset\"\ndie = \"1d6\"\n", `cannot target "asset"`},
+		{"a loss row", "effect = \"coin_delta\"\ndie = \"1d6\"\n[[tags.Alpha.ability.outcomes]]\nfrom = 1\nto = 1\ncoin = -1\n", "no asset to destroy"},
+		{"a destroy row", "effect = \"coin_delta\"\ndie = \"1d6\"\n[[tags.Alpha.ability.outcomes]]\nfrom = 1\nto = 1\ndestroy_self = true\n", "no asset to destroy"},
+	}
+	for _, tc := range refused {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := load(tc.ability)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestConvertAbilityStep_RaiseTechLevel(t *testing.T) {
+	const header = "\n[assets.Machine.ability]\neffect = \"raise_tech_level\"\n"
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"no world target", "die = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "raise_tech_level requires"},
+		{"no block", "target = \"world\"\ndie = \"1d12\"\n", "raise_tech_level requires"},
+		{"no tech level", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\n", "tech_level > 0"},
+		{"a coin row", "target = \"world\"\ndie = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\ncoin = 1\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "carry no coin"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, effectTestAsset+header+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestLoad_PreceptorArchiveTeaches(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect:         domain.EffectRaiseTechLevel,
+		Target:         domain.TargetWorld,
+		Roll:           &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 12}, Outcomes: []domain.AbilityOutcome{{From: 12, To: 12}}},
+		RaiseTechLevel: &domain.RaiseTechLevelParams{CoinCost: 2, TechLevel: 4},
+	}}}
+	if got := rb.Tags["SWN-T-013"].Ability; !reflect.DeepEqual(got, want) {
+		t.Errorf("Preceptor Archive ability = %+v, want %+v", got, want)
+	}
+}
+
+func TestConvertAbilityStep_ContestRoll(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"a contest with no roll", "attacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\neffect = \"reveal_stealth\"\ntarget = \"faction\"\n", `unknown contest roll: ""`},
+		{"a roll with no contest", "roll = \"attack\"\neffect = \"coin_delta\"\ndie = \"1d6\"\n", "needs a contest"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, effectTestAsset+"\n[assets.Machine.ability]\n"+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+
+	rb := loadShippedRulebook(t)
+	rolls := map[string]domain.ContestRoll{"SWN-C1-002": domain.ContestRollAttack, "SWN-W5-001": domain.ContestRollTest}
+	for id, want := range rolls {
+		if got := rb.Assets[id].Ability.Steps[0].Contest.Roll; got != want {
+			t.Errorf("%s contest roll = %q, want %q", id, got, want)
+		}
+	}
+	if got := rb.Assets["SWN-C2-004"].Ability.Steps[1].Contest.Roll; got != domain.ContestRollAttack {
+		t.Errorf("Seductress contest roll = %q, want attack", got)
 	}
 }

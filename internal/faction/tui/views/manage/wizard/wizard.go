@@ -362,9 +362,10 @@ func governableWorldOptions(spatialMap *spatial.RegionMap, factionState *state.F
 // buildAssetsForm constructs the asset-selection form after the main form
 // completes, so options are computed from the user's final scale/stats/homeworld.
 func buildAssetsForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) *huh.Form {
+	pickedTags := tagIDs(data.selectedTags)
 	allDefs := make([]*domain.AssetDefinition, 0, len(rb.Assets))
 	for _, def := range rb.Assets {
-		if def.Quality {
+		if def.Quality || !def.TagRequirementMet(pickedTags) {
 			continue
 		}
 		allDefs = append(allDefs, def)

@@ -74,7 +74,7 @@ func TestDispatch_BlockAttack(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			collector := mocks.NewMockCollector(ctrl)
 			collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+				DoAndReturn(func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 					for _, candidate := range candidates.Assets {
 						if candidate.ID == "b2" {
 							return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: candidate}, nil
@@ -85,7 +85,7 @@ func TestDispatch_BlockAttack(t *testing.T) {
 				})
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: []int{3}}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: []int{3}}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}

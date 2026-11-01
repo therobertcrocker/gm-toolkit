@@ -87,6 +87,15 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.WorldTechLevelRaised:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				if faction.WorldTechLevels == nil {
+					faction.WorldTechLevels = map[string]int{}
+				}
+				faction.WorldTechLevels[v.WorldID] = max(faction.WorldTechLevels[v.WorldID], v.TechLevel)
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
 		case domain.AssetMaintainedFlag:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok {

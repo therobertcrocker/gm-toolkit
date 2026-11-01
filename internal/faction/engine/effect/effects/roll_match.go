@@ -87,6 +87,9 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 	if !techLevelMatches(ctx.Asset, filters.TechLevel, rulebook) || !techLevelMatches(ctx.OpponentAsset, filters.OpponentTechLevel, rulebook) {
 		return false
 	}
+	if filters.AssetDefinition != "" && (ctx.Asset == nil || ctx.Asset.DefinitionID != filters.AssetDefinition) {
+		return false
+	}
 	// deliberate: a goal roll needs a rival, not only the target world, because the counterstrike rolls the attacker against itself with no Opponent (Effort 2 Decision Record 6).
 	if filters.Goal != "" && (ctx.Opponent == nil || !onGoalTarget(owner, filters.Goal, ctx.World)) {
 		return false

@@ -537,3 +537,22 @@ func TestTollCharges_PairsALossAndAGainCausedByTheHolder(t *testing.T) {
 		t.Errorf("charges = %+v, want %+v", got, want)
 	}
 }
+
+func TestResolveWorldTechLevel_StartsFromTheFactionsRecord(t *testing.T) {
+	faction := &domain.Faction{ID: "f1", WorldTechLevels: map[string]int{"Backwater": 4}}
+	def := &domain.AssetDefinition{ID: "d"}
+	if got := ResolveWorldTechLevel(nil, faction, def, "Backwater", 2); got != 4 {
+		t.Errorf("recorded world, no registry = %d, want 4", got)
+	}
+	if got := ResolveWorldTechLevel(nil, faction, def, "Tartarus", 2); got != 2 {
+		t.Errorf("unrecorded world = %d, want 2", got)
+	}
+	if got := ResolveWorldTechLevel(nil, faction, def, "Backwater", 5); got != 5 {
+		t.Errorf("a world already above the record = %d, want 5", got)
+	}
+	registry := hooks.NewRegistry()
+	registry.RegisterWorldTechLevelModifier(hooks.FactionScope("f1"), "floor", &stubWorldTechLevelModifier{delta: 1})
+	if got := ResolveWorldTechLevel(registry, faction, def, "Backwater", 2); got != 5 {
+		t.Errorf("record then a hook = %d, want 5 (the hooks run on the record)", got)
+	}
+}

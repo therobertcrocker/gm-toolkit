@@ -34,9 +34,8 @@ func (recorder *rollRecorder) OfferModifiers(ctx hooks.RollContext, _ *state.Fac
 
 func cunningContest(roller domain.ContestRoller, roll domain.ContestRoll) domain.EffectContest {
 	return domain.EffectContest{
-		Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning},
+		Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning, Roll: roll},
 		Roller:  roller,
-		Roll:    roll,
 	}
 }
 
@@ -90,9 +89,8 @@ func TestContestPasses_RollPhasesAndSides(t *testing.T) {
 			registry := hooks.NewRegistry()
 			registry.RegisterRollModifier(hooks.GlobalScope(), "recorder", recorder)
 			contest := domain.EffectContest{
-				Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth},
+				Contest: domain.Contest{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth, Roll: tc.roll},
 				Roller:  domain.ContestRollerSelf,
-				Roll:    tc.roll,
 			}
 
 			contestPasses(contestRoll{

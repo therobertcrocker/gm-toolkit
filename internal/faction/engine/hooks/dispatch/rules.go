@@ -76,15 +76,17 @@ func ResolveMaintenanceCost(registry *hooks.Registry, owner *domain.Faction, ass
 	return cost
 }
 
-// ResolveWorldTechLevel runs faction's own WorldTechLevelModifiers, then those
-// registered against each asset faction owns, in asset ID order. A tech-level
-// floor serves its owner only, so a rival's assets are never asked; each
-// asset-scoped hook decides whether its reach covers world and def.
+// ResolveWorldTechLevel starts from the higher of baseTL and faction's own record
+// for world (raise_tech_level, D-11), then runs faction's own
+// WorldTechLevelModifiers, then those registered against each asset faction owns,
+// in asset ID order. A tech-level floor serves its owner only, so a rival's assets
+// are never asked; each asset-scoped hook decides whether its reach covers world
+// and def.
 func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int {
+	tl := max(baseTL, faction.WorldTechLevels[world])
 	if registry == nil {
-		return baseTL
+		return tl
 	}
-	tl := baseTL
 	for _, registered := range registry.WorldTechLevelModifiersFor(faction.ID, "") {
 		tl = registered.Hook.ModifyWorldTechLevel(faction, def, world, tl)
 	}

@@ -88,7 +88,7 @@ func TestDispatch_DisableAsset(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			collector := mocks.NewMockCollector(ctrl)
 			collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ *domain.Asset, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
+				DoAndReturn(func(_ domain.AbilityHolder, _ domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 					return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: candidates.Assets[0]}, nil
 				})
 			if tc.answer != nil {
@@ -103,7 +103,7 @@ func TestDispatch_DisableAsset(t *testing.T) {
 			}
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, acting, def, collector, &seqRoller{values: tc.rolls}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, def, collector, &seqRoller{values: tc.rolls}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}
