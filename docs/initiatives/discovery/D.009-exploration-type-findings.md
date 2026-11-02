@@ -4,7 +4,7 @@
 > **Purpose:** a running log of what worked and what did not in the first explorations.
 > Each exploration adds one section when it closes. `D.009` reads this log, then writes
 > the `E.` flow in `session-modes.md` and the template.
-> **Status:** collecting. One exploration logged (`E.002`).
+> **Status:** collecting. Two explorations logged (`E.002`, `E.004`).
 
 ## Conflicts to settle in `D.009`
 
@@ -13,8 +13,11 @@
   `docs/process/templates/`.
 - **Close-out.** `CLAUDE.md` pre-merge step 9.4 moves discovery and plan docs to
   `completed/`. For `E.002`, Robert chose to keep the doc in place and to keep the
-  planned-work row (Status `Complete`) and its write-up. The `E.` flow must say which
-  rule applies.
+  planned-work row (Status `Complete`) and its write-up. `E.004` did the same. The `E.`
+  flow must say which rule applies.
+- **Branch.** The git rules say initiative work never commits on `main`. `E.002` ran on
+  `exploration/<name>`. For `E.004`, Robert said no branch is needed. The `E.` flow must
+  say if an exploration is exempt, since it changes docs only.
 
 <br/>
 
@@ -99,3 +102,79 @@ asked when they come up.
 - Is In Plain Words always written last, or is a first draft written after the audit?
 - Should a Terms block be required, or added only when a naming trap shows?
 - Does a "Findings during options" heading earn its own section?
+
+<br/>
+
+## `E.004` — Unifying dice and RollHooks
+
+Doc: [`E.004-unifying-dice-rollhooks-exploration.md`](../explorations/E.004-unifying-dice-rollhooks-exploration.md).
+One session on Opus, by Robert's choice, so that it can be compared with `E.002`'s two.
+
+### Doc shape
+
+Same sections as `E.002`, in the same order. What we did, then whether it worked:
+
+- **Questions held Robert's prompt in his words,** and then his sharpened version after
+  review. It worked: the deciding criterion came straight from the prompt.
+- **In Plain Words had a first draft after the audit,** then two rewrites as the answer
+  changed. It worked, and it answers an open question from `E.002`: a first draft is
+  useful, as long as it is rewritten last.
+- **A Terms block at the top of Options** again. Robert changed it in review, which added
+  table and target rolls. It carried real design weight, so it earned its place.
+- **Options numbered per question** (`C-`, `P-`, `O-`) again, with a table comparing the
+  `C-` options. Two of the options that won came from Robert's review (`C-5`, `P-4`), and
+  each was added beside the others, not in place of them. This kept the reasoning visible.
+- **A "what moves, what stays" table in an option** (`P-4`). Each item went in front of
+  Robert with a reason. It worked for a call made of many small items.
+
+### Flow
+
+- **One session held the audit, options and review.** Context carried over, and the
+  session needed no hand-off. Against that, no second session re-read the code with fresh
+  eyes. A claim I had made in chat was wrong (each caller keeps its own tie rule), and
+  only writing the options caught it. In `E.002`, the hand-off's list of unverified claims
+  did that job.
+- **One open question before writing,** on what prompted the row. The row was vague, and
+  the answer changed the audit: from counting duplicates to asking what decides a roll's
+  route. Worth keeping, with a vague row.
+- **The review changed the answer.** Robert read Current State and proposed the roll
+  types, which became the winning option. So a review checkpoint after the audit, before
+  the recommendation hardens, is worth building in.
+- **Rows are filed after review,** as in `E.002`. It worked again.
+- **Long silent stretches.** The audit ran many reads between messages, and the session
+  twice had to send an update. A flow could ask for a short update between audit steps.
+- **A spot check after the answer found more.** Robert asked what had been left out, after
+  the rows were filed. It found seven items, and all seven went in: the largest was the
+  ability step's data shape. It also caught a second wrong claim: the doc said the fake
+  rollers behave too differently to merge, and nobody had read them all. A spot check, with
+  every item put to Robert, may be the fresh re-read that one session lacks.
+- **The exploration led to a plan, not a discovery.** `R.028` skips Discovery and goes
+  straight to Plan. The audit is done and the target shape is chosen, so none of the refactor
+  flow's reasons for a discovery apply. `E.002` was different: its answer fed a discovery that
+  was paused and waiting on it. The plan still re-reads the code, because the refactor flow
+  treats an earlier doc as a hypothesis.
+- **Close-out.** No branch, no merge, no code review and no version tag.
+
+### Findings during options
+
+Writing the options, and answering Robert's review, found facts that the audit did not:
+
+- Attack, counterstrike and free attack share one tie test, so three named rules cover
+  every contest.
+- One call (`ability/stage.go:161`) hides three types of roll. Two ability dice sit in a
+  `RollTable` that has no rows, and two one-row tables are really target rolls.
+- Moving `rulebook/dice.go` into the engine closes an import cycle through `hooks`.
+
+As in `E.002`, these went into Current State and Options. This is a second data point
+that options writing finds facts, so a template can expect it.
+
+### Open for `D.009`
+
+- Is one session or two the default? One session worked here, on a smaller question
+  than `E.002`'s. A rule could turn on the question's size.
+- If one session is allowed, what replaces the fresh re-read that a second session gives?
+  Is a spot check before close a required step?
+- What comes after an exploration? It has now led to a paused discovery (`E.002`) and
+  straight to a plan (`E.004`). The `E.` flow should say how to choose, and whether a
+  discovery that follows one needs less.
+- Do explorations run on a branch? See Conflicts.

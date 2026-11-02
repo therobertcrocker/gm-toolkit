@@ -12,6 +12,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
 | `E.002` | Data-driven tags and goals | `exploration` | Complete | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
+| `E.004` | Unifying Dice and RollHooks | `exploration` | Complete | Each new contest forced a fresh decision about its roll path; the answer is one `engine/dice` package with a named route for each type of game roll, filed as `R.028`, ahead of the roll card (`R.025`) |
 
 
 ---
@@ -22,7 +23,7 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass in `A.001.7`'s data form (AP-8; `A.001.7` complete); owns lore canon; see arc-plan |
+| `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass in `A.001.7`'s data form (AP-8; `A.001.7` complete); the authoring passes run after `R.028`, so they use its roll data shapes (`E.004`); owns lore canon; see arc-plan |
 | `A.001.8` | Data-driven goals | `feature` | ready | Goal vocabulary of named parts (start, progress, tick, reset, threshold, complete, XP, phases), a turn-start goal pick in the engine, the twelve goals as data, prefixed goal IDs (`CORE-G-001`); absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; see `E.002` (G-1, I-1) |
 
 
@@ -102,9 +103,10 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.021` | Remove dead world-scoped defender filter | -- | `liveDefendersOnWorld` → `eligibleDefendersOnWorld` has no caller outside `spatial_index_test.go` and skips the attack-eligibility hooks; delete it (move its tests to `eligibleDefendersAtHex`) so no future caller bypasses `restrict_attack`. Found in `A.001.3` Effort 4 Commit 4 review. |
 | `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
 | `R.024` | Clear inert `no_attack` records | when saves grow noisy | A Seditionists' `no_attack` stays on its target after the Seditionists die; `domain.AttackBlocked` skips it when read, so it only clutters saves. Clear it when its source leaves play. Deferred from `A.001.6` Effort 3 Decision 10. |
-| `R.025` | Roll card | after `A.001.7` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
-| `R.026` | Faux-data-driven rule audit | after `A.001.7` | Check each registrar and the engine code it feeds, and every other rule site (domain checks such as `CanPurchase`, loaders, resolvers, settings), for rule values or references held in Go, not in the data; move each into the entry or the settings. Known case: `lock_out`'s 1d4 fee and asset-named cause (`lockdownHold`, `arrival.go`). `A.001.7` overview Decision 7, widened by R-6. |
+| `R.025` | Roll card | after `R.028` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
+| `R.026` | Faux-data-driven rule audit | after `A.001.7` | Check each registrar and the engine code it feeds, and every other rule site (domain checks such as `CanPurchase`, loaders, resolvers, settings), for rule values or references held in Go, not in the data; move each into the entry or the settings. `R.028` takes the known case: `lock_out`'s 1d4 fee and asset-named cause (`lockdownHold`, `arrival.go`). `A.001.7` overview Decision 7, widened by R-6. |
 | `R.027` | Registrar `faction`-scope sweep | -- | Audit every registrar for a `faction` scope that a tag would need, and land each with the tag that uses it; `grant_movement` and `ignore_coin_loss` still refuse a tag holder. `A.001.7` overview R-3. |
+| `R.028` | Dice package | ready | New `engine/dice` gives each game roll a named route: stat rolls (`RollWithHooks`, the attack-and-defense pair, the tie rules, one gate), and amount, table and target rolls (no hooks; `DiceRoll.Roll` leaves `domain`); `RandRoller` and `Roller` move too; all 22 sites move; `AbilityStep.Roll` splits into amount, table and target, with the target shape shared with `XPRollParams`; Harvesters and Teach Planetary Population become target rolls, with a re-seed of the sandbox; absorbs `B.010` and the `lock_out` case from `R.026` (its die and cause move to data); one roll phase enum, `RollContext` stats typed as `FactionStat`, shared roller fakes in `dicetest`, no `statScore` wrappers; a new `engine/dice.md` architecture page takes the roll sections from `hooks.md`; a new roll calls a route or extends one. The plan asks if it needs efforts. See `E.004` C-5, P-4. |
 
 #### 3. Driver
 
@@ -149,7 +151,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 |----|------|---------|--------|
 | `B.001` | Hardcoded goal ID | -- | `"G-012"` (Change Homeworld goal) is hardcoded in `change_homeworld.go`; silently breaks if the TOML ID changes. The asset half (Stealth) closed in `A.001.6`. |
 | `B.008` | Stale `ApplyBookkeeping` comment | -- | Doc comment claims it "advances the turn phase to `PhaseAction`", but `TurnState` has no phase field; phase order lives in the orchestrator. One-line comment fix. |
-| `B.010` | Reroll uses base die sides | when a non-d10 Cat 1 die lands | `roll.go:86` rerolls via `roller.Roll(baseRoll.Sides)`, so a Cat 1 die of other sides rerolls wrong. Inert today (all d10); Book of Secrets is the first real reroll user. |
+| `B.010` | Reroll uses base die sides | with `R.028` | The reroll loop in `RollWithHooks` rerolls via `roller.Roll(baseRoll.Sides)`, so a Cat 1 die of other sides rerolls wrong. Inert today (all d10); Book of Secrets is the first real reroll user. |
 | `B.013` | Peaceable Kingdom misses a missed attack | -- | `peaceable_kingdom.go:20-36` detects an Attack from damage or attacker stealth-loss mutations; a miss by an unstealthed attacker emits neither, so the goal ("do not take an Attack action") does not reset. Found in `A.001.6` Effort 1, Commit 6. |
 | `B.014` | Capture misses a sibling-removed target | when Treachery hits a self-damager | `capture_target.go` cannot see a sibling reactor's output in its round, so a target that removes itself (Zealots' `self_damage`) still gets `AssetOwnerChanged`; the owner change then misses and the turn aborts. Fence-signed; found in `A.001.6` Effort 1 interim review. |
 | `B.016` | Hook budgets survive an aborted action | -- | `dispatch/lethal.go` and `dispatch/roll.go` spend once-per budgets on live state during Resolve; a prompt canceled later in the action drops its mutations but keeps the spend (a lost Medical Center restore or reroll); snapshot `HookBudgets` before `Run`, restore on error. Found in `A.001.6` Effort 2 interim review. |
@@ -206,7 +208,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `D.007` | Sandbox Cracked Comms wording | -- | `campaigns/sandbox/TESTING.md` says the prompt shows "if Veiled Hand defends outright"; the effect is `ScopeSelf`, so Cracked Comms itself must win the defense and the attacker must survive the counter. Found in the sandbox combat test. |
 | `D.008` | Sandbox movement seed and wording | -- | `TESTING.md:268` says each carrier costs 2 Coin, but Heavy Drop costs 1; the seed leaves Ashfall at +2 income against −2 upkeep, so it hits 0 Coin and Heavy Drop can never pay without a state edit. Found in the sandbox movement test. |
 | `D.009` | Define the Exploration (`E.`) type | after 3 explorations | Process session (Fable): add `E.` to `session-modes.md` (routing table, types × artifacts, a flow section) and a template under `docs/initiatives/explorations/`; `E.002` is the pilot, so the template comes from what worked in its doc; settled so far: Discovery only, ends with findings + options + a recommendation, follow-ons are filed as their own rows, never plans or executes. Must land before `E.001` is promoted. Input: [findings log](initiatives/discovery/D.009-exploration-type-findings.md), one section per closed exploration. |
-| `D.010` | Update architecture pages for data-driven tags | -- | The `A.001.7` close graduated Key Decisions only; the page bodies, diagrams and Dependencies still describe the tag engine, Go tag handlers, `drift_costs.toml` and the `T-011` constant. Refresh effect-mutation, hooks, persistence, goals and orchestrator against the source, and check narrative-digest, world-movement, actions and ability-catalog for tag holders, `settings.toml`, the toll, the speed floor and tag abilities. |
+| `D.010` | Update architecture pages for data-driven tags | -- | The `A.001.7` close graduated Key Decisions only; the page bodies, diagrams and Dependencies still describe the tag engine, Go tag handlers, `drift_costs.toml` and the `T-011` constant. Refresh effect-mutation, hooks, persistence, goals and orchestrator against the source, and check narrative-digest, world-movement, actions and ability-catalog for tag holders, `settings.toml`, the toll, the speed floor and tag abilities. `hooks.md:111-115` also says effect contests roll directly and never read the opponent's faction bucket, against the code and its own Key Decision at line 449 (found in `E.004`). |
 
 ### Explorations
 
@@ -214,7 +216,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 |----|------|---------|--------|
 | `E.001` | Display translation ownership | after `A.001` | Engine data reaches the GM through label, feed and card code spread across `tui/` with no single owner, and the sandbox runs placed most UX findings there; explore the current design (presentation, drivers, Manage mode, `narrative/digest`) and brainstorm options, from fixing in place to a frontend-neutral layer. Starting reference: [layer map](https://claude.ai/artifact/6UjHPwdY3mq8oQ24HRqvU1). |
 | `E.003` | Old-TUI feature parity | -- | `798cd45` (2026-05-03) deleted the old TUI and turn command (27 files, about 4,400 lines) before the orchestrator refactor, and no one compared it against the rebuild; goal selection was lost that way (`B.039`). List what each deleted file did (`git show 798cd45^:<path>`), with most risk in `phases/` (goal select, resume, skip, summary, bookkeeping), `model.go` and `narrate.go`, compare against today's engine, TUI and Cobra commands, and file each gap as its own row. |
-| `E.004` | Unifying Dice and RollHooks | -- | Explore a unified approach to handling dice rolls and RollHooks in the engine, aiming to reduce duplication and improve consistency across different roll types. |
 
 ### Captured Ideas
 
@@ -273,4 +274,20 @@ This section contains detailed write-ups for each planned initiative, including 
 **Trigger** — ready
 
 **Status** — In-Progress — promoted 2026-10-26 from the Backlog Explorations table, past Up Next on Robert's call.
+
+<br />
+
+## E.004 — Unifying Dice and RollHooks
+
+**Exploration** — runs in the `E.002` doc shape, on `main` at Robert's call, with no branch. Discovery only: it ends with findings, options and a recommendation, and follow-on work is filed as its own rows. Doc: [`E.004-unifying-dice-rollhooks-exploration.md`](initiatives/explorations/E.004-unifying-dice-rollhooks-exploration.md).
+
+**Problem** — While the contest types were defined, each one needed a fresh decision about what goes through `RollWithHooks`. No code or doc states the rule, and the logic is spread across the Attack action, Expand Influence, the ability gate and the effect gate.
+
+**Approach** — Audit every roll and how its route was chosen, then test Robert's idea: a unified utility, perhaps called `contests`, where the logic lives. Weigh the options against a baseline of no change. Opus; one session at Robert's call (audit, then options and a recommendation), to compare with `E.002`'s two.
+
+**Unlocks** — A clear answer on the shared utility; follow-on rows for any move; a known order against `R.025`, which changes the same code; a second data point for `D.009`.
+
+**Trigger** — `--`
+
+**Status** — Complete — promoted 2026-11-02 from the Backlog Explorations table, past Up Next on Robert's call, and reviewed the same day. Follow-on work is `R.028`.
 
