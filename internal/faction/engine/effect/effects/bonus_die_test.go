@@ -77,7 +77,7 @@ func bonusDieOffers(registry *hooks.Registry, assetID string, ctx hooks.RollCont
 }
 
 // cunningDefense is alpha's asset ip defending with Cunning against beta.
-func cunningDefense(factionState *state.FactionState, attribute string) hooks.RollContext {
+func cunningDefense(factionState *state.FactionState, attribute domain.FactionStat) hooks.RollContext {
 	alpha := factionState.Factions["alpha"]
 	return hooks.RollContext{
 		Phase: domain.RollPhaseDefense, Actor: alpha, Opponent: factionState.Factions["beta"],

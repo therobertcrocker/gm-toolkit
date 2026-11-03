@@ -16,8 +16,8 @@ type RollContext struct {
 	Phase             domain.RollPhase
 	Actor             *domain.Faction
 	Opponent          *domain.Faction
-	Attribute         string
-	OpponentAttribute string
+	Attribute         domain.FactionStat
+	OpponentAttribute domain.FactionStat
 	Asset             *domain.Asset
 	OpponentAsset     *domain.Asset
 	World             string

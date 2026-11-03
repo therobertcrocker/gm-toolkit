@@ -72,6 +72,8 @@ Planning calls, shown to Robert before writing:
 
 - **Plan doc and tracker land in Commit 1** — the Plan session left them uncommitted, and `git add -A` carries them with the first commit, not in a commit of their own
 - **`Sequence` and `Cycle` gain `Rolled()`** (Commit 3) — seven assertions read the old fakes' private counts (`clear_stealth_test.go`, `attack_test.go`), which the planned `next` field hides; dropping them would lose the "rolled exactly this many dice" check
+- **The adapter's `statRating` goes too** (Commit 5, Robert's pick) — the plan missed this third copy of the same switch in `tui/adapter/action_collector.go`, and its comment named the deleted `actions.statScore`; its one caller now uses `Faction.StatScore`. Rejected: fixing the comment only, which keeps the switch in two places
+- **Two more stat conversions in tests** (Commit 5) — `expand_influence_test.go:438-441` drops `string(...)`, and the `cunningDefense` helper in `bonus_die_test.go` takes a `domain.FactionStat`; no expected value moved
 
 ---
 
@@ -147,7 +149,7 @@ TOML and docs.
   - Commit 1 — `refactor: add dice.Amount and retire DiceRoll.Roll` (3 tasks)
   - Commit 2 — `refactor: move Roller and RandRoller into engine/dice` (2 tasks)
   - Commit 3 — `test: share roller fakes in dicetest` (2 tasks)
-- [ ] **Phase 2 — Stat cleanups**
+- [x] **Phase 2 — Stat cleanups**
   - Commit 4 — `refactor: one roll phase enum in domain` (3 tasks)
   - Commit 5 — `refactor: type roll context stats and drop statScore wrappers` (3 tasks)
 - [ ] **Phase 3 — Stat routes**
@@ -430,11 +432,11 @@ refactor: one roll phase enum in domain
 
 ##### Task 2 — the conversions
 
-Drop `string(...)` at each `Attribute` and `OpponentAttribute` site: `attack.go:128-129`, `:145-146`, `:258`, `:263`; `expand_influence.go:100`, `:121-122`, `:216-217`, `:230-231`; `ability/stage.go:122-123`, `:137-138`; `effects/contest.go:70-71`. In `roll_match.go:72` and `:75`, compare `ctx.Attribute != filters.Attribute` and `ctx.OpponentAttribute != filters.OpponentAttribute`. Test literals such as `Attribute: "Cunning"` still compile; `string(domain.StatForce)` at `remove_tag_dice_test.go` loses its conversion.
+Drop `string(...)` at each `Attribute` and `OpponentAttribute` site: `attack.go:128-129`, `:145-146`, `:258`, `:263`; `expand_influence.go:100`, `:121-122`, `:216-217`, `:230-231`; `ability/stage.go:122-123`, `:137-138`; `effects/contest.go:70-71`. In `roll_match.go:72` and `:75`, compare `ctx.Attribute != filters.Attribute` and `ctx.OpponentAttribute != filters.OpponentAttribute`. Test literals such as `Attribute: "Cunning"` still compile; `string(domain.StatForce)` at `remove_tag_dice_test.go` and the stat conversions at `expand_influence_test.go:438-441` lose their conversions, and the `cunningDefense` helper in `bonus_die_test.go` takes a `domain.FactionStat`.
 
 ##### Task 3 — the wrappers
 
-Delete `statScore` at `repair_asset.go:117` and `ability/stage.go:191`. Each caller calls the method: `repair_asset.go:72` becomes `faction.StatScore(def.Category)`, and the same for `attack.go:135`, `:152`, `:259`, `:264`, `expand_influence.go:222`, `:236` and `ability/stage.go:129`, `:144`.
+Delete `statScore` at `repair_asset.go:117` and `ability/stage.go:191`. Each caller calls the method: `repair_asset.go:72` becomes `faction.StatScore(def.Category)`, and the same for `attack.go:135`, `:152`, `:259`, `:264`, `expand_influence.go:222`, `:236` and `ability/stage.go:129`, `:144`. Delete the same switch, `statRating`, from `tui/adapter/action_collector.go`; its caller at `:176` calls the method too.
 
 ##### Commit message
 
@@ -442,7 +444,7 @@ Delete `statScore` at `repair_asset.go:117` and `ability/stage.go:191`. Each cal
 refactor: type roll context stats and drop statScore wrappers
 
 - RollContext.Attribute and OpponentAttribute are FactionStat
-- both statScore wrappers go; callers use Faction.StatScore
+- both statScore wrappers and the adapter's statRating go; callers use Faction.StatScore
 ```
 
 ### Phase 3 — Stat routes

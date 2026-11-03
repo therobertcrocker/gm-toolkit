@@ -130,7 +130,7 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	collector := &rollCollector{accept: true}
 
 	ctx := hooks.RollContext{
-		Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, Attribute: string(domain.StatForce),
+		Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, Attribute: domain.StatForce,
 		OpponentAsset: alpha.Assets["bm"], World: "Krylos", Action: "Attack",
 	}
 	result := dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Force}, registry, collector, &dicetest.Sequence{Values: []int{4}}, beta, factionState, nil)

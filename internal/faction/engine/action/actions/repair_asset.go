@@ -69,7 +69,7 @@ func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, r
 			return fmt.Errorf("asset definition not found: %s", order.Asset.DefinitionID)
 		}
 
-		attributeScore := statScore(faction, def.Category)
+		attributeScore := faction.StatScore(def.Category)
 		missing := def.HP - order.Asset.CurrentHP
 		totalHeal := 0
 
@@ -111,11 +111,6 @@ func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, r
 
 func (ra *RepairAsset) Output() ([]domain.Mutation, error) {
 	return ra.mutations, nil
-}
-
-// statScore returns the faction's attribute value for the given asset category.
-func statScore(faction *domain.Faction, category domain.FactionStat) int {
-	return faction.StatScore(category)
 }
 
 // shelterCleared clears every sheltered condition on asset: a repair to full HP

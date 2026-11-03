@@ -126,14 +126,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				Phase:             domain.RollPhaseAttack,
 				Actor:             faction,
 				Opponent:          defenderFaction,
-				Attribute:         string(attackerDef.Attack.AttackerStat),
-				OpponentAttribute: string(attackerDef.Attack.DefenderStat),
+				Attribute:         attackerDef.Attack.AttackerStat,
+				OpponentAttribute: attackerDef.Attack.DefenderStat,
 				Asset:             attacker,
 				OpponentAsset:     defender,
 				World:             attacker.Location.WorldID,
 				Action:            attack.Name(),
 			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.AttackerStat)},
 			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 		)
 		attackRoll := attackResult.Sum
@@ -143,14 +143,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				Phase:             domain.RollPhaseDefense,
 				Actor:             defenderFaction,
 				Opponent:          faction,
-				Attribute:         string(attackerDef.Attack.DefenderStat),
-				OpponentAttribute: string(attackerDef.Attack.AttackerStat),
+				Attribute:         attackerDef.Attack.DefenderStat,
+				OpponentAttribute: attackerDef.Attack.AttackerStat,
 				Asset:             defender,
 				OpponentAsset:     attacker,
 				World:             attacker.Location.WorldID,
 				Action:            attack.Name(),
 			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
+			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: defenderFaction.StatScore(attackerDef.Attack.DefenderStat)},
 			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
 		)
 		defenseRoll := defResult.Sum
@@ -256,13 +256,13 @@ func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *dom
 	worldID := attacker.Location.WorldID
 	// deliberate: Opponent nil, not faction, because Actor == Opponent would ask every asset hook on the world twice (overview Decision 9).
 	attackRoll := dispatch.RollWithHooks(
-		hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Attribute: string(attackerDef.Attack.AttackerStat), OpponentAttribute: string(attackerDef.Attack.DefenderStat), Asset: attacker, World: worldID, Action: attack.Name()},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
+		hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Attribute: attackerDef.Attack.AttackerStat, OpponentAttribute: attackerDef.Attack.DefenderStat, Asset: attacker, World: worldID, Action: attack.Name()},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.AttackerStat)},
 		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 	).Sum
 	defenseRoll := dispatch.RollWithHooks(
-		hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: faction, Attribute: string(attackerDef.Attack.DefenderStat), OpponentAttribute: string(attackerDef.Attack.AttackerStat), Asset: attacker, World: worldID, Action: attack.Name()},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.DefenderStat)},
+		hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: faction, Attribute: attackerDef.Attack.DefenderStat, OpponentAttribute: attackerDef.Attack.AttackerStat, Asset: attacker, World: worldID, Action: attack.Name()},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.DefenderStat)},
 		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 	).Sum
 	tieOutcome := dispatch.ResolveTie(attack.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Asset: attacker, World: worldID}, factionState)

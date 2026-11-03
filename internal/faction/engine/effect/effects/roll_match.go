@@ -62,10 +62,10 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 	default:
 		return false
 	}
-	if filters.Attribute != "" && ctx.Attribute != string(filters.Attribute) {
+	if filters.Attribute != "" && ctx.Attribute != filters.Attribute {
 		return false
 	}
-	if filters.OpponentAttribute != "" && ctx.OpponentAttribute != string(filters.OpponentAttribute) {
+	if filters.OpponentAttribute != "" && ctx.OpponentAttribute != filters.OpponentAttribute {
 		return false
 	}
 	if len(filters.Phases) > 0 && !slices.Contains(filters.Phases, ctx.Phase) {

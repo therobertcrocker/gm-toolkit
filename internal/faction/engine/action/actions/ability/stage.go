@@ -120,14 +120,14 @@ func passesGate(
 			Detection:         step.Effect == domain.EffectRevealStealth,
 			Actor:             faction,
 			Opponent:          defender,
-			Attribute:         string(step.Contest.AttackerStat),
-			OpponentAttribute: string(step.Contest.DefenderStat),
+			Attribute:         step.Contest.AttackerStat,
+			OpponentAttribute: step.Contest.DefenderStat,
 			Asset:             asset,
 			OpponentAsset:     target.Asset,
 			World:             worldID,
 			Action:            actionName,
 		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, step.Contest.AttackerStat)},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(step.Contest.AttackerStat)},
 		registry, collector, roller, faction, factionState, rulebook,
 	)
 	defense := dispatch.RollWithHooks(
@@ -135,14 +135,14 @@ func passesGate(
 			Phase:             defensePhase,
 			Actor:             defender,
 			Opponent:          faction,
-			Attribute:         string(step.Contest.DefenderStat),
-			OpponentAttribute: string(step.Contest.AttackerStat),
+			Attribute:         step.Contest.DefenderStat,
+			OpponentAttribute: step.Contest.AttackerStat,
 			Asset:             target.Asset,
 			OpponentAsset:     asset,
 			World:             worldID,
 			Action:            actionName,
 		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defender, step.Contest.DefenderStat)},
+		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: defender.StatScore(step.Contest.DefenderStat)},
 		registry, collector, roller, defender, factionState, rulebook,
 	)
 	if attack.Sum == defense.Sum && step.Contest.Roll == domain.ContestRollAttack {
@@ -187,10 +187,6 @@ func otherFactions(factionState *state.FactionState, actingFactionID string) []*
 		return candidates[i].Name < candidates[j].Name
 	})
 	return candidates
-}
-
-func statScore(faction *domain.Faction, stat domain.FactionStat) int {
-	return faction.StatScore(stat)
 }
 
 // assetTargetRules narrows a step's asset candidates by its effect. An effect with
