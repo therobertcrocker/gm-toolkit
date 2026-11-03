@@ -114,7 +114,7 @@ func passesGate(
 	if step.Contest.Roll == domain.ContestRollAttack {
 		attackPhase, defensePhase = domain.RollPhaseAttack, domain.RollPhaseDefense
 	}
-	attack := dispatch.RollWithHooks(
+	attack := dice.RollWithHooks(
 		hooks.RollContext{
 			Phase:             attackPhase,
 			Detection:         step.Effect == domain.EffectRevealStealth,
@@ -130,7 +130,7 @@ func passesGate(
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(step.Contest.AttackerStat)},
 		registry, collector, roller, faction, factionState, rulebook,
 	)
-	defense := dispatch.RollWithHooks(
+	defense := dice.RollWithHooks(
 		hooks.RollContext{
 			Phase:             defensePhase,
 			Actor:             defender,
@@ -147,7 +147,7 @@ func passesGate(
 	)
 	if attack.Sum == defense.Sum && step.Contest.Roll == domain.ContestRollAttack {
 		tieCtx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Opponent: defender, Asset: asset, World: worldID, Action: actionName}
-		return dispatch.ResolveTie(registry, tieCtx, factionState) == hooks.TieAttackerWins, nil
+		return dice.ResolveTie(registry, tieCtx, factionState) == hooks.TieAttackerWins, nil
 	}
 	return attack.Sum > defense.Sum, nil
 }

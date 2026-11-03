@@ -74,6 +74,7 @@ Planning calls, shown to Robert before writing:
 - **`Sequence` and `Cycle` gain `Rolled()`** (Commit 3) — seven assertions read the old fakes' private counts (`clear_stealth_test.go`, `attack_test.go`), which the planned `next` field hides; dropping them would lose the "rolled exactly this many dice" check
 - **The adapter's `statRating` goes too** (Commit 5, Robert's pick) — the plan missed this third copy of the same switch in `tui/adapter/action_collector.go`, and its comment named the deleted `actions.statScore`; its one caller now uses `Faction.StatScore`. Rejected: fixing the comment only, which keeps the switch in two places
 - **Two more stat conversions in tests** (Commit 5) — `expand_influence_test.go:438-441` drops `string(...)`, and the `cunningDefense` helper in `bonus_die_test.go` takes a `domain.FactionStat`; no expected value moved
+- **A test parameter renamed** (Commit 6) — `rollThroughDispatcher` in `reroll_test.go` had a parameter called `dice`, which hides the package once the call reads `dice.RollWithHooks`; it is now `values`. No expected value moved
 
 ---
 

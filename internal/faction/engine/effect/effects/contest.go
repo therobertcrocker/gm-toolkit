@@ -4,7 +4,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -53,7 +52,7 @@ func contestPasses(roll contestRoll) bool {
 	attackerWins := attack > defense
 	if attack == defense && roll.contest.Roll == domain.ContestRollAttack {
 		tieCtx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: attacker, Opponent: defender, Asset: attackerAsset, World: roll.world}
-		attackerWins = dispatch.ResolveTie(roll.registry, tieCtx, roll.factionState) == hooks.TieAttackerWins
+		attackerWins = dice.ResolveTie(roll.registry, tieCtx, roll.factionState) == hooks.TieAttackerWins
 	}
 	if roll.contest.Roller == domain.ContestRollerTarget {
 		return !attackerWins
@@ -76,5 +75,5 @@ func (roll contestRoll) side(phase domain.RollPhase, actor, opponent *domain.Fac
 		Detection:         roll.declaringDetects && actor == roll.declaring,
 	}
 	base := domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: actor.StatScore(stat)}
-	return dispatch.RollWithHooks(ctx, base, roll.registry, roll.collector, roll.roller, actor, roll.factionState, roll.rulebook).Sum
+	return dice.RollWithHooks(ctx, base, roll.registry, roll.collector, roll.roller, actor, roll.factionState, roll.rulebook).Sum
 }

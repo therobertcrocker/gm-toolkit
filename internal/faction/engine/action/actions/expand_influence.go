@@ -10,7 +10,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -94,7 +93,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 	// Contested roll: faction rolls 1d10 + Cunning; each rival on the world rolls the same.
 	// Rivals that tie or beat the faction's roll may make a free attack against the new base.
 	// deliberate: no Opponent on the faction's roll, not each rival in turn, because it is one roll compared against N rivals (Effort 3 plan, Decision 11).
-	factionRoll := dispatch.RollWithHooks(
+	factionRoll := dice.RollWithHooks(
 		hooks.RollContext{
 			Phase:     domain.RollPhaseFactionTest,
 			Actor:     faction,
@@ -114,7 +113,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		if newBase.CurrentHP+baseHPTracker <= 0 {
 			break
 		}
-		rivalRoll := dispatch.RollWithHooks(
+		rivalRoll := dice.RollWithHooks(
 			hooks.RollContext{
 				Phase:             domain.RollPhaseContested,
 				Actor:             rival,
@@ -209,7 +208,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			continue
 		}
 		worldID := target.Location.WorldID
-		attackRoll := dispatch.RollWithHooks(
+		attackRoll := dice.RollWithHooks(
 			hooks.RollContext{
 				Phase:             domain.RollPhaseAttack,
 				Actor:             rival,
@@ -223,7 +222,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: rival.StatScore(attackerDef.Attack.AttackerStat)},
 			ba.registry, ba.collector, ba.roller, rival, factionState, rulebook,
 		).Sum
-		defenseRoll := dispatch.RollWithHooks(
+		defenseRoll := dice.RollWithHooks(
 			hooks.RollContext{
 				Phase:             domain.RollPhaseDefense,
 				Actor:             ownerFaction,
@@ -240,7 +239,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 
 		hits := attackRoll > defenseRoll
 		if attackRoll == defenseRoll {
-			tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
+			tieOutcome := dice.ResolveTie(ba.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
 			hits = tieOutcome != hooks.TieDefenderWins
 		}
 		if hits {

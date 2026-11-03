@@ -121,7 +121,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState, rulebook).Mutations...)
 
-		attackResult := dispatch.RollWithHooks(
+		attackResult := dice.RollWithHooks(
 			hooks.RollContext{
 				Phase:             domain.RollPhaseAttack,
 				Actor:             faction,
@@ -138,7 +138,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 		)
 		attackRoll := attackResult.Sum
 
-		defResult := dispatch.RollWithHooks(
+		defResult := dice.RollWithHooks(
 			hooks.RollContext{
 				Phase:             domain.RollPhaseDefense,
 				Actor:             defenderFaction,
@@ -162,7 +162,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 			Asset:    attacker,
 			World:    attacker.Location.WorldID,
 		}
-		tieOutcome := dispatch.ResolveTie(attack.registry, tieCtx, factionState)
+		tieOutcome := dice.ResolveTie(attack.registry, tieCtx, factionState)
 		attackerWins := attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins)
 		defenderWins := defenseRoll > attackRoll || (defenseRoll == attackRoll && tieOutcome != hooks.TieAttackerWins)
 
@@ -255,17 +255,17 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *domain.Asset, attackerDef *domain.AssetDefinition, defenderFaction *domain.Faction, source *domain.Asset, tracker *sequenceTracker, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	worldID := attacker.Location.WorldID
 	// deliberate: Opponent nil, not faction, because Actor == Opponent would ask every asset hook on the world twice (overview Decision 9).
-	attackRoll := dispatch.RollWithHooks(
+	attackRoll := dice.RollWithHooks(
 		hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Attribute: attackerDef.Attack.AttackerStat, OpponentAttribute: attackerDef.Attack.DefenderStat, Asset: attacker, World: worldID, Action: attack.Name()},
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.AttackerStat)},
 		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 	).Sum
-	defenseRoll := dispatch.RollWithHooks(
+	defenseRoll := dice.RollWithHooks(
 		hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: faction, Attribute: attackerDef.Attack.DefenderStat, OpponentAttribute: attackerDef.Attack.AttackerStat, Asset: attacker, World: worldID, Action: attack.Name()},
 		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.DefenderStat)},
 		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
 	).Sum
-	tieOutcome := dispatch.ResolveTie(attack.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Asset: attacker, World: worldID}, factionState)
+	tieOutcome := dice.ResolveTie(attack.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Asset: attacker, World: worldID}, factionState)
 
 	damage := attackerDef.Counter
 	if attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins) {
