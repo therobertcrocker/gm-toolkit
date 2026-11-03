@@ -43,16 +43,16 @@ func contestPasses(roll contestRoll) bool {
 	if roll.contest.Roller == domain.ContestRollerTarget {
 		attacker, attackerAsset, defender, defenderAsset = roll.target, roll.targetAsset, roll.declaring, roll.declaringAsset
 	}
-	attackPhase, defensePhase := hooks.PhaseFactionTest, hooks.PhaseContested
+	attackPhase, defensePhase := domain.RollPhaseFactionTest, domain.RollPhaseContested
 	if roll.contest.Roll == domain.ContestRollAttack {
-		attackPhase, defensePhase = hooks.PhaseAttack, hooks.PhaseDefense
+		attackPhase, defensePhase = domain.RollPhaseAttack, domain.RollPhaseDefense
 	}
 	attackerStat, defenderStat := roll.contest.AttackerStat, roll.contest.DefenderStat
 	attack := roll.side(attackPhase, attacker, defender, attackerAsset, defenderAsset, attackerStat, defenderStat)
 	defense := roll.side(defensePhase, defender, attacker, defenderAsset, attackerAsset, defenderStat, attackerStat)
 	attackerWins := attack > defense
 	if attack == defense && roll.contest.Roll == domain.ContestRollAttack {
-		tieCtx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: attacker, Opponent: defender, Asset: attackerAsset, World: roll.world}
+		tieCtx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: attacker, Opponent: defender, Asset: attackerAsset, World: roll.world}
 		attackerWins = dispatch.ResolveTie(roll.registry, tieCtx, roll.factionState) == hooks.TieAttackerWins
 	}
 	if roll.contest.Roller == domain.ContestRollerTarget {
@@ -63,7 +63,7 @@ func contestPasses(roll contestRoll) bool {
 
 // side rolls one side of the contest: 1d10 plus actor's stat, with the stat the
 // other side rolls as OpponentAttribute (Effort 2 Decision 3).
-func (roll contestRoll) side(phase hooks.RollPhase, actor, opponent *domain.Faction, asset, opponentAsset *domain.Asset, stat, opponentStat domain.FactionStat) int {
+func (roll contestRoll) side(phase domain.RollPhase, actor, opponent *domain.Faction, asset, opponentAsset *domain.Asset, stat, opponentStat domain.FactionStat) int {
 	ctx := hooks.RollContext{
 		Phase:             phase,
 		Actor:             actor,

@@ -819,8 +819,8 @@ func tagBonusDie(filters domain.EffectFilters, oncePer domain.OncePerKey) []doma
 
 func TestLoad_TagBonusDice(t *testing.T) {
 	rb := loadShippedRulebook(t)
-	attack := []domain.EffectRollPhase{domain.RollPhaseAttack}
-	defense := []domain.EffectRollPhase{domain.RollPhaseDefense}
+	attack := []domain.RollPhase{domain.RollPhaseAttack}
+	defense := []domain.RollPhase{domain.RollPhaseDefense}
 	zero, five := 0, 5
 	cases := []struct {
 		tagID string
@@ -912,7 +912,7 @@ func TestLoad_EugenicsCult(t *testing.T) {
 		Effect:  domain.SpecialBonusDie,
 		Filters: domain.EffectFilters{
 			Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
-			Phases:          []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+			Phases:          []domain.RollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
 			AssetDefinition: "SWN-F1-004",
 		},
 		Gates:    domain.EffectGates{OncePer: domain.OncePerOwnerFaction},

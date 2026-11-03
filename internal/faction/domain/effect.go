@@ -121,14 +121,15 @@ const (
 	GateContest EffectGateName = "contest"
 )
 
-// EffectRollPhase names a hooks.RollPhase; domain cannot import hooks.
-type EffectRollPhase string
+// RollPhase names which roll of a contest or test is being made. Rulebook filters
+// name these values.
+type RollPhase string
 
 const (
-	RollPhaseAttack      EffectRollPhase = "attack"
-	RollPhaseDefense     EffectRollPhase = "defense"
-	RollPhaseFactionTest EffectRollPhase = "faction_test"
-	RollPhaseContested   EffectRollPhase = "contested"
+	RollPhaseAttack      RollPhase = "attack"
+	RollPhaseDefense     RollPhase = "defense"
+	RollPhaseFactionTest RollPhase = "faction_test"
+	RollPhaseContested   RollPhase = "contested"
 )
 
 type OncePerKey string
@@ -184,7 +185,7 @@ type EffectFilters struct {
 	Scope             EffectScope
 	Attribute         FactionStat
 	OpponentAttribute FactionStat
-	Phases            []EffectRollPhase
+	Phases            []RollPhase
 	Action            string
 	AssetTypes        []AssetType
 	Categories        []FactionStat

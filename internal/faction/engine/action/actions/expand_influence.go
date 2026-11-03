@@ -96,7 +96,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 	// deliberate: no Opponent on the faction's roll, not each rival in turn, because it is one roll compared against N rivals (Effort 3 plan, Decision 11).
 	factionRoll := dispatch.RollWithHooks(
 		hooks.RollContext{
-			Phase:     hooks.PhaseFactionTest,
+			Phase:     domain.RollPhaseFactionTest,
 			Actor:     faction,
 			Attribute: string(domain.StatCunning),
 			World:     ei.order.World,
@@ -116,7 +116,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		}
 		rivalRoll := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:             hooks.PhaseContested,
+				Phase:             domain.RollPhaseContested,
 				Actor:             rival,
 				Opponent:          faction,
 				Attribute:         string(domain.StatCunning),
@@ -211,7 +211,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 		worldID := target.Location.WorldID
 		attackRoll := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:             hooks.PhaseAttack,
+				Phase:             domain.RollPhaseAttack,
 				Actor:             rival,
 				Opponent:          ownerFaction,
 				Attribute:         string(attackerDef.Attack.AttackerStat),
@@ -225,7 +225,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 		).Sum
 		defenseRoll := dispatch.RollWithHooks(
 			hooks.RollContext{
-				Phase:             hooks.PhaseDefense,
+				Phase:             domain.RollPhaseDefense,
 				Actor:             ownerFaction,
 				Opponent:          rival,
 				Attribute:         string(domain.StatCunning),
@@ -240,7 +240,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 
 		hits := attackRoll > defenseRoll
 		if attackRoll == defenseRoll {
-			tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: hooks.PhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
+			tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
 			hits = tieOutcome != hooks.TieDefenderWins
 		}
 		if hits {

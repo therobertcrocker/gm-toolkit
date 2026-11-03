@@ -435,10 +435,10 @@ func TestExpandInfluence_RollsCarryContext(t *testing.T) {
 	}
 
 	want := []hooks.RollContext{
-		{Phase: hooks.PhaseFactionTest, Actor: faction, Attribute: string(domain.StatCunning)},
-		{Phase: hooks.PhaseContested, Actor: rival, Opponent: faction, Attribute: string(domain.StatCunning), OpponentAttribute: string(domain.StatCunning)},
-		{Phase: hooks.PhaseAttack, Actor: rival, Opponent: faction, Attribute: string(domain.StatForce), OpponentAttribute: string(domain.StatCunning), Asset: f2Asset},
-		{Phase: hooks.PhaseDefense, Actor: faction, Opponent: rival, Attribute: string(domain.StatCunning), OpponentAttribute: string(domain.StatForce), OpponentAsset: f2Asset},
+		{Phase: domain.RollPhaseFactionTest, Actor: faction, Attribute: string(domain.StatCunning)},
+		{Phase: domain.RollPhaseContested, Actor: rival, Opponent: faction, Attribute: string(domain.StatCunning), OpponentAttribute: string(domain.StatCunning)},
+		{Phase: domain.RollPhaseAttack, Actor: rival, Opponent: faction, Attribute: string(domain.StatForce), OpponentAttribute: string(domain.StatCunning), Asset: f2Asset},
+		{Phase: domain.RollPhaseDefense, Actor: faction, Opponent: rival, Attribute: string(domain.StatCunning), OpponentAttribute: string(domain.StatForce), OpponentAsset: f2Asset},
 	}
 	if len(recorder.contexts) != len(want) {
 		t.Fatalf("recorded %d roll contexts, want %d: %+v", len(recorder.contexts), len(want), recorder.contexts)

@@ -2,16 +2,6 @@ package hooks
 
 import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 
-// RollPhase identifies which dice roll in a faction action is being hooked.
-type RollPhase int
-
-const (
-	PhaseAttack RollPhase = iota
-	PhaseDefense
-	PhaseFactionTest
-	PhaseContested
-)
-
 // RollContext carries the full context of a roll being processed by hooks.
 // Attribute is the stat this roll uses and OpponentAttribute the stat the other
 // side rolls against it; OpponentAttribute is empty when no single roll opposes
@@ -23,7 +13,7 @@ const (
 // actor of a reveal ability, or the declaring side of a stealth-clearing contest.
 // The side resisting detection never sets it (Effort 3 Decision 5).
 type RollContext struct {
-	Phase             RollPhase
+	Phase             domain.RollPhase
 	Actor             *domain.Faction
 	Opponent          *domain.Faction
 	Attribute         string

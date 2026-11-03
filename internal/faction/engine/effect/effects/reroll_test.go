@@ -68,7 +68,7 @@ func registerBook(factionState *state.FactionState, registry *hooks.Registry, en
 
 // rollOn builds a roll by actor against opponent (nil for none) on world.
 func rollOn(factionState *state.FactionState, actorID, opponentID, world string) hooks.RollContext {
-	ctx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: factionState.Factions[actorID], World: world}
+	ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: factionState.Factions[actorID], World: world}
 	if opponentID != "" {
 		ctx.Opponent = factionState.Factions[opponentID]
 	}

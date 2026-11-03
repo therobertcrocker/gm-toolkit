@@ -71,10 +71,10 @@ func TestPassesGate_AnAttackContestAsksTheTieResolvers(t *testing.T) {
 		name       string
 		roll       domain.ContestRoll
 		wantPass   bool
-		wantPhases []hooks.RollPhase
+		wantPhases []domain.RollPhase
 	}{
-		{"attack: the tie goes to the attacker", domain.ContestRollAttack, true, []hooks.RollPhase{hooks.PhaseAttack, hooks.PhaseDefense}},
-		{"test: the tie stays with the defender", domain.ContestRollTest, false, []hooks.RollPhase{hooks.PhaseFactionTest, hooks.PhaseContested}},
+		{"attack: the tie goes to the attacker", domain.ContestRollAttack, true, []domain.RollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense}},
+		{"test: the tie stays with the defender", domain.ContestRollTest, false, []domain.RollPhase{domain.RollPhaseFactionTest, domain.RollPhaseContested}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestPassesGate_AnAttackContestAsksTheTieResolvers(t *testing.T) {
 
 // phaseRecorder is a Cat 1 hook that records each roll's phase and offers nothing.
 type phaseRecorder struct {
-	seen []hooks.RollPhase
+	seen []domain.RollPhase
 }
 
 func (recorder *phaseRecorder) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {

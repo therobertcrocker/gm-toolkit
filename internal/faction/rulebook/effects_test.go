@@ -112,7 +112,7 @@ scope = "self"
 				Owner:      domain.OwnerRival,
 				Scope:      domain.ScopeWorld,
 				Attribute:  domain.StatCunning,
-				Phases:     []domain.EffectRollPhase{domain.RollPhaseDefense},
+				Phases:     []domain.RollPhase{domain.RollPhaseDefense},
 				Action:     "Expand Influence",
 				AssetTypes: []domain.AssetType{domain.TypeStarship},
 				Categories: []domain.FactionStat{domain.StatForce, domain.StatWealth},

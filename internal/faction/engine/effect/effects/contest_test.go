@@ -68,10 +68,10 @@ func TestContestPasses_RollPhasesAndSides(t *testing.T) {
 	cases := []struct {
 		name            string
 		roll            domain.ContestRoll
-		attack, defense hooks.RollPhase
+		attack, defense domain.RollPhase
 	}{
-		{"an attack", domain.ContestRollAttack, hooks.PhaseAttack, hooks.PhaseDefense},
-		{"a test", domain.ContestRollTest, hooks.PhaseFactionTest, hooks.PhaseContested},
+		{"an attack", domain.ContestRollAttack, domain.RollPhaseAttack, domain.RollPhaseDefense},
+		{"a test", domain.ContestRollTest, domain.RollPhaseFactionTest, domain.RollPhaseContested},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

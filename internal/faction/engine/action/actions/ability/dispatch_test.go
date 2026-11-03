@@ -147,7 +147,7 @@ type factionTestDie struct{}
 const factionTestDieKey = "test:faction-test-die"
 
 func (factionTestDie) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
-	if ctx.Phase != hooks.PhaseFactionTest {
+	if ctx.Phase != domain.RollPhaseFactionTest {
 		return nil
 	}
 	return []hooks.ModifierOffer{{
@@ -201,7 +201,7 @@ type defenseDie struct{}
 const defenseDieKey = "test:defense-die"
 
 func (defenseDie) OfferModifiers(ctx hooks.RollContext, _ *state.FactionState, _ *rulebook.Rulebook) []hooks.ModifierOffer {
-	if ctx.Phase != hooks.PhaseContested {
+	if ctx.Phase != domain.RollPhaseContested {
 		return nil
 	}
 	return []hooks.ModifierOffer{{

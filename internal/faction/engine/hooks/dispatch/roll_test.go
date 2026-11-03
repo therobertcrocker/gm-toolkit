@@ -51,7 +51,7 @@ func newFaction(id string) *domain.Faction {
 }
 
 func rollCtx() hooks.RollContext {
-	return hooks.RollContext{Phase: hooks.PhaseAttack}
+	return hooks.RollContext{Phase: domain.RollPhaseAttack}
 }
 
 func baseRoll() domain.DiceRoll {
@@ -291,7 +291,7 @@ func rollState(factions ...*domain.Faction) *state.FactionState {
 }
 
 func contestCtx(actor, opponent *domain.Faction, world string) hooks.RollContext {
-	return hooks.RollContext{Phase: hooks.PhaseAttack, Actor: actor, Opponent: opponent, World: world}
+	return hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: actor, Opponent: opponent, World: world}
 }
 
 func addDieModifier(source, budgetKey string) stubModifier {

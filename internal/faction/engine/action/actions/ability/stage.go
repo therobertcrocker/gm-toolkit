@@ -110,9 +110,9 @@ func passesGate(
 	worldID := asset.Location.WorldID
 	// deliberate: a literal, not UseAssetAbility.Name(), because actions imports ability (import cycle).
 	const actionName = "Use Asset Ability"
-	attackPhase, defensePhase := hooks.PhaseFactionTest, hooks.PhaseContested
+	attackPhase, defensePhase := domain.RollPhaseFactionTest, domain.RollPhaseContested
 	if step.Contest.Roll == domain.ContestRollAttack {
-		attackPhase, defensePhase = hooks.PhaseAttack, hooks.PhaseDefense
+		attackPhase, defensePhase = domain.RollPhaseAttack, domain.RollPhaseDefense
 	}
 	attack := dispatch.RollWithHooks(
 		hooks.RollContext{
@@ -146,7 +146,7 @@ func passesGate(
 		registry, collector, roller, defender, factionState, rulebook,
 	)
 	if attack.Sum == defense.Sum && step.Contest.Roll == domain.ContestRollAttack {
-		tieCtx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Opponent: defender, Asset: asset, World: worldID, Action: actionName}
+		tieCtx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Opponent: defender, Asset: asset, World: worldID, Action: actionName}
 		return dispatch.ResolveTie(registry, tieCtx, factionState) == hooks.TieAttackerWins, nil
 	}
 	return attack.Sum > defense.Sum, nil

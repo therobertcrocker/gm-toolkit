@@ -45,7 +45,7 @@ func bonusDieEntry(filters domain.EffectFilters, count int) domain.EffectDefinit
 
 var integralProtocolsFilters = domain.EffectFilters{
 	Owner: domain.OwnerOwn, Scope: domain.ScopeSelf,
-	Phases:    []domain.EffectRollPhase{domain.RollPhaseDefense},
+	Phases:    []domain.RollPhase{domain.RollPhaseDefense},
 	Attribute: domain.StatCunning,
 }
 
@@ -80,7 +80,7 @@ func bonusDieOffers(registry *hooks.Registry, assetID string, ctx hooks.RollCont
 func cunningDefense(factionState *state.FactionState, attribute string) hooks.RollContext {
 	alpha := factionState.Factions["alpha"]
 	return hooks.RollContext{
-		Phase: hooks.PhaseDefense, Actor: alpha, Opponent: factionState.Factions["beta"],
+		Phase: domain.RollPhaseDefense, Actor: alpha, Opponent: factionState.Factions["beta"],
 		Attribute: attribute, Asset: alpha.Assets["ip"], World: "Krylos", Action: "Attack",
 	}
 }
@@ -141,7 +141,7 @@ func TestBonusDie_InactiveAssetOffersNothing(t *testing.T) {
 func TestBonusDie_EndToEndThroughDispatcher(t *testing.T) {
 	panopticonFilters := domain.EffectFilters{
 		Owner: domain.OwnerOwn, Scope: domain.ScopeWorld,
-		Phases:    []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+		Phases:    []domain.RollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
 		Attribute: domain.StatCunning,
 	}
 	factionState := bonusDieState(activeAsset("pm", "SWN-C8-001"))
@@ -150,7 +150,7 @@ func TestBonusDie_EndToEndThroughDispatcher(t *testing.T) {
 
 	t.Run("owner's Cunning attack gets the die", func(t *testing.T) {
 		collector := &rollCollector{accept: true}
-		ctx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Cunning", World: "Krylos", Action: "Attack"}
+		ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Cunning", World: "Krylos", Action: "Attack"}
 		result := dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: alpha.Cunning}, registry, collector, &dicetest.Sequence{Values: []int{3, 9}}, alpha, factionState, nil)
 		if result.Sum != 9+alpha.Cunning {
 			t.Errorf("Sum = %d, want %d", result.Sum, 9+alpha.Cunning)
@@ -159,7 +159,7 @@ func TestBonusDie_EndToEndThroughDispatcher(t *testing.T) {
 
 	t.Run("rival's defense against the owner gets no die", func(t *testing.T) {
 		collector := &rollCollector{accept: true}
-		ctx := hooks.RollContext{Phase: hooks.PhaseDefense, Actor: beta, Opponent: alpha, Attribute: "Cunning", World: "Krylos", Action: "Attack"}
+		ctx := hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: beta, Opponent: alpha, Attribute: "Cunning", World: "Krylos", Action: "Attack"}
 		result := dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Cunning}, registry, collector, &dicetest.Sequence{Values: []int{3}}, beta, factionState, nil)
 		if result.Sum != 3+beta.Cunning || collector.selections != 0 {
 			t.Errorf("Sum = %d, selections = %d; want %d and 0", result.Sum, collector.selections, 3+beta.Cunning)
@@ -173,7 +173,7 @@ func TestBonusDie_TagHolderOffersAFromTagDieOncePerTurn(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": beta}}
 	entry := bonusDieEntry(domain.EffectFilters{
 		Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
-		Attribute: domain.StatForce, Phases: []domain.EffectRollPhase{domain.RollPhaseAttack},
+		Attribute: domain.StatForce, Phases: []domain.RollPhase{domain.RollPhaseAttack},
 	}, 1)
 	entry.Gates.OncePer = domain.OncePerOwnerFaction
 	registry := hooks.NewRegistry()
@@ -181,7 +181,7 @@ func TestBonusDie_TagHolderOffersAFromTagDieOncePerTurn(t *testing.T) {
 		Holder: effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-020", Name: "Warlike"}}, Entry: entry, Registry: registry,
 	})
 	hook := registry.RollModifiersAt(hooks.FactionScope("alpha"))[0].Hook
-	attack := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Force", World: "Krylos"}
+	attack := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Force", World: "Krylos"}
 
 	offers := hook.OfferModifiers(attack, factionState, nil)
 	if len(offers) != 1 || !offers[0].FromTag || offers[0].Source != "Warlike" || offers[0].BudgetKey != "effect:bonus_die:own_roll:SWN-T-020" {
@@ -212,7 +212,7 @@ func TestBonusDie_TagReachesNoRivalRollAgainstItsOwner(t *testing.T) {
 		Registry: registry,
 	})
 	collector := &rollCollector{accept: true}
-	betaAttacks := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, Attribute: "Force", World: "Krylos"}
+	betaAttacks := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, Attribute: "Force", World: "Krylos"}
 
 	result := dispatch.RollWithHooks(betaAttacks, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &dicetest.Sequence{Values: []int{3}}, beta, factionState, nil)
 
@@ -229,7 +229,7 @@ func TestBonusDie_EugenicsCultDieOnlyOnTheNamedAsset(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": beta}}
 	entry := bonusDieEntry(domain.EffectFilters{
 		Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
-		Phases:          []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+		Phases:          []domain.RollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
 		AssetDefinition: "SWN-F1-004",
 	}, 1)
 	registry := hooks.NewRegistry()
@@ -237,17 +237,17 @@ func TestBonusDie_EugenicsCultDieOnlyOnTheNamedAsset(t *testing.T) {
 		Holder: effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "SWN-T-003", Name: "Eugenics Cult"}}, Entry: entry, Registry: registry,
 	})
 	hook := registry.RollModifiersAt(hooks.FactionScope("alpha"))[0].Hook
-	roll := func(asset *domain.Asset, phase hooks.RollPhase) hooks.RollContext {
+	roll := func(asset *domain.Asset, phase domain.RollPhase) hooks.RollContext {
 		return hooks.RollContext{Phase: phase, Actor: alpha, Opponent: beta, Attribute: "Force", Asset: asset, World: "Krylos"}
 	}
 
-	if offers := hook.OfferModifiers(roll(slaves, hooks.PhaseAttack), factionState, nil); len(offers) != 1 || !offers[0].FromTag {
+	if offers := hook.OfferModifiers(roll(slaves, domain.RollPhaseAttack), factionState, nil); len(offers) != 1 || !offers[0].FromTag {
 		t.Errorf("Slaves attack offers = %+v, want one tag die", offers)
 	}
-	if offers := hook.OfferModifiers(roll(slaves, hooks.PhaseDefense), factionState, nil); len(offers) != 1 {
+	if offers := hook.OfferModifiers(roll(slaves, domain.RollPhaseDefense), factionState, nil); len(offers) != 1 {
 		t.Errorf("Slaves defense offers = %+v, want one", offers)
 	}
-	if offers := hook.OfferModifiers(roll(guards, hooks.PhaseAttack), factionState, nil); len(offers) != 0 {
+	if offers := hook.OfferModifiers(roll(guards, domain.RollPhaseAttack), factionState, nil); len(offers) != 0 {
 		t.Errorf("another asset's attack offers = %+v, want none", offers)
 	}
 }

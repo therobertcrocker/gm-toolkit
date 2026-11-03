@@ -145,7 +145,7 @@ var (
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
 	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeFaction, domain.ScopeBase}
-	effectRollPhases = []domain.EffectRollPhase{
+	effectRollPhases = []domain.RollPhase{
 		domain.RollPhaseAttack, domain.RollPhaseDefense, domain.RollPhaseFactionTest, domain.RollPhaseContested,
 	}
 	oncePerKeys    = []domain.OncePerKey{domain.OncePerOwnerFaction, domain.OncePerTargetFaction, domain.OncePerAsset}
