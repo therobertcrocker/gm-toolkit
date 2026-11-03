@@ -1,6 +1,7 @@
 package dice
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -567,5 +568,68 @@ func TestRollWithHooks_BystanderFactionHookFires(t *testing.T) {
 
 	if len(collector.offers) != 1 || collector.offers[0].Source != "gamma-tag" || collector.offers[0].FactionID != "gamma" {
 		t.Errorf("offers = %+v, want only gamma's faction hook, stamped gamma: a bystander's assets are not read", collector.offers)
+	}
+}
+
+// sidesRecorder returns values in order and records the sides of each roll.
+type sidesRecorder struct {
+	values []int
+	sides  []int
+}
+
+func (roller *sidesRecorder) Roll(sides int) int {
+	value := roller.values[len(roller.sides)]
+	roller.sides = append(roller.sides, sides)
+	return value
+}
+
+func rerollRegistry(index int, apply func(*hooks.RollState)) *hooks.Registry {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "extra", stubModifier{offer: hooks.ModifierOffer{Source: "extra", Apply: apply}})
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "reroll", stubResultHook{directive: hooks.RerollDirective{Source: "reroll", Indices: []int{index}}})
+	return registry
+}
+
+func TestRollWithHooks_RerollKeepsExtraDieSides(t *testing.T) {
+	registry := rerollRegistry(1, func(rs *hooks.RollState) { rs.AddDie(6) })
+	roller := &sidesRecorder{values: []int{4, 1, 6}}
+
+	result := RollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, acceptAllCollector{}, roller, newFaction("A"), nil, nil)
+
+	if !slices.Equal(roller.sides, []int{10, 6, 6}) {
+		t.Errorf("rolled sides = %v, want [10 6 6]: the reroll of the extra d6 has 6 sides", roller.sides)
+	}
+	if !slices.Equal(result.Dice, []int{4, 6}) || result.Sum != 10 {
+		t.Errorf("dice = %v, sum %d, want [4 6], sum 10", result.Dice, result.Sum)
+	}
+}
+
+func TestRollWithHooks_RerollAfterKeepHighestKeepsSides(t *testing.T) {
+	cases := []struct {
+		name      string
+		values    []int
+		wantSides []int
+		wantDice  []int
+	}{
+		{"the extra d6 is kept over the d10", []int{3, 5, 2}, []int{10, 6, 6}, []int{2}},
+		{"the d10 is kept over the extra d6", []int{8, 5, 9}, []int{10, 6, 10}, []int{9}},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			registry := rerollRegistry(0, func(rs *hooks.RollState) {
+				rs.AddDie(6)
+				rs.SetKeepHighest(1)
+			})
+			roller := &sidesRecorder{values: testCase.values}
+
+			result := RollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, acceptAllCollector{}, roller, newFaction("A"), nil, nil)
+
+			if !slices.Equal(roller.sides, testCase.wantSides) {
+				t.Errorf("rolled sides = %v, want %v", roller.sides, testCase.wantSides)
+			}
+			if !slices.Equal(result.Dice, testCase.wantDice) {
+				t.Errorf("dice = %v, want %v", result.Dice, testCase.wantDice)
+			}
+		})
 	}
 }

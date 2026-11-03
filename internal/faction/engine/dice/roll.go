@@ -69,18 +69,20 @@ func RollWithHooks(
 
 	// Roll base dice pool then any extra dice queued by Apply.
 	result := hooks.RollResult{Modifier: baseRoll.Modifier}
+	var dieSides []int
 	for range baseRoll.NumDice {
 		result.Dice = append(result.Dice, roller.Roll(baseRoll.Sides))
+		dieSides = append(dieSides, baseRoll.Sides)
 	}
 	for _, sides := range rollState.ExtraDice() {
 		result.Dice = append(result.Dice, roller.Roll(sides))
+		dieSides = append(dieSides, sides)
 	}
 	result.Sum = diceSum(result.Dice) + result.Modifier
 
 	// Apply keep-highest trim if any offer requested it.
 	if n := rollState.KeepHighest(); n > 0 && len(result.Dice) > n {
-		sort.Sort(sort.Reverse(sort.IntSlice(result.Dice)))
-		result.Dice = result.Dice[:n]
+		result.Dice, dieSides = keepHighest(result.Dice, dieSides, n)
 		result.Sum = diceSum(result.Dice) + result.Modifier
 	}
 
@@ -105,7 +107,7 @@ func RollWithHooks(
 			}
 			for _, idx := range directive.Indices {
 				if idx >= 0 && idx < len(result.Dice) {
-					result.Dice[idx] = roller.Roll(baseRoll.Sides)
+					result.Dice[idx] = roller.Roll(dieSides[idx])
 				}
 			}
 			result.Sum = diceSum(result.Dice) + result.Modifier
@@ -209,6 +211,22 @@ func freeOffers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
 		}
 	}
 	return free
+}
+
+// keepHighest returns the n highest dice, highest first, each with its own sides.
+func keepHighest(values, dieSides []int, n int) ([]int, []int) {
+	order := make([]int, len(values))
+	for index := range order {
+		order[index] = index
+	}
+	sort.SliceStable(order, func(i, j int) bool { return values[order[i]] > values[order[j]] })
+	keptValues := make([]int, n)
+	keptSides := make([]int, n)
+	for position, index := range order[:n] {
+		keptValues[position] = values[index]
+		keptSides[position] = dieSides[index]
+	}
+	return keptValues, keptSides
 }
 
 func diceSum(dice []int) int {
