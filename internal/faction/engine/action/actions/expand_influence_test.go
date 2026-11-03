@@ -393,7 +393,7 @@ func (recorder *contextRecorder) OfferModifiers(ctx hooks.RollContext, _ *state.
 }
 
 // TestExpandInfluence_RollsCarryContext: every roll in a contested expansion goes
-// through RollWithHooks with its phase, parties and world. Same roll sequence as
+// through the hooks with its phase, parties and world. Same roll sequence as
 // TestExpandInfluence_NewBase_Contested; the hook adds no dice.
 func TestExpandInfluence_RollsCarryContext(t *testing.T) {
 	ctrl := gomock.NewController(t)

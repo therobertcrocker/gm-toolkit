@@ -79,6 +79,10 @@ Planning calls, shown to Robert before writing:
 - **Attack's line ranges were one low** (Commit 9) — the `dice` import from Commit 8 moved the code down a line; the matchup is `attack.go:124-167` and the counterstrike `:256-273`. Commit 9's tasks are corrected
 - **An attack's tie context now carries `Action`** (Commit 9) — the old literals at the matchup and the counterstrike left it out and `Engine.Contest` fills it. No reader sees the difference: `lose_ties.go:31` is the only production resolver and reads only `Actor` and `Opponent`
 - **Two gaps left as they are** (Commit 9) — the planned name `outcome` for the contest is reused by the `fireMatchup` result in the nested `own_defense_win` block; it compiles and nothing below reads the contest's, so the plan's name stays. `TestAttack_TieResolver_DefenderWins` is the only Attack-level tie-resolver test; a tie given to the attacker is held one level down, by `TestOutcome_Readings`
+- **The free attack's tie context now carries `Action`** (Commit 10) — the same change as Commit 9: the old literal left it out and `Engine.Contest` fills it. No reader sees the difference, for the same reason
+- **The rolls keep their old values** (Commit 10) — the expander's and each rival's modifier were `.Cunning` and are now `StatScore(domain.StatCunning)`, which returns the same field (`faction.go:156`). `RollsCarryContext` and `FreeAttackTieAsksResolvers` pass with no change to their code
+- **One test comment reworded** (Commit 10) — `TestExpandInfluence_RollsCarryContext` named `RollWithHooks`, which goes private in Commit 12 and which Commit 12's list does not cover; it now says "the hooks". No expected value moved
+- **Commit 12 Task 4 corrected** (Commit 10) — it still asked to rename `rollThroughDispatcher`'s `dice` parameter, which Commit 6 already did; that instruction is removed
 
 ---
 
@@ -164,7 +168,7 @@ TOML and docs.
   - Commit 8 — `refactor: add Stat, Contest and Gate routes` (2 tasks)
 - [x] **Phase 4 — Attack action**
   - Commit 9 — `refactor: Attack rolls through the dice routes` (3 tasks)
-- [ ] **Phase 5 — Expand Influence**
+- [x] **Phase 5 — Expand Influence**
   - Commit 10 — `refactor: Expand Influence rolls through the dice routes` (3 tasks)
 - [ ] **Phase 6 — Both gates**
   - Commit 11 — `refactor: ability gate uses dice.Gate` (1 task)
@@ -927,7 +931,7 @@ Rename `RollWithHooks` to `rollWithHooks`. The compiler then lists every outside
 ##### Task 4 — the tests
 
 - `effects/contest_test.go`: add a local helper that builds the `Engine` and calls `Gate`. The six tests keep their cases and expected values.
-- The seven outside calls (`bonus_die_test.go:153`, `:162`, `:191`, `:192`, `:216`; `remove_tag_dice_test.go:135`; `reroll_test.go:78`) call `Engine.Stat`. `reroll_test.go`'s `rollThroughDispatcher` has a parameter named `dice`, which hides the package: rename it to `values`.
+- The seven outside calls (`bonus_die_test.go:153`, `:162`, `:191`, `:192`, `:216`; `remove_tag_dice_test.go:135`; `reroll_test.go:78`) call `Engine.Stat`.
 - **Expected change:** `bonus_die_test.go:191-192`, `remove_tag_dice_test.go:135` and `rollThroughDispatcher` pass a base roll with no modifier, but `Stat` always adds the stat. Where the faction's stat is not 0, add it to the expected sum. The hook behaviour under test does not change.
 
 ##### Commit message
