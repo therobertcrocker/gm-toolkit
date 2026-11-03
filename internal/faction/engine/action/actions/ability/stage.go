@@ -78,11 +78,9 @@ func resolveTarget(
 	}
 }
 
-// passesGate rolls the step's contest through the roll hooks: an attack and its
-// defense for roll "attack", a faction test and its contested roll for "test".
-// Ties go to the defender, unless an attack's tie resolver gives the tie to the
-// attacker (Fanatical; Effort 5 Decision 10). faction is the real acting faction,
-// so a budget a hook spends persists past this step.
+// passesGate rolls the step's contest through dice.Gate, with the acting asset as
+// the declaring side. faction is the real acting faction, so a budget a hook spends
+// persists past this step.
 func passesGate(
 	step domain.AbilityStep,
 	faction *domain.Faction,
@@ -107,49 +105,17 @@ func passesGate(
 	if defender == nil {
 		return false, fmt.Errorf("contest: target faction %s not in state", target.Faction.ID)
 	}
-	worldID := asset.Location.WorldID
 	// deliberate: a literal, not UseAssetAbility.Name(), because actions imports ability (import cycle).
 	const actionName = "Use Asset Ability"
-	attackPhase, defensePhase := domain.RollPhaseFactionTest, domain.RollPhaseContested
-	if step.Contest.Roll == domain.ContestRollAttack {
-		attackPhase, defensePhase = domain.RollPhaseAttack, domain.RollPhaseDefense
-	}
-	attack := dice.RollWithHooks(
-		hooks.RollContext{
-			Phase:             attackPhase,
-			Detection:         step.Effect == domain.EffectRevealStealth,
-			Actor:             faction,
-			Opponent:          defender,
-			Attribute:         step.Contest.AttackerStat,
-			OpponentAttribute: step.Contest.DefenderStat,
-			Asset:             asset,
-			OpponentAsset:     target.Asset,
-			World:             worldID,
-			Action:            actionName,
-		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(step.Contest.AttackerStat)},
-		registry, collector, roller, faction, factionState, rulebook,
+	engine := dice.Engine{Registry: registry, Collector: collector, Roller: roller, FactionState: factionState, Rulebook: rulebook}
+	passed := engine.Gate(
+		*step.Contest,
+		domain.ContestRollerSelf,
+		dice.Side{Faction: faction, Asset: asset, Detects: step.Effect == domain.EffectRevealStealth},
+		dice.Side{Faction: defender, Asset: target.Asset},
+		asset.Location.WorldID, actionName,
 	)
-	defense := dice.RollWithHooks(
-		hooks.RollContext{
-			Phase:             defensePhase,
-			Actor:             defender,
-			Opponent:          faction,
-			Attribute:         step.Contest.DefenderStat,
-			OpponentAttribute: step.Contest.AttackerStat,
-			Asset:             target.Asset,
-			OpponentAsset:     asset,
-			World:             worldID,
-			Action:            actionName,
-		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: defender.StatScore(step.Contest.DefenderStat)},
-		registry, collector, roller, defender, factionState, rulebook,
-	)
-	if attack.Sum == defense.Sum && step.Contest.Roll == domain.ContestRollAttack {
-		tieCtx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Opponent: defender, Asset: asset, World: worldID, Action: actionName}
-		return dice.ResolveTie(registry, tieCtx, factionState) == hooks.TieAttackerWins, nil
-	}
-	return attack.Sum > defense.Sum, nil
+	return passed, nil
 }
 
 // resolveRoll evaluates the step's roll table, or returns 0 for a non-roll step.

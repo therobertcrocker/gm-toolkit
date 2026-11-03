@@ -83,6 +83,7 @@ Planning calls, shown to Robert before writing:
 - **The rolls keep their old values** (Commit 10) — the expander's and each rival's modifier were `.Cunning` and are now `StatScore(domain.StatCunning)`, which returns the same field (`faction.go:156`). `RollsCarryContext` and `FreeAttackTieAsksResolvers` pass with no change to their code
 - **One test comment reworded** (Commit 10) — `TestExpandInfluence_RollsCarryContext` named `RollWithHooks`, which goes private in Commit 12 and which Commit 12's list does not cover; it now says "the hooks". No expected value moved
 - **Commit 12 Task 4 corrected** (Commit 10) — it still asked to rename `rollThroughDispatcher`'s `dice` parameter, which Commit 6 already did; that instruction is removed
+- **The same-faction rule does not reach the ability gate** (Commit 11) — `Contest` drops `Opponent` when both sides are one faction and the old `passesGate` did not, but the two cannot meet: `otherFactions` and `assetCandidates` leave out the acting faction, and no step in `rulebooks/swn` pairs a contest with `target = "self"`
 
 ---
 
