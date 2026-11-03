@@ -9,6 +9,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -158,7 +159,7 @@ func resolveRoll(step domain.AbilityStep, roller domain.Roller) int {
 	if step.Roll == nil {
 		return 0
 	}
-	return step.Roll.Die.Roll(roller)
+	return dice.Amount(step.Roll.Die, roller)
 }
 
 // outcomeFor returns the first outcome whose [From,To] range contains roll. An

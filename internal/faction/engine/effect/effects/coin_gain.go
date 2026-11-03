@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -32,7 +33,7 @@ var coinGainRegistrar = effect.Registrar{
 func fireCoinGain(ctx effect.FireContext) []domain.Mutation {
 	return []domain.Mutation{domain.CoinDelta{
 		FactionID:         ctx.Holder.Faction.ID,
-		Delta:             ctx.Entry.CoinGain.Amount.Roll(ctx.Roller),
+		Delta:             dice.Amount(ctx.Entry.CoinGain.Amount, ctx.Roller),
 		Cause:             string(domain.SpecialCoinGain),
 		CausedByFactionID: ctx.Holder.Faction.ID,
 	}}
@@ -99,7 +100,7 @@ func (reactor *coinGainReactor) OnMutations(mutations []domain.Mutation, faction
 		}
 		extra = append(extra, domain.CoinDelta{
 			FactionID:         ownerID,
-			Delta:             reactor.amount.Roll(reactor.roller),
+			Delta:             dice.Amount(reactor.amount, reactor.roller),
 			Cause:             string(domain.SpecialCoinGain),
 			CausedByFactionID: ownerID,
 		})

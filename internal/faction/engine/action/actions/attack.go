@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
@@ -173,7 +174,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 					return err
 				}
 			} else {
-				damage := attackerDef.Attack.Damage.Roll(attack.roller)
+				damage := dice.Amount(*attackerDef.Attack.Damage, attack.roller)
 				base := factionBaseOnWorld(defenderFaction, attacker.Location.WorldID)
 
 				// Redirect prompt offered only when the defender has a live Base on this world.
@@ -219,7 +220,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				DefenderDef: attackerDef,
 				Side:        hooks.SideCounter,
 			}) {
-				counterDamage := defenderDef.Counter.Roll(attack.roller)
+				counterDamage := dice.Amount(*defenderDef.Counter, attack.roller)
 				if err := attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, counterDamage, tracker, defender, true, "attack"); err != nil {
 					return err
 				}
@@ -273,7 +274,7 @@ func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *dom
 	if damage == nil {
 		return nil
 	}
-	return attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, damage.Roll(attack.roller), tracker, source, false, string(domain.SpecialCounterstrike))
+	return attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, dice.Amount(*damage, attack.roller), tracker, source, false, string(domain.SpecialCounterstrike))
 }
 
 func (attack *AttackAction) Output() ([]domain.Mutation, error) {

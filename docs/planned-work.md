@@ -13,6 +13,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
 | `E.002` | Data-driven tags and goals | `exploration` | Complete | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
 | `E.004` | Unifying Dice and RollHooks | `exploration` | Complete | Each new contest forced a fresh decision about its roll path; the answer is one `engine/dice` package with a named route for each type of game roll, filed as `R.028`, ahead of the roll card (`R.025`) |
+| `R.028` | Dice package | `refactor` | In-Progress | New `engine/dice` gives each game roll a named route, with hooks on stat rolls only; no rule changes; an ability's step says which type it rolls; absorbs `B.010` and the `lock_out` case from `R.026`; ahead of `R.025` and `A.001.5`'s authoring passes; [plan](initiatives/implementation/R.028-dice-package-plan.md) |
 
 
 ---
@@ -106,7 +107,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.025` | Roll card | after `R.028` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
 | `R.026` | Faux-data-driven rule audit | after `A.001.7` | Check each registrar and the engine code it feeds, and every other rule site (domain checks such as `CanPurchase`, loaders, resolvers, settings), for rule values or references held in Go, not in the data; move each into the entry or the settings. `R.028` takes the known case: `lock_out`'s 1d4 fee and asset-named cause (`lockdownHold`, `arrival.go`). `A.001.7` overview Decision 7, widened by R-6. |
 | `R.027` | Registrar `faction`-scope sweep | -- | Audit every registrar for a `faction` scope that a tag would need, and land each with the tag that uses it; `grant_movement` and `ignore_coin_loss` still refuse a tag holder. `A.001.7` overview R-3. |
-| `R.028` | Dice package | ready | New `engine/dice` gives each game roll a named route: stat rolls (`RollWithHooks`, the attack-and-defense pair, the tie rules, one gate), and amount, table and target rolls (no hooks; `DiceRoll.Roll` leaves `domain`); `RandRoller` and `Roller` move too; all 22 sites move; `AbilityStep.Roll` splits into amount, table and target, with the target shape shared with `XPRollParams`; Harvesters and Teach Planetary Population become target rolls, with a re-seed of the sandbox; absorbs `B.010` and the `lock_out` case from `R.026` (its die and cause move to data); one roll phase enum, `RollContext` stats typed as `FactionStat`, shared roller fakes in `dicetest`, no `statScore` wrappers; a new `engine/dice.md` architecture page takes the roll sections from `hooks.md`; a new roll calls a route or extends one. The plan asks if it needs efforts. See `E.004` C-5, P-4. |
 
 #### 3. Driver
 
@@ -290,4 +290,20 @@ This section contains detailed write-ups for each planned initiative, including 
 **Trigger** — `--`
 
 **Status** — Complete — promoted 2026-11-02 from the Backlog Explorations table, past Up Next on Robert's call, and reviewed the same day. Follow-on work is `R.028`.
+
+<br />
+
+## R.028 — Dice Package
+
+**Refactor** — no discovery doc, by design: `E.004` did the audit and chose the target (C-5, P-4, O-1). Plan: [`R.028-dice-package-plan.md`](initiatives/implementation/R.028-dice-package-plan.md). Branch: `feature/dice-package`.
+
+**Problem** — The engine rolls dice in 22 places with no stated rule for which route a roll takes. Eleven sites build the hooked roll by hand, two functions state one gate rule, the lockdown's die is held in Go, and one ability field holds amount, table and target rolls alike.
+
+**Approach** — New `engine/dice`: `Stat`, `Contest` and `Gate` for stat rolls, and `Amount`, `Table` and `Target` with no hooks. `DiceRoll.Roll`, `Roller`, `RandRoller`, `RollWithHooks` and `ResolveTie` move in; all 22 sites move. `AbilityStep.Roll` splits into amount, table and target; Harvesters and Teach Planetary Population become target rolls; the lockdown's die and cause move to data, with re-seeds of the sandbox. Also one roll phase enum, typed stats on `RollContext`, shared fakes in `dicetest`, no `statScore` wrappers, and a new `engine/dice.md` page. Absorbs `B.010` and the `lock_out` case from `R.026`. No rule changes: rerolls keep reaching stat rolls only (plan Decision 1, which corrects `E.004`).
+
+**Unlocks** — A new roll calls a route or extends one. `R.025` changes one place, and can show a defense roll the total it must beat; `F.032` and `F.037` get one home; `A.001.5`'s authoring passes use the new data shapes.
+
+**Trigger** — `ready`
+
+**Status** — In-Progress — promoted 2026-11-03 from the Backlog on Robert's call. One plan, no efforts: 9 phases and 16 commits.
 

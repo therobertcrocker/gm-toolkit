@@ -2,6 +2,7 @@ package effects
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -71,7 +72,7 @@ func (reactor *coinStealReactor) OnMutations(mutations []domain.Mutation, factio
 			if entry.Gates.OncePer != "" && !spendBudget(owner, budgetKey(entry.Gates.OncePer, domain.SpecialCoinSteal, entry.Trigger, def.ID, thief.ID, target.ID)) {
 				continue
 			}
-			stolen := min(entry.CoinSteal.Amount.Roll(reactor.roller), remaining[target.ID])
+			stolen := min(dice.Amount(entry.CoinSteal.Amount, reactor.roller), remaining[target.ID])
 			remaining[target.ID] -= stolen
 			extra = append(extra,
 				domain.CoinDelta{FactionID: target.ID, Delta: -stolen, Cause: string(domain.SpecialCoinSteal), CausedByFactionID: owner.ID},

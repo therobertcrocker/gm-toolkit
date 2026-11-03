@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -73,7 +74,7 @@ func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, fa
 			extra = append(extra, domain.AssetRemoved{FactionID: reactor.holder.factionID, AssetID: reactor.holder.assetID, Cause: cause, CausedByFactionID: reactor.holder.factionID})
 		}
 		return append(extra,
-			domain.CoinDelta{FactionID: reactor.holder.factionID, Delta: reactor.coin.Roll(reactor.roller), Cause: cause, CausedByFactionID: reactor.holder.factionID},
+			domain.CoinDelta{FactionID: reactor.holder.factionID, Delta: dice.Amount(reactor.coin, reactor.roller), Cause: cause, CausedByFactionID: reactor.holder.factionID},
 			domain.AssetOwnerChanged{FactionID: found.targetFactionID, AssetID: target.ID, ToFactionID: reactor.holder.factionID, Cause: cause, CausedByFactionID: reactor.holder.factionID},
 		)
 	}

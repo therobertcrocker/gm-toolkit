@@ -2,6 +2,7 @@ package effects
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -50,7 +51,7 @@ func (reactor *xpRollReactor) OnMutations(mutations []domain.Mutation, factionSt
 		if !ok || completed.FactionID != reactor.holder.factionID || (reactor.goal != "" && completed.GoalID != reactor.goal) {
 			continue
 		}
-		if reactor.params.Die.Roll(reactor.roller) < reactor.params.Target {
+		if dice.Amount(reactor.params.Die, reactor.roller) < reactor.params.Target {
 			continue
 		}
 		awarded = append(awarded, domain.XPAwarded{

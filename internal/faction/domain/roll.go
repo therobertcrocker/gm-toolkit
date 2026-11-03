@@ -6,12 +6,3 @@ package domain
 type Roller interface {
 	Roll(sides int) int
 }
-
-// Roll evaluates the DiceRoll: sum of NumDice rolls of Sides, plus Modifier.
-func (diceRoll DiceRoll) Roll(roller Roller) int {
-	total := diceRoll.Modifier
-	for range diceRoll.NumDice {
-		total += roller.Roll(diceRoll.Sides)
-	}
-	return total
-}

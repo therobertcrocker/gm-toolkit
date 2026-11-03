@@ -8,6 +8,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -243,7 +244,7 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 			hits = tieOutcome != hooks.TieDefenderWins
 		}
 		if hits {
-			damage := attackerDef.Attack.Damage.Roll(ba.roller)
+			damage := dice.Amount(*attackerDef.Attack.Damage, ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.
 				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID, CausedByAssetID: attacker.ID},
