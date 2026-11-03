@@ -2,6 +2,7 @@ package effects
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -26,7 +27,7 @@ type contestRoll struct {
 	registry         *hooks.Registry
 	factionState     *state.FactionState
 	rulebook         *rulebook.Rulebook
-	roller           domain.Roller
+	roller           dice.Roller
 }
 
 // contestPasses rolls an effect's contest gate through the roll hooks and reports

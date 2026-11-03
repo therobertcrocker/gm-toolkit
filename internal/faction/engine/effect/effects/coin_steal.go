@@ -34,7 +34,7 @@ func registerCoinSteal(ctx effect.RegisterContext) {
 // because the lead thief runs the entries of every thief its faction owns.
 type coinStealReactor struct {
 	holder holderRef
-	roller domain.Roller
+	roller dice.Roller
 }
 
 // OnMutations steals for every hit an active thief of the owner landed, in batch

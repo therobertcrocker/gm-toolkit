@@ -47,7 +47,7 @@ type selfDamageReactor struct {
 	def      *domain.AssetDefinition
 	counter  bool
 	amount   domain.DiceRoll
-	roller   domain.Roller
+	roller   dice.Roller
 	registry *hooks.Registry
 }
 

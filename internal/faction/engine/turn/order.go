@@ -4,12 +4,13 @@ import (
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 )
 
 // buildFactionOrder rolls a starting index via roller and returns faction IDs as
 // a rotation. Keys are sorted before randomizing so the rotation is deterministic
 // given the same set and seed.
-func buildFactionOrder(factions map[string]*domain.Faction, roller domain.Roller) []string {
+func buildFactionOrder(factions map[string]*domain.Faction, roller dice.Roller) []string {
 	ids := make([]string, 0, len(factions))
 	for id := range factions {
 		ids = append(ids, id)

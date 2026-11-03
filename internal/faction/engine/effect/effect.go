@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -14,7 +15,7 @@ import (
 
 type Handler interface {
 	AssetDefinitionID() string
-	Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller domain.Roller)
+	Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller dice.Roller)
 }
 
 type EffectsEngine struct {
@@ -68,7 +69,7 @@ func (e *EffectsEngine) CheckTagEffects(tag *domain.Tag) error {
 // holds, so hook registration order is the same every run. An asset invokes the
 // handler for its definition; a tag registers its hook-route entries at its
 // faction's scope. A missing definition, handler or tag registers nothing.
-func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller, log *slog.Logger) {
+func (e *EffectsEngine) ApplyAll(factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller dice.Roller, log *slog.Logger) {
 	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 		faction := factionState.Factions[factionID]
 		for _, asset := range domain.SortedAssets(faction) {
@@ -106,7 +107,7 @@ func heldTags(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Ta
 
 // ApplyAsset registers one asset's hooks under faction. A missing definition or
 // handler registers nothing.
-func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) {
+func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller dice.Roller) {
 	def := rulebook.Assets[asset.DefinitionID]
 	if def == nil {
 		return
@@ -122,7 +123,7 @@ func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset,
 // order, then on the tags it holds, through each registrar's phase route. A direct
 // definition read, not a hook: turn start is a phase event the orchestrator raises
 // once per turn.
-func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller dice.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	for _, asset := range domain.SortedAssets(faction) {
 		if !asset.Active() {
@@ -143,7 +144,7 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *sta
 // fireEntries runs holder's entries for trigger through each registrar's phase
 // route. subject is the asset the event is about: the bought asset at purchase, the
 // holder's own asset at turn start, nil for a tag at turn start.
-func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefinition, trigger domain.EffectTrigger, subject *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefinition, trigger domain.EffectTrigger, subject *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller dice.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	for _, entry := range entries {
 		if entry.Trigger != trigger {
@@ -168,7 +169,7 @@ func (e *EffectsEngine) fireEntries(holder Holder, entries []domain.EffectDefini
 // not a hook: the asset was bought mid-turn, so it has no hooks until the next
 // cycle. No active check: a bought asset is never ready, and its purchase effect is
 // part of what was bought.
-func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller domain.Roller) []domain.Mutation {
+func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller dice.Roller) []domain.Mutation {
 	var mutations []domain.Mutation
 	if def := rulebook.Assets[asset.DefinitionID]; def != nil {
 		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerOnPurchase, asset, factionState, rulebook, hookRegistry, roller)...)

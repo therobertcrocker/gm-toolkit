@@ -90,7 +90,7 @@ func passesGate(
 	target domain.AbilityTarget,
 	registry *hooks.Registry,
 	collector action.Collector,
-	roller domain.Roller,
+	roller dice.Roller,
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
 ) (bool, error) {
@@ -155,7 +155,7 @@ func passesGate(
 // resolveRoll evaluates the step's roll table, or returns 0 for a non-roll step.
 // The Contest gate and the roll table are mutually exclusive (parser-enforced), so
 // a step that reaches a handler has at most one source of randomness.
-func resolveRoll(step domain.AbilityStep, roller domain.Roller) int {
+func resolveRoll(step domain.AbilityStep, roller dice.Roller) int {
 	if step.Roll == nil {
 		return 0
 	}

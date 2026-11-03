@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -22,7 +23,7 @@ func lobbyistsEntry() domain.EffectDefinition {
 	}
 }
 
-func registerLobbyists(t *testing.T, owner *domain.Faction, lobbyists *domain.Asset, roller domain.Roller) hooks.PermissionContester {
+func registerLobbyists(t *testing.T, owner *domain.Faction, lobbyists *domain.Asset, roller dice.Roller) hooks.PermissionContester {
 	t.Helper()
 	registry := hooks.NewRegistry()
 	effects.Registrars()[domain.SpecialWithdrawPermission].Register(effect.RegisterContext{

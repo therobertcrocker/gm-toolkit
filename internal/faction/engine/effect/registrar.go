@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -92,7 +93,7 @@ type RegisterContext struct {
 	Holder   Holder
 	Entry    domain.EffectDefinition
 	Registry *hooks.Registry
-	Roller   domain.Roller
+	Roller   dice.Roller
 }
 
 // FireContext carries FactionState because a phase effect may reach other
@@ -105,7 +106,7 @@ type FireContext struct {
 	Holder       Holder
 	Asset        *domain.Asset
 	Entry        domain.EffectDefinition
-	Roller       domain.Roller
+	Roller       dice.Roller
 	FactionState *state.FactionState
 	Registry     *hooks.Registry
 	Rulebook     *rulebook.Rulebook
@@ -168,7 +169,7 @@ type effectsListHandler struct {
 
 func (handler *effectsListHandler) AssetDefinitionID() string { return handler.def.ID }
 
-func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller domain.Roller) {
+func (handler *effectsListHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, roller dice.Roller) {
 	for _, entry := range handler.def.Effects {
 		if !IsHookTrigger(entry.Trigger) {
 			continue

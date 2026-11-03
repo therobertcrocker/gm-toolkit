@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -23,7 +24,7 @@ func RollWithHooks(
 	baseRoll domain.DiceRoll,
 	registry *hooks.Registry,
 	collector hooks.Collector,
-	roller domain.Roller,
+	roller dice.Roller,
 	faction *domain.Faction,
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,

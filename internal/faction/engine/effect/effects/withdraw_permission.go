@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -49,7 +50,7 @@ type permissionContester struct {
 	owner    *domain.Faction
 	holder   holderRef
 	contest  domain.EffectContest
-	roller   domain.Roller
+	roller   dice.Roller
 	registry *hooks.Registry
 }
 

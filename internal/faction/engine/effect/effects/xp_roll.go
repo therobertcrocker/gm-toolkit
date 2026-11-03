@@ -36,7 +36,7 @@ type xpRollReactor struct {
 	holder holderRef
 	goal   string
 	params domain.XPRollParams
-	roller domain.Roller
+	roller dice.Roller
 }
 
 // OnMutations rolls once for each of the owner's GoalCompleted that names the

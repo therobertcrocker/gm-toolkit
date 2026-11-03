@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -49,7 +50,7 @@ func tripwireState(cellsAt domain.Location) *state.FactionState {
 	}}
 }
 
-func tripwireReactor(t *testing.T, factionState *state.FactionState, roller domain.Roller) hooks.MutationReactor {
+func tripwireReactor(t *testing.T, factionState *state.FactionState, roller dice.Roller) hooks.MutationReactor {
 	t.Helper()
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
@@ -272,7 +273,7 @@ var matrixContest = &domain.EffectContest{
 
 // fireMatrix runs Panopticon Matrix's turn_start entry from alpha's "cells" asset,
 // which stands in for the Matrix: Fire reads the entry, not the asset's definition.
-func fireMatrix(factionState *state.FactionState, contest *domain.EffectContest, roller domain.Roller) []domain.Mutation {
+func fireMatrix(factionState *state.FactionState, contest *domain.EffectContest, roller dice.Roller) []domain.Mutation {
 	alpha := factionState.Factions["alpha"]
 	stealthy := true
 	return effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{

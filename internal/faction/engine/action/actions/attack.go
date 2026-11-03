@@ -20,7 +20,7 @@ import (
 // times. Only known (non-stealthy) rival assets may be targeted.
 type AttackAction struct {
 	collector action.Collector
-	roller    domain.Roller
+	roller    dice.Roller
 	registry  *hooks.Registry
 	index     *world.Index
 	effects   *effect.EffectsEngine
@@ -28,7 +28,7 @@ type AttackAction struct {
 	mutations []domain.Mutation
 }
 
-func NewAttack(collector action.Collector, roller domain.Roller, registry *hooks.Registry, index *world.Index, effects *effect.EffectsEngine) *AttackAction {
+func NewAttack(collector action.Collector, roller dice.Roller, registry *hooks.Registry, index *world.Index, effects *effect.EffectsEngine) *AttackAction {
 	return &AttackAction{collector: collector, roller: roller, registry: registry, index: index, effects: effects}
 }
 

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -18,12 +19,12 @@ var (
 // TurnEngine manages turn lifecycle: ordering, bookkeeping computation, and
 // pause/resume cursor state. Mutation application is owned by the orchestrator.
 type TurnEngine struct {
-	roller   domain.Roller
+	roller   dice.Roller
 	rulebook *rulebook.Rulebook
 	log      *slog.Logger
 }
 
-func New(roller domain.Roller, rulebook *rulebook.Rulebook, log *slog.Logger) *TurnEngine {
+func New(roller dice.Roller, rulebook *rulebook.Rulebook, log *slog.Logger) *TurnEngine {
 	return &TurnEngine{roller: roller, rulebook: rulebook, log: log}
 }
 

@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -20,7 +20,7 @@ import (
 // effect itself, so both take the effects engine.
 func RegisterDefaultActions(
 	ae *action.ActionEngine,
-	resolveRoller func() domain.Roller,
+	resolveRoller func() dice.Roller,
 	hookRegistry *hooks.Registry,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,

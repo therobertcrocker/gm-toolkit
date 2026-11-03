@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -45,7 +46,7 @@ func stealRulebook(entry domain.EffectDefinition) *rulebook.Rulebook {
 
 // stealReactors registers coin_steal for each of alpha's assets and returns the
 // reactors in asset ID order, as dispatch would run them.
-func stealReactors(t *testing.T, factionState *state.FactionState, stealBook *rulebook.Rulebook, roller domain.Roller) []hooks.MutationReactor {
+func stealReactors(t *testing.T, factionState *state.FactionState, stealBook *rulebook.Rulebook, roller dice.Roller) []hooks.MutationReactor {
 	t.Helper()
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]

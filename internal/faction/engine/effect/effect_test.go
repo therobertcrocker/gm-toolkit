@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -119,7 +120,7 @@ type recordingHandler struct {
 
 func (handler recordingHandler) AssetDefinitionID() string { return handler.defID }
 
-func (handler recordingHandler) Apply(faction *domain.Faction, asset *domain.Asset, _ *hooks.Registry, _ domain.Roller) {
+func (handler recordingHandler) Apply(faction *domain.Faction, asset *domain.Asset, _ *hooks.Registry, _ dice.Roller) {
 	*handler.calls = append(*handler.calls, faction.ID+"/"+asset.ID)
 }
 
@@ -160,7 +161,7 @@ func (constRoller) Roll(int) int { return 1 }
 
 func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 	var registered []domain.SpecialEffectType
-	var roller domain.Roller = constRoller{}
+	var roller dice.Roller = constRoller{}
 	registrars := map[domain.SpecialEffectType]effect.Registrar{
 		domain.SpecialCoinGain: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnSelf},

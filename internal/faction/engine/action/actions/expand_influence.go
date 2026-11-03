@@ -21,7 +21,7 @@ import (
 // roll may make a free attack against the new base.
 type ExpandInfluence struct {
 	collector   action.Collector
-	roller      domain.Roller
+	roller      dice.Roller
 	registry    *hooks.Registry
 	index       *world.Index
 	worldEngine *world.WorldEngine
@@ -29,7 +29,7 @@ type ExpandInfluence struct {
 	mutations   []domain.Mutation
 }
 
-func NewExpandInfluence(collector action.Collector, roller domain.Roller, registry *hooks.Registry, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
+func NewExpandInfluence(collector action.Collector, roller dice.Roller, registry *hooks.Registry, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
 	return &ExpandInfluence{collector: collector, roller: roller, registry: registry, index: index, worldEngine: worldEngine}
 }
 
@@ -181,7 +181,7 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 // ExpandInfluence.Resolve. Bases do not counterattack.
 type baseAttack struct {
 	collector action.Collector
-	roller    domain.Roller
+	roller    dice.Roller
 	registry  *hooks.Registry
 	action    string
 }

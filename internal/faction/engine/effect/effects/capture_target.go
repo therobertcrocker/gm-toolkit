@@ -37,7 +37,7 @@ func registerCaptureTarget(ctx effect.RegisterContext) {
 type captureTargetReactor struct {
 	holder holderRef
 	coin   domain.DiceRoll
-	roller domain.Roller
+	roller dice.Roller
 }
 
 func (reactor *captureTargetReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {

@@ -76,7 +76,7 @@ type coinGainReactor struct {
 	owner    domain.EffectOwner
 	causedBy domain.EffectOwner
 	amount   domain.DiceRoll
-	roller   domain.Roller
+	roller   dice.Roller
 }
 
 // OnMutations pays once for each combat removal in the batch that the entry's

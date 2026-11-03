@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
@@ -76,7 +77,7 @@ func makeAbilityState(actingAssetDefID string, includeTarget bool) (*state.Facti
 }
 
 // runAbility drives a full Inputs→Resolve→Output cycle for UseAssetAbility.
-func runAbility(t *testing.T, collector *mocks.MockCollector, roller domain.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
+func runAbility(t *testing.T, collector *mocks.MockCollector, roller dice.Roller, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	t.Helper()
 	act := NewUseAssetAbility(collector, roller, nil, nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {

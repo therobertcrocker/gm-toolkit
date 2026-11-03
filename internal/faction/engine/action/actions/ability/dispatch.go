@@ -7,6 +7,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -72,7 +73,7 @@ func Dispatch(
 	faction *domain.Faction,
 	holder domain.AbilityHolder,
 	collector action.Collector,
-	roller domain.Roller,
+	roller dice.Roller,
 	registry *hooks.Registry,
 	factionState *state.FactionState,
 	view *state.FactionState,
