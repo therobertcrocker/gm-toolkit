@@ -75,6 +75,7 @@ Planning calls, shown to Robert before writing:
 - **The adapter's `statRating` goes too** (Commit 5, Robert's pick) — the plan missed this third copy of the same switch in `tui/adapter/action_collector.go`, and its comment named the deleted `actions.statScore`; its one caller now uses `Faction.StatScore`. Rejected: fixing the comment only, which keeps the switch in two places
 - **Two more stat conversions in tests** (Commit 5) — `expand_influence_test.go:438-441` drops `string(...)`, and the `cunningDefense` helper in `bonus_die_test.go` takes a `domain.FactionStat`; no expected value moved
 - **A test parameter renamed** (Commit 6) — `rollThroughDispatcher` in `reroll_test.go` had a parameter called `dice`, which hides the package once the call reads `dice.RollWithHooks`; it is now `values`. No expected value moved
+- **The import line also reaches `internal/spatial`** (Commit 8) — `go list -deps` on `engine/dice` shows it through `domain`, so the Shared Context claim of "nothing else in the project" was wrong; `spatial` imports nothing from the project, so the package still cannot close a cycle. Shared Context is corrected
 
 ---
 
@@ -93,8 +94,9 @@ Planning calls, shown to Robert before writing:
 | Plain die | `Roller.Roll` | No | Turn order only (`turn/order.go:19`) |
 
 **Import line.** `engine/dice` imports `domain`, `engine/hooks`, `rulebook` and `state` only.
-`go list -deps` shows those four depend on nothing else in the project, and none of them uses
-`Roller`, so the package cannot close a cycle. `dicetest` imports nothing.
+`go list -deps` shows those four depend only on `internal/spatial` beyond each other, through
+`domain`. `spatial` imports nothing from the project and none of them uses `Roller`, so the package
+cannot close a cycle. `dicetest` imports nothing.
 
 **What must survive.** Re-check these at each unit that touches them.
 
@@ -153,7 +155,7 @@ TOML and docs.
 - [x] **Phase 2 — Stat cleanups**
   - Commit 4 — `refactor: one roll phase enum in domain` (3 tasks)
   - Commit 5 — `refactor: type roll context stats and drop statScore wrappers` (3 tasks)
-- [ ] **Phase 3 — Stat routes**
+- [x] **Phase 3 — Stat routes**
   - Commit 6 — `refactor: move RollWithHooks and ResolveTie into engine/dice` (2 tasks)
   - Commit 7 — `fix: reroll keeps each die's sides` (2 tasks)
   - Commit 8 — `refactor: add Stat, Contest and Gate routes` (2 tasks)
