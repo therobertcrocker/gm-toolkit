@@ -7,6 +7,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
@@ -192,7 +193,7 @@ func TestUseAssetAbility_Resolve_Informers_AttackerWins(t *testing.T) {
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{8, 3}}, faction, factionState, rulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{8, 3}}, faction, factionState, rulebook)
 
 	if len(mutations) != 1 {
 		t.Fatalf("len(mutations) = %d, want 1; got %v", len(mutations), mutations)
@@ -220,7 +221,7 @@ func TestUseAssetAbility_Resolve_Informers_Tie(t *testing.T) {
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{5, 5}}, faction, factionState, rulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{5, 5}}, faction, factionState, rulebook)
 
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations on tie, got %v", mutations)
@@ -241,7 +242,7 @@ func TestUseAssetAbility_Resolve_Informers_DefenderWins(t *testing.T) {
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{2, 9}}, faction, factionState, rulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{2, 9}}, faction, factionState, rulebook)
 
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations when defender wins, got %v", mutations)
@@ -276,7 +277,7 @@ func TestUseAssetAbility_LaterAssetSeesEarlierCoin(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: first}, {Asset: second}}, nil)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{1}}, faction, factionState, rulebook)
 
 	want := []domain.Mutation{
 		domain.CoinDelta{FactionID: "f1", Delta: -1, Cause: "ability", CausedByFactionID: "f1"},
@@ -325,7 +326,7 @@ func TestUseAssetAbility_SecondMarketersFizzles(t *testing.T) {
 		}).Times(1)
 	collector.EXPECT().ConfirmPayment(gomock.Any()).Return(false, nil).Times(1)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{8, 3}}, faction, factionState, rulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{8, 3}}, faction, factionState, rulebook)
 
 	want := []domain.Mutation{domain.AssetConditionApplied{
 		FactionID:         "f2",
@@ -377,7 +378,7 @@ func TestUseAssetAbility_TwoMonopoliesSeeTheFirstLevy(t *testing.T) {
 			return assets[0], nil
 		}).Times(1)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, assetRulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{1}}, faction, factionState, assetRulebook)
 
 	want := []domain.Mutation{
 		domain.CoinDelta{FactionID: "f2", Delta: -1, Cause: "ability", CausedByFactionID: "f1"},
@@ -401,7 +402,7 @@ func TestUseAssetAbility_Resolve_NilAbility(t *testing.T) {
 	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: actingAsset}}, nil)
 	collector.EXPECT().ConfirmAbilityApplied(gomock.Any(), gomock.Any()).Return(false, nil)
 
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{1}}, faction, factionState, rulebook)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{1}}, faction, factionState, rulebook)
 
 	if len(mutations) != 0 {
 		t.Errorf("expected no mutations for nil-ability asset, got %v", mutations)
@@ -434,7 +435,7 @@ func TestUseAssetAbility_TagHolder(t *testing.T) {
 	if !NewUseAssetAbility(collector, nil, nil, nil).Validate(faction, factionState, book) {
 		t.Fatal("Validate = false, want true for a held tag ability")
 	}
-	mutations := runAbility(t, collector, &fixedRoller{values: []int{3}}, faction, factionState, book)
+	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{3}}, faction, factionState, book)
 
 	want := []domain.Mutation{domain.PurchaseDiscountGranted{FactionID: "f1", Amount: 3, Cause: "ability", CausedByFactionID: "f1"}}
 	if !reflect.DeepEqual(mutations, want) {

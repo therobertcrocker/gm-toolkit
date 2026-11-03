@@ -7,23 +7,13 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
-
-type seqRoller struct {
-	values []int
-	pos    int
-}
-
-func (r *seqRoller) Roll(_ int) int {
-	v := r.values[r.pos%len(r.values)]
-	r.pos++
-	return v
-}
 
 // dispatchRulebook returns base with def added, so Dispatch finds the acting
 // asset's definition. base is copied, not changed.
@@ -114,7 +104,7 @@ func TestDispatch_RevealStealth_AttackerWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{8, 3}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -141,7 +131,7 @@ func TestDispatch_RevealStealth_DefenderWins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{3, 8}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -189,7 +179,7 @@ func TestDispatch_ContestRollsThroughHooks(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), factionTestDieKey, factionTestDie{})
 
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 9, 8}}, registry, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{3, 9, 8}}, registry, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -242,7 +232,7 @@ func TestDispatch_DefenseBudgetSpentOnRealDefender(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), defenseDieKey, defenseDie{})
 
-	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3, 9}}, registry, factionState, view, dispatchRulebook(nil, def), nil); err != nil {
+	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{8, 3, 9}}, registry, factionState, view, dispatchRulebook(nil, def), nil); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	if spent := factionState.Factions["f2"].HookBudgets[defenseDieKey]; spent != 1 {
@@ -261,7 +251,7 @@ func TestDispatch_RemovedActingAssetFizzles(t *testing.T) {
 	delete(view.Factions["f1"].Assets, asset.ID)
 
 	collector := mocks.NewMockCollector(gomock.NewController(t))
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, view, dispatchRulebook(nil, def), nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{8, 3}}, nil, factionState, view, dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -328,7 +318,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Wins(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=8, defense=3 — attacker wins
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{8, 3}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), engine)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{8, 3}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -360,7 +350,7 @@ func TestDispatch_Seductress_RelocateThenReveal_Loses(t *testing.T) {
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 
 	// attack=3, defense=8 — defender wins, reveal halts
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 8}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), engine)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{3, 8}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), engine)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -404,7 +394,7 @@ func TestDispatch_CrossStep_CoinProjection(t *testing.T) {
 		Return([]action.RelocateOrder{{Asset: acting, DestinationWorld: "near"}}, nil).
 		Times(1)
 
-	_, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{0}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), relocEngine())
+	_, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &dicetest.Cycle{Values: []int{0}}, nil, factionState, NewView(factionState), dispatchRulebook(relocRulebook(), def), relocEngine())
 	if err == nil {
 		t.Fatal("Dispatch: expected insufficient-Coin error on step 2, got nil")
 	}
@@ -440,7 +430,7 @@ func TestDispatch_NoTargetsLeft_Fizzles(t *testing.T) {
 	}
 	collector := mocks.NewMockCollector(gomock.NewController(t))
 
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{1}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &dicetest.Cycle{Values: []int{1}}, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -505,7 +495,7 @@ func TestDispatch_ContestRollsNameTheOpposingStat(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
 
-	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &seqRoller{values: []int{3, 8}}, registry, factionState, NewView(factionState), dispatchRulebook(nil, def), nil); err != nil {
+	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, &dicetest.Cycle{Values: []int{3, 8}}, registry, factionState, NewView(factionState), dispatchRulebook(nil, def), nil); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
 	if len(recorder.contexts) != 2 {

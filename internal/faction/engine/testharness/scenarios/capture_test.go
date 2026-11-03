@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -43,7 +44,7 @@ func TestTreacheryCaptureAdvancesSeizureSameTurn(t *testing.T) {
 	lastRival := beta.Assets["beta-asset-1"]
 
 	// Rolls: attack 10+3 vs defense 1+3, a hit; the special attack rolls no damage.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -98,7 +99,7 @@ func TestTreacheryCapturesAndKeepsRiders(t *testing.T) {
 	}
 
 	// Rolls: attack 10+3 vs defense 1+3, a hit; the special attack rolls no damage.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil

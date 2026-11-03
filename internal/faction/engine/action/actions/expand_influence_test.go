@@ -6,6 +6,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -83,7 +84,7 @@ func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{8}}, nil, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{8}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -126,7 +127,7 @@ func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{1}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestExpandInfluence_Reinforce_Max(t *testing.T) {
 	collector := mocks.NewMockCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{1}}, nil, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{1}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, nil); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -214,7 +215,7 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
 
 	// Roll sequence: factionRoll=5, rivalRoll=5 (tie → confirmed attack), attackRoll=8, defenseRoll=3, damage=4.
-	roller := &fixedRoller{values: []int{5, 5, 8, 3, 4}}
+	roller := &dicetest.Cycle{Values: []int{5, 5, 8, 3, 4}}
 	act := NewExpandInfluence(collector, roller, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
@@ -286,7 +287,7 @@ func TestExpandInfluence_FreeAttackTieAsksResolvers(t *testing.T) {
 			collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 			collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
 
-			roller := &fixedRoller{values: []int{5, 5, 6, 6, 4}}
+			roller := &dicetest.Cycle{Values: []int{5, 5, 6, 6, 4}}
 			act := NewExpandInfluence(collector, roller, registry, indexFromState(factionState), nil)
 			if err := act.Inputs(faction, factionState, rulebook); err != nil {
 				t.Fatalf("Inputs: %v", err)
@@ -326,7 +327,7 @@ func TestExpandInfluence_SpecialAttackerNotOffered(t *testing.T) {
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{5, 5}}, nil, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{5, 5}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -364,7 +365,7 @@ func TestExpandInfluence_BlockedAttackerNotOffered(t *testing.T) {
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
-	act := NewExpandInfluence(collector, &fixedRoller{values: []int{5, 5}}, nil, indexFromState(factionState), nil)
+	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{5, 5}}, nil, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)
 	}
@@ -417,7 +418,7 @@ func TestExpandInfluence_RollsCarryContext(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), "test:recorder", recorder)
 
-	roller := &fixedRoller{values: []int{5, 5, 8, 3, 4}}
+	roller := &dicetest.Cycle{Values: []int{5, 5, 8, 3, 4}}
 	act := NewExpandInfluence(collector, roller, registry, indexFromState(factionState), nil)
 	if err := act.Inputs(faction, factionState, rulebook); err != nil {
 		t.Fatalf("Inputs: %v", err)

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -75,7 +76,7 @@ func rollOn(factionState *state.FactionState, actorID, opponentID, world string)
 }
 
 func rollThroughDispatcher(factionState *state.FactionState, registry *hooks.Registry, collector hooks.Collector, ctx hooks.RollContext, dice ...int) hooks.RollResult {
-	return dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &seqRoller{values: dice}, ctx.Actor, factionState, nil)
+	return dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &dicetest.Sequence{Values: dice}, ctx.Actor, factionState, nil)
 }
 
 func TestReroll_OwnRerollPicksLowestDie(t *testing.T) {

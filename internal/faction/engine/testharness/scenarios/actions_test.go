@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -141,7 +142,7 @@ func TestRunCycle_ExpandInfluence_Contested(t *testing.T) {
 	// attack:   10 → attackRoll = 10+force(2)   = 12
 	// defense:   1 → defRoll    = 1+cunning(3)  = 4  → 12≥4: hit, damage 1d3+1
 	// damage:    3 → 3+1 = 4 damage → base (HP 1) destroyed
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{1, 10, 10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{1, 10, 10, 1, 3}}
 
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
@@ -198,7 +199,7 @@ func TestRunCycle_GoalCompleted_MilitaryConquest(t *testing.T) {
 	// attack:  10 → attackRoll = 10+force(1) = 11
 	// defense:  1 → defRoll   = 1+force(2)  = 3  → 11≥3: hit
 	// damage:   3 → 3+1 = 4 ≥ asset HP(3)        → destroyed
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3}}
 
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {

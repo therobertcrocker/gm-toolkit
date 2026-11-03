@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -89,7 +90,7 @@ func TestWithdrawPermission_WinsContestRollsCunning(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			alpha, bravo, lobbyists := lobbyistsFixture()
-			contester := registerLobbyists(t, alpha, lobbyists, &seqRoller{values: tc.rolls})
+			contester := registerLobbyists(t, alpha, lobbyists, &dicetest.Sequence{Values: tc.rolls})
 
 			if got := contester.WinsContest(hooks.PermissionQuery{Requester: bravo, WorldID: "Krylos"}, nil, nil); got != tc.want {
 				t.Errorf("WinsContest = %v, want %v (Cunning 3 vs 2)", got, tc.want)

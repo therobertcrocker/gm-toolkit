@@ -7,6 +7,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
@@ -202,10 +203,6 @@ func TestRunMovementPhase_RefusedArrivalHoldsWithItsCargo(t *testing.T) {
 	}
 }
 
-type fixedRoller struct{ value int }
-
-func (roller fixedRoller) Roll(int) int { return roller.value }
-
 // lockKrylos gives bravo an active Transport Lockdown on Krylos that holds alpha out.
 func lockKrylos(factionState *state.FactionState) {
 	factionState.Factions["bravo"].Assets = map[string]*domain.Asset{"lock": {
@@ -242,7 +239,7 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			eng, factionState, alpha, completed := arrivalFixture("ship", "troops", 3)
-			eng.Rand = fixedRoller{value: 3}
+			eng.Rand = dicetest.Constant{Value: 3}
 			eng.Rulebook.Assets["ship"].Transport.IgnoresLockdown = tc.landers
 			lockKrylos(factionState)
 			alpha.Coin = tc.coin
@@ -274,7 +271,7 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 
 func TestCheckArrivals_TwoLockdownsCannotSpendTheSameCoin(t *testing.T) {
 	eng, factionState, alpha, completed := arrivalFixture("mercs", "", 3)
-	eng.Rand = fixedRoller{value: 3}
+	eng.Rand = dicetest.Constant{Value: 3}
 	lockKrylos(factionState)
 	alpha.Coin = 4
 	second := alpha.Assets["t1"].Clone()

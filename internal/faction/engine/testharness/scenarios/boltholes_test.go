@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -41,7 +42,7 @@ func setupBoltholesShelter(t *testing.T) (h *testharness.Harness, alpha, beta *d
 	unit = beta.Assets["beta-asset-1"]
 
 	// Rolls: attack 10+4 vs defense 1+4, a hit; damage 1d3+1 rolls 3, so 4 damage.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3}}
 	h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Attack")
 	h.Collector.SelectAttackersFn = func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
 		return []*domain.Asset{attacker}, nil
@@ -92,7 +93,7 @@ func TestBoltholesLossTakesShelteredAsset(t *testing.T) {
 	h, alpha, beta, attacker, boltholes, unit := setupBoltholesShelter(t)
 
 	boltholes.CurrentHP = 1
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3}}
 	h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Attack")
 	h.Collector.SelectAttackersFn = func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
 		return []*domain.Asset{attacker}, nil

@@ -7,6 +7,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -94,7 +95,7 @@ func setupMarketersOnPartyMachine(t *testing.T) (*testharness.Harness, *domain.A
 	partyMachine := addActiveAsset(beta, "party", testharness.DefPartyMachine, "Hadrian")
 
 	// Rolls: Cunning 10+3 vs Wealth 1+2, a win.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1}}
 	alphaActed := false
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" || alphaActed {

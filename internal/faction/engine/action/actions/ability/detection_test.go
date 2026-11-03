@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -46,7 +47,7 @@ func TestPassesGate_RevealMarksTheActorsRollAsDetection(t *testing.T) {
 			}
 			target := domain.AbilityTarget{Kind: domain.TargetFaction, Faction: beta}
 
-			if _, err := passesGate(step, alpha, informers, target, registry, nil, &seqRoller{values: []int{5}}, factionState, nil); err != nil {
+			if _, err := passesGate(step, alpha, informers, target, registry, nil, &dicetest.Cycle{Values: []int{5}}, factionState, nil); err != nil {
 				t.Fatalf("passesGate: %v", err)
 			}
 			if !reflect.DeepEqual(recorder.detection, tc.want) {
@@ -92,7 +93,7 @@ func TestPassesGate_AnAttackContestAsksTheTieResolvers(t *testing.T) {
 			}
 			target := domain.AbilityTarget{Kind: domain.TargetFaction, Faction: beta}
 
-			passed, err := passesGate(step, alpha, informers, target, registry, nil, &seqRoller{values: []int{5, 5}}, factionState, nil)
+			passed, err := passesGate(step, alpha, informers, target, registry, nil, &dicetest.Cycle{Values: []int{5, 5}}, factionState, nil)
 			if err != nil {
 				t.Fatalf("passesGate: %v", err)
 			}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
@@ -85,7 +86,7 @@ func TestDispatch_BlockAttack(t *testing.T) {
 				})
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{3}}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &dicetest.Cycle{Values: []int{3}}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}

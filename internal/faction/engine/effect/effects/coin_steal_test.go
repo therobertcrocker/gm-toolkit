@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -169,7 +170,7 @@ func TestCoinSteal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			factionState := stealState(tc.betaCoin, tc.gammaCoin)
 			stealBook := stealRulebook(coinStealEntry(tc.amount))
-			reactors := stealReactors(t, factionState, stealBook, fixedRoller{value: 3})
+			reactors := stealReactors(t, factionState, stealBook, dicetest.Constant{Value: 3})
 			got := runReactorsWith(reactors, tc.mutations, factionState, stealBook)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
@@ -182,7 +183,7 @@ func TestCoinSteal_TwoDefinitionsDoNotTakeMoreThanTheTargetHas(t *testing.T) {
 	factionState := stealState(1, 0)
 	factionState.Factions["alpha"].Assets["bf-1"] = activeAsset("bf-1", "SWN-F5-001")
 	stealBook := stealRulebook(coinStealEntry(domain.DiceRoll{Modifier: 1}))
-	reactors := stealReactors(t, factionState, stealBook, fixedRoller{value: 3})
+	reactors := stealReactors(t, factionState, stealBook, dicetest.Constant{Value: 3})
 
 	got := runReactorsWith(reactors, []domain.Mutation{attackHit("beta", "fr-1"), attackHit("beta", "bf-1")}, factionState, stealBook)
 	if !reflect.DeepEqual(got, steal("beta", 1)) {
@@ -199,7 +200,7 @@ func TestCoinSteal_InactiveAssetStealsNothing(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			factionState := stealState(5, 0)
 			stealBook := stealRulebook(coinStealEntry(domain.DiceRoll{Modifier: 1}))
-			reactors := stealReactors(t, factionState, stealBook, fixedRoller{value: 3})
+			reactors := stealReactors(t, factionState, stealBook, dicetest.Constant{Value: 3})
 			deactivate(factionState.Factions["alpha"].Assets["fr-1"])
 
 			if got := runReactorsWith(reactors, []domain.Mutation{attackHit("beta", "fr-1")}, factionState, stealBook); len(got) != 0 {
@@ -212,7 +213,7 @@ func TestCoinSteal_InactiveAssetStealsNothing(t *testing.T) {
 func TestCoinSteal_EmptyPurseLeavesTheBudgetUnspent(t *testing.T) {
 	factionState := stealState(0, 0)
 	stealBook := stealRulebook(coinStealEntry(domain.DiceRoll{Modifier: 1}))
-	reactors := stealReactors(t, factionState, stealBook, fixedRoller{value: 3})
+	reactors := stealReactors(t, factionState, stealBook, dicetest.Constant{Value: 3})
 
 	if got := runReactorsWith(reactors, []domain.Mutation{attackHit("beta", "fr-1")}, factionState, stealBook); len(got) != 0 {
 		t.Errorf("mutations = %+v, want none from an empty purse", got)
@@ -225,7 +226,7 @@ func TestCoinSteal_EmptyPurseLeavesTheBudgetUnspent(t *testing.T) {
 func TestCoinSteal_SpentBudgetStopsALaterAction(t *testing.T) {
 	factionState := stealState(5, 0)
 	stealBook := stealRulebook(coinStealEntry(domain.DiceRoll{Modifier: 1}))
-	reactors := stealReactors(t, factionState, stealBook, fixedRoller{value: 3})
+	reactors := stealReactors(t, factionState, stealBook, dicetest.Constant{Value: 3})
 
 	first := runReactorsWith(reactors, []domain.Mutation{attackHit("beta", "fr-1")}, factionState, stealBook)
 	if !reflect.DeepEqual(first, steal("beta", 1)) {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -132,7 +133,7 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 		Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, Attribute: string(domain.StatForce),
 		OpponentAsset: alpha.Assets["bm"], World: "Krylos", Action: "Attack",
 	}
-	result := dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Force}, registry, collector, &seqRoller{values: []int{4}}, beta, factionState, nil)
+	result := dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Force}, registry, collector, &dicetest.Sequence{Values: []int{4}}, beta, factionState, nil)
 
 	if len(result.Dice) != 1 || collector.selections != 0 {
 		t.Errorf("dice %v, selections %d; want one die and no prompt", result.Dice, collector.selections)

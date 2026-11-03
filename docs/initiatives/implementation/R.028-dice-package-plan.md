@@ -71,6 +71,7 @@ Planning calls, shown to Robert before writing:
 ## Decision Record — Execution
 
 - **Plan doc and tracker land in Commit 1** — the Plan session left them uncommitted, and `git add -A` carries them with the first commit, not in a commit of their own
+- **`Sequence` and `Cycle` gain `Rolled()`** (Commit 3) — seven assertions read the old fakes' private counts (`clear_stealth_test.go`, `attack_test.go`), which the planned `next` field hides; dropping them would lose the "rolled exactly this many dice" check
 
 ---
 
@@ -142,7 +143,7 @@ TOML and docs.
 
 **Overview**
 
-- [ ] **Phase 1 — Open the package**
+- [x] **Phase 1 — Open the package**
   - Commit 1 — `refactor: add dice.Amount and retire DiceRoll.Roll` (3 tasks)
   - Commit 2 — `refactor: move Roller and RandRoller into engine/dice` (2 tasks)
   - Commit 3 — `test: share roller fakes in dicetest` (2 tasks)
@@ -303,6 +304,9 @@ func (roller *Sequence) Roll(int) int {
 	return value
 }
 
+// Rolled returns how many dice have been rolled.
+func (roller *Sequence) Rolled() int { return roller.next }
+
 // Cycle returns Values in order and starts again when they run out.
 type Cycle struct {
 	Values []int
@@ -314,6 +318,9 @@ func (roller *Cycle) Roll(int) int {
 	roller.next++
 	return value
 }
+
+// Rolled returns how many dice have been rolled.
+func (roller *Cycle) Rolled() int { return roller.next }
 
 // Constant returns Value on every roll.
 type Constant struct {

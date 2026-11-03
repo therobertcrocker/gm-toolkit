@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -103,7 +104,7 @@ func TestDispatch_DisableAsset(t *testing.T) {
 			}
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: tc.rolls}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &dicetest.Cycle{Values: tc.rolls}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}

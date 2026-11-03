@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -18,7 +19,7 @@ func TestScavengers_GrantsCoinOnKill(t *testing.T) {
 	alpha.Tags = []string{"SWN-T-016"}
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -60,7 +61,7 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 	h.AddFaction("alpha", "Tartarus", 4, 3, 2) // no Scavengers tag
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -99,7 +100,7 @@ func TestScavengers_NoBonusWithoutTag(t *testing.T) {
 // is applied, changes the outcome when the base die alone would miss, and consumes
 // one budget slot for the turn.
 //
-// FixedRoller [2, 9, 5, 3]:
+// Sequence [2, 9, 5, 3]:
 //
 //	attack-base=2, warlike-bonus=9 → keep max(2,9)=9; +force(1)=10
 //	defense=5+force(4)=9  →  10>9: hit; damage=3+1=4 ≥ HP(3) → destroyed
@@ -110,7 +111,7 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 	alpha.Tags = []string{"SWN-T-020"}
 	h.AddFaction("beta", "Tartarus", 4, 3, 2)
 
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{2, 9, 5, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{2, 9, 5, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -150,7 +151,7 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 
 // TestFanatical_RerollsOnesInAttack verifies that a rolled 1 is rerolled automatically.
 //
-// FixedRoller [1, 9, 6, 3]:
+// Sequence [1, 9, 6, 3]:
 //
 //	attack-base=1 → Fanatical rerolls → 9+force(4)=13
 //	defense=6+force(2)=8  →  13>8: hit; damage=3+1=4 → destroyed
@@ -161,7 +162,7 @@ func TestFanatical_RerollsOnesInAttack(t *testing.T) {
 	alpha.Tags = []string{"SWN-T-005"}
 	h.AddFaction("beta", "Tartarus", 2, 3, 2)
 
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{1, 9, 6, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{1, 9, 6, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -197,7 +198,7 @@ func TestFanatical_RerollsOnesInAttack(t *testing.T) {
 // TestFanatical_TieLoss_AttackerLoses verifies that a Fanatical attacker always
 // loses ties: no damage to the defender, but counter fires and hits the attacker.
 //
-// FixedRoller [6, 3, 3]:
+// Sequence [6, 3, 3]:
 //
 //	attack=6+force(1)=7, defense=3+force(4)=7 → TIE
 //	TieDefenderWins → no attack damage; counter=3 destroys alpha's asset
@@ -207,7 +208,7 @@ func TestFanatical_TieLoss_AttackerLoses(t *testing.T) {
 	alpha.Tags = []string{"SWN-T-005"}
 	h.AddFaction("beta", "Tartarus", 4, 3, 2)
 
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{6, 3, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{6, 3, 3}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -403,7 +404,7 @@ func TestExchangeConsulate_BonusXPOnPeaceableKingdom(t *testing.T) {
 			alpha.ActiveGoal = &domain.ActiveGoal{GoalID: "G-007", Progress: 3}
 			xpBefore := alpha.XP
 			scriptPurchase(t, h, alpha, testharness.DefFranchise)
-			h.Engine.Rand = &testharness.FixedRoller{Values: []int{tc.roll}}
+			h.Engine.Rand = &dicetest.Sequence{Values: []int{tc.roll}}
 
 			if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 				t.Fatalf("Turn.Start: %v", err)
@@ -499,7 +500,7 @@ func TestPreceptorArchive_TeachPlanetaryPopulation(t *testing.T) {
 			alpha.Tags = []string{"SWN-T-013"}
 			alpha.Coin = 4
 			testharness.AddBase(alpha, "Backwater", 2)
-			h.Engine.Rand = &testharness.FixedRoller{Values: []int{tc.roll}}
+			h.Engine.Rand = &dicetest.Sequence{Values: []int{tc.roll}}
 			var offered []domain.AbilityHolder
 			var worlds []string
 			h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Use Asset Ability")

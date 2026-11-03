@@ -5,16 +5,13 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
-
-type fixedRoller struct{ value int }
-
-func (roller fixedRoller) Roll(int) int { return roller.value }
 
 func TestCoinGain_PaysTheOwnerTheAmount(t *testing.T) {
 	cases := []struct {
@@ -37,7 +34,7 @@ func TestCoinGain_PaysTheOwnerTheAmount(t *testing.T) {
 			got := effects.Registrars()[domain.SpecialCoinGain].Fire(effect.FireContext{
 				Holder: effect.Holder{Faction: faction},
 				Entry:  entry,
-				Roller: fixedRoller{value: 3},
+				Roller: dicetest.Constant{Value: 3},
 			})
 			want := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: tc.want, Cause: "coin_gain", CausedByFactionID: "alpha"}}
 			if !reflect.DeepEqual(got, want) {
@@ -57,7 +54,7 @@ func TestCoinGain_ScavengersPaysOwnKillsAndLossesOnly(t *testing.T) {
 		{Owner: domain.OwnerRival, Scope: domain.ScopeFaction, CausedBy: domain.OwnerOwn},
 	} {
 		effects.Registrars()[domain.SpecialCoinGain].Register(effect.RegisterContext{
-			Holder: holder, Registry: registry, Roller: fixedRoller{value: 1},
+			Holder: holder, Registry: registry, Roller: dicetest.Constant{Value: 1},
 			Entry: domain.EffectDefinition{Trigger: domain.TriggerAssetDestroyed, Effect: domain.SpecialCoinGain,
 				Filters: filters, CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}}},
 		})

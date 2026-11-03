@@ -8,6 +8,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -48,7 +49,7 @@ func TestAttackHitEffect_FranchiseStealsFromTheTarget(t *testing.T) {
 	// attack:  10 → 10+wealth(2) = 12
 	// defense:  1 → 1+wealth(2)  = 3 → hit; Franchise steals a flat 1, no roll
 	// damage:   2
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 2}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 2}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -131,7 +132,7 @@ func TestEffects_SurveyorsAddDieToOwnersExpansion(t *testing.T) {
 	// expansion: 1, Surveyors: 9 → keep 9 → factionRoll = 9+cunning(3) = 12
 	// rival:     5 → rivalRoll = 5+cunning(2) = 7 < 12 → no free attack
 	// Without the die the faction roll is 4, and the rival's 7 would earn a free attack.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{1, 9, 5}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{1, 9, 5}}
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
 		if faction.ID != "alpha" {
 			return nil, nil
@@ -199,7 +200,7 @@ func TestEffects_PanopticonUnmasksAtOwnersTurnStart(t *testing.T) {
 	h.FactionState.CurrentTurn.FactionOrder = []string{"beta", "alpha"}
 
 	// Beta's turn: the Matrix's owner is not acting, so no test is rolled.
-	h.Engine.Rand = &testharness.FixedRoller{}
+	h.Engine.Rand = &dicetest.Sequence{}
 	if _, err := h.Engine.RunFactionTurn(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunFactionTurn (beta): %v", err)
 	}
@@ -209,7 +210,7 @@ func TestEffects_PanopticonUnmasksAtOwnersTurnStart(t *testing.T) {
 	// Alpha's turn, roll sequence: [beta's test, the Matrix's defense]
 	// beta:  2 → 2+cunning(2) = 4
 	// alpha: 9 → 9+cunning(3) = 12 → beta fails and loses its stealth
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{2, 9}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{2, 9}}
 	if _, err := h.Engine.RunFactionTurn(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
 		t.Fatalf("RunFactionTurn (alpha): %v", err)
 	}
@@ -407,7 +408,7 @@ func TestEffects_TripwireCellsCatchAStealthedPurchase(t *testing.T) {
 	scriptPurchase(t, h, alpha, testharness.DefPsychicAssassins)
 
 	// The Cells' contest: beta 10+cunning(4) = 14 vs alpha 1+cunning(3) = 4, so beta wins.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1}}
 	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
 		t.Fatalf("Turn.Start: %v", err)
 	}

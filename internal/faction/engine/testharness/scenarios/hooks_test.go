@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -41,7 +42,7 @@ func TestMutationReactorDispatch_CoinOnAssetDestroyed(t *testing.T) {
 
 	// Roll sequence: attack hits and destroys beta's asset.
 	// attack=10+force(4)=14, defense=1+force(2)=3 → hit; damage=3+1=4 ≥ HP(3) → destroyed.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3}}
 
 	stub := &coinOnDestroyReactor{factionID: "alpha"}
 	h.Engine.Hooks.RegisterMutationReactor(hooks.FactionScope("alpha"), "stub-coin-on-destroy", stub)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -155,13 +156,9 @@ func TestApplyAll_WalksFactionsAndAssetsInIDOrder(t *testing.T) {
 	}
 }
 
-type constRoller struct{}
-
-func (constRoller) Roll(int) int { return 1 }
-
 func TestRegisterEffectsList_RegistersHookRouteEntriesOnly(t *testing.T) {
 	var registered []domain.SpecialEffectType
-	var roller dice.Roller = constRoller{}
+	var roller dice.Roller = dicetest.Constant{Value: 1}
 	registrars := map[domain.SpecialEffectType]effect.Registrar{
 		domain.SpecialCoinGain: {
 			Triggers: map[domain.EffectTrigger]effect.Accepts{domain.TriggerTurnStart: acceptsOwnSelf},

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -45,7 +46,7 @@ func TestHostileTakeoverSeizesAndPaysTheNewOwner(t *testing.T) {
 	partyMachine.CurrentHP = 3
 
 	// Rolls: attack 10+2 vs defense 1+2, a hit; damage 2d10 rolls 3 and 3, so 6.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3, 3}}
 	h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Attack")
 	h.Collector.SelectAttackersFn = func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
 		return []*domain.Asset{takeover}, nil

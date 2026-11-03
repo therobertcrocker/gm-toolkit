@@ -5,22 +5,12 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
-
-type pairRoller struct {
-	values []int
-	next   int
-}
-
-func (roller *pairRoller) Roll(int) int {
-	value := roller.values[roller.next]
-	roller.next++
-	return value
-}
 
 // rollRecorder is a Cat 1 hook that records each roll it sees and offers nothing.
 type rollRecorder struct {
@@ -61,7 +51,7 @@ func TestContestPasses(t *testing.T) {
 				contest:   cunningContest(tc.roller, domain.ContestRollTest),
 				declaring: declaring,
 				target:    target,
-				roller:    &pairRoller{values: tc.rolls},
+				roller:    &dicetest.Sequence{Values: tc.rolls},
 			}
 			if got := contestPasses(roll); got != tc.want {
 				t.Errorf("contestPasses = %v, want %v", got, tc.want)
@@ -95,7 +85,7 @@ func TestContestPasses_RollPhasesAndSides(t *testing.T) {
 
 			contestPasses(contestRoll{
 				contest: contest, declaring: declaring, declaringAsset: cells, target: target, targetAsset: spy,
-				world: "Krylos", registry: registry, roller: &pairRoller{values: []int{5, 5}},
+				world: "Krylos", registry: registry, roller: &dicetest.Sequence{Values: []int{5, 5}},
 			})
 
 			want := []hooks.RollContext{
@@ -143,7 +133,7 @@ func TestContestPasses_AttackTiesAskTheTieResolvers(t *testing.T) {
 				target:       target,
 				registry:     registry,
 				factionState: factionState,
-				roller:       &pairRoller{values: []int{5, 5}},
+				roller:       &dicetest.Sequence{Values: []int{5, 5}},
 			}
 
 			if got := contestPasses(roll); got != tc.want {
@@ -178,7 +168,7 @@ func TestContestPasses_TakesOnlyFreeDice(t *testing.T) {
 		registry:     registry,
 		factionState: factionState,
 		// alpha rolls 2 and its free die 9, keeping 9; beta rolls 5.
-		roller: &pairRoller{values: []int{2, 9, 5}},
+		roller: &dicetest.Sequence{Values: []int{2, 9, 5}},
 	}
 
 	if !contestPasses(roll) {
@@ -210,7 +200,7 @@ func TestContestPasses_DetectionMarksTheDeclaringSide(t *testing.T) {
 				declaring:        &domain.Faction{ID: "alpha"},
 				target:           &domain.Faction{ID: "beta"},
 				registry:         registry,
-				roller:           &pairRoller{values: []int{5, 5}},
+				roller:           &dicetest.Sequence{Values: []int{5, 5}},
 			})
 
 			var got []bool

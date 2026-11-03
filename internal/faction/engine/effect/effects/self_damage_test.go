@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -25,7 +26,7 @@ func zealotReactors(t *testing.T, factionState *state.FactionState, interceptor 
 	def := &domain.AssetDefinition{ID: "SWN-F3-001"}
 	for _, trigger := range []domain.EffectTrigger{domain.TriggerOwnAttackHit, domain.TriggerOwnCounterHit} {
 		effects.Registrars()[domain.SpecialSelfDamage].Register(effect.RegisterContext{
-			Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Registry: registry, Roller: fixedRoller{value: 3},
+			Holder: effect.Holder{Faction: alpha, Asset: asset, Def: def}, Registry: registry, Roller: dicetest.Constant{Value: 3},
 			Entry: domain.EffectDefinition{
 				Trigger:    trigger,
 				Effect:     domain.SpecialSelfDamage,

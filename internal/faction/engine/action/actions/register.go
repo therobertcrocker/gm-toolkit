@@ -15,7 +15,7 @@ import (
 // import cycle.
 // resolveRoller is read at factory-invocation (turn) time rather than captured
 // by value, because the roller is a swappable seam — tests replace Engine.Rand
-// with a deterministic FixedRoller after construction.
+// with a deterministic fake after construction.
 // The Attack action raises the matchup route itself, and Buy Asset fires a quality's
 // effect itself, so both take the effects engine.
 func RegisterDefaultActions(

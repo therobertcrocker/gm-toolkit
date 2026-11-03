@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -24,7 +25,7 @@ func exchangeConsulateReactor(alpha *domain.Faction, dice ...int) hooks.Mutation
 			XPRoll:  &domain.XPRollParams{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
 		},
 		Registry: registry,
-		Roller:   &seqRoller{values: dice},
+		Roller:   &dicetest.Sequence{Values: dice},
 	})
 	return registry.MutationReactorsForFaction("alpha")[0].Hook
 }

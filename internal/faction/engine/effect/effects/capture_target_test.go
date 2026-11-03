@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -20,7 +21,7 @@ func treacheryReactors(t *testing.T, factionState *state.FactionState, assetID s
 	alpha := factionState.Factions["alpha"]
 	asset := alpha.Assets[assetID]
 	effects.Registrars()[domain.SpecialCaptureTarget].Register(effect.RegisterContext{
-		Holder: effect.Holder{Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-C7-003"}}, Registry: registry, Roller: fixedRoller{value: 1},
+		Holder: effect.Holder{Faction: alpha, Asset: asset, Def: &domain.AssetDefinition{ID: "SWN-C7-003"}}, Registry: registry, Roller: dicetest.Constant{Value: 1},
 		Entry: domain.EffectDefinition{
 			Trigger:       domain.TriggerOwnAttackHit,
 			Effect:        domain.SpecialCaptureTarget,

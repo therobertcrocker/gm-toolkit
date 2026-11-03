@@ -4,22 +4,11 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
-
-// fixedRoller returns values from a preset sequence, cycling when exhausted.
-type fixedRoller struct {
-	values []int
-	pos    int
-}
-
-func (roller *fixedRoller) Roll(_ int) int {
-	v := roller.values[roller.pos%len(roller.values)]
-	roller.pos++
-	return v
-}
 
 // acceptAllCollector takes all offers and confirms all rerolls.
 type acceptAllCollector struct{}
@@ -72,7 +61,7 @@ func baseRoll() domain.DiceRoll {
 func TestRollWithHooks_EmptyRegistry(t *testing.T) {
 	registry := hooks.NewRegistry()
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{5, 7}}
+	roller := &dicetest.Cycle{Values: []int{5, 7}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, acceptAllCollector{}, roller, faction, nil, nil)
 
@@ -93,7 +82,7 @@ func TestRollWithHooks_ModifierAddsExtraDie(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "tag:Warlike", mod)
 
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{6, 8, 9}}
+	roller := &dicetest.Cycle{Values: []int{6, 8, 9}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, acceptAllCollector{}, roller, faction, nil, nil)
 
@@ -114,7 +103,7 @@ func TestRollWithHooks_SelectModifiersReturningEmpty(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "tag:Warlike", mod)
 
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{4, 7}}
+	roller := &dicetest.Cycle{Values: []int{4, 7}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, rejectAllCollector{}, roller, faction, nil, nil)
 
@@ -133,7 +122,7 @@ func TestRollWithHooks_BudgetGating(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "tag:Warlike", mod)
 
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{5, 7, 6, 8}}
+	roller := &dicetest.Cycle{Values: []int{5, 7, 6, 8}}
 
 	// First call: offer should be accepted, adding an extra die and incrementing the budget.
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, acceptAllCollector{}, roller, faction, nil, nil)
@@ -169,7 +158,7 @@ func TestRollWithHooks_ResultHookRerollsIndex(t *testing.T) {
 
 	faction := newFaction("A")
 	// Die 0 rolls 1 initially; reroll gives 9.
-	roller := &fixedRoller{values: []int{1, 7, 9}}
+	roller := &dicetest.Cycle{Values: []int{1, 7, 9}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, acceptAllCollector{}, roller, faction, nil, nil)
 
@@ -191,7 +180,7 @@ func TestRollWithHooks_ElectiveRerollRejected(t *testing.T) {
 	registry.RegisterRollResultHook(hooks.GlobalScope(), "tag:Fanatical", hook)
 
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{3, 7}}
+	roller := &dicetest.Cycle{Values: []int{3, 7}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, rejectAllCollector{}, roller, faction, nil, nil)
 
@@ -211,7 +200,7 @@ func TestRollWithHooks_RerollBudgetKey(t *testing.T) {
 	registry.RegisterRollResultHook(hooks.GlobalScope(), "tag:Reroll", hook)
 
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{2, 8, 6}}
+	roller := &dicetest.Cycle{Values: []int{2, 8, 6}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, acceptAllCollector{}, roller, faction, nil, nil)
 
@@ -245,7 +234,7 @@ func TestRollWithHooks_MultipleModifiersFireInOrder(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "B", modB)
 
 	faction := newFaction("A")
-	roller := &fixedRoller{values: []int{5, 5, 5, 5}}
+	roller := &dicetest.Cycle{Values: []int{5, 5, 5, 5}}
 
 	result := RollWithHooks(rollCtx(), baseRoll(), registry, acceptAllCollector{}, roller, faction, nil, nil)
 
@@ -320,7 +309,7 @@ func TestRollWithHooks_OpponentAssetHookOnWorldFires(t *testing.T) {
 	registry.RegisterRollModifier(hooks.AssetScope("beta", "b-1"), "b-1", addDieModifier("b-1", ""))
 	collector := &recordingCollector{}
 
-	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
 	if len(result.Dice) != 3 {
 		t.Fatalf("expected 3 dice (2 base + 1 from beta's asset), got %d", len(result.Dice))
@@ -337,7 +326,7 @@ func TestRollWithHooks_OpponentFactionHookFires(t *testing.T) {
 	registry.RegisterRollModifier(hooks.FactionScope("beta"), "beta-tag", addDieModifier("beta-tag", ""))
 	collector := &recordingCollector{}
 
-	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
 	if len(result.Dice) != 3 {
 		t.Fatalf("expected 3 dice (2 base + 1 from beta's faction hook), got %d", len(result.Dice))
@@ -361,7 +350,7 @@ func TestRollWithHooks_OfferFilterRemovesOffers(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "global", addDieModifier("global", ""))
 	registry.RegisterRollOfferFilter(hooks.AssetScope("beta", "b-1"), "b-1", stripAllFilter{})
 
-	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice (the opponent's filter struck the offer), got %d", len(result.Dice))
@@ -373,7 +362,7 @@ func TestRollWithHooks_OwnAssetOnWorldFires(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.AssetScope("alpha", "a-1"), "a-1", addDieModifier("a-1", ""))
 
-	result := RollWithHooks(contestCtx(alpha, nil, "Krylos"), baseRoll(), registry, acceptAllCollector{}, &fixedRoller{values: []int{5}}, alpha, rollState(alpha), nil)
+	result := RollWithHooks(contestCtx(alpha, nil, "Krylos"), baseRoll(), registry, acceptAllCollector{}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha), nil)
 
 	if len(result.Dice) != 3 {
 		t.Fatalf("expected 3 dice (own asset on world), got %d", len(result.Dice))
@@ -385,7 +374,7 @@ func TestRollWithHooks_AssetOffWorldDoesNotFire(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.AssetScope("alpha", "a-1"), "a-1", addDieModifier("a-1", ""))
 
-	result := RollWithHooks(contestCtx(alpha, nil, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5}}, alpha, rollState(alpha), nil)
+	result := RollWithHooks(contestCtx(alpha, nil, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha), nil)
 
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice (asset on another world), got %d", len(result.Dice))
@@ -399,7 +388,7 @@ func TestRollWithHooks_NamedAssetInFlightFires(t *testing.T) {
 	ctx := contestCtx(alpha, nil, "")
 	ctx.Asset = alpha.Assets["a-1"]
 
-	result := RollWithHooks(ctx, baseRoll(), registry, acceptAllCollector{}, &fixedRoller{values: []int{5}}, alpha, rollState(alpha), nil)
+	result := RollWithHooks(ctx, baseRoll(), registry, acceptAllCollector{}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha), nil)
 
 	if len(result.Dice) != 3 {
 		t.Fatalf("expected 3 dice (rolling asset in flight), got %d", len(result.Dice))
@@ -412,7 +401,7 @@ func TestRollWithHooks_OpponentBudgetSpentOnOpponent(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.AssetScope("beta", "b-1"), "b-1", addDieModifier("b-1", "k"))
 	factionState := rollState(alpha, beta)
-	roller := &fixedRoller{values: []int{5}}
+	roller := &dicetest.Cycle{Values: []int{5}}
 
 	RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, acceptAllCollector{}, roller, alpha, factionState, nil)
 
@@ -442,7 +431,7 @@ func TestRollWithHooks_OpponentRerollBudgetSpentOnOpponent(t *testing.T) {
 	factionState := rollState(alpha, beta)
 	collector := &recordingCollector{}
 	// First roll: [2, 8], die 0 rerolled to 6. Second roll: [3, 4], no reroll.
-	roller := &fixedRoller{values: []int{2, 8, 6, 3, 4}}
+	roller := &dicetest.Cycle{Values: []int{2, 8, 6, 3, 4}}
 
 	result := RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, roller, alpha, factionState, nil)
 
@@ -469,7 +458,7 @@ func TestRollWithHooks_NoOffersSkipsCollector(t *testing.T) {
 	registry := hooks.NewRegistry()
 	faction := newFaction("A")
 
-	result := RollWithHooks(rollCtx(), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5, 7}}, faction, nil, nil)
+	result := RollWithHooks(rollCtx(), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5, 7}}, faction, nil, nil)
 
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice, got %d", len(result.Dice))
@@ -487,7 +476,7 @@ func TestRollWithHooks_ScopeOrder(t *testing.T) {
 	registry.RegisterRollModifier(hooks.AssetScope("beta", "b-1"), "b-1", addDieModifier("b-1", ""))
 	collector := &recordingCollector{}
 
-	RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
 	want := []string{"global", "faction", "a-1", "a-2", "b-1"}
 	if len(collector.offers) != len(want) {
@@ -516,7 +505,7 @@ func TestRollWithHooks_CapturedAssetOldBucketDoesNotFire(t *testing.T) {
 		"the new owner rolls": {alpha, beta},
 	} {
 		t.Run(name, func(t *testing.T) {
-			result := RollWithHooks(contestCtx(rolling.actor, rolling.opponent, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &fixedRoller{values: []int{5}}, rolling.actor, factionState, nil)
+			result := RollWithHooks(contestCtx(rolling.actor, rolling.opponent, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5}}, rolling.actor, factionState, nil)
 			if len(result.Dice) != 2 {
 				t.Fatalf("expected 2 dice (old bucket unreached), got %d", len(result.Dice))
 			}
@@ -530,7 +519,7 @@ func TestRollWithHooks_NilCollectorTakesOnlyFreeOffers(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "limited", addDieModifier("limited", "tag:Warlike"))
 	faction := newFaction("A")
 
-	result := RollWithHooks(rollCtx(), baseRoll(), registry, nil, &fixedRoller{values: []int{5, 7, 6}}, faction, nil, nil)
+	result := RollWithHooks(rollCtx(), baseRoll(), registry, nil, &dicetest.Cycle{Values: []int{5, 7, 6}}, faction, nil, nil)
 
 	if len(result.Dice) != 3 {
 		t.Fatalf("expected 3 dice (2 base + the free die), got %d", len(result.Dice))
@@ -556,7 +545,7 @@ func TestRollWithHooks_NilCollectorDeclinesElectiveRerolls(t *testing.T) {
 				Source: "reroll", Indices: []int{0}, Elective: tc.elective,
 			}})
 
-			result := RollWithHooks(rollCtx(), baseRoll(), registry, nil, &fixedRoller{values: []int{1, 7, 9}}, newFaction("A"), nil, nil)
+			result := RollWithHooks(rollCtx(), baseRoll(), registry, nil, &dicetest.Cycle{Values: []int{1, 7, 9}}, newFaction("A"), nil, nil)
 
 			if result.Dice[0] != tc.want {
 				t.Errorf("die 0 = %d, want %d", result.Dice[0], tc.want)
@@ -574,7 +563,7 @@ func TestRollWithHooks_BystanderFactionHookFires(t *testing.T) {
 	registry.RegisterRollModifier(hooks.AssetScope("gamma", "g-1"), "g-1", addDieModifier("g-1", ""))
 	collector := &recordingCollector{}
 
-	RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &fixedRoller{values: []int{5}}, alpha, rollState(alpha, beta, gamma), nil)
+	RollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta, gamma), nil)
 
 	if len(collector.offers) != 1 || collector.offers[0].Source != "gamma-tag" || collector.offers[0].FactionID != "gamma" {
 		t.Errorf("offers = %+v, want only gamma's faction hook, stamped gamma: a bystander's assets are not read", collector.offers)
