@@ -34,6 +34,10 @@ func NewAttack(collector action.Collector, roller dice.Roller, registry *hooks.R
 
 func (attack *AttackAction) Name() string { return "Attack" }
 
+func (attack *AttackAction) rolls(factionState *state.FactionState, rulebook *rulebook.Rulebook) dice.Engine {
+	return dice.Engine{Registry: attack.registry, Collector: attack.collector, Roller: attack.roller, FactionState: factionState, Rulebook: rulebook}
+}
+
 func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, attacker := range eligibleAttackers(faction, factionState) {
 		if attackerHasTarget(attacker, rulebook, attack.registry, attack.index) {
@@ -121,50 +125,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState, rulebook).Mutations...)
 
-		attackResult := dice.RollWithHooks(
-			hooks.RollContext{
-				Phase:             domain.RollPhaseAttack,
-				Actor:             faction,
-				Opponent:          defenderFaction,
-				Attribute:         attackerDef.Attack.AttackerStat,
-				OpponentAttribute: attackerDef.Attack.DefenderStat,
-				Asset:             attacker,
-				OpponentAsset:     defender,
-				World:             attacker.Location.WorldID,
-				Action:            attack.Name(),
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.AttackerStat)},
-			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
+		outcome := attack.rolls(factionState, rulebook).Contest(
+			domain.ContestRollAttack,
+			dice.Side{Faction: faction, Asset: attacker, Stat: attackerDef.Attack.AttackerStat},
+			dice.Side{Faction: defenderFaction, Asset: defender, Stat: attackerDef.Attack.DefenderStat},
+			attacker.Location.WorldID, attack.Name(),
 		)
-		attackRoll := attackResult.Sum
-
-		defResult := dice.RollWithHooks(
-			hooks.RollContext{
-				Phase:             domain.RollPhaseDefense,
-				Actor:             defenderFaction,
-				Opponent:          faction,
-				Attribute:         attackerDef.Attack.DefenderStat,
-				OpponentAttribute: attackerDef.Attack.AttackerStat,
-				Asset:             defender,
-				OpponentAsset:     attacker,
-				World:             attacker.Location.WorldID,
-				Action:            attack.Name(),
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: defenderFaction.StatScore(attackerDef.Attack.DefenderStat)},
-			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
-		)
-		defenseRoll := defResult.Sum
-
-		tieCtx := hooks.RollContext{
-			Phase:    domain.RollPhaseAttack,
-			Actor:    faction,
-			Opponent: defenderFaction,
-			Asset:    attacker,
-			World:    attacker.Location.WorldID,
-		}
-		tieOutcome := dice.ResolveTie(attack.registry, tieCtx, factionState)
-		attackerWins := attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins)
-		defenderWins := defenseRoll > attackRoll || (defenseRoll == attackRoll && tieOutcome != hooks.TieAttackerWins)
+		attackerWins := outcome.AttackLands()
+		defenderWins := outcome.CounterLands()
 
 		// Attack damage: attacker wins on tie (TieStandard/TieAttackerWins) or strictly greater.
 		if attackerWins {
@@ -253,22 +221,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 // own defense. A hit deals its attack damage; a miss deals its counter damage, if
 // it has one. The cause is not "attack", so no own_attack_hit fires on it.
 func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *domain.Asset, attackerDef *domain.AssetDefinition, defenderFaction *domain.Faction, source *domain.Asset, tracker *sequenceTracker, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
-	worldID := attacker.Location.WorldID
-	// deliberate: Opponent nil, not faction, because Actor == Opponent would ask every asset hook on the world twice (overview Decision 9).
-	attackRoll := dice.RollWithHooks(
-		hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Attribute: attackerDef.Attack.AttackerStat, OpponentAttribute: attackerDef.Attack.DefenderStat, Asset: attacker, World: worldID, Action: attack.Name()},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.AttackerStat)},
-		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
-	).Sum
-	defenseRoll := dice.RollWithHooks(
-		hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: faction, Attribute: attackerDef.Attack.DefenderStat, OpponentAttribute: attackerDef.Attack.AttackerStat, Asset: attacker, World: worldID, Action: attack.Name()},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.StatScore(attackerDef.Attack.DefenderStat)},
-		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
-	).Sum
-	tieOutcome := dice.ResolveTie(attack.registry, hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: faction, Asset: attacker, World: worldID}, factionState)
-
+	outcome := attack.rolls(factionState, rulebook).Contest(
+		domain.ContestRollAttack,
+		dice.Side{Faction: faction, Asset: attacker, Stat: attackerDef.Attack.AttackerStat},
+		dice.Side{Faction: faction, Asset: attacker, Stat: attackerDef.Attack.DefenderStat},
+		attacker.Location.WorldID, attack.Name(),
+	)
 	damage := attackerDef.Counter
-	if attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins) {
+	if outcome.AttackLands() {
 		damage = attackerDef.Attack.Damage
 	}
 	if damage == nil {

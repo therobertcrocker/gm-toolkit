@@ -76,6 +76,9 @@ Planning calls, shown to Robert before writing:
 - **Two more stat conversions in tests** (Commit 5) — `expand_influence_test.go:438-441` drops `string(...)`, and the `cunningDefense` helper in `bonus_die_test.go` takes a `domain.FactionStat`; no expected value moved
 - **A test parameter renamed** (Commit 6) — `rollThroughDispatcher` in `reroll_test.go` had a parameter called `dice`, which hides the package once the call reads `dice.RollWithHooks`; it is now `values`. No expected value moved
 - **The import line also reaches `internal/spatial`** (Commit 8) — `go list -deps` on `engine/dice` shows it through `domain`, so the Shared Context claim of "nothing else in the project" was wrong; `spatial` imports nothing from the project, so the package still cannot close a cycle. Shared Context is corrected
+- **Attack's line ranges were one low** (Commit 9) — the `dice` import from Commit 8 moved the code down a line; the matchup is `attack.go:124-167` and the counterstrike `:256-273`. Commit 9's tasks are corrected
+- **An attack's tie context now carries `Action`** (Commit 9) — the old literals at the matchup and the counterstrike left it out and `Engine.Contest` fills it. No reader sees the difference: `lose_ties.go:31` is the only production resolver and reads only `Actor` and `Opponent`
+- **Two gaps left as they are** (Commit 9) — the planned name `outcome` for the contest is reused by the `fireMatchup` result in the nested `own_defense_win` block; it compiles and nothing below reads the contest's, so the plan's name stays. `TestAttack_TieResolver_DefenderWins` is the only Attack-level tie-resolver test; a tie given to the attacker is held one level down, by `TestOutcome_Readings`
 
 ---
 
@@ -159,7 +162,7 @@ TOML and docs.
   - Commit 6 — `refactor: move RollWithHooks and ResolveTie into engine/dice` (2 tasks)
   - Commit 7 — `fix: reroll keeps each die's sides` (2 tasks)
   - Commit 8 — `refactor: add Stat, Contest and Gate routes` (2 tasks)
-- [ ] **Phase 4 — Attack action**
+- [x] **Phase 4 — Attack action**
   - Commit 9 — `refactor: Attack rolls through the dice routes` (3 tasks)
 - [ ] **Phase 5 — Expand Influence**
   - Commit 10 — `refactor: Expand Influence rolls through the dice routes` (3 tasks)
@@ -743,7 +746,7 @@ func (attack *AttackAction) rolls(factionState *state.FactionState, rulebook *ru
 
 ##### Task 2 — `attack.go`, the matchup
 
-Replace `attack.go:123-166` (from `attackResult := dispatch.RollWithHooks(` to the `defenderWins :=` line) with:
+Replace `attack.go:124-167` (from `attackResult := dice.RollWithHooks(` to the `defenderWins :=` line) with:
 
 ```go
 		outcome := attack.rolls(factionState, rulebook).Contest(
@@ -758,7 +761,7 @@ Replace `attack.go:123-166` (from `attackResult := dispatch.RollWithHooks(` to t
 
 ##### Task 3 — `attack.go`, the counterstrike
 
-Replace `attack.go:255-272` (from `worldID :=` to the closing brace of the `if`) with the lines below. The fence-sign from `:256` now lives in `Engine.Contest`.
+Replace `attack.go:256-273` (from `worldID :=` to the closing brace of the `if`) with the lines below. The fence-sign from `:257` now lives in `Engine.Contest`.
 
 ```go
 	outcome := attack.rolls(factionState, rulebook).Contest(
