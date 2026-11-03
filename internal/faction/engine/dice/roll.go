@@ -11,14 +11,14 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// RollWithHooks executes a dice roll with Cat 1 (RollModifier) hooks applied
+// rollWithHooks executes a dice roll with Cat 1 (RollModifier) hooks applied
 // before rolling and Cat 2 (RollResultHook) hooks applied after. It consults the
 // buckets rollScopes lists, so the opponent's faction and asset hooks and hooks on
 // the roll's world reach the roll. Each offer and directive is stamped with the
 // faction that registered it, and its budget is read and spent on that faction.
 // A nil collector asks no one: Cat 1 takes every offer with no budget and skips
 // the rest, and Cat 2 declines every elective reroll (overview Decision 2).
-func RollWithHooks(
+func rollWithHooks(
 	ctx hooks.RollContext,
 	baseRoll domain.DiceRoll,
 	registry *hooks.Registry,

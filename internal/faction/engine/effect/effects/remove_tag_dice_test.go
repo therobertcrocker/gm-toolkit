@@ -129,11 +129,13 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	})
 	collector := &rollCollector{accept: true}
 
-	ctx := hooks.RollContext{
-		Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, Attribute: domain.StatForce,
-		OpponentAsset: alpha.Assets["bm"], World: "Krylos", Action: "Attack",
-	}
-	result := dice.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Force}, registry, collector, &dicetest.Sequence{Values: []int{4}}, beta, factionState, nil)
+	rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: []int{4}}, FactionState: factionState}
+	result := rolls.Stat(
+		domain.RollPhaseAttack,
+		dice.Side{Faction: beta, Stat: domain.StatForce},
+		dice.Side{Faction: alpha, Asset: alpha.Assets["bm"]},
+		"Krylos", "Attack",
+	)
 
 	if len(result.Dice) != 1 || collector.selections != 0 {
 		t.Errorf("dice %v, selections %d; want one die and no prompt", result.Dice, collector.selections)

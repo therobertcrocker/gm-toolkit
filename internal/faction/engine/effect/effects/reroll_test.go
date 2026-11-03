@@ -76,7 +76,8 @@ func rollOn(factionState *state.FactionState, actorID, opponentID, world string)
 }
 
 func rollThroughDispatcher(factionState *state.FactionState, registry *hooks.Registry, collector hooks.Collector, ctx hooks.RollContext, values ...int) hooks.RollResult {
-	return dice.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &dicetest.Sequence{Values: values}, ctx.Actor, factionState, nil)
+	rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: values}, FactionState: factionState}
+	return rolls.Stat(ctx.Phase, dice.Side{Faction: ctx.Actor}, dice.Side{Faction: ctx.Opponent}, ctx.World, ctx.Action)
 }
 
 func TestReroll_OwnRerollPicksLowestDie(t *testing.T) {

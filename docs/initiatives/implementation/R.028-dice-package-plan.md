@@ -84,6 +84,10 @@ Planning calls, shown to Robert before writing:
 - **One test comment reworded** (Commit 10) — `TestExpandInfluence_RollsCarryContext` named `RollWithHooks`, which goes private in Commit 12 and which Commit 12's list does not cover; it now says "the hooks". No expected value moved
 - **Commit 12 Task 4 corrected** (Commit 10) — it still asked to rename `rollThroughDispatcher`'s `dice` parameter, which Commit 6 already did; that instruction is removed
 - **The same-faction rule does not reach the ability gate** (Commit 11) — `Contest` drops `Opponent` when both sides are one faction and the old `passesGate` did not, but the two cannot meet: `otherFactions` and `assetCandidates` leave out the acting faction, and no step in `rulebooks/swn` pairs a contest with `target = "self"`
+- **Commit 12 Task 3 reaches two more files** (Commit 12) — the plan listed `roll.go` and `stat.go` only. `roll_test.go` is in the same package and its 29 calls take the new name; its `TestRollWithHooks_*` test names stay, since a test name needs the capital. The three comments in `hooks/types.go` now say "the hooked roll", because `hooks` cannot name a private function of `dice`
+- **The expected change in Task 4 did not happen** (Commit 12) — the three base rolls with no modifier all roll a stat of 0: `StatScore` returns 0 for the empty stat `rollThroughDispatcher` passes, and the Warlike tests' factions have no `Force`. No expected value moved. Task 4 is corrected, with its line numbers, which were one low
+- **Five effect-gate tests, renamed** (Commit 12) — Task 4 said six; the file has five. They are now `TestEffectGate*`, because `contestPasses` is gone; every case and expected value stays. Task 4 is corrected
+- **Gap left open: tracker rows still say `RollWithHooks`** (Commit 12) — `F.025`, `F.037` and `B.043` in `planned-work.md` name the old exported function, and Commit 16's list does not cover them. They still describe the right code; left for the initiative close, which edits the tracker anyway. The arc plan and `action-result-panel-discovery.md` are snapshots and stay
 
 ---
 
@@ -171,7 +175,7 @@ TOML and docs.
   - Commit 9 — `refactor: Attack rolls through the dice routes` (3 tasks)
 - [x] **Phase 5 — Expand Influence**
   - Commit 10 — `refactor: Expand Influence rolls through the dice routes` (3 tasks)
-- [ ] **Phase 6 — Both gates**
+- [x] **Phase 6 — Both gates**
   - Commit 11 — `refactor: ability gate uses dice.Gate` (1 task)
   - Commit 12 — `refactor: effect gate uses dice.Gate and rollWithHooks goes private` (4 tasks)
 - [ ] **Phase 7 — Ability step split**
@@ -927,13 +931,13 @@ const contestAction = ""
 
 ##### Task 3 — `dice/roll.go`, `dice/stat.go`
 
-Rename `RollWithHooks` to `rollWithHooks`. The compiler then lists every outside caller left.
+Rename `RollWithHooks` to `rollWithHooks`, with the 29 calls in `dice/roll_test.go`. The compiler then lists every outside caller left. The three comments in `hooks/types.go` say "the hooked roll".
 
 ##### Task 4 — the tests
 
-- `effects/contest_test.go`: add a local helper that builds the `Engine` and calls `Gate`. The six tests keep their cases and expected values.
-- The seven outside calls (`bonus_die_test.go:153`, `:162`, `:191`, `:192`, `:216`; `remove_tag_dice_test.go:135`; `reroll_test.go:78`) call `Engine.Stat`.
-- **Expected change:** `bonus_die_test.go:191-192`, `remove_tag_dice_test.go:135` and `rollThroughDispatcher` pass a base roll with no modifier, but `Stat` always adds the stat. Where the faction's stat is not 0, add it to the expected sum. The hook behaviour under test does not change.
+- `effects/contest_test.go`: add a local helper that builds the `Engine` and calls `Gate`. The five tests become `TestEffectGate*` and keep their cases and expected values.
+- The seven outside calls (`bonus_die_test.go:154`, `:163`, `:192`, `:193`, `:217`; `remove_tag_dice_test.go:136`; `reroll_test.go:79`) call `Engine.Stat`.
+- **No expected value moves:** `Stat` always adds the stat, but `bonus_die_test.go:192-193` and `:217` roll a stat of 0, and `rollThroughDispatcher` passes no stat, which `StatScore` reads as 0. `remove_tag_dice_test.go:136` already added it.
 
 ##### Commit message
 

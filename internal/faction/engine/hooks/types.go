@@ -45,18 +45,18 @@ func (rollState *RollState) AddDie(sides int) {
 	rollState.extraDice = append(rollState.extraDice, sides)
 }
 
-// SetKeepHighest instructs RollWithHooks to retain only the n highest dice
+// SetKeepHighest instructs the hooked roll to retain only the n highest dice
 // after rolling all base and extra dice.
 func (rollState *RollState) SetKeepHighest(n int) {
 	rollState.keepHighest = n
 }
 
-// KeepHighest returns the keep-highest setting, consumed by RollWithHooks.
+// KeepHighest returns the keep-highest setting, consumed by the hooked roll.
 func (rollState *RollState) KeepHighest() int {
 	return rollState.keepHighest
 }
 
-// ExtraDice returns the queued extra dice, consumed by RollWithHooks.
+// ExtraDice returns the queued extra dice, consumed by the hooked roll.
 func (rollState *RollState) ExtraDice() []int {
 	return rollState.extraDice
 }

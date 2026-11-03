@@ -44,7 +44,7 @@ func (engine Engine) Stat(phase domain.RollPhase, side, opponent Side, world, ac
 		Detection:         side.Detects,
 	}
 	base := domain.DiceRoll{NumDice: 1, Sides: statDieSides, Modifier: side.Faction.StatScore(side.Stat)}
-	return RollWithHooks(ctx, base, engine.Registry, engine.Collector, engine.Roller, side.Faction, engine.FactionState, engine.Rulebook)
+	return rollWithHooks(ctx, base, engine.Registry, engine.Collector, engine.Roller, side.Faction, engine.FactionState, engine.Rulebook)
 }
 
 // Outcome is a rolled contest. Both sides' rolls stay on it for the roll card.

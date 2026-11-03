@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
@@ -29,7 +30,14 @@ func cunningContest(roller domain.ContestRoller, roll domain.ContestRoll) domain
 	}
 }
 
-func TestContestPasses(t *testing.T) {
+// rollEffectGate builds the Engine as the effect-gate callers do, with no collector,
+// and calls Gate.
+func rollEffectGate(contest domain.EffectContest, declaring, target dice.Side, world string, registry *hooks.Registry, factionState *state.FactionState, values ...int) bool {
+	rolls := dice.Engine{Registry: registry, Roller: &dicetest.Sequence{Values: values}, FactionState: factionState}
+	return rolls.Gate(contest.Contest, contest.Roller, declaring, target, world, contestAction)
+}
+
+func TestEffectGate(t *testing.T) {
 	declaring := &domain.Faction{ID: "alpha", Cunning: 3}
 	target := &domain.Faction{ID: "beta", Cunning: 2}
 	cases := []struct {
@@ -47,20 +55,19 @@ func TestContestPasses(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			roll := contestRoll{
-				contest:   cunningContest(tc.roller, domain.ContestRollTest),
-				declaring: declaring,
-				target:    target,
-				roller:    &dicetest.Sequence{Values: tc.rolls},
-			}
-			if got := contestPasses(roll); got != tc.want {
-				t.Errorf("contestPasses = %v, want %v", got, tc.want)
+			got := rollEffectGate(
+				cunningContest(tc.roller, domain.ContestRollTest),
+				dice.Side{Faction: declaring}, dice.Side{Faction: target},
+				"", nil, nil, tc.rolls...,
+			)
+			if got != tc.want {
+				t.Errorf("gate = %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestContestPasses_RollPhasesAndSides(t *testing.T) {
+func TestEffectGate_RollPhasesAndSides(t *testing.T) {
 	declaring := &domain.Faction{ID: "alpha", Cunning: 3, Wealth: 1}
 	target := &domain.Faction{ID: "beta", Cunning: 2, Wealth: 4}
 	cells := &domain.Asset{ID: "cells"}
@@ -83,10 +90,11 @@ func TestContestPasses_RollPhasesAndSides(t *testing.T) {
 				Roller:  domain.ContestRollerSelf,
 			}
 
-			contestPasses(contestRoll{
-				contest: contest, declaring: declaring, declaringAsset: cells, target: target, targetAsset: spy,
-				world: "Krylos", registry: registry, roller: &dicetest.Sequence{Values: []int{5, 5}},
-			})
+			rollEffectGate(
+				contest,
+				dice.Side{Faction: declaring, Asset: cells}, dice.Side{Faction: target, Asset: spy},
+				"Krylos", registry, nil, 5, 5,
+			)
 
 			want := []hooks.RollContext{
 				{Phase: tc.attack, Actor: declaring, Opponent: target, Attribute: "Cunning", OpponentAttribute: "Wealth", Asset: cells, OpponentAsset: spy, World: "Krylos"},
@@ -99,7 +107,7 @@ func TestContestPasses_RollPhasesAndSides(t *testing.T) {
 	}
 }
 
-func TestContestPasses_AttackTiesAskTheTieResolvers(t *testing.T) {
+func TestEffectGate_AttackTiesAskTheTieResolvers(t *testing.T) {
 	cases := []struct {
 		name      string
 		fanatical string
@@ -127,23 +135,20 @@ func TestContestPasses_AttackTiesAskTheTieResolvers(t *testing.T) {
 				},
 				Registry: registry,
 			})
-			roll := contestRoll{
-				contest:      cunningContest(domain.ContestRollerSelf, tc.roll),
-				declaring:    declaring,
-				target:       target,
-				registry:     registry,
-				factionState: factionState,
-				roller:       &dicetest.Sequence{Values: []int{5, 5}},
-			}
 
-			if got := contestPasses(roll); got != tc.want {
-				t.Errorf("contestPasses = %v, want %v", got, tc.want)
+			got := rollEffectGate(
+				cunningContest(domain.ContestRollerSelf, tc.roll),
+				dice.Side{Faction: declaring}, dice.Side{Faction: target},
+				"", registry, factionState, 5, 5,
+			)
+			if got != tc.want {
+				t.Errorf("gate = %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestContestPasses_TakesOnlyFreeDice(t *testing.T) {
+func TestEffectGate_TakesOnlyFreeDice(t *testing.T) {
 	declaring := &domain.Faction{ID: "alpha", Cunning: 1, Tags: []string{"T"}, HookBudgets: map[string]int{}}
 	target := &domain.Faction{ID: "beta", Cunning: 1}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": declaring, "beta": target}}
@@ -161,25 +166,22 @@ func TestContestPasses_TakesOnlyFreeDice(t *testing.T) {
 			Holder: effect.Holder{Faction: declaring, Tag: &domain.Tag{ID: "T", Name: "Tag"}}, Entry: entry, Registry: registry,
 		})
 	}
-	roll := contestRoll{
-		contest:      cunningContest(domain.ContestRollerSelf, domain.ContestRollTest),
-		declaring:    declaring,
-		target:       target,
-		registry:     registry,
-		factionState: factionState,
-		// alpha rolls 2 and its free die 9, keeping 9; beta rolls 5.
-		roller: &dicetest.Sequence{Values: []int{2, 9, 5}},
-	}
 
-	if !contestPasses(roll) {
-		t.Error("contestPasses = false, want true: the free die's 9 beats beta's 5")
+	// alpha rolls 2 and its free die 9, keeping 9; beta rolls 5.
+	passed := rollEffectGate(
+		cunningContest(domain.ContestRollerSelf, domain.ContestRollTest),
+		dice.Side{Faction: declaring}, dice.Side{Faction: target},
+		"", registry, factionState, 2, 9, 5,
+	)
+	if !passed {
+		t.Error("gate = false, want true: the free die's 9 beats beta's 5")
 	}
 	if len(declaring.HookBudgets) != 0 {
 		t.Errorf("HookBudgets = %v, want none spent: the once-per-turn die waits", declaring.HookBudgets)
 	}
 }
 
-func TestContestPasses_DetectionMarksTheDeclaringSide(t *testing.T) {
+func TestEffectGate_DetectionMarksTheDeclaringSide(t *testing.T) {
 	cases := []struct {
 		name   string
 		roller domain.ContestRoller
@@ -194,14 +196,12 @@ func TestContestPasses_DetectionMarksTheDeclaringSide(t *testing.T) {
 			registry := hooks.NewRegistry()
 			registry.RegisterRollModifier(hooks.GlobalScope(), "recorder", recorder)
 
-			contestPasses(contestRoll{
-				contest:          cunningContest(tc.roller, domain.ContestRollTest),
-				declaringDetects: true,
-				declaring:        &domain.Faction{ID: "alpha"},
-				target:           &domain.Faction{ID: "beta"},
-				registry:         registry,
-				roller:           &dicetest.Sequence{Values: []int{5, 5}},
-			})
+			rollEffectGate(
+				cunningContest(tc.roller, domain.ContestRollTest),
+				dice.Side{Faction: &domain.Faction{ID: "alpha"}, Detects: true},
+				dice.Side{Faction: &domain.Faction{ID: "beta"}},
+				"", registry, nil, 5, 5,
+			)
 
 			var got []bool
 			for _, ctx := range recorder.seen {

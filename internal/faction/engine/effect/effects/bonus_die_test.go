@@ -150,8 +150,8 @@ func TestBonusDie_EndToEndThroughDispatcher(t *testing.T) {
 
 	t.Run("owner's Cunning attack gets the die", func(t *testing.T) {
 		collector := &rollCollector{accept: true}
-		ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Cunning", World: "Krylos", Action: "Attack"}
-		result := dice.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: alpha.Cunning}, registry, collector, &dicetest.Sequence{Values: []int{3, 9}}, alpha, factionState, nil)
+		rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: []int{3, 9}}, FactionState: factionState}
+		result := rolls.Stat(domain.RollPhaseAttack, dice.Side{Faction: alpha, Stat: domain.StatCunning}, dice.Side{Faction: beta}, "Krylos", "Attack")
 		if result.Sum != 9+alpha.Cunning {
 			t.Errorf("Sum = %d, want %d", result.Sum, 9+alpha.Cunning)
 		}
@@ -159,8 +159,8 @@ func TestBonusDie_EndToEndThroughDispatcher(t *testing.T) {
 
 	t.Run("rival's defense against the owner gets no die", func(t *testing.T) {
 		collector := &rollCollector{accept: true}
-		ctx := hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: beta, Opponent: alpha, Attribute: "Cunning", World: "Krylos", Action: "Attack"}
-		result := dice.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Cunning}, registry, collector, &dicetest.Sequence{Values: []int{3}}, beta, factionState, nil)
+		rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: []int{3}}, FactionState: factionState}
+		result := rolls.Stat(domain.RollPhaseDefense, dice.Side{Faction: beta, Stat: domain.StatCunning}, dice.Side{Faction: alpha}, "Krylos", "Attack")
 		if result.Sum != 3+beta.Cunning || collector.selections != 0 {
 			t.Errorf("Sum = %d, selections = %d; want %d and 0", result.Sum, collector.selections, 3+beta.Cunning)
 		}
@@ -189,8 +189,12 @@ func TestBonusDie_TagHolderOffersAFromTagDieOncePerTurn(t *testing.T) {
 	}
 
 	collector := &rollCollector{accept: true}
-	first := dice.RollWithHooks(attack, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &dicetest.Sequence{Values: []int{2, 9}}, alpha, factionState, nil)
-	second := dice.RollWithHooks(attack, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &dicetest.Sequence{Values: []int{2}}, alpha, factionState, nil)
+	rollForce := func(values ...int) hooks.RollResult {
+		rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: values}, FactionState: factionState}
+		return rolls.Stat(domain.RollPhaseAttack, dice.Side{Faction: alpha, Stat: domain.StatForce}, dice.Side{Faction: beta}, "Krylos", "")
+	}
+	first := rollForce(2, 9)
+	second := rollForce(2)
 	if first.Sum != 9 || second.Sum != 2 {
 		t.Errorf("sums = %d, %d; want 9 (die taken) then 2 (spent for the turn)", first.Sum, second.Sum)
 	}
@@ -212,9 +216,9 @@ func TestBonusDie_TagReachesNoRivalRollAgainstItsOwner(t *testing.T) {
 		Registry: registry,
 	})
 	collector := &rollCollector{accept: true}
-	betaAttacks := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, Attribute: "Force", World: "Krylos"}
+	rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: []int{3}}, FactionState: factionState}
 
-	result := dice.RollWithHooks(betaAttacks, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &dicetest.Sequence{Values: []int{3}}, beta, factionState, nil)
+	result := rolls.Stat(domain.RollPhaseAttack, dice.Side{Faction: beta, Stat: domain.StatForce}, dice.Side{Faction: alpha}, "Krylos", "")
 
 	if result.Sum != 3 || collector.selections != 0 {
 		t.Errorf("Sum = %d, selections = %d; want 3 and 0: alpha's tag is read but does not serve beta", result.Sum, collector.selections)

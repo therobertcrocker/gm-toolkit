@@ -70,17 +70,18 @@ func (contester *permissionContester) OfferContest(query hooks.PermissionQuery) 
 // no asset on the roll: it asks for one that is not there yet.
 func (contester *permissionContester) WinsContest(query hooks.PermissionQuery, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	self, _ := contester.holder.liveIn(contester.owner)
-	return contestPasses(contestRoll{
-		contest:        contester.contest,
-		declaring:      contester.owner,
-		declaringAsset: self,
-		target:         query.Requester,
-		world:          query.WorldID,
+	rolls := dice.Engine{
 		// deliberate: a nil collector, not a prompt, because the permission path holds only a PermissionCollector; the roll-card follow-on row gives it one (overview Decision 2).
-		collector:    nil,
-		registry:     contester.registry,
-		factionState: factionState,
-		rulebook:     rulebook,
-		roller:       contester.roller,
-	})
+		Collector:    nil,
+		Registry:     contester.registry,
+		Roller:       contester.roller,
+		FactionState: factionState,
+		Rulebook:     rulebook,
+	}
+	return rolls.Gate(
+		contester.contest.Contest, contester.contest.Roller,
+		dice.Side{Faction: contester.owner, Asset: self},
+		dice.Side{Faction: query.Requester},
+		query.WorldID, contestAction,
+	)
 }
