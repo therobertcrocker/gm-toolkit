@@ -36,6 +36,8 @@ recommendation (C-5, P-4, O-1) and the plan's In Plain Words. All of it landed.
   third copy of the same switch; `Sequence` and `Cycle` gained `Rolled()`, to keep seven
   "rolled exactly this many dice" checks; `dice.md` gained a list of the roll orders that
   must hold; an attack's tie context now carries `Action`, which no reader sees.
+- **Added at this close:** the review closed both gaps the Decision Record left open (rows
+  beside a target roll, the dead tag contest check), and added two more load refusals.
 - **A correction along the way:** Decision 1 found that three entries (Fanatical, Book of
   Secrets, Psychic Academy) could reach amount dice on their plain words, against
   `E.004`'s "Rules calls to carry: None". Robert ruled that rerolls reach stat rolls only.
@@ -90,8 +92,12 @@ Yes, and the architecture pages moved with the code, which `A.001.7` did not man
   rulebook today uses it, so nothing breaks, but a rulebook with another stat die would have
   to extend the route. `R.026`'s audit is where it surfaces.
 - **GM data got stricter.** A `lock_out` with no block, or a `raise_tech_level` with rows,
-  no longer loads. Any campaign other than the sandbox needs
-  `campaign add-rules --replace` before it runs on this code.
+  no longer loads. Any campaign other than the sandbox needs a re-seed before it runs on
+  this code, and `campaign add-rules --replace` overwrites conflicting files, so a GM's
+  own edits to them need carrying over by hand. The loader also refuses rows with no `die`,
+  a `target_roll` on an effect that does not read it, and an amount that can roll zero or
+  less. The last is why `amount = "1d4-1"` no longer loads on `coin_gain`, `coin_steal`,
+  `self_damage` or `lock_out`; no shipped entry uses it.
 - **Old history keeps old text.** History files still say `transport_lockdown` as a fee's
   cause. Nothing reads it, and nothing shows a fee's cause.
 - **Docs still out of date:** the other stale parts of `hooks.md` stay with `D.010`. `E.004`
@@ -104,10 +110,10 @@ Yes, and the architecture pages moved with the code, which `A.001.7` did not man
 |---|---|---|
 | Delivered | 5 | Every part of C-5 landed, with both absorbed rows and no player-visible change |
 | Plan held | 4 | None of the 15 ratified decisions reversed; 37 Decision Record entries, mostly small corrections to task lists and line numbers |
-| Rework | | |
+| Rework | 4 | The review found 10 and 7 were fixed in one commit; no finding changed a game result, and the two that mattered were loader holes (a negative fee, a `target_roll` that gated nothing) |
 | Fit | 5 | Follows the data-driven rule and the loader's pattern; pages updated on the branch; each exception is named |
 | Simplicity | 4 | One small package with named routes, and `contest.go` shrinks to one constant; `StepResult` carries three fields where only one applies per step |
-| **Total** | | |
+| **Total** | **22 / 25** | Mean 4.4: above "as expected", held back by small plan corrections, loader gaps and one three-field result |
 
 **Verdict:** A clean refactor that did what it set out to do, on a plan that held; the one
 real catch, the rerolls reading, came from reading the whole rulebook in the Plan session.
@@ -117,7 +123,4 @@ and a text search was the reason.
 
 ## Follow-ups
 
-| ID | Item | Trigger | Detail |
-|---|---|---|---|
-| `R.029` | Tag contest check is dead code | -- | Every effect a tag may carry now needs a die, and the loader refuses a contest with a die first, so `step.Contest` in `checkTagAbility` cannot fire; delete it, or keep it to hold the rule if a tag ever gets an effect with no die (`R.028` Decision Record, Commit 13) |
-| `B.046` | Rows beside a target roll are dropped | -- | The loader reads `outcomes` only when a step has a `die`, so a step with `target_roll` and stray rows loads and ignores the rows; no shipped data does this; refuse it, as a die with a target roll is refused (`R.028` Decision Record, Commit 14) |
+None.

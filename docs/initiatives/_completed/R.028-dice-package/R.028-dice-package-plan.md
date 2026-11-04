@@ -14,11 +14,11 @@
 
 ## Context / Goal
 
-- Audit and target: [`E.004` exploration](../explorations/E.004-unifying-dice-rollhooks-exploration.md).
+- Audit and target: [`E.004` exploration](../../explorations/E.004-unifying-dice-rollhooks-exploration.md).
   There is no discovery doc, by design. `E.004` Terms and "Differences that must survive" bind
   this plan. The design calls C-5, P-4 and O-1 are settled there and are not re-opened here.
 - Absorbs `B.010` and the `lock_out` case from `R.026`.
-- Follow-on: [`R.025`](../../planned-work.md), `F.032`, `F.037`, `A.001.5`.
+- Follow-on: [`R.025`](../../../planned-work.md), `F.032`, `F.037`, `A.001.5`.
 
 ## Decisions Ratified in Planning
 

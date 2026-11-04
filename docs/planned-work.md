@@ -13,7 +13,6 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
 | `E.002` | Data-driven tags and goals | `exploration` | Complete | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
 | `E.004` | Unifying Dice and RollHooks | `exploration` | Complete | Each new contest forced a fresh decision about its roll path; the answer is one `engine/dice` package with a named route for each type of game roll, filed as `R.028`, ahead of the roll card (`R.025`) |
-| `R.028` | Dice package | `refactor` | In-Progress | New `engine/dice` gives each game roll a named route, with hooks on stat rolls only; no rule changes; an ability's step says which type it rolls; absorbs `B.010` and the `lock_out` case from `R.026`; ahead of `R.025` and `A.001.5`'s authoring passes; [plan](initiatives/implementation/R.028-dice-package-plan.md) |
 
 
 ---
@@ -70,7 +69,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.021` | Narrative Recap Surface | -- | `digest` builder + wire `Renderer` are built and unit-tested but unwired; no command or view renders a cycle recap. Add a frontend (CLI and/or TUI) that runs LoadCycle → Build → Render. |
 | `F.023` | Region-scoped movement limits | ready | Generalize relocate's `range = "region"` beyond the instant primitive: let speed/drift movement abilities cap reach by region membership, not just hex distance. Relocate proved the enumerator pattern (`WorldsInRegion`); the drift subsystem (`MovementOrder`/`DriftCost`/movement phase) is the harder lift deferred here. |
 | `F.024` | Collector form back-navigation | -- | Cancelling a multi-step ability form (e.g. relocate destinations) spends the faction's whole action via `ErrTurnCanceled`, and confirming a completed-but-empty form surfaces a false `ErrNoSelection` failure; add a discoverable cancel/back that unwinds to the asset/ability picker (then `SelectAction`) instead of burning the turn. Needs a re-prompt loop the linear action phase lacks today. Deferred from C11 (a-flag-ability-registry pre-merge review). |
-| `F.025` | Per-faction roll confirmation | after `A.003` | `RollWithHooks` asks the roll's one collector to confirm every elective directive, so a forced reroll (Book of Secrets) is confirmed by the roller's driver; route each directive to its `FactionID`'s driver once factions get separate drivers. |
+| `F.025` | Per-faction roll confirmation | after `A.003` | `rollWithHooks` asks the roll's one collector to confirm every elective directive, so a forced reroll (Book of Secrets) is confirmed by the roller's driver; route each directive to its `FactionID`'s driver once factions get separate drivers. |
 | `F.026` | Show why a target is refused | after `F.018` | An attack-eligibility hook (`restrict_attack`) drops a defender from the target list or cancels a counter with no reason shown; surface the refusing asset so the GM sees why a target is missing. Found in `A.001.3` Effort 4 Commit 4 review. |
 | `F.027` | TUI adapter tests | when next interface initiative | `tui/adapter` (1,176 lines) is the only implementation of the engine seam and has no tests; cover collector and observer paths with the engine test harness; `D.002` N7 |
 | `F.028` | In-transit assets can't be acted on | -- | An asset between worlds (no `WorldID`, cargo included) should be untouchable by actions; Refit already refuses it (`A.001.6` Effort 4 Decision 11); audit repair, sale, ability targets and the rest, then block them. |
@@ -82,7 +81,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.034` | Attacker labels name the world | -- | `attackerLabel` (`overlay/attack.go:71`) shows name, stat and damage only, so two Treacheries on different worlds read the same; add the world name. This does not fix `B.029`: same-world rows still match. Found in the sandbox combat test. |
 | `F.035` | Drop `(surcharged)` noise | -- | `overlay/purchaseenabler.go:19` tags every row `(surcharged)`, which says nothing when all rows carry it; say it once in the header and show the base cost next to the surcharged one. Found in manual test one, screenshot 06. |
 | `F.036` | Focus shown by more than color | -- | `styles.FormTheme()` (`styles/styles.go:47`) keeps huh's Charm confirm buttons, where only the fill color marks the focused choice; add a text cue (`> Keep`, brackets or underline) for monochrome and colorblind use. Found in manual test one, screenshots 09, 10 and 13. |
-| `F.037` | Contests that ask | after `R.025` | Tripwire Cells, Panopticon Matrix and Lobbyists roll through `RollWithHooks` with a nil collector, so limited dice (Machiavellian) and elective rerolls (Book of Secrets, Psychic Academy) never reach them; give them the roll card. Decide who sees it for a roll that fires after a batch or on another faction's turn; Lobbyists first, since its call site already prompts. `A.001.7` overview Decision 2. |
+| `F.037` | Contests that ask | after `R.025` | Tripwire Cells, Panopticon Matrix and Lobbyists roll through `dice.Gate` with a nil collector, so limited dice (Machiavellian) and elective rerolls (Book of Secrets, Psychic Academy) never reach them; give them the roll card. Decide who sees it for a roll that fires after a batch or on another faction's turn; Lobbyists first, since its call site already prompts. `A.001.7` overview Decision 2. |
 
 ### Refactors
 
@@ -105,7 +104,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
 | `R.024` | Clear inert `no_attack` records | when saves grow noisy | A Seditionists' `no_attack` stays on its target after the Seditionists die; `domain.AttackBlocked` skips it when read, so it only clutters saves. Clear it when its source leaves play. Deferred from `A.001.6` Effort 3 Decision 10. |
 | `R.025` | Roll card | after `R.028` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
-| `R.026` | Faux-data-driven rule audit | after `A.001.7` | Check each registrar and the engine code it feeds, and every other rule site (domain checks such as `CanPurchase`, loaders, resolvers, settings), for rule values or references held in Go, not in the data; move each into the entry or the settings. `R.028` takes the known case: `lock_out`'s 1d4 fee and asset-named cause (`lockdownHold`, `arrival.go`). `A.001.7` overview Decision 7, widened by R-6. |
+| `R.026` | Faux-data-driven rule audit | after `A.001.7` | Check each registrar and the engine code it feeds, and every other rule site (domain checks such as `CanPurchase`, loaders, resolvers, settings), for rule values or references held in Go, not in the data; move each into the entry or the settings. `A.001.7` overview Decision 7, widened by R-6. |
 | `R.027` | Registrar `faction`-scope sweep | -- | Audit every registrar for a `faction` scope that a tag would need, and land each with the tag that uses it; `grant_movement` and `ignore_coin_loss` still refuse a tag holder. `A.001.7` overview R-3. |
 
 #### 3. Driver
@@ -151,7 +150,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 |----|------|---------|--------|
 | `B.001` | Hardcoded goal ID | -- | `"G-012"` (Change Homeworld goal) is hardcoded in `change_homeworld.go`; silently breaks if the TOML ID changes. The asset half (Stealth) closed in `A.001.6`. |
 | `B.008` | Stale `ApplyBookkeeping` comment | -- | Doc comment claims it "advances the turn phase to `PhaseAction`", but `TurnState` has no phase field; phase order lives in the orchestrator. One-line comment fix. |
-| `B.010` | Reroll uses base die sides | with `R.028` | The reroll loop in `RollWithHooks` rerolls via `roller.Roll(baseRoll.Sides)`, so a Cat 1 die of other sides rerolls wrong. Inert today (all d10); Book of Secrets is the first real reroll user. |
 | `B.013` | Peaceable Kingdom misses a missed attack | -- | `peaceable_kingdom.go:20-36` detects an Attack from damage or attacker stealth-loss mutations; a miss by an unstealthed attacker emits neither, so the goal ("do not take an Attack action") does not reset. Found in `A.001.6` Effort 1, Commit 6. |
 | `B.014` | Capture misses a sibling-removed target | when Treachery hits a self-damager | `capture_target.go` cannot see a sibling reactor's output in its round, so a target that removes itself (Zealots' `self_damage`) still gets `AssetOwnerChanged`; the owner change then misses and the turn aborts. Fence-signed; found in `A.001.6` Effort 1 interim review. |
 | `B.016` | Hook budgets survive an aborted action | -- | `dispatch/lethal.go` and `dispatch/roll.go` spend once-per budgets on live state during Resolve; a prompt canceled later in the action drops its mutations but keeps the spend (a lost Medical Center restore or reroll); snapshot `HookBudgets` before `Run`, restore on error. Found in `A.001.6` Effort 2 interim review. |
@@ -164,7 +162,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `B.032` | Unaffordable grant reads as an error | -- | `runGrantedMovement` skips a Transit Web grant the faction cannot pay for on purpose, but `orchestrator.go:862` sends it to `OnError`, so the feed shows `error: relocate: insufficient Coin`. Found in the sandbox movement test. |
 | `B.039` | Goal selection lost in the TUI rebuild | -- | The rules let a faction pick a new goal at the start of its next turn; the old TUI's `phases/goal_select.go` (`0561d28`) prompted when `ActiveGoal == nil`, with start inputs for `G-012` and `G-004`, but `798cd45` deleted it with the old TUI and the rebuild never restored it, so after `GoalCompleted` a faction has no goal unless it takes Seize Planet or Change Homeworld; restore it as an engine step plus a collector ask, so it is not lost with a frontend again. Found in the `E.002` audit. |
 | `B.040` | Destroy the Foe has no target | -- | Only `destroy_the_foe.go` reads `ActiveGoal.TargetFactionID` and no production code writes it (two scenario tests set it by hand), so `G-008` gets no progress and cannot complete; the old goal selection never set it either. Likely fixed with `B.039`'s goal pick. Found in the `E.002` audit. |
-| `B.043` | `rival_roll` asks the wrong player | with `R.025` | `RollWithHooks` confirms an elective reroll through the roller's collector, so Psychic Academy's reroll on a rival is confirmed by the rival, and a contest with no collector always declines it; a once-per-turn gate would spend on the first rival roll. Settle before the Academy's entry lands. `A.001.7` Effort 3 Decision Record 3. |
+| `B.043` | `rival_roll` asks the wrong player | with `R.025` | `rollWithHooks` confirms an elective reroll through the roller's collector, so Psychic Academy's reroll on a rival is confirmed by the rival, and a contest with no collector always declines it; a once-per-turn gate would spend on the first rival roll. Settle before the Academy's entry lands. `A.001.7` Effort 3 Decision Record 3. |
 
 #### 3. Driver
 
@@ -291,20 +289,4 @@ This section contains detailed write-ups for each planned initiative, including 
 **Trigger** — `--`
 
 **Status** — Complete — promoted 2026-11-02 from the Backlog Explorations table, past Up Next on Robert's call, and reviewed the same day. Follow-on work is `R.028`.
-
-<br />
-
-## R.028 — Dice Package
-
-**Refactor** — no discovery doc, by design: `E.004` did the audit and chose the target (C-5, P-4, O-1). Plan: [`R.028-dice-package-plan.md`](initiatives/implementation/R.028-dice-package-plan.md). Branch: `feature/dice-package`.
-
-**Problem** — The engine rolls dice in 22 places with no stated rule for which route a roll takes. Eleven sites build the hooked roll by hand, two functions state one gate rule, the lockdown's die is held in Go, and one ability field holds amount, table and target rolls alike.
-
-**Approach** — New `engine/dice`: `Stat`, `Contest` and `Gate` for stat rolls, and `Amount`, `Table` and `Target` with no hooks. `DiceRoll.Roll`, `Roller`, `RandRoller`, `RollWithHooks` and `ResolveTie` move in; all 22 sites move. `AbilityStep.Roll` splits into amount, table and target; Harvesters and Teach Planetary Population become target rolls; the lockdown's die and cause move to data, with re-seeds of the sandbox. Also one roll phase enum, typed stats on `RollContext`, shared fakes in `dicetest`, no `statScore` wrappers, and a new `engine/dice.md` page. Absorbs `B.010` and the `lock_out` case from `R.026`. No rule changes: rerolls keep reaching stat rolls only (plan Decision 1, which corrects `E.004`).
-
-**Unlocks** — A new roll calls a route or extends one. `R.025` changes one place, and can show a defense roll the total it must beat; `F.032` and `F.037` get one home; `A.001.5`'s authoring passes use the new data shapes.
-
-**Trigger** — `ready`
-
-**Status** — In-Progress — promoted 2026-11-03 from the Backlog on Robert's call. One plan, no efforts: 9 phases and 16 commits.
 

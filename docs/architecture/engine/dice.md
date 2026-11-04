@@ -140,6 +140,16 @@ is `[effects.lock_out] amount = "1d4"`, on the shared `amountRecord`.
 
 ## Key Decisions
 
+- **A new roll calls a route or extends one, and never builds its own.** Only a stat
+  roll takes the hooked route, each other game roll takes its named route, and turn
+  order is the one plain die. So a new contest needs no fresh decision about its roll
+  path; the only question left is which type it is. `rollWithHooks` is private, so the
+  compiler holds the hooked half. Nothing forbids a bare d10 through `Amount` or
+  `Roller.Roll`, but either one stands out in review. (`E.004` C-5; `R.028`.)
+- **An amount on an effect entry always rolls above zero.** `convertAmount` refuses
+  dice whose lowest roll is zero or less, for `coin_gain`, `coin_steal`, `self_damage`
+  and `lock_out`, because a negative fee would pay the mover. `damage` and `counter`
+  do not go through it, so a `1d4-1` there stays. (`R.028` close review.)
 - **Rerolls reach stat rolls only.** Fanatical ("any dice"), Book of Secrets ("one
   die for an action") and Psychic Academy ("any one d10") could reach amount dice on
   their plain words. The engine rerolls stat rolls only, and that reading holds. A
