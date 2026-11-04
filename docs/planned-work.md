@@ -11,8 +11,6 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
-| `E.002` | Data-driven tags and goals | `exploration` | Complete | Make tags and goals data-driven like assets, replacing the 4 tag and 12 goal bespoke Go handlers keyed on bare IDs (plus the `T-011` coupling through `domain.TagPlanetaryGovernment`); the aim is one consistent way to handle data files and a project-wide move away from bespoke handlers, so cost is not a deciding factor. Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Paused `A.001.4` discovery waits on it (core vs per-rulebook). |
-| `E.004` | Unifying Dice and RollHooks | `exploration` | Complete | Each new contest forced a fresh decision about its roll path; the answer is one `engine/dice` package with a named route for each type of game roll, filed as `R.028`, ahead of the roll card (`R.025`) |
 
 
 ---
@@ -257,36 +255,4 @@ This section contains detailed write-ups for each planned initiative, including 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
 **Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](initiatives/arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `[[effects]]` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. **`A.001.6` complete** (the 14 remaining SWN S-flag assets: asset conditions, change of owner, special attacks, Cat 6 lethal interception, purchase qualities, the world government record, and permission at purchase and arrival, on `feature/s-flag-rule-extensions`; [plan](initiatives/_completed/_archive/implementation/s-flag-rule-extensions-plan.md)); every SWN S-flag asset now runs as data. **`A.001.4` complete** (the goals move to a shared `rulebooks/_core/` that a `rulebook.toml` manifest composes into each campaign, with setting-free goal text and a strict tag/goal loader, on `feature/goals-tags-core`; [plan](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.4-goals-tags-core/A.001.4-goals-tags-core-plan.md)). **`A.001.7` complete** (tags run from rulebook `[[effects]]` through a faction holder, all 20 SWN tags in data, factions hold prefixed tag IDs, `settings.toml` with a population floor, tag-granted abilities, on `feature/data-driven-tags`; [retro](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.7-data-driven-tags/A.001.7-data-driven-tags-retro.md)). `A.001.5` and `A.001.8` are ready. The `A.001.4` Discovery added `A.001.7` (data-driven tags) and `A.001.8` (data-driven goals) from `E.002` (arc-plan AP-8).
-
-<br />
-
-## E.002 — Data-Driven Tags and Goals
-
-**Exploration** — the pilot run of the `E.` type. It runs with an ad-hoc doc shape, and `D.009` writes the type's flow and template from what worked. Discovery only: it ends with findings, options and a recommendation, and follow-on work is filed as its own rows. Doc: [`E.002-data-driven-tags-goals-exploration.md`](initiatives/explorations/E.002-data-driven-tags-goals-exploration.md).
-
-**Problem** — Tags and goals still key behavior on bare IDs: four tag handlers in `engine/tag/tags/` (`T-005`, `T-013`, `T-016`, `T-020`), the `T-011` coupling through `domain.TagPlanetaryGovernment`, and twelve goal handlers in `engine/goal/goals/`. A rulebook gets a behavior only when it reuses the ID, and a reused ID silently gets the handler. Assets moved to data in `A.001.1`–`A.001.6`; tags and goals are the last bespoke handlers in the rulebook data.
-
-**Approach** — One doc covers tags and goals, with separate findings and options for each; the bare-ID question is answered once. An Existing Patterns section measures each option against the asset model (effect-keyed dispatch, `[[effects]]`). Questions: can tags reuse `A.001.3`'s `[[effects]]` at faction scope, what goal vocabulary is needed, how to stop bare-ID collisions across rulebooks. Cost is not a deciding factor. Opus; about two sessions (audit, then options and a recommendation).
-
-**Unlocks** — The paused `A.001.4` discovery (core, per-rulebook or hybrid); follow-on rows for the conversion work; the worked example `D.009` builds the Exploration template from.
-
-**Trigger** — ready
-
-**Status** — In-Progress — promoted 2026-10-26 from the Backlog Explorations table, past Up Next on Robert's call.
-
-<br />
-
-## E.004 — Unifying Dice and RollHooks
-
-**Exploration** — runs in the `E.002` doc shape, on `main` at Robert's call, with no branch. Discovery only: it ends with findings, options and a recommendation, and follow-on work is filed as its own rows. Doc: [`E.004-unifying-dice-rollhooks-exploration.md`](initiatives/explorations/E.004-unifying-dice-rollhooks-exploration.md).
-
-**Problem** — While the contest types were defined, each one needed a fresh decision about what goes through `RollWithHooks`. No code or doc states the rule, and the logic is spread across the Attack action, Expand Influence, the ability gate and the effect gate.
-
-**Approach** — Audit every roll and how its route was chosen, then test Robert's idea: a unified utility, perhaps called `contests`, where the logic lives. Weigh the options against a baseline of no change. Opus; one session at Robert's call (audit, then options and a recommendation), to compare with `E.002`'s two.
-
-**Unlocks** — A clear answer on the shared utility; follow-on rows for any move; a known order against `R.025`, which changes the same code; a second data point for `D.009`.
-
-**Trigger** — `--`
-
-**Status** — Complete — promoted 2026-11-02 from the Backlog Explorations table, past Up Next on Robert's call, and reviewed the same day. Follow-on work is `R.028`.
 
