@@ -96,9 +96,10 @@ func TestEffectGate_RollPhasesAndSides(t *testing.T) {
 				"Krylos", registry, nil, 5, 5,
 			)
 
+			attackTotal := 8
 			want := []hooks.RollContext{
 				{Phase: tc.attack, Actor: declaring, Opponent: target, Attribute: "Cunning", OpponentAttribute: "Wealth", Asset: cells, OpponentAsset: spy, World: "Krylos"},
-				{Phase: tc.defense, Actor: target, Opponent: declaring, Attribute: "Wealth", OpponentAttribute: "Cunning", Asset: spy, OpponentAsset: cells, World: "Krylos"},
+				{Phase: tc.defense, Actor: target, Opponent: declaring, Attribute: "Wealth", OpponentAttribute: "Cunning", Asset: spy, OpponentAsset: cells, World: "Krylos", OpponentTotal: &attackTotal},
 			}
 			if !reflect.DeepEqual(recorder.seen, want) {
 				t.Errorf("rolls = %+v, want %+v", recorder.seen, want)

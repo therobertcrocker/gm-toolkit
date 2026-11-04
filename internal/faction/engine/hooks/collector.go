@@ -2,13 +2,13 @@ package hooks
 
 import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 
-// Collector abstracts the two input methods that hook dispatchers require from
-// the GM. SelectModifiers is called with the full Cat 1 offer list; the GM
-// returns the subset to apply. ConfirmReroll is called for each elective Cat 2
-// directive; returning false skips that reroll.
+// Collector abstracts the two asks of a hooked roll. SelectModifiers is called before
+// the dice on every roll, offers or not, and returns the offers to apply. SelectReroll
+// is called once the roll settles, rerolls on offer or not, and again after each
+// reroll it takes; it returns the reroll to take, or nil to keep the dice.
 type Collector interface {
-	SelectModifiers(offers []ModifierOffer) []ModifierOffer
-	ConfirmReroll(directive RerollDirective) bool
+	SelectModifiers(card PreRollCard) []ModifierOffer
+	SelectReroll(card PostRollCard) *RerollDirective
 }
 
 // PaymentReason says what a payment buys, so a prompt can word it.

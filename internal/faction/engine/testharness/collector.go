@@ -43,8 +43,8 @@ type ScriptedCollector struct {
 	SelectBribeTargetFn           func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectSeizeTargetFn           func(*domain.Faction, *state.FactionState) (string, error)
 	SelectActionFn                func(*domain.Faction, []action.Action) (action.Action, error)
-	SelectModifiersFn             func([]hooks.ModifierOffer) []hooks.ModifierOffer
-	ConfirmRerollFn               func(hooks.RerollDirective) bool
+	SelectModifiersFn             func(hooks.PreRollCard) []hooks.ModifierOffer
+	SelectRerollFn                func(hooks.PostRollCard) *hooks.RerollDirective
 	SelectStatRaiseFn             func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
 	SelectMovementDecisionsFn     func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
 	SelectTransportCargoFn        func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
@@ -237,19 +237,22 @@ func (c *ScriptedCollector) SelectAction(faction *domain.Faction, available []ac
 func (c *ScriptedCollector) AwaitCheckpoint(_ string) error { return nil }
 
 // SelectModifiers takes all offered modifiers by default; override with SelectModifiersFn.
-func (c *ScriptedCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
+func (c *ScriptedCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
 	if c.SelectModifiersFn != nil {
-		return c.SelectModifiersFn(offers)
+		return c.SelectModifiersFn(card)
 	}
-	return offers
+	return card.Offers
 }
 
-// ConfirmReroll confirms all rerolls by default; override with ConfirmRerollFn.
-func (c *ScriptedCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
-	if c.ConfirmRerollFn != nil {
-		return c.ConfirmRerollFn(directive)
+// SelectReroll takes the first reroll on offer by default; override with SelectRerollFn.
+func (c *ScriptedCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	if c.SelectRerollFn != nil {
+		return c.SelectRerollFn(card)
 	}
-	return true
+	if len(card.Rerolls) == 0 {
+		return nil
+	}
+	return &card.Rerolls[0]
 }
 
 func (c *ScriptedCollector) SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error) {

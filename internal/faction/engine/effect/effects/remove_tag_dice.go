@@ -26,6 +26,7 @@ func registerRemoveTagDice(ctx effect.RegisterContext) {
 		ctx.Holder.HookID(domain.SpecialRemoveTagDice),
 		&tagDiceFilter{
 			holder:  refOf(ctx.Holder),
+			source:  ctx.Holder.Name(),
 			trigger: ctx.Entry.Trigger,
 			filters: ctx.Entry.Filters,
 		},
@@ -34,21 +35,25 @@ func registerRemoveTagDice(ctx effect.RegisterContext) {
 
 type tagDiceFilter struct {
 	holder  holderRef
+	source  string
 	trigger domain.EffectTrigger
 	filters domain.EffectFilters
 }
 
-func (filter *tagDiceFilter) FilterOffers(ctx hooks.RollContext, offers []hooks.ModifierOffer, factionState *state.FactionState) []hooks.ModifierOffer {
+func (filter *tagDiceFilter) FilterOffers(ctx hooks.RollContext, offers []hooks.ModifierOffer, factionState *state.FactionState) ([]hooks.ModifierOffer, []hooks.StruckOffer) {
 	asset, live := filter.holder.live(factionState)
 	// deliberate: a nil rulebook, not a threaded one, because removeTagDiceRegistrar accepts no tech-level filter, the only filter that reads it (Effort 2 Decision 6).
 	if !live || !rollMatches(ctx, filter.trigger, filter.holder.factionID, asset, filter.filters, nil) {
-		return offers
+		return offers, nil
 	}
 	var kept []hooks.ModifierOffer
+	var struck []hooks.StruckOffer
 	for _, offer := range offers {
-		if !offer.FromTag {
-			kept = append(kept, offer)
+		if offer.FromTag {
+			struck = append(struck, hooks.StruckOffer{Offer: offer, StruckBy: filter.source})
+			continue
 		}
+		kept = append(kept, offer)
 	}
-	return kept
+	return kept, struck
 }

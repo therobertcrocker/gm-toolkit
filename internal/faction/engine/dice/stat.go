@@ -20,12 +20,14 @@ type Engine struct {
 }
 
 // Side is one party to a roll. Asset is nil when no asset stands there (a faction
-// test, a Base defending). Detects marks a side testing to detect stealth.
+// test, a Base defending). Detects marks a side testing to detect stealth. Total is
+// this side's total when it has already rolled, so the other side's card can show it.
 type Side struct {
 	Faction *domain.Faction
 	Asset   *domain.Asset
 	Stat    domain.FactionStat
 	Detects bool
+	Total   *int
 }
 
 // Stat is one stat roll: 1d10 plus the side's stat, through the hooks. A zero
@@ -42,6 +44,7 @@ func (engine Engine) Stat(phase domain.RollPhase, side, opponent Side, world, ac
 		World:             world,
 		Action:            action,
 		Detection:         side.Detects,
+		OpponentTotal:     opponent.Total,
 	}
 	base := domain.DiceRoll{NumDice: 1, Sides: statDieSides, Modifier: side.Faction.StatScore(side.Stat)}
 	return rollWithHooks(ctx, base, engine.Registry, engine.Collector, engine.Roller, side.Faction, engine.FactionState, engine.Rulebook)
@@ -93,8 +96,10 @@ func (engine Engine) Contest(kind domain.ContestRoll, attacker, defender Side, w
 	if attacker.Faction.ID == defender.Faction.ID {
 		attackerOpponent, defenderOpponent = Side{Stat: defender.Stat}, Side{Stat: attacker.Stat}
 	}
+	attack := engine.Stat(attackPhase, attacker, attackerOpponent, world, action)
+	defenderOpponent.Total = &attack.Sum
 	outcome := Outcome{
-		Attack:  engine.Stat(attackPhase, attacker, attackerOpponent, world, action),
+		Attack:  attack,
 		Defense: engine.Stat(defensePhase, defender, defenderOpponent, world, action),
 	}
 	if outcome.Attack.Sum == outcome.Defense.Sum && kind == domain.ContestRollAttack {

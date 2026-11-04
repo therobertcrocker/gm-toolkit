@@ -14,20 +14,25 @@ import (
 // acceptAllCollector takes all offers and confirms all rerolls.
 type acceptAllCollector struct{}
 
-func (acceptAllCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
-	return offers
+func (acceptAllCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	return card.Offers
 }
 
-func (acceptAllCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return true }
+func (acceptAllCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	if len(card.Rerolls) == 0 {
+		return nil
+	}
+	return &card.Rerolls[0]
+}
 
 // rejectAllCollector rejects every offer and declines every reroll.
 type rejectAllCollector struct{}
 
-func (rejectAllCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer {
+func (rejectAllCollector) SelectModifiers(_ hooks.PreRollCard) []hooks.ModifierOffer {
 	return nil
 }
 
-func (rejectAllCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return false }
+func (rejectAllCollector) SelectReroll(_ hooks.PostRollCard) *hooks.RerollDirective { return nil }
 
 // stubModifier is a Cat 1 hook that always offers a single modifier.
 type stubModifier struct {
@@ -253,25 +258,52 @@ type recordingCollector struct {
 	directives []hooks.RerollDirective
 }
 
-func (collector *recordingCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
-	collector.offers = append(collector.offers, offers...)
-	return offers
+func (collector *recordingCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	collector.offers = append(collector.offers, card.Offers...)
+	return card.Offers
 }
 
-func (collector *recordingCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
-	collector.directives = append(collector.directives, directive)
-	return true
+func (collector *recordingCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	if len(card.Rerolls) == 0 {
+		return nil
+	}
+	collector.directives = append(collector.directives, card.Rerolls[0])
+	return &card.Rerolls[0]
 }
 
-// failOnSelectCollector fails the test if the dispatcher prompts for modifiers.
-type failOnSelectCollector struct{ t *testing.T }
+// failOnOffersCollector fails the test if a card arrives with an offer on it.
+type failOnOffersCollector struct{ t *testing.T }
 
-func (collector failOnSelectCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer {
-	collector.t.Fatal("SelectModifiers must not be called")
+func (collector failOnOffersCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	if len(card.Offers) > 0 {
+		collector.t.Fatalf("offers on the card: %+v", card.Offers)
+	}
 	return nil
 }
 
-func (collector failOnSelectCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return true }
+func (collector failOnOffersCollector) SelectReroll(_ hooks.PostRollCard) *hooks.RerollDirective {
+	return nil
+}
+
+// cardCollector records each card, and answers the after card through reroll.
+type cardCollector struct {
+	reroll func(hooks.PostRollCard) *hooks.RerollDirective
+	before []hooks.PreRollCard
+	after  []hooks.PostRollCard
+}
+
+func (collector *cardCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	collector.before = append(collector.before, card)
+	return nil
+}
+
+func (collector *cardCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	collector.after = append(collector.after, card)
+	if collector.reroll == nil {
+		return nil
+	}
+	return collector.reroll(card)
+}
 
 // factionWithAssets builds a faction with no HookBudgets map and one asset per
 // entry of assetWorlds (asset ID to world ID; "" is in flight).
@@ -337,11 +369,52 @@ func TestRollWithHooks_OpponentFactionHookFires(t *testing.T) {
 	}
 }
 
+// takeFirstReroll takes the first reroll on offer, and passes when there is none.
+func takeFirstReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	if len(card.Rerolls) == 0 {
+		return nil
+	}
+	return &card.Rerolls[0]
+}
+
+// onesHook is a forced Cat 2 hook that rerolls every die showing a 1.
+type onesHook struct{ source string }
+
+func (hook onesHook) OnRollResult(_ hooks.RollContext, result hooks.RollResult, _ *state.FactionState, _ *rulebook.Rulebook) hooks.RerollDirective {
+	directive := hooks.RerollDirective{Source: hook.source}
+	for index, die := range result.Dice {
+		if die == 1 {
+			directive.Indices = append(directive.Indices, index)
+		}
+	}
+	return directive
+}
+
+// stripSourceFilter strikes the offers from one source and keeps the rest.
+type stripSourceFilter struct{ source string }
+
+func (filter stripSourceFilter) FilterOffers(_ hooks.RollContext, offers []hooks.ModifierOffer, _ *state.FactionState) ([]hooks.ModifierOffer, []hooks.StruckOffer) {
+	var kept []hooks.ModifierOffer
+	var struck []hooks.StruckOffer
+	for _, offer := range offers {
+		if offer.Source == filter.source {
+			struck = append(struck, hooks.StruckOffer{Offer: offer, StruckBy: "strip"})
+			continue
+		}
+		kept = append(kept, offer)
+	}
+	return kept, struck
+}
+
 // stripAllFilter is an offer filter that removes every offer.
 type stripAllFilter struct{}
 
-func (stripAllFilter) FilterOffers(_ hooks.RollContext, _ []hooks.ModifierOffer, _ *state.FactionState) []hooks.ModifierOffer {
-	return nil
+func (stripAllFilter) FilterOffers(_ hooks.RollContext, offers []hooks.ModifierOffer, _ *state.FactionState) ([]hooks.ModifierOffer, []hooks.StruckOffer) {
+	struck := make([]hooks.StruckOffer, 0, len(offers))
+	for _, offer := range offers {
+		struck = append(struck, hooks.StruckOffer{Offer: offer, StruckBy: "strip"})
+	}
+	return nil, struck
 }
 
 func TestRollWithHooks_OfferFilterRemovesOffers(t *testing.T) {
@@ -351,7 +424,7 @@ func TestRollWithHooks_OfferFilterRemovesOffers(t *testing.T) {
 	registry.RegisterRollModifier(hooks.GlobalScope(), "global", addDieModifier("global", ""))
 	registry.RegisterRollOfferFilter(hooks.AssetScope("beta", "b-1"), "b-1", stripAllFilter{})
 
-	result := rollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
+	result := rollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnOffersCollector{t}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
 
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice (the opponent's filter struck the offer), got %d", len(result.Dice))
@@ -375,7 +448,7 @@ func TestRollWithHooks_AssetOffWorldDoesNotFire(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.AssetScope("alpha", "a-1"), "a-1", addDieModifier("a-1", ""))
 
-	result := rollWithHooks(contestCtx(alpha, nil, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha), nil)
+	result := rollWithHooks(contestCtx(alpha, nil, "Krylos"), baseRoll(), registry, failOnOffersCollector{t}, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha), nil)
 
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice (asset on another world), got %d", len(result.Dice))
@@ -413,7 +486,7 @@ func TestRollWithHooks_OpponentBudgetSpentOnOpponent(t *testing.T) {
 		t.Errorf("expected alpha budgets untouched (nil), got %v", alpha.HookBudgets)
 	}
 
-	result := rollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, roller, alpha, factionState, nil)
+	result := rollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, failOnOffersCollector{t}, roller, alpha, factionState, nil)
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice on second roll (beta budget spent), got %d", len(result.Dice))
 	}
@@ -455,14 +528,140 @@ func TestRollWithHooks_OpponentRerollBudgetSpentOnOpponent(t *testing.T) {
 	}
 }
 
-func TestRollWithHooks_NoOffersSkipsCollector(t *testing.T) {
+func TestRollWithHooks_NoOffersStillAsks(t *testing.T) {
 	registry := hooks.NewRegistry()
 	faction := newFaction("A")
+	collector := &cardCollector{}
 
-	result := rollWithHooks(rollCtx(), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5, 7}}, faction, nil, nil)
+	result := rollWithHooks(rollCtx(), baseRoll(), registry, collector, &dicetest.Cycle{Values: []int{5, 7}}, faction, nil, nil)
 
 	if len(result.Dice) != 2 {
 		t.Fatalf("expected 2 dice, got %d", len(result.Dice))
+	}
+	if len(collector.before) != 1 || len(collector.after) != 1 {
+		t.Errorf("saw %d before cards and %d after cards, want one of each", len(collector.before), len(collector.after))
+	}
+}
+
+func TestRollWithHooks_NilRegistryAsksNoOne(t *testing.T) {
+	collector := &cardCollector{}
+
+	result := rollWithHooks(rollCtx(), baseRoll(), nil, collector, &dicetest.Cycle{Values: []int{5, 7}}, newFaction("A"), nil, nil)
+
+	if len(collector.before) != 0 || len(collector.after) != 0 {
+		t.Errorf("saw %d before cards and %d after cards, want none", len(collector.before), len(collector.after))
+	}
+	if !slices.Equal(result.Dice, []int{5, 7}) || result.Sum != 12 {
+		t.Errorf("dice = %v, sum %d, want [5 7], sum 12", result.Dice, result.Sum)
+	}
+}
+
+func TestRollWithHooks_StruckOffersReachTheCard(t *testing.T) {
+	alpha := factionWithAssets("alpha", nil)
+	alpha.HookBudgets = map[string]int{"spent": 1}
+	beta := factionWithAssets("beta", map[string]string{"b-1": "Krylos"})
+	registry := hooks.NewRegistry()
+	registry.RegisterRollModifier(hooks.GlobalScope(), "tag", addDieModifier("tag", ""))
+	registry.RegisterRollOfferFilter(hooks.AssetScope("beta", "b-1"), "b-1", stripSourceFilter{source: "tag"})
+	registry.RegisterRollModifier(hooks.GlobalScope(), "once", addDieModifier("once", "spent"))
+	registry.RegisterRollModifier(hooks.GlobalScope(), "free", addDieModifier("free", ""))
+	collector := &cardCollector{}
+
+	rollWithHooks(contestCtx(alpha, beta, "Krylos"), baseRoll(), registry, collector, &dicetest.Cycle{Values: []int{5}}, alpha, rollState(alpha, beta), nil)
+
+	card := collector.before[0]
+	if len(card.Offers) != 1 || card.Offers[0].Source != "free" {
+		t.Errorf("offers = %+v, want only free", card.Offers)
+	}
+	if len(card.Struck) != 2 {
+		t.Fatalf("struck = %+v, want the filter's strike and the spent budget", card.Struck)
+	}
+	if card.Struck[0].Offer.Source != "tag" || card.Struck[0].StruckBy != "strip" {
+		t.Errorf("first strike = %+v, want tag struck by strip", card.Struck[0])
+	}
+	if card.Struck[1].Offer.Source != "once" || card.Struck[1].StruckBy != "" {
+		t.Errorf("second strike = %+v, want once with no StruckBy", card.Struck[1])
+	}
+}
+
+func TestRollWithHooks_ForcedRerollRunsBeforeTheCard(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "elective", stubResultHook{directive: hooks.RerollDirective{Source: "elective", Indices: []int{1}, Elective: true}})
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "forced", stubResultHook{directive: hooks.RerollDirective{Source: "forced", Indices: []int{0}}})
+	collector := &cardCollector{}
+
+	result := rollWithHooks(rollCtx(), baseRoll(), registry, collector, &dicetest.Sequence{Values: []int{1, 4, 8}}, newFaction("A"), nil, nil)
+
+	if !slices.Equal(result.Dice, []int{8, 4}) {
+		t.Errorf("dice = %v, want [8 4]", result.Dice)
+	}
+	card := collector.after[0]
+	if len(card.Applied) != 1 || card.Applied[0].Source != "forced" || !slices.Equal(card.Applied[0].Was, []int{1}) {
+		t.Errorf("applied = %+v, want forced, which replaced a 1", card.Applied)
+	}
+	if len(card.Rerolls) != 1 || card.Rerolls[0].Source != "elective" {
+		t.Errorf("rerolls = %+v, want only elective", card.Rerolls)
+	}
+}
+
+func TestRollWithHooks_ForcedRerollRunsOnce(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "forced", onesHook{source: "forced"})
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "elective", stubResultHook{directive: hooks.RerollDirective{Source: "elective", Indices: []int{0}, Elective: true}})
+	collector := &cardCollector{reroll: takeFirstReroll}
+	roller := &sidesRecorder{values: []int{1, 5, 1}}
+
+	result := rollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, roller, newFaction("A"), nil, nil)
+
+	if !slices.Equal(result.Dice, []int{1}) {
+		t.Errorf("dice = %v, want [1]: a 1 that a reroll lands on stays", result.Dice)
+	}
+	if len(roller.sides) != 3 {
+		t.Errorf("rolled %d times, want 3", len(roller.sides))
+	}
+}
+
+func TestRollWithHooks_ElectiveRerollsLoopUntilAPass(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "first", stubResultHook{directive: hooks.RerollDirective{Source: "first", Indices: []int{0}, Elective: true}})
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "second", stubResultHook{directive: hooks.RerollDirective{Source: "second", Indices: []int{1}, Elective: true}})
+	collector := &cardCollector{}
+	collector.reroll = func(card hooks.PostRollCard) *hooks.RerollDirective {
+		if len(collector.after) == 1 {
+			return &card.Rerolls[0]
+		}
+		return nil
+	}
+
+	result := rollWithHooks(rollCtx(), baseRoll(), registry, collector, &dicetest.Sequence{Values: []int{2, 3, 9}}, newFaction("A"), nil, nil)
+
+	if !slices.Equal(result.Dice, []int{9, 3}) {
+		t.Errorf("dice = %v, want [9 3]", result.Dice)
+	}
+	if len(collector.after) != 2 {
+		t.Fatalf("saw %d after cards, want 2", len(collector.after))
+	}
+	if len(collector.after[0].Rerolls) != 2 {
+		t.Errorf("first card rerolls = %+v, want two", collector.after[0].Rerolls)
+	}
+	if len(collector.after[1].Rerolls) != 1 || collector.after[1].Rerolls[0].Source != "second" {
+		t.Errorf("second card rerolls = %+v, want only second", collector.after[1].Rerolls)
+	}
+}
+
+func TestRollWithHooks_TakenRerollIsOfferedOnce(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "unlimited", stubResultHook{directive: hooks.RerollDirective{Source: "unlimited", Indices: []int{0}, Elective: true}})
+	collector := &cardCollector{reroll: takeFirstReroll}
+	roller := &sidesRecorder{values: []int{2, 9}}
+
+	result := rollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, roller, newFaction("A"), nil, nil)
+
+	if !slices.Equal(result.Dice, []int{9}) || len(roller.sides) != 2 {
+		t.Errorf("dice = %v after %d rolls, want [9] after 2", result.Dice, len(roller.sides))
+	}
+	if len(collector.after) != 2 || len(collector.after[1].Rerolls) != 0 {
+		t.Errorf("after cards = %+v, want two, the second with no rerolls", collector.after)
 	}
 }
 
@@ -506,7 +705,7 @@ func TestRollWithHooks_CapturedAssetOldBucketDoesNotFire(t *testing.T) {
 		"the new owner rolls": {alpha, beta},
 	} {
 		t.Run(name, func(t *testing.T) {
-			result := rollWithHooks(contestCtx(rolling.actor, rolling.opponent, "Krylos"), baseRoll(), registry, failOnSelectCollector{t}, &dicetest.Cycle{Values: []int{5}}, rolling.actor, factionState, nil)
+			result := rollWithHooks(contestCtx(rolling.actor, rolling.opponent, "Krylos"), baseRoll(), registry, failOnOffersCollector{t}, &dicetest.Cycle{Values: []int{5}}, rolling.actor, factionState, nil)
 			if len(result.Dice) != 2 {
 				t.Fatalf("expected 2 dice (old bucket unreached), got %d", len(result.Dice))
 			}
@@ -552,6 +751,18 @@ func TestRollWithHooks_NilCollectorDeclinesElectiveRerolls(t *testing.T) {
 				t.Errorf("die 0 = %d, want %d", result.Dice[0], tc.want)
 			}
 		})
+	}
+}
+
+func TestRollWithHooks_NilCollectorAppliesForcedRerollsWithNoCard(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "forced", stubResultHook{directive: hooks.RerollDirective{Source: "forced", Indices: []int{0}}})
+	roller := &sidesRecorder{values: []int{1, 8}}
+
+	result := rollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, nil, roller, newFaction("A"), nil, nil)
+
+	if !slices.Equal(result.Dice, []int{8}) || len(roller.sides) != 2 {
+		t.Errorf("dice = %v after %d rolls, want [8] after 2: one forced reroll", result.Dice, len(roller.sides))
 	}
 }
 

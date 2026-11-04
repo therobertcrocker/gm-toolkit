@@ -82,7 +82,17 @@ unless marked as a plan-level choice.
 
 ## Decision Record — Execution
 
-None yet.
+1. **Phase 1, Commit 1: two more exact-context tests expect `OpponentTotal`.** Not in the
+   plan. `dice/stat_test.go` (`TestContest_RollsTheAttackerFirstWithItsPhases`) and
+   `effects/contest_test.go` (`TestEffectGate_RollPhasesAndSides`) compare whole contexts, so
+   the defender's context now carries the attack's total. `expand_influence_test.go`'s
+   context loop takes the pointer from the recorded context, then the new assertion checks
+   the value.
+2. **Phase 1, Commit 1: gap, the shim asks a declined reroll again.** Deferred on purpose.
+   With two elective rerolls on offer, the GM can decline the first and take the second. The
+   next after card still lists the first, so the shim asks about it again. The old prompts
+   asked once per hook. It lives only between this commit and Commit 5, which deletes the
+   shim.
 
 ---
 

@@ -61,8 +61,11 @@ func (a *Adapter) worldNames(worldIDs []string) map[string]string {
 
 // --- hooks.Collector (no error return; Esc/cancel degrades to the legal no-op) ---
 
-func (a *actionCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
-	raw, err := a.adapter.ask(AskSelectModifiers, nil, SelectModifiersPayload{Offers: offers})
+func (a *actionCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	if len(card.Offers) == 0 {
+		return nil
+	}
+	raw, err := a.adapter.ask(AskSelectModifiers, nil, SelectModifiersPayload{Offers: card.Offers})
 	if err != nil {
 		return nil // Esc/cancel -> no modifiers applied
 	}
@@ -74,13 +77,17 @@ func (a *actionCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.
 	return out
 }
 
-func (a *actionCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
-	raw, err := a.adapter.ask(AskConfirmReroll, nil, ConfirmRerollPayload{Directive: directive})
-	if err != nil {
-		return false // Esc/cancel -> skip the reroll
+func (a *actionCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	for index := range card.Rerolls {
+		raw, err := a.adapter.ask(AskConfirmReroll, nil, ConfirmRerollPayload{Directive: card.Rerolls[index]})
+		if err != nil {
+			continue // Esc/cancel -> skip the reroll
+		}
+		if confirmed, _ := raw.(bool); confirmed {
+			return &card.Rerolls[index]
+		}
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed
+	return nil
 }
 
 // --- action.Collector: shared (real in foundation) ---

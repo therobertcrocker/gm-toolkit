@@ -44,7 +44,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		faction := &domain.Faction{ID: "f1", Coin: 0, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewRollingCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when coin < 1")
 		}
 	})
@@ -56,7 +56,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		base := &domain.Base{ID: "b1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}, CurrentHP: 5, MaxHP: 5, IsHomeworld: false}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 5, Assets: map[string]*domain.Asset{"a1": asset}, Bases: []*domain.Base{base}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if NewExpandInfluence(mocks.NewRollingCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected false when no expansion options available")
 		}
 	})
@@ -66,7 +66,7 @@ func TestExpandInfluence_Validate(t *testing.T) {
 		asset := &domain.Asset{ID: "a1", OwnerID: "f1", Location: domain.Location{WorldID: "Krylos"}}
 		faction := &domain.Faction{ID: "f1", Coin: 3, MaxHP: 10, Assets: map[string]*domain.Asset{"a1": asset}}
 		factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
-		if !NewExpandInfluence(mocks.NewMockCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
+		if !NewExpandInfluence(mocks.NewRollingCollector(ctrl), nil, nil, indexFromState(factionState), nil).Validate(faction, factionState, nil) {
 			t.Error("expected true when faction has an asset on a world with no base")
 		}
 	})
@@ -81,7 +81,7 @@ func TestExpandInfluence_NewBase_Uncontested(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 3}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{8}}, nil, indexFromState(factionState), nil)
@@ -124,7 +124,7 @@ func TestExpandInfluence_Reinforce_Heal(t *testing.T) {
 		Mode: action.ExpandModeReinforce, BaseID: "b1",
 		SubMode: action.ReinforceHeal, HPAmount: 2,
 	}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{1}}, nil, indexFromState(factionState), nil)
@@ -164,7 +164,7 @@ func TestExpandInfluence_Reinforce_Max(t *testing.T) {
 		Mode: action.ExpandModeReinforce, BaseID: "b1",
 		SubMode: action.ReinforceMax, HPAmount: 3,
 	}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 
 	act := NewExpandInfluence(collector, &dicetest.Cycle{Values: []int{1}}, nil, indexFromState(factionState), nil)
@@ -209,7 +209,7 @@ func TestExpandInfluence_NewBase_Contested(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 	collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
@@ -282,7 +282,7 @@ func TestExpandInfluence_FreeAttackTieAsksResolvers(t *testing.T) {
 			}
 
 			order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-			collector := mocks.NewMockCollector(ctrl)
+			collector := mocks.NewRollingCollector(ctrl)
 			collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 			collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 			collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
@@ -323,7 +323,7 @@ func TestExpandInfluence_SpecialAttackerNotOffered(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
@@ -361,7 +361,7 @@ func TestExpandInfluence_BlockedAttackerNotOffered(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
@@ -409,7 +409,7 @@ func TestExpandInfluence_RollsCarryContext(t *testing.T) {
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction, "f2": rival}}
 
 	order := action.ExpandInfluenceOrder{Mode: action.ExpandModeNew, World: "Krylos", HPAmount: 5}
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectExpandInfluenceOrder(gomock.Any(), gomock.Any(), gomock.Any()).Return(order, nil)
 	collector.EXPECT().ConfirmRivalFreeAttack(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 	collector.EXPECT().SelectBaseAttackers(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*domain.Asset{f2Asset}, nil)
@@ -446,8 +446,16 @@ func TestExpandInfluence_RollsCarryContext(t *testing.T) {
 	for i, expected := range want {
 		expected.World = order.World
 		expected.Action = "Expand Influence"
-		if got := recorder.contexts[i]; got != expected {
+		got := recorder.contexts[i]
+		expected.OpponentTotal = got.OpponentTotal
+		if got != expected {
 			t.Errorf("roll %d context = %+v, want %+v", i+1, got, expected)
 		}
+	}
+	if own := recorder.contexts[0].OpponentTotal; own != nil {
+		t.Errorf("expander's own roll: OpponentTotal = %d, want nil", *own)
+	}
+	if rivals := recorder.contexts[1].OpponentTotal; rivals == nil || *rivals != 5 {
+		t.Errorf("rival's roll: OpponentTotal = %v, want the expander's total of 5", rivals)
 	}
 }

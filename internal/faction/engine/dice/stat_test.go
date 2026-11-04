@@ -112,7 +112,7 @@ func TestContest_RollsTheAttackerFirstWithItsPhases(t *testing.T) {
 				t.Errorf("sums = %d and %d, want 10 from the first die and 6 from the second", outcome.Attack.Sum, outcome.Defense.Sum)
 			}
 			wantAttack := hooks.RollContext{Phase: testCase.attackPhase, Actor: alpha, Opponent: beta, Attribute: domain.StatForce, OpponentAttribute: domain.StatCunning, Asset: alphaAsset, OpponentAsset: betaAsset, World: "Krylos", Action: "Attack"}
-			wantDefense := hooks.RollContext{Phase: testCase.defensePhase, Actor: beta, Opponent: alpha, Attribute: domain.StatCunning, OpponentAttribute: domain.StatForce, Asset: betaAsset, OpponentAsset: alphaAsset, World: "Krylos", Action: "Attack"}
+			wantDefense := hooks.RollContext{Phase: testCase.defensePhase, Actor: beta, Opponent: alpha, Attribute: domain.StatCunning, OpponentAttribute: domain.StatForce, Asset: betaAsset, OpponentAsset: alphaAsset, World: "Krylos", Action: "Attack", OpponentTotal: recorder.contexts[1].OpponentTotal}
 			if !slices.Equal(recorder.contexts, []hooks.RollContext{wantAttack, wantDefense}) {
 				t.Errorf("contexts = %+v, want %+v then %+v", recorder.contexts, wantAttack, wantDefense)
 			}
@@ -140,6 +140,46 @@ func TestContest_SameFactionDropsTheOpponent(t *testing.T) {
 		if got.Attribute != wantStats[0] || got.OpponentAttribute != wantStats[1] {
 			t.Errorf("roll %d: stats = %s against %s, want %s against %s", index, got.Attribute, got.OpponentAttribute, wantStats[0], wantStats[1])
 		}
+	}
+}
+
+func TestContest_DefenderSeesTheAttackTotal(t *testing.T) {
+	alpha, beta := contestFactions()
+	engine, recorder := recordedEngine(7, 2)
+
+	outcome := engine.Contest(
+		domain.ContestRollAttack,
+		Side{Faction: alpha, Stat: domain.StatForce},
+		Side{Faction: beta, Stat: domain.StatCunning},
+		"Krylos", "Attack",
+	)
+
+	if recorder.contexts[0].OpponentTotal != nil {
+		t.Errorf("attack roll: OpponentTotal = %d, want nil", *recorder.contexts[0].OpponentTotal)
+	}
+	got := recorder.contexts[1].OpponentTotal
+	if got == nil || *got != outcome.Attack.Sum {
+		t.Errorf("defense roll: OpponentTotal = %v, want the attack's sum of %d", got, outcome.Attack.Sum)
+	}
+}
+
+func TestContest_SameFactionStillPassesTheAttackTotal(t *testing.T) {
+	alpha, _ := contestFactions()
+	engine, recorder := recordedEngine(7, 2)
+
+	outcome := engine.Contest(
+		domain.ContestRollTest,
+		Side{Faction: alpha, Stat: domain.StatForce},
+		Side{Faction: alpha, Stat: domain.StatCunning},
+		"Krylos", "Attack",
+	)
+
+	defense := recorder.contexts[1]
+	if defense.Opponent != nil {
+		t.Errorf("defense roll: Opponent = %+v, want nil", defense.Opponent)
+	}
+	if defense.OpponentTotal == nil || *defense.OpponentTotal != outcome.Attack.Sum {
+		t.Errorf("defense roll: OpponentTotal = %v, want the attack's sum of %d", defense.OpponentTotal, outcome.Attack.Sum)
 	}
 }
 

@@ -11,7 +11,8 @@ import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 // stands there (a faction test, a Base defending). Action is the action's Name().
 // Detection marks a roll made by the side testing to detect Stealthed assets: the
 // actor of a reveal ability, or the declaring side of a stealth-clearing contest.
-// The side resisting detection never sets it (Effort 3 Decision 5).
+// The side resisting detection never sets it (Effort 3 Decision 5). OpponentTotal is
+// the other side's total when it has already rolled, and nil when it has not.
 type RollContext struct {
 	Phase             domain.RollPhase
 	Actor             *domain.Faction
@@ -23,6 +24,7 @@ type RollContext struct {
 	World             string
 	Action            string
 	Detection         bool
+	OpponentTotal     *int
 }
 
 // RollResult holds the per-die breakdown of a completed roll.
@@ -77,13 +79,50 @@ type ModifierOffer struct {
 // RerollDirective instructs the dispatcher to reroll specific dice after the
 // initial roll. Elective directives require collector confirmation.
 // FactionID is the faction whose hook made the directive; the dispatcher sets it,
-// and spends BudgetKey on that faction's HookBudgets.
+// and spends BudgetKey on that faction's HookBudgets. Slot names the hook that made
+// the directive; the dispatcher sets it, and does not offer a taken hook again on
+// the same roll.
 type RerollDirective struct {
 	Source    string
 	Indices   []int  // indices into RollResult.Dice to reroll
 	BudgetKey string // namespaced; empty = unlimited
-	Elective  bool   // if true, collector must confirm before applying
+	Elective  bool   // if true, the collector chooses whether it applies
 	FactionID string
+	Slot      int
+}
+
+// StruckOffer is a Cat 1 offer that did not survive. StruckBy names the filter that
+// struck it; an empty StruckBy means its budget is spent this turn.
+type StruckOffer struct {
+	Offer    ModifierOffer
+	StruckBy string
+}
+
+// AppliedReroll is a reroll that has already changed this roll. Was holds the dice
+// it replaced.
+type AppliedReroll struct {
+	Source    string
+	FactionID string
+	Was       []int
+}
+
+// PreRollCard is what the collector sees before the dice: the roll, the offers it
+// may take and the offers it may not.
+type PreRollCard struct {
+	Context RollContext
+	Base    domain.DiceRoll
+	Offers  []ModifierOffer
+	Struck  []StruckOffer
+}
+
+// PostRollCard is what the collector sees once forced rerolls have applied and after
+// each elective reroll taken. Rerolls may be empty; Result.Dice is live, so read it
+// before returning.
+type PostRollCard struct {
+	Context RollContext
+	Result  RollResult
+	Rerolls []RerollDirective
+	Applied []AppliedReroll
 }
 
 // TieOutcome is the result of a TieResolver call.
