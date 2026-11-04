@@ -124,7 +124,7 @@ type PurchaseParams struct {
 }
 
 // RaiseTechLevelParams configures a raise_tech_level step (Teach Planetary
-// Population): CoinCost is paid on every use; on a matching outcome row the target
+// Population): CoinCost is paid on every use; on a passed target roll the target
 // world counts as TechLevel for the acting faction's purchases (D-11).
 type RaiseTechLevelParams struct {
 	CoinCost  int
@@ -154,6 +154,14 @@ type RollTable struct {
 	Outcomes []AbilityOutcome
 }
 
+// TargetRoll is a roll that must meet or beat a number. Amount is what a pass pays;
+// the effect decides in what, and it is 0 when a pass pays nothing.
+type TargetRoll struct {
+	Die    DiceRoll
+	Target int
+	Amount int
+}
+
 // AbilityDefinition is a uniform sequence of steps; a flat [ability] block parses
 // to a one-step list.
 type AbilityDefinition struct {
@@ -164,8 +172,9 @@ type AbilityStep struct {
 	Effect         AbilityEffectType
 	Target         TargetKind
 	Contest        *Contest
-	Amount         *DiceRoll  // at most one of Amount and Table
-	Table          *RollTable // at most one of Amount and Table
+	Amount         *DiceRoll   // at most one of Amount, Table and TargetRoll
+	Table          *RollTable  // at most one of Amount, Table and TargetRoll
+	TargetRoll     *TargetRoll // at most one of Amount, Table and TargetRoll
 	Relocate       *RelocateParams
 	Purchase       *PurchaseParams
 	RaiseTechLevel *RaiseTechLevelParams

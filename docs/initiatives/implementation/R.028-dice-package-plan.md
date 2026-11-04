@@ -93,6 +93,12 @@ Planning calls, shown to Robert before writing:
 - **One expected error text moved** (Commit 13) — Task 2 folds "at least one outcome row" into the `raise_tech_level requires` message, so the "no outcome rows" case now expects "a die with rows". The step is still refused
 - **The handler tests pick the row by hand** (Commit 13) — `TestCoinDelta_Payouts` and `TestRaiseTechLevel` swap their `roll` column for the row the die picked, and every expected payout stays. Which total picks which row is now held by `TestTable_PicksTheRowHoldingTheTotal`
 - **Gap left open: the tag contest check cannot fire** (Commit 13) — every effect a tag may carry now needs a die, and the loader refuses a contest with a die first, so the `step.Contest` check in `checkTagAbility` is unreachable. A tag with a contest is still refused, by the other rule and with its text. The check stays for Robert's call: deleting it removes dead code, and keeping it holds the rule if a tag ever gets an effect with no die
+- **`xp_roll`'s error text moved** (Commit 14) — it now shares `convertTargetRoll`, so "xp_roll with no target" expects "xp_roll needs target > 0". The rule is unchanged: the case stays refused, and a new "xp_roll with no amount" case holds the amount half, which the shared helper allows and the `xp_roll` case refuses
+- **Two `raise_tech_level` rule cases replaced** (Commit 14) — "a coin row" and "no outcome rows" tested rows, which this effect no longer takes. They are now "an amount", "rows" and "a bare die". The "carry no coin" rule goes with the rows, as Task 3 has it. The other three cases use a target roll
+- **Three more load tests than the list** (Commit 14) — a target roll with no die, `levy_coin` with a target roll and a flat target roll beside `[[ability.steps]]`, because Task 3 adds each of those refusals
+- **`TestCoinDelta_Payouts` cases renamed** (Commit 14) — "harvesters" became "single row", because Harvesters no longer has rows; the rows and expected payouts stay. `TestRaiseTechLevel`'s "a 12" became "a pass", because the handler now reads `Passed`
+- **The re-seed needs `GM_TOOLKIT_HOME`** (Commit 14) — the plan's command stops with an error when it is unset, and it is not set in this container. The value is the repo's `campaigns/` folder; only `wealth_assets.toml` and `tags.toml` changed under `campaigns/sandbox/rulebook/`. Shared Context now says so
+- **Gap left open: rows beside a target roll are dropped** (Commit 14) — the loader reads `outcomes` only when a step has a `die`, so a step with `target_roll` and stray rows loads and ignores the rows. No shipped data does this, and Task 3 refuses a die with a target roll but not rows with one. Left for Robert's call
 
 ---
 
@@ -144,7 +150,8 @@ stop and find out why before changing its expected values.
 
 **Running the app.** Claude runs it only with `--campaign sandbox-claude`, in tmux. That copy is
 gitignored and not on disk now, so re-copy it from `campaigns/sandbox` and keep its `campaign.toml`
-ID. `sandbox` is Robert's: only its `rulebook/` folder changes, through `add-rules`.
+ID. `sandbox` is Robert's: only its `rulebook/` folder changes, through `add-rules`. The CLI needs
+`GM_TOOLKIT_HOME` set to the repo's `campaigns/` folder.
 
 **Search.** Find Go references with the LSP tools, not grep. Text search stays for string literals,
 TOML and docs.
@@ -183,7 +190,7 @@ TOML and docs.
 - [x] **Phase 6 — Both gates**
   - Commit 11 — `refactor: ability gate uses dice.Gate` (1 task)
   - Commit 12 — `refactor: effect gate uses dice.Gate and rollWithHooks goes private` (4 tasks)
-- [ ] **Phase 7 — Ability step split**
+- [x] **Phase 7 — Ability step split**
   - Commit 13 — `refactor: split AbilityStep.Roll into amount and table` (5 tasks)
   - Commit 14 — `refactor: Harvesters and Teach become target rolls` (6 tasks)
 - [ ] **Phase 8 — Lockdown**

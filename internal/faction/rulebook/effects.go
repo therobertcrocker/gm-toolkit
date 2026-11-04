@@ -24,7 +24,7 @@ type effectRecord struct {
 	DiscountRepair  *discountRepairRecord  `toml:"discount_repair"`
 	CostDiscount    *costDiscountRecord    `toml:"cost_discount"`
 	SpeedFloor      *speedFloorRecord      `toml:"speed_floor"`
-	XPRoll          *xpRollRecord          `toml:"xp_roll"`
+	XPRoll          *targetRollRecord      `toml:"xp_roll"`
 	PopulationFloor *populationFloorRecord `toml:"population_floor"`
 	ArrivalToll     *arrivalTollRecord     `toml:"arrival_toll"`
 }
@@ -113,10 +113,24 @@ type populationFloorRecord struct {
 	Percent int `toml:"percent"`
 }
 
-type xpRollRecord struct {
+type targetRollRecord struct {
 	Die    string `toml:"die"`
 	Target int    `toml:"target"`
 	Amount int    `toml:"amount"`
+}
+
+func convertTargetRoll(label string, record *targetRollRecord) (*domain.TargetRoll, error) {
+	die, err := parseDice(record.Die)
+	if err != nil {
+		return nil, fmt.Errorf("%s die: %w", label, err)
+	}
+	if die == nil || die.NumDice == 0 {
+		return nil, fmt.Errorf("%s die is required", label)
+	}
+	if record.Target <= 0 || record.Amount < 0 {
+		return nil, fmt.Errorf("%s needs target > 0 and amount >= 0, got %d and %d", label, record.Target, record.Amount)
+	}
+	return &domain.TargetRoll{Die: *die, Target: record.Target, Amount: record.Amount}, nil
 }
 
 var (
@@ -483,17 +497,14 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 		if record.XPRoll == nil {
 			return missingParamBlock(definition.Effect)
 		}
-		die, err := parseDice(record.XPRoll.Die)
+		targetRoll, err := convertTargetRoll("xp_roll", record.XPRoll)
 		if err != nil {
-			return fmt.Errorf("xp_roll die: %w", err)
+			return err
 		}
-		if die == nil || die.NumDice == 0 {
-			return fmt.Errorf("xp_roll die is required")
+		if targetRoll.Amount == 0 {
+			return fmt.Errorf("xp_roll needs amount > 0")
 		}
-		if record.XPRoll.Target <= 0 || record.XPRoll.Amount <= 0 {
-			return fmt.Errorf("xp_roll target and amount must be > 0, got %d and %d", record.XPRoll.Target, record.XPRoll.Amount)
-		}
-		definition.XPRoll = &domain.XPRollParams{Die: *die, Target: record.XPRoll.Target, Amount: record.XPRoll.Amount}
+		definition.XPRoll = targetRoll
 	case domain.SpecialPopulationFloor:
 		if record.PopulationFloor == nil {
 			return missingParamBlock(definition.Effect)

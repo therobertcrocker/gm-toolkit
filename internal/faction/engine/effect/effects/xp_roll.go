@@ -35,7 +35,7 @@ func registerXPRoll(ctx effect.RegisterContext) {
 type xpRollReactor struct {
 	holder holderRef
 	goal   string
-	params domain.XPRollParams
+	params domain.TargetRoll
 	roller dice.Roller
 }
 
@@ -51,7 +51,7 @@ func (reactor *xpRollReactor) OnMutations(mutations []domain.Mutation, factionSt
 		if !ok || completed.FactionID != reactor.holder.factionID || (reactor.goal != "" && completed.GoalID != reactor.goal) {
 			continue
 		}
-		if dice.Amount(reactor.params.Die, reactor.roller) < reactor.params.Target {
+		if !dice.Target(reactor.params, reactor.roller) {
 			continue
 		}
 		awarded = append(awarded, domain.XPAwarded{

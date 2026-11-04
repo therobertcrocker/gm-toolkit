@@ -341,13 +341,6 @@ type PopulationFloorParams struct {
 	Percent int
 }
 
-// XPRollParams is a bonus-XP roll: roll Die, and on Target or more gain Amount XP.
-type XPRollParams struct {
-	Die    DiceRoll
-	Target int
-	Amount int
-}
-
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
@@ -369,7 +362,7 @@ type EffectDefinition struct {
 	DiscountRepair  *DiscountRepairParams
 	CostDiscount    *CostDiscountParams
 	SpeedFloor      *SpeedFloorParams
-	XPRoll          *XPRollParams
+	XPRoll          *TargetRoll
 	PopulationFloor *PopulationFloorParams
 	ArrivalToll     *ArrivalTollParams
 }

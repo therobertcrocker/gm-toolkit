@@ -129,6 +129,7 @@ type abilityStepRecord struct {
 	DefenderStat   string                `toml:"defender_stat"`
 	Die            string                `toml:"die"`
 	Outcomes       []outcomeRecord       `toml:"outcomes"`
+	TargetRoll     *targetRollRecord     `toml:"target_roll"`
 	Relocate       *relocateRecord       `toml:"relocate"`
 	Purchase       *purchaseRecord       `toml:"purchase"`
 	RaiseTechLevel *raiseTechLevelRecord `toml:"raise_tech_level"`
@@ -319,7 +320,7 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 		return nil, nil
 	}
 	if len(r.Steps) > 0 {
-		if r.Effect != "" || r.Roll != "" || r.AttackerStat != "" || r.DefenderStat != "" || r.Die != "" {
+		if r.Effect != "" || r.Roll != "" || r.AttackerStat != "" || r.DefenderStat != "" || r.Die != "" || r.TargetRoll != nil {
 			return nil, fmt.Errorf("use either a flat [ability] block or [[ability.steps]], not both")
 		}
 		steps := make([]domain.AbilityStep, 0, len(r.Steps))
@@ -390,6 +391,13 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 			step.Table = table
 		}
 	}
+	if record.TargetRoll != nil {
+		targetRoll, err := convertTargetRoll("target_roll", record.TargetRoll)
+		if err != nil {
+			return domain.AbilityStep{}, err
+		}
+		step.TargetRoll = targetRoll
+	}
 	if relocate := record.Relocate; relocate != nil {
 		params, err := convertRelocate(relocate)
 		if err != nil {
@@ -417,21 +425,29 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		}
 		step.RaiseTechLevel = &domain.RaiseTechLevelParams{CoinCost: raise.CoinCost, TechLevel: raise.TechLevel}
 	}
-	if step.Contest != nil && (step.Amount != nil || step.Table != nil) {
+	if record.Die != "" && step.TargetRoll != nil {
+		return domain.AbilityStep{}, fmt.Errorf("a step has both a die and a target_roll; use one")
+	}
+	if step.Contest != nil && (step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and a die; they are mutually exclusive")
 	}
-	if step.Effect == domain.EffectCoinDelta && step.Table == nil {
-		return domain.AbilityStep{}, fmt.Errorf("coin_delta needs outcome rows")
+	if step.Effect == domain.EffectCoinDelta {
+		if step.Table == nil && step.TargetRoll == nil {
+			return domain.AbilityStep{}, fmt.Errorf("coin_delta needs outcome rows or a target_roll")
+		}
+		if step.TargetRoll != nil && step.TargetRoll.Amount <= 0 {
+			return domain.AbilityStep{}, fmt.Errorf("coin_delta target_roll needs amount > 0, got %d", step.TargetRoll.Amount)
+		}
 	}
 	if step.Effect == domain.EffectPurchaseDiscount && step.Amount == nil {
 		return domain.AbilityStep{}, fmt.Errorf("purchase_discount needs a die and no outcome rows")
 	}
 	if step.Effect == domain.EffectRaiseTechLevel {
-		if step.Target != domain.TargetWorld || step.Table == nil || step.RaiseTechLevel == nil {
-			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level requires target = %q, a die with rows and a [raise_tech_level] block", "world")
+		if step.Target != domain.TargetWorld || step.TargetRoll == nil || step.RaiseTechLevel == nil {
+			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level requires target = %q, a target_roll and a [raise_tech_level] block", "world")
 		}
-		if slices.ContainsFunc(step.Table.Outcomes, func(outcome domain.AbilityOutcome) bool { return outcome.Coin != 0 || outcome.DestroySelf }) {
-			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level outcome rows mark a success; they carry no coin or destroy_self")
+		if step.TargetRoll.Amount != 0 {
+			return domain.AbilityStep{}, fmt.Errorf("raise_tech_level target_roll pays nothing; it carries no amount")
 		}
 	}
 	if step.RaiseTechLevel != nil && step.Effect != domain.EffectRaiseTechLevel {
@@ -446,7 +462,7 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	if step.Effect == domain.EffectBlockAttack && (step.Target != domain.TargetAsset || step.Amount == nil) {
 		return domain.AbilityStep{}, fmt.Errorf("block_attack requires target = %q and a die with no outcome rows", "asset")
 	}
-	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Amount != nil || step.Table != nil) {
+	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("levy_coin requires target = %q and no contest or die", "faction")
 	}
 	return step, nil

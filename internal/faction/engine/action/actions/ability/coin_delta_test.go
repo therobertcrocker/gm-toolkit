@@ -21,7 +21,7 @@ func TestCoinDelta_Payouts(t *testing.T) {
 		{From: 2, To: 4, Coin: 1},
 		{From: 5, To: 6, Coin: 2},
 	}
-	harvesters := []domain.AbilityOutcome{{From: 3, To: 6, Coin: 1}}
+	singleRow := []domain.AbilityOutcome{{From: 3, To: 6, Coin: 1}}
 
 	tests := []struct {
 		name        string
@@ -31,8 +31,8 @@ func TestCoinDelta_Payouts(t *testing.T) {
 		wantCoin    int  // expected CoinDelta.Delta; 0 => no CoinDelta
 		wantRemove  bool // expected AssetRemoved
 	}{
-		{"harvesters miss", harvesters, nil, 0, 0, false},
-		{"harvesters hit", harvesters, &harvesters[0], 0, 1, false},
+		{"single row miss", singleRow, nil, 0, 0, false},
+		{"single row hit", singleRow, &singleRow[0], 0, 1, false},
 		{"postech gain", postech, &postech[2], 0, 2, false},
 		{"postech loss affordable", postech, &postech[0], 3, -1, false},
 		{"postech loss insolvent", postech, &postech[0], 0, 0, true},
@@ -67,6 +67,36 @@ func TestCoinDelta_DestroySelfUnconditional(t *testing.T) {
 		t.Fatalf("coinDelta: %v", err)
 	}
 	assertPayout(t, muts, 0, true)
+}
+
+func TestCoinDelta_TargetRoll(t *testing.T) {
+	step := domain.AbilityStep{
+		Effect:     domain.EffectCoinDelta,
+		Target:     domain.TargetNone,
+		TargetRoll: &domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 3, Amount: 1},
+	}
+	tests := []struct {
+		name     string
+		passed   bool
+		wantCoin int
+	}{
+		{"a pass pays the amount", true, 1},
+		{"a miss pays nothing", false, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			muts, err := coinDelta(StepContext{
+				Faction: &domain.Faction{ID: "f1"},
+				Asset:   &domain.Asset{ID: "a1", OwnerID: "f1"},
+				Step:    step,
+				Rolled:  dice.StepResult{Passed: tt.passed},
+			})
+			if err != nil {
+				t.Fatalf("coinDelta: %v", err)
+			}
+			assertPayout(t, muts, tt.wantCoin, false)
+		})
+	}
 }
 
 func assertPayout(t *testing.T, muts []domain.Mutation, wantCoin int, wantRemove bool) {

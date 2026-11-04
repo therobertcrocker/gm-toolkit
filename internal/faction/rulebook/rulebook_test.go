@@ -838,7 +838,7 @@ func TestLoad_TagBonusDice(t *testing.T) {
 			Trigger: domain.TriggerGoalCompleted,
 			Effect:  domain.SpecialXPRoll,
 			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-007"},
-			XPRoll:  &domain.XPRollParams{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
+			XPRoll:  &domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
 		})},
 		{"SWN-T-015", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, TechLevel: &zero}, domain.OncePerOwnerFaction)},
 		{"SWN-T-009", append(
@@ -1156,16 +1156,19 @@ func TestLoadTags_Ability(t *testing.T) {
 
 func TestConvertAbilityStep_RaiseTechLevel(t *testing.T) {
 	const header = "\n[assets.Machine.ability]\neffect = \"raise_tech_level\"\n"
+	const targetRoll = "[assets.Machine.ability.target_roll]\ndie = \"1d12\"\ntarget = 12\n"
+	const block = "[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n"
 	cases := []struct {
 		name string
 		body string
 		want string
 	}{
-		{"no world target", "die = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "raise_tech_level requires"},
-		{"no block", "target = \"world\"\ndie = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\n", "raise_tech_level requires"},
-		{"no tech level", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\n", "tech_level > 0"},
-		{"a coin row", "target = \"world\"\ndie = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\ncoin = 1\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "carry no coin"},
-		{"no outcome rows", "target = \"world\"\ndie = \"1d12\"\n[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\ntech_level = 4\n", "a die with rows"},
+		{"no world target", targetRoll + block, "raise_tech_level requires"},
+		{"no block", "target = \"world\"\n" + targetRoll, "raise_tech_level requires"},
+		{"no tech level", "target = \"world\"\n" + targetRoll + "[assets.Machine.ability.raise_tech_level]\ncoin_cost = 2\n", "tech_level > 0"},
+		{"an amount", "target = \"world\"\n[assets.Machine.ability.target_roll]\ndie = \"1d12\"\ntarget = 12\namount = 1\n" + block, "carries no amount"},
+		{"rows", "target = \"world\"\ndie = \"1d12\"\n[[assets.Machine.ability.outcomes]]\nfrom = 12\nto = 12\n" + block, "a target_roll"},
+		{"a bare die", "target = \"world\"\ndie = \"1d12\"\n" + block, "a target_roll"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1206,12 +1209,50 @@ func TestConvertAbilityStep_DieShapeMatchesEffect(t *testing.T) {
 	}
 }
 
+func TestConvertAbilityStep_TargetRoll(t *testing.T) {
+	const targetRoll = "[assets.Machine.ability.target_roll]\ndie = \"1d6\"\ntarget = 3\namount = 1\n"
+	const contest = "roll = \"test\"\nattacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\n"
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"both a die and a target roll", "effect = \"coin_delta\"\ndie = \"1d6\"\n" + targetRoll, "both a die and a target_roll"},
+		{"a contest and a target roll", "effect = \"coin_delta\"\n" + contest + targetRoll, "both contest and a die"},
+		{"coin_delta with amount 0", "effect = \"coin_delta\"\n[assets.Machine.ability.target_roll]\ndie = \"1d6\"\ntarget = 3\n", "coin_delta target_roll needs amount > 0"},
+		{"a target of 0", "effect = \"coin_delta\"\n[assets.Machine.ability.target_roll]\ndie = \"1d6\"\namount = 1\n", "target_roll needs target > 0"},
+		{"no die", "effect = \"coin_delta\"\n[assets.Machine.ability.target_roll]\ntarget = 3\namount = 1\n", "target_roll die is required"},
+		{"levy_coin with a target roll", "effect = \"levy_coin\"\ntarget = \"faction\"\n" + targetRoll, "levy_coin requires"},
+		{"a flat target roll beside steps", targetRoll + "[[assets.Machine.ability.steps]]\neffect = \"coin_delta\"\ndie = \"1d6\"\n", "not both"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, effectTestAsset+"\n[assets.Machine.ability]\n"+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestLoad_HarvestersRollsATarget(t *testing.T) {
+	rb := loadShippedRulebook(t)
+	want := &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect:     domain.EffectCoinDelta,
+		Target:     domain.TargetNone,
+		TargetRoll: &domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 3, Amount: 1},
+	}}}
+	if got := rb.Assets["SWN-W1-002"].Ability; !reflect.DeepEqual(got, want) {
+		t.Errorf("Harvesters ability = %+v, want %+v", got, want)
+	}
+}
+
 func TestLoad_PreceptorArchiveTeaches(t *testing.T) {
 	rb := loadShippedRulebook(t)
 	want := &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
 		Effect:         domain.EffectRaiseTechLevel,
 		Target:         domain.TargetWorld,
-		Table:          &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 12}, Outcomes: []domain.AbilityOutcome{{From: 12, To: 12}}},
+		TargetRoll:     &domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 12}, Target: 12},
 		RaiseTechLevel: &domain.RaiseTechLevelParams{CoinCost: 2, TechLevel: 4},
 	}}}
 	if got := rb.Tags["SWN-T-013"].Ability; !reflect.DeepEqual(got, want) {

@@ -461,7 +461,19 @@ effect  = "xp_roll"` + filters + `
 die    = "1d6"
 amount = 1
 `,
-			wantErr: "xp_roll target and amount must be > 0",
+			wantErr: "xp_roll needs target > 0",
+		},
+		{
+			name: "xp_roll with no amount",
+			body: `
+[[assets.Machine.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"` + filters + `
+[assets.Machine.effects.xp_roll]
+die    = "1d6"
+target = 4
+`,
+			wantErr: "xp_roll needs amount > 0",
 		},
 		{
 			name: "grant_movement without a relocate block",

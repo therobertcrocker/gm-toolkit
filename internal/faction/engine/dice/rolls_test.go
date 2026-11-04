@@ -59,10 +59,40 @@ func TestTable_CountsTheModifier(t *testing.T) {
 	}
 }
 
+func TestTarget(t *testing.T) {
+	roll := domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 3}
+	cases := []struct {
+		name  string
+		value int
+		want  bool
+	}{
+		{"on the number", 3, true},
+		{"one below", 2, false},
+		{"above", 6, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := Target(roll, dicetest.Constant{Value: tc.value}); got != tc.want {
+				t.Errorf("Target = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRollStep(t *testing.T) {
 	die := domain.DiceRoll{NumDice: 1, Sides: 6}
 	row := domain.AbilityOutcome{From: 3, To: 6, Coin: 1}
 	table := domain.RollTable{Die: die, Outcomes: []domain.AbilityOutcome{row}}
+
+	t.Run("a target roll sets Passed", func(t *testing.T) {
+		step := domain.AbilityStep{TargetRoll: &domain.TargetRoll{Die: die, Target: 3}}
+		if got := RollStep(step, dicetest.Constant{Value: 3}); !got.Passed {
+			t.Errorf("RollStep on the number = %+v, want Passed", got)
+		}
+		if got := RollStep(step, dicetest.Constant{Value: 2}); got.Passed {
+			t.Errorf("RollStep below the number = %+v, want not Passed", got)
+		}
+	})
 
 	t.Run("an amount roll gives its total", func(t *testing.T) {
 		got := RollStep(domain.AbilityStep{Amount: &die}, dicetest.Constant{Value: 4})
