@@ -149,7 +149,8 @@ Patterns that recur across engine subsystems, each verified in source:
 | [turn pipeline](turn-pipeline.md) | Turn lifecycle, bookkeeping math, rotation order, history | Written |
 | [actions](actions.md) | The `Action` contract, factory registration, eligibility, abilities | Written |
 | [goals](goals.md) | Per-goal handlers, the lock taxonomy, progress tracking | Written |
-| [hooks](hooks.md) | The five hook categories, scope lookup, dispatch | Written |
+| [hooks](hooks.md) | The six hook categories, scope lookup, dispatch | Written |
+| [dice](dice.md) | The named roll routes, the hooked roll, ability roll data | Written |
 | [world & movement](world-movement.md) | Per-turn spatial index and movement orders | Written |
 | [spatial](spatial.md) | Region map, hex routing, pathfinding, the map builder | Written |
 | [effect & mutation](effect-mutation.md) | Faction tags, asset effects, and the mutation apply layer | Written |

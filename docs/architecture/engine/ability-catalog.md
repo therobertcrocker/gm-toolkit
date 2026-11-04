@@ -90,8 +90,10 @@ half-wired. The catalog reuses and repairs it rather than inventing fresh:
 
 | Field / value | Intended use | Reality today |
 |---|---|---|
-| `RollTable.Die DiceRoll` | roll for an outcome-table ability | **wired** — parsed into `AbilityStep.Roll` |
-| `RollTable.Outcomes []AbilityOutcome{From,To,Coin,DestroySelf}` | die-range → coin payout | **wired** — parsed into `AbilityStep.Roll` |
+| `RollTable.Die DiceRoll` | roll for an outcome-table ability | **wired** — parsed into `AbilityStep.Table` |
+| `RollTable.Outcomes []AbilityOutcome{From,To,Coin,DestroySelf}` | die-range → coin payout | **wired** — parsed into `AbilityStep.Table` |
+| `AbilityStep.Amount *DiceRoll` | a die whose total is the number | **wired** — a bare `die` with no rows ([dice](dice.md)) |
+| `AbilityStep.TargetRoll *TargetRoll` | a die that must meet or beat a number | **wired** — a `[target_roll]` block ([dice](dice.md)) |
 | `AbilityEffectType` = `reveal_stealth` | reveal effect | **wired** (Informers, Seductress) |
 | `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | **removed** by A.001.2 — `AbilityEffectType` has five constants, none a coin transfer. The S-side `coin_steal` is a `SpecialEffectType` (`domain/effect.go`) |
 | `[[ability.steps]]` in Seductress TOML | multi-step ability | **wired** — `abilityRecord.Steps` parses it (relocate, then reveal) |
@@ -119,8 +121,9 @@ with composition: **target-selection → (stat-contest | die-roll) → effect**.
 
 | Effect (primitive) | Assets | Notes |
 |---|---|---|
-| **roll-table-coin** | Harvesters `SWN-W1-002`, Postech Industry `SWN-W3-001`, Venture Capital `SWN-W6-001`, Pretech Manufactory `SWN-W7-001` | pure `Die`+`Outcomes`. Manufactory's "half, round up" is a payout-formula variant of the same table |
-| **roll-table → purchase-discount** | Commodities Broker `SWN-W6-003` | roll-table whose result modifies the *next purchase cost*, not Coin directly |
+| **roll-table-coin** | Postech Industry `SWN-W3-001`, Venture Capital `SWN-W6-001`, Pretech Manufactory `SWN-W7-001` | pure `Die`+`Outcomes`. Manufactory's "half, round up" is a payout-formula variant of the same table |
+| **target-roll-coin** | Harvesters `SWN-W1-002` | a `target_roll` that pays its `amount` on a pass |
+| **amount-roll → purchase-discount** | Commodities Broker `SWN-W6-003` | an amount roll whose result modifies the *next purchase cost*, not Coin directly |
 | **stat-contest → reveal-stealth** | Informers `SWN-C1-002` ✅, Seductress `SWN-C2-004` | Informers wired; Seductress also relocates one hex first (contest composed after a move) |
 | **stat-contest → coin-or-disable** | Marketers `SWN-W5-001` ✅ | success forces target to pay half an asset's cost (at least 1 Coin) or have it disabled |
 | **levy (pay-or-lose)** | Monopoly `SWN-W4-002` ✅ | an action by the book's text (levy_coin); the reactive TOML reading is retired |

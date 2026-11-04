@@ -22,7 +22,7 @@ pipeline calls into:
 ```go
 type Engine struct {
 	Rulebook *rulebook.Rulebook
-	Rand     domain.Roller
+	Rand     dice.Roller
 	Hooks    *hooks.Registry
 	Turn     *turn.TurnEngine
 	Tag      *tag.TagEngine

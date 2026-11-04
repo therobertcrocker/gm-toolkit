@@ -10,7 +10,7 @@ import (
 const statDieSides = 10
 
 // Engine is what a hooked roll needs from the game. A nil Collector asks no one
-// (hooks.md, Key Decisions).
+// (dice.md, Key Decisions).
 type Engine struct {
 	Registry     *hooks.Registry
 	Collector    hooks.Collector

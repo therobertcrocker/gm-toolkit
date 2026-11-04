@@ -102,6 +102,11 @@ Planning calls, shown to Robert before writing:
 - **Two more lockdown tests than the list** (Commit 15) — `TestCheckArrivals_LockdownFeeComesFromTheEntry` shows the fee is read from the data, because the fixture's `1d4` and the old `Roll(4)` give the same 3 on a fixed roller. `TestLockedOutBy_TwoLocksInOneFactionNameTheFirstByID` holds the sorted walk inside one faction, which the two-holders test does not reach
 - **Decision 8 checked in the code** (Commit 15) — nothing outside the tests read `transport_lockdown`. The digest's Coin branch and `format.go` do not show a fee's cause, so the rename changes nothing on screen. Old history files keep the old text, and nothing reads it
 - **The app run used a pty, not tmux** (Commit 15) — `tmux` is not in this container, so a throwaway Python script in the scratchpad drove the TUI against `sandbox-claude`. The rulebook loaded and one `movement` cycle ran through all four factions. No lockdown fee came up in that one cycle, because the carriers need three turns to reach Citadel; the fee is held by the tests, as the plan expected
+- **Scope widened: Phases 8 and 9 ran in one session** (Commits 15, 16) — Robert's call, on top of Phase 7 in the same session
+- **`ResolveTie`'s walk comes from `dice/tie.go`** (Commit 16) — Task 2 named `rules.go`, but Commit 6 moved the function. The old `hooks.md` bullet was also wrong on the walk; it now matches the code
+- **More small fixes than the task list** (Commit 16) — the comment in `dice/stat.go` names `dice.md`, because the nil-collector decision moved there; `actions.md` points at the routes; the catalog's Commodities Broker row becomes an amount roll, because it is one; the `hooks.md` budgets section loses a stale `tag:Warlike` key; `engine/overview.md` said "five" hook categories and now says six
+- **`dice.md` gains a short list of orders that must hold** (Commit 16) — not in Task 1's list. These are the "What must survive" orders from Shared Context, and they would otherwise leave with this plan. Each was read in the source
+- **The `hooks.md` diagram has not been rendered** (Commit 16) — only two node labels changed, and this session has no preview. It is for Robert's review, as the diagram kit asks
 
 ---
 
@@ -198,7 +203,7 @@ TOML and docs.
   - Commit 14 — `refactor: Harvesters and Teach become target rolls` (6 tasks)
 - [x] **Phase 8 — Lockdown**
   - Commit 15 — `refactor: lockdown fee and cause move to data` (6 tasks)
-- [ ] **Phase 9 — Docs**
+- [x] **Phase 9 — Docs**
   - Commit 16 — `docs: add dice architecture page and update roll references` (3 tasks)
 
 ### Phase 1 — Open the package
@@ -1532,7 +1537,7 @@ New page, from `templates/arch-page.md` in the session-modes skill. It holds:
 
 ##### Task 2 — `docs/architecture/engine/hooks.md`, `hooks/doc.go`
 
-- `hooks.md`: Cat 1, 2 and 5 rows and the `RollWithHooks` bullet point to `dice.md`. This also settles the conflict at lines 111-115 against the code. The `ResolveTie` bullet at lines 187-189 points to `dice.md`, and states the walk `rules.go` actually uses. Update the diagram's `Roll` and `Tie` nodes, and the Dependencies section.
+- `hooks.md`: Cat 1, 2 and 5 rows and the `RollWithHooks` bullet point to `dice.md`. This also settles the conflict at lines 111-115 against the code. The `ResolveTie` bullet at lines 187-189 points to `dice.md`, and states the walk `dice/tie.go` actually uses. Update the diagram's `Roll` and `Tie` nodes, and the Dependencies section.
 - `hooks/doc.go:31`: `Dispatch logic lives in the hooks/dispatch sub-package; the roll families dispatch from engine/dice.`
 - Add `dice.md` to `architecture-overview.md`, and to `engine/overview.md` if it lists the engine's packages.
 

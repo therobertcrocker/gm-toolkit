@@ -31,11 +31,11 @@ share, and it is a passive store — it never calls a hook itself.
 
 | # | Interface | Fires | Dispatched from |
 |---|-----------|-------|-----------------|
-| 1 | `RollModifier`, `RollOfferFilter` | before a roll — offers extra dice; filters may strike offers | `RollWithHooks` (every faction roll) |
-| 2 | `RollResultHook` | after a roll — may reroll specific dice | `RollWithHooks` (every faction roll) |
+| 1 | `RollModifier`, `RollOfferFilter` | before a roll — offers extra dice; filters may strike offers | the hooked roll in [dice](dice.md) (every stat roll) |
+| 2 | `RollResultHook` | after a roll — may reroll specific dice | the hooked roll in [dice](dice.md) (every stat roll) |
 | 3 | `MutationReactor` | after a phase's mutations — may emit more | orchestrator, after movement & action |
 | 4 | `RuleModifier` family | at a rule query — alters the answer | the query site (purchase, bookkeeping, movement, attack targeting) |
-| 5 | `TieResolver` | at an attack/defense tie | `ResolveTie` (combat) |
+| 5 | `TieResolver` | at an attack/defense tie | `ResolveTie` in [dice](dice.md) (contests) |
 | 6 | `LethalInterceptor` | when a hit would destroy an asset — may take the hit in place of the removal | `InterceptLethal` (the Attack action's `applyAssetDamage`, the `self_damage` reactor) |
 
 Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
@@ -83,8 +83,8 @@ faction's slice. The registry exposes the buckets separately —
 composes them.
 
 Cat 1 and Cat 2 are also exposed per bucket (`RollModifiersAt(scope)`,
-`RollOfferFiltersAt(scope)`, `RollResultHooksAt(scope)`), and have no `…For` lookup, because the roll
-dispatcher builds its own scope list.
+`RollOfferFiltersAt(scope)`, `RollResultHooksAt(scope)`), and have no `…For` lookup, because the hooked
+roll in [dice](dice.md) builds its own scope list.
 
 Three Cat 4 families also expose one asset's bucket alone —
 `AssetCostModifiersForAsset`, `WorldTechLevelModifiersForAsset` and
@@ -104,18 +104,14 @@ writes to the registry, and neither registrar ever dispatches.
 
 Dispatch is the opposite of centralized. There is no single "run all hooks"
 call; instead each category is consulted **at the pipeline point where its
-question is genuinely being asked**, by the `dispatch` sub-package:
+question is genuinely being asked**. The roll families dispatch from
+[dice](dice.md), and the others from the `dispatch` sub-package:
 
-- **`RollWithHooks`** wraps every faction roll: attack and defense, the Expand
-  Influence test, rival rolls and free attack, and the ability contest
-  ([actions](actions.md)). S-side contests (`effects/contest.go`) roll directly,
-  because a reactor has no collector. It consults global, the roller's faction, and the asset buckets of the
-  roller's and the opponent's assets on the roll's world (plus the rolling and
-  opposing assets when off-world), in asset-ID order. Never the opponent's
-  faction bucket: tag hooks assume the roll is their own. It gathers Cat 1 offers, runs Cat 1 offer filters over them (Blackmail strips tag dice —
-  `ModifierOffer.FromTag`), hands them to the [collector](#the-collector-seam) for
-  selection, expands and rolls the dice pool, applies keep-highest, then runs Cat
-  2 reroll directives — so one call covers both roll-time families.
+- **The hooked roll** covers Cat 1 and Cat 2 in one call, on every stat roll:
+  attack and defense, the Expand Influence test and rival rolls, the free attack,
+  the ability gate and the effect gates. A gate inside a reactor rolls the same way
+  with a nil collector. The steps and the order of the buckets are on the
+  [dice](dice.md#the-hooked-roll) page.
 - **`MutationReactors`** runs on a phase's emitted mutations before the
   orchestrator applies them (movement and action phases), letting Cat 3 reactors
   respond to what is about to happen. Their output joins the batch, which
@@ -184,9 +180,11 @@ question is genuinely being asked**, by the `dispatch` sub-package:
   offer's budget. An interceptor that the batch already removes or moves offers
   nothing. A reactor has no collector, so `self_damage` calls
   `InterceptLethalAutomatic`, which skips elective offers.
-- **`ResolveTie`** is consulted at a combat tie, asking the attacker's resolvers
-  first and the defender's only if the attacker has none; **first registration
-  wins** (ties are a binary outcome, so there is nothing to chain).
+- **`ResolveTie`** is Cat 5, in [dice](dice.md#ties), and it is asked at the tie of
+  an attack. It walks the global hooks, then the attacker's side, then the
+  defender's: on each side the faction's hooks, then each of its assets' in ID
+  order. **The first answer that is not `TieStandard` wins** (a tie is a binary
+  outcome, so there is nothing to chain).
 
 Every resolver treats a `nil` registry and an empty match list as "no
 modification" — pass the base value straight through — so a campaign with no
@@ -195,7 +193,7 @@ hooks behaves exactly like one whose hooks all decline.
 ### The collector seam
 
 Roll-time hooks are the one family that needs a human (or planner) in the loop,
-because some modifiers and rerolls are *elective*. The dispatcher reaches the
+because some modifiers and rerolls are *elective*. The hooked roll reaches the
 driver through a narrow `Collector`:
 
 ```go
@@ -206,7 +204,7 @@ type Collector interface {
 ```
 
 This is the hook-level slice of the engine's [collectors-in seam](orchestrator.md):
-the dispatcher offers the Cat 1 modifiers that survive the offer filters and budgets, and the collector returns the
+the roll offers the Cat 1 modifiers that survive the offer filters and budgets, and the collector returns the
 subset to apply; for each *elective* Cat 2 directive the collector confirms or
 declines. Non-elective directives apply automatically. `SelectModifiers` is not
 called when no offer survives the budget filter.
@@ -234,15 +232,12 @@ ability, and `PhaseCollector` for arrivals and free relocates.
 
 ### Per-turn budgets
 
-A modifier or reroll may carry a `BudgetKey` (namespaced, e.g. `"tag:Warlike"`).
-The dispatcher stamps each offer and directive with the faction that registered
-it (`FactionID`), and reads and spends the budget on that faction's
-`HookBudgets`. An opponent's effect spends its owner's budget. The dispatcher
-filters out any offer or directive whose budget is already non-zero this turn — the
-mechanism behind "once per turn" effects like Warlike's bonus attack die. An
-empty `BudgetKey` means unlimited. The budget map is reset each turn by
-[bookkeeping](turn-pipeline.md), so the gating is per-faction-turn, not
-per-cycle.
+A hook's offer may carry a `BudgetKey`. A budget already spent this turn stops the
+offer: the mechanism behind "once per turn" effects like Warlike's bonus attack
+die. An empty `BudgetKey` means unlimited. Each faction's budgets live on its
+`HookBudgets`, and [bookkeeping](turn-pipeline.md) resets them each turn, so the
+gating is per-faction-turn, not per-cycle. [Dice](dice.md#the-hooked-roll) holds how
+a roll stamps, reads and spends them.
 
 ### Bounded recursion
 
@@ -276,8 +271,8 @@ flowchart LR
   Registry["Registry<br>families keyed by Scope<br>passive store"]:::core
   subgraph Dispatch["dispatch · at each question's pipeline point"]
     direction TB
-    Roll["RollWithHooks<br>Cat 1 offers · Cat 2 rerolls"]:::process
-    Tie["ResolveTie<br>Cat 5 — first wins"]:::process
+    Roll["engine/dice stat rolls<br>Cat 1 offers · Cat 2 rerolls"]:::process
+    Tie["engine/dice ResolveTie<br>Cat 5 — first answer wins"]:::process
     Cat4["Cat 4 value resolvers<br>cost · TL · movement — chain"]:::process
     Elig["ResolveAttackEligibility<br>Cat 4 — first no refuses"]:::process
     Lethal["InterceptLethal<br>Cat 6 — first taker wins"]:::process
@@ -313,6 +308,9 @@ flowchart LR
 ```
 
 ## Key Decisions
+
+The decisions on elective reroll timing, the buckets a roll reads and a roll with no
+collector moved to [dice](dice.md#key-decisions).
 
 - **Category 4 is a typed family, not a generic interface.** Each rule query
   (asset cost, maintenance, world TL, attack eligibility, movement grants, repair
@@ -401,11 +399,6 @@ flowchart LR
   Medical Center's restore all use `ConfirmPayment`. Each prompt names the faction
   it asks. (A.001.6 overview Decision 19; Effort 3 Decision 5; Effort 4 Decision
   8; Effort 5 Decision 6.)
-- **Elective rerolls keep per-roll timing.** Cat 2 runs right after each roll, so
-  an attacker decides on a reroll before the defense is rolled. Deciding after
-  both rolls would split `RollWithHooks` into roll and post-roll calls at every
-  call site, and Expand Influence compares one roll against N. A fence-sign at
-  the dispatcher marks it. (s-flag Effort 3 plan, Decision 15.)
 - **Every S effect registers at its holder's scope, and checks that its holder
   still applies when it fires.** An asset's effect registers at asset scope and
   checks that the asset is active; a tag's registers at faction scope and checks
@@ -446,30 +439,6 @@ flowchart LR
   not the roller's. The trigger is in the key so two entries of one definition
   (Book of Secrets) do not share a budget. (s-flag-effect-registry plan, Planning
   Decision 3; Effort 3 plan, Decisions 8 and 16.)
-- **The roll dispatcher reads every faction bucket, and asset buckets on the
-  roll's world from both sides.** An S effect such as Book of Secrets or
-  Panopticon Matrix acts on a roll made by or against its owner on its world, so
-  `rollScopes` gathers both sides' asset buckets there, plus the rolling and
-  opposing assets when they stand elsewhere. It also reads the opponent's faction
-  bucket (defense-die tags such as Deep Rooted) and every bystander's faction
-  bucket (Psychic Academy's `rival_roll`). Every roll hook checks its owner
-  relation against `ctx.Actor` / `ctx.Opponent` itself (`rollMatches`), so a hook
-  in another faction's bucket acts only on the rolls its entry names. An asset's
-  roll entry cannot take scope `faction` or `homeworld`, because its bucket is
-  read only on the roll's world. This replaces "never the opponent's faction
-  bucket", whose reason was the Go tag hooks that assumed every roll was their own;
-  `engine/tag` is gone. (s-flag Effort 3 plan, Decision 7; A.001.7 discovery D-7
-  and D-15, overview R-2, Effort 3 Decision 7, initiative close.)
-- **A roll with no collector asks no one.** A contest that fires inside a reactor
-  or a phase route (Tripwire Cells, Panopticon Matrix, Lobbyists) has no one to
-  ask, so `RollWithHooks` with a nil collector takes every Cat 1 offer with no
-  budget, skips every offer with one, declines every elective Cat 2 reroll and
-  still applies forced ones. A free die where the highest is kept never hurts the
-  roller; a once-per-turn die spent on a roll the player never chose could. Each
-  call site passes its collector as one argument, nil for now, so a later collector
-  is a one-line swap. Precedent: `InterceptLethal`'s nil collector. Rejected: a
-  collector on every reactor (changes every reactor's interface; the roll card,
-  `R.025`, would replace those prompts). (A.001.7 overview Decision 2.)
 - **Reactors in one dispatch round cannot see each other's output, so a shared
   limit needs a lead.** Every reactor in a round reads the same input batch and
   the state from before it. When several reactors draw on one limit — Banks on the
@@ -498,7 +467,8 @@ driver. The package defines the contracts; it owns no game data of its own.
 **Registered by** the tag and effect engines on the
 [effect & mutation](effect-mutation.md) page — the only writers to the registry.
 **Dispatched by** the [orchestrator](orchestrator.md) (Cat 3 reactors after
-movement and action), the [actions](actions.md) engine (Cat 1/2 on every faction roll, Cat 5 in combat, Cat
+movement and action), [dice](dice.md) (Cat 1/2 on every stat roll, Cat 5 at a
+contest's tie), the [actions](actions.md) engine (Cat
 4 asset-cost and tech level at purchase, Cat 4 attack eligibility and Cat 6 interception in combat), and the [turn pipeline](turn-pipeline.md) (Cat 4
 maintenance-cost at bookkeeping). Emitted reactions flow back through the same
 [mutation apply layer](effect-mutation.md) as every other state change.

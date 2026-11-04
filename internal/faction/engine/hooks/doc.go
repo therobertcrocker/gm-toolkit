@@ -28,5 +28,5 @@
 // all in registration order within each bucket.
 //
 // Only Cat 3 (MutationReactor) can recurse; recursion is bounded at depth 5.
-// Dispatch logic lives in the hooks/dispatch sub-package.
+// Dispatch logic lives in the hooks/dispatch sub-package; the roll families dispatch from engine/dice.
 package hooks

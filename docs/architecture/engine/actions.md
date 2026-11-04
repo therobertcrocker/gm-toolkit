@@ -126,8 +126,8 @@ determined once selected. The rules behind the numbers live in
 `Seize Planet` and `Change Homeworld` are *goal-initiating* actions — they don't
 resolve an outcome so much as start a multi-turn [goal](goals.md); `Abandon Goal`
 is the inverse. The combat rows (`Attack`, `Expand Influence`) emit the widest
-mutation sets because their rolls run through the [hooks](hooks.md) dispatch and
-can cascade to bases and faction HP.
+mutation sets because their rolls run through the [dice](dice.md) routes and the
+[hooks](hooks.md), and can cascade to bases and faction HP.
 
 ## Key Decisions
 
