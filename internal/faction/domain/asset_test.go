@@ -246,12 +246,9 @@ func TestLockedOutBy(t *testing.T) {
 				tc.mutate(asset)
 			}
 			factions := map[string]*domain.Faction{tc.holder: {ID: tc.holder, Assets: map[string]*domain.Asset{"lock": asset}}}
-			got, holding := domain.LockedOutBy(factions, tc.world, tc.faction)
-			if got != tc.want {
-				t.Errorf("LockedOutBy = %q, want %q", got, tc.want)
-			}
-			if (tc.want == "" && holding != nil) || (tc.want != "" && holding != asset) {
-				t.Errorf("LockedOutBy asset = %+v, want the lock's asset only when it holds", holding)
+			holding := domain.LockedOutBy(factions, tc.world, tc.faction)
+			if (tc.want == "" && holding != nil) || (tc.want != "" && (holding != asset || holding.OwnerID != tc.want)) {
+				t.Errorf("LockedOutBy = %+v, want the lock's asset, owned by %q, only when it holds", holding, tc.want)
 			}
 		})
 	}
@@ -267,9 +264,8 @@ func TestLockedOutBy_TwoHoldersNameTheFirstByID(t *testing.T) {
 		factions[owner] = &domain.Faction{ID: owner, Assets: map[string]*domain.Asset{"lock-" + owner: lockdown(owner)}}
 	}
 	for range 20 {
-		got, holding := domain.LockedOutBy(factions, "Krylos", "bravo")
-		if got != "alpha" || holding.ID != "lock-alpha" {
-			t.Fatalf("LockedOutBy = %q, %+v, want alpha and lock-alpha, the first holder by ID", got, holding)
+		if holding := domain.LockedOutBy(factions, "Krylos", "bravo"); holding.ID != "lock-alpha" {
+			t.Fatalf("LockedOutBy = %s, want lock-alpha, the first holder by ID", holding.ID)
 		}
 	}
 }
@@ -284,7 +280,7 @@ func TestLockedOutBy_TwoLocksInOneFactionNameTheFirstByID(t *testing.T) {
 		factions["alpha"].Assets[id] = lockdown(id)
 	}
 	for range 20 {
-		if _, holding := domain.LockedOutBy(factions, "Krylos", "bravo"); holding.ID != "lock-a" {
+		if holding := domain.LockedOutBy(factions, "Krylos", "bravo"); holding.ID != "lock-a" {
 			t.Fatalf("LockedOutBy asset = %s, want lock-a, the first by ID", holding.ID)
 		}
 	}

@@ -546,7 +546,7 @@ func convertAmount(effectType domain.SpecialEffectType, record *amountRecord) (d
 	if amount == nil {
 		return domain.DiceRoll{}, fmt.Errorf("%s amount is required", effectType)
 	}
-	if amount.NumDice == 0 && amount.Modifier <= 0 {
+	if amount.NumDice+amount.Modifier <= 0 {
 		return domain.DiceRoll{}, fmt.Errorf("%s amount must be > 0, got %q", effectType, record.Amount)
 	}
 	return *amount, nil

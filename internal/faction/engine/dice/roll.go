@@ -81,8 +81,8 @@ func rollWithHooks(
 	result.Sum = diceSum(result.Dice) + result.Modifier
 
 	// Apply keep-highest trim if any offer requested it.
-	if n := rollState.KeepHighest(); n > 0 && len(result.Dice) > n {
-		result.Dice, dieSides = keepHighest(result.Dice, dieSides, n)
+	if keepCount := rollState.KeepHighest(); keepCount > 0 && len(result.Dice) > keepCount {
+		result.Dice, dieSides = keepHighest(result.Dice, dieSides, keepCount)
 		result.Sum = diceSum(result.Dice) + result.Modifier
 	}
 
@@ -213,16 +213,16 @@ func freeOffers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
 	return free
 }
 
-// keepHighest returns the n highest dice, highest first, each with its own sides.
-func keepHighest(values, dieSides []int, n int) ([]int, []int) {
+// keepHighest returns the keepCount highest dice, highest first, each with its own sides.
+func keepHighest(values, dieSides []int, keepCount int) ([]int, []int) {
 	order := make([]int, len(values))
 	for index := range order {
 		order[index] = index
 	}
 	sort.SliceStable(order, func(i, j int) bool { return values[order[i]] > values[order[j]] })
-	keptValues := make([]int, n)
-	keptSides := make([]int, n)
-	for position, index := range order[:n] {
+	keptValues := make([]int, keepCount)
+	keptSides := make([]int, keepCount)
+	for position, index := range order[:keepCount] {
 		keptValues[position] = values[index]
 		keptSides[position] = dieSides[index]
 	}
@@ -231,8 +231,8 @@ func keepHighest(values, dieSides []int, n int) ([]int, []int) {
 
 func diceSum(dice []int) int {
 	total := 0
-	for _, d := range dice {
-		total += d
+	for _, die := range dice {
+		total += die
 	}
 	return total
 }

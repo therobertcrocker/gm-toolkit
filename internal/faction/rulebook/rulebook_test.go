@@ -1199,6 +1199,8 @@ func TestConvertAbilityStep_DieShapeMatchesEffect(t *testing.T) {
 		{"coin_delta with no rows", "effect = \"coin_delta\"\ndie = \"1d6\"\n", "coin_delta needs outcome rows"},
 		{"purchase_discount with rows", "effect = \"purchase_discount\"\ndie = \"1d6\"\n" + rows, "purchase_discount needs a die and no outcome rows"},
 		{"block_attack with rows", "effect = \"block_attack\"\ntarget = \"asset\"\ndie = \"1d6\"\n" + rows, "block_attack requires"},
+		{"rows with no die", "effect = \"coin_delta\"\n" + rows, "outcome rows and no die"},
+		{"rows beside a target roll", "effect = \"coin_delta\"\n[assets.Machine.ability.target_roll]\ndie = \"1d6\"\ntarget = 3\namount = 1\n" + rows, "outcome rows and no die"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1224,6 +1226,7 @@ func TestConvertAbilityStep_TargetRoll(t *testing.T) {
 		{"a target of 0", "effect = \"coin_delta\"\n[assets.Machine.ability.target_roll]\ndie = \"1d6\"\namount = 1\n", "target_roll needs target > 0"},
 		{"no die", "effect = \"coin_delta\"\n[assets.Machine.ability.target_roll]\ntarget = 3\namount = 1\n", "target_roll die is required"},
 		{"levy_coin with a target roll", "effect = \"levy_coin\"\ntarget = \"faction\"\n" + targetRoll, "levy_coin requires"},
+		{"an effect that does not read it", "effect = \"reveal_stealth\"\ntarget = \"faction\"\n" + targetRoll, `"reveal_stealth" does not read a target_roll`},
 		{"a flat target roll beside steps", targetRoll + "[[assets.Machine.ability.steps]]\neffect = \"coin_delta\"\ndie = \"1d6\"\n", "not both"},
 	}
 	for _, tc := range cases {

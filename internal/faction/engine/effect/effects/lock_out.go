@@ -9,8 +9,8 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// lockOutRegistrar is Transport Lockdown: on a hit, the faction it struck pays 1d4
-// Coin and waits a turn for each arrival on the Lockdown's world, and cannot
+// lockOutRegistrar is Transport Lockdown: on a hit, the faction it struck pays its
+// fee and waits a turn for each arrival on the Lockdown's world, and cannot
 // relocate there, while the Lockdown stays active on that world (D-31 to D-33).
 // The record is a locked_out condition the Lockdown carries on itself, naming the
 // struck faction and the world of the hit (D-36, overview Decision 24). A hit on a

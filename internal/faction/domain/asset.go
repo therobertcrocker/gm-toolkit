@@ -302,16 +302,15 @@ func (condition Condition) Is(other Condition) bool {
 		condition.TargetFactionID == other.TargetFactionID && condition.WorldID == other.WorldID
 }
 
-// LockedOutBy returns the faction whose Transport Lockdown holds factionID out of
-// worldID and the asset that holds the lock, or "" and nil when none does: an active
-// asset of another faction on the world carries locked_out, from itself, against
-// factionID, struck on that world. The lock lives and dies with that asset (D-31,
-// D-36), and sleeps while the asset is away from the world of the hit (Effort 5
-// Decision Record 5); a capture into factionID lapses it. Holders and their assets
-// are walked in ID order, so two locks name one.
-func LockedOutBy(factions map[string]*Faction, worldID, factionID string) (string, *Asset) {
+// LockedOutBy returns the Transport Lockdown that holds factionID out of worldID,
+// or nil when none does: an active asset of another faction on the world carries
+// locked_out, from itself, against factionID, struck on that world. The lock lives
+// and dies with that asset (D-31, D-36), and sleeps while the asset is away from the
+// world of the hit (Effort 5 Decision Record 5); a capture into factionID lapses it.
+// Holders and their assets are walked in ID order, so two locks name one.
+func LockedOutBy(factions map[string]*Faction, worldID, factionID string) *Asset {
 	if worldID == "" {
-		return "", nil
+		return nil
 	}
 	for _, holderID := range slices.Sorted(maps.Keys(factions)) {
 		if holderID == factionID {
@@ -325,11 +324,11 @@ func LockedOutBy(factions map[string]*Faction, worldID, factionID string) (strin
 				return condition.Kind == ConditionLockedOut && condition.SourceAssetID == asset.ID &&
 					condition.TargetFactionID == factionID && condition.WorldID == worldID
 			}) {
-				return holderID, asset
+				return asset
 			}
 		}
 	}
-	return "", nil
+	return nil
 }
 
 type Asset struct {

@@ -566,6 +566,28 @@ amount = "0"
 			wantErr: `coin_gain amount must be > 0, got "0"`,
 		},
 		{
+			name: "coin_gain dice that can roll below zero",
+			body: `
+[[assets.Machine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"` + filters + `
+[assets.Machine.effects.coin_gain]
+amount = "1d4-5"
+`,
+			wantErr: `coin_gain amount must be > 0, got "1d4-5"`,
+		},
+		{
+			name: "coin_gain dice that can roll zero",
+			body: `
+[[assets.Machine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"` + filters + `
+[assets.Machine.effects.coin_gain]
+amount = "1d4-1"
+`,
+			wantErr: `coin_gain amount must be > 0, got "1d4-1"`,
+		},
+		{
 			name: "coin_gain with zero-sided dice",
 			body: `
 [[assets.Machine.effects]]

@@ -470,9 +470,9 @@ type HoldReason string
 const (
 	// HoldRefused: the destination's government refused an asset aboard (D-27).
 	HoldRefused HoldReason = "permission_refused"
-	// HoldLockdownPaid: the order paid a Transport Lockdown's 1d4 and waits a turn (D-33).
+	// HoldLockdownPaid: the order paid a Transport Lockdown's fee and waits a turn (D-33).
 	HoldLockdownPaid HoldReason = "lockdown_paid"
-	// HoldLockdownUnpaid: the faction cannot pay the 1d4 yet (overview Decision 15).
+	// HoldLockdownUnpaid: the faction cannot pay the fee yet (overview Decision 15).
 	HoldLockdownUnpaid HoldReason = "lockdown_unpaid"
 	// HoldTollUnpaid: an owner aboard cannot pay its arrival tolls yet (Effort 4 Decision 10).
 	HoldTollUnpaid HoldReason = "toll_unpaid"

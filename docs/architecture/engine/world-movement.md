@@ -86,8 +86,8 @@ the current `StepIdx`, the `DriftRating` that priced the route, and the
 
 1. **Tick first.** `TickMovementOrders` advances open orders, in asset ID order.
    `checkArrivals` (`engine/arrival.go`) then reads each `MovementOrderCompleted`.
-   A Transport Lockdown on the destination comes first: the order pays 1d4 Coin (a
-   loss the Lockdown's owner imposes, so a Bank absorbs it) and
+   A Transport Lockdown on the destination comes first: the order pays the fee on
+   its `lock_out` entry (a loss the Lockdown's owner imposes, so a Bank absorbs it) and
    holds a turn (`MovementOrderHeld`, `lockdown_paid`, which sets the order's
    `LockdownPaid`), or holds unpaid until it can pay. Otherwise it asks the
    destination's government for every `P` asset aboard (the carrier, then its

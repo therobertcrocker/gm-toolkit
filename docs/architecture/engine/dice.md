@@ -148,8 +148,10 @@ is `[effects.lock_out] amount = "1d4"`, on the shared `amountRecord`.
   search missed the three entries.)
 - **Amount abilities keep a bare `die`.** `die` alone is an amount, and `die` with
   rows is a table, so existing amount data does not change. The loader refuses a
-  shape its effect cannot read: `coin_delta` with neither rows nor a target roll, and
-  `purchase_discount` or `block_attack` with rows. (`R.028` Decision 4.)
+  shape its effect cannot read: `coin_delta` with neither rows nor a target roll,
+  `purchase_discount` or `block_attack` with rows, rows with no `die`, and a target
+  roll on an effect other than `coin_delta` and `raise_tech_level`. (`R.028`
+  Decision 4 and the close review.)
 - **A target roll's amount is optional, and the effect decides what it pays.**
   Harvesters' `coin = 1` becomes the target roll's `amount`, and Teach Planetary
   Population has none. `coin_delta` requires one and `raise_tech_level` refuses one.

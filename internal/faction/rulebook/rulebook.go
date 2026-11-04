@@ -380,12 +380,12 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 			step.Amount = die
 		} else {
 			table := &domain.RollTable{Die: *die}
-			for _, o := range record.Outcomes {
+			for _, outcome := range record.Outcomes {
 				table.Outcomes = append(table.Outcomes, domain.AbilityOutcome{
-					From:        o.From,
-					To:          o.To,
-					Coin:        o.Coin,
-					DestroySelf: o.DestroySelf,
+					From:        outcome.From,
+					To:          outcome.To,
+					Coin:        outcome.Coin,
+					DestroySelf: outcome.DestroySelf,
 				})
 			}
 			step.Table = table
@@ -428,6 +428,9 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	if record.Die != "" && step.TargetRoll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both a die and a target_roll; use one")
 	}
+	if record.Die == "" && len(record.Outcomes) > 0 {
+		return domain.AbilityStep{}, fmt.Errorf("a step has outcome rows and no die to pick one")
+	}
 	if step.Contest != nil && (step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and a die; they are mutually exclusive")
 	}
@@ -464,6 +467,9 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	}
 	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("levy_coin requires target = %q and no contest or die", "faction")
+	}
+	if step.TargetRoll != nil && step.Effect != domain.EffectCoinDelta && step.Effect != domain.EffectRaiseTechLevel {
+		return domain.AbilityStep{}, fmt.Errorf("effect %q does not read a target_roll; only %q and %q do", step.Effect, domain.EffectCoinDelta, domain.EffectRaiseTechLevel)
 	}
 	return step, nil
 }
@@ -736,8 +742,9 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 var tagAbilityEffects = []domain.AbilityEffectType{domain.EffectCoinDelta, domain.EffectPurchaseDiscount, domain.EffectRaiseTechLevel}
 
 // checkTagAbility refuses a tag ability that needs an acting asset: an effect
-// outside tagAbilityEffects, a contest (it rolls from the asset's world), a target
-// the asset picks from, or an outcome row that destroys or charges the asset.
+// outside tagAbilityEffects, a target the asset picks from, or an outcome row that
+// destroys or charges the asset. A contest cannot reach here: each effect a tag may
+// carry needs a die, and convertAbilityStep refuses a contest with a die.
 func checkTagAbility(ability *domain.AbilityDefinition) error {
 	if ability == nil {
 		return nil
@@ -745,9 +752,6 @@ func checkTagAbility(ability *domain.AbilityDefinition) error {
 	for i, step := range ability.Steps {
 		if !slices.Contains(tagAbilityEffects, step.Effect) {
 			return fmt.Errorf("ability step %d: a tag cannot carry effect %q", i, step.Effect)
-		}
-		if step.Contest != nil {
-			return fmt.Errorf("ability step %d: a tag ability cannot hold a contest", i)
 		}
 		if step.Target != domain.TargetNone && step.Target != domain.TargetWorld {
 			return fmt.Errorf("ability step %d: a tag ability cannot target %q", i, step.Target)

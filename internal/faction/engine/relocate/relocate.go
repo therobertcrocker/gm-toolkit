@@ -179,8 +179,7 @@ func lockedOutRemoved(request Request, candidateWorlds []string) []string {
 		return candidateWorlds
 	}
 	return slices.DeleteFunc(slices.Clone(candidateWorlds), func(worldID string) bool {
-		lockerID, _ := domain.LockedOutBy(request.FactionState.Factions, worldID, request.Faction.ID)
-		return lockerID != ""
+		return domain.LockedOutBy(request.FactionState.Factions, worldID, request.Faction.ID) != nil
 	})
 }
 

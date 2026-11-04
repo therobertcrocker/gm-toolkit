@@ -59,12 +59,12 @@ func (e *Engine) resolveArrival(faction *domain.Faction, factionState *state.Fac
 	}
 	ignoresLockdown := profile != nil && profile.IgnoresLockdown
 	if !order.LockdownPaid && !ignoresLockdown {
-		if lockerID, lockdown := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockerID != "" {
+		if lockdown := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockdown != nil {
 			fee, err := e.lockdownFee(lockdown)
 			if err != nil {
 				return nil, nil, err
 			}
-			hold, cost := lockdownHold(completed, order, lockerID, fee, faction.Coin-spent[faction.ID])
+			hold, cost := lockdownHold(completed, order, lockdown.OwnerID, fee, faction.Coin-spent[faction.ID])
 			return hold, map[string]int{faction.ID: cost}, nil
 		}
 	}

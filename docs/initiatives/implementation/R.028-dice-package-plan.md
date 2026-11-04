@@ -43,7 +43,7 @@ All are Robert's picks, 2026-11-03, unless marked as a planning call.
 6. **`StepContext.RollResult` becomes `Rolled dice.StepResult`** (`Amount`, `Row`, `Passed`), filled
    where the die rolls today (`dispatch.go:144`): after the gate, before the handler.
 7. **The lockdown's die moves to `[effects.lock_out] amount = "1d4"`,** on the shared
-   `amountRecord`. `LockedOutBy` returns the asset too, walked in sorted order.
+   `amountRecord`. `LockedOutBy` returns the asset, walked in sorted order.
 8. **The lockdown's cause becomes `string(domain.SpecialLockOut)`,** as every other effect names
    its cause and as `lock_out.go:62` already does. No code branches on the old text; the digest
    counts it as a plain Coin change (`digest/build.go:153`), so players see no change.
@@ -107,6 +107,12 @@ Planning calls, shown to Robert before writing:
 - **More small fixes than the task list** (Commit 16) — the comment in `dice/stat.go` names `dice.md`, because the nil-collector decision moved there; `actions.md` points at the routes; the catalog's Commodities Broker row becomes an amount roll, because it is one; the `hooks.md` budgets section loses a stale `tag:Warlike` key; `engine/overview.md` said "five" hook categories and now says six
 - **`dice.md` gains a short list of orders that must hold** (Commit 16) — not in Task 1's list. These are the "What must survive" orders from Shared Context, and they would otherwise leave with this plan. Each was read in the source
 - **The `hooks.md` diagram has not been rendered** (Commit 16) — only two node labels changed, and this session has no preview. It is for Robert's review, as the diagram kit asks
+- **Two more load refusals** (close review) — rows with no `die`, which closes the Commit 14 gap, and a `target_roll` on any effect but `coin_delta` and `raise_tech_level`, the only two that read `Passed`; on another effect the die rolled and gated nothing. Commit 14 Task 3 is corrected
+- **The tag contest check is deleted** (close review) — this closes the Commit 13 gap, on Robert's pick. A tag with a contest is still refused by "both contest and a die". Rejected: keeping it for a future tag effect with no die, because no such effect exists
+- **An amount must always roll above zero** (close review) — `convertAmount` refused only a flat amount, so `amount = "1d4-5"` loaded and a rolled fee of -2 paid the mover. The check now covers dice for `lock_out`, `coin_gain`, `coin_steal` and `self_damage`; no shipped amount uses a negative modifier. Damage and counter do not go through it, so their `1d4-1` stays
+- **`LockedOutBy` returns only the asset** (close review) — this amends Decision 7: the owner's ID is `OwnerID` on the same asset, so the two results carried one fact. Commit 15 Tasks 4 and 5 are corrected
+- **Full-word names in the plan's own code** (close review) — `n`, `d` and `o` became `keepCount`, `die` and `outcome`. Commits 7 and 13 are corrected
+- **Three review findings declined** (close review, Robert's pick) — no fee default or migration for a campaign seeded before this branch, because the binary embeds no rulebook defaults and `A.001.7` also moved saves by a re-seed. `lockdownFee` keeps its loud error on a lock with no fee entry, because Commit 15 asked for it, and letting the lock lapse would be a rules call. The nil-collector `Engine` stays at each effect-gate caller, because the fence-signs keep it there for `F.037`
 
 ---
 
@@ -547,8 +553,8 @@ Closes `B.010`. Inert today: every `sides` key in the SWN data is 10.
 	result.Sum = diceSum(result.Dice) + result.Modifier
 
 	// Apply keep-highest trim if any offer requested it.
-	if n := rollState.KeepHighest(); n > 0 && len(result.Dice) > n {
-		result.Dice, dieSides = keepHighest(result.Dice, dieSides, n)
+	if keepCount := rollState.KeepHighest(); keepCount > 0 && len(result.Dice) > keepCount {
+		result.Dice, dieSides = keepHighest(result.Dice, dieSides, keepCount)
 		result.Sum = diceSum(result.Dice) + result.Modifier
 	}
 ```
@@ -565,16 +571,16 @@ Closes `B.010`. Inert today: every `sides` key in the SWN data is 10.
 Add, beside `diceSum`:
 
 ```go
-// keepHighest returns the n highest dice, highest first, each with its own sides.
-func keepHighest(values, dieSides []int, n int) ([]int, []int) {
+// keepHighest returns the keepCount highest dice, highest first, each with its own sides.
+func keepHighest(values, dieSides []int, keepCount int) ([]int, []int) {
 	order := make([]int, len(values))
 	for index := range order {
 		order[index] = index
 	}
 	sort.SliceStable(order, func(i, j int) bool { return values[order[i]] > values[order[j]] })
-	keptValues := make([]int, n)
-	keptSides := make([]int, n)
-	for position, index := range order[:n] {
+	keptValues := make([]int, keepCount)
+	keptSides := make([]int, keepCount)
+	for position, index := range order[:keepCount] {
 		keptValues[position] = values[index]
 		keptSides[position] = dieSides[index]
 	}
@@ -1018,12 +1024,12 @@ In `convertAbilityStep`:
 			step.Amount = die
 		} else {
 			table := &domain.RollTable{Die: *die}
-			for _, o := range record.Outcomes {
+			for _, outcome := range record.Outcomes {
 				table.Outcomes = append(table.Outcomes, domain.AbilityOutcome{
-					From:        o.From,
-					To:          o.To,
-					Coin:        o.Coin,
-					DestroySelf: o.DestroySelf,
+					From:        outcome.From,
+					To:          outcome.To,
+					Coin:        outcome.Coin,
+					DestroySelf: outcome.DestroySelf,
 				})
 			}
 			step.Table = table
@@ -1211,6 +1217,9 @@ In `rulebook/rulebook.go`, add `TargetRoll *targetRollRecord` with tag `toml:"ta
 	if record.Die != "" && step.TargetRoll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both a die and a target_roll; use one")
 	}
+	if record.Die == "" && len(record.Outcomes) > 0 {
+		return domain.AbilityStep{}, fmt.Errorf("a step has outcome rows and no die to pick one")
+	}
 	if step.Contest != nil && (step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both contest and a die; they are mutually exclusive")
 	}
@@ -1235,7 +1244,7 @@ In `rulebook/rulebook.go`, add `TargetRoll *targetRollRecord` with tag `toml:"ta
 	}
 ```
 
-`levy_coin` also refuses a target roll. The flat-block guard at `rulebook.go:322` adds `r.TargetRoll != nil`.
+`levy_coin` also refuses a target roll, and so does any other effect but `coin_delta` and `raise_tech_level`, the two that read it. The flat-block guard at `rulebook.go:322` adds `r.TargetRoll != nil`.
 
 ##### Task 4 — the handlers
 
@@ -1414,12 +1423,12 @@ Re-seed with the command from Commit 14 Task 5.
 
 ##### Task 4 — `domain/asset.go`, `relocate/relocate.go`
 
-Replace `LockedOutBy` with the version below. `SortedAssets` makes two locks in one faction name the same asset every time. The comment above it keeps its text, with "and the asset that holds the lock".
+Replace `LockedOutBy` with the version below. `SortedAssets` makes two locks in one faction name the same asset every time. The comment above it now says it returns the Transport Lockdown, or nil when none holds the faction out.
 
 ```go
-func LockedOutBy(factions map[string]*Faction, worldID, factionID string) (string, *Asset) {
+func LockedOutBy(factions map[string]*Faction, worldID, factionID string) *Asset {
 	if worldID == "" {
-		return "", nil
+		return nil
 	}
 	for _, holderID := range slices.Sorted(maps.Keys(factions)) {
 		if holderID == factionID {
@@ -1433,19 +1442,18 @@ func LockedOutBy(factions map[string]*Faction, worldID, factionID string) (strin
 				return condition.Kind == ConditionLockedOut && condition.SourceAssetID == asset.ID &&
 					condition.TargetFactionID == factionID && condition.WorldID == worldID
 			}) {
-				return holderID, asset
+				return asset
 			}
 		}
 	}
-	return "", nil
+	return nil
 }
 ```
 
 In `relocate.go:182`:
 
 ```go
-		lockerID, _ := domain.LockedOutBy(request.FactionState.Factions, worldID, request.Faction.ID)
-		return lockerID != ""
+		return domain.LockedOutBy(request.FactionState.Factions, worldID, request.Faction.ID) != nil
 ```
 
 ##### Task 5 — `engine/arrival.go`
@@ -1459,12 +1467,12 @@ In `relocate.go:182`:
 ```
 **Replace with:**
 ```go
-		if lockerID, lockdown := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockerID != "" {
+		if lockdown := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockdown != nil {
 			fee, err := e.lockdownFee(lockdown)
 			if err != nil {
 				return nil, nil, err
 			}
-			hold, cost := lockdownHold(completed, order, lockerID, fee, faction.Coin-spent[faction.ID])
+			hold, cost := lockdownHold(completed, order, lockdown.OwnerID, fee, faction.Coin-spent[faction.ID])
 			return hold, map[string]int{faction.ID: cost}, nil
 		}
 ```
@@ -1499,7 +1507,7 @@ In `lockdownHold`, change the comment's "1d4 fee" to "fee", and:
 
 ##### Task 6 — the tests and the check
 
-- `asset_test.go:249`, `:266`: take both results; the second also checks the asset.
+- `asset_test.go:249`, `:266`: read the asset, and check its `OwnerID`.
 - `arrival_test.go`: `lockKrylos` sets a `DefinitionID`, and `arrivalFixture`'s rulebook gains that definition with a `lock_out` entry and a `1d4` fee. `:226` wants `Cause: "lock_out"`. `fixedRoller` (`dicetest.Constant`) still gives 3, so the fees are unchanged.
 - New: a lockdown whose definition has no fee returns an error. A faction that cannot pay still rolls one die.
 - `ignore_coin_loss_test.go:91`: use `"lock_out"`.
