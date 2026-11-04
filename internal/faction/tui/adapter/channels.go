@@ -19,8 +19,8 @@ const (
 	AskSelectTransportCargo
 	// Action-surface kinds (Effort 3). Appended only — never reorder.
 	AskSelectAsset
-	AskSelectModifiers
-	AskConfirmReroll
+	AskPreRollCard
+	AskPostRollCard
 	AskSelectBuyOrder
 	AskSelectRefitOrder
 	AskSelectRepairOrders
@@ -107,8 +107,6 @@ type SelectTransportCargoPayload struct {
 
 // Action-surface payloads (Effort 3).
 type SelectAssetPayload struct{ Assets []*domain.Asset }
-type SelectModifiersPayload struct{ Offers []hooks.ModifierOffer }
-type ConfirmRerollPayload struct{ Directive hooks.RerollDirective }
 type SelectBuyOrderPayload struct {
 	PurchasableByWorld map[string][]*domain.AssetDefinition
 	WorldNames         map[string]string // worldID -> display name (adapter-built)

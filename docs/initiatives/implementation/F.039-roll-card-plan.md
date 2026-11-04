@@ -101,6 +101,37 @@ unless marked as a plan-level choice.
 4. **Phase 2, Commit 4: gofmt splits two observer one-liners.** Not in the plan. Task 3's
    `o.adapter.emit(` makes `OnFactionSkipped` and `OnStatRaiseSkipped` too long for gofmt to
    keep on one line, so each now takes three lines. No behaviour changes.
+5. **Phase 2, Commit 5: roll cards sit flush left.** Not in the plan; the manual check found
+   it. `wizardBand` places an overlay with `lipgloss.Center`, which centers each short line
+   alone, so a card's rows did not line up. huh forms fill the band, so they never showed
+   this. The band now uses `lipgloss.Left` for the two card asks only. The checkpoint's
+   centered one-liner stays as it was.
+6. **Phase 2, Commit 5: the feed wraps long lines.** Not in the plan; the manual check found
+   it. The viewport cuts off a line at the column's width, so at 140 columns a feed line read
+   "(Book of" and lost the rest of Decision 8's note. `streamContent` now wraps the feed to
+   the stream's width. This covers every event, not only rolls; short lines look the same.
+7. **Phase 2, Commit 5: the cards draw their own keys.** Not in the plan; the manual check
+   found it. Nothing calls an overlay's `Help()`: the footer reads `execution.Model.Help`,
+   which is always scroll and follow. huh forms draw their own hint line, but a hand-drawn
+   card had none, so "space toggles" reached no screen. The before card with offers now says
+   so in its prompt, and the after card gains a blank and a hint row. `preRollHelp` and
+   `postRollHelp` stay, because the interface asks for them.
+8. **Phase 2, Commit 5: gap, the footer is wrong under every overlay.** Deferred for Robert.
+   While any overlay holds the keys, the footer still offers `tab next mode`, `↑/↓ scroll`
+   and `G follow`, and `overlays.md` says the help keymaps carry the Esc contract, though
+   nothing draws them. Passing the mounted overlay's `Help()` through would fix it, but it
+   changes the footer of about 18 prompts, so it is not part of this commit.
+9. **Phase 2, Commit 5: gap, wrapped rows can overrun the 14-row band.** Deferred. Decision
+   16's sum counts one screen row per card row. A long detail line already wraps to two at
+   140 columns, and offer rows can wrap too, so a card with about 7 or more rows can pass 14.
+   This is reasoned from the sum, not seen: the fullest card in the check had 2 rows.
+10. **Phase 2, Commit 5: Record entry 2's gap is closed.** This commit deletes the shim, so a
+    declined reroll is no longer asked about again.
+11. **Phase 2, Commit 5: the manual check's setup.** Task 6 did not say that the app needs
+    `GM_TOOLKIT_HOME=/workspaces/gm-toolkit/campaigns`, or that tmux may be missing. tmux was
+    not installed, so it went in through `apt-get`. The `combat` scenario has no bonus die,
+    so one further run gave Veiled Hand the Machiavellian tag in `sandbox-claude`'s
+    `state.toml` to see an offer row, and a reset removed it.
 
 ---
 
@@ -134,7 +165,7 @@ unless marked as a plan-level choice.
   - Commit 1 — `feat: roll cards on the hook collector` (11 tasks)
   - Commit 2 — `fix: restore hook budgets when an action aborts` (2 tasks)
   - Commit 3 — `fix: one shared Book of Secrets use per turn` (3 tasks)
-- [ ] **Phase 2 — The GM sees the cards**
+- [x] **Phase 2 — The GM sees the cards**
   - Commit 4 — `feat: adapter builds roll card views` (6 tasks)
   - Commit 5 — `feat: roll card overlays` (6 tasks)
 - [ ] **Phase 3 — Psychic Academy and rigor**
@@ -1879,7 +1910,12 @@ func (o PreRollCard) View() string {
 	if count > 0 {
 		lines = append(lines, "")
 	}
-	lines = append(lines, styles.Subtle.Render("Press enter to roll"))
+	// deliberate: the keys are on the card, not only in Help, because nothing draws an overlay's Help and a hand-drawn card has no huh hint line.
+	prompt := "Press enter to roll"
+	if len(o.card.Offers) > 0 {
+		prompt = "↑/↓ move, space toggles, enter rolls"
+	}
+	lines = append(lines, styles.Subtle.Render(prompt))
 	return strings.Join(lines, "\n")
 }
 
@@ -1929,6 +1965,7 @@ func (o PostRollCard) View() string {
 		}
 		lines = append(lines, fmt.Sprintf("%s%s", cursorMark(row == o.cursor), text))
 	}
+	lines = append(lines, "", styles.Subtle.Render("↑/↓ move, enter chooses"))
 	return strings.Join(lines, "\n")
 }
 
@@ -1982,6 +2019,30 @@ var (
 	}},
 ```
 
+Added in execution (Decision Record 5 and 6). **Find:**
+```go
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Top, m.overlay.View())
+}
+```
+**Replace with:**
+```go
+	horizontal := lipgloss.Center
+	// deliberate: roll cards sit flush left, not centered, because Place centers each short line alone and the card's rows would not line up.
+	if m.activeAsk == adapter.AskPreRollCard || m.activeAsk == adapter.AskPostRollCard {
+		horizontal = lipgloss.Left
+	}
+	return lipgloss.Place(width, height, horizontal, lipgloss.Top, m.overlay.View())
+}
+
+// streamContent wraps the feed to the stream's width. The viewport cuts off a line
+// that is too long, and a roll's feed line can run past the center column.
+func (m Model) streamContent() string {
+	return lipgloss.NewStyle().Width(m.stream.Width).Render(strings.Join(m.lines, "\n"))
+}
+```
+Then replace both `m.stream.SetContent(strings.Join(m.lines, "\n"))` calls with
+`m.stream.SetContent(m.streamContent())`.
+
 ##### Task 5 — Tests
 
 `overlay/rollcard_test.go` (new), driving `Update` with `tea.KeyMsg` and running the returned
@@ -1996,6 +2057,13 @@ command:
 - **Take a reroll** — `up`, `enter` answers the last reroll's index.
 - **Scrolling** — with 12 offers and the cursor on row 11, the view holds row 11 and not row 0.
 - **Height** — with 12 offers, the before card's view is at most 14 lines.
+- **Keys** — the before card with offers says "space toggles", with none "Press enter to roll",
+  and the after card "enter chooses" (Decision Record 7).
+
+`execution/execution_test.go` (Decision Record 5 and 6):
+
+- **Flush left** — on both cards, the band's first line starts with the headline.
+- **Feed wrap** — the end of a long `EvtRollSettled` line reaches the stream.
 
 `adapter/roll_card_test.go`, new cases through `Action()`, answering on `AskPump`:
 
@@ -2021,6 +2089,7 @@ feat: roll card overlays
 - Esc does nothing, and the after card opens on Keep (D-7)
 - a bad reply declines the roll's choice and reports it in the status line
 - the asks rename in place, so AskKind does not reorder
+- the manual check's fixes: cards sit flush left, draw their own keys, and the feed wraps
 ```
 
 ### Phase 3 — Psychic Academy and rigor

@@ -59,36 +59,61 @@ func (a *Adapter) worldNames(worldIDs []string) map[string]string {
 	return names
 }
 
-// --- hooks.Collector (no error return; Esc/cancel degrades to the legal no-op) ---
+// --- hooks.Collector (no error return; a bad reply declines and reports, Decision 1) ---
 
 func (a *actionCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
-	if len(card.Offers) == 0 {
+	raw, err := a.adapter.ask(AskPreRollCard, nil, a.adapter.preRollPayload(card))
+	if err != nil {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectModifiers: %w", err))
 		return nil
 	}
-	raw, err := a.adapter.ask(AskSelectModifiers, nil, SelectModifiersPayload{Offers: card.Offers})
-	if err != nil {
-		return nil // Esc/cancel -> no modifiers applied
+	indices, ok := raw.([]int)
+	if !ok {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectModifiers: unexpected reply type %T", raw))
+		return nil
 	}
-	chosen, _ := raw.([]*hooks.ModifierOffer)
-	out := make([]hooks.ModifierOffer, len(chosen))
-	for i, offer := range chosen {
-		out[i] = *offer
+	chosen := make([]hooks.ModifierOffer, 0, len(indices))
+	for _, index := range indices {
+		if index < 0 || index >= len(card.Offers) {
+			a.adapter.reportCardFailure(fmt.Errorf("SelectModifiers: no offer %d", index))
+			return nil
+		}
+		chosen = append(chosen, card.Offers[index])
 	}
-	return out
+	return chosen
 }
 
+// SelectReroll waits only on a choice (D-5). With nothing on offer, or on a pass, the
+// dice go to the feed.
 func (a *actionCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
-	for index := range card.Rerolls {
-		raw, err := a.adapter.ask(AskConfirmReroll, nil, ConfirmRerollPayload{Directive: card.Rerolls[index]})
-		if err != nil {
-			continue // Esc/cancel -> skip the reroll
-		}
-		if confirmed, _ := raw.(bool); confirmed {
-			return &card.Rerolls[index]
-		}
+	if len(card.Rerolls) == 0 {
+		a.adapter.emitRollLine(card)
+		return nil
 	}
-	a.adapter.emitRollLine(card)
-	return nil
+	raw, err := a.adapter.ask(AskPostRollCard, nil, a.adapter.postRollPayload(card))
+	if err != nil {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectReroll: %w", err))
+		a.adapter.emitRollLine(card)
+		return nil
+	}
+	choice, ok := raw.(int)
+	if !ok || choice < KeepRoll || choice >= len(card.Rerolls) {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectReroll: unexpected reply %#v", raw))
+		a.adapter.emitRollLine(card)
+		return nil
+	}
+	if choice == KeepRoll {
+		a.adapter.emitRollLine(card)
+		return nil
+	}
+	return &card.Rerolls[choice]
+}
+
+// reportCardFailure makes a bad card reply loud without stopping the roll: only a
+// code bug can cause one, and hooks.Collector has no error to return.
+func (a *Adapter) reportCardFailure(err error) {
+	a.log.Error("roll card failed", "err", err)
+	a.emit(EvtError, ErrorPayload{Err: err})
 }
 
 // --- action.Collector: shared (real in foundation) ---

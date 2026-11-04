@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"errors"
 	"log/slog"
 	"reflect"
 	"slices"
@@ -197,18 +198,144 @@ func TestSelectReroll_NoRerollsLeavesOneFeedLineAndDoesNotAsk(t *testing.T) {
 	}
 }
 
+func TestSelectModifiers_ReturnsOnlyTheTakenOffers(t *testing.T) {
+	adapter, harness := newRollCardAdapter(t)
+	offers := []hooks.ModifierOffer{{Source: "first"}, {Source: "second"}}
+	answerNextAsk(t, adapter, AskPreRollCard, []int{1})
+
+	chosen := adapter.Action().SelectModifiers(hooks.PreRollCard{Context: rollContext(harness), Offers: offers})
+
+	if len(chosen) != 1 || chosen[0].Source != "second" {
+		t.Errorf("SelectModifiers = %+v, want only the second offer", chosen)
+	}
+}
+
+func TestSelectReroll_TakenLeavesNoFeedLine(t *testing.T) {
+	adapter, harness := newRollCardAdapter(t)
+	card := rerollCard(harness)
+	answerNextAsk(t, adapter, AskPostRollCard, 0)
+
+	choice := adapter.Action().SelectReroll(card)
+
+	if choice == nil || choice.Source != "first" {
+		t.Errorf("SelectReroll = %+v, want the first reroll", choice)
+	}
+	if lines := drainRollLines(adapter); len(lines) != 0 {
+		t.Errorf("feed lines = %q, want none", lines)
+	}
+}
+
+func TestSelectReroll_KeepLeavesOneFeedLine(t *testing.T) {
+	adapter, harness := newRollCardAdapter(t)
+	card := rerollCard(harness)
+	answerNextAsk(t, adapter, AskPostRollCard, KeepRoll)
+
+	if choice := adapter.Action().SelectReroll(card); choice != nil {
+		t.Errorf("SelectReroll = %+v, want nil", choice)
+	}
+	if lines := drainRollLines(adapter); len(lines) != 1 {
+		t.Errorf("feed lines = %q, want one", lines)
+	}
+}
+
+func TestSelectModifiers_BadReplyDeclinesAndReports(t *testing.T) {
+	replies := map[string]any{
+		"wrong type":   "not a slice",
+		"out of range": []int{5},
+		"negative":     []int{-1},
+		"an error":     errors.New("canceled"),
+	}
+	for name, reply := range replies {
+		t.Run(name, func(t *testing.T) {
+			adapter, harness := newRollCardAdapter(t)
+			offers := []hooks.ModifierOffer{{Source: "first"}}
+			answerNextAsk(t, adapter, AskPreRollCard, reply)
+
+			if chosen := adapter.Action().SelectModifiers(hooks.PreRollCard{Context: rollContext(harness), Offers: offers}); chosen != nil {
+				t.Errorf("SelectModifiers = %+v, want nil", chosen)
+			}
+			if errorCount, _ := drainEvents(adapter); errorCount != 1 {
+				t.Errorf("EvtError count = %d, want 1", errorCount)
+			}
+		})
+	}
+}
+
+func TestSelectReroll_BadReplyDeclinesReportsAndLeavesTheFeedLine(t *testing.T) {
+	replies := map[string]any{
+		"wrong type":   "not an int",
+		"out of range": 5,
+		"below keep":   KeepRoll - 1,
+		"an error":     errors.New("canceled"),
+	}
+	for name, reply := range replies {
+		t.Run(name, func(t *testing.T) {
+			adapter, harness := newRollCardAdapter(t)
+			card := rerollCard(harness)
+			answerNextAsk(t, adapter, AskPostRollCard, reply)
+
+			if choice := adapter.Action().SelectReroll(card); choice != nil {
+				t.Errorf("SelectReroll = %+v, want nil", choice)
+			}
+			errorCount, lines := drainEvents(adapter)
+			if errorCount != 1 {
+				t.Errorf("EvtError count = %d, want 1", errorCount)
+			}
+			if len(lines) != 1 {
+				t.Errorf("feed lines = %q, want one", lines)
+			}
+		})
+	}
+}
+
+func rerollCard(harness *testharness.Harness) hooks.PostRollCard {
+	return hooks.PostRollCard{
+		Context: rollContext(harness),
+		Result:  hooks.RollResult{Dice: []int{7}, Modifier: 3, Sum: 10},
+		Rerolls: []hooks.RerollDirective{{Source: "first", Indices: []int{0}, Elective: true}},
+	}
+}
+
+// answerNextAsk answers the next ask on AskPump, in the way the execution view does,
+// after checking its kind.
+func answerNextAsk(t *testing.T, adapter *Adapter, wantKind AskKind, answer any) {
+	t.Helper()
+	go func() {
+		msg, ok := adapter.AskPump()().(CollectorAskMsg)
+		if !ok {
+			t.Error("AskPump did not return a CollectorAskMsg")
+			return
+		}
+		if msg.Kind != wantKind {
+			t.Errorf("ask kind = %d, want %d", msg.Kind, wantKind)
+		}
+		msg.Reply <- answer
+	}()
+}
+
 // drainRollLines reads what is buffered on the event channel and returns the lines
 // of its EvtRollSettled events.
 func drainRollLines(adapter *Adapter) []string {
+	_, lines := drainEvents(adapter)
+	return lines
+}
+
+// drainEvents reads what is buffered on the event channel and returns how many
+// EvtError events it held and the lines of its EvtRollSettled events.
+func drainEvents(adapter *Adapter) (int, []string) {
+	errorCount := 0
 	var lines []string
 	for {
 		select {
 		case msg := <-adapter.eventCh:
-			if msg.Kind == EvtRollSettled {
+			switch msg.Kind {
+			case EvtError:
+				errorCount++
+			case EvtRollSettled:
 				lines = append(lines, msg.Payload.(RollSettledPayload).Line)
 			}
 		default:
-			return lines
+			return errorCount, lines
 		}
 	}
 }
