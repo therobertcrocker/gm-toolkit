@@ -153,7 +153,7 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	if len(result.Dice) != 1 || collector.selections != 0 {
 		t.Errorf("dice %v, selections %d; want one die and no prompt", result.Dice, collector.selections)
 	}
-	if spent := beta.HookBudgets["effect:bonus_die:own_roll:SWN-T-020"]; spent != 0 {
+	if spent := beta.HookBudgets["effect:bonus_die:SWN-T-020"]; spent != 0 {
 		t.Errorf("Warlike budget spent %d, want 0", spent)
 	}
 }

@@ -193,7 +193,7 @@ func TestBonusDie_TagHolderOffersAFromTagDieOncePerTurn(t *testing.T) {
 	attack := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Force", World: "Krylos"}
 
 	offers := hook.OfferModifiers(attack, factionState, nil)
-	if len(offers) != 1 || !offers[0].FromTag || offers[0].Source != "Warlike" || offers[0].BudgetKey != "effect:bonus_die:own_roll:SWN-T-020" {
+	if len(offers) != 1 || !offers[0].FromTag || offers[0].Source != "Warlike" || offers[0].BudgetKey != "effect:bonus_die:SWN-T-020" {
 		t.Fatalf("offers = %+v, want one FromTag Warlike offer with the tag's budget key", offers)
 	}
 

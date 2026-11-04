@@ -93,6 +93,11 @@ unless marked as a plan-level choice.
    next after card still lists the first, so the shim asks about it again. The old prompts
    asked once per hook. It lives only between this commit and Commit 5, which deletes the
    shim.
+3. **Phase 1, Commit 3: the task tables' line numbers moved.** `bonus_die_test.go:187` is now
+   line 196 and `remove_tag_dice_test.go:143` is now line 156, because Commit 1 grew both
+   files. The Find strings still matched. Checked Decision 3 against the data: in
+   `rulebooks/swn` and `campaigns/sandbox/rulebook`, Book of Secrets is the only definition
+   with two `once_per` entries of one effect.
 
 ---
 
@@ -122,7 +127,7 @@ unless marked as a plan-level choice.
 
 **Overview**
 
-- [ ] **Phase 1 — The engine asks with cards**
+- [x] **Phase 1 — The engine asks with cards**
   - Commit 1 — `feat: roll cards on the hook collector` (11 tasks)
   - Commit 2 — `fix: restore hook budgets when an action aborts` (2 tasks)
   - Commit 3 — `fix: one shared Book of Secrets use per turn` (3 tasks)

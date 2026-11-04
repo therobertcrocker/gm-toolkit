@@ -141,7 +141,7 @@ func TestWarlike_FiresOnForceAttack_ConsumesOneBudget(t *testing.T) {
 	testharness.CheckStep(t, "beta asset destroyed by Warlike-boosted attack", len(h.FactionState.Factions["beta"].Assets) == 0,
 		"beta should have no assets after attack")
 
-	const warlikeBudget = "effect:bonus_die:own_roll:SWN-T-020"
+	const warlikeBudget = "effect:bonus_die:SWN-T-020"
 	budgets := h.FactionState.Factions["alpha"].HookBudgets
 	testharness.CheckStep(t, "Warlike budget consumed once", budgets[warlikeBudget] == 1,
 		fmt.Sprintf("HookBudgets[%s] = %d, want 1", warlikeBudget, budgets[warlikeBudget]))

@@ -63,7 +63,7 @@ func TestRestoreAsset_Offer(t *testing.T) {
 	if offer.Ask != hooks.InterceptRestore || offer.Source.ID != "mc" || offer.Price != 3 {
 		t.Errorf("Ask = %v, Source = %s, Price = %d; want restore from mc at 3", offer.Ask, offer.Source.ID, offer.Price)
 	}
-	if want := "effect:restore_asset:lethal_damage:SWN-W4-003:mc"; offer.BudgetKey != want {
+	if want := "effect:restore_asset:SWN-W4-003:mc"; offer.BudgetKey != want {
 		t.Errorf("BudgetKey = %q, want %q", offer.BudgetKey, want)
 	}
 	want := []domain.Mutation{
