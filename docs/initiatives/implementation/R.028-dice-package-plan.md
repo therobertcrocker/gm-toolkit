@@ -99,6 +99,9 @@ Planning calls, shown to Robert before writing:
 - **`TestCoinDelta_Payouts` cases renamed** (Commit 14) — "harvesters" became "single row", because Harvesters no longer has rows; the rows and expected payouts stay. `TestRaiseTechLevel`'s "a 12" became "a pass", because the handler now reads `Passed`
 - **The re-seed needs `GM_TOOLKIT_HOME`** (Commit 14) — the plan's command stops with an error when it is unset, and it is not set in this container. The value is the repo's `campaigns/` folder; only `wealth_assets.toml` and `tags.toml` changed under `campaigns/sandbox/rulebook/`. Shared Context now says so
 - **Gap left open: rows beside a target roll are dropped** (Commit 14) — the loader reads `outcomes` only when a step has a `die`, so a step with `target_roll` and stray rows loads and ignores the rows. No shipped data does this, and Task 3 refuses a die with a target roll but not rows with one. Left for Robert's call
+- **Two more lockdown tests than the list** (Commit 15) — `TestCheckArrivals_LockdownFeeComesFromTheEntry` shows the fee is read from the data, because the fixture's `1d4` and the old `Roll(4)` give the same 3 on a fixed roller. `TestLockedOutBy_TwoLocksInOneFactionNameTheFirstByID` holds the sorted walk inside one faction, which the two-holders test does not reach
+- **Decision 8 checked in the code** (Commit 15) — nothing outside the tests read `transport_lockdown`. The digest's Coin branch and `format.go` do not show a fee's cause, so the rename changes nothing on screen. Old history files keep the old text, and nothing reads it
+- **The app run used a pty, not tmux** (Commit 15) — `tmux` is not in this container, so a throwaway Python script in the scratchpad drove the TUI against `sandbox-claude`. The rulebook loaded and one `movement` cycle ran through all four factions. No lockdown fee came up in that one cycle, because the carriers need three turns to reach Citadel; the fee is held by the tests, as the plan expected
 
 ---
 
@@ -193,7 +196,7 @@ TOML and docs.
 - [x] **Phase 7 — Ability step split**
   - Commit 13 — `refactor: split AbilityStep.Roll into amount and table` (5 tasks)
   - Commit 14 — `refactor: Harvesters and Teach become target rolls` (6 tasks)
-- [ ] **Phase 8 — Lockdown**
+- [x] **Phase 8 — Lockdown**
   - Commit 15 — `refactor: lockdown fee and cause move to data` (6 tasks)
 - [ ] **Phase 9 — Docs**
   - Commit 16 — `docs: add dice architecture page and update roll references` (3 tasks)
@@ -1492,7 +1495,7 @@ In `lockdownHold`, change the comment's "1d4 fee" to "fee", and:
 ##### Task 6 — the tests and the check
 
 - `asset_test.go:249`, `:266`: take both results; the second also checks the asset.
-- `arrival_test.go`: `lockKrylos` sets a `DefinitionID`, and `arrivalFixture`'s rulebook gains that definition with a `lock_out` entry and a `1d4` fee. `:229` wants `Cause: "lock_out"`. `fixedRoller` (`dicetest.Constant`) still gives 3, so the fees are unchanged.
+- `arrival_test.go`: `lockKrylos` sets a `DefinitionID`, and `arrivalFixture`'s rulebook gains that definition with a `lock_out` entry and a `1d4` fee. `:226` wants `Cause: "lock_out"`. `fixedRoller` (`dicetest.Constant`) still gives 3, so the fees are unchanged.
 - New: a lockdown whose definition has no fee returns an error. A faction that cannot pay still rolls one die.
 - `ignore_coin_loss_test.go:91`: use `"lock_out"`.
 - `rulebook_test.go:977`: `wantEffects` carries `LockOut`. New: `lock_out` with no block is refused.

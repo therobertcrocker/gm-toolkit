@@ -1,7 +1,10 @@
 package engine
 
 import (
+	"fmt"
+
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -56,8 +59,12 @@ func (e *Engine) resolveArrival(faction *domain.Faction, factionState *state.Fac
 	}
 	ignoresLockdown := profile != nil && profile.IgnoresLockdown
 	if !order.LockdownPaid && !ignoresLockdown {
-		if lockerID := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockerID != "" {
-			hold, cost := lockdownHold(completed, order, lockerID, e.Rand.Roll(4), faction.Coin-spent[faction.ID])
+		if lockerID, lockdown := domain.LockedOutBy(factionState.Factions, order.Destination.WorldID, faction.ID); lockerID != "" {
+			fee, err := e.lockdownFee(lockdown)
+			if err != nil {
+				return nil, nil, err
+			}
+			hold, cost := lockdownHold(completed, order, lockerID, fee, faction.Coin-spent[faction.ID])
 			return hold, map[string]int{faction.ID: cost}, nil
 		}
 	}
@@ -109,16 +116,29 @@ func (e *Engine) tollCharges(factionState *state.FactionState, assets []*domain.
 	return charges, owed
 }
 
-// lockdownHold charges the order's 1d4 fee and holds it a turn at the edge; a
-// faction that cannot pay holds unpaid and tries again at its next tick (overview
-// Decision 15). The fee names lockerID, the Lockdown's owner, as its cause. It
-// returns the mutations and the Coin they spend.
+// lockdownFee rolls the fee on the lockdown's own lock_out entry, before the hold
+// is decided: a faction that cannot pay has still rolled.
+func (e *Engine) lockdownFee(lockdown *domain.Asset) (int, error) {
+	if def := e.Rulebook.Assets[lockdown.DefinitionID]; def != nil {
+		for _, entry := range def.Effects {
+			if entry.LockOut != nil {
+				return dice.Amount(entry.LockOut.Fee, e.Rand), nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("arrival: lockdown %s has no lock_out fee", lockdown.ID)
+}
+
+// lockdownHold charges the order's fee and holds it a turn at the edge; a faction
+// that cannot pay holds unpaid and tries again at its next tick (overview Decision
+// 15). The fee names lockerID, the Lockdown's owner, as its cause. It returns the
+// mutations and the Coin they spend.
 func lockdownHold(completed domain.MovementOrderCompleted, order *domain.MovementOrder, lockerID string, fee, coin int) ([]domain.Mutation, int) {
 	if coin < fee {
 		return []domain.Mutation{holdAtEdge(completed, order, domain.HoldLockdownUnpaid)}, 0
 	}
 	return []domain.Mutation{
-		domain.CoinDelta{FactionID: completed.FactionID, Delta: -fee, Cause: "transport_lockdown", CausedByFactionID: lockerID},
+		domain.CoinDelta{FactionID: completed.FactionID, Delta: -fee, Cause: string(domain.SpecialLockOut), CausedByFactionID: lockerID},
 		holdAtEdge(completed, order, domain.HoldLockdownPaid),
 	}, fee
 }

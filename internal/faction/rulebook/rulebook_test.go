@@ -976,6 +976,7 @@ func TestLoad_TransportLockdown(t *testing.T) {
 		Trigger: domain.TriggerOwnAttackHit,
 		Effect:  domain.SpecialLockOut,
 		Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+		LockOut: &domain.LockOutParams{Fee: domain.DiceRoll{NumDice: 1, Sides: 4}},
 	}}
 	if !reflect.DeepEqual(lockdown.Effects, wantEffects) {
 		t.Errorf("Effects = %+v, want %+v", lockdown.Effects, wantEffects)

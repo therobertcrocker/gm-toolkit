@@ -476,6 +476,18 @@ target = 4
 			wantErr: "xp_roll needs amount > 0",
 		},
 		{
+			name: "lock_out with no fee block",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_attack_hit"
+effect  = "lock_out"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "self"
+`,
+			wantErr: `requires a [lock_out] block`,
+		},
+		{
 			name: "grant_movement without a relocate block",
 			body: `
 [[assets.Machine.effects]]

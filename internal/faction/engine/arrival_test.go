@@ -32,6 +32,9 @@ func arrivalRulebook() *rulebook.Rulebook {
 		"landers": {ID: "landers", Name: "Landers", Speed: 3, Transport: &domain.TransportProfile{
 			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.TypeMilitaryUnit}, IgnoresLockdown: true,
 		}},
+		"lockdown": {ID: "lockdown", Name: "Lockdown", Effects: []domain.EffectDefinition{{
+			Effect: domain.SpecialLockOut, LockOut: &domain.LockOutParams{Fee: domain.DiceRoll{NumDice: 1, Sides: 4}},
+		}}},
 	}}
 }
 
@@ -206,7 +209,7 @@ func TestRunMovementPhase_RefusedArrivalHoldsWithItsCargo(t *testing.T) {
 // lockKrylos gives bravo an active Transport Lockdown on Krylos that holds alpha out.
 func lockKrylos(factionState *state.FactionState) {
 	factionState.Factions["bravo"].Assets = map[string]*domain.Asset{"lock": {
-		ID: "lock", OwnerID: "bravo", Location: domain.Location{WorldID: "Krylos"}, Ready: true, Maintained: true, CurrentHP: 10,
+		ID: "lock", DefinitionID: "lockdown", OwnerID: "bravo", Location: domain.Location{WorldID: "Krylos"}, Ready: true, Maintained: true, CurrentHP: 10,
 		Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "alpha", WorldID: "Krylos"}},
 	}}
 }
@@ -223,7 +226,7 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 		{
 			name: "pays and waits", coin: 5,
 			want: []domain.Mutation{
-				domain.CoinDelta{FactionID: "alpha", Delta: -3, Cause: "transport_lockdown", CausedByFactionID: "bravo"},
+				domain.CoinDelta{FactionID: "alpha", Delta: -3, Cause: "lock_out", CausedByFactionID: "bravo"},
 				domain.MovementOrderHeld{FactionID: "alpha", AssetID: "t1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: arrivalHex(1), Reason: domain.HoldLockdownPaid, Cause: domain.CauseMovementTick, CausedByFactionID: "alpha"},
 			},
 		},
@@ -266,6 +269,55 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 				t.Errorf("mutations = %+v, want %+v", got, want)
 			}
 		})
+	}
+}
+
+func TestCheckArrivals_LockdownFeeComesFromTheEntry(t *testing.T) {
+	eng, factionState, alpha, completed := arrivalFixture("ship", "", 3)
+	eng.Rand = dicetest.Constant{Value: 3}
+	eng.Rulebook.Assets["lockdown"].Effects[0].LockOut.Fee = domain.DiceRoll{NumDice: 1, Sides: 6, Modifier: 1}
+	lockKrylos(factionState)
+
+	got, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{completed}, &minimalPhaseCollector{})
+
+	if err != nil {
+		t.Fatalf("checkArrivals: %v", err)
+	}
+	fee, ok := got[0].(domain.CoinDelta)
+	if !ok || fee.Delta != -4 {
+		t.Errorf("first mutation = %+v, want a CoinDelta of -4 from 1d6+1 on a 3", got[0])
+	}
+}
+
+func TestCheckArrivals_LockdownWithNoFeeIsAnError(t *testing.T) {
+	eng, factionState, alpha, completed := arrivalFixture("ship", "", 3)
+	eng.Rand = &dicetest.Sequence{}
+	eng.Rulebook.Assets["lockdown"].Effects = nil
+	lockKrylos(factionState)
+
+	if _, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{completed}, &minimalPhaseCollector{}); err == nil {
+		t.Fatal("checkArrivals: err = nil, want an error naming the missing fee")
+	}
+}
+
+func TestCheckArrivals_AFactionThatCannotPayStillRolls(t *testing.T) {
+	eng, factionState, alpha, completed := arrivalFixture("ship", "", 3)
+	roller := &dicetest.Sequence{Values: []int{3}}
+	eng.Rand = roller
+	lockKrylos(factionState)
+	alpha.Coin = 2
+
+	got, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{completed}, &minimalPhaseCollector{})
+
+	if err != nil {
+		t.Fatalf("checkArrivals: %v", err)
+	}
+	if roller.Rolled() != 1 {
+		t.Errorf("rolled %d dice, want 1", roller.Rolled())
+	}
+	held, ok := got[0].(domain.MovementOrderHeld)
+	if !ok || held.Reason != domain.HoldLockdownUnpaid {
+		t.Errorf("first mutation = %+v, want an unpaid hold", got[0])
 	}
 }
 

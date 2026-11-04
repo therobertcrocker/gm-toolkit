@@ -336,6 +336,11 @@ type ArrivalTollParams struct {
 	Amount int
 }
 
+// LockOutParams is the Coin an arrival pays a Transport Lockdown.
+type LockOutParams struct {
+	Fee DiceRoll
+}
+
 // PopulationFloorParams is a holder's floor as a percent of the setting's.
 type PopulationFloorParams struct {
 	Percent int
@@ -365,4 +370,5 @@ type EffectDefinition struct {
 	XPRoll          *TargetRoll
 	PopulationFloor *PopulationFloorParams
 	ArrivalToll     *ArrivalTollParams
+	LockOut         *LockOutParams
 }

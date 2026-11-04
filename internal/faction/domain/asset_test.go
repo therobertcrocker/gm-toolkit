@@ -246,8 +246,12 @@ func TestLockedOutBy(t *testing.T) {
 				tc.mutate(asset)
 			}
 			factions := map[string]*domain.Faction{tc.holder: {ID: tc.holder, Assets: map[string]*domain.Asset{"lock": asset}}}
-			if got := domain.LockedOutBy(factions, tc.world, tc.faction); got != tc.want {
+			got, holding := domain.LockedOutBy(factions, tc.world, tc.faction)
+			if got != tc.want {
 				t.Errorf("LockedOutBy = %q, want %q", got, tc.want)
+			}
+			if (tc.want == "" && holding != nil) || (tc.want != "" && holding != asset) {
+				t.Errorf("LockedOutBy asset = %+v, want the lock's asset only when it holds", holding)
 			}
 		})
 	}
@@ -263,8 +267,25 @@ func TestLockedOutBy_TwoHoldersNameTheFirstByID(t *testing.T) {
 		factions[owner] = &domain.Faction{ID: owner, Assets: map[string]*domain.Asset{"lock-" + owner: lockdown(owner)}}
 	}
 	for range 20 {
-		if got := domain.LockedOutBy(factions, "Krylos", "bravo"); got != "alpha" {
-			t.Fatalf("LockedOutBy = %q, want alpha, the first holder by ID", got)
+		got, holding := domain.LockedOutBy(factions, "Krylos", "bravo")
+		if got != "alpha" || holding.ID != "lock-alpha" {
+			t.Fatalf("LockedOutBy = %q, %+v, want alpha and lock-alpha, the first holder by ID", got, holding)
+		}
+	}
+}
+
+func TestLockedOutBy_TwoLocksInOneFactionNameTheFirstByID(t *testing.T) {
+	lockdown := func(id string) *domain.Asset {
+		return &domain.Asset{ID: id, OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}, Ready: true, Maintained: true, CurrentHP: 10,
+			Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: id, TargetFactionID: "bravo", WorldID: "Krylos"}}}
+	}
+	factions := map[string]*domain.Faction{"alpha": {ID: "alpha", Assets: map[string]*domain.Asset{}}}
+	for _, id := range []string{"lock-c", "lock-a", "lock-b"} {
+		factions["alpha"].Assets[id] = lockdown(id)
+	}
+	for range 20 {
+		if _, holding := domain.LockedOutBy(factions, "Krylos", "bravo"); holding.ID != "lock-a" {
+			t.Fatalf("LockedOutBy asset = %s, want lock-a, the first by ID", holding.ID)
 		}
 	}
 }

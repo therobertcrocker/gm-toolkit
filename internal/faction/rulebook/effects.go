@@ -27,6 +27,7 @@ type effectRecord struct {
 	XPRoll          *targetRollRecord      `toml:"xp_roll"`
 	PopulationFloor *populationFloorRecord `toml:"population_floor"`
 	ArrivalToll     *arrivalTollRecord     `toml:"arrival_toll"`
+	LockOut         *amountRecord          `toml:"lock_out"`
 }
 
 type effectFiltersRecord struct {
@@ -379,6 +380,9 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	if record.ArrivalToll != nil {
 		present = append(present, domain.SpecialArrivalToll)
 	}
+	if record.LockOut != nil {
+		present = append(present, domain.SpecialLockOut)
+	}
 	return present
 }
 
@@ -405,6 +409,12 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return err
 		}
 		definition.SelfDamage = &domain.SelfDamageParams{Amount: amount}
+	case domain.SpecialLockOut:
+		fee, err := convertAmount(definition.Effect, record.LockOut)
+		if err != nil {
+			return err
+		}
+		definition.LockOut = &domain.LockOutParams{Fee: fee}
 	case domain.SpecialBonusDie:
 		if record.BonusDie == nil {
 			return missingParamBlock(definition.Effect)
