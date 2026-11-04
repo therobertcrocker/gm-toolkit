@@ -73,6 +73,8 @@ func eventHeader(msg adapter.ObserverEventMsg) (string, []domain.Mutation) {
 	case adapter.EvtIndexSkipped:
 		p := msg.Payload.(adapter.IndexSkippedPayload)
 		return phaseHeader("index skipped: " + strings.Join(p.Skipped, ", ")), nil
+	case adapter.EvtRollSettled:
+		return phaseHeader(msg.Payload.(adapter.RollSettledPayload).Line), nil
 	case adapter.EvtError:
 		return styles.Danger.Render("error: " + msg.Payload.(adapter.ErrorPayload).Err.Error()), nil
 	}

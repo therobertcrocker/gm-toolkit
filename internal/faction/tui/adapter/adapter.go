@@ -38,6 +38,15 @@ func New(eng *engine.Engine, factionState *state.FactionState, paths *campaigns.
 
 func (a *Adapter) SetPerFactionCadence(on bool) { a.perFactionCadence.Store(on) }
 
+// emit sends a notification without blocking: a full buffer drops it and logs.
+func (a *Adapter) emit(kind EventKind, payload any) {
+	select {
+	case a.eventCh <- ObserverEventMsg{Kind: kind, Payload: payload}:
+	default:
+		a.log.Warn("observer event dropped — eventCh full", "kind", kind)
+	}
+}
+
 func (a *Adapter) Action() action.Collector { return newActionCollector(a) }
 func (a *Adapter) Collectors() engine.Collectors {
 	return engine.Collectors{Phase: a.Phase(), Action: a.Action()}

@@ -81,6 +81,7 @@ const (
 	EvtMovementResolved
 	EvtIndexSkipped
 	EvtCycleStarted
+	EvtRollSettled
 )
 
 type ObserverEventMsg struct {
@@ -240,7 +241,33 @@ type SelectPurchaseEnablerAssetPayload struct {
 	Candidates []action.PurchaseEnablerOption
 }
 
+// KeepRoll is the post-roll card's answer for keeping the dice as they stand.
+const KeepRoll = -1
+
+// PreRollCardPayload is the before card in display words, with no IDs or pointers
+// (D-12). Answer: []int, the indices of the Offers taken.
+type PreRollCardPayload struct {
+	Headline string
+	Detail   string
+	Dice     string
+	Offers   []string
+	Struck   []string
+}
+
+// PostRollCardPayload is the after card in display words. Answer: int, an index into
+// Rerolls, or KeepRoll.
+type PostRollCardPayload struct {
+	Headline string
+	Detail   string
+	Dice     string
+	Applied  []string
+	Rerolls  []string
+}
+
 // Per-kind payload types for ObserverEventMsg.
+
+// RollSettledPayload is a settled roll's feed line, in the card's wording.
+type RollSettledPayload struct{ Line string }
 
 type GoalLockAppliedPayload struct {
 	Lock      locks.GoalLock

@@ -98,6 +98,9 @@ unless marked as a plan-level choice.
    files. The Find strings still matched. Checked Decision 3 against the data: in
    `rulebooks/swn` and `campaigns/sandbox/rulebook`, Book of Secrets is the only definition
    with two `once_per` entries of one effect.
+4. **Phase 2, Commit 4: gofmt splits two observer one-liners.** Not in the plan. Task 3's
+   `o.adapter.emit(` makes `OnFactionSkipped` and `OnStatRaiseSkipped` too long for gofmt to
+   keep on one line, so each now takes three lines. No behaviour changes.
 
 ---
 

@@ -87,6 +87,7 @@ func (a *actionCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDir
 			return &card.Rerolls[index]
 		}
 	}
+	a.adapter.emitRollLine(card)
 	return nil
 }
 
