@@ -21,6 +21,7 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
+| `R.025` | Roll card | `refactor` | ready | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass in `A.001.7`'s data form (AP-8; `A.001.7` complete); the authoring passes run after `R.028`, so they use its roll data shapes (`E.004`); owns lore canon; see arc-plan |
 | `A.001.8` | Data-driven goals | `feature` | ready | Goal vocabulary of named parts (start, progress, tick, reset, threshold, complete, XP, phases), a turn-start goal pick in the engine, the twelve goals as data, prefixed goal IDs (`CORE-G-001`); absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; see `E.002` (G-1, I-1) |
 
@@ -101,7 +102,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `R.021` | Remove dead world-scoped defender filter | -- | `liveDefendersOnWorld` → `eligibleDefendersOnWorld` has no caller outside `spatial_index_test.go` and skips the attack-eligibility hooks; delete it (move its tests to `eligibleDefendersAtHex`) so no future caller bypasses `restrict_attack`. Found in `A.001.3` Effort 4 Commit 4 review. |
 | `R.022` | Orchestrator error-handling consolidation | -- | Collapse the 26 recoverable-or-fatal blocks in `orchestrator.go`; only collector calls can return the three recoverable sentinels; target <500 lines, no behaviour change; `D.002` N3 |
 | `R.024` | Clear inert `no_attack` records | when saves grow noisy | A Seditionists' `no_attack` stays on its target after the Seditionists die; `domain.AttackBlocked` skips it when read, so it only clutters saves. Clear it when its source leaves play. Deferred from `A.001.6` Effort 3 Decision 10. |
-| `R.025` | Roll card | after `R.028` | One ask before each roll (every Cat 1 modifier, with toggles) and one after it (dice plus every Cat 2 reroll, a rival's included), as in Foundry VTT; replaces the separate `SelectModifiers`/`ConfirmReroll` asks and adds Psychic Academy's `[[effects]]` entry. `A.001.7` Discovery D-7. |
 | `R.026` | Faux-data-driven rule audit | after `A.001.7` | Check each registrar and the engine code it feeds, and every other rule site (domain checks such as `CanPurchase`, loaders, resolvers, settings), for rule values or references held in Go, not in the data; move each into the entry or the settings. `A.001.7` overview Decision 7, widened by R-6. |
 | `R.027` | Registrar `faction`-scope sweep | -- | Audit every registrar for a `faction` scope that a tag would need, and land each with the tag that uses it; `grant_movement` and `ignore_coin_loss` still refuse a tag holder. `A.001.7` overview R-3. |
 
