@@ -7,9 +7,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal"
@@ -37,7 +37,7 @@ var ErrWorldEngineUnavailable = errors.New("engine: world engine unavailable")
 // Engine is the composition root. It owns the Rulebook and all sub-engines.
 type Engine struct {
 	Rulebook *rulebook.Rulebook
-	Rand     domain.Roller
+	Rand     dice.Roller
 	Hooks    *hooks.Registry
 	Turn     *turn.TurnEngine
 	Effect   *effect.EffectsEngine
@@ -49,7 +49,7 @@ type Engine struct {
 }
 
 func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine, log *slog.Logger) (*Engine, error) {
-	e := &Engine{Rulebook: rulebook, Rand: NewRandRoller(log), Hooks: hooks.NewRegistry(), World: worldEngine, log: log}
+	e := &Engine{Rulebook: rulebook, Rand: dice.NewRandRoller(log), Hooks: hooks.NewRegistry(), World: worldEngine, log: log}
 	e.Turn = turn.New(e.Rand, e.Rulebook, log)
 	e.Mutation = mutation.New(log)
 	e.Action = action.New(log)
@@ -73,6 +73,6 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine
 			return nil, fmt.Errorf("engine: %w", err)
 		}
 	}
-	actions.RegisterDefaultActions(e.Action, func() domain.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook, e.Effect)
+	actions.RegisterDefaultActions(e.Action, func() dice.Roller { return e.Rand }, e.Hooks, e.World, e.Rulebook, e.Effect)
 	return e, nil
 }

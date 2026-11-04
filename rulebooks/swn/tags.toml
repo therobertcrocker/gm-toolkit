@@ -269,10 +269,9 @@ amount = 1
 [tags.PreceptorArchive.ability]
 effect = "raise_tech_level"
 target = "world"
+[tags.PreceptorArchive.ability.target_roll]
 die    = "1d12"
-[[tags.PreceptorArchive.ability.outcomes]]
-from = 12
-to   = 12
+target = 12
 [tags.PreceptorArchive.ability.raise_tech_level]
 coin_cost  = 2
 tech_level = 4

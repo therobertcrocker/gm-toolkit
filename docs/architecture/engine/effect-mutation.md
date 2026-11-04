@@ -272,8 +272,7 @@ is the string written to history; the rules behind the numbers live in
   second asset or tag can use the effect with TOML only. So the population floor
   names no asset type in Go (`population_floor` with an `asset_type` filter), and
   `xp_roll` reads its die, threshold and goal from the entry. A reference is
-  checked at load. The known breach is `lock_out`'s 1d4 fee in `arrival.go`, left
-  for the `R.026` audit. (A.001.7 overview Decision 7 and R-6.)
+  checked at load. (A.001.7 overview Decision 7 and R-6.)
 - **Framework first, handlers incremental — but a known S effect with no
   registrar fails loud.** The event-hooks effort shipped all five hook categories
   plus registry and dispatch, but only a proof-of-life handler per category —

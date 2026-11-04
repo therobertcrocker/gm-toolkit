@@ -5,6 +5,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
@@ -19,7 +20,7 @@ import (
 // times. Only known (non-stealthy) rival assets may be targeted.
 type AttackAction struct {
 	collector action.Collector
-	roller    domain.Roller
+	roller    dice.Roller
 	registry  *hooks.Registry
 	index     *world.Index
 	effects   *effect.EffectsEngine
@@ -27,11 +28,15 @@ type AttackAction struct {
 	mutations []domain.Mutation
 }
 
-func NewAttack(collector action.Collector, roller domain.Roller, registry *hooks.Registry, index *world.Index, effects *effect.EffectsEngine) *AttackAction {
+func NewAttack(collector action.Collector, roller dice.Roller, registry *hooks.Registry, index *world.Index, effects *effect.EffectsEngine) *AttackAction {
 	return &AttackAction{collector: collector, roller: roller, registry: registry, index: index, effects: effects}
 }
 
 func (attack *AttackAction) Name() string { return "Attack" }
+
+func (attack *AttackAction) rolls(factionState *state.FactionState, rulebook *rulebook.Rulebook) dice.Engine {
+	return dice.Engine{Registry: attack.registry, Collector: attack.collector, Roller: attack.roller, FactionState: factionState, Rulebook: rulebook}
+}
 
 func (attack *AttackAction) Validate(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	for _, attacker := range eligibleAttackers(faction, factionState) {
@@ -120,50 +125,14 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 
 		attack.mutations = append(attack.mutations, attack.fireMatchup(domain.TriggerOwnAttack, faction, attacker, attackerDef, defenderFaction, defender, factionState, rulebook).Mutations...)
 
-		attackResult := dispatch.RollWithHooks(
-			hooks.RollContext{
-				Phase:             hooks.PhaseAttack,
-				Actor:             faction,
-				Opponent:          defenderFaction,
-				Attribute:         string(attackerDef.Attack.AttackerStat),
-				OpponentAttribute: string(attackerDef.Attack.DefenderStat),
-				Asset:             attacker,
-				OpponentAsset:     defender,
-				World:             attacker.Location.WorldID,
-				Action:            attack.Name(),
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
-			attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
+		outcome := attack.rolls(factionState, rulebook).Contest(
+			domain.ContestRollAttack,
+			dice.Side{Faction: faction, Asset: attacker, Stat: attackerDef.Attack.AttackerStat},
+			dice.Side{Faction: defenderFaction, Asset: defender, Stat: attackerDef.Attack.DefenderStat},
+			attacker.Location.WorldID, attack.Name(),
 		)
-		attackRoll := attackResult.Sum
-
-		defResult := dispatch.RollWithHooks(
-			hooks.RollContext{
-				Phase:             hooks.PhaseDefense,
-				Actor:             defenderFaction,
-				Opponent:          faction,
-				Attribute:         string(attackerDef.Attack.DefenderStat),
-				OpponentAttribute: string(attackerDef.Attack.AttackerStat),
-				Asset:             defender,
-				OpponentAsset:     attacker,
-				World:             attacker.Location.WorldID,
-				Action:            attack.Name(),
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defenderFaction, attackerDef.Attack.DefenderStat)},
-			attack.registry, attack.collector, attack.roller, defenderFaction, factionState, rulebook,
-		)
-		defenseRoll := defResult.Sum
-
-		tieCtx := hooks.RollContext{
-			Phase:    hooks.PhaseAttack,
-			Actor:    faction,
-			Opponent: defenderFaction,
-			Asset:    attacker,
-			World:    attacker.Location.WorldID,
-		}
-		tieOutcome := dispatch.ResolveTie(attack.registry, tieCtx, factionState)
-		attackerWins := attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins)
-		defenderWins := defenseRoll > attackRoll || (defenseRoll == attackRoll && tieOutcome != hooks.TieAttackerWins)
+		attackerWins := outcome.AttackLands()
+		defenderWins := outcome.CounterLands()
 
 		// Attack damage: attacker wins on tie (TieStandard/TieAttackerWins) or strictly greater.
 		if attackerWins {
@@ -173,7 +142,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 					return err
 				}
 			} else {
-				damage := attackerDef.Attack.Damage.Roll(attack.roller)
+				damage := dice.Amount(*attackerDef.Attack.Damage, attack.roller)
 				base := factionBaseOnWorld(defenderFaction, attacker.Location.WorldID)
 
 				// Redirect prompt offered only when the defender has a live Base on this world.
@@ -219,7 +188,7 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 				DefenderDef: attackerDef,
 				Side:        hooks.SideCounter,
 			}) {
-				counterDamage := defenderDef.Counter.Roll(attack.roller)
+				counterDamage := dice.Amount(*defenderDef.Counter, attack.roller)
 				if err := attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, counterDamage, tracker, defender, true, "attack"); err != nil {
 					return err
 				}
@@ -252,28 +221,20 @@ func (attack *AttackAction) Resolve(faction *domain.Faction, factionState *state
 // own defense. A hit deals its attack damage; a miss deals its counter damage, if
 // it has one. The cause is not "attack", so no own_attack_hit fires on it.
 func (attack *AttackAction) counterstrike(faction *domain.Faction, attacker *domain.Asset, attackerDef *domain.AssetDefinition, defenderFaction *domain.Faction, source *domain.Asset, tracker *sequenceTracker, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
-	worldID := attacker.Location.WorldID
-	// deliberate: Opponent nil, not faction, because Actor == Opponent would ask every asset hook on the world twice (overview Decision 9).
-	attackRoll := dispatch.RollWithHooks(
-		hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Attribute: string(attackerDef.Attack.AttackerStat), OpponentAttribute: string(attackerDef.Attack.DefenderStat), Asset: attacker, World: worldID, Action: attack.Name()},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.AttackerStat)},
-		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
-	).Sum
-	defenseRoll := dispatch.RollWithHooks(
-		hooks.RollContext{Phase: hooks.PhaseDefense, Actor: faction, Attribute: string(attackerDef.Attack.DefenderStat), OpponentAttribute: string(attackerDef.Attack.AttackerStat), Asset: attacker, World: worldID, Action: attack.Name()},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, attackerDef.Attack.DefenderStat)},
-		attack.registry, attack.collector, attack.roller, faction, factionState, rulebook,
-	).Sum
-	tieOutcome := dispatch.ResolveTie(attack.registry, hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Asset: attacker, World: worldID}, factionState)
-
+	outcome := attack.rolls(factionState, rulebook).Contest(
+		domain.ContestRollAttack,
+		dice.Side{Faction: faction, Asset: attacker, Stat: attackerDef.Attack.AttackerStat},
+		dice.Side{Faction: faction, Asset: attacker, Stat: attackerDef.Attack.DefenderStat},
+		attacker.Location.WorldID, attack.Name(),
+	)
 	damage := attackerDef.Counter
-	if attackRoll > defenseRoll || (attackRoll == defenseRoll && tieOutcome != hooks.TieDefenderWins) {
+	if outcome.AttackLands() {
 		damage = attackerDef.Attack.Damage
 	}
 	if damage == nil {
 		return nil
 	}
-	return attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, damage.Roll(attack.roller), tracker, source, false, string(domain.SpecialCounterstrike))
+	return attack.applyAssetDamage(factionState, rulebook, faction.ID, defenderFaction.ID, attacker, dice.Amount(*damage, attack.roller), tracker, source, false, string(domain.SpecialCounterstrike))
 }
 
 func (attack *AttackAction) Output() ([]domain.Mutation, error) {

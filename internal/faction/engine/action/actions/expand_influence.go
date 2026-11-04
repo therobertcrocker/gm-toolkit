@@ -8,8 +8,8 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -20,7 +20,7 @@ import (
 // roll may make a free attack against the new base.
 type ExpandInfluence struct {
 	collector   action.Collector
-	roller      domain.Roller
+	roller      dice.Roller
 	registry    *hooks.Registry
 	index       *world.Index
 	worldEngine *world.WorldEngine
@@ -28,11 +28,15 @@ type ExpandInfluence struct {
 	mutations   []domain.Mutation
 }
 
-func NewExpandInfluence(collector action.Collector, roller domain.Roller, registry *hooks.Registry, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
+func NewExpandInfluence(collector action.Collector, roller dice.Roller, registry *hooks.Registry, index *world.Index, worldEngine *world.WorldEngine) *ExpandInfluence {
 	return &ExpandInfluence{collector: collector, roller: roller, registry: registry, index: index, worldEngine: worldEngine}
 }
 
 func (ei *ExpandInfluence) Name() string { return "Expand Influence" }
+
+func (ei *ExpandInfluence) rolls(factionState *state.FactionState, rulebook *rulebook.Rulebook) dice.Engine {
+	return dice.Engine{Registry: ei.registry, Collector: ei.collector, Roller: ei.roller, FactionState: factionState, Rulebook: rulebook}
+}
 
 func (ei *ExpandInfluence) Validate(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) bool {
 	if faction.Coin < 1 {
@@ -93,16 +97,11 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 	// Contested roll: faction rolls 1d10 + Cunning; each rival on the world rolls the same.
 	// Rivals that tie or beat the faction's roll may make a free attack against the new base.
 	// deliberate: no Opponent on the faction's roll, not each rival in turn, because it is one roll compared against N rivals (Effort 3 plan, Decision 11).
-	factionRoll := dispatch.RollWithHooks(
-		hooks.RollContext{
-			Phase:     hooks.PhaseFactionTest,
-			Actor:     faction,
-			Attribute: string(domain.StatCunning),
-			World:     ei.order.World,
-			Action:    ei.Name(),
-		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: faction.Cunning},
-		ei.registry, ei.collector, ei.roller, faction, factionState, rulebook,
+	factionRoll := ei.rolls(factionState, rulebook).Stat(
+		domain.RollPhaseFactionTest,
+		dice.Side{Faction: faction, Stat: domain.StatCunning},
+		dice.Side{},
+		ei.order.World, ei.Name(),
 	).Sum
 	baseHPTracker := 0
 
@@ -113,18 +112,11 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		if newBase.CurrentHP+baseHPTracker <= 0 {
 			break
 		}
-		rivalRoll := dispatch.RollWithHooks(
-			hooks.RollContext{
-				Phase:             hooks.PhaseContested,
-				Actor:             rival,
-				Opponent:          faction,
-				Attribute:         string(domain.StatCunning),
-				OpponentAttribute: string(domain.StatCunning),
-				World:             ei.order.World,
-				Action:            ei.Name(),
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: rival.Cunning},
-			ei.registry, ei.collector, ei.roller, rival, factionState, rulebook,
+		rivalRoll := ei.rolls(factionState, rulebook).Stat(
+			domain.RollPhaseContested,
+			dice.Side{Faction: rival, Stat: domain.StatCunning},
+			dice.Side{Faction: faction, Stat: domain.StatCunning},
+			ei.order.World, ei.Name(),
 		).Sum
 		if rivalRoll < factionRoll {
 			continue
@@ -180,9 +172,13 @@ func (ei *ExpandInfluence) resolveReinforce(faction *domain.Faction) error {
 // ExpandInfluence.Resolve. Bases do not counterattack.
 type baseAttack struct {
 	collector action.Collector
-	roller    domain.Roller
+	roller    dice.Roller
 	registry  *hooks.Registry
 	action    string
+}
+
+func (ba *baseAttack) rolls(factionState *state.FactionState, rulebook *rulebook.Rulebook) dice.Engine {
+	return dice.Engine{Registry: ba.registry, Collector: ba.collector, Roller: ba.roller, FactionState: factionState, Rulebook: rulebook}
 }
 
 // resolve runs the attack sequence for one rival against the target base.
@@ -207,43 +203,14 @@ func (ba *baseAttack) resolve(rival *domain.Faction, target *domain.Base, ownerF
 		if !ok || attackerDef.Attack == nil || attackerDef.Attack.Damage == nil {
 			continue
 		}
-		worldID := target.Location.WorldID
-		attackRoll := dispatch.RollWithHooks(
-			hooks.RollContext{
-				Phase:             hooks.PhaseAttack,
-				Actor:             rival,
-				Opponent:          ownerFaction,
-				Attribute:         string(attackerDef.Attack.AttackerStat),
-				OpponentAttribute: string(domain.StatCunning),
-				Asset:             attacker,
-				World:             worldID,
-				Action:            ba.action,
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(rival, attackerDef.Attack.AttackerStat)},
-			ba.registry, ba.collector, ba.roller, rival, factionState, rulebook,
-		).Sum
-		defenseRoll := dispatch.RollWithHooks(
-			hooks.RollContext{
-				Phase:             hooks.PhaseDefense,
-				Actor:             ownerFaction,
-				Opponent:          rival,
-				Attribute:         string(domain.StatCunning),
-				OpponentAttribute: string(attackerDef.Attack.AttackerStat),
-				OpponentAsset:     attacker,
-				World:             worldID,
-				Action:            ba.action,
-			},
-			domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(ownerFaction, domain.StatCunning)},
-			ba.registry, ba.collector, ba.roller, ownerFaction, factionState, rulebook,
-		).Sum
-
-		hits := attackRoll > defenseRoll
-		if attackRoll == defenseRoll {
-			tieOutcome := dispatch.ResolveTie(ba.registry, hooks.RollContext{Phase: hooks.PhaseAttack, Actor: rival, Opponent: ownerFaction, Asset: attacker, World: worldID}, factionState)
-			hits = tieOutcome != hooks.TieDefenderWins
-		}
-		if hits {
-			damage := attackerDef.Attack.Damage.Roll(ba.roller)
+		outcome := ba.rolls(factionState, rulebook).Contest(
+			domain.ContestRollAttack,
+			dice.Side{Faction: rival, Asset: attacker, Stat: attackerDef.Attack.AttackerStat},
+			dice.Side{Faction: ownerFaction, Stat: domain.StatCunning},
+			target.Location.WorldID, ba.action,
+		)
+		if outcome.AttackLands() {
+			damage := dice.Amount(*attackerDef.Attack.Damage, ba.roller)
 			*mutations = append(*mutations,
 				// SWN: damage to a Base is also dealt directly to faction HP.
 				domain.BaseHPDelta{FactionID: ownerFaction.ID, BaseID: target.ID, Delta: -damage, Cause: "expand", CausedByFactionID: rival.ID, CausedByAssetID: attacker.ID},

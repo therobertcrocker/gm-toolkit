@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -36,14 +36,14 @@ func TestLoseTies_OwnerLosesOnEitherSide(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := dispatch.ResolveTie(registry, tc.ctx, factionState); got != tc.want {
+			if got := dice.ResolveTie(registry, tc.ctx, factionState); got != tc.want {
 				t.Errorf("ResolveTie = %v, want %v", got, tc.want)
 			}
 		})
 	}
 
 	alpha.Tags = nil
-	if got := dispatch.ResolveTie(registry, hooks.RollContext{Actor: alpha, Opponent: beta}, factionState); got != hooks.TieStandard {
+	if got := dice.ResolveTie(registry, hooks.RollContext{Actor: alpha, Opponent: beta}, factionState); got != hooks.TieStandard {
 		t.Errorf("dropped tag: ResolveTie = %v, want TieStandard", got)
 	}
 }

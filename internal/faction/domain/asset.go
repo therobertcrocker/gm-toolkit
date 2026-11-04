@@ -124,7 +124,7 @@ type PurchaseParams struct {
 }
 
 // RaiseTechLevelParams configures a raise_tech_level step (Teach Planetary
-// Population): CoinCost is paid on every use; on a matching outcome row the target
+// Population): CoinCost is paid on every use; on a passed target roll the target
 // world counts as TechLevel for the acting faction's purchases (D-11).
 type RaiseTechLevelParams struct {
 	CoinCost  int
@@ -154,6 +154,14 @@ type RollTable struct {
 	Outcomes []AbilityOutcome
 }
 
+// TargetRoll is a roll that must meet or beat a number. Amount is what a pass pays;
+// the effect decides in what, and it is 0 when a pass pays nothing.
+type TargetRoll struct {
+	Die    DiceRoll
+	Target int
+	Amount int
+}
+
 // AbilityDefinition is a uniform sequence of steps; a flat [ability] block parses
 // to a one-step list.
 type AbilityDefinition struct {
@@ -164,7 +172,9 @@ type AbilityStep struct {
 	Effect         AbilityEffectType
 	Target         TargetKind
 	Contest        *Contest
-	Roll           *RollTable
+	Amount         *DiceRoll   // at most one of Amount, Table and TargetRoll
+	Table          *RollTable  // at most one of Amount, Table and TargetRoll
+	TargetRoll     *TargetRoll // at most one of Amount, Table and TargetRoll
 	Relocate       *RelocateParams
 	Purchase       *PurchaseParams
 	RaiseTechLevel *RaiseTechLevelParams
@@ -292,21 +302,21 @@ func (condition Condition) Is(other Condition) bool {
 		condition.TargetFactionID == other.TargetFactionID && condition.WorldID == other.WorldID
 }
 
-// LockedOutBy returns the faction whose Transport Lockdown holds factionID out of
-// worldID, or "" when none does: an active asset of another faction on the world
-// carries locked_out, from itself, against factionID, struck on that world. The
-// lock lives and dies with that asset (D-31, D-36), and sleeps while the asset is
-// away from the world of the hit (Effort 5 Decision Record 5); a capture into
-// factionID lapses it. Holders are walked in ID order, so two locks name one.
-func LockedOutBy(factions map[string]*Faction, worldID, factionID string) string {
+// LockedOutBy returns the Transport Lockdown that holds factionID out of worldID,
+// or nil when none does: an active asset of another faction on the world carries
+// locked_out, from itself, against factionID, struck on that world. The lock lives
+// and dies with that asset (D-31, D-36), and sleeps while the asset is away from the
+// world of the hit (Effort 5 Decision Record 5); a capture into factionID lapses it.
+// Holders and their assets are walked in ID order, so two locks name one.
+func LockedOutBy(factions map[string]*Faction, worldID, factionID string) *Asset {
 	if worldID == "" {
-		return ""
+		return nil
 	}
 	for _, holderID := range slices.Sorted(maps.Keys(factions)) {
 		if holderID == factionID {
 			continue
 		}
-		for _, asset := range factions[holderID].Assets {
+		for _, asset := range SortedAssets(factions[holderID]) {
 			if asset.Location.WorldID != worldID || !asset.Active() {
 				continue
 			}
@@ -314,11 +324,11 @@ func LockedOutBy(factions map[string]*Faction, worldID, factionID string) string
 				return condition.Kind == ConditionLockedOut && condition.SourceAssetID == asset.ID &&
 					condition.TargetFactionID == factionID && condition.WorldID == worldID
 			}) {
-				return holderID
+				return asset
 			}
 		}
 	}
-	return ""
+	return nil
 }
 
 type Asset struct {

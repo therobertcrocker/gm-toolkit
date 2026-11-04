@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
@@ -46,7 +47,7 @@ type selfDamageReactor struct {
 	def      *domain.AssetDefinition
 	counter  bool
 	amount   domain.DiceRoll
-	roller   domain.Roller
+	roller   dice.Roller
 	registry *hooks.Registry
 }
 
@@ -62,7 +63,7 @@ func (reactor *selfDamageReactor) OnMutations(mutations []domain.Mutation, facti
 	if removed {
 		return nil
 	}
-	damage := reactor.amount.Roll(reactor.roller)
+	damage := dice.Amount(reactor.amount, reactor.roller)
 	extra := []domain.Mutation{domain.AssetHPDelta{
 		FactionID:         reactor.holder.factionID,
 		AssetID:           reactor.holder.assetID,

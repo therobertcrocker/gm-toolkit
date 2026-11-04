@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -32,7 +33,7 @@ func setupMedicalCenterFight(t *testing.T, medicalCenters int, coin int) (h *tes
 	second.CurrentHP = 3
 
 	// Rolls per attacker: attack 10+4 vs defense 1+4, a hit; damage 1d3+1 rolls 3, so 4.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 3, 10, 1, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 3, 10, 1, 3}}
 	h.Collector.SelectActionFn = takeAction(t, alpha.ID, "Attack")
 	h.Collector.SelectAttackersFn = func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
 		return []*domain.Asset{firstAttacker, secondAttacker}, nil

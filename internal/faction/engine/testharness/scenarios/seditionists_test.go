@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -27,7 +28,7 @@ func TestSeditionistsBlockAndMove(t *testing.T) {
 	informers := addActiveAsset(beta, "informers", defInformers, "Tartarus")
 
 	// Rolls: the 1d4 cost, 2 in cycle 1 and 3 in cycle 2.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{2, 3}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{2, 3}}
 	target := saboteurs
 	var offeredAttackers []string
 	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {

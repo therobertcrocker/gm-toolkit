@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
@@ -21,7 +22,7 @@ func makeSeditionistsFixture(coin int) (*domain.Faction, *domain.Asset, *domain.
 		Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
 			Effect: domain.EffectBlockAttack,
 			Target: domain.TargetAsset,
-			Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 4}, Outcomes: []domain.AbilityOutcome{}},
+			Amount: &domain.DiceRoll{NumDice: 1, Sides: 4},
 		}}},
 	}
 	rulebook := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}
@@ -85,7 +86,7 @@ func TestDispatch_BlockAttack(t *testing.T) {
 				})
 
 			view := NewView(factionState)
-			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &seqRoller{values: []int{3}}, nil, factionState, view, rulebook, nil)
+			mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: acting}, collector, &dicetest.Cycle{Values: []int{3}}, nil, factionState, view, rulebook, nil)
 			if err != nil {
 				t.Fatalf("Dispatch: %v", err)
 			}

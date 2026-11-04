@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -55,7 +56,7 @@ func TestSaboteursBlockAbilityUntilNextTurn(t *testing.T) {
 	informers := addActiveAsset(beta, "informers", defInformers, "Hadrian")
 
 	// Rolls: attack 1+3 vs defense 10+3, a miss; Informers have no counter.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{1, 10}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{1, 10}}
 	var betaOffered []bool
 	saboteursAttack(t, h, saboteurs, informers, &betaOffered)
 
@@ -87,7 +88,7 @@ func TestSaboteursConditionPrecedesALethalHit(t *testing.T) {
 	informers.CurrentHP = 1
 
 	// Rolls: attack 10+3 vs defense 1+3, a hit; 2d4 damage 2+2 kills the Informers.
-	h.Engine.Rand = &testharness.FixedRoller{Values: []int{10, 1, 2, 2}}
+	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1, 2, 2}}
 	var betaOffered []bool
 	saboteursAttack(t, h, saboteurs, informers, &betaOffered)
 

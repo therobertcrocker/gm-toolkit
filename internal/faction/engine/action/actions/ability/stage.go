@@ -9,6 +9,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -77,11 +78,9 @@ func resolveTarget(
 	}
 }
 
-// passesGate rolls the step's contest through the roll hooks: an attack and its
-// defense for roll "attack", a faction test and its contested roll for "test".
-// Ties go to the defender, unless an attack's tie resolver gives the tie to the
-// attacker (Fanatical; Effort 5 Decision 10). faction is the real acting faction,
-// so a budget a hook spends persists past this step.
+// passesGate rolls the step's contest through dice.Gate, with the acting asset as
+// the declaring side. faction is the real acting faction, so a budget a hook spends
+// persists past this step.
 func passesGate(
 	step domain.AbilityStep,
 	faction *domain.Faction,
@@ -89,7 +88,7 @@ func passesGate(
 	target domain.AbilityTarget,
 	registry *hooks.Registry,
 	collector action.Collector,
-	roller domain.Roller,
+	roller dice.Roller,
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
 ) (bool, error) {
@@ -106,70 +105,17 @@ func passesGate(
 	if defender == nil {
 		return false, fmt.Errorf("contest: target faction %s not in state", target.Faction.ID)
 	}
-	worldID := asset.Location.WorldID
 	// deliberate: a literal, not UseAssetAbility.Name(), because actions imports ability (import cycle).
 	const actionName = "Use Asset Ability"
-	attackPhase, defensePhase := hooks.PhaseFactionTest, hooks.PhaseContested
-	if step.Contest.Roll == domain.ContestRollAttack {
-		attackPhase, defensePhase = hooks.PhaseAttack, hooks.PhaseDefense
-	}
-	attack := dispatch.RollWithHooks(
-		hooks.RollContext{
-			Phase:             attackPhase,
-			Detection:         step.Effect == domain.EffectRevealStealth,
-			Actor:             faction,
-			Opponent:          defender,
-			Attribute:         string(step.Contest.AttackerStat),
-			OpponentAttribute: string(step.Contest.DefenderStat),
-			Asset:             asset,
-			OpponentAsset:     target.Asset,
-			World:             worldID,
-			Action:            actionName,
-		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(faction, step.Contest.AttackerStat)},
-		registry, collector, roller, faction, factionState, rulebook,
+	engine := dice.Engine{Registry: registry, Collector: collector, Roller: roller, FactionState: factionState, Rulebook: rulebook}
+	passed := engine.Gate(
+		*step.Contest,
+		domain.ContestRollerSelf,
+		dice.Side{Faction: faction, Asset: asset, Detects: step.Effect == domain.EffectRevealStealth},
+		dice.Side{Faction: defender, Asset: target.Asset},
+		asset.Location.WorldID, actionName,
 	)
-	defense := dispatch.RollWithHooks(
-		hooks.RollContext{
-			Phase:             defensePhase,
-			Actor:             defender,
-			Opponent:          faction,
-			Attribute:         string(step.Contest.DefenderStat),
-			OpponentAttribute: string(step.Contest.AttackerStat),
-			Asset:             target.Asset,
-			OpponentAsset:     asset,
-			World:             worldID,
-			Action:            actionName,
-		},
-		domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: statScore(defender, step.Contest.DefenderStat)},
-		registry, collector, roller, defender, factionState, rulebook,
-	)
-	if attack.Sum == defense.Sum && step.Contest.Roll == domain.ContestRollAttack {
-		tieCtx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: faction, Opponent: defender, Asset: asset, World: worldID, Action: actionName}
-		return dispatch.ResolveTie(registry, tieCtx, factionState) == hooks.TieAttackerWins, nil
-	}
-	return attack.Sum > defense.Sum, nil
-}
-
-// resolveRoll evaluates the step's roll table, or returns 0 for a non-roll step.
-// The Contest gate and the roll table are mutually exclusive (parser-enforced), so
-// a step that reaches a handler has at most one source of randomness.
-func resolveRoll(step domain.AbilityStep, roller domain.Roller) int {
-	if step.Roll == nil {
-		return 0
-	}
-	return step.Roll.Die.Roll(roller)
-}
-
-// outcomeFor returns the first outcome whose [From,To] range contains roll. An
-// unmatched roll yields (zero, false) — the absence of a row is a zero payout.
-func outcomeFor(roll int, outcomes []domain.AbilityOutcome) (domain.AbilityOutcome, bool) {
-	for _, outcome := range outcomes {
-		if roll >= outcome.From && roll <= outcome.To {
-			return outcome, true
-		}
-	}
-	return domain.AbilityOutcome{}, false
+	return passed, nil
 }
 
 // otherFactions returns every faction but the acting one, name-sorted. For a
@@ -186,10 +132,6 @@ func otherFactions(factionState *state.FactionState, actingFactionID string) []*
 		return candidates[i].Name < candidates[j].Name
 	})
 	return candidates
-}
-
-func statScore(faction *domain.Faction, stat domain.FactionStat) int {
-	return faction.StatScore(stat)
 }
 
 // assetTargetRules narrows a step's asset candidates by its effect. An effect with

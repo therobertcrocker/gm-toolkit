@@ -8,13 +8,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
-var rollPhaseNames = map[hooks.RollPhase]domain.EffectRollPhase{
-	hooks.PhaseAttack:      domain.RollPhaseAttack,
-	hooks.PhaseDefense:     domain.RollPhaseDefense,
-	hooks.PhaseFactionTest: domain.RollPhaseFactionTest,
-	hooks.PhaseContested:   domain.RollPhaseContested,
-}
-
 // rollMatches reports whether a roll fires an entry declared on asset. own_roll
 // fires on the owner's own roll; enemy_roll_at_me on a rival's roll made against
 // the owner; rival_roll on any rival's roll, whether or not the owner is in it.
@@ -69,13 +62,13 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 	default:
 		return false
 	}
-	if filters.Attribute != "" && ctx.Attribute != string(filters.Attribute) {
+	if filters.Attribute != "" && ctx.Attribute != filters.Attribute {
 		return false
 	}
-	if filters.OpponentAttribute != "" && ctx.OpponentAttribute != string(filters.OpponentAttribute) {
+	if filters.OpponentAttribute != "" && ctx.OpponentAttribute != filters.OpponentAttribute {
 		return false
 	}
-	if len(filters.Phases) > 0 && !slices.Contains(filters.Phases, rollPhaseNames[ctx.Phase]) {
+	if len(filters.Phases) > 0 && !slices.Contains(filters.Phases, ctx.Phase) {
 		return false
 	}
 	if filters.Action != "" && ctx.Action != filters.Action {

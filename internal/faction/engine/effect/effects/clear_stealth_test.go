@@ -5,22 +5,13 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
-
-type seqRoller struct {
-	values []int
-	next   int
-}
-
-func (roller *seqRoller) Roll(int) int {
-	value := roller.values[roller.next]
-	roller.next++
-	return value
-}
 
 var (
 	krylos   = domain.Location{WorldID: "Krylos"}
@@ -49,7 +40,7 @@ func tripwireState(cellsAt domain.Location) *state.FactionState {
 	}}
 }
 
-func tripwireReactor(t *testing.T, factionState *state.FactionState, roller domain.Roller) hooks.MutationReactor {
+func tripwireReactor(t *testing.T, factionState *state.FactionState, roller dice.Roller) hooks.MutationReactor {
 	t.Helper()
 	registry := hooks.NewRegistry()
 	alpha := factionState.Factions["alpha"]
@@ -143,13 +134,13 @@ func TestClearStealth(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			factionState := tripwireState(tc.cellsAt)
-			roller := &seqRoller{values: tc.rolls}
+			roller := &dicetest.Sequence{Values: tc.rolls}
 			got := tripwireReactor(t, factionState, roller).OnMutations([]domain.Mutation{tc.mutation}, factionState, nil)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
-			if roller.next != len(tc.rolls) {
-				t.Errorf("rolled %d dice, want %d", roller.next, len(tc.rolls))
+			if roller.Rolled() != len(tc.rolls) {
+				t.Errorf("rolled %d dice, want %d", roller.Rolled(), len(tc.rolls))
 			}
 		})
 	}
@@ -198,13 +189,13 @@ func TestClearStealth_Purchase(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			factionState := tripwireState(tc.cellsAt)
-			roller := &seqRoller{values: tc.rolls}
+			roller := &dicetest.Sequence{Values: tc.rolls}
 			got := tripwireReactor(t, factionState, roller).OnMutations(tc.batch, factionState, nil)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
-			if roller.next != len(tc.rolls) {
-				t.Errorf("rolled %d dice, want %d", roller.next, len(tc.rolls))
+			if roller.Rolled() != len(tc.rolls) {
+				t.Errorf("rolled %d dice, want %d", roller.Rolled(), len(tc.rolls))
 			}
 		})
 	}
@@ -214,15 +205,15 @@ func TestClearStealth_InactiveCellsWatchNothing(t *testing.T) {
 	for name, deactivate := range inactiveStates {
 		t.Run(name, func(t *testing.T) {
 			factionState := tripwireState(krylos)
-			roller := &seqRoller{}
+			roller := &dicetest.Sequence{}
 			reactor := tripwireReactor(t, factionState, roller)
 			deactivate(factionState.Factions["alpha"].Assets["cells"])
 
 			if got := reactor.OnMutations([]domain.Mutation{moved("beta", "spy", tartarus, krylos)}, factionState, nil); len(got) != 0 {
 				t.Errorf("mutations = %+v, want none", got)
 			}
-			if roller.next != 0 {
-				t.Errorf("rolled %d dice, want 0", roller.next)
+			if roller.Rolled() != 0 {
+				t.Errorf("rolled %d dice, want 0", roller.Rolled())
 			}
 		})
 	}
@@ -234,7 +225,7 @@ func TestClearStealth_OpenAssetIgnoredWithoutStealthyFilter(t *testing.T) {
 	t.Run("stealth_arrival", func(t *testing.T) {
 		factionState := tripwireState(krylos)
 		alpha := factionState.Factions["alpha"]
-		roller := &seqRoller{}
+		roller := &dicetest.Sequence{}
 		registry := hooks.NewRegistry()
 		effects.Registrars()[domain.SpecialClearStealth].Register(effect.RegisterContext{
 			Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C4-003"}}, Registry: registry, Roller: roller,
@@ -251,7 +242,7 @@ func TestClearStealth_OpenAssetIgnoredWithoutStealthyFilter(t *testing.T) {
 		factionState := tripwireState(tartarus)
 		delete(factionState.Factions["beta"].Assets, "spy")
 		alpha := factionState.Factions["alpha"]
-		roller := &seqRoller{}
+		roller := &dicetest.Sequence{}
 		got := effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{
 			Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["cells"], Def: &domain.AssetDefinition{ID: "SWN-C8-001"}}, Asset: alpha.Assets["cells"], Roller: roller, FactionState: factionState,
 			Entry: domain.EffectDefinition{Trigger: domain.TriggerTurnStart, Effect: domain.SpecialClearStealth, Filters: unfiltered, Gates: domain.EffectGates{Contest: matrixContest}},
@@ -259,8 +250,8 @@ func TestClearStealth_OpenAssetIgnoredWithoutStealthyFilter(t *testing.T) {
 		if len(got) != 0 {
 			t.Errorf("mutations = %+v, want none", got)
 		}
-		if roller.next != 0 {
-			t.Errorf("rolled %d dice, want 0", roller.next)
+		if roller.Rolled() != 0 {
+			t.Errorf("rolled %d dice, want 0", roller.Rolled())
 		}
 	})
 }
@@ -272,7 +263,7 @@ var matrixContest = &domain.EffectContest{
 
 // fireMatrix runs Panopticon Matrix's turn_start entry from alpha's "cells" asset,
 // which stands in for the Matrix: Fire reads the entry, not the asset's definition.
-func fireMatrix(factionState *state.FactionState, contest *domain.EffectContest, roller domain.Roller) []domain.Mutation {
+func fireMatrix(factionState *state.FactionState, contest *domain.EffectContest, roller dice.Roller) []domain.Mutation {
 	alpha := factionState.Factions["alpha"]
 	stealthy := true
 	return effects.Registrars()[domain.SpecialClearStealth].Fire(effect.FireContext{
@@ -355,13 +346,13 @@ func TestClearStealth_TurnStart(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(factionState)
 			}
-			roller := &seqRoller{values: tc.rolls}
+			roller := &dicetest.Sequence{Values: tc.rolls}
 			got := fireMatrix(factionState, tc.contest, roller)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
-			if roller.next != len(tc.rolls) {
-				t.Errorf("rolled %d dice, want %d", roller.next, len(tc.rolls))
+			if roller.Rolled() != len(tc.rolls) {
+				t.Errorf("rolled %d dice, want %d", roller.Rolled(), len(tc.rolls))
 			}
 		})
 	}

@@ -121,14 +121,15 @@ const (
 	GateContest EffectGateName = "contest"
 )
 
-// EffectRollPhase names a hooks.RollPhase; domain cannot import hooks.
-type EffectRollPhase string
+// RollPhase names which roll of a contest or test is being made. Rulebook filters
+// name these values.
+type RollPhase string
 
 const (
-	RollPhaseAttack      EffectRollPhase = "attack"
-	RollPhaseDefense     EffectRollPhase = "defense"
-	RollPhaseFactionTest EffectRollPhase = "faction_test"
-	RollPhaseContested   EffectRollPhase = "contested"
+	RollPhaseAttack      RollPhase = "attack"
+	RollPhaseDefense     RollPhase = "defense"
+	RollPhaseFactionTest RollPhase = "faction_test"
+	RollPhaseContested   RollPhase = "contested"
 )
 
 type OncePerKey string
@@ -184,7 +185,7 @@ type EffectFilters struct {
 	Scope             EffectScope
 	Attribute         FactionStat
 	OpponentAttribute FactionStat
-	Phases            []EffectRollPhase
+	Phases            []RollPhase
 	Action            string
 	AssetTypes        []AssetType
 	Categories        []FactionStat
@@ -335,16 +336,14 @@ type ArrivalTollParams struct {
 	Amount int
 }
 
+// LockOutParams is the Coin an arrival pays a Transport Lockdown.
+type LockOutParams struct {
+	Fee DiceRoll
+}
+
 // PopulationFloorParams is a holder's floor as a percent of the setting's.
 type PopulationFloorParams struct {
 	Percent int
-}
-
-// XPRollParams is a bonus-XP roll: roll Die, and on Target or more gain Amount XP.
-type XPRollParams struct {
-	Die    DiceRoll
-	Target int
-	Amount int
 }
 
 // EffectDefinition is one entry of an asset's [[effects]] list. At most one
@@ -368,7 +367,8 @@ type EffectDefinition struct {
 	DiscountRepair  *DiscountRepairParams
 	CostDiscount    *CostDiscountParams
 	SpeedFloor      *SpeedFloorParams
-	XPRoll          *XPRollParams
+	XPRoll          *TargetRoll
 	PopulationFloor *PopulationFloorParams
 	ArrivalToll     *ArrivalTollParams
+	LockOut         *LockOutParams
 }

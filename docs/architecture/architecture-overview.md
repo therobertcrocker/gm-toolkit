@@ -108,6 +108,7 @@ docs/architecture/
     actions.md           goals.md             hooks.md
     world-movement.md    spatial.md           effect-mutation.md
     persistence.md       narrative-digest.md  logging-errors.md
+    dice.md
   interface/
     overview.md          regions.md           state-machine.md
     event-stream.md      overlays.md          views.md

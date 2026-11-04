@@ -1,4 +1,4 @@
-package dispatch
+package dice
 
 import (
 	"maps"
@@ -11,19 +11,19 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// RollWithHooks executes a dice roll with Cat 1 (RollModifier) hooks applied
+// rollWithHooks executes a dice roll with Cat 1 (RollModifier) hooks applied
 // before rolling and Cat 2 (RollResultHook) hooks applied after. It consults the
 // buckets rollScopes lists, so the opponent's faction and asset hooks and hooks on
 // the roll's world reach the roll. Each offer and directive is stamped with the
 // faction that registered it, and its budget is read and spent on that faction.
 // A nil collector asks no one: Cat 1 takes every offer with no budget and skips
 // the rest, and Cat 2 declines every elective reroll (overview Decision 2).
-func RollWithHooks(
+func rollWithHooks(
 	ctx hooks.RollContext,
 	baseRoll domain.DiceRoll,
 	registry *hooks.Registry,
 	collector hooks.Collector,
-	roller domain.Roller,
+	roller Roller,
 	faction *domain.Faction,
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
@@ -69,18 +69,20 @@ func RollWithHooks(
 
 	// Roll base dice pool then any extra dice queued by Apply.
 	result := hooks.RollResult{Modifier: baseRoll.Modifier}
+	var dieSides []int
 	for range baseRoll.NumDice {
 		result.Dice = append(result.Dice, roller.Roll(baseRoll.Sides))
+		dieSides = append(dieSides, baseRoll.Sides)
 	}
 	for _, sides := range rollState.ExtraDice() {
 		result.Dice = append(result.Dice, roller.Roll(sides))
+		dieSides = append(dieSides, sides)
 	}
 	result.Sum = diceSum(result.Dice) + result.Modifier
 
 	// Apply keep-highest trim if any offer requested it.
-	if n := rollState.KeepHighest(); n > 0 && len(result.Dice) > n {
-		sort.Sort(sort.Reverse(sort.IntSlice(result.Dice)))
-		result.Dice = result.Dice[:n]
+	if keepCount := rollState.KeepHighest(); keepCount > 0 && len(result.Dice) > keepCount {
+		result.Dice, dieSides = keepHighest(result.Dice, dieSides, keepCount)
 		result.Sum = diceSum(result.Dice) + result.Modifier
 	}
 
@@ -105,7 +107,7 @@ func RollWithHooks(
 			}
 			for _, idx := range directive.Indices {
 				if idx >= 0 && idx < len(result.Dice) {
-					result.Dice[idx] = roller.Roll(baseRoll.Sides)
+					result.Dice[idx] = roller.Roll(dieSides[idx])
 				}
 			}
 			result.Sum = diceSum(result.Dice) + result.Modifier
@@ -211,10 +213,26 @@ func freeOffers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
 	return free
 }
 
+// keepHighest returns the keepCount highest dice, highest first, each with its own sides.
+func keepHighest(values, dieSides []int, keepCount int) ([]int, []int) {
+	order := make([]int, len(values))
+	for index := range order {
+		order[index] = index
+	}
+	sort.SliceStable(order, func(i, j int) bool { return values[order[i]] > values[order[j]] })
+	keptValues := make([]int, keepCount)
+	keptSides := make([]int, keepCount)
+	for position, index := range order[:keepCount] {
+		keptValues[position] = values[index]
+		keptSides[position] = dieSides[index]
+	}
+	return keptValues, keptSides
+}
+
 func diceSum(dice []int) int {
 	total := 0
-	for _, d := range dice {
-		total += d
+	for _, die := range dice {
+		total += die
 	}
 	return total
 }

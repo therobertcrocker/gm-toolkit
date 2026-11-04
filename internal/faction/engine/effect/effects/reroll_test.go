@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -67,15 +68,16 @@ func registerBook(factionState *state.FactionState, registry *hooks.Registry, en
 
 // rollOn builds a roll by actor against opponent (nil for none) on world.
 func rollOn(factionState *state.FactionState, actorID, opponentID, world string) hooks.RollContext {
-	ctx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: factionState.Factions[actorID], World: world}
+	ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: factionState.Factions[actorID], World: world}
 	if opponentID != "" {
 		ctx.Opponent = factionState.Factions[opponentID]
 	}
 	return ctx
 }
 
-func rollThroughDispatcher(factionState *state.FactionState, registry *hooks.Registry, collector hooks.Collector, ctx hooks.RollContext, dice ...int) hooks.RollResult {
-	return dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &seqRoller{values: dice}, ctx.Actor, factionState, nil)
+func rollThroughDispatcher(factionState *state.FactionState, registry *hooks.Registry, collector hooks.Collector, ctx hooks.RollContext, values ...int) hooks.RollResult {
+	rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: values}, FactionState: factionState}
+	return rolls.Stat(ctx.Phase, dice.Side{Faction: ctx.Actor}, dice.Side{Faction: ctx.Opponent}, ctx.World, ctx.Action)
 }
 
 func TestReroll_OwnRerollPicksLowestDie(t *testing.T) {

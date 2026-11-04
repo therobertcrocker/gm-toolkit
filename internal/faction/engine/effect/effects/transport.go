@@ -2,6 +2,7 @@ package effects
 
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -20,7 +21,7 @@ func NewTransportHandler(def *domain.AssetDefinition) *TransportHandler {
 
 func (handler *TransportHandler) AssetDefinitionID() string { return handler.def.ID }
 
-func (handler *TransportHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, _ domain.Roller) {
+func (handler *TransportHandler) Apply(faction *domain.Faction, asset *domain.Asset, hookRegistry *hooks.Registry, _ dice.Roller) {
 	hookRegistry.RegisterMutationReactor(
 		hooks.AssetScope(faction.ID, asset.ID),
 		"transport:"+handler.def.ID,

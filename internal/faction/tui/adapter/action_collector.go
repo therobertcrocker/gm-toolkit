@@ -173,7 +173,7 @@ func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []
 		if !ok {
 			continue
 		}
-		healHP := statRating(faction, def.Category)
+		healHP := faction.StatScore(def.Category)
 		if healHP <= 0 {
 			continue
 		}
@@ -193,21 +193,6 @@ func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []
 	return orders, nil
 }
 
-// statRating returns the faction's attribute rating for an asset category,
-// mirroring actions.statScore (the engine's repair/heal math). Kept adapter-side
-// so the engine actions package is untouched (Decision 3).
-func statRating(faction *domain.Faction, stat domain.FactionStat) int {
-	switch stat {
-	case domain.StatForce:
-		return faction.Force
-	case domain.StatCunning:
-		return faction.Cunning
-	case domain.StatWealth:
-		return faction.Wealth
-	default:
-		return 0
-	}
-}
 func (a *actionCollector) SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
 	coin := 0
 	if faction := a.adapter.currentFaction(); faction != nil {

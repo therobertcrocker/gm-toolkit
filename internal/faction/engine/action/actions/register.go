@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -15,12 +15,12 @@ import (
 // import cycle.
 // resolveRoller is read at factory-invocation (turn) time rather than captured
 // by value, because the roller is a swappable seam — tests replace Engine.Rand
-// with a deterministic FixedRoller after construction.
+// with a deterministic fake after construction.
 // The Attack action raises the matchup route itself, and Buy Asset fires a quality's
 // effect itself, so both take the effects engine.
 func RegisterDefaultActions(
 	ae *action.ActionEngine,
-	resolveRoller func() domain.Roller,
+	resolveRoller func() dice.Roller,
 	hookRegistry *hooks.Registry,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,

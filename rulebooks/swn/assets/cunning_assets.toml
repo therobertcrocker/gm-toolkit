@@ -419,6 +419,8 @@ effect  = "lock_out"
 [assets.TransportLockdown.effects.filters]
 owner = "own"
 scope = "self"
+[assets.TransportLockdown.effects.lock_out]
+amount = "1d4"
 
 [assets.CovertTransitNet]
 id = "SWN-C6-002"

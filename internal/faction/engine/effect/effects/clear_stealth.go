@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -55,21 +56,20 @@ func fireClearStealth(ctx effect.FireContext) []domain.Mutation {
 			if ctx.Entry.Filters.Stealthy != nil && asset.Stealthy != *ctx.Entry.Filters.Stealthy {
 				continue
 			}
-			if ctx.Entry.Gates.Contest != nil && !contestPasses(contestRoll{
-				contest:          *ctx.Entry.Gates.Contest,
-				declaringDetects: true,
-				declaring:        ctx.Holder.Faction,
-				declaringAsset:   ctx.Asset,
-				target:           target,
-				targetAsset:      asset,
-				world:            worldID,
+			rolls := dice.Engine{
 				// deliberate: a nil collector, not a prompt, because a phase route has none; the roll-card follow-on row gives it one (overview Decision 2).
-				collector:    nil,
-				registry:     ctx.Registry,
-				factionState: ctx.FactionState,
-				rulebook:     ctx.Rulebook,
-				roller:       ctx.Roller,
-			}) {
+				Collector:    nil,
+				Registry:     ctx.Registry,
+				Roller:       ctx.Roller,
+				FactionState: ctx.FactionState,
+				Rulebook:     ctx.Rulebook,
+			}
+			if contest := ctx.Entry.Gates.Contest; contest != nil && !rolls.Gate(
+				contest.Contest, contest.Roller,
+				dice.Side{Faction: ctx.Holder.Faction, Asset: ctx.Asset, Detects: true},
+				dice.Side{Faction: target, Asset: asset},
+				worldID, contestAction,
+			) {
 				continue
 			}
 			cleared = append(cleared, domain.AssetStealthCleared{
@@ -103,7 +103,7 @@ type clearStealthReactor struct {
 	holder   holderRef
 	stealthy *bool
 	contest  *domain.EffectContest
-	roller   domain.Roller
+	roller   dice.Roller
 	registry *hooks.Registry
 }
 
@@ -131,21 +131,20 @@ func (reactor *clearStealthReactor) OnMutations(mutations []domain.Mutation, fac
 		if reactor.stealthy != nil && !*reactor.stealthy {
 			continue
 		}
-		if reactor.contest != nil && !contestPasses(contestRoll{
-			contest:          *reactor.contest,
-			declaringDetects: true,
-			declaring:        owner,
-			declaringAsset:   self,
-			target:           target,
-			targetAsset:      target.Assets[assetID],
-			world:            worldID,
+		rolls := dice.Engine{
 			// deliberate: a nil collector, not a prompt, because a reactor has none; the roll-card follow-on row gives it one (overview Decision 2).
-			collector:    nil,
-			registry:     reactor.registry,
-			factionState: factionState,
-			rulebook:     rulebook,
-			roller:       reactor.roller,
-		}) {
+			Collector:    nil,
+			Registry:     reactor.registry,
+			Roller:       reactor.roller,
+			FactionState: factionState,
+			Rulebook:     rulebook,
+		}
+		if contest := reactor.contest; contest != nil && !rolls.Gate(
+			contest.Contest, contest.Roller,
+			dice.Side{Faction: owner, Asset: self, Detects: true},
+			dice.Side{Faction: target, Asset: target.Assets[assetID]},
+			worldID, contestAction,
+		) {
 			continue
 		}
 		extra = append(extra, domain.AssetStealthCleared{

@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -65,22 +66,22 @@ func TestRemoveTagDice_FilterOffers(t *testing.T) {
 	}{
 		{
 			name: "rival attacking Blackmail loses tag dice",
-			ctx:  hooks.RollContext{Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"},
+			ctx:  hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"},
 			want: []string{"Panopticon Matrix"},
 		},
 		{
 			name: "rival defending against Blackmail loses tag dice",
-			ctx:  hooks.RollContext{Phase: hooks.PhaseDefense, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"},
+			ctx:  hooks.RollContext{Phase: domain.RollPhaseDefense, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"},
 			want: []string{"Panopticon Matrix"},
 		},
 		{
 			name: "rival rolling against another asset keeps tag dice",
-			ctx:  hooks.RollContext{Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: other, World: "Krylos"},
+			ctx:  hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: other, World: "Krylos"},
 			want: []string{"tag:Warlike", "Panopticon Matrix"},
 		},
 		{
 			name: "owner's own roll with Blackmail keeps tag dice",
-			ctx:  hooks.RollContext{Phase: hooks.PhaseAttack, Actor: alpha, Opponent: beta, Asset: blackmail, World: "Krylos"},
+			ctx:  hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: alpha, Opponent: beta, Asset: blackmail, World: "Krylos"},
 			want: []string{"tag:Warlike", "Panopticon Matrix"},
 		},
 	}
@@ -103,7 +104,7 @@ func TestRemoveTagDice_InactiveBlackmailStripsNothing(t *testing.T) {
 			filter := registerBlackmail(factionState, hooks.NewRegistry())
 			alpha, beta := factionState.Factions["alpha"], factionState.Factions["beta"]
 
-			ctx := hooks.RollContext{Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"}
+			ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"}
 			kept := filter.FilterOffers(ctx, []hooks.ModifierOffer{tagOffer}, factionState)
 			if len(kept) != 1 {
 				t.Errorf("kept %d offers, want 1", len(kept))
@@ -120,7 +121,7 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	beta.Tags = []string{"SWN-T-020"}
 	warlike := bonusDieEntry(domain.EffectFilters{
 		Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
-		Attribute: domain.StatForce, Phases: []domain.EffectRollPhase{domain.RollPhaseAttack},
+		Attribute: domain.StatForce, Phases: []domain.RollPhase{domain.RollPhaseAttack},
 	}, 1)
 	warlike.Gates.OncePer = domain.OncePerOwnerFaction
 	effects.Registrars()[domain.SpecialBonusDie].Register(effect.RegisterContext{
@@ -128,11 +129,13 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	})
 	collector := &rollCollector{accept: true}
 
-	ctx := hooks.RollContext{
-		Phase: hooks.PhaseAttack, Actor: beta, Opponent: alpha, Attribute: string(domain.StatForce),
-		OpponentAsset: alpha.Assets["bm"], World: "Krylos", Action: "Attack",
-	}
-	result := dispatch.RollWithHooks(ctx, domain.DiceRoll{NumDice: 1, Sides: 10, Modifier: beta.Force}, registry, collector, &seqRoller{values: []int{4}}, beta, factionState, nil)
+	rolls := dice.Engine{Registry: registry, Collector: collector, Roller: &dicetest.Sequence{Values: []int{4}}, FactionState: factionState}
+	result := rolls.Stat(
+		domain.RollPhaseAttack,
+		dice.Side{Faction: beta, Stat: domain.StatForce},
+		dice.Side{Faction: alpha, Asset: alpha.Assets["bm"]},
+		"Krylos", "Attack",
+	)
 
 	if len(result.Dice) != 1 || collector.selections != 0 {
 		t.Errorf("dice %v, selections %d; want one die and no prompt", result.Dice, collector.selections)

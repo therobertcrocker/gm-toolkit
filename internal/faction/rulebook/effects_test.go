@@ -112,7 +112,7 @@ scope = "self"
 				Owner:      domain.OwnerRival,
 				Scope:      domain.ScopeWorld,
 				Attribute:  domain.StatCunning,
-				Phases:     []domain.EffectRollPhase{domain.RollPhaseDefense},
+				Phases:     []domain.RollPhase{domain.RollPhaseDefense},
 				Action:     "Expand Influence",
 				AssetTypes: []domain.AssetType{domain.TypeStarship},
 				Categories: []domain.FactionStat{domain.StatForce, domain.StatWealth},
@@ -461,7 +461,31 @@ effect  = "xp_roll"` + filters + `
 die    = "1d6"
 amount = 1
 `,
-			wantErr: "xp_roll target and amount must be > 0",
+			wantErr: "xp_roll needs target > 0",
+		},
+		{
+			name: "xp_roll with no amount",
+			body: `
+[[assets.Machine.effects]]
+trigger = "goal_completed"
+effect  = "xp_roll"` + filters + `
+[assets.Machine.effects.xp_roll]
+die    = "1d6"
+target = 4
+`,
+			wantErr: "xp_roll needs amount > 0",
+		},
+		{
+			name: "lock_out with no fee block",
+			body: `
+[[assets.Machine.effects]]
+trigger = "own_attack_hit"
+effect  = "lock_out"
+[assets.Machine.effects.filters]
+owner = "own"
+scope = "self"
+`,
+			wantErr: `requires a [lock_out] block`,
 		},
 		{
 			name: "grant_movement without a relocate block",
@@ -540,6 +564,28 @@ effect  = "coin_gain"` + filters + `
 amount = "0"
 `,
 			wantErr: `coin_gain amount must be > 0, got "0"`,
+		},
+		{
+			name: "coin_gain dice that can roll below zero",
+			body: `
+[[assets.Machine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"` + filters + `
+[assets.Machine.effects.coin_gain]
+amount = "1d4-5"
+`,
+			wantErr: `coin_gain amount must be > 0, got "1d4-5"`,
+		},
+		{
+			name: "coin_gain dice that can roll zero",
+			body: `
+[[assets.Machine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"` + filters + `
+[assets.Machine.effects.coin_gain]
+amount = "1d4-1"
+`,
+			wantErr: `coin_gain amount must be > 0, got "1d4-1"`,
 		},
 		{
 			name: "coin_gain with zero-sided dice",

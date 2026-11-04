@@ -7,6 +7,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/ability"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -18,14 +19,14 @@ import (
 // resolution order; each is resolved in sequence.
 type UseAssetAbility struct {
 	collector action.Collector
-	roller    domain.Roller
+	roller    dice.Roller
 	registry  *hooks.Registry
 	world     *world.WorldEngine
 	selected  []domain.AbilityHolder
 	mutations []domain.Mutation
 }
 
-func NewUseAssetAbility(collector action.Collector, roller domain.Roller, registry *hooks.Registry, worldEngine *world.WorldEngine) *UseAssetAbility {
+func NewUseAssetAbility(collector action.Collector, roller dice.Roller, registry *hooks.Registry, worldEngine *world.WorldEngine) *UseAssetAbility {
 	return &UseAssetAbility{
 		collector: collector,
 		roller:    roller,

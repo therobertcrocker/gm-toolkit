@@ -46,11 +46,10 @@ description = "Workers gathering natural resources — ore, biologicals, or othe
 
 [assets.Harvesters.ability]
 effect = "coin_delta"
+[assets.Harvesters.ability.target_roll]
 die = "1d6"
-[[assets.Harvesters.ability.outcomes]]
-from = 3
-to = 6
-coin = 1
+target = 3
+amount = 1
 
 [assets.LocalInvestments]
 id = "SWN-W1-003"

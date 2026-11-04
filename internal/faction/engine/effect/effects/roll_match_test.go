@@ -33,7 +33,7 @@ func TestRollMatches(t *testing.T) {
 	cunning := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf, Attribute: domain.StatCunning}
 	attackOrDefense := domain.EffectFilters{
 		Owner: domain.OwnerOwn, Scope: domain.ScopeSelf,
-		Phases: []domain.EffectRollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
+		Phases: []domain.RollPhase{domain.RollPhaseAttack, domain.RollPhaseDefense},
 	}
 	expansion := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, Action: "Expand Influence"}
 	homeworld := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeHomeworld}
@@ -68,8 +68,8 @@ func TestRollMatches(t *testing.T) {
 		{"owner's own roll is not enemy", domain.TriggerEnemyRollAtMe, rivalWorld, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Krylos"}, false},
 		{"attribute match", domain.TriggerOwnRoll, cunning, hooks.RollContext{Actor: alpha, Asset: declaring, Attribute: "Cunning"}, true},
 		{"attribute mismatch", domain.TriggerOwnRoll, cunning, hooks.RollContext{Actor: alpha, Asset: declaring, Attribute: "Force"}, false},
-		{"phase in list", domain.TriggerOwnRoll, attackOrDefense, hooks.RollContext{Actor: alpha, Asset: declaring, Phase: hooks.PhaseDefense}, true},
-		{"phase not in list", domain.TriggerOwnRoll, attackOrDefense, hooks.RollContext{Actor: alpha, Asset: declaring, Phase: hooks.PhaseContested}, false},
+		{"phase in list", domain.TriggerOwnRoll, attackOrDefense, hooks.RollContext{Actor: alpha, Asset: declaring, Phase: domain.RollPhaseDefense}, true},
+		{"phase not in list", domain.TriggerOwnRoll, attackOrDefense, hooks.RollContext{Actor: alpha, Asset: declaring, Phase: domain.RollPhaseContested}, false},
 		{"action match", domain.TriggerOwnRoll, expansion, hooks.RollContext{Actor: alpha, World: "Krylos", Action: "Expand Influence"}, true},
 		{"action mismatch", domain.TriggerOwnRoll, expansion, hooks.RollContext{Actor: alpha, World: "Krylos", Action: "Attack"}, false},
 		{"own roll, homeworld", domain.TriggerOwnRoll, homeworld, hooks.RollContext{Actor: alpha, World: "Krylos"}, true},

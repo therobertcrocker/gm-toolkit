@@ -86,8 +86,8 @@ the current `StepIdx`, the `DriftRating` that priced the route, and the
 
 1. **Tick first.** `TickMovementOrders` advances open orders, in asset ID order.
    `checkArrivals` (`engine/arrival.go`) then reads each `MovementOrderCompleted`.
-   A Transport Lockdown on the destination comes first: the order pays 1d4 Coin (a
-   loss the Lockdown's owner imposes, so a Bank absorbs it) and
+   A Transport Lockdown on the destination comes first: the order pays the fee on
+   its `lock_out` entry (a loss the Lockdown's owner imposes, so a Bank absorbs it) and
    holds a turn (`MovementOrderHeld`, `lockdown_paid`, which sets the order's
    `LockdownPaid`), or holds unpaid until it can pay. Otherwise it asks the
    destination's government for every `P` asset aboard (the carrier, then its
@@ -248,6 +248,11 @@ runner skips the grant.
   order that cannot pay holds and pays at a later tick. A relocate cannot land on
   a world the faction is locked out of. (A.001.6 overview Decision 15; Effort 5
   Decisions 14–16.)
+- **A lockdown's fee comes only from its `lock_out` entry, with no default.** The
+  binary embeds no rulebook values, so a lock whose asset has lost that entry stops
+  the arrival with an error. Letting the lock lapse instead would be a rules call.
+  The die rolls before the hold is decided, so a faction that cannot pay has still
+  rolled. (`R.028` Decision 7 and close review.)
 - **A capture changes one asset, and every order carries over.** A captured
   transport keeps its order and its cargo, and the cargo keeps its old owner. A
   captured rider stays aboard its old owner's transport. The transport reactor

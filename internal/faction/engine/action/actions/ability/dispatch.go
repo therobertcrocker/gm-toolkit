@@ -7,6 +7,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -23,7 +24,7 @@ type StepContext struct {
 	Def          *domain.AssetDefinition // nil for a tag holder
 	Step         domain.AbilityStep
 	Target       domain.AbilityTarget
-	RollResult   int // resolved by the roll stage when Step.Roll != nil; 0 otherwise
+	Rolled       dice.StepResult // what the step's die gave; zero for a step with no die
 	FactionState *state.FactionState
 	Rulebook     *rulebook.Rulebook
 	Collector    action.Collector   // for handlers with a secondary prompt (relocate)
@@ -72,7 +73,7 @@ func Dispatch(
 	faction *domain.Faction,
 	holder domain.AbilityHolder,
 	collector action.Collector,
-	roller domain.Roller,
+	roller dice.Roller,
 	registry *hooks.Registry,
 	factionState *state.FactionState,
 	view *state.FactionState,
@@ -141,7 +142,7 @@ func Dispatch(
 			Def:          def,
 			Step:         step,
 			Target:       target,
-			RollResult:   resolveRoll(step, roller),
+			Rolled:       dice.RollStep(step, roller),
 			FactionState: view,
 			Rulebook:     rulebook,
 			Collector:    collector,

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 )
 
 func TestPurchaseDiscount_GrantsRolledAmount(t *testing.T) {
@@ -13,9 +14,9 @@ func TestPurchaseDiscount_GrantsRolledAmount(t *testing.T) {
 		Step: domain.AbilityStep{
 			Effect: domain.EffectPurchaseDiscount,
 			Target: domain.TargetNone,
-			Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 8}},
+			Amount: &domain.DiceRoll{NumDice: 1, Sides: 8},
 		},
-		RollResult: 5,
+		Rolled: dice.StepResult{Amount: 5},
 	}
 	muts, err := purchaseDiscount(ctx)
 	if err != nil {
