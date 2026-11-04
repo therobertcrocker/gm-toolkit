@@ -198,7 +198,7 @@ is `[effects.lock_out] amount = "1d4"`, on the shared `amountRecord`.
   player never chose could. Each call site passes its collector as one argument, nil
   for now, so a later collector is a one-line swap. Precedent: `InterceptLethal`'s nil
   collector. Rejected: a collector on every reactor (changes every reactor's
-  interface; the roll card, `R.025`, would replace those prompts). (A.001.7 overview
+  interface; the roll card, `F.039`, would replace those prompts). (A.001.7 overview
   Decision 2.)
 
 ## Dependencies
