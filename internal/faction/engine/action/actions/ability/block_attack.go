@@ -12,7 +12,7 @@ import (
 // the attachment: this source's no_attack leaves every other asset. A faction that
 // cannot pay the roll attaches nothing and pays nothing.
 func blockAttack(ctx StepContext) ([]domain.Mutation, error) {
-	cost := ctx.RollResult
+	cost := ctx.Rolled.Amount
 	if ctx.Faction.Coin < cost {
 		return nil, nil
 	}

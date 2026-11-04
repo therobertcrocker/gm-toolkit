@@ -261,7 +261,7 @@ func TestUseAssetAbility_LaterAssetSeesEarlierCoin(t *testing.T) {
 			Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
 				Effect: domain.EffectCoinDelta,
 				Target: domain.TargetNone,
-				Roll: &domain.RollTable{
+				Table: &domain.RollTable{
 					Die:      domain.DiceRoll{NumDice: 1, Sides: 6},
 					Outcomes: []domain.AbilityOutcome{{From: 1, To: 1, Coin: -1}},
 				},
@@ -416,7 +416,7 @@ func TestUseAssetAbility_TagHolder(t *testing.T) {
 	tag := &domain.Tag{ID: "T-1", Name: "Brokers", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
 		Effect: domain.EffectPurchaseDiscount,
 		Target: domain.TargetNone,
-		Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 4}},
+		Amount: &domain.DiceRoll{NumDice: 1, Sides: 4},
 	}}}}
 	book := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Tags: map[string]*domain.Tag{"T-1": tag, "T-2": {ID: "T-2"}}}
 	faction := &domain.Faction{ID: "f1", Tags: []string{"T-2", "T-1"}, Assets: map[string]*domain.Asset{}}

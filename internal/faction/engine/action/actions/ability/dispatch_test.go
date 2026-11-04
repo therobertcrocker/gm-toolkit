@@ -420,7 +420,7 @@ func TestDispatch_NoTargetsLeft_Fizzles(t *testing.T) {
 			{
 				Effect: domain.EffectCoinDelta,
 				Target: domain.TargetNone,
-				Roll: &domain.RollTable{
+				Table: &domain.RollTable{
 					Die:      domain.DiceRoll{NumDice: 1, Sides: 6},
 					Outcomes: []domain.AbilityOutcome{{From: 1, To: 6, Coin: 1}},
 				},

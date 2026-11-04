@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 )
 
 func coinDeltaStep(die domain.DiceRoll, outcomes []domain.AbilityOutcome) domain.AbilityStep {
 	return domain.AbilityStep{
 		Effect: domain.EffectCoinDelta,
 		Target: domain.TargetNone,
-		Roll:   &domain.RollTable{Die: die, Outcomes: outcomes},
+		Table:  &domain.RollTable{Die: die, Outcomes: outcomes},
 	}
 }
 
@@ -25,24 +26,24 @@ func TestCoinDelta_Payouts(t *testing.T) {
 	tests := []struct {
 		name        string
 		outcomes    []domain.AbilityOutcome
-		roll        int
+		row         *domain.AbilityOutcome // the row the die picked; nil for no match
 		factionCoin int
 		wantCoin    int  // expected CoinDelta.Delta; 0 => no CoinDelta
 		wantRemove  bool // expected AssetRemoved
 	}{
-		{"harvesters miss", harvesters, 2, 0, 0, false},
-		{"harvesters hit", harvesters, 3, 0, 1, false},
-		{"postech gain", postech, 5, 0, 2, false},
-		{"postech loss affordable", postech, 1, 3, -1, false},
-		{"postech loss insolvent", postech, 1, 0, 0, true},
+		{"harvesters miss", harvesters, nil, 0, 0, false},
+		{"harvesters hit", harvesters, &harvesters[0], 0, 1, false},
+		{"postech gain", postech, &postech[2], 0, 2, false},
+		{"postech loss affordable", postech, &postech[0], 3, -1, false},
+		{"postech loss insolvent", postech, &postech[0], 0, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := StepContext{
-				Faction:    &domain.Faction{ID: "f1", Coin: tt.factionCoin},
-				Asset:      &domain.Asset{ID: "a1", OwnerID: "f1"},
-				Step:       coinDeltaStep(domain.DiceRoll{NumDice: 1, Sides: 6}, tt.outcomes),
-				RollResult: tt.roll,
+				Faction: &domain.Faction{ID: "f1", Coin: tt.factionCoin},
+				Asset:   &domain.Asset{ID: "a1", OwnerID: "f1"},
+				Step:    coinDeltaStep(domain.DiceRoll{NumDice: 1, Sides: 6}, tt.outcomes),
+				Rolled:  dice.StepResult{Row: tt.row},
 			}
 			muts, err := coinDelta(ctx)
 			if err != nil {
@@ -56,10 +57,10 @@ func TestCoinDelta_Payouts(t *testing.T) {
 func TestCoinDelta_DestroySelfUnconditional(t *testing.T) {
 	outcomes := []domain.AbilityOutcome{{From: 1, To: 1, DestroySelf: true}}
 	ctx := StepContext{
-		Faction:    &domain.Faction{ID: "f1", Coin: 99}, // affordable, still destroyed
-		Asset:      &domain.Asset{ID: "a1", OwnerID: "f1"},
-		Step:       coinDeltaStep(domain.DiceRoll{NumDice: 1, Sides: 8}, outcomes),
-		RollResult: 1,
+		Faction: &domain.Faction{ID: "f1", Coin: 99}, // affordable, still destroyed
+		Asset:   &domain.Asset{ID: "a1", OwnerID: "f1"},
+		Step:    coinDeltaStep(domain.DiceRoll{NumDice: 1, Sides: 8}, outcomes),
+		Rolled:  dice.StepResult{Row: &outcomes[0]},
 	}
 	muts, err := coinDelta(ctx)
 	if err != nil {

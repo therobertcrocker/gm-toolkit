@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -16,7 +17,7 @@ import (
 var teachStep = domain.AbilityStep{
 	Effect:         domain.EffectRaiseTechLevel,
 	Target:         domain.TargetWorld,
-	Roll:           &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 12}, Outcomes: []domain.AbilityOutcome{{From: 12, To: 12}}},
+	Table:          &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 12}, Outcomes: []domain.AbilityOutcome{{From: 12, To: 12}}},
 	RaiseTechLevel: &domain.RaiseTechLevelParams{CoinCost: 2, TechLevel: 4},
 }
 
@@ -24,14 +25,14 @@ func TestRaiseTechLevel(t *testing.T) {
 	cases := []struct {
 		name string
 		coin int
-		roll int
+		row  *domain.AbilityOutcome
 		want []domain.Mutation
 	}{
-		{"a 12 pays and records", 2, 12, []domain.Mutation{
+		{"a 12 pays and records", 2, &teachStep.Table.Outcomes[0], []domain.Mutation{
 			domain.CoinDelta{FactionID: "f1", Delta: -2, Cause: "ability", CausedByFactionID: "f1"},
 			domain.WorldTechLevelRaised{FactionID: "f1", WorldID: "near", TechLevel: 4, Cause: "ability", CausedByFactionID: "f1"},
 		}},
-		{"a miss pays only", 2, 11, []domain.Mutation{
+		{"a miss pays only", 2, nil, []domain.Mutation{
 			domain.CoinDelta{FactionID: "f1", Delta: -2, Cause: "ability", CausedByFactionID: "f1"},
 		}},
 	}
@@ -39,10 +40,10 @@ func TestRaiseTechLevel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			faction := &domain.Faction{ID: "f1", Coin: tc.coin}
 			got, err := raiseTechLevel(StepContext{
-				Faction:    faction,
-				Step:       teachStep,
-				Target:     domain.AbilityTarget{Kind: domain.TargetWorld, World: "near", Faction: faction},
-				RollResult: tc.roll,
+				Faction: faction,
+				Step:    teachStep,
+				Target:  domain.AbilityTarget{Kind: domain.TargetWorld, World: "near", Faction: faction},
+				Rolled:  dice.StepResult{Row: tc.row},
 			})
 			if err != nil {
 				t.Fatalf("raiseTechLevel: %v", err)
@@ -57,10 +58,10 @@ func TestRaiseTechLevel(t *testing.T) {
 func TestRaiseTechLevel_TooPoorToPayIsAnError(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", Coin: 1}
 	_, err := raiseTechLevel(StepContext{
-		Faction:    faction,
-		Step:       teachStep,
-		Target:     domain.AbilityTarget{Kind: domain.TargetWorld, World: "near", Faction: faction},
-		RollResult: 12,
+		Faction: faction,
+		Step:    teachStep,
+		Target:  domain.AbilityTarget{Kind: domain.TargetWorld, World: "near", Faction: faction},
+		Rolled:  dice.StepResult{Row: &teachStep.Table.Outcomes[0]},
 	})
 	if err == nil {
 		t.Fatal("raiseTechLevel with 1 Coin: err = nil, want an error")

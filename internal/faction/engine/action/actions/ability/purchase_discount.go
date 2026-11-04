@@ -6,20 +6,19 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-// purchaseDiscount resolves a roll-table discount ability (Commodities Broker): the
-// rolled result is the discount on the faction's next purchase. The half-price floor
-// is applied at purchase time (BuyAsset), not here. The discount equals the roll, so
-// there is no Outcomes band to map through — ctx.RollResult is granted directly.
+// purchaseDiscount resolves an amount-roll discount ability (Commodities Broker): the
+// rolled amount is the discount on the faction's next purchase. The half-price floor
+// is applied at purchase time (BuyAsset), not here.
 func purchaseDiscount(ctx StepContext) ([]domain.Mutation, error) {
-	if ctx.Step.Roll == nil {
-		return nil, fmt.Errorf("purchase_discount: step has no roll table")
+	if ctx.Step.Amount == nil {
+		return nil, fmt.Errorf("purchase_discount: step has no amount roll")
 	}
-	if ctx.RollResult <= 0 {
+	if ctx.Rolled.Amount <= 0 {
 		return nil, nil
 	}
 	return []domain.Mutation{domain.PurchaseDiscountGranted{
 		FactionID:         ctx.Faction.ID,
-		Amount:            ctx.RollResult,
+		Amount:            ctx.Rolled.Amount,
 		Cause:             "ability",
 		CausedByFactionID: ctx.Faction.ID,
 	}}, nil

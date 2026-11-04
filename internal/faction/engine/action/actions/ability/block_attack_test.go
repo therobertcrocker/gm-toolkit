@@ -22,7 +22,7 @@ func makeSeditionistsFixture(coin int) (*domain.Faction, *domain.Asset, *domain.
 		Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
 			Effect: domain.EffectBlockAttack,
 			Target: domain.TargetAsset,
-			Roll:   &domain.RollTable{Die: domain.DiceRoll{NumDice: 1, Sides: 4}, Outcomes: []domain.AbilityOutcome{}},
+			Amount: &domain.DiceRoll{NumDice: 1, Sides: 4},
 		}}},
 	}
 	rulebook := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{def.ID: def}}

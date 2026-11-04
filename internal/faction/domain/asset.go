@@ -164,7 +164,8 @@ type AbilityStep struct {
 	Effect         AbilityEffectType
 	Target         TargetKind
 	Contest        *Contest
-	Roll           *RollTable
+	Amount         *DiceRoll  // at most one of Amount and Table
+	Table          *RollTable // at most one of Amount and Table
 	Relocate       *RelocateParams
 	Purchase       *PurchaseParams
 	RaiseTechLevel *RaiseTechLevelParams

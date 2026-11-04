@@ -88,6 +88,11 @@ Planning calls, shown to Robert before writing:
 - **The expected change in Task 4 did not happen** (Commit 12) — the three base rolls with no modifier all roll a stat of 0: `StatScore` returns 0 for the empty stat `rollThroughDispatcher` passes, and the Warlike tests' factions have no `Force`. No expected value moved. Task 4 is corrected, with its line numbers, which were one low
 - **Five effect-gate tests, renamed** (Commit 12) — Task 4 said six; the file has five. They are now `TestEffectGate*`, because `contestPasses` is gone; every case and expected value stays. Task 4 is corrected
 - **Gap left open: tracker rows still say `RollWithHooks`** (Commit 12) — `F.025`, `F.037` and `B.043` in `planned-work.md` name the old exported function, and Commit 16's list does not cover them. They still describe the right code; left for the initiative close, which edits the tracker anyway. The arc plan and `action-result-panel-discovery.md` are snapshots and stay
+- **Line numbers were off** (Commit 13) — the die rolls at `dispatch.go:145`, and the literals are at `block_attack_test.go:25`, `dispatch_test.go:423` and `use_asset_ability_test.go:264`, `:419`. Commit 13's tasks and the Shared Context row are corrected. The code at each spot was as the plan said
+- **Five rule fixtures gain rows or a die** (Commit 13) — the new load rules fire before the rule each one tests. "a target the asset picks from", "no world target", "no block" and `TestConvertAbilityStep_RaiseTechLevelBlockOnAnotherEffect` gain a row and keep their expected text. "a contest" on a tag gains a die and now expects "both contest and a die" (see the gap below)
+- **One expected error text moved** (Commit 13) — Task 2 folds "at least one outcome row" into the `raise_tech_level requires` message, so the "no outcome rows" case now expects "a die with rows". The step is still refused
+- **The handler tests pick the row by hand** (Commit 13) — `TestCoinDelta_Payouts` and `TestRaiseTechLevel` swap their `roll` column for the row the die picked, and every expected payout stays. Which total picks which row is now held by `TestTable_PicksTheRowHoldingTheTotal`
+- **Gap left open: the tag contest check cannot fire** (Commit 13) — every effect a tag may carry now needs a die, and the loader refuses a contest with a die first, so the `step.Contest` check in `checkTagAbility` is unreachable. A tag with a contest is still refused, by the other rule and with its text. The check stays for Robert's call: deleting it removes dead code, and keeping it holds the rule if a tag ever gets an effect with no die
 
 ---
 
@@ -115,7 +120,7 @@ cannot close a cycle. `dicetest` imports nothing.
 | Item | Where it lands |
 |---|---|
 | Attacker rolls first; the flip swaps who that is | `Contest`, `Gate` |
-| Ability die rolls before the handler (`dispatch.go:144`) | `RollStep`, called at the same spot |
+| Ability die rolls before the handler (`dispatch.go:145`) | `RollStep`, called at the same spot |
 | Lockdown die rolls before the hold, even if unpaid (`arrival.go:60`) | `lockdownFee`, called at the same spot |
 | Ties: `AttackLands` (Attack, counterstrike, free attack), `CounterLands` (Attack), `GatePasses` (both gates) | `Outcome` |
 | Expand Influence is a plain comparison, with no resolver | Stays at its site |
@@ -1084,7 +1089,7 @@ In `StepContext`, replace `RollResult int` with:
 	Rolled       dice.StepResult // what the step's die gave; zero for a step with no die
 ```
 
-**Find (`dispatch.go:144`):**
+**Find (`dispatch.go:145`):**
 ```go
 			RollResult:   resolveRoll(step, roller),
 ```
@@ -1104,7 +1109,7 @@ This is the roll-order guarantee: `RollStep` runs in the same place, once for ea
 
 ##### Task 5 — the tests
 
-- **Step literals:** `Roll: &domain.RollTable{Die: d}` with no rows becomes `Amount: &d`; with rows, `Table: &domain.RollTable{...}`. Sites: `block_attack_test.go:24`, `coin_delta_test.go:13`, `dispatch_test.go:433`, `purchase_discount_test.go:16`, `raise_tech_level_test.go:19`, `use_asset_ability_test.go:262`, `:417`, `rulebook_test.go:231-237`, `:277-278`, `:1130`, `:1193`.
+- **Step literals:** `Roll: &domain.RollTable{Die: d}` with no rows becomes `Amount: &d`; with rows, `Table: &domain.RollTable{...}`. Sites: `block_attack_test.go:25`, `coin_delta_test.go:13`, `dispatch_test.go:423`, `purchase_discount_test.go:16`, `raise_tech_level_test.go:19`, `use_asset_ability_test.go:264`, `:419`, `rulebook_test.go:231-237`, `:277-278`, `:1130`, `:1193`.
 - **`RollResult` literals:** `coin_delta_test.go:45`, `:62` and `raise_tech_level_test.go:45`, `:63` set `Rolled: dice.StepResult{Row: &row}`, or leave it zero for no match. `purchase_discount_test.go:18` sets `Rolled: dice.StepResult{Amount: n}`.
 - **Row selection moves:** add `dice` tests for `Table`: a total in range, on each edge and out of range. Add `RollStep` tests for each type and for a step with no die.
 - **New load rules:** a test each that `coin_delta` with no rows is refused, `purchase_discount` with rows is refused, and `block_attack` with rows is refused. A fixture that breaks a new rule gets its data fixed, not the rule.
