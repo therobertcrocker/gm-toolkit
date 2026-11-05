@@ -168,7 +168,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `B.028` | State campaign ID not checked | -- | `faction.go:76` fills `CampaignID` only when empty, so a `state.toml` from another campaign loads silently and the header names it; the sandbox scenario seeds hard-code `campaign_id = "sandbox"`. Found in the sandbox combat test. |
-| `B.038` | Live faction pointers cross the event channel | needs triage | `adapter/observer.go:24-30` sends `*domain.Faction` on the buffered `eventCh`, and `execution.go:193,199` reads it in `snapshotOf()` on the TUI goroutine while the engine may still be writing; likely a data race. Confirm with `go test -race` once `F.027` adds adapter tests. Found while mapping the driver layer. |
+| `B.038` | Live faction pointers cross the event channel | needs triage | `adapter/observer.go:24-30` sends `*domain.Faction` on the buffered `eventCh`, and `execution.go:193,199` reads it in `snapshotOf()` on the TUI goroutine while the engine may still be writing; likely a data race. Confirm with `go test -race` once `F.027` adds adapter tests. Found while mapping the driver layer. **Confirmed by `F.039` Commit 8:** `go test -race ./internal/faction/tui/views/turn/execution -run TestCycleThroughTheRealChannels` reports a data race. Read: `execution.snapshotOf()` (`execution.go:214`), from `applyEvent` (`execution.go:193`). Previous write: `mutation.(*MutationEngine).Apply()` (`mutation.go:68`), from `applyAndRecord` (`orchestrator.go:670`) in `runBookkeepingPhase`. Not fixed. |
 
 #### 4. Presentation
 

@@ -144,6 +144,13 @@ unless marked as a plan-level choice.
     That run confirmed bool, slice, pointer, string and interface answers at the table; the
     other overlays rest on the read and the table's types. The tests rebuild the world index
     in two fixtures, because `AvailableActions` and `SelectSeizeTarget` read it.
+14. **Phase 3, Commit 8: `B.038` is real, and logged, not fixed.** Under `-race`, the test
+    fails in 6 runs of 6 with one report: `snapshotOf` (`execution.go:214`, reading `Coin`) on
+    the view's goroutine against `MutationEngine.Apply` (`mutation.go:68`, writing `Coin`) on
+    the engine's. Other fields may race as well; each run reported only this pair. The plain
+    gate passes. So `go test -race` over this package stays red until `B.038` is fixed. Robert
+    ruled that the one note on the `B.038` row is in scope, as this commit's task says, and
+    that the Out of Scope entry on tracker rows does not reach it.
 
 ---
 
