@@ -665,6 +665,35 @@ func TestRollWithHooks_TakenRerollIsOfferedOnce(t *testing.T) {
 	}
 }
 
+func TestRollWithHooks_AnswerWithNothingOnOfferEndsTheRoll(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "unlimited", stubResultHook{directive: hooks.RerollDirective{Source: "unlimited", Indices: []int{0}, Elective: true}})
+	alwaysTaken := hooks.RerollDirective{Source: "unlimited", Indices: []int{0}, Elective: true}
+	collector := &cardCollector{reroll: func(hooks.PostRollCard) *hooks.RerollDirective { return &alwaysTaken }}
+	roller := &sidesRecorder{values: []int{2, 9}}
+
+	result := rollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, roller, newFaction("A"), nil, nil)
+
+	if !slices.Equal(result.Dice, []int{9}) || len(roller.sides) != 2 {
+		t.Errorf("dice = %v after %d rolls, want [9] after 2: an answer to a card with no rerolls is not applied", result.Dice, len(roller.sides))
+	}
+	if len(collector.after) != 2 {
+		t.Errorf("saw %d after cards, want 2", len(collector.after))
+	}
+}
+
+func TestRollWithHooks_KeptCardKeepsItsDice(t *testing.T) {
+	registry := hooks.NewRegistry()
+	registry.RegisterRollResultHook(hooks.GlobalScope(), "unlimited", stubResultHook{directive: hooks.RerollDirective{Source: "unlimited", Indices: []int{0}, Elective: true}})
+	collector := &cardCollector{reroll: takeFirstReroll}
+
+	rollWithHooks(rollCtx(), domain.DiceRoll{NumDice: 1, Sides: 10}, registry, collector, &sidesRecorder{values: []int{2, 9}}, newFaction("A"), nil, nil)
+
+	if !slices.Equal(collector.after[0].Result.Dice, []int{2}) || !slices.Equal(collector.after[1].Result.Dice, []int{9}) {
+		t.Errorf("cards show %v then %v, want [2] then [9]", collector.after[0].Result.Dice, collector.after[1].Result.Dice)
+	}
+}
+
 func TestRollWithHooks_ScopeOrder(t *testing.T) {
 	alpha := factionWithAssets("alpha", map[string]string{"a-1": "Krylos", "a-2": "Krylos"})
 	beta := factionWithAssets("beta", map[string]string{"b-1": "Krylos"})

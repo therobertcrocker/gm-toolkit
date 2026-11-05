@@ -191,6 +191,25 @@ unless marked as a plan-level choice.
       that moves the test fix into Commit 6, which would hide the slip.
     - **The fix commit (entry 18)** — stays. Rejected: a wider change to how stub worlds
       share a hex.
+20. **Initiative close: five review fixes, Robert's picks.** One commit,
+    `fix: address initiative review findings`. The plan body above matches.
+    - **Entry 9's threshold was wrong.** It said a card needs about 7 rows to overrun. One
+      88-character row did it: `wizardBand` padded the card to 14 rows, then `Compose` wrapped
+      it and added rows nothing reserved, so the view grew past the terminal on an ordinary
+      attack card. A roll card now wraps to the band's width before it pads. A card past 14
+      wrapped rows can still overrun, so `B.047` stays open with this threshold.
+    - **The fence-sign on the before card said too much.** It promised a stray key cannot
+      throw away a bonus die, but a stray `enter` rolls with nothing ticked. Robert chose to
+      reword it, so it now promises only Esc. A once-per die stays unspent on that roll.
+      Rejected: pre-ticked offers, where a stray `enter` spends the die; a required move
+      before `enter`, which adds a key press to each card with offers.
+    - **The reroll loop ends when nothing is on offer.** It applied whatever a collector
+      returned, so a test with a fixed answer never ended. It still does not check an answer
+      against the card; the production adapter indexes `card.Rerolls`.
+    - **A card holds its own copy of the dice.** A kept card no longer changes after the next
+      reroll, and the comment that warned about it is gone.
+    - **`tmux` installs after Claude Code in `postcreate.sh`,** so an apt failure cannot stop
+      that install. This adjusts entry 19's tmux ruling only in its order.
 
 ---
 
@@ -319,8 +338,7 @@ type PreRollCard struct {
 }
 
 // PostRollCard is what the collector sees once forced rerolls have applied and after
-// each elective reroll taken. Rerolls may be empty; Result.Dice is live, so read it
-// before returning.
+// each elective reroll taken. Rerolls may be empty.
 type PostRollCard struct {
 	Context RollContext
 	Result  RollResult
@@ -347,7 +365,8 @@ type Collector interface {
 // Collector abstracts the two asks of a hooked roll. SelectModifiers is called before
 // the dice on every roll, offers or not, and returns the offers to apply. SelectReroll
 // is called once the roll settles, rerolls on offer or not, and again after each
-// reroll it takes; it returns the reroll to take, or nil to keep the dice.
+// reroll it takes; it returns the reroll to take, or nil to keep the dice. With no
+// reroll on offer, its answer is ignored and the roll ends.
 type Collector interface {
 	SelectModifiers(card PreRollCard) []ModifierOffer
 	SelectReroll(card PostRollCard) *RerollDirective
@@ -502,8 +521,11 @@ func rollWithHooks(
 		return step.result
 	}
 	for {
-		choice := collector.SelectReroll(hooks.PostRollCard{Context: ctx, Result: step.result, Rerolls: step.electiveOffers(), Applied: step.applied})
-		if choice == nil {
+		offers := step.electiveOffers()
+		shown := step.result
+		shown.Dice = slices.Clone(step.result.Dice)
+		choice := collector.SelectReroll(hooks.PostRollCard{Context: ctx, Result: shown, Rerolls: offers, Applied: step.applied})
+		if choice == nil || len(offers) == 0 {
 			return step.result
 		}
 		step.apply(*choice)
@@ -1194,6 +1216,10 @@ registry. New tests, all with `cardCollector`:
   brings a card with one, and a pass ends the roll.
 - **Taken once** — an elective hook with no budget, always taken, is rolled once, and the
   second card has no rerolls.
+- **Answer with nothing on offer** — a collector that always answers ends the roll once no
+  reroll is on offer, and that answer is not applied (Decision Record 20).
+- **Kept card** — a card kept across a reroll still shows the dice it was built with
+  (Decision Record 20).
 - **Nil collector** — a forced reroll applies and no card is built.
 
 **`internal/faction/engine/dice/stat_test.go`:** new tests with `recordedEngine`:
@@ -1929,7 +1955,7 @@ func (o PreRollCard) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 	if !ok {
 		return o, nil
 	}
-	// deliberate: no esc case, not today's "none", because a stray key must not throw away a bonus die (D-7).
+	// deliberate: no esc case, not today's "none", because Esc must not throw away a bonus die; enter still rolls what is ticked, and offers start unticked (D-7).
 	switch keyPress.String() {
 	case " ":
 		if o.cursor < len(o.card.Offers) {
@@ -2085,12 +2111,15 @@ Added in execution (Decision Record 5 and 6). **Find:**
 ```
 **Replace with:**
 ```go
+	view := m.overlay.View()
 	horizontal := lipgloss.Center
 	// deliberate: roll cards sit flush left, not centered, because Place centers each short line alone and the card's rows would not line up.
 	if m.activeAsk == adapter.AskPreRollCard || m.activeAsk == adapter.AskPostRollCard {
 		horizontal = lipgloss.Left
+		// deliberate: a card wraps here, not in Compose, because Place must count the rows a long line adds or the view outgrows the terminal.
+		view = lipgloss.NewStyle().Width(width).Render(view)
 	}
-	return lipgloss.Place(width, height, horizontal, lipgloss.Top, m.overlay.View())
+	return lipgloss.Place(width, height, horizontal, lipgloss.Top, view)
 }
 
 // streamContent wraps the feed to the stream's width. The viewport cuts off a line
@@ -2123,6 +2152,8 @@ command:
 
 - **Flush left** — on both cards, the band's first line starts with the headline.
 - **Feed wrap** — the end of a long `EvtRollSettled` line reaches the stream.
+- **View height** — a card with long rows keeps the view within the terminal, at widths 100,
+  120 and 140 (Decision Record 20).
 
 `adapter/roll_card_test.go`, new cases through `Action()`, answering on `AskPump`:
 

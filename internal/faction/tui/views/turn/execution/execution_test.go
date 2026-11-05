@@ -167,6 +167,22 @@ func TestModel_RollCardsSitFlushLeft(t *testing.T) {
 	}
 }
 
+func TestModel_LongRollCardRowsKeepTheViewHeight(t *testing.T) {
+	long := strings.TrimSpace(strings.Repeat("Longrange Missile Battery on Mireholt ", 3))
+	asks := []adapter.CollectorAskMsg{
+		{Kind: adapter.AskPreRollCard, Payload: adapter.PreRollCardPayload{Headline: "Alpha rolls Force to attack", Detail: long, Dice: "1d10 +3", Offers: []string{long, long}}},
+		{Kind: adapter.AskPostRollCard, Payload: adapter.PostRollCardPayload{Headline: "Alpha rolls Force to attack", Detail: long, Dice: "[7] +3 = 10", Rerolls: []string{long}}},
+	}
+	for _, width := range []int{100, 120, 140} {
+		for _, ask := range asks {
+			m, _ := New(width, 40, nil, nil).Update(ask)
+			if height := strings.Count(m.View(), "\n") + 1; height > 40 {
+				t.Errorf("width %d, ask %d: view is %d lines, want at most 40", width, ask.Kind, height)
+			}
+		}
+	}
+}
+
 func TestModel_LongFeedLineWrapsInsteadOfBeingCut(t *testing.T) {
 	line := "Ashfall Collective rolls Cunning to defend: [1] +1 = 2 vs 17 (Book of Secrets rerolled a 6)"
 	m, _ := New(80, 40, nil, nil).Update(adapter.ObserverEventMsg{Kind: adapter.EvtRollSettled, Payload: adapter.RollSettledPayload{Line: line}})

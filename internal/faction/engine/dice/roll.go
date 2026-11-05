@@ -69,8 +69,11 @@ func rollWithHooks(
 		return step.result
 	}
 	for {
-		choice := collector.SelectReroll(hooks.PostRollCard{Context: ctx, Result: step.result, Rerolls: step.electiveOffers(), Applied: step.applied})
-		if choice == nil {
+		offers := step.electiveOffers()
+		shown := step.result
+		shown.Dice = slices.Clone(step.result.Dice)
+		choice := collector.SelectReroll(hooks.PostRollCard{Context: ctx, Result: shown, Rerolls: offers, Applied: step.applied})
+		if choice == nil || len(offers) == 0 {
 			return step.result
 		}
 		step.apply(*choice)

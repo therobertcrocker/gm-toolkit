@@ -116,8 +116,7 @@ type PreRollCard struct {
 }
 
 // PostRollCard is what the collector sees once forced rerolls have applied and after
-// each elective reroll taken. Rerolls may be empty; Result.Dice is live, so read it
-// before returning.
+// each elective reroll taken. Rerolls may be empty.
 type PostRollCard struct {
 	Context RollContext
 	Result  RollResult

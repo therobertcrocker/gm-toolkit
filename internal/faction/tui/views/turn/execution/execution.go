@@ -400,12 +400,15 @@ func (m Model) wizardBand(width, height int) string {
 	if m.overlay == nil {
 		return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, styles.Dim.Render("—"))
 	}
+	view := m.overlay.View()
 	horizontal := lipgloss.Center
 	// deliberate: roll cards sit flush left, not centered, because Place centers each short line alone and the card's rows would not line up.
 	if m.activeAsk == adapter.AskPreRollCard || m.activeAsk == adapter.AskPostRollCard {
 		horizontal = lipgloss.Left
+		// deliberate: a card wraps here, not in Compose, because Place must count the rows a long line adds or the view outgrows the terminal.
+		view = lipgloss.NewStyle().Width(width).Render(view)
 	}
-	return lipgloss.Place(width, height, horizontal, lipgloss.Top, m.overlay.View())
+	return lipgloss.Place(width, height, horizontal, lipgloss.Top, view)
 }
 
 // streamContent wraps the feed to the stream's width. The viewport cuts off a line

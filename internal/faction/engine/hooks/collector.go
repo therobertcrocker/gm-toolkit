@@ -5,7 +5,8 @@ import "github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 // Collector abstracts the two asks of a hooked roll. SelectModifiers is called before
 // the dice on every roll, offers or not, and returns the offers to apply. SelectReroll
 // is called once the roll settles, rerolls on offer or not, and again after each
-// reroll it takes; it returns the reroll to take, or nil to keep the dice.
+// reroll it takes; it returns the reroll to take, or nil to keep the dice. With no
+// reroll on offer, its answer is ignored and the roll ends.
 type Collector interface {
 	SelectModifiers(card PreRollCard) []ModifierOffer
 	SelectReroll(card PostRollCard) *RerollDirective

@@ -64,7 +64,7 @@ func (o PreRollCard) Update(msg tea.Msg) (Overlay, tea.Cmd) {
 	if !ok {
 		return o, nil
 	}
-	// deliberate: no esc case, not today's "none", because a stray key must not throw away a bonus die (D-7).
+	// deliberate: no esc case, not today's "none", because Esc must not throw away a bonus die; enter still rolls what is ticked, and offers start unticked (D-7).
 	switch keyPress.String() {
 	case " ":
 		if o.cursor < len(o.card.Offers) {
