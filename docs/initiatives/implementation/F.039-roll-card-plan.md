@@ -138,6 +138,12 @@ unless marked as a plan-level choice.
     in the Bookkeeping scenario. In "Holder's own roll", gamma stands on Tartarus, not on
     another world, because it makes the attack. The two tag files are identical after the
     edit, so the harness's load of `rulebooks/swn` also vouches for the sandbox copy.
+13. **Phase 3, Commit 7: the sweep's check.** Read every overlay's answer against its
+    method's `replyAs` type, and all match. Ran one attack and one Expand Influence, through
+    a rival's roll and the free-attack prompt, in `sandbox-claude`: no error in the feed.
+    That run confirmed bool, slice, pointer, string and interface answers at the table; the
+    other overlays rest on the read and the table's types. The tests rebuild the world index
+    in two fixtures, because `AvailableActions` and `SelectSeizeTarget` read it.
 
 ---
 
