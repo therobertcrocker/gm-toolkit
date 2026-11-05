@@ -110,6 +110,7 @@ unless marked as a plan-level choice.
    it. The viewport cuts off a line at the column's width, so at 140 columns a feed line read
    "(Book of" and lost the rest of Decision 8's note. `streamContent` now wraps the feed to
    the stream's width. This covers every event, not only rolls; short lines look the same.
+   Robert kept it for all events (entry 19).
 7. **Phase 2, Commit 5: the cards draw their own keys.** Not in the plan; the manual check
    found it. Nothing calls an overlay's `Help()`: the footer reads `execution.Model.Help`,
    which is always scroll and follow. huh forms draw their own hint line, but a hand-drawn
@@ -120,11 +121,13 @@ unless marked as a plan-level choice.
    While any overlay holds the keys, the footer still offers `tab next mode`, `↑/↓ scroll`
    and `G follow`, and `overlays.md` says the help keymaps carry the Esc contract, though
    nothing draws them. Passing the mounted overlay's `Help()` through would fix it, but it
-   changes the footer of about 18 prompts, so it is not part of this commit.
+   changes the footer of about 18 prompts, so it is not part of this commit. Now `B.046`
+   (entry 19).
 9. **Phase 2, Commit 5: gap, wrapped rows can overrun the 14-row band.** Deferred. Decision
    16's sum counts one screen row per card row. A long detail line already wraps to two at
    140 columns, and offer rows can wrap too, so a card with about 7 or more rows can pass 14.
-   This is reasoned from the sum, not seen: the fullest card in the check had 2 rows.
+   This is reasoned from the sum, not seen: the fullest card in the check had 2 rows. Now
+   `B.047` (entry 19).
 10. **Phase 2, Commit 5: Record entry 2's gap is closed.** This commit deletes the shim, so a
     declined reroll is no longer asked about again.
 11. **Phase 2, Commit 5: the manual check's setup.** Task 6 did not say that the app needs
@@ -165,13 +168,29 @@ unless marked as a plan-level choice.
     Key Decision "The adapter copies everything the views render" says the two goroutines
     never share mutable state, and entry 14 proves that false. This work did not make it
     false, so it is left for `B.038`'s fix or `D.010`. The same holds for `overlays.md`'s
-    claim that the help keymap carries the Esc contract (entry 8).
+    claim that the help keymap carries the Esc contract (entry 8). Reversed: Robert had both
+    corrected now (entry 19).
 18. **Phase 3, after Commit 9: one fix commit, for a flaky Commit 6 scenario.** Not in the
     plan. `TestPsychicAcademy_DeclinedKeepsTheBudget` failed about 1 run in 6. Every stub
     world shares one hex, so gamma's asset on Erebus was an eligible defender, and
     `eligible[0]` follows map order. The scenarios now pick beta's asset. Commit 9 landed with
     this failure showing: its command committed whatever the gate said, because the gate's
     output went through `grep`. Commits 6 to 8 passed by luck on this test.
+19. **After Phase 3: Robert's rulings on the open calls.**
+    - **tmux** — goes in `.devcontainer/postcreate.sh`, because it is how Claude drives the
+      TUI. The install in entry 11 was not asked for, and a rebuild would lose it.
+    - **Feed wrap (entry 6)** — stays, for all events.
+    - **Flush-left cards and on-card keys (entries 5 and 7)** — both stay.
+    - **Footer (entry 8)** — Backlog row `B.046`, not on this branch.
+    - **Band overrun (entry 9)** — Backlog row `B.047`, not on this branch. The sentence in
+      entry 15 goes when it is fixed.
+    - **Stale doc claims (entry 17)** — corrected now, past the plan's `D.010` line, because
+      the pages were known to be false. `event-stream.md` names `B.038`, and `overlays.md`
+      names `B.046`. Rejected: leaving them for `B.038` and `D.010`.
+    - **Commit 9's failing gate (entry 18)** — history stays as it is. Rejected: a rebase
+      that moves the test fix into Commit 6, which would hide the slip.
+    - **The fix commit (entry 18)** — stays. Rejected: a wider change to how stub worlds
+      share a hex.
 
 ---
 

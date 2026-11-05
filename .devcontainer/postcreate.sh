@@ -6,5 +6,9 @@ set -e
 # Install Go tools
 go install github.com/air-verse/air@latest
 
+# Install tmux (Claude drives the TUI through it for manual checks)
+sudo apt-get update
+sudo apt-get install -y tmux
+
 # Install Claude Code (native installer: it owns ~/.local, so it can update itself)
 curl -fsSL https://claude.ai/install.sh | bash

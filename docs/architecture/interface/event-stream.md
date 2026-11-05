@@ -188,10 +188,12 @@ verifiable.
 - **The message enums are append-only.** `AskKind`/`EventKind` are a positional
   wire contract; kinds are only appended, never reordered, so the `Payload any`
   type-assertions on the consuming side stay valid as the surface grows.
-- **The adapter copies everything the views render.** Display payloads are built
-  from copies and adapter-derived caps, never live engine or domain pointers, so
-  the render goroutine and the engine goroutine never share mutable state. Where a
-  payload needs engine validation logic, that logic is ported adapter-side rather
+- **The adapter copies what the views render.** Display payloads are meant to be
+  built from copies and adapter-derived caps, so the render goroutine and the engine
+  goroutine share no mutable state. That is not yet true: the faction lifecycle
+  events send the live `*domain.Faction`, and `snapshotOf` reads it while the engine
+  writes it, a data race that `B.038` tracks. Where a payload needs engine validation
+  logic, that logic is ported adapter-side rather
   than exported, keeping the engine `action` package UI-agnostic. (Decision 3.)
 - **A wrong reply type is loud.** No collector method that reads a reply takes a wrong
   one as a zero value. A card ask reports it and declines; the others return an error.

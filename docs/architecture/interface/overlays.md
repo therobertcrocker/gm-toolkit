@@ -68,8 +68,10 @@ draw: the adapter words the whole card, and the answer is row indices.
 
 ### Esc semantics are a per-overlay contract
 
-What the *empty* answer means differs by prompt, and that difference is encoded in
-which help keymap the overlay returns (`formhelp.go`):
+What the *empty* answer means differs by prompt. Each overlay handles Esc in its own
+`Update`, and the help keymap it returns (`formhelp.go`) states the same meaning.
+Nothing draws these keymaps yet: the footer shows the execution view's own help, so
+they reach no screen (`B.046`).
 
 | Keymap | Esc behavior | Used by | Why |
 |--------|-------------|---------|-----|
@@ -116,11 +118,11 @@ fixed **wizard band** and, while mounted, makes the execution view report
 - **The overlay→adapter import edge is one-way.** Overlays may import adapter
   *value* types to read payloads; the adapter imports neither `overlay` nor
   `execution`, so no cycle can form. Data up, control down.
-- **Esc-meaning is encoded in the help keymap.** The three keymaps
-  (`formHelp` / `declineFormHelp` / `cancelFormHelp`) make each overlay declare
-  whether empty is impossible, legal, or a cancel — and the cancel case routes a
-  recoverable `ErrTurnCanceled` through the ordinary answer path rather than a
-  special one. (Decision 2.)
+- **Esc-meaning is stated in the help keymap and enforced in `Update`.** The three
+  keymaps (`formHelp` / `declineFormHelp` / `cancelFormHelp`) make each overlay state
+  whether empty is impossible, legal, or a cancel, though nothing draws them yet
+  (`B.046`) — and the cancel case routes a recoverable `ErrTurnCanceled` through the
+  ordinary answer path rather than a special one. (Decision 2.)
 - **A prompt inside an action that the action cannot unwind ignores Esc.** A
   cancel drops the acting faction's whole action, the earlier assets' results
   included, after another faction may already have answered. So the pay,
