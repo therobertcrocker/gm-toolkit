@@ -145,12 +145,27 @@ unless marked as a plan-level choice.
     other overlays rest on the read and the table's types. The tests rebuild the world index
     in two fixtures, because `AvailableActions` and `SelectSeizeTarget` read it.
 14. **Phase 3, Commit 8: `B.038` is real, and logged, not fixed.** Under `-race`, the test
-    fails in 6 runs of 6 with one report: `snapshotOf` (`execution.go:214`, reading `Coin`) on
+    fails in 11 runs of 11 with one report: `snapshotOf` (`execution.go:214`, reading `Coin`) on
     the view's goroutine against `MutationEngine.Apply` (`mutation.go:68`, writing `Coin`) on
     the engine's. Other fields may race as well; each run reported only this pair. The plain
     gate passes. So `go test -race` over this package stays red until `B.038` is fixed. Robert
     ruled that the one note on the `B.038` row is in scope, as this commit's task says, and
     that the Out of Scope entry on tracker rows does not reach it.
+15. **Phase 3, Commit 9: reversal, `overlays.md` no longer says a card fits the band.** The
+    plan's "A card lists at most 8 rows, so it fits the band" is false. A detail row wrapped
+    at 140 columns in Commit 7's run, and the after card adds a row per applied note. Robert
+    chose this text over the plan's: "A card lists at most 8 rows at once and scrolls with
+    the cursor. A wrapped row or an applied note can still push a full card past the band
+    (`F.039` Decision Record 9)." Entry 9 stays open, and the sentence goes when it is fixed.
+16. **Phase 3, Commit 9: three wording fixes, from checking the source.** The cards are not
+    "plain data", because an offer holds an `Apply` function: they are "structs the collector
+    only reads". Only the before card handles `space`. `AwaitCheckpoint` ignores its reply,
+    so the `replyAs` claims say "that reads a reply". The plan body above matches.
+17. **Phase 3, Commit 9: gap, `event-stream.md` still says views share no mutable state.** Its
+    Key Decision "The adapter copies everything the views render" says the two goroutines
+    never share mutable state, and entry 14 proves that false. This work did not make it
+    false, so it is left for `B.038`'s fix or `D.010`. The same holds for `overlays.md`'s
+    claim that the help keymap carries the Esc contract (entry 8).
 
 ---
 
@@ -187,7 +202,7 @@ unless marked as a plan-level choice.
 - [x] **Phase 2 — The GM sees the cards**
   - Commit 4 — `feat: adapter builds roll card views` (6 tasks)
   - Commit 5 — `feat: roll card overlays` (6 tasks)
-- [ ] **Phase 3 — Psychic Academy and rigor**
+- [x] **Phase 3 — Psychic Academy and rigor**
   - Commit 6 — `feat: Psychic Academy's reroll entry` (4 tasks)
   - Commit 7 — `refactor: check every collector reply type` (4 tasks)
   - Commit 8 — `test: full cycle through the real channels under race` (1 task)
@@ -2606,7 +2621,7 @@ budgets, and those that did not, and the collector returns the subset to apply. 
 after card holds the dice, the rerolls applied and the *elective* Cat 2 directives on
 offer, and the collector returns one to take, or nil to keep the dice. Non-elective
 directives apply automatically. Both are called on every roll with a collector. The
-cards are plain data, so a planner can answer them as a GM does.
+cards are structs the collector only reads, so a planner can answer them as a GM does.
 ```
 
 **Find:**
@@ -2659,9 +2674,9 @@ follow the identical pattern: build the form in the constructor, watch for
 `huh.StateCompleted` in `Update`, emit `OverlayDoneMsg` with the collected value.
 
 The two roll cards in `rollcard.go` use no form. Each draws its rows by hand and
-handles `↑/↓`, `space` and `enter` itself, so rows with one label toggle apart and a
-card with no offers needs no special case. They only draw: the adapter words the
-whole card, and the answer is row indices.
+handles `↑/↓` and `enter` itself, and the before card handles `space`, so rows with
+one label toggle apart and a card with no offers needs no special case. They only
+draw: the adapter words the whole card, and the answer is row indices.
 ```
 
 **Find:**
@@ -2679,8 +2694,9 @@ Add to Key Decisions:
 - **The adapter words a roll card, and the overlay only draws it.** The card reaches
   the overlay as strings, with no IDs or pointers, and the feed's dice line uses the
   same wording. The cards sit in the wizard band, so the right panel stays free. A
-  card lists at most 8 rows, so it fits the band. (`F.039` D-9, D-12, Decisions 7 and
-  16.)
+  card lists at most 8 rows at once and scrolls with the cursor. A wrapped row or an
+  applied note can still push a full card past the band (`F.039` Decision Record 9).
+  (`F.039` D-9, D-12, Decisions 7 and 16.)
 ```
 
 ##### Task 4 — `docs/architecture/interface/event-stream.md`
@@ -2701,16 +2717,16 @@ The roll cards go furthest: `roll_card.go` turns each card into strings. A colle
 method can also emit: `SelectReroll` sends `EvtRollSettled` with the card's dice line
 when a roll settles, so each roll with a collector leaves one line in the feed. A
 reply of the wrong type on a card ask declines and sends `EvtError`, because
-`hooks.Collector` has no error to return. Every other collector method reads its
-reply through `replyAs`, which turns a wrong type into a returned error and keeps an
-untyped nil as a legal empty answer.
+`hooks.Collector` has no error to return. Every other collector method that reads a
+reply does so through `replyAs`, which turns a wrong type into a returned error and
+keeps an untyped nil as a legal empty answer.
 ```
 
 Add to Key Decisions:
 ```markdown
-- **A wrong reply type is loud.** No collector method takes a wrong reply as a zero
-  value. A card ask reports it and declines; the others return an error. (`R.015`;
-  `F.039` Decision 1.)
+- **A wrong reply type is loud.** No collector method that reads a reply takes a wrong
+  one as a zero value. A card ask reports it and declines; the others return an error.
+  (`R.015`; `F.039` Decision 1.)
 ```
 
 ##### Commit message

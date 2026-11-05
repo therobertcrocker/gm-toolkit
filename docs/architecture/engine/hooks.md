@@ -198,16 +198,18 @@ driver through a narrow `Collector`:
 
 ```go
 type Collector interface {
-	SelectModifiers(offers []ModifierOffer) []ModifierOffer
-	ConfirmReroll(directive RerollDirective) bool
+	SelectModifiers(card PreRollCard) []ModifierOffer
+	SelectReroll(card PostRollCard) *RerollDirective
 }
 ```
 
 This is the hook-level slice of the engine's [collectors-in seam](orchestrator.md):
-the roll offers the Cat 1 modifiers that survive the offer filters and budgets, and the collector returns the
-subset to apply; for each *elective* Cat 2 directive the collector confirms or
-declines. Non-elective directives apply automatically. `SelectModifiers` is not
-called when no offer survives the budget filter.
+a before card holds the roll, the Cat 1 modifiers that survive the offer filters and
+budgets, and those that did not, and the collector returns the subset to apply. An
+after card holds the dice, the rerolls applied and the *elective* Cat 2 directives on
+offer, and the collector returns one to take, or nil to keep the dice. Non-elective
+directives apply automatically. Both are called on every roll with a collector. The
+cards are structs the collector only reads, so a planner can answer them as a GM does.
 
 Beside it sits `PaymentCollector` (`ConfirmPayment(PaymentOffer) (bool, error)`):
 one faction is asked whether to pay one amount. It lives here, the lowest package
@@ -388,7 +390,7 @@ collector moved to [dice](dice.md#key-decisions).
 - **The collector seam keeps elective hooks out of the engine's hands.** Roll
   modifiers and elective rerolls are offered to the driver; the engine never
   decides them itself. This is the same source-agnostic collector contract the
-  rest of the engine uses, narrowed to two methods.
+  rest of the engine uses, narrowed to two methods, one for each card.
 - **A question that a hook path asks is a narrow collector in `hooks`, and both
   engine collectors embed it.** `PaymentCollector`, `InterceptCollector` and
   `PermissionCollector` live in `hooks`, the lowest package with a collector, so
@@ -428,17 +430,19 @@ collector moved to [dice](dice.md#key-decisions).
   floor (Colonists, Technical Expertise) needs no new walk.
   Rejected: an asset's effect registered at faction scope. (s-flag-effect-registry plan,
   Decision Record 14; Effort 5 plan, Decision 1.)
-- **A budget lives on its owner's `HookBudgets`, keyed by effect, trigger,
-  definition or tag ID, and (when `once_per` asks) target or asset.** A tag's key
+- **A budget lives on its owner's `HookBudgets`, keyed by effect, definition or tag
+  ID, and (when `once_per` asks) target or asset.** A tag's key
   names the tag ID where an asset's names its definition
-  (`effect:bonus_die:own_roll:SWN-T-020`; A.001.7 Effort 1 Decision Record 2). `HookBudgets` is
+  (`effect:bonus_die:SWN-T-020`; A.001.7 Effort 1 Decision Record 2). `HookBudgets` is
   cleared in each faction's own bookkeeping, so a budget written to another
   faction's map would reset at an unpredictable point in the cycle. On the roll
   path the dispatcher stamps the owning faction (`FactionID`) on every offer and
   directive, never the hook, so a forced reroll spends the effect owner's budget,
-  not the roller's. The trigger is in the key so two entries of one definition
-  (Book of Secrets) do not share a budget. (s-flag-effect-registry plan, Planning
-  Decision 3; Effort 3 plan, Decisions 8 and 16.)
+  not the roller's. The trigger is not in the key, so two entries of one effect on one
+  definition share a use: Book of Secrets has one per turn, on its own roll or a
+  rival's. An action that aborts restores every faction's budgets, because its
+  mutations never land. (s-flag-effect-registry plan, Planning Decision 3; Effort 3
+  plan, Decision 8; `F.039` Decisions 3 and 18, `B.016`, `B.024`.)
 - **Reactors in one dispatch round cannot see each other's output, so a shared
   limit needs a lead.** Every reactor in a round reads the same input batch and
   the state from before it. When several reactors draw on one limit — Banks on the

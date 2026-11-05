@@ -61,6 +61,11 @@ in their own files (~18 overlays in all), but
 follow the identical pattern: build the form in the constructor, watch for
 `huh.StateCompleted` in `Update`, emit `OverlayDoneMsg` with the collected value.
 
+The two roll cards in `rollcard.go` use no form. Each draws its rows by hand and
+handles `↑/↓` and `enter` itself, and the before card handles `space`, so rows with
+one label toggle apart and a card with no offers needs no special case. They only
+draw: the adapter words the whole card, and the answer is row indices.
+
 ### Esc semantics are a per-overlay contract
 
 What the *empty* answer means differs by prompt, and that difference is encoded in
@@ -120,7 +125,8 @@ fixed **wizard band** and, while mounted, makes the execution view report
   cancel drops the acting faction's whole action, the earlier assets' results
   included, after another faction may already have answered. So the pay,
   sacrifice, permission, contest and loss prompts swallow Esc and show `formHelp`;
-  the decline is an explicit option (`NoCancelConfirm`, `SelectAssetToLose`).
+  the decline is an explicit option (`NoCancelConfirm`, `SelectAssetToLose`). The roll
+  cards ignore it too: Roll and Keep are explicit, and the after card opens on Keep.
   (A.001.6 Effort 3 Decision Records 5 and 7; Effort 2 Decision 5 and Decision
   Record 8; Effort 4 Decision 8.)
 - **Three archetypes cover the common shapes; the rest are bespoke.** Generic
@@ -139,6 +145,12 @@ fixed **wizard band** and, while mounted, makes the execution view report
   overlay. Rejected: the old placeholder default, which let a new kind reach the
   GM as a placeholder and kept the two switches free to drift. (A.001.6 Effort 1
   Decision 12, `R.014`.)
+- **The adapter words a roll card, and the overlay only draws it.** The card reaches
+  the overlay as strings, with no IDs or pointers, and the feed's dice line uses the
+  same wording. The cards sit in the wizard band, so the right panel stays free. A
+  card lists at most 8 rows at once and scrolls with the cursor. A wrapped row or an
+  applied note can still push a full card past the band (`F.039` Decision Record 9).
+  (`F.039` D-9, D-12, Decisions 7 and 16.)
 
 ## Dependencies
 

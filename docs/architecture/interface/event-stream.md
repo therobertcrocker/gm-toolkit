@@ -141,6 +141,14 @@ adapter-side, deliberately so the engine's `action` package stays untouched. The
 engine goroutine is parked on the ask while this runs, so reading shared state is
 race-free.
 
+The roll cards go furthest: `roll_card.go` turns each card into strings. A collector
+method can also emit: `SelectReroll` sends `EvtRollSettled` with the card's dice line
+when a roll settles, so each roll with a collector leaves one line in the feed. A
+reply of the wrong type on a card ask declines and sends `EvtError`, because
+`hooks.Collector` has no error to return. Every other collector method that reads a
+reply does so through `replyAs`, which turns a wrong type into a returned error and
+keeps an untyped nil as a legal empty answer.
+
 ### The smoke / dry-run harness
 
 The same two seams back a headless smoke test. `dryrun.go`'s `RunDryRun` builds a
@@ -185,6 +193,9 @@ verifiable.
   the render goroutine and the engine goroutine never share mutable state. Where a
   payload needs engine validation logic, that logic is ported adapter-side rather
   than exported, keeping the engine `action` package UI-agnostic. (Decision 3.)
+- **A wrong reply type is loud.** No collector method that reads a reply takes a wrong
+  one as a zero value. A card ask reports it and declines; the others return an error.
+  (`R.015`; `F.039` Decision 1.)
 
 ## Dependencies
 
