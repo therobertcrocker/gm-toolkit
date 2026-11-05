@@ -2,11 +2,13 @@ package scenarios
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice/dicetest"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/testharness"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
@@ -569,4 +571,133 @@ func TestEugenicsCult_OnlyTheTagBuysGengineeredSlaves(t *testing.T) {
 				fmt.Sprintf("offered = %v, want %v", offered, tc.offer))
 		})
 	}
+}
+
+// --- scenario: Psychic Academy tag — once per turn, force any rival's reroll ---
+
+const psychicAcademyBudget = "effect:reroll:SWN-T-014"
+
+// newPsychicAcademyHarness scripts attacker to attack on Tartarus, where alpha and
+// beta stand. Gamma holds the tag on gammaWorld. Every stat is 1 and every asset has
+// 3 HP, so a die alone decides the attack, and a hit with a damage die of 3 destroys.
+func newPsychicAcademyHarness(t *testing.T, gammaWorld, attacker string, dice ...int) *testharness.Harness {
+	t.Helper()
+	h := testharness.NewHarness(t)
+	h.AddFaction("alpha", "Tartarus", 1, 3, 2)
+	h.AddFaction("beta", "Tartarus", 1, 3, 2)
+	gamma := h.AddFaction("gamma", gammaWorld, 1, 3, 2)
+	gamma.Tags = []string{"SWN-T-014"}
+
+	h.Engine.Rand = &dicetest.Cycle{Values: dice}
+	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != attacker {
+			return nil, nil
+		}
+		for _, candidate := range available {
+			if candidate.Name() == "Attack" {
+				return candidate, nil
+			}
+		}
+		t.Fatalf("Attack not available for %s", attacker)
+		return nil, nil
+	}
+	h.Collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
+		return eligible, nil
+	}
+	h.Collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
+		return eligible[0], nil
+	}
+	return h
+}
+
+// TestPsychicAcademy_TakenRerollsTheRivalsDie: alpha's 9 would beat beta's 5, but the
+// reroll makes it a 2, so the attack misses and beta's defense roll has nothing left
+// to offer.
+func TestPsychicAcademy_TakenRerollsTheRivalsDie(t *testing.T) {
+	h := newPsychicAcademyHarness(t, "Erebus", "alpha", 9, 2, 5, 1)
+	var offeredOn []string
+	h.Collector.SelectRerollFn = func(card hooks.PostRollCard) *hooks.RerollDirective {
+		if len(card.Rerolls) == 0 {
+			return nil
+		}
+		offeredOn = append(offeredOn, card.Context.Actor.ID)
+		if owner := card.Rerolls[0].FactionID; owner != "gamma" {
+			t.Errorf("reroll owner = %q, want gamma", owner)
+		}
+		return &card.Rerolls[0]
+	}
+
+	runOrderedCycle(t, h, "gamma", "alpha", "beta")
+
+	testharness.CheckStep(t, "offered on alpha's roll alone", slices.Equal(offeredOn, []string{"alpha"}),
+		fmt.Sprintf("offered on %v", offeredOn))
+	testharness.CheckStep(t, "the attack missed", h.FactionState.Factions["beta"].Assets["beta-asset-1"].CurrentHP == 3,
+		"beta's asset took damage")
+	spent := h.FactionState.Factions["gamma"].HookBudgets[psychicAcademyBudget]
+	testharness.CheckStep(t, "gamma's use spent once", spent == 1, fmt.Sprintf("budget = %d, want 1", spent))
+}
+
+// TestPsychicAcademy_DeclinedKeepsTheBudget: a pass spends nothing (A.001.7 D-7), so
+// the next roll in the same contest offers it again (A.001.7 D-3).
+func TestPsychicAcademy_DeclinedKeepsTheBudget(t *testing.T) {
+	h := newPsychicAcademyHarness(t, "Erebus", "alpha", 9, 5, 3)
+	cardsWithRerolls := 0
+	h.Collector.SelectRerollFn = func(card hooks.PostRollCard) *hooks.RerollDirective {
+		if len(card.Rerolls) > 0 {
+			cardsWithRerolls++
+		}
+		return nil
+	}
+
+	runOrderedCycle(t, h, "gamma", "alpha", "beta")
+
+	testharness.CheckStep(t, "both rolls offered", cardsWithRerolls == 2,
+		fmt.Sprintf("cards with rerolls = %d, want 2", cardsWithRerolls))
+	spent := h.FactionState.Factions["gamma"].HookBudgets[psychicAcademyBudget]
+	testharness.CheckStep(t, "gamma's use unspent", spent == 0, fmt.Sprintf("budget = %d, want 0", spent))
+	testharness.CheckStep(t, "the dice stood", h.FactionState.Factions["beta"].Assets["beta-asset-1"] == nil,
+		"beta's asset survived a hit")
+}
+
+// TestPsychicAcademy_NotOfferedOnTheHoldersOwnRoll: gamma attacks, so its own roll
+// offers nothing, and the defender's roll is a rival's roll like any other.
+func TestPsychicAcademy_NotOfferedOnTheHoldersOwnRoll(t *testing.T) {
+	h := newPsychicAcademyHarness(t, "Tartarus", "gamma", 9, 5, 3)
+	offersByRoller := map[string]int{}
+	h.Collector.SelectRerollFn = func(card hooks.PostRollCard) *hooks.RerollDirective {
+		offersByRoller[card.Context.Actor.ID] += len(card.Rerolls)
+		return nil
+	}
+
+	runOrderedCycle(t, h, "gamma", "alpha", "beta")
+
+	testharness.CheckStep(t, "two rollers", len(offersByRoller) == 2, fmt.Sprintf("rollers = %v", offersByRoller))
+	for roller, offers := range offersByRoller {
+		want := 1
+		if roller == "gamma" {
+			want = 0
+		}
+		testharness.CheckStep(t, roller+"'s offers", offers == want, fmt.Sprintf("offers = %d, want %d", offers, want))
+	}
+}
+
+// TestPsychicAcademy_BookkeepingClearsTheUse: gamma's turn comes after the attack, so
+// its bookkeeping clears the use it spent.
+func TestPsychicAcademy_BookkeepingClearsTheUse(t *testing.T) {
+	h := newPsychicAcademyHarness(t, "Erebus", "alpha", 9, 2, 5, 1)
+	attackScript := h.Collector.SelectActionFn
+	spentBeforeBookkeeping := 0
+	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID == "beta" {
+			spentBeforeBookkeeping = h.FactionState.Factions["gamma"].HookBudgets[psychicAcademyBudget]
+		}
+		return attackScript(faction, available)
+	}
+
+	runOrderedCycle(t, h, "alpha", "beta", "gamma")
+
+	testharness.CheckStep(t, "spent before gamma's turn", spentBeforeBookkeeping == 1,
+		fmt.Sprintf("budget = %d, want 1", spentBeforeBookkeeping))
+	_, left := h.FactionState.Factions["gamma"].HookBudgets[psychicAcademyBudget]
+	testharness.CheckStep(t, "cleared by gamma's bookkeeping", !left, "the budget is still on gamma")
 }

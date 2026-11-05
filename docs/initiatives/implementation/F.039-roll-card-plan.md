@@ -132,6 +132,12 @@ unless marked as a plan-level choice.
     not installed, so it went in through `apt-get`. The `combat` scenario has no bonus die,
     so one further run gave Veiled Hand the Machiavellian tag in `sandbox-claude`'s
     `state.toml` to see an offer row, and a reset removed it.
+12. **Phase 3, Commit 6: scenario details the task left open.** The scenarios pin the turn
+    order with `runOrderedCycle`, because `Turn.Start` rolls the order on the roller it took
+    at construction, not `h.Engine.Rand`. Gamma's bookkeeping must come after the attack only
+    in the Bookkeeping scenario. In "Holder's own roll", gamma stands on Tartarus, not on
+    another world, because it makes the attack. The two tag files are identical after the
+    edit, so the harness's load of `rulebooks/swn` also vouches for the sandbox copy.
 
 ---
 
