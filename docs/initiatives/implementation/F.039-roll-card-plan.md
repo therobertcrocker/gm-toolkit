@@ -166,6 +166,12 @@ unless marked as a plan-level choice.
     never share mutable state, and entry 14 proves that false. This work did not make it
     false, so it is left for `B.038`'s fix or `D.010`. The same holds for `overlays.md`'s
     claim that the help keymap carries the Esc contract (entry 8).
+18. **Phase 3, after Commit 9: one fix commit, for a flaky Commit 6 scenario.** Not in the
+    plan. `TestPsychicAcademy_DeclinedKeepsTheBudget` failed about 1 run in 6. Every stub
+    world shares one hex, so gamma's asset on Erebus was an eligible defender, and
+    `eligible[0]` follows map order. The scenarios now pick beta's asset. Commit 9 landed with
+    this failure showing: its command committed whatever the gate said, because the gate's
+    output went through `grep`. Commits 6 to 8 passed by luck on this test.
 
 ---
 

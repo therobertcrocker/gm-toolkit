@@ -604,8 +604,13 @@ func newPsychicAcademyHarness(t *testing.T, gammaWorld, attacker string, dice ..
 	h.Collector.SelectAttackersFn = func(eligible []*domain.Asset, _ *rulebook.Rulebook) ([]*domain.Asset, error) {
 		return eligible, nil
 	}
+	// deliberate: pick beta's asset, not eligible[0], because every stub world shares one hex and the order is a map's, so gamma's asset can come first.
 	h.Collector.SelectDefenderFn = func(_ *domain.Asset, eligible []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
-		return eligible[0], nil
+		betaAsset := slices.IndexFunc(eligible, func(asset *domain.Asset) bool { return asset.OwnerID == "beta" })
+		if betaAsset < 0 {
+			t.Fatalf("beta's asset is not eligible: %v", eligible)
+		}
+		return eligible[betaAsset], nil
 	}
 	return h
 }
