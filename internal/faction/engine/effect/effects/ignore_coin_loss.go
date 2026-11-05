@@ -28,7 +28,6 @@ func registerIgnoreCoinLoss(ctx effect.RegisterContext) {
 		ctx.Holder.HookID(domain.SpecialIgnoreCoinLoss),
 		&ignoreCoinLossReactor{
 			holder:  refOf(ctx.Holder),
-			trigger: ctx.Entry.Trigger,
 			oncePer: ctx.Entry.Gates.OncePer,
 		},
 	)
@@ -36,7 +35,6 @@ func registerIgnoreCoinLoss(ctx effect.RegisterContext) {
 
 type ignoreCoinLossReactor struct {
 	holder  holderRef
-	trigger domain.EffectTrigger
 	oncePer domain.OncePerKey
 }
 
@@ -60,7 +58,7 @@ func (reactor *ignoreCoinLossReactor) OnMutations(mutations []domain.Mutation, f
 			continue
 		}
 		if reactor.oncePer != "" {
-			for next < len(copies) && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialIgnoreCoinLoss, reactor.trigger, reactor.holder.sourceID, copies[next].ID, loss.CausedByFactionID)) {
+			for next < len(copies) && !spendBudget(owner, budgetKey(reactor.oncePer, domain.SpecialIgnoreCoinLoss, reactor.holder.sourceID, copies[next].ID, loss.CausedByFactionID)) {
 				next++
 			}
 			if next == len(copies) {

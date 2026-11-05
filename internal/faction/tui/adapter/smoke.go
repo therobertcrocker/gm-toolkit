@@ -77,10 +77,10 @@ type SmokeActionCollector struct{}
 
 func NewSmokeActionCollector() *SmokeActionCollector { return &SmokeActionCollector{} }
 
-func (SmokeActionCollector) SelectModifiers(_ []hooks.ModifierOffer) []hooks.ModifierOffer {
+func (SmokeActionCollector) SelectModifiers(_ hooks.PreRollCard) []hooks.ModifierOffer {
 	return nil
 }
-func (SmokeActionCollector) ConfirmReroll(_ hooks.RerollDirective) bool { return false }
+func (SmokeActionCollector) SelectReroll(_ hooks.PostRollCard) *hooks.RerollDirective { return nil }
 
 func (SmokeActionCollector) SelectAsset(_ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
 	return nil, action.ErrActionUnavailable

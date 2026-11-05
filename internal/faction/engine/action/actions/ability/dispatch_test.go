@@ -173,8 +173,9 @@ func TestDispatch_ContestRollsThroughHooks(t *testing.T) {
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 	collector.EXPECT().SelectModifiers(gomock.Any()).
-		DoAndReturn(func(offers []hooks.ModifierOffer) []hooks.ModifierOffer { return offers }).
-		Times(1)
+		DoAndReturn(func(card hooks.PreRollCard) []hooks.ModifierOffer { return card.Offers }).
+		AnyTimes()
+	collector.EXPECT().SelectReroll(gomock.Any()).AnyTimes()
 
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), factionTestDieKey, factionTestDie{})
@@ -226,8 +227,9 @@ func TestDispatch_DefenseBudgetSpentOnRealDefender(t *testing.T) {
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: view.Factions["f2"]}, nil)
 	collector.EXPECT().SelectModifiers(gomock.Any()).
-		DoAndReturn(func(offers []hooks.ModifierOffer) []hooks.ModifierOffer { return offers }).
-		Times(1)
+		DoAndReturn(func(card hooks.PreRollCard) []hooks.ModifierOffer { return card.Offers }).
+		AnyTimes()
+	collector.EXPECT().SelectReroll(gomock.Any()).AnyTimes()
 
 	registry := hooks.NewRegistry()
 	registry.RegisterRollModifier(hooks.GlobalScope(), defenseDieKey, defenseDie{})
@@ -487,7 +489,7 @@ func TestDispatch_ContestRollsNameTheOpposingStat(t *testing.T) {
 	targetFaction := factionState.Factions["f2"]
 
 	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockCollector(ctrl)
+	collector := mocks.NewRollingCollector(ctrl)
 	collector.EXPECT().SelectAbilityTarget(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(domain.AbilityTarget{Kind: domain.TargetFaction, Faction: targetFaction}, nil)
 

@@ -59,28 +59,61 @@ func (a *Adapter) worldNames(worldIDs []string) map[string]string {
 	return names
 }
 
-// --- hooks.Collector (no error return; Esc/cancel degrades to the legal no-op) ---
+// --- hooks.Collector (no error return; a bad reply declines and reports, Decision 1) ---
 
-func (a *actionCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
-	raw, err := a.adapter.ask(AskSelectModifiers, nil, SelectModifiersPayload{Offers: offers})
+func (a *actionCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	raw, err := a.adapter.ask(AskPreRollCard, nil, a.adapter.preRollPayload(card))
 	if err != nil {
-		return nil // Esc/cancel -> no modifiers applied
+		a.adapter.reportCardFailure(fmt.Errorf("SelectModifiers: %w", err))
+		return nil
 	}
-	chosen, _ := raw.([]*hooks.ModifierOffer)
-	out := make([]hooks.ModifierOffer, len(chosen))
-	for i, offer := range chosen {
-		out[i] = *offer
+	indices, ok := raw.([]int)
+	if !ok {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectModifiers: unexpected reply type %T", raw))
+		return nil
 	}
-	return out
+	chosen := make([]hooks.ModifierOffer, 0, len(indices))
+	for _, index := range indices {
+		if index < 0 || index >= len(card.Offers) {
+			a.adapter.reportCardFailure(fmt.Errorf("SelectModifiers: no offer %d", index))
+			return nil
+		}
+		chosen = append(chosen, card.Offers[index])
+	}
+	return chosen
 }
 
-func (a *actionCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
-	raw, err := a.adapter.ask(AskConfirmReroll, nil, ConfirmRerollPayload{Directive: directive})
-	if err != nil {
-		return false // Esc/cancel -> skip the reroll
+// SelectReroll waits only on a choice (D-5). With nothing on offer, or on a pass, the
+// dice go to the feed.
+func (a *actionCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	if len(card.Rerolls) == 0 {
+		a.adapter.emitRollLine(card)
+		return nil
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed
+	raw, err := a.adapter.ask(AskPostRollCard, nil, a.adapter.postRollPayload(card))
+	if err != nil {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectReroll: %w", err))
+		a.adapter.emitRollLine(card)
+		return nil
+	}
+	choice, ok := raw.(int)
+	if !ok || choice < KeepRoll || choice >= len(card.Rerolls) {
+		a.adapter.reportCardFailure(fmt.Errorf("SelectReroll: unexpected reply %#v", raw))
+		a.adapter.emitRollLine(card)
+		return nil
+	}
+	if choice == KeepRoll {
+		a.adapter.emitRollLine(card)
+		return nil
+	}
+	return &card.Rerolls[choice]
+}
+
+// reportCardFailure makes a bad card reply loud without stopping the roll: only a
+// code bug can cause one, and hooks.Collector has no error to return.
+func (a *Adapter) reportCardFailure(err error) {
+	a.log.Error("roll card failed", "err", err)
+	a.emit(EvtError, ErrorPayload{Err: err})
 }
 
 // --- action.Collector: shared (real in foundation) ---
@@ -90,8 +123,7 @@ func (a *actionCollector) SelectAsset(assets []*domain.Asset, rb *rulebook.Ruleb
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.(*domain.Asset)
-	return chosen, nil
+	return replyAs[*domain.Asset]("SelectAsset", raw)
 }
 
 func (a *actionCollector) SelectAssetToLose(faction *domain.Faction, assets []*domain.Asset, rb *rulebook.Rulebook) (*domain.Asset, error) {
@@ -99,8 +131,7 @@ func (a *actionCollector) SelectAssetToLose(faction *domain.Faction, assets []*d
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.(*domain.Asset)
-	return chosen, nil
+	return replyAs[*domain.Asset]("SelectAssetToLose", raw)
 }
 
 // --- action.Collector: action-unique (recoverable-stubbed until each action's commit) ---
@@ -116,8 +147,8 @@ func (a *actionCollector) SelectAbilityTarget(holder domain.AbilityHolder, step 
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
-		chosen, _ := raw.(*domain.Faction)
-		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, nil
+		chosen, err := replyAs[*domain.Faction]("SelectAbilityTarget", raw)
+		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, err
 	case domain.TargetAsset:
 		raw, err := a.adapter.ask(AskSelectAbilityAssetTarget, nil, SelectAbilityAssetTargetPayload{
 			Asset:      holder.Asset,
@@ -128,8 +159,8 @@ func (a *actionCollector) SelectAbilityTarget(holder domain.AbilityHolder, step 
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
-		chosen, _ := raw.(*domain.Asset)
-		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: chosen}, nil
+		chosen, err := replyAs[*domain.Asset]("SelectAbilityTarget", raw)
+		return domain.AbilityTarget{Kind: domain.TargetAsset, Asset: chosen}, err
 	case domain.TargetWorld:
 		raw, err := a.adapter.ask(AskSelectAbilityWorldTarget, nil, SelectAbilityWorldTargetPayload{
 			Holder:     holder,
@@ -140,8 +171,8 @@ func (a *actionCollector) SelectAbilityTarget(holder domain.AbilityHolder, step 
 		if err != nil {
 			return domain.AbilityTarget{}, err
 		}
-		chosen, _ := raw.(string)
-		return domain.AbilityTarget{Kind: domain.TargetWorld, World: chosen}, nil
+		chosen, err := replyAs[string]("SelectAbilityTarget", raw)
+		return domain.AbilityTarget{Kind: domain.TargetWorld, World: chosen}, err
 	default:
 		return domain.AbilityTarget{}, fmt.Errorf("SelectAbilityTarget: target kind %q not supported", step.Target)
 	}
@@ -163,8 +194,7 @@ func (a *Adapter) selectRelocateOrders(acting *domain.Asset, candidates []*domai
 	if err != nil {
 		return nil, err
 	}
-	orders, _ := raw.([]action.RelocateOrder)
-	return orders, nil
+	return replyAs[[]action.RelocateOrder]("SelectRelocateOrders", raw)
 }
 func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rb *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	targets := make([]RepairTarget, 0, len(damaged))
@@ -189,8 +219,7 @@ func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []
 	if err != nil {
 		return nil, err
 	}
-	orders, _ := raw.([]action.RepairOrder)
-	return orders, nil
+	return replyAs[[]action.RepairOrder]("SelectRepairOrders", raw)
 }
 
 func (a *actionCollector) SelectBuyOrder(purchasablePerWorld map[string][]*domain.AssetDefinition) (action.BuyOrder, error) {
@@ -206,24 +235,21 @@ func (a *actionCollector) SelectBuyOrder(purchasablePerWorld map[string][]*domai
 	if err != nil {
 		return action.BuyOrder{}, err
 	}
-	order, _ := raw.(action.BuyOrder)
-	return order, nil
+	return replyAs[action.BuyOrder]("SelectBuyOrder", raw)
 }
 func (a *actionCollector) SelectRefitOrder(options []action.RefitOption, rb *rulebook.Rulebook) (action.RefitOrder, error) {
 	raw, err := a.adapter.ask(AskSelectRefitOrder, nil, SelectRefitOrderPayload{Options: options})
 	if err != nil {
 		return action.RefitOrder{}, err
 	}
-	order, _ := raw.(action.RefitOrder)
-	return order, nil
+	return replyAs[action.RefitOrder]("SelectRefitOrder", raw)
 }
 func (a *actionCollector) SelectAttackers(eligible []*domain.Asset, rb *rulebook.Rulebook) ([]*domain.Asset, error) {
 	raw, err := a.adapter.ask(AskSelectAttackers, nil, SelectAttackersPayload{Eligible: eligible})
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.([]*domain.Asset)
-	return chosen, nil
+	return replyAs[[]*domain.Asset]("SelectAttackers", raw)
 }
 func (a *actionCollector) SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, rb *rulebook.Rulebook) (*domain.Asset, error) {
 	raw, err := a.adapter.ask(AskSelectDefender, nil, SelectDefenderPayload{
@@ -234,8 +260,7 @@ func (a *actionCollector) SelectDefender(attacker *domain.Asset, eligible []*dom
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.(*domain.Asset)
-	return chosen, nil
+	return replyAs[*domain.Asset]("SelectDefender", raw)
 }
 func (a *actionCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction, base *domain.Base, damage int) (bool, error) {
 	raw, err := a.adapter.ask(AskConfirmRedirectToBase, nil, ConfirmRedirectToBasePayload{
@@ -246,8 +271,7 @@ func (a *actionCollector) ConfirmRedirectToBase(defenderFaction *domain.Faction,
 	if err != nil {
 		return false, err
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed, nil
+	return replyAs[bool]("ConfirmRedirectToBase", raw)
 }
 func (a *actionCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source *domain.Asset, attacker *domain.Asset) (bool, error) {
 	raw, err := a.adapter.ask(AskConfirmCounterstrike, defenderFaction, ConfirmCounterstrikePayload{
@@ -258,8 +282,7 @@ func (a *actionCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, 
 	if err != nil {
 		return false, err
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed, nil
+	return replyAs[bool]("ConfirmCounterstrike", raw)
 }
 func (a *actionCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
 	return a.adapter.confirmPayment(offer)
@@ -272,8 +295,7 @@ func (a *actionCollector) ConfirmSacrifice(offer hooks.SacrificeOffer) (bool, er
 	if err != nil {
 		return false, err
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed, nil
+	return replyAs[bool]("ConfirmSacrifice", raw)
 }
 
 func (a *actionCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
@@ -292,8 +314,7 @@ func (a *Adapter) requestPermission(request hooks.PermissionRequest) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	granted, _ := raw.(bool)
-	return granted, nil
+	return replyAs[bool]("RequestPermission", raw)
 }
 
 func (a *actionCollector) ConfirmPermissionContest(offer hooks.PermissionContestOffer) (bool, error) {
@@ -315,8 +336,7 @@ func (a *Adapter) confirmPermissionContest(offer hooks.PermissionContestOffer) (
 	if err != nil {
 		return false, err
 	}
-	contest, _ := raw.(bool)
-	return contest, nil
+	return replyAs[bool]("ConfirmPermissionContest", raw)
 }
 
 // confirmPayment asks the paying faction. The action collector (Marketers) and the
@@ -326,8 +346,7 @@ func (a *Adapter) confirmPayment(offer hooks.PaymentOffer) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	paid, _ := raw.(bool)
-	return paid, nil
+	return replyAs[bool]("ConfirmPayment", raw)
 }
 func (a *actionCollector) SelectExpandInfluenceOrder(faction *domain.Faction, factionState *state.FactionState, eligibleNewBaseWorlds []string) (action.ExpandInfluenceOrder, error) {
 	raw, err := a.adapter.ask(AskSelectExpandInfluenceOrder, faction, SelectExpandInfluenceOrderPayload{
@@ -339,8 +358,7 @@ func (a *actionCollector) SelectExpandInfluenceOrder(faction *domain.Faction, fa
 	if err != nil {
 		return action.ExpandInfluenceOrder{}, err
 	}
-	order, _ := raw.(action.ExpandInfluenceOrder)
-	return order, nil
+	return replyAs[action.ExpandInfluenceOrder]("SelectExpandInfluenceOrder", raw)
 }
 func (a *actionCollector) ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error) {
 	raw, err := a.adapter.ask(AskConfirmRivalFreeAttack, nil, ConfirmRivalFreeAttackPayload{
@@ -351,8 +369,7 @@ func (a *actionCollector) ConfirmRivalFreeAttack(rival *domain.Faction, rivalRol
 	if err != nil {
 		return false, err
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed, nil
+	return replyAs[bool]("ConfirmRivalFreeAttack", raw)
 }
 func (a *actionCollector) SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rb *rulebook.Rulebook) ([]*domain.Asset, error) {
 	raw, err := a.adapter.ask(AskSelectBaseAttackers, nil, SelectBaseAttackersPayload{
@@ -362,8 +379,7 @@ func (a *actionCollector) SelectBaseAttackers(rival *domain.Faction, eligible []
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.([]*domain.Asset)
-	return chosen, nil
+	return replyAs[[]*domain.Asset]("SelectBaseAttackers", raw)
 }
 
 // deriveReinforceTargets unions damagedNonHomeworldBases (heal-eligible) and
@@ -398,16 +414,14 @@ func (a *actionCollector) SelectAbilityHolders(faction *domain.Faction, candidat
 	if err != nil {
 		return nil, err
 	}
-	chosen, _ := raw.([]domain.AbilityHolder)
-	return chosen, nil
+	return replyAs[[]domain.AbilityHolder]("SelectAbilityHolders", raw)
 }
 func (a *actionCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
 	raw, err := a.adapter.ask(AskConfirmAbilityApplied, nil, ConfirmAbilityAppliedPayload{Asset: asset, Def: def})
 	if err != nil {
 		return false, err
 	}
-	confirmed, _ := raw.(bool)
-	return confirmed, nil
+	return replyAs[bool]("ConfirmAbilityApplied", raw)
 }
 func (a *actionCollector) SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error) {
 	bases, ownerNames := deriveBribeTargets(factionState, faction.ID)
@@ -419,8 +433,8 @@ func (a *actionCollector) SelectBribeTarget(faction *domain.Faction, factionStat
 	if err != nil {
 		return nil, 0, err
 	}
-	reply, _ := raw.(BribeReply)
-	return reply.Base, reply.Amount, nil
+	reply, err := replyAs[BribeReply]("SelectBribeTarget", raw)
+	return reply.Base, reply.Amount, err
 }
 
 // deriveBribeTargets returns every base owned by a faction other than the actor
@@ -448,8 +462,7 @@ func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionStat
 	if err != nil {
 		return "", err
 	}
-	selected, _ := raw.(string)
-	return selected, nil
+	return replyAs[string]("SelectSeizeTarget", raw)
 }
 
 // deriveContestedWorlds ports seizePlanetTargetWorlds (seize_planet.go): worlds
@@ -486,8 +499,7 @@ func (a *actionCollector) SelectChangeHomeworldTarget(faction *domain.Faction, f
 	if err != nil {
 		return "", err
 	}
-	selected, _ := raw.(string)
-	return selected, nil
+	return replyAs[string]("SelectChangeHomeworldTarget", raw)
 }
 
 // deriveHomeworldTargets ports changeHomeworldTargets (change_homeworld.go):
@@ -522,8 +534,7 @@ func (a *actionCollector) SelectPurchaseEnablerAsset(world string, candidates []
 	if err != nil {
 		return nil, err
 	}
-	def, _ := raw.(*domain.AssetDefinition)
-	return def, nil
+	return replyAs[*domain.AssetDefinition]("SelectPurchaseEnablerAsset", raw)
 }
 
 var _ action.Collector = (*actionCollector)(nil)

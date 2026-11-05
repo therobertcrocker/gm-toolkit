@@ -75,7 +75,7 @@ func (modifier *bonusDieModifier) OfferModifiers(ctx hooks.RollContext, factionS
 		},
 	}
 	if modifier.oncePer != "" {
-		offer.BudgetKey = budgetKey(modifier.oncePer, domain.SpecialBonusDie, modifier.trigger, modifier.holder.sourceID, modifier.holder.assetID, otherSideID(ctx, false))
+		offer.BudgetKey = budgetKey(modifier.oncePer, domain.SpecialBonusDie, modifier.holder.sourceID, modifier.holder.assetID, otherSideID(ctx, false))
 	}
 	return []hooks.ModifierOffer{offer}
 }

@@ -282,6 +282,18 @@ name = "Psychic Academy"
 description = "This faction can actually train their own psychics."
 effect = "Can provide psionic mentor training. Once per turn, force a rival faction to reroll any one d10, whether or not they are involved in the roll."
 
+[[tags.PsychicAcademy.effects]]
+trigger = "rival_roll"
+effect  = "reroll"
+[tags.PsychicAcademy.effects.filters]
+owner = "rival"
+scope = "faction"
+[tags.PsychicAcademy.effects.gates]
+once_per = "owner_faction"
+[tags.PsychicAcademy.effects.reroll]
+dice     = 1
+elective = true
+
 [tags.Savage]
 id = "SWN-T-015"
 name = "Savage"

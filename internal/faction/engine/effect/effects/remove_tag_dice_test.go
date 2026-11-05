@@ -87,11 +87,24 @@ func TestRemoveTagDice_FilterOffers(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			kept := filter.FilterOffers(tc.ctx, []hooks.ModifierOffer{tagOffer, assetOffer}, factionState)
+			kept, _ := filter.FilterOffers(tc.ctx, []hooks.ModifierOffer{tagOffer, assetOffer}, factionState)
 			if got := offerSources(kept); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("kept %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestRemoveTagDice_ReportsWhatItStrikes(t *testing.T) {
+	factionState := blackmailState(activeAsset("bm", "SWN-C2-003"))
+	filter := registerBlackmail(factionState, hooks.NewRegistry())
+	alpha, beta := factionState.Factions["alpha"], factionState.Factions["beta"]
+	ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: alpha.Assets["bm"], World: "Krylos"}
+
+	_, struck := filter.FilterOffers(ctx, []hooks.ModifierOffer{tagOffer, assetOffer}, factionState)
+
+	if len(struck) != 1 || struck[0].Offer.Source != tagOffer.Source || struck[0].StruckBy != "Blackmail" {
+		t.Errorf("struck = %+v, want only %s, struck by Blackmail", struck, tagOffer.Source)
 	}
 }
 
@@ -105,7 +118,7 @@ func TestRemoveTagDice_InactiveBlackmailStripsNothing(t *testing.T) {
 			alpha, beta := factionState.Factions["alpha"], factionState.Factions["beta"]
 
 			ctx := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: beta, Opponent: alpha, OpponentAsset: blackmail, World: "Krylos"}
-			kept := filter.FilterOffers(ctx, []hooks.ModifierOffer{tagOffer}, factionState)
+			kept, _ := filter.FilterOffers(ctx, []hooks.ModifierOffer{tagOffer}, factionState)
 			if len(kept) != 1 {
 				t.Errorf("kept %d offers, want 1", len(kept))
 			}
@@ -140,7 +153,7 @@ func TestRemoveTagDice_WarlikeAttackOnBlackmailRollsOneDie(t *testing.T) {
 	if len(result.Dice) != 1 || collector.selections != 0 {
 		t.Errorf("dice %v, selections %d; want one die and no prompt", result.Dice, collector.selections)
 	}
-	if spent := beta.HookBudgets["effect:bonus_die:own_roll:SWN-T-020"]; spent != 0 {
+	if spent := beta.HookBudgets["effect:bonus_die:SWN-T-020"]; spent != 0 {
 		t.Errorf("Warlike budget spent %d, want 0", spent)
 	}
 }

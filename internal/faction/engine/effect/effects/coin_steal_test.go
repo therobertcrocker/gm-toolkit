@@ -189,7 +189,7 @@ func TestCoinSteal_TwoDefinitionsDoNotTakeMoreThanTheTargetHas(t *testing.T) {
 	if !reflect.DeepEqual(got, steal("beta", 1)) {
 		t.Errorf("mutations = %+v, want one steal of the target's last Coin", got)
 	}
-	fleetKey := "effect:coin_steal:own_attack_hit:SWN-F5-001:beta"
+	fleetKey := "effect:coin_steal:SWN-F5-001:beta"
 	if factionState.Factions["alpha"].BudgetSpent(fleetKey) {
 		t.Errorf("the Blockade Fleet's budget is spent, but it took nothing from an empty purse")
 	}

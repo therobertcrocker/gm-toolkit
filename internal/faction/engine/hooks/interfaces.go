@@ -14,13 +14,14 @@ type RollModifier interface {
 
 // RollOfferFilter removes Cat 1 offers before the collector sees them (Cat 1).
 // It runs after every RollModifier has offered, so it can strike any offer —
-// including one another faction's hook made.
+// including one another faction's hook made. It returns what it keeps and what it
+// strikes, so the card can show why an offer is gone.
 type RollOfferFilter interface {
-	FilterOffers(ctx RollContext, offers []ModifierOffer, factionState *state.FactionState) []ModifierOffer
+	FilterOffers(ctx RollContext, offers []ModifierOffer, factionState *state.FactionState) ([]ModifierOffer, []StruckOffer)
 }
 
 // RollResultHook fires after dice are rolled and may instruct the dispatcher
-// to reroll specific dice (Cat 2). Elective directives are confirmed by the
+// to reroll specific dice (Cat 2). Elective directives are chosen by the
 // collector; non-elective directives apply automatically.
 type RollResultHook interface {
 	OnRollResult(ctx RollContext, result RollResult, factionState *state.FactionState, rulebook *rulebook.Rulebook) RerollDirective

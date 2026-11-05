@@ -21,17 +21,26 @@ type rollCollector struct {
 	rerolls    int
 }
 
-func (collector *rollCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
+func (collector *rollCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
+	if len(card.Offers) == 0 {
+		return nil
+	}
 	collector.selections++
 	if collector.accept {
-		return offers
+		return card.Offers
 	}
 	return nil
 }
 
-func (collector *rollCollector) ConfirmReroll(hooks.RerollDirective) bool {
+func (collector *rollCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	if len(card.Rerolls) == 0 {
+		return nil
+	}
 	collector.rerolls++
-	return collector.accept
+	if collector.accept {
+		return &card.Rerolls[0]
+	}
+	return nil
 }
 
 func bonusDieEntry(filters domain.EffectFilters, count int) domain.EffectDefinition {
@@ -184,7 +193,7 @@ func TestBonusDie_TagHolderOffersAFromTagDieOncePerTurn(t *testing.T) {
 	attack := hooks.RollContext{Phase: domain.RollPhaseAttack, Actor: alpha, Opponent: beta, Attribute: "Force", World: "Krylos"}
 
 	offers := hook.OfferModifiers(attack, factionState, nil)
-	if len(offers) != 1 || !offers[0].FromTag || offers[0].Source != "Warlike" || offers[0].BudgetKey != "effect:bonus_die:own_roll:SWN-T-020" {
+	if len(offers) != 1 || !offers[0].FromTag || offers[0].Source != "Warlike" || offers[0].BudgetKey != "effect:bonus_die:SWN-T-020" {
 		t.Fatalf("offers = %+v, want one FromTag Warlike offer with the tag's budget key", offers)
 	}
 

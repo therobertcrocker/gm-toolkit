@@ -15,10 +15,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-const (
-	ownRerollKey    = "effect:reroll:own_roll:SWN-C7-002"
-	forcedRerollKey = "effect:reroll:enemy_roll_at_me:SWN-C7-002"
-)
+const bookRerollKey = "effect:reroll:SWN-C7-002"
 
 var bookOfSecretsDef = &domain.AssetDefinition{ID: "SWN-C7-002", Name: "Book of Secrets"}
 
@@ -86,8 +83,8 @@ func TestReroll_OwnRerollPicksLowestDie(t *testing.T) {
 
 	directive := hook.OnRollResult(rollOn(factionState, "alpha", "beta", "Krylos"), hooks.RollResult{Dice: []int{2, 9}}, factionState, nil)
 
-	if !reflect.DeepEqual(directive.Indices, []int{0}) || !directive.Elective || directive.BudgetKey != ownRerollKey {
-		t.Errorf("directive = %+v, want Indices [0], Elective, BudgetKey %q", directive, ownRerollKey)
+	if !reflect.DeepEqual(directive.Indices, []int{0}) || !directive.Elective || directive.BudgetKey != bookRerollKey {
+		t.Errorf("directive = %+v, want Indices [0], Elective, BudgetKey %q", directive, bookRerollKey)
 	}
 	if directive.Source != "Book of Secrets" {
 		t.Errorf("Source = %q, want the definition name", directive.Source)
@@ -100,8 +97,8 @@ func TestReroll_ForcedRerollPicksHighestDie(t *testing.T) {
 
 	directive := hook.OnRollResult(rollOn(factionState, "beta", "alpha", "Krylos"), hooks.RollResult{Dice: []int{2, 9}}, factionState, nil)
 
-	if !reflect.DeepEqual(directive.Indices, []int{1}) || directive.BudgetKey != forcedRerollKey {
-		t.Errorf("directive = %+v, want Indices [1], BudgetKey %q", directive, forcedRerollKey)
+	if !reflect.DeepEqual(directive.Indices, []int{1}) || directive.BudgetKey != bookRerollKey {
+		t.Errorf("directive = %+v, want Indices [1], BudgetKey %q", directive, bookRerollKey)
 	}
 	if !strings.HasSuffix(directive.Source, "(forced)") {
 		t.Errorf("Source = %q, want a (forced) suffix", directive.Source)
@@ -119,28 +116,28 @@ func TestReroll_ForcedRerollSpendsOwnersBudget(t *testing.T) {
 	if result := rollThroughDispatcher(factionState, registry, collector, betaAttacks, 9, 3); result.Sum != 3 {
 		t.Fatalf("first roll Sum = %d, want 3: the forced reroll replaces the 9", result.Sum)
 	}
-	if alpha.HookBudgets[forcedRerollKey] != 1 || beta.HookBudgets != nil {
-		t.Errorf("alpha budgets %v, beta budgets %v; want alpha's forced key spent and beta untouched", alpha.HookBudgets, beta.HookBudgets)
+	if alpha.HookBudgets[bookRerollKey] != 1 || beta.HookBudgets != nil {
+		t.Errorf("alpha budgets %v, beta budgets %v; want alpha's Book key spent and beta untouched", alpha.HookBudgets, beta.HookBudgets)
 	}
 	if result := rollThroughDispatcher(factionState, registry, collector, betaAttacks, 9); result.Sum != 9 {
 		t.Errorf("second roll Sum = %d, want 9: the forced reroll is spent for the turn", result.Sum)
 	}
 }
 
-func TestReroll_TwoBudgetsAreSeparate(t *testing.T) {
+func TestReroll_BookOfSecretsSharesOneUse(t *testing.T) {
 	factionState := bookState(activeAsset("bos", "SWN-C7-002"))
 	registry := hooks.NewRegistry()
 	registerBook(factionState, registry, ownReroll, forcedReroll)
 	collector := &rollCollector{accept: true}
 
 	rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "beta", "alpha", "Krylos"), 9, 3)
-	result := rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "alpha", "beta", "Krylos"), 2, 8)
+	result := rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "alpha", "beta", "Krylos"), 2)
 
-	if result.Sum != 8 || collector.rerolls != 2 {
-		t.Errorf("own roll Sum = %d after %d reroll prompts; want 8 after 2", result.Sum, collector.rerolls)
+	if result.Sum != 2 || collector.rerolls != 1 {
+		t.Errorf("own roll Sum = %d after %d reroll asks; want 2 after 1: the forced reroll spent the one use", result.Sum, collector.rerolls)
 	}
-	if factionState.Factions["alpha"].HookBudgets[ownRerollKey] != 1 {
-		t.Errorf("own budget not spent: %v", factionState.Factions["alpha"].HookBudgets)
+	if spent := factionState.Factions["alpha"].HookBudgets[bookRerollKey]; spent != 1 {
+		t.Errorf("budget spent %d times, want 1", spent)
 	}
 }
 
@@ -155,7 +152,7 @@ func TestReroll_DeclinedRerollSpendsNothing(t *testing.T) {
 	if result.Sum != 9 || collector.rerolls != 1 {
 		t.Errorf("Sum = %d after %d prompts; want 9 after 1", result.Sum, collector.rerolls)
 	}
-	if _, spent := factionState.Factions["alpha"].HookBudgets[forcedRerollKey]; spent {
+	if _, spent := factionState.Factions["alpha"].HookBudgets[bookRerollKey]; spent {
 		t.Error("a declined reroll spent the budget")
 	}
 }
@@ -269,7 +266,7 @@ func TestReroll_RivalRollForcesABystandersHighestDie(t *testing.T) {
 	if result.Sum != 2 || collector.rerolls != 1 {
 		t.Errorf("Sum = %d, rerolls asked = %d; want 2 and 1: alpha forces beta's 8 to be rerolled", result.Sum, collector.rerolls)
 	}
-	if alpha.HookBudgets["effect:reroll:rival_roll:SWN-T-014"] != 1 {
+	if alpha.HookBudgets["effect:reroll:SWN-T-014"] != 1 {
 		t.Errorf("alpha's HookBudgets = %v, want the rival_roll budget spent", alpha.HookBudgets)
 	}
 

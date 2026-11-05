@@ -79,7 +79,7 @@ func TestAttackHitEffect_FranchiseStealsFromTheTarget(t *testing.T) {
 	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
 	_, found := testharness.FindMutationByTypeAndCause(records, "coin_delta", "coin_steal")
 	testharness.CheckStep(t, "coin_steal recorded in history", found, "no coin_delta with cause coin_steal")
-	testharness.CheckStep(t, "the steal is spent on alpha's budget", alpha.HookBudgets["effect:coin_steal:own_attack_hit:"+testharness.DefFranchise+":beta"] == 1,
+	testharness.CheckStep(t, "the steal is spent on alpha's budget", alpha.HookBudgets["effect:coin_steal:"+testharness.DefFranchise+":beta"] == 1,
 		"alpha.HookBudgets has no spent coin_steal entry for beta")
 }
 

@@ -94,7 +94,7 @@ func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollRes
 		Elective: hook.params.Elective,
 	}
 	if hook.oncePer != "" {
-		directive.BudgetKey = budgetKey(hook.oncePer, domain.SpecialReroll, hook.trigger, hook.holder.sourceID, hook.holder.assetID, otherSideID(ctx, forced))
+		directive.BudgetKey = budgetKey(hook.oncePer, domain.SpecialReroll, hook.holder.sourceID, hook.holder.assetID, otherSideID(ctx, forced))
 	}
 	return directive
 }

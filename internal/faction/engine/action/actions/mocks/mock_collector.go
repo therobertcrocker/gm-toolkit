@@ -119,20 +119,6 @@ func (mr *MockCollectorMockRecorder) ConfirmRedirectToBase(defenderFaction, base
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmRedirectToBase", reflect.TypeOf((*MockCollector)(nil).ConfirmRedirectToBase), defenderFaction, base, damage)
 }
 
-// ConfirmReroll mocks base method.
-func (m *MockCollector) ConfirmReroll(directive hooks.RerollDirective) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfirmReroll", directive)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ConfirmReroll indicates an expected call of ConfirmReroll.
-func (mr *MockCollectorMockRecorder) ConfirmReroll(directive any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmReroll", reflect.TypeOf((*MockCollector)(nil).ConfirmReroll), directive)
-}
-
 // ConfirmRivalFreeAttack mocks base method.
 func (m *MockCollector) ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error) {
 	m.ctrl.T.Helper()
@@ -345,17 +331,17 @@ func (mr *MockCollectorMockRecorder) SelectExpandInfluenceOrder(faction, faction
 }
 
 // SelectModifiers mocks base method.
-func (m *MockCollector) SelectModifiers(offers []hooks.ModifierOffer) []hooks.ModifierOffer {
+func (m *MockCollector) SelectModifiers(card hooks.PreRollCard) []hooks.ModifierOffer {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectModifiers", offers)
+	ret := m.ctrl.Call(m, "SelectModifiers", card)
 	ret0, _ := ret[0].([]hooks.ModifierOffer)
 	return ret0
 }
 
 // SelectModifiers indicates an expected call of SelectModifiers.
-func (mr *MockCollectorMockRecorder) SelectModifiers(offers any) *gomock.Call {
+func (mr *MockCollectorMockRecorder) SelectModifiers(card any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectModifiers", reflect.TypeOf((*MockCollector)(nil).SelectModifiers), offers)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectModifiers", reflect.TypeOf((*MockCollector)(nil).SelectModifiers), card)
 }
 
 // SelectPurchaseEnablerAsset mocks base method.
@@ -416,6 +402,20 @@ func (m *MockCollector) SelectRepairOrders(faction *domain.Faction, damaged []*d
 func (mr *MockCollectorMockRecorder) SelectRepairOrders(faction, damaged, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectRepairOrders", reflect.TypeOf((*MockCollector)(nil).SelectRepairOrders), faction, damaged, arg2)
+}
+
+// SelectReroll mocks base method.
+func (m *MockCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirective {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectReroll", card)
+	ret0, _ := ret[0].(*hooks.RerollDirective)
+	return ret0
+}
+
+// SelectReroll indicates an expected call of SelectReroll.
+func (mr *MockCollectorMockRecorder) SelectReroll(card any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectReroll", reflect.TypeOf((*MockCollector)(nil).SelectReroll), card)
 }
 
 // SelectSeizeTarget mocks base method.

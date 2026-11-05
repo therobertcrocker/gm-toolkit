@@ -27,70 +27,58 @@ func (a *Adapter) ask(kind AskKind, faction *domain.Faction, payload any) (any, 
 	return received, nil
 }
 
-func (p *phaseCollector) ask(kind AskKind, faction *domain.Faction, payload any) (any, error) {
-	return p.adapter.ask(kind, faction, payload)
+// replyAs reads an ask's reply as T. An untyped nil is a legal empty answer (a skip, or
+// a decline), and any other type is a code bug that must not pass as a zero value.
+func replyAs[T any](method string, raw any) (T, error) {
+	var empty T
+	if raw == nil {
+		return empty, nil
+	}
+	reply, ok := raw.(T)
+	if !ok {
+		return empty, fmt.Errorf("%s: unexpected reply type %T", method, raw)
+	}
+	return reply, nil
 }
 
 func (p *phaseCollector) AwaitCheckpoint(phase string) error {
 	if !p.adapter.perFactionCadence.Load() && phase != engine.CheckpointCycleSummary {
 		return nil
 	}
-	_, err := p.ask(AskAwaitCheckpoint, nil, AwaitCheckpointPayload{Phase: phase})
+	_, err := p.adapter.ask(AskAwaitCheckpoint, nil, AwaitCheckpointPayload{Phase: phase})
 	return err
 }
 
 func (p *phaseCollector) SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error) {
-	raw, err := p.ask(AskSelectAction, faction, SelectActionPayload{Available: available})
+	raw, err := p.adapter.ask(AskSelectAction, faction, SelectActionPayload{Available: available})
 	if err != nil {
 		return nil, err
 	}
-	if raw == nil {
-		return nil, nil // legal skip (orchestrator.go:418)
-	}
-	chosen, ok := raw.(action.Action)
-	if !ok {
-		return nil, fmt.Errorf("phase_collector.SelectAction: unexpected reply type %T", raw)
-	}
-	return chosen, nil
+	return replyAs[action.Action]("SelectAction", raw)
 }
 
 func (p *phaseCollector) SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error) {
-	raw, err := p.ask(AskSelectStatRaise, faction, SelectStatRaisePayload{Eligible: eligible})
+	raw, err := p.adapter.ask(AskSelectStatRaise, faction, SelectStatRaisePayload{Eligible: eligible})
 	if err != nil {
 		return nil, err
 	}
-	if raw == nil {
-		return nil, nil // decline the raise (accept an untyped nil, not only a typed nil)
-	}
-	chosen, ok := raw.(*domain.FactionStat)
-	if !ok {
-		return nil, fmt.Errorf("phase_collector.SelectStatRaise: unexpected reply type %T", raw)
-	}
-	return chosen, nil
+	return replyAs[*domain.FactionStat]("SelectStatRaise", raw)
 }
 
 func (p *phaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
-	raw, err := p.ask(AskSelectMovementDecisions, faction, SelectMovementDecisionsPayload{Eligible: eligible})
+	raw, err := p.adapter.ask(AskSelectMovementDecisions, faction, SelectMovementDecisionsPayload{Eligible: eligible})
 	if err != nil {
 		return nil, err
 	}
-	chosen, ok := raw.([]world.MovementDecision)
-	if !ok {
-		return nil, fmt.Errorf("phase_collector.SelectMovementDecisions: unexpected reply type %T", raw)
-	}
-	return chosen, nil
+	return replyAs[[]world.MovementDecision]("SelectMovementDecisions", raw)
 }
 
 func (p *phaseCollector) SelectTransportCargo(transport *domain.Asset, eligibleCargo []*domain.Asset, profile *domain.TransportProfile) ([]*domain.Asset, error) {
-	raw, err := p.ask(AskSelectTransportCargo, nil, SelectTransportCargoPayload{Transport: transport, EligibleCargo: eligibleCargo, Profile: profile})
+	raw, err := p.adapter.ask(AskSelectTransportCargo, nil, SelectTransportCargoPayload{Transport: transport, EligibleCargo: eligibleCargo, Profile: profile})
 	if err != nil {
 		return nil, err
 	}
-	chosen, ok := raw.([]*domain.Asset)
-	if !ok {
-		return nil, fmt.Errorf("phase_collector.SelectTransportCargo: unexpected reply type %T", raw)
-	}
-	return chosen, nil
+	return replyAs[[]*domain.Asset]("SelectTransportCargo", raw)
 }
 
 func (p *phaseCollector) SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error) {

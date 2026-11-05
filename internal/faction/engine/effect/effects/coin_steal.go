@@ -69,7 +69,7 @@ func (reactor *coinStealReactor) OnMutations(mutations []domain.Mutation, factio
 			if remaining[target.ID] <= 0 {
 				break
 			}
-			if entry.Gates.OncePer != "" && !spendBudget(owner, budgetKey(entry.Gates.OncePer, domain.SpecialCoinSteal, entry.Trigger, def.ID, thief.ID, target.ID)) {
+			if entry.Gates.OncePer != "" && !spendBudget(owner, budgetKey(entry.Gates.OncePer, domain.SpecialCoinSteal, def.ID, thief.ID, target.ID)) {
 				continue
 			}
 			stolen := min(dice.Amount(entry.CoinSteal.Amount, reactor.roller), remaining[target.ID])

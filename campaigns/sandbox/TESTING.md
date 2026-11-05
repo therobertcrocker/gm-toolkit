@@ -113,7 +113,7 @@ Order: Veiled Hand, Ashfall, Gilt Exchange, Iron Concord. Veiled Hand has Planet
 
 - **Saboteurs** — `asset ashfall-SWN-W1-002-1 +no_ability` on a hit **or** a miss. On Ashfall's turn, **Use Asset Ability is not in the action list**. At Veiled Hand's next turn start: `-no_ability` (`condition_expired`). If the rolled order puts Ashfall before Veiled Hand in cycle 2, the block holds through that Ashfall turn too.
 - **Treachery** — the label reads `Treachery · Cunning · special`, with no redirect prompt. On a hit: `hit (no damage)`, then the Treachery is removed, Veiled Hand gains 5 Coin and the target is `captured by veiled-hand`. The captured asset keeps its ID (`ashfall-SWN-C7-002-1`) in Veiled Hand's list. On a miss, the counter hits the Treachery.
-- **Hook re-registration** — after the capture, the Book of Secrets reroll on Mireholt is offered to Veiled Hand, not to Ashfall. Ashfall's Party Machine attack in step 2 is a roll on that world.
+- **Hook re-registration** — after the capture, the Book of Secrets row on a Mireholt roll card names Veiled Hand as its owner, not Ashfall. Ashfall's Party Machine attack in step 2 is a roll on that world.
 - **Planetary Seizure** — the Farpost capture takes Ashfall's last asset there, so the goal moves to phase 2 with 3 turns in the same turn (`goal_phase_advanced`).
 - **Cracked Comms** — if Veiled Hand defends outright, a prompt shows, asked of Veiled Hand: "Turn Party Machine's attack back on itself?". **Turn it**: Party Machine rolls Cunning against its own Cunning. A self-hit deals its 2d6 and a self-miss deals its 1d6 counter, both as `HP -N (counterstrike)`. **Let it pass**: nothing happens. On a tie there is no prompt.
 

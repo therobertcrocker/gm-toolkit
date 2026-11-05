@@ -88,14 +88,19 @@ hook families in one call:
    registered it.
 2. Run the Cat 1 offer filters over them (Blackmail strips tag dice through
    `ModifierOffer.FromTag`).
-3. Drop any offer whose budget is spent, then let the
-   [collector](hooks.md#the-collector-seam) choose.
+3. Set aside any offer whose budget is spent, then show the
+   [collector](hooks.md#the-collector-seam) a before card with what survives and what
+   did not. It asks on every roll, offers or not.
 4. Apply the chosen offers, spend their budgets, and roll the base dice and any
    extra dice. Each die keeps its own sides.
 5. Apply keep-highest if an offer asked for it.
-6. Run each Cat 2 hook. A directive whose budget is spent is skipped, an elective
-   one asks the collector, and a forced one applies. A rerolled die rolls its own
-   sides again.
+6. Run each forced Cat 2 hook, once. A directive whose budget is spent is skipped. A
+   rerolled die rolls its own sides again.
+7. Show the collector an after card with the dice, the rerolls applied and each
+   elective reroll on offer. It takes one or passes. After a take, the card returns
+   with what is left: a taken hook is not offered again on this roll, and a forced
+   hook does not run again, so a reroll that lands on 1 stays. With nothing on offer,
+   its answer is ignored and the roll ends. Each card holds its own copy of the dice.
 
 **Scope order.** `rollScopes` lists the buckets, in order: global, the roller's
 faction, the roller's assets, the opponent's faction, the opponent's assets, then
@@ -176,6 +181,18 @@ is `[effects.lock_out] amount = "1d4"`, on the shared `amountRecord`.
   rolls would split the roll into roll and post-roll calls at every call site, and
   Expand Influence compares one roll against N. A fence-sign at the roll marks it.
   (s-flag Effort 3 plan, Decision 15.)
+- **Every hooked roll with a collector shows the cards, choice or not.** The GM sees
+  the dice about to roll, as in Foundry VTT, and the before card always waits. The
+  after card waits only on a choice: `SelectReroll` is called every time, and the
+  adapter sends the dice to the feed when nothing is on offer, so `dice` needs no link
+  to the observer. A nil registry has no hooks and asks no one. Rejected: cards only
+  on a choice, which leaves the dice unseen. (`F.039` D-4, D-5, Decisions 2 and 14.)
+- **A bonus die's keep comes before any reroll, and forced rerolls before elective
+  ones.** Each card shows one kept die, so the card has no die picker and `RollResult`
+  carries no dropped die. Forced rerolls run once. (`F.039` D-1, D-2, D-6.)
+- **A later roll's card shows the total already rolled.** `Side.Total` reaches
+  `RollContext.OpponentTotal`, set by `Contest` and by Expand Influence's rival rolls.
+  (`F.039` Decision 6.)
 - **The roll dispatcher reads every faction bucket, and asset buckets on the roll's
   world from both sides.** An S effect such as Book of Secrets or Panopticon Matrix
   acts on a roll made by or against its owner on its world, so `rollScopes` gathers
@@ -198,7 +215,7 @@ is `[effects.lock_out] amount = "1d4"`, on the shared `amountRecord`.
   player never chose could. Each call site passes its collector as one argument, nil
   for now, so a later collector is a one-line swap. Precedent: `InterceptLethal`'s nil
   collector. Rejected: a collector on every reactor (changes every reactor's
-  interface; the roll card, `R.025`, would replace those prompts). (A.001.7 overview
+  interface; the roll card, `F.039`, would replace those prompts). (A.001.7 overview
   Decision 2.)
 
 ## Dependencies

@@ -239,6 +239,14 @@ func TestRenderEvent_IndexSkipped(t *testing.T) {
 	contains(t, out, "index skipped: f1, f2")
 }
 
+func TestRenderEvent_RollSettled(t *testing.T) {
+	out := renderEvent(adapter.ObserverEventMsg{
+		Kind:    adapter.EvtRollSettled,
+		Payload: adapter.RollSettledPayload{Line: "Red Star rolls Force to attack: [7] +3 = 10"},
+	})
+	contains(t, out, "Red Star rolls Force to attack: [7] +3 = 10")
+}
+
 func TestRenderEvent_Error(t *testing.T) {
 	out := renderEvent(adapter.ObserverEventMsg{
 		Kind:    adapter.EvtError,

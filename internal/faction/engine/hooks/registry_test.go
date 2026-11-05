@@ -19,8 +19,8 @@ func (stub *stubRollModifier) OfferModifiers(_ hooks.RollContext, _ *state.Facti
 
 type stubRollOfferFilter struct{ name string }
 
-func (stub *stubRollOfferFilter) FilterOffers(_ hooks.RollContext, offers []hooks.ModifierOffer, _ *state.FactionState) []hooks.ModifierOffer {
-	return offers
+func (stub *stubRollOfferFilter) FilterOffers(_ hooks.RollContext, offers []hooks.ModifierOffer, _ *state.FactionState) ([]hooks.ModifierOffer, []hooks.StruckOffer) {
+	return offers, nil
 }
 
 type stubRollResultHook struct{ name string }

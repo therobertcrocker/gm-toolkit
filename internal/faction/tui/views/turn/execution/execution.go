@@ -110,7 +110,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.stream.Width = layout.RegionWidths(msg.Width)[layout.Center]
 		m.stream.Height = streamHeight(msg.Height)
-		m.stream.SetContent(strings.Join(m.lines, "\n"))
+		m.stream.SetContent(m.streamContent())
 		if m.follow {
 			m.stream.GotoBottom()
 		}
@@ -119,7 +119,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case adapter.ObserverEventMsg:
 		m.applyEvent(msg)
 		m.lines = append(m.lines, renderEvent(msg))
-		m.stream.SetContent(strings.Join(m.lines, "\n"))
+		m.stream.SetContent(m.streamContent())
 		if m.follow {
 			m.stream.GotoBottom()
 		}
@@ -278,11 +278,11 @@ var askEntries = map[adapter.AskKind]askEntry{
 	adapter.AskSelectAsset: {"Select Asset", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewSelectAsset("Select asset", msg.Payload.(adapter.SelectAssetPayload).Assets, m.rulebook)
 	}},
-	adapter.AskSelectModifiers: {"Pre-roll Modifiers", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		return overlay.NewSelectModifiers(msg.Payload.(adapter.SelectModifiersPayload).Offers)
+	adapter.AskPreRollCard: {"Roll", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewPreRollCard(msg.Payload.(adapter.PreRollCardPayload))
 	}},
-	adapter.AskConfirmReroll: {"Reroll?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		return overlay.NewConfirmReroll(msg.Payload.(adapter.ConfirmRerollPayload).Directive)
+	adapter.AskPostRollCard: {"Reroll?", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewPostRollCard(msg.Payload.(adapter.PostRollCardPayload))
 	}},
 	adapter.AskSelectBuyOrder: {"Buy Asset", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectBuyOrderPayload)
@@ -400,7 +400,21 @@ func (m Model) wizardBand(width, height int) string {
 	if m.overlay == nil {
 		return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, styles.Dim.Render("—"))
 	}
-	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Top, m.overlay.View())
+	view := m.overlay.View()
+	horizontal := lipgloss.Center
+	// deliberate: roll cards sit flush left, not centered, because Place centers each short line alone and the card's rows would not line up.
+	if m.activeAsk == adapter.AskPreRollCard || m.activeAsk == adapter.AskPostRollCard {
+		horizontal = lipgloss.Left
+		// deliberate: a card wraps here, not in Compose, because Place must count the rows a long line adds or the view outgrows the terminal.
+		view = lipgloss.NewStyle().Width(width).Render(view)
+	}
+	return lipgloss.Place(width, height, horizontal, lipgloss.Top, view)
+}
+
+// streamContent wraps the feed to the stream's width. The viewport cuts off a line
+// that is too long, and a roll's feed line can run past the center column.
+func (m Model) streamContent() string {
+	return lipgloss.NewStyle().Width(m.stream.Width).Render(strings.Join(m.lines, "\n"))
 }
 
 func (m Model) railView() string {

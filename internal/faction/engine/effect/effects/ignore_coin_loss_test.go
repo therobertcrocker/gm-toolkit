@@ -170,10 +170,10 @@ func TestIgnoreCoinLoss_InactiveLowestBankHandsTheLeadOn(t *testing.T) {
 				t.Errorf("mutations = %+v, want %+v: two active Banks absorb two losses", got, want)
 			}
 			budgets := factionState.Factions["alpha"].HookBudgets
-			if _, spent := budgets["effect:ignore_coin_loss:coin_loss:"+bankDefID+":bank-1"]; spent {
+			if _, spent := budgets["effect:ignore_coin_loss:"+bankDefID+":bank-1"]; spent {
 				t.Error("the inactive Bank's budget was spent")
 			}
-			if budgets["effect:ignore_coin_loss:coin_loss:"+bankDefID+":bank-2"] != 1 {
+			if budgets["effect:ignore_coin_loss:"+bankDefID+":bank-2"] != 1 {
 				t.Errorf("bank-2's budget is not spent under the expected key; budgets = %v", budgets)
 			}
 		})

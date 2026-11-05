@@ -3,6 +3,7 @@ package action
 import (
 	"errors"
 	"log/slog"
+	"maps"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
@@ -64,19 +65,40 @@ func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *
 	return available
 }
 
-// Run calls Inputs, Resolve, and Output in order on the selected action.
+// Run calls Inputs, Resolve, and Output in order on the selected action. A failed
+// action drops its mutations, so the budgets it spent on live state are restored.
 func (ae *ActionEngine) Run(a Action, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, log *slog.Logger) ([]domain.Mutation, error) {
 	log.Info("running action", "action", a.Name())
+	budgets := snapshotBudgets(factionState)
+	mutations, err := runSteps(a, faction, factionState, rulebook)
+	if err != nil {
+		restoreBudgets(factionState, budgets)
+		return nil, err
+	}
+	log.Info("action resolved", "mutations", len(mutations))
+	return mutations, nil
+}
+
+func runSteps(a Action, faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) ([]domain.Mutation, error) {
 	if err := a.Inputs(faction, factionState, rulebook); err != nil {
 		return nil, err
 	}
 	if err := a.Resolve(faction, factionState, rulebook); err != nil {
 		return nil, err
 	}
-	mutations, err := a.Output()
-	if err != nil {
-		return nil, err
+	return a.Output()
+}
+
+func snapshotBudgets(factionState *state.FactionState) map[string]map[string]int {
+	budgets := make(map[string]map[string]int, len(factionState.Factions))
+	for factionID, faction := range factionState.Factions {
+		budgets[factionID] = maps.Clone(faction.HookBudgets)
 	}
-	log.Info("action resolved", "mutations", len(mutations))
-	return mutations, nil
+	return budgets
+}
+
+func restoreBudgets(factionState *state.FactionState, budgets map[string]map[string]int) {
+	for factionID, faction := range factionState.Factions {
+		faction.HookBudgets = budgets[factionID]
+	}
 }

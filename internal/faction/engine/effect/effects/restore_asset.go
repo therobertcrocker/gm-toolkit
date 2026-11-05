@@ -52,7 +52,7 @@ func (interceptor *restoreAssetInterceptor) OfferInterception(ctx hooks.LethalCo
 	price := ctx.TargetDef.HalfPrice()
 	budget := ""
 	if interceptor.oncePer != "" {
-		budget = budgetKey(interceptor.oncePer, cause, domain.TriggerLethalDamage, interceptor.holder.sourceID, self.ID, ctx.Target.OwnerID)
+		budget = budgetKey(interceptor.oncePer, cause, interceptor.holder.sourceID, self.ID, ctx.Target.OwnerID)
 	}
 	return &hooks.Interception{
 		Source:    self,

@@ -115,7 +115,7 @@ func (ei *ExpandInfluence) resolveNewBase(faction *domain.Faction, factionState 
 		rivalRoll := ei.rolls(factionState, rulebook).Stat(
 			domain.RollPhaseContested,
 			dice.Side{Faction: rival, Stat: domain.StatCunning},
-			dice.Side{Faction: faction, Stat: domain.StatCunning},
+			dice.Side{Faction: faction, Stat: domain.StatCunning, Total: &factionRoll},
 			ei.order.World, ei.Name(),
 		).Sum
 		if rivalRoll < factionRoll {
