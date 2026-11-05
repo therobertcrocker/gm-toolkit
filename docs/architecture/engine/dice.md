@@ -99,7 +99,8 @@ hook families in one call:
 7. Show the collector an after card with the dice, the rerolls applied and each
    elective reroll on offer. It takes one or passes. After a take, the card returns
    with what is left: a taken hook is not offered again on this roll, and a forced
-   hook does not run again, so a reroll that lands on 1 stays.
+   hook does not run again, so a reroll that lands on 1 stays. With nothing on offer,
+   its answer is ignored and the roll ends. Each card holds its own copy of the dice.
 
 **Scope order.** `rollScopes` lists the buckets, in order: global, the roller's
 faction, the roller's assets, the opponent's faction, the opponent's assets, then

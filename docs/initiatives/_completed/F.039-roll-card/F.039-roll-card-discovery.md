@@ -30,10 +30,10 @@
 
 ## Architecture Context
 
-Pages read: [dice](../../architecture/engine/dice.md),
-[hooks](../../architecture/engine/hooks.md),
-[overlays](../../architecture/interface/overlays.md),
-[event stream](../../architecture/interface/event-stream.md). Also read: the `E.001`
+Pages read: [dice](../../../architecture/engine/dice.md),
+[hooks](../../../architecture/engine/hooks.md),
+[overlays](../../../architecture/interface/overlays.md),
+[event stream](../../../architecture/interface/event-stream.md). Also read: the `E.001`
 [layer map](https://claude.ai/artifact/6UjHPwdY3mq8oQ24HRqvU1), built at an older commit,
 so its sizes and counts are approximate.
 
@@ -213,7 +213,7 @@ Key Decisions that bind this work:
 
 ## Relation to the Result Panel
 
-`F.038` ([discovery doc](action-result-panel-discovery.md)) is not built, and it follows
+`F.038` ([discovery doc](../../discovery/action-result-panel-discovery.md)) is not built, and it follows
 this work. Both answer the same gap: the dice never reach the GM. The card shows a roll
 while it can still change, and the panel shows the rolls after they are settled.
 

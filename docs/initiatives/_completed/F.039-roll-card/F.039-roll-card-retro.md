@@ -41,6 +41,10 @@ under overlays) and `B.047` (a full card can overrun the band).
 - `tmux` in `.devcontainer/postcreate.sh` (Decision Record 19)
 - Two stale architecture claims corrected, past the plan's `D.010` line (Decision Record 19)
 - One test fix commit, `d515d00`, for a flaky Psychic Academy scenario
+- Five fixes from this close's review (Decision Record 20): a long card row no longer grows
+  the view past the terminal, the reroll loop ends when nothing is on offer, a card holds its
+  own copy of the dice, `tmux` installs last, and the before card's fence-sign promises only
+  Esc. A stray `enter` on that card still rolls with nothing ticked, by Robert's call
 
 **One thing not shown:** Psychic Academy's row has four harness scenarios, but the Decision
 Record logs no TUI run with that row on a card. No sandbox seed holds `SWN-T-014`, and
@@ -105,10 +109,10 @@ to pick. That is the one earlier design note this work overrode, and it was Robe
 |---|---|---|
 | Delivered | 5 | All of the discovery's In Plain Words and D-11's scope shipped; nothing cut |
 | Plan held | 4 | One doc-text reversal (Record 15) and one ruling reversed (Record 17, by 19); no design reversed, but the manual check added three display fixes |
-| Rework | | |
+| Rework | 3 | One fix commit mid-branch, then 5 of the review's 10 findings fixed, none in rules logic; one was a visible overflow that Record 9 had misjudged |
 | Fit | 4 | Every binding Key Decision matches; two recorded divergences, both with a reason |
 | Simplicity | 4 | One roll function and two small overlays; `Slot` is the one wart |
-| **Total** | | |
+| **Total** | **20/25** | **Mean 4.0** |
 
 **Verdict:** the card does what the discovery asked, in the shape it asked for, and the unseen part is Psychic Academy's row in the real TUI.
 

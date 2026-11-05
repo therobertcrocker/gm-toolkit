@@ -150,9 +150,11 @@ fixed **wizard band** and, while mounted, makes the execution view report
 - **The adapter words a roll card, and the overlay only draws it.** The card reaches
   the overlay as strings, with no IDs or pointers, and the feed's dice line uses the
   same wording. The cards sit in the wizard band, so the right panel stays free. A
-  card lists at most 8 rows at once and scrolls with the cursor. A wrapped row or an
-  applied note can still push a full card past the band (`F.039` Decision Record 9).
-  (`F.039` D-9, D-12, Decisions 7 and 16.)
+  card lists at most 8 rows at once and scrolls with the cursor. `wizardBand` wraps a
+  card to the band's width before it pads, so a long row cannot grow the view by itself.
+  A card past 14 wrapped rows can still overrun the band (`B.047`). A card draws its own
+  keys, because nothing draws an overlay's `Help()` (`B.046`). (`F.039` D-9, D-12,
+  Decisions 7 and 16; Decision Record 7 and 20.)
 
 ## Dependencies
 

@@ -15,7 +15,7 @@
 
 ## Context / Goal
 
-- Discovery doc: [F.039 roll card discovery](../discovery/F.039-roll-card-discovery.md)
+- Discovery doc: [F.039 roll card discovery](F.039-roll-card-discovery.md)
 - Related: `F.037` and `F.038` follow this work; `D.010` follows it for the wider page refresh.
 
 The plan is one effort: three phases and nine commits on `feature/roll-card`.
@@ -127,7 +127,7 @@ unless marked as a plan-level choice.
    16's sum counts one screen row per card row. A long detail line already wraps to two at
    140 columns, and offer rows can wrap too, so a card with about 7 or more rows can pass 14.
    This is reasoned from the sum, not seen: the fullest card in the check had 2 rows. Now
-   `B.047` (entry 19).
+   `B.047` (entry 19). The close's review corrected this threshold (entry 20).
 10. **Phase 2, Commit 5: Record entry 2's gap is closed.** This commit deletes the shim, so a
     declined reroll is no longer asked about again.
 11. **Phase 2, Commit 5: the manual check's setup.** Task 6 did not say that the app needs
