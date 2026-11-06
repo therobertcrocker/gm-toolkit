@@ -78,14 +78,12 @@ Rows do not have to be the same length. A short row simply has fewer cells.
 
 ## Step 3 — Name the regions
 
-Every region letter in the layout needs an entry in `data.toml`:
+Every region letter in the layout needs an entry under `[regions]` in `data.toml`:
 
 ```toml
-[regions.A]
-name = "Ember Reach"
-
-[regions.B]
-name = "Cold Harbor"
+[regions]
+A = { name = "Ember Reach" }
+B = { name = "Cold Harbor" }
 ```
 
 The check runs both ways. A letter in the layout with no entry is an error, and
@@ -272,7 +270,7 @@ command usage after the error; only the message is shown here.)
 | `layout.txt:3:14: expected single-space separator, got '2'` | Two cells written with no space between them | One space between every pair of cells |
 | `layout.txt:1:13: world marker '1' appears twice; first at line=1 col=5` | The same marker glyph used in two places | A marker is unique per map — worlds do not share glyphs |
 | `layout.txt:5:7: world marker "1" has no [[worlds]] entry in data.toml` | A marker in the grid with no data entry | Add the `[[worlds]]` entry, or make the cell a region letter |
-| `data.toml:[regions.B]: missing entry; region "B" is used in layout` | A region letter with no `[regions.X]` block | Add the block, or remove the letter from the layout |
+| `data.toml:[regions.B]: missing entry; region "B" is used in layout` | A region letter with no entry under `[regions]` | Add the entry, or remove the letter from the layout |
 | `data.toml:[[worlds]] id="x": references marker "7" but no such marker in layout.txt` | A data entry whose `at` glyph is not in the grid | Fix `at`, or place the marker |
 | `data.toml:[[worlds]] id="x": marker "3" ... has multiple region candidates [A B]` | The marker touches two regions, so inference is ambiguous | Add `region = "X"` to the entry |
 | `data.toml:[[worlds]] id="x": marker ... has no region-letter neighbors` | The marker is surrounded by void | Add `region = "X"`, or move it beside its region |
@@ -304,7 +302,7 @@ Check what sits between the two endpoints.
 
 | Field | Table | Required | Notes |
 |-------|-------|----------|-------|
-| `name` | `[regions.X]` | yes | Display name; `X` is a single uppercase letter |
+| `name` | `[regions]`, key `X` | yes | Display name; `X` is a single uppercase letter |
 | `id` | `[[worlds]]` | yes | Stable world identifier used by the engine |
 | `name` | `[[worlds]]` | yes | Display name |
 | `at` | `[[worlds]]` | yes | Marker glyph — integer `1`–`9` or string `"a"`–`"z"` |
