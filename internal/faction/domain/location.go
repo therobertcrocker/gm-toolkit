@@ -1,10 +1,25 @@
 package domain
 
-import "github.com/therobertcrocker/gm-toolkit/internal/spatial"
+import (
+	"fmt"
+
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
+)
 
 type Location struct {
 	WorldID   string            `toml:"world_id"`
 	RegionHex spatial.RegionHex `toml:"region_hex"`
+}
+
+// MarshalTOML writes a location as one inline table, so a saved state.toml has no
+// location headers (R.029 S-1).
+func (location Location) MarshalTOML() ([]byte, error) {
+	regionHex, err := location.RegionHex.MarshalTOML()
+	if err != nil {
+		return nil, err
+	}
+	// deliberate: Go %q quoting, not a TOML escaper, because IDs are slugs; TestSaveWritesLocationsInline pins quotes and backslashes
+	return fmt.Appendf(nil, "{ world_id = %q, region_hex = %s }", location.WorldID, regionHex), nil
 }
 
 // IsInFlight reports whether loc represents an asset mid-transit between worlds.

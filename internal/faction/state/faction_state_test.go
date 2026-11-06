@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func TestFactionStateRoundTrip(t *testing.T) {
@@ -126,6 +127,65 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	}
 	if a.Location != wa.Location || a.CurrentHP != wa.CurrentHP || a.Ready != wa.Ready || a.Maintained != wa.Maintained {
 		t.Errorf("Asset state: got %+v, want %+v", a, wa)
+	}
+}
+
+func TestSaveWritesLocationsInline(t *testing.T) {
+	mireholt := domain.Location{WorldID: "mireholt", RegionHex: spatial.RegionHex{RegionID: "F", Coord: spatial.HexCoord{Q: 7, R: -2}}}
+	awkward := domain.Location{WorldID: `quote"back\slash`, RegionHex: spatial.RegionHex{RegionID: "A", Coord: spatial.HexCoord{Q: 1, R: 2}}}
+	inFlight := domain.Location{RegionHex: spatial.RegionHex{RegionID: "B", Coord: spatial.HexCoord{Q: 3, R: 4}}}
+	original := &FactionState{
+		CampaignID:  "test-campaign",
+		CycleNumber: 1,
+		Factions: map[string]*domain.Faction{
+			"ashfall": {
+				ID:         "ashfall",
+				Name:       "Ashfall",
+				Homeworld:  mireholt,
+				Tags:       []string{"SWN-T-001"},
+				ActiveGoal: &domain.ActiveGoal{GoalID: "G-004", TargetWorld: awkward},
+				Assets: map[string]*domain.Asset{
+					"ashfall-SWN-F1-001-1": {
+						ID:           "ashfall-SWN-F1-001-1",
+						DefinitionID: "SWN-F1-001",
+						OwnerID:      "ashfall",
+						Location:     inFlight,
+						CurrentHP:    3,
+						CurrentOrder: &domain.MovementOrder{
+							AssetID:     "ashfall-SWN-F1-001-1",
+							Origin:      mireholt,
+							Destination: awkward,
+							Path:        []spatial.RegionHex{mireholt.RegionHex, inFlight.RegionHex, awkward.RegionHex},
+							StepIdx:     1,
+						},
+					},
+				},
+				Bases: []*domain.Base{{ID: "ashfall-homeworld", OwnerID: "ashfall", Location: mireholt, CurrentHP: 20, MaxHP: 20, IsHomeworld: true}},
+			},
+		},
+	}
+
+	path := filepath.Join(t.TempDir(), "state.toml")
+	if err := Save(path, original); err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading state.toml: %v", err)
+	}
+	for _, header := range []string{"homeworld]", "location]", "region_hex]", "Coord]", "target_world]", "origin]", "destination]", "path]]"} {
+		if strings.Contains(string(written), header) {
+			t.Errorf("state.toml has a %q header, want every location inline:\n%s", header, written)
+		}
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if !reflect.DeepEqual(loaded.Factions, original.Factions) {
+		t.Errorf("Factions after round trip:\n got %+v\nwant %+v", loaded.Factions["ashfall"], original.Factions["ashfall"])
 	}
 }
 

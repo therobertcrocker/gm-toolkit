@@ -37,6 +37,10 @@
 
 ## Decision Record — Execution
 
+| # | Commit | Decision | Why |
+|---|---|---|---|
+| E-1 | 1 | The header-count gate removes `scratch/enc/state.toml`, not `scratch/enc/*.toml` | In zsh an unmatched glob is an error, so the planned command stopped on a fresh `scratch/enc`; plan body fixed |
+
 ---
 
 ## Shared Context
@@ -254,7 +258,7 @@ func main() {
 }
 ```
 ```sh
-echo "==== encode movement scenario ====" && mkdir -p scratch/enc && rm -f scratch/enc/*.toml && go run ./scratch/encodecheck campaigns/sandbox/state/scenarios/movement.toml scratch/enc/state.toml && grep -c '^\s*\[' scratch/enc/state.toml
+echo "==== encode movement scenario ====" && mkdir -p scratch/enc && rm -f scratch/enc/state.toml && go run ./scratch/encodecheck campaigns/sandbox/state/scenarios/movement.toml scratch/enc/state.toml && grep -c '^\s*\[' scratch/enc/state.toml
 ```
 
 ##### Commit message
