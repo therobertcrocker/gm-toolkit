@@ -82,7 +82,7 @@ that transport moves with cargo, charges the per-issuance Coin cost and emits an
 transport. That last point is deliberate — it keeps cargo recoverable if the
 transport is destroyed mid-flight.
 
-Every other `S`-flag feature is an `[[effects]]` list in asset data. The effects
+Every other `S`-flag feature is an `effects` list in asset data. The effects
 engine keys a registrar on each entry's effect name (`effect/registrar.go`,
 `effects/registrars.go`) and checks every entry against it at construction. Most
 entries register hooks in `ApplyAll`, as transport does. Two triggers are **phase
@@ -243,7 +243,7 @@ is the string written to history; the rules behind the numbers live in
   plan, Planning Decision 5; Effort 1 plan, Decisions 5 and 7; Effort 5 plan,
   Decisions 10 and 11; A.001.7 overview R-2.)
 - **An S effect is data keyed on its effect name, and the registrar picks the
-  hook category.** The `[[effects]]` data never names a hook category. Each
+  hook category.** The `effects` data never names a hook category. Each
   registrar is a spec struct: the owners, scopes, filters and gates it accepts,
   keyed per trigger, plus a hook route (`Register`) and a phase route (`Fire`).
   The sets are keyed per trigger because one field set per kind would accept a
@@ -254,7 +254,7 @@ is the string written to history; the rules behind the numbers live in
   forces a no-op route on every single-route effect. (Effort 1 plan, Decision 1
   and Decision Record 10.)
 - **Effects are blind to their holder; the entry's scope decides who may hold
-  it.** An asset definition and a tag record carry the same `[[effects]]` list,
+  it.** An asset definition and a tag record carry the same `effects` list,
   and one effects engine checks, registers and fires both: `engine/tag` and its
   four Go handlers are gone. Every registrar signs up through one `effect.Holder`
   (the faction, plus the asset or the tag), which names the hook ID, the offer
@@ -268,7 +268,7 @@ is the string written to history; the rules behind the numbers live in
   to 3.)
 - **A rule value or reference lives in the entry, never in engine code.** A
   number, a die, a threshold, or the ID of another record (a goal, a tag, an asset
-  type) is read from the `[[effects]]` entry or from `settings.toml`. The test: a
+  type) is read from the `effects` entry or from `settings.toml`. The test: a
   second asset or tag can use the effect with TOML only. So the population floor
   names no asset type in Go (`population_floor` with an `asset_type` filter), and
   `xp_roll` reads its die, threshold and goal from the entry. A reference is

@@ -194,7 +194,7 @@ lands on a phase boundary, never inside one.
   staged bootstrap. The engine owns its own wiring; callers hand it a rulebook
   and a world engine and get a ready engine back. (Resolves R-012; frozen log
   285–294.) Construction can fail: it is the first point that knows both the
-  rulebook's `[[effects]]` data and the effect registrars, so it checks every
+  rulebook's `effects` data and the effect registrars, so it checks every
   entry there and `NewWithRulebook` returns an error on bad effect data.
   (s-flag-effect-registry plan, Planning Decision 7.)
 - **Two input contracts, split by audience.** `PhaseCollector` is the

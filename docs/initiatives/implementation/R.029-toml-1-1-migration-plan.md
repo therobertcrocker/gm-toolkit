@@ -44,6 +44,7 @@
 | E-3 | 4 | `force_assets.toml` also holds effect parameter tables beyond the planned `ability.purchase` (`self_damage`, `coin_steal`, `restrict_attack`) and a flat `gates = { once_per = … }` (Blockade Fleet). Same treatment as E-2 | Same drift as E-2; gate passed first time |
 | E-4 | 5 | In `wealth_assets.toml`, `attack` now comes before `ability` in Monopoly, Marketers, Venture Capital and Commodities Broker, which had `ability` first. The file also holds `gates = { no_stack = true }` and effect parameter tables (`cost_surcharge`, `discount_repair`, `tech_level_floor`, `restrict_attack`) beyond the planned shapes | The style's key order puts `attack` before `ability`; key order does not change the decode (IDENTICAL) |
 | E-5 | 6 | In `tags.toml`, Preceptor Archive's `ability` now comes before its `effects`; the 1.0 file had the effects first. The file also holds effect parameter tables beyond the planned ones (`xp_roll`, `reroll`, `speed_floor`, `arrival_toll`, `cost_discount`, `coin_gain`) | Same as E-4: the style's key order puts `ability` before `effects`, and the decode is IDENTICAL. The parameter tables went inline by the style's rule; gate passed first time |
+| E-6 | 8 | The rename also covers 2 mentions in the A.001 arc's Status paragraph in `docs/planned-work.md` (the `A.001.3` and `A.001.7` summaries), beyond the planned `R.019` row. Decision 11's reach stays at 10 files; the tracker now has 3 edits | The gate's grep found them. They sit in the live tracker, in the same file and class as the `R.019` row, so the plan's own grep would fail without them |
 
 ---
 
@@ -76,7 +77,7 @@
   - Commit 3 — `refactor: move cunning assets to TOML 1.1` (3 tasks)
   - Commit 4 — `refactor: move force assets to TOML 1.1` (1 task)
   - Commit 5 — `refactor: move wealth assets to TOML 1.1` (1 task)
-- [ ] **Phase 3 — Tags, spatial source and the rename**
+- [x] **Phase 3 — Tags, spatial source and the rename**
   - Commit 6 — `refactor: move tags to TOML 1.1 and re-compose the sandboxes` (2 tasks)
   - Commit 7 — `refactor: write spatial regions as one table` (3 tasks)
   - Commit 8 — `docs: call the effects model the effects list` (10 tasks)
@@ -839,6 +840,14 @@ In the `R.019` row.
 **Find:** ``beside the `[[effects]]` model; fold it in``
 **Replace with:** ``beside the `effects` model; fold it in``
 
+In the A.001 arc's Status paragraph (E-6).
+
+**Find:** ``(data-driven S-flag `[[effects]]` model + 19 SWN assets``
+**Replace with:** ``(data-driven S-flag `effects` model + 19 SWN assets``
+
+**Find:** ``(tags run from rulebook `[[effects]]` through a faction holder``
+**Replace with:** ``(tags run from rulebook `effects` through a faction holder``
+
 ##### Gate
 
 `go build ./... && go test ./...`. Then confirm no live file still says `[[effects]]`:
@@ -853,6 +862,6 @@ docs: call the effects model the effects list
 
 - TOML 1.1 data writes effects = [ ... ], so "[[effects]]" no longer
   matches the files; rename it in 5 Go comments, 3 architecture pages,
-  the A.001 arc plan and the R.019 tracker row
+  the A.001 arc plan, and the R.019 row and A.001 status in the tracker
 - Completed, exploration and discovery docs stay as written
 ```

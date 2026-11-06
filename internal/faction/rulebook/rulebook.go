@@ -805,7 +805,7 @@ func loadGoals(path string) (map[string]*domain.Goal, error) {
 }
 
 // checkReferences refuses a data-to-data reference to a record the rulebook does
-// not have, checked once here: an [[effects]] entry's goal filter (D-5) or
+// not have, checked once here: an effects entry's goal filter (D-5) or
 // asset_definition filter (Effort 5 Decision 9), and an asset's requires_tag
 // (D-13).
 func checkReferences(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, goals map[string]*domain.Goal) error {

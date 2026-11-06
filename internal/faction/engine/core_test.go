@@ -38,7 +38,7 @@ func TestNewWithRulebook_ValidatesTagEffects(t *testing.T) {
 	}
 }
 
-// TestNewWithRulebook_ShippedRulebook catches an authored [[effects]] entry that
+// TestNewWithRulebook_ShippedRulebook catches an authored effects entry that
 // loads but fails registrar validation, which otherwise surfaces only at runtime.
 func TestNewWithRulebook_ShippedRulebook(t *testing.T) {
 	camp := &campaigns.Campaign{Root: t.TempDir()}
