@@ -65,7 +65,7 @@
 
 **Overview**
 
-- [ ] **Phase 1 — State locations and the house style**
+- [x] **Phase 1 — State locations and the house style**
   - Commit 1 — `refactor: write state locations as inline tables` (3 tasks)
   - Commit 2 — `docs: add the rulebook TOML house style` (2 tasks)
 - [ ] **Phase 2 — Asset files**

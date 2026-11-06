@@ -21,7 +21,13 @@
       "settings": {
         "go.toolsManagement.autoUpdate": true,
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "golang.go"
+        "editor.defaultFormatter": "golang.go",
+        "[toml]": {
+          "editor.defaultFormatter": "TomlSmith.tomlsmith",
+          "editor.formatOnSave": false
+        },
+        "tomlsmith.format.lineWidth": 120,
+        "tomlsmith.format.indentWidth": 2
       }
     }
   },

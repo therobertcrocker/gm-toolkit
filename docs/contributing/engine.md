@@ -3,7 +3,7 @@
 > How to extend the headless faction-turn engine. Read the
 > [contributing overview](overview.md) first for setup and the shared extension
 > pattern; this guide carries the engine's test tooling, the conventions you'll
-> trip over, and six extension recipes.
+> trip over, the rulebook TOML style, and six extension recipes.
 
 ## Orientation
 
@@ -41,6 +41,67 @@ page that explains it — this list is the trap, not the rationale.
   TUI, so the error classifier can call a GM-cancelled action *recoverable* (skip,
   continue) without importing interface code. A new cancel path adds its sentinel
   here. ([logging & errors](../architecture/engine/logging-errors.md).)
+
+<br/>
+<br/>
+
+# Rulebook TOML style
+
+The hand-written data files (`*_assets.toml`, `tags.toml`, `goals.toml`, and a
+campaign's `spatial/source/data.toml`) are TOML 1.1. Each entry is one block: one
+header, with every nested part written in braces under it. TomlSmith's Format
+Document, at the 120-column width the devcontainer sets, writes this style, so a
+formatted file is a styled file. (Why: [R.029 exploration](../initiatives/explorations/R.029-toml-1-1-migration-exploration.md), H-2.)
+
+- **One header per entry.** `[assets.Smugglers]`, `[tags.Colonists]`,
+  `[goals.MilitaryConquest]`. A part (`attack`, `transport`, `ability`, `effects`,
+  `filters`, `gates`, a parameter table) never gets a header of its own.
+- **The line rule.** A part that fits in 120 columns sits on one line. A part that
+  does not opens over lines: one key per line, each line ending in a comma, and the
+  closing brace on its own line.
+- **Lists always open.** `effects`, `steps` and `outcomes` put each element on a new
+  line, each ending in a comma. Each element then follows the line rule.
+- **No dotted keys.** Write `gates = { contest = { … } }`, never
+  `gates.contest = { … }`. Braces are the one way to nest.
+- **No alignment.** One space each side of `=`. The formatter removes padding.
+- **Key order.** The entry's own keys first, then its parts: `attack`, `transport`,
+  `ability`, `effects`. Inside an effect: `trigger`, `effect`, `filters`, `gates`,
+  then the parameter table.
+- **Once a part is inline, all of it is inline.** A later `[assets.X.attack]` header
+  cannot add to `attack = { … }`; the loader refuses the file and names the line.
+
+```toml
+[assets.VentureCapital]
+id = "SWN-W6-001"
+name = "Venture Capital"
+# … the entry's own keys …
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "2d6" }
+ability = {
+  effect = "coin_delta",
+  die = "1d8",
+  outcomes = [
+    { from = 1, to = 1, destroy_self = true },
+    { from = 2, to = 3, coin = 1 },
+    { from = 4, to = 7, coin = 2 },
+    { from = 8, to = 8, coin = 3 },
+  ],
+}
+
+[assets.Lobbyists]
+id = "SWN-C2-001"
+# … the entry's own keys …
+effects = [
+  {
+    trigger = "permission_granted",
+    effect = "withdraw_permission",
+    filters = { owner = "rival", scope = "world" },
+    gates = { contest = { roller = "self", roll = "test", attacker_stat = "Cunning", defender_stat = "Cunning" } },
+  },
+]
+```
+
+A short effect sits on one line inside the open list:
+`{ trigger = "lethal_damage", effect = "sacrifice_self", filters = { owner = "own", scope = "world" } },`.
 
 <br/>
 <br/>
