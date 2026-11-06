@@ -4,7 +4,7 @@
 > **Purpose:** a running log of what worked and what did not in the first explorations.
 > Each exploration adds one section when it closes. `D.009` reads this log, then writes
 > the `E.` flow in `session-modes.md` and the template.
-> **Status:** collecting. Two explorations logged (`E.002`, `E.004`).
+> **Status:** collecting. Three explorations logged (`E.002`, `E.004`, `R.029`).
 
 ## Conflicts to settle in `D.009`
 
@@ -178,3 +178,68 @@ that options writing finds facts, so a template can expect it.
   straight to a plan (`E.004`). The `E.` flow should say how to choose, and whether a
   discovery that follows one needs less.
 - Do explorations run on a branch? See Conflicts.
+
+<br/>
+
+## `R.029` — Migrate data files to TOML 1.1
+
+Doc: [`R.029-toml-1-1-migration-exploration.md`](../explorations/R.029-toml-1-1-migration-exploration.md).
+One session on Opus. The first exploration that is a refactor's own Discovery: it has
+no `E.` ID.
+
+### Doc shape
+
+Same sections as `E.002` and `E.004`, in the same order. What we did, then whether it
+worked:
+
+- **Filed under the initiative's ID, in `explorations/`.** Robert chose the exploration
+  shape for `R.029`'s Discovery, then chose to file it with the explorations "so the
+  provenance makes sense". No `E.` row was made. It worked: the plan and the `A.001.8`
+  row both point at one doc.
+- **The deciding criterion was asked before the audit,** as in `E.004`. "Best for a GM
+  who edits by hand" decided every option, and it turned the audit toward error
+  messages, not only line counts.
+- **A question was added mid-session.** Robert's review of the audit asked about the
+  machine-written files, then about leaving TOML for state. Both went in as question 6,
+  marked as added after the audit, with options `S-0` to `S-3` and Robert's call
+  recorded in place. It kept the scope change visible.
+- **A Terms block** at the top of Options again (entry, part, inline table, dotted key).
+- **Options numbered per question** (`S-`, `H-`, `G-`), plus "Lean" tables for calls made
+  of many small items (house style, Reach), as `E.004`'s "what moves, what stays" table.
+  It worked: each line became one question.
+- **In Plain Words was drafted after the options,** not after the audit. The answer did
+  not change after that, so one rewrite was enough.
+
+### Flow
+
+- **The audit ran the real code.** A throwaway program in the gitignored `scratch/`
+  folder loaded the rulebook in 1.0 and in 1.1 and compared the results, then fed it
+  typos and syntax slips. Reading the code alone would not have settled question 1.
+- **The review checkpoint after the audit** (`E.004`'s suggestion) paid off again.
+  Robert's two questions there grew the scope by one unit (`S-1`) and closed a larger
+  idea (another state format) before it reached the options.
+- **Calls went out as questions after the draft,** in three batches (four, four, one).
+  All nine matched the lean. The one change was a row Robert chose not to file.
+- **A number check before review caught a wrong claim.** The doc said one asset carries
+  six headers; a count found nine. A cheap check of every number before the review is
+  worth keeping.
+- **Long silent stretches again.** The harness asked for an update twice during the
+  audit, even with updates between steps.
+- **It led straight to a plan,** as `E.004` did for `R.028`.
+- **No branch of its own.** It ran on `feature/data-driven-goals`, the branch of the
+  initiative it amends, at Robert's call.
+
+### Findings during options
+
+- TOML 1.0 and 1.1 mix in one file, so `A.001.8` needs only the style settled, not
+  `R.029` executed. This removed an order between the two initiatives.
+- A measured line (the longest gate, 119 columns) decided the column limit.
+- "`[[effects]]`" names a concept in twelve live files, not only a syntax.
+
+### Open for `D.009`
+
+- When an exploration serves one initiative, does it take that initiative's ID (as
+  here) or an `E.` ID (as `E.004` for `R.028`)?
+- Is a refactor's audit-first Discovery an exploration under another name? If yes, the
+  refactor flow can point at the `E.` template.
+- Does `R.029` count toward the row's "after 3 explorations" trigger?

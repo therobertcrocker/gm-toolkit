@@ -11,7 +11,8 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
-| `A.001.8` | Data-driven goals | `feature` | In-Progress | Goal vocabulary of six parts (start, progress, reset, threshold, complete, XP), goals read every batch, a turn-start goal pick in the engine and TUI, the eleven rules goals as data, prefixed goal IDs (`CORE-G-001`); Seize Planet and Change Homeworld go to `F.040`; absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; Discovery done, three efforts |
+| `A.001.8` | Data-driven goals | `feature` | In-Progress | Goal vocabulary of six parts (start, progress, reset, threshold, complete, XP), goals read every batch, a turn-start goal pick in the engine and TUI, the eleven rules goals as data, prefixed goal IDs (`CORE-G-001`); Seize Planet and Change Homeworld go to `F.040`; absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; goal parts written as inline tables in `R.029`'s house style (amends D-17); Discovery done, three efforts |
+| `R.029` | Migrate data files to TOML 1.1 | `refactor` | In-Progress | Hand-written data files move to TOML 1.1 multi-line inline tables, one header per entry; `state.toml` keeps TOML and the encoder but drops its nested location headers (`MarshalTOML`); runs on `feature/data-driven-goals` beside `A.001.8` and amends its D-17; exploration done, Plan next |
 
 
 ---
@@ -89,7 +90,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `R.005` | Adjacency vs. Warp Cost | -- | Split `Region.Boundary` into adjacency-edges (cost 1) and warp-edges (cost `crossingCost`). Deferred from `F.012`. |
-| `R.029` | Migrate data files to TOML 1.1 | -- | Hand-written files (assets, tags, goals, settings, spatial source, seeds, scenarios) write nested parts (`attack`, `ability`, `effects`, `filters`, `gates`) as multi-line inline tables, one header per entry; `BurntSushi/toml` v1.6.0 already parses 1.1, and a trial of `cunning_assets.toml` decoded identical (594 to 504 lines, 88 to 24 headers). Machine-written `state.toml` stays as the encoder writes it. Editor support is settled: the devcontainer installs TomlSmith (1.1 by default) in place of Even Better TOML, whose last release (0.21.2) is 1.0 only; Tombi is the fallback. Run the real loader on a 1.1 file first. Bears on `A.001.8` D-17 (goal parts as sub-tables). CUE's TOML reader rejects 1.1. |
 
 #### 2. Engine
 
@@ -264,11 +264,27 @@ This section contains detailed write-ups for each planned initiative, including 
 
 **Problem** — Goals get their behavior from twelve Go handlers in `engine/goal/goals/`, which `goal.New` registers by bare ID (`G-001`); a goal in `rulebooks/_core/goals.toml` with no handler does nothing, so a second rulebook gets a goal behavior only by writing Go. The goal flow is also broken in play. After `GoalCompleted`, no step picks a new goal (`B.039`; the old TUI's goal select went with `798cd45`). Destroy the Foe never gets a target (`B.040`). The wizard offers goals that need start data (`B.041`). Peaceable Kingdom misses a missed attack (`B.013`). `G-012` is hard-coded in the Change Homeworld handler and action (`B.001`). `Difficulty` is a string the engine cannot turn into XP (`B.005`).
 
-**Approach** — Settled in the [discovery doc](initiatives/discovery/A.001.8-data-driven-goals-discovery.md) (D-1 to D-27). Each goal composes six parts: `start`, `progress`, `reset`, `threshold`, `complete` and `xp`, with goal-only event and filter names owned by the goal package, written as TOML sub-tables. Every faction's goal reads every mutation batch, on any turn and in any phase, and any kill or damage the faction causes counts; each action batch opens with a record-only `ActionTaken`, which fixes `B.013`. Seize Planet and Change Homeworld become multi-turn actions in `F.040`; until then both are unregistered, World Seizure is a plain goal the pick leaves out, and `G-012` leaves the data. A turn-start goal pick after stat-raise, with a TUI overlay, gathers the start inputs a goal declares; the wizard sets no goal. The eleven goals become data and the per-ID handlers go away. Goal IDs become `CORE-G-001` to `CORE-G-011`, and the tag references follow; saves move by re-seed. Rules calls settled in Discovery: every XP formula rounds up, World Seizure pays from a resisting ruler, Inside Enemy Territory counts assets held, Wealth of Worlds reopens above its last-completion Wealth, Destroy the Foe completes on the faction's own blow and fails (`GoalFailed`) on a third party's. Three efforts: goals as data, every batch, the turn-start pick.
+**Approach** — Settled in the [discovery doc](initiatives/discovery/A.001.8-data-driven-goals-discovery.md) (D-1 to D-27). Each goal composes six parts: `start`, `progress`, `reset`, `threshold`, `complete` and `xp`, with goal-only event and filter names owned by the goal package. The parts are written as TOML 1.1 inline tables in `R.029`'s house style (one header per goal; [exploration](initiatives/explorations/R.029-toml-1-1-migration-exploration.md) G-1, Robert's call 2026-11-06); this amends D-17, which chose sub-tables because a TOML 1.0 inline table must fit on one line, and the discovery doc stays as written. Every faction's goal reads every mutation batch, on any turn and in any phase, and any kill or damage the faction causes counts; each action batch opens with a record-only `ActionTaken`, which fixes `B.013`. Seize Planet and Change Homeworld become multi-turn actions in `F.040`; until then both are unregistered, World Seizure is a plain goal the pick leaves out, and `G-012` leaves the data. A turn-start goal pick after stat-raise, with a TUI overlay, gathers the start inputs a goal declares; the wizard sets no goal. The eleven goals become data and the per-ID handlers go away. Goal IDs become `CORE-G-001` to `CORE-G-011`, and the tag references follow; saves move by re-seed. Rules calls settled in Discovery: every XP formula rounds up, World Seizure pays from a resisting ruler, Inside Enemy Territory counts assets held, Wealth of Worlds reopens above its last-completion Wealth, Destroy the Foe completes on the faction's own blow and fails (`GoalFailed`) on a third party's. Three efforts: goals as data, every batch, the turn-start pick.
 
 **Unlocks** — A faction picks a new goal after it finishes one, as the rules say; every goal can finish in play; a rulebook adds goals with no Go; the goal half of `R.004` retires; `A.001.5`'s H.A.W.K tag pass names prefixed goal IDs from the start. Leaves `F.013` open (the `complete` predicate is where it plugs in).
 
 **Trigger** — ready
 
 **Status** — In-Progress — promoted 2026-11-05 from Up Next on Robert's call. Discovery signed off 2026-11-06; Plan is next.
+
+<br />
+
+## R.029 — Migrate Data Files to TOML 1.1
+
+**Refactor**, run on `feature/data-driven-goals` beside `A.001.8` (Robert's call), because it bears on that initiative's goal data shape.
+
+**Problem** — TOML 1.0 keeps an inline table on one line, so every nested part of an entry (`attack`, `ability`, `effects`, `filters`, `gates`) needs its own `[header]` or `[[header]]`. One asset spreads across many headers, and the reader rebuilds the nesting in their head. `A.001.8` D-17 chose sub-tables for goal parts and rejected inline tables as hard to read once filters nest; under 1.0 that was the only readable choice.
+
+**Approach** — Write the hand-written files (assets, tags, goals, settings, spatial source, seeds, scenarios) in TOML 1.1, with nested parts as multi-line inline tables and one header per entry. `BurntSushi/toml` v1.6.0 already parses 1.1, and a trial of `cunning_assets.toml` decoded identical (594 to 504 lines, 88 to 24 headers). The machine-written `state.toml` stays TOML and stays with the encoder, which cannot write 1.1; small types such as `Location` write themselves as one-line inline tables through `MarshalTOML`, so state loses its nested headers (exploration S-1, Robert's call). The devcontainer installs TomlSmith (1.1 by default) in place of Even Better TOML, whose last release (0.21.2) is 1.0 only; Tombi is the fallback. A short exploration runs before the plan (Robert's call): run the real loader on a 1.1 file, list the files and their shapes, and settle how the change meets D-17.
+
+**Unlocks** — Data files a GM reads entry by entry; `A.001.8`'s goals and `A.001.5`'s H.A.W.K assets written in the new shape from the start, not moved later. Known limit: CUE's TOML reader rejects 1.1, so a later CUE schema check needs another reader.
+
+**Trigger** — `--`
+
+**Status** — In-Progress — promoted 2026-11-06 from Backlog on Robert's call. [Exploration](initiatives/explorations/R.029-toml-1-1-migration-exploration.md) written 2026-11-06 (H-2 one block per entry, house style, G-1, S-1); Plan is next, with no Discovery.
 
