@@ -41,6 +41,7 @@
 |---|---|---|---|
 | E-1 | 1 | The header-count gate removes `scratch/enc/state.toml`, not `scratch/enc/*.toml` | In zsh an unmatched glob is an error, so the planned command stopped on a fresh `scratch/enc`; plan body fixed |
 | E-2 | 3 | `cunning_assets.toml` holds shapes the Task 2 table leaves out: `ability.relocate` (Covert Shipping, Covert Transit Net), effect parameter tables (`coin_gain`, `lock_out`, `reroll`, `bonus_die`, `capture_target`) and a flat `gates = { once_per = … }` (Book of Secrets). Each went inline by the style's parameter-table rule | Drift in the plan's shape list only; the style already covers them, and the gate passed (IDENTICAL, fixed point) |
+| E-3 | 4 | `force_assets.toml` also holds effect parameter tables beyond the planned `ability.purchase` (`self_damage`, `coin_steal`, `restrict_attack`) and a flat `gates = { once_per = … }` (Blockade Fleet). Same treatment as E-2 | Same drift as E-2; gate passed first time |
 
 ---
 
