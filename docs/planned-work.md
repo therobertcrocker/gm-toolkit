@@ -89,6 +89,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `R.005` | Adjacency vs. Warp Cost | -- | Split `Region.Boundary` into adjacency-edges (cost 1) and warp-edges (cost `crossingCost`). Deferred from `F.012`. |
+| `R.029` | Migrate data files to TOML 1.1 | -- | Hand-written files (assets, tags, goals, settings, spatial source, seeds, scenarios) write nested parts (`attack`, `ability`, `effects`, `filters`, `gates`) as multi-line inline tables, one header per entry; `BurntSushi/toml` v1.6.0 already parses 1.1, and a trial of `cunning_assets.toml` decoded identical (594 to 504 lines, 88 to 24 headers). Machine-written `state.toml` stays as the encoder writes it. Editor support is settled: the devcontainer installs TomlSmith (1.1 by default) in place of Even Better TOML, whose last release (0.21.2) is 1.0 only; Tombi is the fallback. Run the real loader on a 1.1 file first. Bears on `A.001.8` D-17 (goal parts as sub-tables). CUE's TOML reader rejects 1.1. |
 
 #### 2. Engine
 
