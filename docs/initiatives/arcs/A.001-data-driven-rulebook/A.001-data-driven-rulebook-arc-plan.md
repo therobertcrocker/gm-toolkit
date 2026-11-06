@@ -296,6 +296,11 @@ named parts (start, progress, tick, reset, threshold, complete, XP, phases).
 - Renames the goal references in tag data when goal IDs gain the prefix (AP-9):
   Imperialists names Planetary Seizure, and Exchange Consulate names Peaceable Kingdom.
 
+> **Narrowed by the A.001.8 Discovery.** The vocabulary is six parts, with no `phases`
+> or `tick`. Seize Planet and Change Homeworld become multi-turn actions in `F.040`,
+> a standalone row outside the arc, and `G-012` leaves the goals (discovery D-1, D-5,
+> D-7, D-19).
+
 **Covers:** the goal half of `E.002`. **Punts:** `F.013` (the `complete` predicate
 leaves it open). **Gates nothing** — `_core` goals serve both rulebooks before and
 after it.
