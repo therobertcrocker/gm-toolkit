@@ -42,6 +42,7 @@
 | E-1 | 1 | The header-count gate removes `scratch/enc/state.toml`, not `scratch/enc/*.toml` | In zsh an unmatched glob is an error, so the planned command stopped on a fresh `scratch/enc`; plan body fixed |
 | E-2 | 3 | `cunning_assets.toml` holds shapes the Task 2 table leaves out: `ability.relocate` (Covert Shipping, Covert Transit Net), effect parameter tables (`coin_gain`, `lock_out`, `reroll`, `bonus_die`, `capture_target`) and a flat `gates = { once_per = … }` (Book of Secrets). Each went inline by the style's parameter-table rule | Drift in the plan's shape list only; the style already covers them, and the gate passed (IDENTICAL, fixed point) |
 | E-3 | 4 | `force_assets.toml` also holds effect parameter tables beyond the planned `ability.purchase` (`self_damage`, `coin_steal`, `restrict_attack`) and a flat `gates = { once_per = … }` (Blockade Fleet). Same treatment as E-2 | Same drift as E-2; gate passed first time |
+| E-4 | 5 | In `wealth_assets.toml`, `attack` now comes before `ability` in Monopoly, Marketers, Venture Capital and Commodities Broker, which had `ability` first. The file also holds `gates = { no_stack = true }` and effect parameter tables (`cost_surcharge`, `discount_repair`, `tech_level_floor`, `restrict_attack`) beyond the planned shapes | The style's key order puts `attack` before `ability`; key order does not change the decode (IDENTICAL) |
 
 ---
 
@@ -70,7 +71,7 @@
 - [x] **Phase 1 — State locations and the house style**
   - Commit 1 — `refactor: write state locations as inline tables` (3 tasks)
   - Commit 2 — `docs: add the rulebook TOML house style` (2 tasks)
-- [ ] **Phase 2 — Asset files**
+- [x] **Phase 2 — Asset files**
   - Commit 3 — `refactor: move cunning assets to TOML 1.1` (3 tasks)
   - Commit 4 — `refactor: move force assets to TOML 1.1` (1 task)
   - Commit 5 — `refactor: move wealth assets to TOML 1.1` (1 task)
