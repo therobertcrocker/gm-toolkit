@@ -597,14 +597,10 @@ func Build(
 					Reason:    m.Reason,
 				})
 
-			case "goal_initiated":
-				// dropped — bookkeeping only
 			case "goal_progressed":
 				// dropped — bookkeeping only
-			case "goal_turns_tick":
-				// dropped — bookkeeping only
-			case "goal_phase_advanced":
-				// dropped — bookkeeping only
+			case "action_taken":
+				// dropped — the action shows through its own mutations (Decision 3)
 
 			default:
 				beat.Notes = append(beat.Notes, fmt.Sprintf("unknown mutation: %s", mr.Type))

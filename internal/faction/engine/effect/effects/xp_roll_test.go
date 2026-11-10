@@ -21,7 +21,7 @@ func exchangeConsulateReactor(alpha *domain.Faction, dice ...int) hooks.Mutation
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerGoalCompleted,
 			Effect:  domain.SpecialXPRoll,
-			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-007"},
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "CORE-G-007"},
 			XPRoll:  &domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
 		},
 		Registry: registry,
@@ -38,10 +38,10 @@ func TestXPRoll_RollsOnTheNamedGoal(t *testing.T) {
 		dice      []int
 		want      []domain.Mutation
 	}{
-		{"Peaceable Kingdom, 4", domain.GoalCompleted{FactionID: "alpha", GoalID: "G-007"}, []int{4}, bonus},
-		{"Peaceable Kingdom, 3", domain.GoalCompleted{FactionID: "alpha", GoalID: "G-007"}, []int{3}, nil},
-		{"another goal rolls nothing", domain.GoalCompleted{FactionID: "alpha", GoalID: "G-012"}, nil, nil},
-		{"a rival's completion rolls nothing", domain.GoalCompleted{FactionID: "beta", GoalID: "G-007"}, nil, nil},
+		{"Peaceable Kingdom, 4", domain.GoalCompleted{FactionID: "alpha", GoalID: "CORE-G-007"}, []int{4}, bonus},
+		{"Peaceable Kingdom, 3", domain.GoalCompleted{FactionID: "alpha", GoalID: "CORE-G-007"}, []int{3}, nil},
+		{"another goal rolls nothing", domain.GoalCompleted{FactionID: "alpha", GoalID: "CORE-G-012"}, nil, nil},
+		{"a rival's completion rolls nothing", domain.GoalCompleted{FactionID: "beta", GoalID: "CORE-G-007"}, nil, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

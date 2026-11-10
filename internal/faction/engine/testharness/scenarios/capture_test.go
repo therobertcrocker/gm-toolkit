@@ -26,52 +26,6 @@ func runOrderedCycle(t *testing.T, h *testharness.Harness, order ...string) {
 	}
 }
 
-// TestTreacheryCaptureAdvancesSeizureSameTurn: alpha's Treachery captures the last
-// rival asset on its Planetary Seizure world. Goals read the batch after the
-// reactors, so phase 2 starts in the capture turn, not at alpha's next CheckLock
-// (Effort 1 Decision Record 12).
-func TestTreacheryCaptureAdvancesSeizureSameTurn(t *testing.T) {
-	h := testharness.NewHarness(t)
-	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	beta := h.AddFaction("beta", "Hadrian", 4, 3, 2)
-	alpha.ActiveGoal = &domain.ActiveGoal{
-		GoalID:          "G-004",
-		ProcessPhase:    1,
-		TargetFactionID: beta.ID,
-		TargetWorld:     domain.Location{WorldID: "Hadrian"},
-	}
-	treachery := addActiveAsset(alpha, "treachery", defTreachery, "Hadrian")
-	lastRival := beta.Assets["beta-asset-1"]
-
-	// Rolls: attack 10+3 vs defense 1+3, a hit; the special attack rolls no damage.
-	h.Engine.Rand = &dicetest.Sequence{Values: []int{10, 1}}
-	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
-		if faction.ID != "alpha" {
-			return nil, nil
-		}
-		for _, candidate := range available {
-			if candidate.Name() == "Attack" {
-				return candidate, nil
-			}
-		}
-		t.Fatal("Attack not available for alpha")
-		return nil, nil
-	}
-	h.Collector.SelectAttackersFn = func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error) {
-		return []*domain.Asset{treachery}, nil
-	}
-	h.Collector.SelectDefenderFn = func(_ *domain.Asset, _ []*domain.Asset, _ *rulebook.Rulebook) (*domain.Asset, error) {
-		return lastRival, nil
-	}
-
-	runOrderedCycle(t, h, "alpha", "beta")
-
-	testharness.CheckStep(t, "the last rival is alpha's", alpha.Assets[lastRival.ID] != nil, "the rival asset was not captured")
-	testharness.CheckStep(t, "phase 2 starts in the capture cycle",
-		alpha.ActiveGoal != nil && alpha.ActiveGoal.ProcessPhase == 2 && alpha.ActiveGoal.TurnsRemaining == 3,
-		"Planetary Seizure did not advance on the capture")
-}
-
 // TestTreacheryCapturesAndKeepsRiders: alpha's Treachery hits beta's Heavy Drop
 // Assets in flight, which carries a beta rider. The transport changes sides with
 // its order; the rider stays beta's and stays aboard; next cycle the captured

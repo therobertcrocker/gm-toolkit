@@ -39,21 +39,14 @@ type Tag struct {
 	Ability *AbilityDefinition
 }
 
-type Goal struct {
-	ID          string `toml:"id"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	Difficulty  string `toml:"difficulty"`
-}
-
 // ActiveGoal holds the faction's current goal and live progress state.
 type ActiveGoal struct {
-	GoalID          string   `toml:"goal_id"`
-	TargetFactionID string   `toml:"target_faction_id"`
-	TargetWorld     Location `toml:"target_world"`
-	Progress        int      `toml:"progress"`
-	ProcessPhase    int      `toml:"process_phase"`
-	TurnsRemaining  int      `toml:"turns_remaining"`
+	GoalID          string `toml:"goal_id"`
+	TargetFactionID string `toml:"target_faction_id"`
+	Progress        int    `toml:"progress"`
+	// StealthedAtStart holds the IDs of the assets already stealthed when the goal
+	// was picked; a measure with exclude_held_at_start never counts them (D-10).
+	StealthedAtStart []string `toml:"stealthed_at_start,omitempty"`
 }
 
 type Faction struct {
@@ -113,6 +106,7 @@ func (faction *Faction) Clone() *Faction {
 	clone.Tags = slices.Clone(faction.Tags)
 	if faction.ActiveGoal != nil {
 		goalCopy := *faction.ActiveGoal
+		goalCopy.StealthedAtStart = slices.Clone(faction.ActiveGoal.StealthedAtStart)
 		clone.ActiveGoal = &goalCopy
 	}
 	if faction.HookBudgets != nil {

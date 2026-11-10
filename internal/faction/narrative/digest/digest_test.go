@@ -260,6 +260,20 @@ func TestAssetMaintainedFlagDropped(t *testing.T) {
 	}
 }
 
+func TestBuild_ActionTakenLeavesNoNote(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "action_taken", domain.ActionTaken{FactionID: "faction-a", Action: "Attack"}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), nil)
+	for _, beat := range d.ActiveFactions {
+		if len(beat.Notes) != 0 {
+			t.Errorf("%s Notes = %v, want none", beat.Faction.ID, beat.Notes)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Repair
 // ---------------------------------------------------------------------------

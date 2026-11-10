@@ -4,7 +4,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -26,9 +25,6 @@ func (o *observer) OnStatRaiseSkipped(faction *domain.Faction) {
 	o.adapter.emit(EvtStatRaiseSkipped, faction)
 }
 
-func (o *observer) OnGoalLockApplied(faction *domain.Faction, lock locks.GoalLock, muts []domain.Mutation) {
-	o.adapter.emit(EvtGoalLockApplied, GoalLockAppliedPayload{Lock: lock, Mutations: muts})
-}
 func (o *observer) OnBookkeepingApplied(faction *domain.Faction, result turn.BookkeepingResult, muts []domain.Mutation) {
 	o.adapter.emit(EvtBookkeepingApplied, BookkeepingAppliedPayload{Result: result, Mutations: muts})
 }

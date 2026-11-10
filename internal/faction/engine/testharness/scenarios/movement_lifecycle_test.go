@@ -48,6 +48,32 @@ func runCycle(t *testing.T, h *testharness.Harness) {
 	}
 }
 
+func movementMutationsFor(t *testing.T, observer *testharness.RecordingObserver, factionID string) []domain.Mutation {
+	t.Helper()
+	var mutations []domain.Mutation
+	var sawResolved bool
+	for _, ev := range observer.Events {
+		if ev.Faction == nil || ev.Faction.ID != factionID {
+			continue
+		}
+		if ev.Kind != "MovementTicked" && ev.Kind != "MovementResolved" {
+			continue
+		}
+		batch, ok := ev.Payload.([]domain.Mutation)
+		if !ok {
+			t.Fatalf("%s payload type: got %T, want []domain.Mutation", ev.Kind, ev.Payload)
+		}
+		mutations = append(mutations, batch...)
+		if ev.Kind == "MovementResolved" {
+			sawResolved = true
+		}
+	}
+	if !sawResolved {
+		t.Fatalf("no MovementResolved event for faction %q", factionID)
+	}
+	return mutations
+}
+
 func assertOneMutationOfKind[T domain.Mutation](t *testing.T, mutations []domain.Mutation, label string) T {
 	t.Helper()
 	var found T

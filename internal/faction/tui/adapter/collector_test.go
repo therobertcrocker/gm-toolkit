@@ -120,8 +120,6 @@ func TestActionCollector_EveryReplyType(t *testing.T) {
 			chosen, amount, err := collector.SelectBribeTarget(alpha, factionState)
 			return adapter.BribeReply{Base: chosen, Amount: amount}, err
 		}, bribeReply, bribeReply},
-		{"SelectSeizeTarget", func() (any, error) { return collector.SelectSeizeTarget(alpha, factionState) }, "Tartarus", "Tartarus"},
-		{"SelectChangeHomeworldTarget", func() (any, error) { return collector.SelectChangeHomeworldTarget(alpha, factionState) }, "Tartarus", "Tartarus"},
 		{"SelectPurchaseEnablerAsset", func() (any, error) {
 			return collector.SelectPurchaseEnablerAsset("Tartarus", []action.PurchaseEnablerOption{{Def: definition, Cost: 2}})
 		}, definition, definition},

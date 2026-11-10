@@ -2,6 +2,7 @@ package mutation
 
 import (
 	"log/slog"
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -357,6 +358,31 @@ func TestMutationEngine_PermissionRefusedIsRecordOnly(t *testing.T) {
 	}
 	if got := s.Factions["f1"].Coin; got != 10 {
 		t.Errorf("Coin = %d, want 10 unchanged", got)
+	}
+}
+
+func TestApply_ActionTakenChangesNoState(t *testing.T) {
+	cases := []struct {
+		name      string
+		factionID string
+	}{
+		{name: "held faction", factionID: "f1"},
+		{name: "unknown faction", factionID: "missing"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			s := newMutationTestState()
+			before := s.Factions["f1"].Clone()
+			me := New(slog.New(slog.DiscardHandler))
+
+			actionTaken := domain.ActionTaken{FactionID: testCase.factionID, Action: "Attack"}
+			if err := me.Apply(s, []domain.Mutation{actionTaken}, slog.New(slog.DiscardHandler)); err != nil {
+				t.Errorf("Apply = %v, want no miss for a record-only mutation", err)
+			}
+			if !reflect.DeepEqual(s.Factions["f1"], before) {
+				t.Errorf("faction after Apply = %+v, want %+v unchanged", s.Factions["f1"], before)
+			}
+		})
 	}
 }
 

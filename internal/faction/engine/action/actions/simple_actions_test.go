@@ -180,7 +180,7 @@ func TestAbandonGoal_Validate(t *testing.T) {
 	})
 
 	t.Run("has active goal", func(t *testing.T) {
-		faction := &domain.Faction{ID: "f1", ActiveGoal: &domain.ActiveGoal{GoalID: "G-001"}}
+		faction := &domain.Faction{ID: "f1", ActiveGoal: &domain.ActiveGoal{GoalID: "CORE-G-001"}}
 		if !NewAbandonGoal().Validate(faction, nil, nil) {
 			t.Error("expected true when faction has an active goal")
 		}
@@ -192,7 +192,7 @@ func TestAbandonGoal_Validate(t *testing.T) {
 func TestAbandonGoal_Output(t *testing.T) {
 	faction := &domain.Faction{
 		ID: "f1", Force: 2, Cunning: 2, Wealth: 4,
-		ActiveGoal: &domain.ActiveGoal{GoalID: "G-001"},
+		ActiveGoal: &domain.ActiveGoal{GoalID: "CORE-G-001"},
 	}
 	act := NewAbandonGoal()
 	if err := act.Inputs(faction, nil, nil); err != nil {
@@ -214,8 +214,8 @@ func TestAbandonGoal_Output(t *testing.T) {
 		t.Errorf("mutations[0] = %v, want CoinDelta{f1, -3}", mutations[0])
 	}
 	abandoned, ok := mutations[1].(domain.GoalAbandoned)
-	if !ok || abandoned.FactionID != "f1" || abandoned.GoalID != "G-001" {
-		t.Errorf("mutations[1] = %v, want GoalAbandoned{f1, G-001}", mutations[1])
+	if !ok || abandoned.FactionID != "f1" || abandoned.GoalID != "CORE-G-001" {
+		t.Errorf("mutations[1] = %v, want GoalAbandoned{f1, CORE-G-001}", mutations[1])
 	}
 }
 

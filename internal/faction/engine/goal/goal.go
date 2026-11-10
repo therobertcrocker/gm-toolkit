@@ -1,87 +1,60 @@
 package goal
 
 import (
+	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/goals"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// Handler resolves goal logic for a single goal ID.
-type Handler interface {
-	GoalID() string
-	CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) (locks.GoalLock, []domain.Mutation)
-	UpdateProgress(actingFaction *domain.Faction, mutations []domain.Mutation, factionState *state.FactionState, rulebook *rulebook.Rulebook, index *world.Index) []domain.Mutation
-}
-
-// GoalEngine evaluates and advances faction goal state.
+// GoalEngine advances faction goals from the parts each goal states in the
+// rulebook. It holds no goal ID of its own.
 type GoalEngine struct {
-	handlers map[string]Handler
-	log      *slog.Logger
+	goals map[string]*compiledGoal
+	log   *slog.Logger
 }
 
-func New(log *slog.Logger) *GoalEngine {
-	engine := &GoalEngine{handlers: make(map[string]Handler), log: log}
-	engine.Register(goals.MilitaryConquest{})
-	engine.Register(goals.CommercialExpansion{})
-	engine.Register(goals.IntelligenceCoup{})
-	engine.Register(goals.PlanetarySeizure{})
-	engine.Register(goals.ExpandInfluence{})
-	engine.Register(goals.BloodTheEnemy{})
-	engine.Register(goals.PeaceableKingdom{})
-	engine.Register(goals.DestroyTheFoe{})
-	engine.Register(goals.InsideEnemyTerritory{})
-	engine.Register(goals.InvincibleValor{})
-	engine.Register(goals.WealthOfWorlds{})
-	engine.Register(goals.ChangeHomeworld{})
-	return engine
-}
-
-func (ge *GoalEngine) Register(handler Handler) {
-	ge.handlers[handler.GoalID()] = handler
-}
-
-// CheckLock evaluates the faction's active goal and returns the appropriate lock
-// state. Must be called before bookkeeping and action selection each turn.
-func (ge *GoalEngine) CheckLock(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, log *slog.Logger) (locks.GoalLock, []domain.Mutation) {
-	log.Info("checking goal lock")
-	if faction.ActiveGoal == nil {
-		return locks.GoalLock{Type: locks.LockNone}, nil
+// New compiles every goal in the rulebook. A goal whose parts name something the
+// engine cannot run is an error, not a goal that does nothing.
+func New(rulebook *rulebook.Rulebook, log *slog.Logger) (*GoalEngine, error) {
+	goalEngine := &GoalEngine{goals: make(map[string]*compiledGoal, len(rulebook.Goals)), log: log}
+	for _, goalID := range slices.Sorted(maps.Keys(rulebook.Goals)) {
+		compiled, err := compile(rulebook.Goals[goalID])
+		if err != nil {
+			return nil, fmt.Errorf("goal %q: %w", goalID, err)
+		}
+		goalEngine.goals[goalID] = compiled
 	}
-	handler, ok := ge.handlers[faction.ActiveGoal.GoalID]
-	if !ok {
-		// Data-only goal: present in goals.toml, no Go handler registered. Intentional.
-		return locks.GoalLock{Type: locks.LockNone}, nil
-	}
-	lock, mutations := handler.CheckLock(faction, factionState, rulebook)
-	log.Info("goal lock", "type", lock.Type, "mutations", len(mutations))
-	return lock, mutations
+	return goalEngine, nil
 }
 
-// UpdateProgress inspects the acting faction's mutation list for goal-relevant
-// events and returns supplemental mutations if the goal advances or completes.
-// Must be called before MutationEngine.Apply so destructive mutations have not
-// yet fired.
-func (ge *GoalEngine) UpdateProgress(
+// UpdateProgress reads a batch for the acting faction's active goal and returns
+// the goal mutations it causes. It must be called before MutationEngine.Apply.
+func (goalEngine *GoalEngine) UpdateProgress(
 	actingFactionID string,
 	mutations []domain.Mutation,
 	factionState *state.FactionState,
 	rulebook *rulebook.Rulebook,
-	index *world.Index,
 	log *slog.Logger,
 ) []domain.Mutation {
 	actingFaction, ok := factionState.Factions[actingFactionID]
 	if !ok || actingFaction.ActiveGoal == nil {
 		return nil
 	}
-	handler, ok := ge.handlers[actingFaction.ActiveGoal.GoalID]
+	compiled, ok := goalEngine.goals[actingFaction.ActiveGoal.GoalID]
 	if !ok {
-		// Data-only goal: present in goals.toml, no Go handler registered. Intentional.
+		// deliberate: a held goal the rulebook does not know is skipped, not an error, because an older save can hold one (Decision 10).
+		log.Warn("faction holds an unknown goal", "faction", actingFactionID, "goal", actingFaction.ActiveGoal.GoalID)
 		return nil
 	}
-	return handler.UpdateProgress(actingFaction, mutations, factionState, rulebook, index)
+	return compiled.evaluate(evalContext{
+		faction:      actingFaction,
+		batch:        mutations,
+		factionState: factionState,
+		rulebook:     rulebook,
+	})
 }

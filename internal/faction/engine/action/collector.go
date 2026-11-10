@@ -32,8 +32,6 @@ type Collector interface {
 	SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, rulebook *rulebook.Rulebook) ([]domain.AbilityHolder, error)
 	ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error)
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
-	SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
-	SelectChangeHomeworldTarget(faction *domain.Faction, factionState *state.FactionState) (string, error)
 }
 
 // RepairOrder describes a single asset repair instruction.

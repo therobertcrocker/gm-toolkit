@@ -30,7 +30,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				Homeworld: domain.Location{WorldID: "Tartarus"},
 				Tags:      []string{"SWN-T-001"},
 				ActiveGoal: &domain.ActiveGoal{
-					GoalID: "G-001",
+					GoalID: "CORE-G-001",
 				},
 				Assets: map[string]*domain.Asset{
 					"iron-collective-asset-0": {
@@ -143,7 +143,7 @@ func TestSaveWritesLocationsInline(t *testing.T) {
 				Name:       "Ashfall",
 				Homeworld:  mireholt,
 				Tags:       []string{"SWN-T-001"},
-				ActiveGoal: &domain.ActiveGoal{GoalID: "G-004", TargetWorld: awkward},
+				ActiveGoal: &domain.ActiveGoal{GoalID: "CORE-G-004"},
 				Assets: map[string]*domain.Asset{
 					"ashfall-SWN-F1-001-1": {
 						ID:           "ashfall-SWN-F1-001-1",

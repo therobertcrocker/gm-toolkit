@@ -723,9 +723,9 @@ func TestConvertEffectFilters_TechLevels(t *testing.T) {
 }
 
 func TestConvertEffectFilters_Goal(t *testing.T) {
-	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", Goal: "G-004"})
-	if err != nil || filters.Goal != "G-004" {
-		t.Errorf("filters = %+v, err = %v; want goal G-004", filters, err)
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", Goal: "CORE-G-004"})
+	if err != nil || filters.Goal != "CORE-G-004" {
+		t.Errorf("filters = %+v, err = %v; want goal CORE-G-004", filters, err)
 	}
 	if !reflect.DeepEqual(filters.Used(), []domain.EffectFilterName{domain.FilterGoal}) {
 		t.Errorf("Used() = %v, want [goal]", filters.Used())

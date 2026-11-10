@@ -92,17 +92,43 @@ Abandoning a goal costs the faction that turn's Coin income and they may take no
 
 | Goal | Completion Condition | Difficulty |
 |------|---------------------|------------|
-| Military Conquest | Destroy Force assets of rivals equal to your Force rating | half assets destroyed |
-| Commercial Expansion | Destroy Wealth assets of rivals equal to your Wealth rating | half assets destroyed |
-| Intelligence Coup | Destroy Cunning assets of rivals equal to your Cunning rating | half assets destroyed |
-| Planetary Seizure | Take control of a planet, becoming its government | half avg of ruling faction's F/C/W (min 1) |
+| Military Conquest | Destroy Force assets of rivals equal to your Force rating | half assets destroyed, rounded up |
+| Commercial Expansion | Destroy Wealth assets of rivals equal to your Wealth rating | half assets destroyed, rounded up |
+| Intelligence Coup | Destroy Cunning assets of rivals equal to your Cunning rating | half assets destroyed, rounded up |
+| Planetary Seizure | Take control of a planet, becoming its government | half avg of the resisting ruler's F/C/W, rounded up (min 1); 1 if no faction resisted |
 | Expand Influence | Plant a Base of Influence on a new planet | 1, +1 if contested |
 | Blood the Enemy | Inflict HP damage on enemy assets/bases equal to total F+C+W | 2 |
 | Peaceable Kingdom | Don't take an Attack action for four turns | 1 |
-| Destroy the Foe | Destroy a rival faction | 1 + avg of target faction's F/C/W |
+| Destroy the Foe | Destroy a rival faction | 1 + avg of target faction's F/C/W, rounded up |
 | Inside Enemy Territory | Have Stealthed assets on worlds with other governments equal to Cunning score (assets already stealthed when this goal is adopted don't count) | 2 |
 | Invincible Valor | Destroy a Force asset with min_rating higher than your Force rating | 2 |
 | Wealth of Worlds | Spend Coin equal to 4× Wealth rating on bribes (lost); Wealth must increase before selecting again | 2 |
+
+### Goal Rulings
+
+The book leaves these points open. The engine reads them as follows.
+
+- **Rounding** — every difficulty that divides rounds up. Three kills pay 2 XP. A
+  resisting ruler at Force 3, Cunning 4, Wealth 4 pays 2 for a Planetary Seizure and
+  1 + 4 for Destroy the Foe.
+- **What counts as destroying or damaging** — any kill or damage the faction
+  causes: an attack, a counterattack, an ability or an asset's special effect.
+- **Bases** — damage to any rival Base counts for Blood the Enemy, the homeworld
+  Base included. It counts once, although the Base and the faction both lose the
+  hit points.
+- **Planetary Seizure** — the previous ruler resisted when it had an unstealthed
+  asset on the world as the seizure began. Stealthed assets are not resistance. With
+  no resisting ruler, and on a world with no faction ruler, the difficulty is 1.
+- **Expand Influence** — the attempt is contested when a rival asset or Base is on
+  the world.
+- **Peaceable Kingdom** — a turn counts when the faction takes an action that is
+  not Attack. An Attack resets the count even if every attack misses. A turn with
+  no action neither counts nor resets.
+- **Destroy the Foe** — the goal completes only when the faction itself lands the
+  blow that takes the target to 0 hit points.
+- **Inside Enemy Territory** — the goal counts the stealthed assets the faction
+  holds at one time on worlds a rival governs, or on a rival's homeworld that has no
+  faction government. An asset that loses stealth or leaves stops counting.
 
 ---
 

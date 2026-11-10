@@ -6,7 +6,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
@@ -145,12 +144,6 @@ func (SmokeActionCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.Ass
 func (SmokeActionCollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
 	return nil, 0, action.ErrActionUnavailable
 }
-func (SmokeActionCollector) SelectSeizeTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
-	return "", action.ErrActionUnavailable
-}
-func (SmokeActionCollector) SelectChangeHomeworldTarget(_ *domain.Faction, _ *state.FactionState) (string, error) {
-	return "", action.ErrActionUnavailable
-}
 func (SmokeActionCollector) SelectPurchaseEnablerAsset(_ string, _ []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
 	return nil, action.ErrActionUnavailable
 }
@@ -171,9 +164,6 @@ func (o *SmokeObserver) OnFactionTurnStarted(faction *domain.Faction) {
 }
 func (o *SmokeObserver) OnFactionSkipped(faction *domain.Faction) {
 	o.log.Info("EVT FactionSkipped", "faction", faction.ID)
-}
-func (o *SmokeObserver) OnGoalLockApplied(faction *domain.Faction, lock locks.GoalLock, mutations []domain.Mutation) {
-	o.log.Info("EVT GoalLockApplied", "faction", faction.ID, "lock", lock.Type, "mutations", len(mutations))
 }
 func (o *SmokeObserver) OnBookkeepingApplied(faction *domain.Faction, result turn.BookkeepingResult, mutations []domain.Mutation) {
 	o.log.Info("EVT BookkeepingApplied", "faction", faction.ID, "income_wealth", result.WealthIncome, "mutations", len(mutations))

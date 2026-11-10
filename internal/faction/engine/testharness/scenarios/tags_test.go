@@ -361,31 +361,6 @@ func TestSecretive_PurchaseStartsStealthed(t *testing.T) {
 	testharness.CheckStep(t, "asset_stealth_applied(cause=apply_stealth) in history", found, "no asset_stealth_applied found")
 }
 
-// --- scenario N+6: Deep Rooted tag — lost when the homeworld changes ---
-
-func TestDeepRooted_LostOnHomeworldChange(t *testing.T) {
-	h := testharness.NewHarness(t)
-	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
-	alpha.Tags = []string{"SWN-T-002"}
-	alpha.ActiveGoal = &domain.ActiveGoal{GoalID: "G-012", TargetWorld: domain.Location{WorldID: "Krylos"}, TurnsRemaining: 1}
-	h.Collector.SelectActionFn = skipAction
-
-	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
-		t.Fatalf("Turn.Start: %v", err)
-	}
-	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
-		t.Fatalf("RunCycle: %v", err)
-	}
-
-	testharness.CheckStep(t, "alpha moved home to Krylos", alpha.Homeworld.WorldID == "Krylos",
-		fmt.Sprintf("alpha.Homeworld = %q, want Krylos", alpha.Homeworld.WorldID))
-	testharness.CheckStep(t, "Deep Rooted is gone", !alpha.HasTag("SWN-T-002"),
-		fmt.Sprintf("alpha.Tags = %v, want no SWN-T-002", alpha.Tags))
-	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
-	_, found := testharness.FindMutationByTypeAndCause(records, "tag_removed", "remove_tag")
-	testharness.CheckStep(t, "tag_removed(cause=remove_tag) in history", found, "no tag_removed found")
-}
-
 // --- scenario N+7: Exchange Consulate tag — bonus XP on Peaceable Kingdom ---
 
 func TestExchangeConsulate_BonusXPOnPeaceableKingdom(t *testing.T) {
@@ -403,7 +378,7 @@ func TestExchangeConsulate_BonusXPOnPeaceableKingdom(t *testing.T) {
 			alpha := h.AddFaction("alpha", "Tartarus", 5, 3, 2)
 			alpha.Tags = []string{"SWN-T-004"}
 			alpha.Coin = 20
-			alpha.ActiveGoal = &domain.ActiveGoal{GoalID: "G-007", Progress: 3}
+			alpha.ActiveGoal = &domain.ActiveGoal{GoalID: "CORE-G-007", Progress: 3}
 			xpBefore := alpha.XP
 			scriptPurchase(t, h, alpha, testharness.DefFranchise)
 			h.Engine.Rand = &dicetest.Sequence{Values: []int{tc.roll}}

@@ -43,8 +43,6 @@ func eventHeader(msg adapter.ObserverEventMsg) (string, []domain.Mutation) {
 		return factionHeader(msg.Payload.(*domain.Faction).Name, "turn completed"), nil
 	case adapter.EvtStatRaiseSkipped:
 		return factionHeader(msg.Payload.(*domain.Faction).Name, "stat raise skipped"), nil
-	case adapter.EvtGoalLockApplied:
-		return phaseHeader("goal-lock applied"), msg.Payload.(adapter.GoalLockAppliedPayload).Mutations
 	case adapter.EvtBookkeepingApplied:
 		return phaseHeader("bookkeeping applied"), msg.Payload.(adapter.BookkeepingAppliedPayload).Mutations
 	case adapter.EvtStatRaiseApplied:
@@ -187,7 +185,7 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("asset %s → %s", mut.AssetID, mut.ToLocation.WorldID), true
 	default:
 		// Folded as bookkeeping noise or redundant with a surfaced line:
-		// GoalTurnsTick, GoalProgressed, GoalInitiated, GoalPhaseAdvanced,
+		// ActionTaken (the header names the action), GoalProgressed,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
 		// XPSpent, MovementOrderProgressed, InfluenceDelta, TagAdded,
 		// TagRemoved.

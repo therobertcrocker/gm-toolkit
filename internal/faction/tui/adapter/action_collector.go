@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -17,8 +16,8 @@ import (
 // actionCollector is the real, channel-backed action.Collector. Each method
 // either forwards engine-supplied candidates or derives them (Decision 3), packs
 // a payload, and blocks on the shared ask round-trip. The recoverable
-// action.ErrActionUnavailable sentinel remains a classified backstop, but with all
-// 12 actions wired no method returns it; the SelectAction disable-set is the guard.
+// action.ErrActionUnavailable sentinel remains a classified backstop, but with every
+// action wired no method returns it; the SelectAction disable-set is the guard.
 type actionCollector struct{ adapter *Adapter }
 
 func newActionCollector(a *Adapter) *actionCollector { return &actionCollector{adapter: a} }
@@ -452,78 +451,6 @@ func deriveBribeTargets(factionState *state.FactionState, factionID string) ([]*
 	}
 	sort.Slice(bases, func(i, j int) bool { return bases[i].ID < bases[j].ID })
 	return bases, names
-}
-func (a *actionCollector) SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	worlds := deriveContestedWorlds(faction, factionState, a.adapter.engine.World.Index)
-	raw, err := a.adapter.ask(AskSelectSeizeTarget, faction, SelectSeizeTargetPayload{
-		Worlds:     worlds,
-		WorldNames: a.adapter.worldNames(worlds),
-	})
-	if err != nil {
-		return "", err
-	}
-	return replyAs[string]("SelectSeizeTarget", raw)
-}
-
-// deriveContestedWorlds ports seizePlanetTargetWorlds (seize_planet.go): worlds
-// where the faction has at least one unstealthed asset and some rival also has an
-// unstealthed asset there, minus the worlds the faction already governs. Reads the
-// engine's world Index — quiescent because the engine goroutine is parked on this
-// ask's reply, and the same source the engine's own Validate consulted to enable the
-// action.
-func deriveContestedWorlds(faction *domain.Faction, factionState *state.FactionState, index *world.Index) []string {
-	factionWorlds := map[string]struct{}{}
-	for _, asset := range faction.Assets {
-		if !asset.Stealthy && factionState.Ruler(asset.Location.WorldID) != faction.ID {
-			factionWorlds[asset.Location.WorldID] = struct{}{}
-		}
-	}
-	contested := make([]string, 0, len(factionWorlds))
-	for worldID := range factionWorlds {
-		for _, asset := range index.AssetsByLocation[worldID] {
-			if asset.OwnerID != faction.ID && !asset.Stealthy {
-				contested = append(contested, worldID)
-				break
-			}
-		}
-	}
-	sort.Strings(contested)
-	return contested
-}
-func (a *actionCollector) SelectChangeHomeworldTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	worlds := deriveHomeworldTargets(faction, a.adapter.engine.World, a.adapter.engine.Rulebook)
-	raw, err := a.adapter.ask(AskSelectChangeHomeworldTarget, faction, SelectChangeHomeworldTargetPayload{
-		Worlds:     worlds,
-		WorldNames: a.adapter.worldNames(worlds),
-	})
-	if err != nil {
-		return "", err
-	}
-	return replyAs[string]("SelectChangeHomeworldTarget", raw)
-}
-
-// deriveHomeworldTargets ports changeHomeworldTargets (change_homeworld.go):
-// non-homeworld base worlds reachable from the current homeworld at the default
-// drift rating (DriftCost(3)). Excludes the current homeworld and any world the
-// router can't path to.
-func deriveHomeworldTargets(faction *domain.Faction, worldEngine *world.WorldEngine, rb *rulebook.Rulebook) []string {
-	crossingCost := rb.DriftCost(3)
-	var targets []string
-	for _, base := range faction.Bases {
-		if base.Location.WorldID == faction.Homeworld.WorldID {
-			continue
-		}
-		target, ok := worldEngine.Location(base.Location.WorldID)
-		if !ok {
-			continue
-		}
-		if _, err := worldEngine.Distance(faction.Homeworld.RegionHex, target.RegionHex(), crossingCost); err != nil {
-			continue
-		}
-		targets = append(targets, base.Location.WorldID)
-	}
-	sort.Strings(targets)
-	return targets
 }
 
 func (a *actionCollector) SelectPurchaseEnablerAsset(world string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {

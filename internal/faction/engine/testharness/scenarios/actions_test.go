@@ -1,6 +1,7 @@
 package scenarios
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -81,6 +82,69 @@ func TestRunCycle_BuyAsset_ReadyNextCycle(t *testing.T) {
 
 	if newAsset != nil {
 		testharness.CheckStep(t, "new asset Ready=true after second cycle start", newAsset.Ready, "Ready should flip true at Turn.Start")
+	}
+}
+
+func TestRunCycle_ActionBatchOpensWithActionTaken(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 4, 3, 2)
+	alpha.CurrentHP = 10
+	h.AddFaction("beta", "Tartarus", 4, 3, 2)
+
+	h.Collector.SelectActionFn = func(faction *domain.Faction, available []action.Action) (action.Action, error) {
+		if faction.ID != "alpha" {
+			return nil, nil
+		}
+		for _, candidate := range available {
+			if candidate.Name() == "Repair Faction" {
+				return candidate, nil
+			}
+		}
+		t.Fatal("Repair Faction not available")
+		return nil, nil
+	}
+
+	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	if err := h.Engine.RunCycle(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	records := testharness.ReadHistory(t, h.Paths.HistoryPath)
+
+	var actionRecord *domain.EventRecord
+	for index := range records {
+		for _, mutation := range records[index].Mutations {
+			if mutation.Type == "faction_hp_delta" && records[index].FactionID == "alpha" {
+				actionRecord = &records[index]
+			}
+		}
+	}
+	if actionRecord == nil {
+		t.Fatal("no alpha record holds the repair's faction_hp_delta")
+	}
+	first := actionRecord.Mutations[0]
+	if first.Type != "action_taken" {
+		t.Fatalf("first mutation of alpha's action record = %s, want action_taken", first.Type)
+	}
+	var taken domain.ActionTaken
+	if err := json.Unmarshal(first.Payload, &taken); err != nil {
+		t.Fatalf("unmarshal action_taken: %v", err)
+	}
+	if taken.Action != "Repair Faction" {
+		t.Errorf("action_taken Action = %q, want %q", taken.Action, "Repair Faction")
+	}
+
+	for _, record := range records {
+		if record.FactionID != "beta" {
+			continue
+		}
+		for _, mutation := range record.Mutations {
+			if mutation.Type == "action_taken" {
+				t.Errorf("beta passed, but its record holds an action_taken: %s", mutation.Payload)
+			}
+		}
 	}
 }
 
@@ -193,7 +257,7 @@ func TestRunCycle_GoalCompleted_MilitaryConquest(t *testing.T) {
 	h.AddFaction("beta", "Tartarus", 2, 2, 2)
 
 	// Progress=1, Force=1 → one Force kill pushes newProgress=2 ≥ Force=1 → complete (xp=2/2=1).
-	alpha.ActiveGoal = &domain.ActiveGoal{GoalID: "G-001", Progress: 1}
+	alpha.ActiveGoal = &domain.ActiveGoal{GoalID: "CORE-G-001", Progress: 1}
 
 	// Roll sequence: [attack, defense, damage]
 	// attack:  10 → attackRoll = 10+force(1) = 11

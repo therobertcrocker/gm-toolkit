@@ -12,8 +12,6 @@ var ImplementedActions = map[string]bool{
 	"Refit Asset":       true,
 	"Repair Asset":      true,
 	"Bribe":             true,
-	"Seize Planet":      true,
-	"Change Homeworld":  true,
 	"Attack":            true,
 	"Expand Influence":  true,
 	"Use Asset Ability": true,

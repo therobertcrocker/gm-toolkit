@@ -38,6 +38,21 @@ func TestNewWithRulebook_ValidatesTagEffects(t *testing.T) {
 	}
 }
 
+func TestNewWithRulebook_RefusesBadGoalData(t *testing.T) {
+	goal := &domain.Goal{
+		ID:        "X-1",
+		Name:      "Bad Goal",
+		Progress:  &domain.GoalProgress{Event: "kill", Amount: "one"},
+		Threshold: &domain.GoalThreshold{Constant: 2},
+		XP:        &domain.GoalXP{Formula: "double"},
+	}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Goals: map[string]*domain.Goal{goal.ID: goal}}
+	_, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler))
+	if err == nil || !strings.Contains(err.Error(), "engine: goal") || !strings.Contains(err.Error(), "unknown formula") {
+		t.Fatalf("got %v, want a goal error that names the unknown formula", err)
+	}
+}
+
 // TestNewWithRulebook_ShippedRulebook catches an authored effects entry that
 // loads but fails registrar validation, which otherwise surfaces only at runtime.
 func TestNewWithRulebook_ShippedRulebook(t *testing.T) {

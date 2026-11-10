@@ -132,30 +132,3 @@ func TestRivalsOnWorld_DeduplicatesMultiAssetFaction(t *testing.T) {
 		t.Errorf("rivalsOnWorld = %v, want exactly one entry for f2", result)
 	}
 }
-
-func TestSeizePlanetTargetWorlds_ReturnsContestedFragments(t *testing.T) {
-	f1Krylos := liveAsset("a1", "f1", "krylos")
-	f1Tartarus := liveAsset("a2", "f1", "tartarus") // no rival here — excluded
-	f2Krylos := liveAsset("a3", "f2", "krylos")
-
-	f1 := &domain.Faction{
-		ID:     "f1",
-		Assets: map[string]*domain.Asset{"a1": f1Krylos, "a2": f1Tartarus},
-	}
-	factionState := &state.FactionState{
-		Factions: map[string]*domain.Faction{
-			"f1": f1,
-			"f2": {ID: "f2", Assets: map[string]*domain.Asset{"a3": f2Krylos}},
-		},
-	}
-
-	result := seizePlanetTargetWorlds(f1, factionState, indexFromState(factionState))
-	if len(result) != 1 || result[0] != "krylos" {
-		t.Errorf("seizePlanetTargetWorlds = %v, want [krylos]", result)
-	}
-
-	factionState.Governments = map[string]string{"krylos": "f1"}
-	if result := seizePlanetTargetWorlds(f1, factionState, indexFromState(factionState)); len(result) != 0 {
-		t.Errorf("seizePlanetTargetWorlds = %v, want none: f1 already governs krylos", result)
-	}
-}

@@ -27,9 +27,11 @@ page that explains it — this list is the trap, not the rationale.
   `FactionState` directly. `MutationEngine.Apply` is the single choke point that
   writes state. If you mutate in a handler, the change escapes history and replay.
   ([effect & mutation → Key Decisions](../architecture/engine/effect-mutation.md#key-decisions).)
-- **Data-only TOML silently skips.** A tag/asset/goal ID with no registered handler
-  is an intentional no-op, not an error — so **add the rulebook entry first**, or
-  your handler is keyed against an ID that never matches and never runs.
+- **Data-only TOML silently skips, except where the data states behavior.** An
+  asset ID with no registered handler is an intentional no-op, not an error — so
+  **add the rulebook entry first**, or your handler is keyed against an ID that
+  never matches and never runs. An `effects` entry or a goal part is stricter: a
+  name the engine cannot run fails engine construction.
   ([the extension pattern](overview.md#the-extension-pattern).)
 - **Explicit deps dodge the engine import cycle.** `RegisterDefaultActions` and the
   registrars take their dependencies (roller, hook registry, world, rulebook) as
@@ -67,7 +69,8 @@ the formatter leaves them as it finds them. (Why: [R.029 exploration](../initiat
   `gates.contest = { … }`. Braces are the one way to nest.
 - **No alignment.** One space each side of `=`. The formatter removes padding.
 - **Key order.** The entry's own keys first, then its parts: `attack`, `transport`,
-  `ability`, `effects`. Inside an effect: `trigger`, `effect`, `filters`, `gates`,
+  `ability`, `effects`. A goal's parts: `start`, `progress`, `reset`, `threshold`,
+  `complete`, `xp`. Inside an effect: `trigger`, `effect`, `filters`, `gates`,
   then the parameter table.
 - **Once a part is inline, all of it is inline.** A later `[assets.X.attack]` header
   cannot add to `attack = { … }`; the loader refuses the file and names the line.
@@ -124,7 +127,7 @@ into `EventRecord`s, and `AssertKinds` / `CountKind` / `FindMutationByCause` /
 `FindMutationType` check that the right mutations landed for the right reasons.
 
 Scenario tests live in `testharness/scenarios/` —
-`full_cycle_test.go`, `hooks_test.go`, `tags_test.go`, `goal_lock_test.go`,
+`full_cycle_test.go`, `hooks_test.go`, `tags_test.go`, `goals_test.go`,
 `transport_lifecycle_test.go`, and kin. The nearest-shaped one is your fixture
 template: copy it, swap in your setup and assertions. The fixture rulebook is the
 real `rulebooks/swn/` at the repo root, composed with `rulebooks/_core/`, so your
@@ -223,27 +226,28 @@ mutation on the trigger.
 
 <br/>
 
-### Implement a goal handler
+### Add a goal
 
 > Shape & why: [goals](../architecture/engine/goals.md)
 
-Make a goal do something to a faction's turn — constrain it, or advance on events.
+A goal is data. Add it with no Go when the existing vocabulary can state its rule.
 
-1. **`engine/goal/goals/<goal>.go`** — implement the `Handler` contract: `GoalID()`,
-   `CheckLock` (start-of-turn lock + time/condition-driven mutations),
-   `UpdateProgress` (post-action, event-driven mutations). Implement whichever
-   beat(s) the goal needs — Change Homeworld is pure `CheckLock`, Military Conquest
-   pure `UpdateProgress`, Planetary Seizure both.
-2. **`engine/goal/goal.go`** — register the handler in `GoalEngine.New`, beside the
-   twelve standard ones.
-3. **rulebook `goals.toml`** — the goal ID must exist there.
+1. **rulebook `goals.toml`** — one entry with `id`, `name`, `description` and its
+   parts. A goal needs `xp`, and exactly one of `threshold` (with `progress`) or
+   `complete`. `start` and `reset` are optional.
+2. **`engine/goal/vocabulary.go`** — only when the rule needs a new word. An event
+   is a row in `events` with the filters and amounts it accepts and a matcher in
+   `events.go`; a count read from state is a row in `measures`; an XP rule is a
+   formula in `xp.go` with its check in `checkXP`.
+3. **`domain/goal.go` and `rulebook/goals.go`** — only for a new filter or key: the
+   field, its name constant, its line in `Used`, and the record field.
 
-> `UpdateProgress` runs **before** `MutationEngine.Apply` — it inspects
-> about-to-be-destroyed entities in live state. Count first, apply after, or the
-> kills are uncountable.
+> A matcher reads the state **before** the batch applies, where an
+> about-to-be-removed asset still exists. A measure reads the state the batch
+> leaves, from a copy.
 
-**Test:** a multi-turn `testharness` run; assert progress increments, lock behavior
-(`LockSkip` / `LockRestrictActions`), and the completion mutation bundle.
+**Test:** a row in `TestCompile_Refuses` for each new check, and an
+`evaluate_test.go` case built from the shipped goal for each new word.
 
 <br/>
 

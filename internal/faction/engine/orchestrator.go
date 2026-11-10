@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
@@ -27,7 +26,6 @@ const (
 	CheckpointBookkeeping  = "bookkeeping"
 	CheckpointMovement     = "movement"
 	CheckpointActionResult = "action_result"
-	CheckpointGoalLocked   = "goal_locked"
 	CheckpointCycleSummary = "cycle_summary"
 )
 
@@ -75,7 +73,7 @@ func (e *Engine) registerCapturedAssets(factionState *state.FactionState, mutati
 }
 
 // RunFactionTurn drives one faction's turn from setup through state save:
-// stat-raise, bookkeeping, movement, goal-lock (gating the action), action.
+// stat-raise, bookkeeping, movement, action.
 // Errors are reported to the observer via OnError and returned to the
 // caller; partial mutations already applied stay applied.
 //
@@ -117,16 +115,7 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 
-	lock, err := e.runGoalLockPhase(faction, factionState, paths, collectors, observer, turnLog)
-	if err != nil {
-		return false, err
-	}
-
-	if lock.Type == locks.LockSkip {
-		return e.finishFactionTurn(factionState, faction, paths, collectors, observer, turnLog)
-	}
-
-	if err := e.runActionPhase(faction, factionState, paths, collectors, observer, lock, turnLog); err != nil {
+	if err := e.runActionPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 	if err := state.Save(paths.StatePath, factionState); err != nil {
@@ -163,66 +152,6 @@ func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer Tur
 
 	observer.OnFactionTurnStarted(faction)
 	return faction, nil
-}
-
-func (e *Engine) runGoalLockPhase(
-	faction *domain.Faction,
-	factionState *state.FactionState,
-	paths *campaigns.Paths,
-	collectors Collectors,
-	observer TurnObserver,
-	turnLog *slog.Logger,
-) (locks.GoalLock, error) {
-	phaseLog := turnLog.With("phase", "goal_lock")
-	logging.PhaseStart(phaseLog, "goal_lock")
-	phaseLog.Info("phase begin")
-
-	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook, phaseLog.With("engine", "goal"))
-	if len(lockMutations) > 0 {
-		var err error
-		// deliberate: reactors read the lock's mutations, not only action and movement batches, because a goal completion or homeworld change is an event a rule reacts to (Effort 3 Decision 6).
-		lockMutations, err = dispatch.MutationReactors(e.Hooks, faction, lockMutations, factionState, e.Rulebook)
-		if err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return lock, nil
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return lock, err
-		}
-	}
-	observer.OnGoalLockApplied(faction, lock, lockMutations)
-
-	if len(lockMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, lockMutations, paths, phaseLog); err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return lock, nil
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return lock, err
-		}
-	}
-
-	if lock.Type == locks.LockSkip {
-		if err := collectors.Phase.AwaitCheckpoint(CheckpointGoalLocked); err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return lock, nil
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return lock, err
-		}
-	}
-
-	phaseLog.Info("phase end", "lock", lock.Type)
-	return lock, nil
 }
 
 func (e *Engine) runBookkeepingPhase(
@@ -494,7 +423,6 @@ func (e *Engine) runActionPhase(
 	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
-	lock locks.GoalLock,
 	turnLog *slog.Logger,
 ) error {
 	phaseLog := turnLog.With("phase", "action")
@@ -503,9 +431,6 @@ func (e *Engine) runActionPhase(
 
 	actionLog := phaseLog.With("engine", "action")
 	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collectors.Action, actionLog)
-	if lock.Type == locks.LockRestrictActions {
-		available = filterAllowedActions(available, lock.AllowedActions)
-	}
 
 	selectedAction, err := collectors.Phase.SelectAction(faction, available)
 	if err != nil {
@@ -538,11 +463,9 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 
-	var worldIndex *world.Index
-	if e.World == nil {
-		return ErrWorldEngineUnavailable
-	}
-	worldIndex = e.World.Index
+	// deliberate: the record opens the batch, and a pass or a failed action leaves none, because goals count only an action the faction took (D-16, D-19).
+	actionMutations = append([]domain.Mutation{domain.ActionTaken{FactionID: faction.ID, Action: selectedAction.Name()}}, actionMutations...)
+
 	actionMutations = append(actionMutations, e.firePurchaseEffects(faction, actionMutations, factionState)...)
 
 	combined, err := dispatch.MutationReactors(e.Hooks, faction, actionMutations, factionState, e.Rulebook)
@@ -557,7 +480,7 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
-	goalMutations := e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
+	goalMutations := e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, phaseLog.With("engine", "goal"))
 	if len(goalMutations) > 0 {
 		// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
 		goalMutations, err = dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
@@ -683,9 +606,6 @@ func (e *Engine) applyAndRecord(
 	return nil
 }
 
-// filterAllowedActions narrows a list of available actions to those whose
-// Name() appears in allowed. Used when a goal lock restricts the action set
-// (e.g. Planetary Seizure Phase 1 → Attack only).
 // firePurchaseEffects runs the on_purchase effects of every asset the action
 // bought, in batch order. The asset is the copy the AssetAdded carries, because
 // it is not in state until the batch applies.
@@ -700,23 +620,6 @@ func (e *Engine) firePurchaseEffects(faction *domain.Faction, actionMutations []
 		mutations = append(mutations, e.Effect.FirePurchase(faction, &added.Asset, factionState, e.Rulebook, e.Hooks, e.Rand)...)
 	}
 	return mutations
-}
-
-func filterAllowedActions(available []action.Action, allowed []string) []action.Action {
-	if len(allowed) == 0 {
-		return nil
-	}
-	allowedSet := make(map[string]bool, len(allowed))
-	for _, name := range allowed {
-		allowedSet[name] = true
-	}
-	filtered := make([]action.Action, 0, len(available))
-	for _, a := range available {
-		if allowedSet[a.Name()] {
-			filtered = append(filtered, a)
-		}
-	}
-	return filtered
 }
 
 func eligibleStatRaises(faction *domain.Faction) []domain.FactionStat {

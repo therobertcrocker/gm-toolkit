@@ -298,14 +298,6 @@ var askEntries = map[adapter.AskKind]askEntry{
 		p := msg.Payload.(adapter.SelectBribeTargetPayload)
 		return overlay.NewBribe(p.Bases, p.OwnerNames, p.Coin)
 	}},
-	adapter.AskSelectSeizeTarget: {"Seize Planet", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		p := msg.Payload.(adapter.SelectSeizeTargetPayload)
-		return overlay.NewWorldSelect("Seize which world?", "", p.Worlds, p.WorldNames)
-	}},
-	adapter.AskSelectChangeHomeworldTarget: {"Change Homeworld", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		p := msg.Payload.(adapter.SelectChangeHomeworldTargetPayload)
-		return overlay.NewWorldSelect("New homeworld?", "", p.Worlds, p.WorldNames)
-	}},
 	adapter.AskSelectAttackers: {"Select Attackers", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewSelectAttackers(msg.Payload.(adapter.SelectAttackersPayload).Eligible, m.rulebook)
 	}},

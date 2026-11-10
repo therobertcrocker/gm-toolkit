@@ -3,7 +3,6 @@ package adapter
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -25,8 +24,6 @@ const (
 	AskSelectRefitOrder
 	AskSelectRepairOrders
 	AskSelectBribeTarget
-	AskSelectSeizeTarget
-	AskSelectChangeHomeworldTarget
 	AskSelectAttackers
 	AskSelectDefender
 	AskConfirmRedirectToBase
@@ -68,7 +65,6 @@ type EventKind int
 const (
 	EvtFactionTurnStarted EventKind = iota
 	EvtFactionSkipped
-	EvtGoalLockApplied
 	EvtBookkeepingApplied
 	EvtActionSelected
 	EvtActionResolved
@@ -138,14 +134,6 @@ type SelectBribeTargetPayload struct {
 type BribeReply struct {
 	Base   *domain.Base
 	Amount int
-}
-type SelectSeizeTargetPayload struct {
-	Worlds     []string
-	WorldNames map[string]string // worldID -> display name (adapter-built)
-}
-type SelectChangeHomeworldTargetPayload struct {
-	Worlds     []string
-	WorldNames map[string]string
 }
 type SelectAttackersPayload struct{ Eligible []*domain.Asset }
 type SelectDefenderPayload struct {
@@ -267,10 +255,6 @@ type PostRollCardPayload struct {
 // RollSettledPayload is a settled roll's feed line, in the card's wording.
 type RollSettledPayload struct{ Line string }
 
-type GoalLockAppliedPayload struct {
-	Lock      locks.GoalLock
-	Mutations []domain.Mutation
-}
 type BookkeepingAppliedPayload struct {
 	Result    turn.BookkeepingResult
 	Mutations []domain.Mutation

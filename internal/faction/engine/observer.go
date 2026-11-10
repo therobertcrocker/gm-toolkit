@@ -3,7 +3,6 @@ package engine
 import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -15,7 +14,6 @@ import (
 type TurnObserver interface {
 	OnFactionTurnStarted(faction *domain.Faction)
 	OnFactionSkipped(faction *domain.Faction)
-	OnGoalLockApplied(faction *domain.Faction, lock locks.GoalLock, mutations []domain.Mutation)
 	OnBookkeepingApplied(faction *domain.Faction, result turn.BookkeepingResult, mutations []domain.Mutation)
 	OnActionSelected(faction *domain.Faction, selectedAction action.Action)
 	OnActionResolved(faction *domain.Faction, selectedAction action.Action, mutations []domain.Mutation)

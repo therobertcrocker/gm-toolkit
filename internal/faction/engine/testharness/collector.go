@@ -19,37 +19,35 @@ var _ hooks.Collector = (*ScriptedCollector)(nil)
 //
 // AwaitCheckpoint always returns nil so headless tests do not block.
 type ScriptedCollector struct {
-	SelectAssetFn                 func([]*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
-	SelectAssetToLoseFn           func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
-	SelectRepairOrdersFn          func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]action.RepairOrder, error)
-	SelectBuyOrderFn              func(map[string][]*domain.AssetDefinition) (action.BuyOrder, error)
-	SelectRefitOrderFn            func([]action.RefitOption, *rulebook.Rulebook) (action.RefitOrder, error)
-	SelectAttackersFn             func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
-	SelectDefenderFn              func(*domain.Asset, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
-	ConfirmRedirectToBaseFn       func(*domain.Faction, *domain.Base, int) (bool, error)
-	ConfirmCounterstrikeFn        func(*domain.Faction, *domain.Asset, *domain.Asset) (bool, error)
-	ConfirmPaymentFn              func(hooks.PaymentOffer) (bool, error)
-	ConfirmSacrificeFn            func(hooks.SacrificeOffer) (bool, error)
-	RequestPermissionFn           func(hooks.PermissionRequest) (bool, error)
-	ConfirmPermissionContestFn    func(hooks.PermissionContestOffer) (bool, error)
-	SelectExpandInfluenceOrderFn  func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
-	ConfirmRivalFreeAttackFn      func(*domain.Faction, int, int) (bool, error)
-	SelectBaseAttackersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
-	SelectAbilityHoldersFn        func(*domain.Faction, []domain.AbilityHolder, *rulebook.Rulebook) ([]domain.AbilityHolder, error)
-	SelectMoveDestinationFn       func(*domain.Asset, []string) (string, error)
-	SelectAbilityTargetFn         func(domain.AbilityHolder, domain.AbilityStep, domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
-	SelectRelocateOrdersFn        func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
-	ConfirmAbilityAppliedFn       func(*domain.Asset, *domain.AssetDefinition) (bool, error)
-	SelectBribeTargetFn           func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
-	SelectSeizeTargetFn           func(*domain.Faction, *state.FactionState) (string, error)
-	SelectActionFn                func(*domain.Faction, []action.Action) (action.Action, error)
-	SelectModifiersFn             func(hooks.PreRollCard) []hooks.ModifierOffer
-	SelectRerollFn                func(hooks.PostRollCard) *hooks.RerollDirective
-	SelectStatRaiseFn             func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
-	SelectMovementDecisionsFn     func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
-	SelectTransportCargoFn        func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
-	SelectChangeHomeworldTargetFn func(*domain.Faction, *state.FactionState) (string, error)
-	SelectPurchaseEnablerAssetFn  func(string, []action.PurchaseEnablerOption) (*domain.AssetDefinition, error)
+	SelectAssetFn                func([]*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
+	SelectAssetToLoseFn          func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
+	SelectRepairOrdersFn         func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]action.RepairOrder, error)
+	SelectBuyOrderFn             func(map[string][]*domain.AssetDefinition) (action.BuyOrder, error)
+	SelectRefitOrderFn           func([]action.RefitOption, *rulebook.Rulebook) (action.RefitOrder, error)
+	SelectAttackersFn            func([]*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
+	SelectDefenderFn             func(*domain.Asset, []*domain.Asset, *rulebook.Rulebook) (*domain.Asset, error)
+	ConfirmRedirectToBaseFn      func(*domain.Faction, *domain.Base, int) (bool, error)
+	ConfirmCounterstrikeFn       func(*domain.Faction, *domain.Asset, *domain.Asset) (bool, error)
+	ConfirmPaymentFn             func(hooks.PaymentOffer) (bool, error)
+	ConfirmSacrificeFn           func(hooks.SacrificeOffer) (bool, error)
+	RequestPermissionFn          func(hooks.PermissionRequest) (bool, error)
+	ConfirmPermissionContestFn   func(hooks.PermissionContestOffer) (bool, error)
+	SelectExpandInfluenceOrderFn func(*domain.Faction, *state.FactionState, []string) (action.ExpandInfluenceOrder, error)
+	ConfirmRivalFreeAttackFn     func(*domain.Faction, int, int) (bool, error)
+	SelectBaseAttackersFn        func(*domain.Faction, []*domain.Asset, *rulebook.Rulebook) ([]*domain.Asset, error)
+	SelectAbilityHoldersFn       func(*domain.Faction, []domain.AbilityHolder, *rulebook.Rulebook) ([]domain.AbilityHolder, error)
+	SelectMoveDestinationFn      func(*domain.Asset, []string) (string, error)
+	SelectAbilityTargetFn        func(domain.AbilityHolder, domain.AbilityStep, domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
+	SelectRelocateOrdersFn       func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
+	ConfirmAbilityAppliedFn      func(*domain.Asset, *domain.AssetDefinition) (bool, error)
+	SelectBribeTargetFn          func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
+	SelectActionFn               func(*domain.Faction, []action.Action) (action.Action, error)
+	SelectModifiersFn            func(hooks.PreRollCard) []hooks.ModifierOffer
+	SelectRerollFn               func(hooks.PostRollCard) *hooks.RerollDirective
+	SelectStatRaiseFn            func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
+	SelectMovementDecisionsFn    func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
+	SelectTransportCargoFn       func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
+	SelectPurchaseEnablerAssetFn func(string, []action.PurchaseEnablerOption) (*domain.AssetDefinition, error)
 }
 
 func (c *ScriptedCollector) SelectAsset(assets []*domain.Asset, rulebook *rulebook.Rulebook) (*domain.Asset, error) {
@@ -217,13 +215,6 @@ func (c *ScriptedCollector) SelectBribeTarget(faction *domain.Faction, factionSt
 	return nil, 0, nil
 }
 
-func (c *ScriptedCollector) SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	if c.SelectSeizeTargetFn != nil {
-		return c.SelectSeizeTargetFn(faction, factionState)
-	}
-	return "", nil
-}
-
 func (c *ScriptedCollector) SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error) {
 	if c.SelectActionFn != nil {
 		return c.SelectActionFn(faction, available)
@@ -267,13 +258,6 @@ func (c *ScriptedCollector) SelectMovementDecisions(faction *domain.Faction, eli
 		return c.SelectMovementDecisionsFn(faction, eligible)
 	}
 	return nil, nil
-}
-
-func (c *ScriptedCollector) SelectChangeHomeworldTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	if c.SelectChangeHomeworldTargetFn != nil {
-		return c.SelectChangeHomeworldTargetFn(faction, factionState)
-	}
-	return "", nil
 }
 
 func (c *ScriptedCollector) SelectPurchaseEnablerAsset(world string, candidates []action.PurchaseEnablerOption) (*domain.AssetDefinition, error) {
