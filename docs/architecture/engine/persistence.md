@@ -71,6 +71,10 @@ pause/resume state from the [turn pipeline](turn-pipeline.md)). It is one TOML f
   `state.seed.toml` beside it *if one doesn't already exist* — a one-time
   snapshot of the starting state that `reset-campaign.sh` restores. Every
   subsequent save leaves the seed untouched.
+- **A location writes itself on one line.** `domain.Location` and
+  `spatial.RegionHex` implement `toml.Marshaler`, so the encoder writes each
+  location as one inline table (`location = { world_id = …, region_hex = { … } }`),
+  not as three nested headers. `[[bases]]` and `current_order` keep their headers.
 
 ### Atomic faction CRUD
 
@@ -127,6 +131,20 @@ because they live under `state/`, but their logic lives on those pages.
   rules and the current snapshot; line-delimited JSON suits an ever-growing
   append-only event log. The formats match their access patterns. (Frozen log
   1–18.)
+- **Hand-written rulebook files are TOML 1.1, one block per entry.** An asset, tag
+  or goal has one header, and every nested part (`attack`, `ability`, `effects`,
+  `filters`, `gates`) is an inline table under it, so a GM reads and copies an
+  entry as one unit. The loader needs no code for it: `BurntSushi/toml` reads 1.1,
+  1.0 files still load, and `refuseUnknownKeys` works the same inside braces. The
+  house style lives in `docs/contributing/engine.md`; TomlSmith's formatter does its
+  layout. Rejected: a header per effect (each repeats the entry's key, so a typo
+  makes a new, broken entry). (`R.029` exploration H-2; plan Decisions 1 and 4.)
+- **State stays encoder-written TOML; small types write themselves inline.** The
+  encoder cannot write 1.1, so `Location` and `RegionHex` implement `MarshalTOML`
+  and write one-line inline tables, valid in 1.0 and 1.1. Rejected: a state writer
+  of our own (a few hundred lines on the save path) and another format for state
+  (it would reverse the TOML decision and hurt scenario authors, who edit state by
+  hand). (`R.029` exploration S-1, S-2, S-3; plan Decision 9.)
 - **The government record holds which worlds a faction rules; the government tag
   says whether it rules any.** `FactionState.Governments` maps a world ID to the
   ruling faction's ID. A world with no entry is independent, and the GM answers

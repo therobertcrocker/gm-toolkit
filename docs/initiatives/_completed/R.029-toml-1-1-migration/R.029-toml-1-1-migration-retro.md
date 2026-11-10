@@ -106,13 +106,13 @@ Yes.
 |---|---|---|
 | Delivered | 5 | Every part of H-2, S-1 and the Reach leans landed; every file decodes identical |
 | Plan held | 4 | No ratified decision reversed in execution; 6 Decision Record rows, all drift in the plan's shape and reach lists |
-| Rework | | |
-| Fit | 5 | Keeps TOML for state and the strict loader; docs moved on the branch; one provenance tag in two comments |
+| Rework | 5 | No fix commits during execution; the review found 6, all low, and the 2 picked were a comment tag and one overclaiming sentence |
+| Fit | 5 | Keeps TOML for state and the strict loader; docs moved on the branch; one provenance tag in two comments, fixed at close |
 | Simplicity | 5 | Two small methods and data rewrites; no new code path at load |
-| **Total** | | |
+| **Total** | **24 / 25** | Mean 4.8: a small, well-gated refactor, held back only by the plan's incomplete shape lists |
 
 **Verdict:** A clean data refactor: every file loads the same, reads as one block per
-entry, and the formatter checks the style for free.
+entry, and the formatter checks the layout for free.
 
 **What surprised me:** the formatter decided a house-style call (alignment) that the
 exploration had settled the other way, and that was the right outcome.

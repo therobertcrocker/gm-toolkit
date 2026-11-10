@@ -12,7 +12,6 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
 | `A.001.8` | Data-driven goals | `feature` | In-Progress | Goal vocabulary of six parts (start, progress, reset, threshold, complete, XP), goals read every batch, a turn-start goal pick in the engine and TUI, the eleven rules goals as data, prefixed goal IDs (`CORE-G-001`); Seize Planet and Change Homeworld go to `F.040`; absorbs `B.001`, `B.005`, `B.013`, `B.039`–`B.041` and the goal half of `R.004`; goal parts written as inline tables in `R.029`'s house style (amends D-17); Discovery done, three efforts |
-| `R.029` | Migrate data files to TOML 1.1 | `refactor` | In-Progress | Hand-written data files move to TOML 1.1 multi-line inline tables, one header per entry; `state.toml` keeps TOML and the encoder but drops its nested location headers (`MarshalTOML`); runs on `feature/data-driven-goals` beside `A.001.8` and amends its D-17; exploration done, Plan next |
 
 
 ---
@@ -271,20 +270,4 @@ This section contains detailed write-ups for each planned initiative, including 
 **Trigger** — ready
 
 **Status** — In-Progress — promoted 2026-11-05 from Up Next on Robert's call. Discovery signed off 2026-11-06; Plan is next.
-
-<br />
-
-## R.029 — Migrate Data Files to TOML 1.1
-
-**Refactor**, run on `feature/data-driven-goals` beside `A.001.8` (Robert's call), because it bears on that initiative's goal data shape.
-
-**Problem** — TOML 1.0 keeps an inline table on one line, so every nested part of an entry (`attack`, `ability`, `effects`, `filters`, `gates`) needs its own `[header]` or `[[header]]`. One asset spreads across many headers, and the reader rebuilds the nesting in their head. `A.001.8` D-17 chose sub-tables for goal parts and rejected inline tables as hard to read once filters nest; under 1.0 that was the only readable choice.
-
-**Approach** — Write the hand-written files (assets, tags, goals, settings, spatial source, seeds, scenarios) in TOML 1.1, with nested parts as multi-line inline tables and one header per entry. `BurntSushi/toml` v1.6.0 already parses 1.1, and a trial of `cunning_assets.toml` decoded identical (594 to 504 lines, 88 to 24 headers). The machine-written `state.toml` stays TOML and stays with the encoder, which cannot write 1.1; small types such as `Location` write themselves as one-line inline tables through `MarshalTOML`, so state loses its nested headers (exploration S-1, Robert's call). The devcontainer installs TomlSmith (1.1 by default) in place of Even Better TOML, whose last release (0.21.2) is 1.0 only; Tombi is the fallback. A short exploration runs before the plan (Robert's call): run the real loader on a 1.1 file, list the files and their shapes, and settle how the change meets D-17.
-
-**Unlocks** — Data files a GM reads entry by entry; `A.001.8`'s goals and `A.001.5`'s H.A.W.K assets written in the new shape from the start, not moved later. Known limit: CUE's TOML reader rejects 1.1, so a later CUE schema check needs another reader.
-
-**Trigger** — `--`
-
-**Status** — In-Progress — promoted 2026-11-06 from Backlog on Robert's call. [Exploration](initiatives/explorations/R.029-toml-1-1-migration-exploration.md) written 2026-11-06 (H-2 one block per entry, house style, G-1, S-1); Plan is next, with no Discovery.
 
