@@ -11,8 +11,8 @@
   reads and copies an entry as one unit only if it is one block.
 - **How it fits:** a refactor on `feature/data-driven-goals`, beside `A.001.8`. That
   initiative writes its goal parts in the same style (its row carries the amendment
-  to D-17). TomlSmith's Format Document, at 120 columns, writes the style, so the
-  formatter is the style check.
+  to D-17). TomlSmith's Format Document, at 120 columns, writes the style's layout, so
+  the formatter checks the line rule; key order and no dotted keys are kept by hand.
 
 ## Context / Goal
 
@@ -45,6 +45,7 @@
 | E-4 | 5 | In `wealth_assets.toml`, `attack` now comes before `ability` in Monopoly, Marketers, Venture Capital and Commodities Broker, which had `ability` first. The file also holds `gates = { no_stack = true }` and effect parameter tables (`cost_surcharge`, `discount_repair`, `tech_level_floor`, `restrict_attack`) beyond the planned shapes | The style's key order puts `attack` before `ability`; key order does not change the decode (IDENTICAL) |
 | E-5 | 6 | In `tags.toml`, Preceptor Archive's `ability` now comes before its `effects`; the 1.0 file had the effects first. The file also holds effect parameter tables beyond the planned ones (`xp_roll`, `reroll`, `speed_floor`, `arrival_toll`, `cost_discount`, `coin_gain`) | Same as E-4: the style's key order puts `ability` before `effects`, and the decode is IDENTICAL. The parameter tables went inline by the style's rule; gate passed first time |
 | E-6 | 8 | The rename also covers 2 mentions in the A.001 arc's Status paragraph in `docs/planned-work.md` (the `A.001.3` and `A.001.7` summaries), beyond the planned `R.019` row. Decision 11's reach stays at 10 files; the tracker now has 3 edits | The gate's grep found them. They sit in the live tracker, in the same file and class as the `R.019` row, so the plan's own grep would fail without them |
+| E-7 | Close | The style section in `engine.md` no longer says "a formatted file is a styled file". The formatter does the layout (line rule, open lists, no alignment); one header per entry, no dotted keys, key order and all-inline parts are kept by hand. Commit 2 Task 1 keeps its executed text; In Plain Words is fixed. The `MarshalTOML` doc comments also drop their "(R.029 S-1)" tag | Initiative review findings 5 and 2: the formatter leaves key order and dotted keys as it finds them, and the code rules ban provenance tags in comments |
 
 ---
 

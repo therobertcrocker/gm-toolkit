@@ -53,7 +53,7 @@ type RegionHex struct {
 }
 
 // MarshalTOML writes the hex as one inline table under the keys the decoder reads,
-// so a saved state.toml has no region_hex or Coord headers (R.029 S-1).
+// so a saved state.toml has no region_hex or Coord headers.
 func (regionHex RegionHex) MarshalTOML() ([]byte, error) {
 	return fmt.Appendf(nil, "{ RegionID = %q, Coord = { Q = %d, R = %d } }", regionHex.RegionID, regionHex.Coord.Q, regionHex.Coord.R), nil
 }

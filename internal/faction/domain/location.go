@@ -12,7 +12,7 @@ type Location struct {
 }
 
 // MarshalTOML writes a location as one inline table, so a saved state.toml has no
-// location headers (R.029 S-1).
+// location headers.
 func (location Location) MarshalTOML() ([]byte, error) {
 	regionHex, err := location.RegionHex.MarshalTOML()
 	if err != nil {
