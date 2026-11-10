@@ -23,6 +23,7 @@ The queue of deferred items that are ready to become initiatives. These are scop
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
 | `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass in `A.001.7`'s data form (AP-8; `A.001.7` complete); the authoring passes run after `R.028`, so they use its roll data shapes (`E.004`); owns lore canon; see arc-plan |
+| `F.041` | PF2e encounter simulator | `feature` | ready | Plays a PF2e fight thousands of times from Foundry exports and reports outcome odds, fight length and ability use; new `pf2e` rules engine plus a `sim` runner, six efforts; first scenario is the H.A.W.K finale (`campaigns/hawk/encounters/fall-of-luna/`); draft discovery doc in `discovery/`, not yet signed off; no wiki page covers PF2e, so it adds `architecture/pf2e/overview.md` and `pf2e/sim.md` |
 
 
 ---
