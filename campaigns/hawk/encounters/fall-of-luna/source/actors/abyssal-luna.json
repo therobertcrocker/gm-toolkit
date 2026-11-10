@@ -1,0 +1,1749 @@
+{
+  "img": "assets/0-global/tokens/factions/fey_royals/02%20Luna-portrait.png",
+  "items": [
+    {
+      "_id": "oPIb4SBdJ2xgXMpz",
+      "img": "systems/pf2e/icons/default-icons/spellcastingEntry.svg",
+      "name": "Occult Innate Spells",
+      "sort": 100000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": ""
+        },
+        "rules": [],
+        "slug": null,
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": []
+        },
+        "publication": {
+          "title": "",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "ability": {
+          "value": "cha"
+        },
+        "spelldc": {
+          "value": 31,
+          "dc": 39
+        },
+        "tradition": {
+          "value": "occult"
+        },
+        "prepared": {
+          "value": "innate"
+        },
+        "showSlotlessLevels": {
+          "value": false
+        },
+        "proficiency": {
+          "value": 1
+        },
+        "slots": {
+          "slot0": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot1": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot2": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot3": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot4": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot5": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot6": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot7": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot8": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot9": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot10": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          },
+          "slot11": {
+            "prepared": [],
+            "value": 0,
+            "max": 0
+          }
+        },
+        "autoHeightenLevel": {
+          "value": null
+        }
+      },
+      "type": "spellcastingEntry",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905476,
+        "modifiedTime": 1793208905476
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "y5o62MkJMt5dYTdc",
+      "_stats": {
+        "compendiumSource": "Compendium.pf2e.spells-srd.Item.rsZ5c0AUyywe5yoK",
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208831215,
+        "modifiedTime": 1793208905476
+      },
+      "img": "icons/magic/lightning/projectile-tendrils-red.webp",
+      "name": "Retrocognition",
+      "sort": 200000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": "<p>Opening your mind to mental echoes, you gain impressions from past events that occurred in your current location. <em>Retrocognition</em> reveals psychic impressions from events that occurred over the course of the last day throughout the first minute of the duration, followed by impressions from the next day back the next minute, and so on. These echoes don't play out like a vision but instead reveal impressions of emotions and metaphors that provide cryptic clues and details of the past. If you witness a traumatic or turbulent event through an impression, the spell ends unless you succeed at a Will save with a DC of at least 30 and possibly as much as 50, depending on the severity of the event. The GM determines whether an event is traumatic and chooses the DC.</p>\n<hr>\n<p><strong>Heightened (8th)</strong> You gain impressions of events that occurred over the previous year for each minute you concentrate, instead of the previous day, though the details diminish, making it harder to distinguish impressions from all but the most major events.</p>\n<p><strong>Heightened (9th)</strong> You gain impressions of events that occurred over the previous century for each minute you concentrate, instead of the previous day, though the details diminish, making it almost impossible to distinguish impressions from all but the most major events.</p>"
+        },
+        "rules": [],
+        "slug": "retrocognition",
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": [],
+          "value": [
+            "concentrate",
+            "manipulate"
+          ],
+          "rarity": "common",
+          "traditions": [
+            "occult"
+          ]
+        },
+        "publication": {
+          "title": "Pathfinder Player Core",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "level": {
+          "value": 7
+        },
+        "requirements": "",
+        "target": {
+          "value": ""
+        },
+        "range": {
+          "value": ""
+        },
+        "area": null,
+        "time": {
+          "value": "1 minute"
+        },
+        "duration": {
+          "value": "",
+          "sustained": true
+        },
+        "damage": {},
+        "defense": null,
+        "cost": {
+          "value": ""
+        },
+        "location": {
+          "value": "oPIb4SBdJ2xgXMpz",
+          "heightenedLevel": 8
+        },
+        "counteraction": false
+      },
+      "type": "spell",
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "urbIs9FpE5AMHr2H",
+      "_stats": {
+        "compendiumSource": "Compendium.pf2e.spells-srd.Item.AlbpWWN87yGegoAF",
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905476,
+        "modifiedTime": 1793208905476
+      },
+      "img": "systems/pf2e/icons/spells/true-target.webp",
+      "name": "True Target",
+      "sort": 300000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": "<p>You delve into the possible futures of the next few seconds to understand all the ways your foe might avoid harm, then cast out a vision of that future to those around you. Designate a creature. The first time each target makes an attack roll against that creature during <em>true target</em>'s duration, the attacker rolls twice and uses the better result. The attacker also ignores circumstance penalties to the attack roll and any flat check required due to the designated creature being @UUID[Compendium.pf2e.conditionitems.Item.DmAIPqOBomZ7H95W]{Concealed} or @UUID[Compendium.pf2e.conditionitems.Item.iU0fEDdBp3rXpTMC]{Hidden}.</p>\n<p>@UUID[Compendium.pf2e.spell-effects.Item.HuvucQ5nfpuVWNrw]{Spell Effect: True Target}</p>"
+        },
+        "rules": [],
+        "slug": "true-target",
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": [],
+          "value": [
+            "concentrate",
+            "fortune",
+            "prediction"
+          ],
+          "rarity": "common",
+          "traditions": [
+            "arcane",
+            "occult"
+          ]
+        },
+        "publication": {
+          "title": "Pathfinder Player Core",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "level": {
+          "value": 7
+        },
+        "requirements": "",
+        "target": {
+          "value": "4 creatures"
+        },
+        "range": {
+          "value": "60 feet"
+        },
+        "area": null,
+        "time": {
+          "value": "1"
+        },
+        "duration": {
+          "value": "until the start of your next turn",
+          "sustained": false
+        },
+        "damage": {},
+        "defense": null,
+        "cost": {
+          "value": ""
+        },
+        "location": {
+          "value": "oPIb4SBdJ2xgXMpz",
+          "heightenedLevel": 7,
+          "uses": {
+            "max": 2,
+            "value": 2
+          }
+        },
+        "counteraction": false
+      },
+      "type": "spell",
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "7XzLfr68NBchBK3g",
+      "_stats": {
+        "compendiumSource": "Compendium.pf2e.spells-srd.Item.izcxFQFwf3woCnFs",
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905477,
+        "modifiedTime": 1793208905477
+      },
+      "img": "systems/pf2e/icons/spells/guidance.webp",
+      "name": "Guidance",
+      "sort": 400000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": "<p>You ask for the guidance of supernatural entities, granting the target a +1 status bonus to one attack roll, Perception check, saving throw, or skill check the target attempts before the duration ends. The target chooses which roll to use the bonus on before rolling. If the target uses the bonus, the spell ends. Either way, the target is then temporarily immune for 1 hour.</p>\n<p>@UUID[Compendium.pf2e.spell-effects.Item.3qHKBDF7lrHw8jFK]{Spell Effect: Guidance}</p>\n<p>@UUID[Compendium.pf2e.spell-effects.Item.3LyOkV25p7wA181H]{Effect: Guidance Immunity}</p>"
+        },
+        "rules": [],
+        "slug": "guidance",
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": [],
+          "value": [
+            "cantrip",
+            "concentrate"
+          ],
+          "rarity": "common",
+          "traditions": [
+            "divine",
+            "occult",
+            "primal"
+          ]
+        },
+        "publication": {
+          "title": "Pathfinder Player Core",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "level": {
+          "value": 1
+        },
+        "requirements": "",
+        "target": {
+          "value": "1 creature"
+        },
+        "range": {
+          "value": "30 feet"
+        },
+        "area": null,
+        "time": {
+          "value": "1"
+        },
+        "duration": {
+          "value": "until the start of your next turn",
+          "sustained": false
+        },
+        "damage": {},
+        "defense": null,
+        "cost": {
+          "value": ""
+        },
+        "location": {
+          "value": "oPIb4SBdJ2xgXMpz"
+        },
+        "counteraction": false
+      },
+      "type": "spell",
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "X1luRk1ntqK4kzhX",
+      "_stats": {
+        "compendiumSource": "Compendium.pf2e.spells-srd.Item.6ZIKB0151LUR19Rw",
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905477,
+        "modifiedTime": 1793208905477
+      },
+      "img": "icons/sundries/lights/candles-lit-red-evil.webp",
+      "name": "Ill Omen (At Will)",
+      "sort": 500000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": "<p>The target is struck with misfortune, which throws it off balance. The target must attempt a Will save.</p>\n<p><strong>Success</strong> The target is unaffected.</p>\n<p><strong>Failure</strong> The first time during the duration that the target attempts an attack roll or skill check, it must roll twice and use the worse result.</p>\n<p><strong>Critical Failure</strong> Every time during the duration that the target attempts an attack roll or skill check, it must roll twice and use the worse result.</p>\n<p>@UUID[Compendium.pf2e.spell-effects.Item.AmsVO5Q6078mEvNt]{Spell Effect: Ill Omen}</p>"
+        },
+        "rules": [],
+        "slug": "ill-omen",
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": [],
+          "value": [
+            "concentrate",
+            "curse",
+            "manipulate",
+            "misfortune"
+          ],
+          "rarity": "common",
+          "traditions": [
+            "occult"
+          ]
+        },
+        "publication": {
+          "title": "Pathfinder Player Core",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "level": {
+          "value": 1
+        },
+        "requirements": "",
+        "target": {
+          "value": "1 creature"
+        },
+        "range": {
+          "value": "30 feet"
+        },
+        "area": null,
+        "time": {
+          "value": "2"
+        },
+        "duration": {
+          "value": "1 round",
+          "sustained": false
+        },
+        "damage": {},
+        "defense": {
+          "save": {
+            "basic": false,
+            "statistic": "will"
+          }
+        },
+        "cost": {
+          "value": ""
+        },
+        "location": {
+          "value": "oPIb4SBdJ2xgXMpz",
+          "heightenedLevel": 7
+        },
+        "counteraction": false
+      },
+      "type": "spell",
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "hrmtIrfszoCMEi3f",
+      "_stats": {
+        "compendiumSource": "Compendium.pf2e.spells-srd.Item.D442XMADp01qJ7Cs",
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905477,
+        "modifiedTime": 1793208905477
+      },
+      "img": "systems/pf2e/icons/spells/mindlink.webp",
+      "name": "Mindlink (At Will)",
+      "sort": 600000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": "<p>You link your mind to the target's mind and mentally impart to that target an amount of information in an instant that could otherwise be communicated in 10 minutes.</p>"
+        },
+        "rules": [],
+        "slug": "mindlink",
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": [],
+          "value": [
+            "concentrate",
+            "manipulate",
+            "mental"
+          ],
+          "rarity": "common",
+          "traditions": [
+            "arcane",
+            "occult"
+          ]
+        },
+        "publication": {
+          "title": "Pathfinder Player Core",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "level": {
+          "value": 1
+        },
+        "requirements": "",
+        "target": {
+          "value": "1 willing creature"
+        },
+        "range": {
+          "value": "touch"
+        },
+        "area": null,
+        "time": {
+          "value": "2"
+        },
+        "duration": {
+          "value": "",
+          "sustained": false
+        },
+        "damage": {},
+        "defense": null,
+        "cost": {
+          "value": ""
+        },
+        "location": {
+          "value": "oPIb4SBdJ2xgXMpz",
+          "heightenedLevel": 7
+        },
+        "counteraction": false
+      },
+      "type": "spell",
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "7xFoHBxS3QLtWUqz",
+      "img": "systems/pf2e/icons/default-icons/melee.svg",
+      "name": "Slash",
+      "sort": 800000,
+      "system": {
+        "attackEffects": {
+          "value": [
+            "impending-fate"
+          ]
+        },
+        "bonus": {
+          "value": 30
+        },
+        "damageRolls": {
+          "IoWq4lT98bMyR2Ro": {
+            "damage": "3d6+14",
+            "damageType": "slashing",
+            "category": null
+          },
+          "ahog9L0xsAq5fEeo": {
+            "damage": "1d8",
+            "damageType": "mental",
+            "category": null
+          }
+        },
+        "description": {
+          "value": "",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "range": null,
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [
+            "agile",
+            "magical",
+            "reach-10",
+            "unarmed"
+          ],
+          "otherTags": [],
+          "config": {}
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "action": "strike",
+        "area": null,
+        "subjectToMAP": true
+      },
+      "type": "melee",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905478,
+        "createdTime": 1793208905478
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "DX0dSGZ5FHRvfxvB",
+      "img": "systems/pf2e/icons/default-icons/melee.svg",
+      "name": "Stab",
+      "sort": 900000,
+      "system": {
+        "attackEffects": {
+          "value": [
+            "impending-fate"
+          ]
+        },
+        "bonus": {
+          "value": 28
+        },
+        "damageRolls": {
+          "GUUOi1FrHtFMS8Ht": {
+            "damage": "3d8+14",
+            "damageType": "bludgeoning",
+            "category": null
+          },
+          "m2DWPKOoF3gRWgkZ": {
+            "damage": "1d8",
+            "damageType": "mental",
+            "category": null
+          }
+        },
+        "description": {
+          "value": "",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "range": null,
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [
+            "magical",
+            "reach-20"
+          ],
+          "otherTags": [],
+          "config": {}
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "action": "strike",
+        "area": null,
+        "subjectToMAP": true
+      },
+      "type": "melee",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905478,
+        "createdTime": 1793208905478
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "7jMTgXw900gW0HWP",
+      "_stats": {
+        "compendiumSource": "Compendium.pf2e.bestiary-ability-glossary-srd.Item.kquBnQ0kObZztnBc",
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905478,
+        "modifiedTime": 1793208905478
+      },
+      "img": "systems/pf2e/icons/actions/Passive.webp",
+      "name": "+2 Status to All Saves vs. Occult",
+      "sort": 1100000,
+      "system": {
+        "actionType": {
+          "value": "passive"
+        },
+        "actions": {
+          "value": null
+        },
+        "category": "defensive",
+        "description": {
+          "value": "",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "Pathfinder Monster Core",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "key": "FlatModifier",
+            "predicate": [
+              "item:trait:occult"
+            ],
+            "selector": "saving-throw",
+            "type": "status",
+            "value": 2
+          }
+        ],
+        "slug": "1-status-to-all-saves-vs-magic",
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        }
+      },
+      "type": "action",
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "NcECPJpz8Y3Qd9BE",
+      "img": "systems/pf2e/icons/actions/Reaction.webp",
+      "name": "Challenge Fate",
+      "sort": 1200000,
+      "system": {
+        "actionType": {
+          "value": "reaction"
+        },
+        "actions": {
+          "value": null
+        },
+        "category": "defensive",
+        "description": {
+          "value": "<p><strong>Trigger</strong> Luna is targeted by an attack;</p><hr /><p><strong>Effect</strong> This fate is not set in stone. The attacker rolls the triggering attack twice and uses the worse result.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [
+            "misfortune",
+            "occult"
+          ],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905479,
+        "createdTime": 1793208905479
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "m1wESAZSSsfNS2AF",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Untethered to Fate",
+      "sort": 1300000,
+      "system": {
+        "actionType": {
+          "value": "passive"
+        },
+        "actions": {
+          "value": null
+        },
+        "category": "defensive",
+        "description": {
+          "value": "<p>Luna can choose to negate any fortune or misfortune effects that would affect them; other creatures remain affected normally.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905479,
+        "createdTime": 1793208905479
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "I2kJG5snUvdVtlrm",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Destiny Spores",
+      "sort": 1400000,
+      "system": {
+        "actionType": {
+          "value": "action"
+        },
+        "actions": {
+          "value": 2
+        },
+        "category": "offensive",
+        "description": {
+          "value": "<p>Luna releases a translucent mist of potentialities that overwhelms creatures with visions of possible features, dealing @Damage[15d6[mental]|options:area-damage] damage in a @Template[cone|distance:40] (@Check[will|dc:39|options:area-effect] save). A creature that fails its save is @UUID[Compendium.pf2e.conditionitems.Item.xYTAsEpcJE1Ccni3]{Slowed 1} for 1 round (or @UUID[Compendium.pf2e.conditionitems.Item.xYTAsEpcJE1Ccni3]{Slowed 2} on a critical failure) as it struggles with the visions.</p><p>Luna can't use Destiny Spores again for [[/gmr 1d4 #Recharge Destiny Spores]]{1d4 rounds}.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [
+            "mental",
+            "occult"
+          ],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905479,
+        "createdTime": 1793208905479
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "aJ5Jw0ozWjNooF13",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Abyssal Frenzy",
+      "sort": 1500000,
+      "system": {
+        "actionType": {
+          "value": "action"
+        },
+        "actions": {
+          "value": 2
+        },
+        "category": "offensive",
+        "description": {
+          "value": "<p>Luna makes two slash Strikes and one stab Strike in any order.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905479,
+        "createdTime": 1793208905479
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "WjY0WmlZBVHL6RtF",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Fey Momentum",
+      "sort": 1600000,
+      "system": {
+        "actionType": {
+          "value": "passive"
+        },
+        "actions": {
+          "value": null
+        },
+        "category": "offensive",
+        "description": {
+          "value": "<p>Luna recharges their Destiny Spores whenever they score a critical hit with a Strike.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "key": "Note",
+            "outcome": [
+              "criticalSuccess"
+            ],
+            "selector": "strike-attack-roll",
+            "text": "{item|description}",
+            "title": "{item|name}",
+            "visibility": "owner"
+          }
+        ],
+        "slug": null,
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905480,
+        "createdTime": 1793208905480
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "SLo46H8ZVBnhnumf",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Impending Fate",
+      "sort": 1700000,
+      "system": {
+        "actionType": {
+          "value": "passive"
+        },
+        "actions": {
+          "value": null
+        },
+        "category": "offensive",
+        "description": {
+          "value": "<p>Luna's attacks bring their foes closer to their eventual fates. When Luna critically hits with a Strike or a creature critically fails against her Destiny Spores, the creature becomes @UUID[Compendium.pf2e.conditionitems.Item.3uh1r86TzbQvosxv]{Doomed 1}, or increases its doomed value by 1 if it was already doomed.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "key": "Note",
+            "outcome": [
+              "criticalSuccess"
+            ],
+            "selector": "attack-roll",
+            "text": "{item|description}",
+            "title": "{item|name}",
+            "visibility": "owner"
+          }
+        ],
+        "slug": null,
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905480,
+        "createdTime": 1793208905480
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "2phPU9xYaMSKFNol",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Prophetic Wings",
+      "sort": 1800000,
+      "system": {
+        "actionType": {
+          "value": "passive"
+        },
+        "actions": {
+          "value": null
+        },
+        "category": "offensive",
+        "description": {
+          "value": "<p>Luna or any ally can glimpse into the future through the Luna's wings in a process that requires 10 minutes of concentration. This casts a 8th-rank @UUID[Compendium.pf2e.spells-srd.Item.41TZEjhO6D1nWw2X]{Augury} spell, except that the wings can predict results up to 1 year into the future and Luna always speaks a few cryptic words related to the result of the prediction.</p><p>Luna can use their wings in this way only once per day, and a given creature can seek a future in the wings only once per week.</p>",
+          "gm": ""
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905480,
+        "createdTime": 1793208905480
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "IqwLfEmNC9TAiyzF",
+      "img": "systems/pf2e/icons/default-icons/action.svg",
+      "name": "Walk the Timelines",
+      "sort": 1900000,
+      "system": {
+        "actionType": {
+          "value": "action"
+        },
+        "actions": {
+          "value": 2
+        },
+        "category": "offensive",
+        "description": {
+          "value": "<p><strong>Frequency</strong> once per hour</p><hr /><p><strong>Effect</strong> Luna splits themself into two versions with different fates. Each copy Strides or Flies from her current space, then takes a single action. If the actions are both attacks, they use the same multiple attack penalty and count as one attack toward Luna's multiple attack penalty.</p><p>After both actions, Luna chooses one of the two locations as their actual destination and the other version of themself disappears.</p>",
+          "gm": ""
+        },
+        "frequency": {
+          "max": 1,
+          "per": "PT1H"
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "",
+          "authors": ""
+        },
+        "rules": [],
+        "slug": null,
+        "traits": {
+          "value": [
+            "occult"
+          ],
+          "otherTags": []
+        },
+        "_migration": {
+          "version": 0.959,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "deathNote": false
+      },
+      "type": "action",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "modifiedTime": 1793208905481,
+        "createdTime": 1793208905481
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "goZUr5OKDkHs7FKd",
+      "img": "systems/pf2e/icons/default-icons/lore.svg",
+      "name": "Fortune-Telling Lore",
+      "sort": 2000000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": ""
+        },
+        "rules": [],
+        "slug": null,
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": []
+        },
+        "publication": {
+          "title": "",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "mod": {
+          "value": 33
+        },
+        "proficient": {
+          "value": 0
+        }
+      },
+      "type": "lore",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905481,
+        "modifiedTime": 1793208905481
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    },
+    {
+      "_id": "b8h9d7wiOHuqMKkG",
+      "img": "systems/pf2e/icons/default-icons/lore.svg",
+      "name": "Lore (any one subcategory)",
+      "sort": 2100000,
+      "system": {
+        "description": {
+          "gm": "",
+          "value": ""
+        },
+        "rules": [],
+        "slug": null,
+        "_migration": {
+          "version": 0.959,
+          "lastMigration": null,
+          "previous": {
+            "schema": 0.955,
+            "foundry": "14.365",
+            "system": "8.6.1"
+          }
+        },
+        "traits": {
+          "otherTags": []
+        },
+        "publication": {
+          "title": "",
+          "authors": "",
+          "license": "ORC",
+          "remaster": true
+        },
+        "mod": {
+          "value": 31
+        },
+        "proficient": {
+          "value": 0
+        }
+      },
+      "type": "lore",
+      "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "exportSource": null,
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "createdTime": 1793208905481,
+        "modifiedTime": 1793208905481
+      },
+      "effects": [],
+      "folder": null,
+      "flags": {},
+      "ownership": {
+        "default": 0
+      }
+    }
+  ],
+  "name": "Abyssal Luna",
+  "system": {
+    "attributes": {
+      "hp": {
+        "value": 300,
+        "temp": 0,
+        "max": 300,
+        "details": ""
+      },
+      "ac": {
+        "value": 36,
+        "details": ""
+      },
+      "allSaves": {
+        "value": "+2 status to all saves vs. occult"
+      },
+      "speed": {
+        "value": 60,
+        "otherSpeeds": [
+          {
+            "type": "fly",
+            "value": 180
+          }
+        ],
+        "details": ""
+      },
+      "immunities": [
+        {
+          "exceptions": [],
+          "type": "confused"
+        },
+        {
+          "exceptions": [],
+          "type": "doomed"
+        },
+        {
+          "exceptions": [],
+          "type": "paralyzed"
+        },
+        {
+          "exceptions": [],
+          "type": "sleep"
+        }
+      ],
+      "adjustment": null
+    },
+    "initiative": {
+      "statistic": "perception"
+    },
+    "details": {
+      "languages": {
+        "value": [
+          "common",
+          "draconic",
+          "fey",
+          "jotun",
+          "aklo"
+        ],
+        "details": ""
+      },
+      "level": {
+        "value": 16
+      },
+      "blurb": "",
+      "publicNotes": "",
+      "privateNotes": "",
+      "publication": {
+        "title": "Pathfinder Monster Core",
+        "authors": "",
+        "license": "ORC",
+        "remaster": true
+      }
+    },
+    "resources": {},
+    "_migration": {
+      "version": 0.959,
+      "previous": {
+        "schema": 0.955,
+        "foundry": "14.365",
+        "system": "8.6.1"
+      }
+    },
+    "abilities": {
+      "str": {
+        "mod": 8
+      },
+      "dex": {
+        "mod": 6
+      },
+      "con": {
+        "mod": 7
+      },
+      "int": {
+        "mod": 9
+      },
+      "wis": {
+        "mod": 7
+      },
+      "cha": {
+        "mod": 5
+      }
+    },
+    "perception": {
+      "details": "",
+      "mod": 29,
+      "senses": [
+        {
+          "type": "darkvision"
+        },
+        {
+          "acuity": "imprecise",
+          "range": 60,
+          "type": "scent"
+        }
+      ],
+      "vision": true
+    },
+    "saves": {
+      "fortitude": {
+        "value": 27,
+        "saveDetail": ""
+      },
+      "reflex": {
+        "value": 28,
+        "saveDetail": ""
+      },
+      "will": {
+        "value": 29,
+        "saveDetail": ""
+      }
+    },
+    "skills": {
+      "acrobatics": {
+        "base": 28
+      },
+      "athletics": {
+        "base": 30
+      },
+      "diplomacy": {
+        "base": 29
+      },
+      "occultism": {
+        "base": 33
+      },
+      "society": {
+        "base": 31
+      }
+    },
+    "traits": {
+      "value": [
+        "fey",
+        "occult"
+      ],
+      "rarity": "unique",
+      "size": {
+        "value": "med"
+      }
+    }
+  },
+  "type": "npc",
+  "_stats": {
+    "compendiumSource": "Compendium.pf2e.pathfinder-monster-core.Actor.QBu0tRV8nNIFKbLS",
+    "duplicateSource": null,
+    "exportSource": {
+      "worldId": "hawk-pf2e",
+      "uuid": "Actor.4r5Td6exTjaZ9beH",
+      "coreVersion": "14.365",
+      "systemId": "pf2e",
+      "systemVersion": "8.6.1"
+    },
+    "coreVersion": "14.365",
+    "systemId": "pf2e",
+    "systemVersion": "8.6.1",
+    "createdTime": 1784656728709,
+    "modifiedTime": 1794289335672,
+    "lastModifiedBy": "S0ab7dtePdUblyra"
+  },
+  "effects": [],
+  "prototypeToken": {
+    "name": "Abyssal Luna",
+    "displayName": 30,
+    "actorLink": false,
+    "width": 1,
+    "height": 1,
+    "texture": {
+      "src": "assets/0-global/tokens/factions/fey_royals/02%20Luna-portrait.png",
+      "anchorX": 0.5,
+      "anchorY": 0.5,
+      "fit": "contain",
+      "scaleX": 1.6,
+      "scaleY": 1.6,
+      "tint": "#ffffff",
+      "alphaThreshold": 0.75
+    },
+    "lockRotation": false,
+    "rotation": 0,
+    "alpha": 1,
+    "disposition": -1,
+    "displayBars": 0,
+    "bar1": {
+      "attribute": "attributes.hp"
+    },
+    "bar2": {
+      "attribute": null
+    },
+    "light": {
+      "negative": false,
+      "priority": 0,
+      "alpha": 0.5,
+      "angle": 360,
+      "bright": 0,
+      "color": null,
+      "coloration": 1,
+      "dim": 0,
+      "attenuation": 0.5,
+      "luminosity": 0.5,
+      "saturation": 0,
+      "contrast": 0,
+      "shadows": 0,
+      "animation": {
+        "type": null,
+        "speed": 5,
+        "intensity": 5,
+        "reverse": false
+      },
+      "darkness": {
+        "min": 0,
+        "max": 1
+      }
+    },
+    "sight": {
+      "enabled": true,
+      "range": 0,
+      "angle": 360,
+      "visionMode": "basic",
+      "color": null,
+      "attenuation": 0.1,
+      "brightness": 0,
+      "saturation": 0,
+      "contrast": 0
+    },
+    "detectionModes": {},
+    "occludable": {
+      "radius": 0
+    },
+    "ring": {
+      "enabled": false,
+      "colors": {
+        "ring": null,
+        "background": null
+      },
+      "effects": 0,
+      "subject": {
+        "scale": 1,
+        "texture": null
+      }
+    },
+    "turnMarker": {
+      "mode": 1,
+      "animation": null,
+      "src": null,
+      "disposition": false
+    },
+    "movementAction": null,
+    "flags": {
+      "pf2e": {
+        "linkToActorSize": true,
+        "autoscale": false
+      },
+      "tokenflip": {
+        "tokenfaces": [
+          {
+            "actorId": "4r5Td6exTjaZ9beH",
+            "img": "assets/0-global/tokens/factions/fey_royals/02%20Luna-portrait.png",
+            "id": "NWbOQtqTnY6LOZCxAp4S",
+            "scaleX": 1.6,
+            "scaleY": 1.6,
+            "width": 1,
+            "height": 1,
+            "model3d": "",
+            "subject": "",
+            "autoFlip": 0,
+            "transition": "flip",
+            "autoFlipMacro": null
+          },
+          {
+            "actorId": "4r5Td6exTjaZ9beH",
+            "img": "assets/0-global/tokens/factions/luna/02%20Luna%20Fight-Portrait.png",
+            "id": "U7cIvldIeoQraCbEziG9",
+            "scaleX": 2.4,
+            "scaleY": 2.4,
+            "width": 1,
+            "height": 1,
+            "model3d": "",
+            "subject": "",
+            "autoFlip": 0,
+            "transition": "flip",
+            "autoFlipMacro": null
+          }
+        ]
+      }
+    },
+    "randomImg": false,
+    "appendNumber": false,
+    "prependAdjective": false,
+    "depth": 1
+  },
+  "folder": "uIQ1mEryUBxRuQWl",
+  "flags": {
+    "theatre": {
+      "settings": {
+        "emote": null,
+        "textflyin": "typewriter",
+        "textstanding": "none",
+        "textfont": null,
+        "textsize": null,
+        "textcolor": null
+      }
+    },
+    "yendors-scene-actors": {
+      "isNameRevealed": false
+    },
+    "tokenflip": {
+      "unfuck": false
+    }
+  },
+  "ownership": {
+    "default": 0
+  }
+}
