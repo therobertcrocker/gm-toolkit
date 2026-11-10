@@ -39,16 +39,10 @@ type EffectHandler func(StepContext) ([]domain.Mutation, error)
 // later step, or a later asset in the same action, reads what changed. Rolls spend
 // budgets on the real factions, not on the view (Effort 3 Decision 3).
 func NewView(factionState *state.FactionState) *state.FactionState {
-	view := &state.FactionState{Factions: map[string]*domain.Faction{}}
 	if factionState == nil {
-		return view
+		return &state.FactionState{Factions: map[string]*domain.Faction{}}
 	}
-	*view = *factionState
-	view.Factions = make(map[string]*domain.Faction, len(factionState.Factions))
-	for id, faction := range factionState.Factions {
-		view.Factions[id] = faction.Clone()
-	}
-	return view
+	return factionState.Clone()
 }
 
 var handlers = map[domain.AbilityEffectType]EffectHandler{

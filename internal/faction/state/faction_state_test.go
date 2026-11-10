@@ -344,3 +344,28 @@ func TestIsIndependent(t *testing.T) {
 		t.Error("a world with no entry IsIndependent = false, want true")
 	}
 }
+
+func TestClone_LeavesTheOriginalUntouched(t *testing.T) {
+	original := &FactionState{
+		Factions:    map[string]*domain.Faction{"f1": {ID: "f1", Coin: 3}},
+		Governments: map[string]string{"Tartarus": "f1"},
+		CurrentTurn: &domain.TurnState{FactionOrder: []string{"f1"}},
+	}
+
+	clone := original.Clone()
+	clone.Factions["f1"].Coin = 9
+	clone.Factions["f2"] = &domain.Faction{ID: "f2"}
+	clone.Governments["Tartarus"] = "f2"
+	clone.CurrentTurn.FactionOrder[0] = "f2"
+	clone.CurrentTurn.CurrentIndex = 1
+
+	if original.Factions["f1"].Coin != 3 || len(original.Factions) != 1 {
+		t.Errorf("original factions changed: %+v", original.Factions)
+	}
+	if original.Governments["Tartarus"] != "f1" {
+		t.Errorf("original governments changed: %v", original.Governments)
+	}
+	if original.CurrentTurn.FactionOrder[0] != "f1" || original.CurrentTurn.CurrentIndex != 0 {
+		t.Errorf("original turn changed: %+v", original.CurrentTurn)
+	}
+}

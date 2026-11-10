@@ -480,7 +480,7 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
-	goalMutations := e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, phaseLog.With("engine", "goal"))
+	goalMutations := e.Goal.UpdateProgress(faction.ID, combined, factionState, phaseLog.With("engine", "goal"))
 	if len(goalMutations) > 0 {
 		// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
 		goalMutations, err = dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)

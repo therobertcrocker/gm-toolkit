@@ -50,6 +50,17 @@ func (ae *ActionEngine) Register(factory ActionFactory) {
 	ae.factories = append(ae.factories, factory)
 }
 
+// Names returns the name of every registered action, in registration order. It
+// builds each action with no collector, so a factory must not read its collector
+// while it builds.
+func (ae *ActionEngine) Names() []string {
+	names := make([]string, 0, len(ae.factories))
+	for _, factory := range ae.factories {
+		names = append(names, factory(nil).Name())
+	}
+	return names
+}
+
 // AvailableActions instantiates each registered factory with the collector and
 // returns the actions that pass Validate for the current faction and state.
 func (ae *ActionEngine) AvailableActions(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, collector Collector, log *slog.Logger) []Action {

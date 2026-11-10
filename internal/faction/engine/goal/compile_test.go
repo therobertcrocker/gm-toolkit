@@ -11,6 +11,8 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
+var testActionNames = []string{"Attack", "Buy Asset", "Abandon Goal"}
+
 func validThresholdGoal() *domain.Goal {
 	return &domain.Goal{
 		ID:        "G-TEST",
@@ -75,6 +77,13 @@ func TestCompile_Refuses(t *testing.T) {
 		{"target with no start input", func(goal *domain.Goal) {
 			completeOn(goal, domain.GoalEvent{Event: "faction_destroyed", Filters: domain.GoalFilters{Target: targetStartInput}})
 		}, `needs start.inputs to name "target_faction"`},
+		{"unknown action", func(goal *domain.Goal) {
+			goal.Progress = &domain.GoalProgress{Event: "action_taken", Amount: amountOne, Filters: domain.GoalFilters{Action: []string{"attack"}}}
+		}, `progress: unknown action "attack"`},
+		{"unknown action_not", func(goal *domain.Goal) {
+			goal.Progress = &domain.GoalProgress{Event: "action_taken", Amount: amountOne}
+			goal.Reset = &domain.GoalEvent{Event: "action_taken", Filters: domain.GoalFilters{ActionNot: []string{"Seize Planet"}}}
+		}, `reset: unknown action "Seize Planet"`},
 		{"unknown start input", func(goal *domain.Goal) { goal.Start = &domain.GoalStart{Inputs: []string{"target_world"}} }, `start: unknown input "target_world"`},
 		{"threshold with both", func(goal *domain.Goal) {
 			goal.Threshold = &domain.GoalThreshold{Ratings: []domain.FactionStat{domain.StatForce}, Constant: 2}
@@ -84,6 +93,7 @@ func TestCompile_Refuses(t *testing.T) {
 		{"multiplier with constant", func(goal *domain.Goal) { goal.Threshold = &domain.GoalThreshold{Constant: 2, Multiplier: 3} }, "multiplier needs ratings"},
 		{"no xp", func(goal *domain.Goal) { goal.XP = nil }, "needs an xp part"},
 		{"unknown formula", func(goal *domain.Goal) { goal.XP = &domain.GoalXP{Formula: "double"} }, `xp: unknown formula "double"`},
+		{"unknown formula with an amount", func(goal *domain.Goal) { goal.XP = &domain.GoalXP{Formula: "constnt", Amount: 2} }, `xp: unknown formula "constnt"`},
 		{"constant with no amount", func(goal *domain.Goal) { goal.XP = &domain.GoalXP{Formula: formulaConstant} }, "constant needs amount > 0"},
 		{"amount on another formula", func(goal *domain.Goal) {
 			goal.XP = &domain.GoalXP{Formula: formulaHalfProgress, Amount: 1}
@@ -110,7 +120,7 @@ func TestCompile_Refuses(t *testing.T) {
 			goal := validThresholdGoal()
 			testCase.change(goal)
 
-			_, err := compile(goal)
+			_, err := compile(goal, testActionNames)
 
 			if err == nil || !strings.Contains(err.Error(), testCase.wantErr) {
 				t.Errorf("compile error = %v, want it to contain %q", err, testCase.wantErr)
@@ -120,7 +130,7 @@ func TestCompile_Refuses(t *testing.T) {
 }
 
 func TestCompile_AcceptsValidGoal(t *testing.T) {
-	if _, err := compile(validThresholdGoal()); err != nil {
+	if _, err := compile(validThresholdGoal(), testActionNames); err != nil {
 		t.Fatalf("compile: %v", err)
 	}
 }
@@ -131,7 +141,7 @@ func TestCompile_AcceptsShippedGoals(t *testing.T) {
 		t.Fatal("the shipped rulebook has no goals")
 	}
 	for id, goal := range loaded.Goals {
-		if _, err := compile(goal); err != nil {
+		if _, err := compile(goal, testActionNames); err != nil {
 			t.Errorf("compile %s (%s): %v", id, goal.Name, err)
 		}
 	}
@@ -156,7 +166,7 @@ func shippedGoal(t *testing.T, loaded *rulebook.Rulebook, name string) *compiled
 	t.Helper()
 	for _, goal := range loaded.Goals {
 		if goal.Name == name {
-			compiled, err := compile(goal)
+			compiled, err := compile(goal, testActionNames)
 			if err != nil {
 				t.Fatalf("compile %s: %v", name, err)
 			}

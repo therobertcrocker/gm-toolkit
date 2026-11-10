@@ -17,9 +17,10 @@ type compiledGoal struct {
 	complete *eventSpec
 }
 
-// compile checks every name and combination in goal's parts and binds them. Its
-// errors do not name the goal; the caller does.
-func compile(goal *domain.Goal) (*compiledGoal, error) {
+// compile checks every name and combination in goal's parts and binds them.
+// actionNames are the registered actions an action filter may name. Its errors do
+// not name the goal; the caller does.
+func compile(goal *domain.Goal, actionNames []string) (*compiledGoal, error) {
 	compiled := &compiledGoal{goal: goal}
 	if err := checkStart(goal.Start); err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func compile(goal *domain.Goal) (*compiledGoal, error) {
 			return nil, fmt.Errorf("progress needs exactly one of event or measure")
 		}
 		if progress.Event != "" {
-			spec, err := eventNamed("progress", progress.Event, progress.Filters, goal)
+			spec, err := eventNamed("progress", progress.Event, progress.Filters, goal, actionNames)
 			if err != nil {
 				return nil, err
 			}
@@ -59,21 +60,21 @@ func compile(goal *domain.Goal) (*compiledGoal, error) {
 			if progress.Amount != "" {
 				return nil, fmt.Errorf("progress: measure %q takes no amount", progress.Measure)
 			}
-			if err := checkFilters("progress", spec.filters, progress.Filters, goal); err != nil {
+			if err := checkFilters("progress", spec.filters, progress.Filters, goal, actionNames); err != nil {
 				return nil, err
 			}
 			compiled.measure = &spec
 		}
 	}
 	if goal.Reset != nil {
-		spec, err := eventNamed("reset", goal.Reset.Event, goal.Reset.Filters, goal)
+		spec, err := eventNamed("reset", goal.Reset.Event, goal.Reset.Filters, goal, actionNames)
 		if err != nil {
 			return nil, err
 		}
 		compiled.reset = spec
 	}
 	if goal.Complete != nil {
-		spec, err := eventNamed("complete", goal.Complete.Event, goal.Complete.Filters, goal)
+		spec, err := eventNamed("complete", goal.Complete.Event, goal.Complete.Filters, goal, actionNames)
 		if err != nil {
 			return nil, err
 		}
@@ -85,18 +86,18 @@ func compile(goal *domain.Goal) (*compiledGoal, error) {
 	return compiled, nil
 }
 
-func eventNamed(part, name string, filters domain.GoalFilters, goal *domain.Goal) (*eventSpec, error) {
+func eventNamed(part, name string, filters domain.GoalFilters, goal *domain.Goal, actionNames []string) (*eventSpec, error) {
 	spec, ok := events[name]
 	if !ok {
 		return nil, fmt.Errorf("%s: unknown event %q", part, name)
 	}
-	if err := checkFilters(part, spec.filters, filters, goal); err != nil {
+	if err := checkFilters(part, spec.filters, filters, goal, actionNames); err != nil {
 		return nil, err
 	}
 	return &spec, nil
 }
 
-func checkFilters(part string, accepted []string, filters domain.GoalFilters, goal *domain.Goal) error {
+func checkFilters(part string, accepted []string, filters domain.GoalFilters, goal *domain.Goal, actionNames []string) error {
 	for _, name := range filters.Used() {
 		if !slices.Contains(accepted, name) {
 			return fmt.Errorf("%s: filter %q is not accepted here (want one of %v)", part, name, accepted)
@@ -121,6 +122,11 @@ func checkFilters(part string, accepted []string, filters domain.GoalFilters, go
 	}
 	if filters.Target == targetStartInput && !hasInput(goal, inputTargetFaction) {
 		return fmt.Errorf("%s: filter target = %q needs start.inputs to name %q", part, targetStartInput, inputTargetFaction)
+	}
+	for _, action := range slices.Concat(filters.Action, filters.ActionNot) {
+		if !slices.Contains(actionNames, action) {
+			return fmt.Errorf("%s: unknown action %q (want one of %v)", part, action, actionNames)
+		}
 	}
 	return nil
 }
@@ -159,9 +165,6 @@ func checkXP(goal *domain.Goal) error {
 	if xp == nil {
 		return fmt.Errorf("a goal needs an xp part")
 	}
-	if xp.Formula != formulaConstant && (xp.Amount != 0 || xp.ContestedBonus != 0) {
-		return fmt.Errorf("xp: formula %q takes no amount or contested_bonus", xp.Formula)
-	}
 	switch xp.Formula {
 	case formulaConstant:
 		if xp.Amount <= 0 || xp.ContestedBonus < 0 {
@@ -184,6 +187,9 @@ func checkXP(goal *domain.Goal) error {
 		}
 	default:
 		return fmt.Errorf("xp: unknown formula %q", xp.Formula)
+	}
+	if xp.Formula != formulaConstant && (xp.Amount != 0 || xp.ContestedBonus != 0) {
+		return fmt.Errorf("xp: formula %q takes no amount or contested_bonus", xp.Formula)
 	}
 	return nil
 }

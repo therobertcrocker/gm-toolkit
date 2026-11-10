@@ -77,8 +77,8 @@
 6. **The loader checks shape; the goal engine checks names.** Planning call (D-18).
    `loadGoals` reads the parts strictly and converts stat names. Every goal-only
    name (event, filter value, amount, measure, formula, start input) stays a string
-   in `domain.Goal`. `goal.New(rulebook, log)` compiles each goal and returns an
-   error, which `NewWithRulebook` returns. `rulebook` cannot import `engine/goal`,
+   in `domain.Goal`. `goal.New(rulebook, actionNames, log)` compiles each goal and
+   returns an error, which `NewWithRulebook` returns (Decision Record 12). `rulebook` cannot import `engine/goal`,
    so the loader cannot hold the vocabulary.
 
 7. **A goal has exactly one of `threshold` or `complete`.** Planning call.
@@ -197,6 +197,38 @@
     book's name; `goals.toml` names `CORE-G-004` "World Seizure". The split is
     older than this effort, and Task 1 keeps the rules doc's name. Gap left open:
     pick one name when `F.040` rebuilds Seize Planet.
+
+11. **A batch that abandons the held goal moves it no further (effort review).**
+    The Abandon Goal batch opens with `ActionTaken{Action: "Abandon Goal"}`, which
+    passes Peaceable Kingdom's `action_not = ["Attack"]`: at progress 3 the goal
+    completed and paid XP in the batch that gave it up. The old handler had the
+    same hole. `evaluate` now returns nothing when the batch holds the holder's
+    `GoalAbandoned`.
+
+12. **Action filter names are checked when the engine is built (effort review).**
+    A misspelt `action` or `action_not` value loaded and never matched. `goal.New`
+    takes the registered action names (`ActionEngine.Names()`), and
+    `NewWithRulebook` builds the goal engine after the actions register. Decision
+    12 stands: `needs_actions` is still not checked.
+
+13. **The goal engine keeps the rulebook it compiled from (effort review).**
+    `UpdateProgress` drops its rulebook parameter, so a goal is never evaluated
+    against definitions it was not compiled with. The `log` field now carries a
+    debug line from `New`, the startup channel of the two-channel logger.
+
+14. **`state.FactionState.Clone` replaces two hand-rolled copies (effort review).**
+    `project` and `ability.NewView` both use it. `NewView` used to share the live
+    `Governments` map with its view; the clone copies it, and `CurrentTurn` too.
+
+15. **Smaller review fixes; the Work Breakdown code shows the shape before them.**
+    `checkXP` rejects an unknown formula before it checks the amount.
+    `progressDelta` always sums `matched.amount`. The `ctx evalContext` parameters
+    are now `evaluation`. The stealth measure builds the rival-homeworld set once
+    per call. Rejected: projecting only the holder and the governments. A capture
+    needs the losing faction in the copy, or the holder's captured stealthed asset
+    goes uncounted; the full clone stays until E2 gives real per-batch costs. The
+    code blocks in Phases 2 to 4 are not rewritten for entries 11 to
+    15; the source wins where they differ.
 
 ---
 

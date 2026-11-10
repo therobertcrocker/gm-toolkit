@@ -49,12 +49,12 @@ type eventSpec struct {
 	filters  []string
 	amounts  []string
 	hasWorld bool
-	match    func(ctx evalContext, filters domain.GoalFilters) []match
+	match    func(evaluation evalContext, filters domain.GoalFilters) []match
 }
 
 type measureSpec struct {
 	filters []string
-	count   func(ctx evalContext, filters domain.GoalFilters) int
+	count   func(evaluation evalContext, filters domain.GoalFilters) int
 }
 
 var events = map[string]eventSpec{

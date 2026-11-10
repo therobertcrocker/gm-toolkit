@@ -8,26 +8,26 @@ import (
 
 // matchKill reads the removed asset from the state before the batch, where it
 // still exists. Any cause counts when the holder caused it (D-14).
-func matchKill(ctx evalContext, filters domain.GoalFilters) []match {
+func matchKill(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		removed, ok := mutation.(domain.AssetRemoved)
-		if !ok || !sideMatches(filters.Owner, removed.FactionID, ctx.faction.ID) || !sideMatches(filters.CausedBy, removed.CausedByFactionID, ctx.faction.ID) {
+		if !ok || !sideMatches(filters.Owner, removed.FactionID, evaluation.faction.ID) || !sideMatches(filters.CausedBy, removed.CausedByFactionID, evaluation.faction.ID) {
 			continue
 		}
-		owner := ctx.factionState.Factions[removed.FactionID]
+		owner := evaluation.factionState.Factions[removed.FactionID]
 		if owner == nil || owner.Assets[removed.AssetID] == nil {
 			continue
 		}
 		asset := owner.Assets[removed.AssetID]
-		definition := ctx.rulebook.Assets[asset.DefinitionID]
+		definition := evaluation.rulebook.Assets[asset.DefinitionID]
 		if definition == nil {
 			continue
 		}
 		if len(filters.Category) > 0 && !slices.Contains(filters.Category, definition.Category) {
 			continue
 		}
-		if filters.RatedAbove != "" && definition.MinRating <= ctx.faction.StatScore(filters.RatedAbove) {
+		if filters.RatedAbove != "" && definition.MinRating <= evaluation.faction.StatScore(filters.RatedAbove) {
 			continue
 		}
 		matches = append(matches, match{amount: 1, world: asset.Location.WorldID})
@@ -35,9 +35,9 @@ func matchKill(ctx evalContext, filters domain.GoalFilters) []match {
 	return matches
 }
 
-func matchDamage(ctx evalContext, filters domain.GoalFilters) []match {
+func matchDamage(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		var ownerID, causedByID string
 		var delta int
 		// deliberate: FactionHPDelta is not damage here, because every Base hit emits one beside its BaseHPDelta and would count twice (Decision 1).
@@ -49,7 +49,7 @@ func matchDamage(ctx evalContext, filters domain.GoalFilters) []match {
 		default:
 			continue
 		}
-		if delta >= 0 || !sideMatches(filters.Owner, ownerID, ctx.faction.ID) || !sideMatches(filters.CausedBy, causedByID, ctx.faction.ID) {
+		if delta >= 0 || !sideMatches(filters.Owner, ownerID, evaluation.faction.ID) || !sideMatches(filters.CausedBy, causedByID, evaluation.faction.ID) {
 			continue
 		}
 		matches = append(matches, match{amount: -delta})
@@ -57,15 +57,15 @@ func matchDamage(ctx evalContext, filters domain.GoalFilters) []match {
 	return matches
 }
 
-func matchBasePlanted(ctx evalContext, filters domain.GoalFilters) []match {
+func matchBasePlanted(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		added, ok := mutation.(domain.BaseAdded)
-		if !ok || !sideMatches(filters.CausedBy, added.CausedByFactionID, ctx.faction.ID) {
+		if !ok || !sideMatches(filters.CausedBy, added.CausedByFactionID, evaluation.faction.ID) {
 			continue
 		}
 		world := added.Base.Location.WorldID
-		if filters.NewWorld && ctx.faction.HasBaseOn(world) {
+		if filters.NewWorld && evaluation.faction.HasBaseOn(world) {
 			continue
 		}
 		matches = append(matches, match{amount: 1, world: world})
@@ -73,11 +73,11 @@ func matchBasePlanted(ctx evalContext, filters domain.GoalFilters) []match {
 	return matches
 }
 
-func matchInfluenceBought(ctx evalContext, filters domain.GoalFilters) []match {
+func matchInfluenceBought(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		bought, ok := mutation.(domain.InfluenceDelta)
-		if !ok || bought.Delta <= 0 || !sideMatches(filters.CausedBy, bought.CausedByFactionID, ctx.faction.ID) {
+		if !ok || bought.Delta <= 0 || !sideMatches(filters.CausedBy, bought.CausedByFactionID, evaluation.faction.ID) {
 			continue
 		}
 		matches = append(matches, match{amount: bought.Delta})
@@ -85,11 +85,11 @@ func matchInfluenceBought(ctx evalContext, filters domain.GoalFilters) []match {
 	return matches
 }
 
-func matchGovernmentTaken(ctx evalContext, filters domain.GoalFilters) []match {
+func matchGovernmentTaken(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		changed, ok := mutation.(domain.WorldGovernmentChanged)
-		if !ok || !sideMatches(filters.To, changed.ToFactionID, ctx.faction.ID) {
+		if !ok || !sideMatches(filters.To, changed.ToFactionID, evaluation.faction.ID) {
 			continue
 		}
 		matches = append(matches, match{amount: 1, world: changed.WorldID, mutation: changed})
@@ -100,15 +100,15 @@ func matchGovernmentTaken(ctx evalContext, filters domain.GoalFilters) []match {
 // matchFactionDestroyed matches the one HP loss that takes a faction to 0 or
 // less, measured against its HP before the batch plus the batch's earlier losses.
 // caused_by reads that loss, so a third party's last blow does not match (D-15).
-func matchFactionDestroyed(ctx evalContext, filters domain.GoalFilters) []match {
+func matchFactionDestroyed(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
 	lost := make(map[string]int)
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		delta, ok := mutation.(domain.FactionHPDelta)
 		if !ok {
 			continue
 		}
-		target := ctx.factionState.Factions[delta.FactionID]
+		target := evaluation.factionState.Factions[delta.FactionID]
 		if target == nil {
 			continue
 		}
@@ -117,10 +117,10 @@ func matchFactionDestroyed(ctx evalContext, filters domain.GoalFilters) []match 
 		if before <= 0 || before+delta.Delta > 0 {
 			continue
 		}
-		if filters.Target == targetStartInput && delta.FactionID != ctx.faction.ActiveGoal.TargetFactionID {
+		if filters.Target == targetStartInput && delta.FactionID != evaluation.faction.ActiveGoal.TargetFactionID {
 			continue
 		}
-		if !sideMatches(filters.CausedBy, delta.CausedByFactionID, ctx.faction.ID) {
+		if !sideMatches(filters.CausedBy, delta.CausedByFactionID, evaluation.faction.ID) {
 			continue
 		}
 		matches = append(matches, match{amount: 1, mutation: delta})
@@ -128,11 +128,11 @@ func matchFactionDestroyed(ctx evalContext, filters domain.GoalFilters) []match 
 	return matches
 }
 
-func matchActionTaken(ctx evalContext, filters domain.GoalFilters) []match {
+func matchActionTaken(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
-	for _, mutation := range ctx.batch {
+	for _, mutation := range evaluation.batch {
 		taken, ok := mutation.(domain.ActionTaken)
-		if !ok || !sideMatches(filters.Faction, taken.FactionID, ctx.faction.ID) {
+		if !ok || !sideMatches(filters.Faction, taken.FactionID, evaluation.faction.ID) {
 			continue
 		}
 		if len(filters.Action) > 0 && !slices.Contains(filters.Action, taken.Action) {

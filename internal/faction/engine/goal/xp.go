@@ -7,27 +7,27 @@ import (
 
 // xp is the XP a completion pays. progress is the progress after this batch;
 // completing is the match of the complete event, zero for a threshold.
-func (compiled *compiledGoal) xp(ctx evalContext, progress int, completing match) int {
+func (compiled *compiledGoal) xp(evaluation evalContext, progress int, completing match) int {
 	spec := compiled.goal.XP
 	switch spec.Formula {
 	case formulaHalfProgress:
 		return ceilDiv(progress, 2)
 	case formulaTargetAverage:
-		target := ctx.factionState.Factions[ctx.faction.ActiveGoal.TargetFactionID]
+		target := evaluation.factionState.Factions[evaluation.faction.ActiveGoal.TargetFactionID]
 		if target == nil {
 			return 1
 		}
 		return 1 + ceilDiv(ratingSum(target), 3)
 	case formulaRulerAverage:
 		changed, _ := completing.mutation.(domain.WorldGovernmentChanged)
-		ruler := ctx.factionState.Factions[changed.FromFactionID]
+		ruler := evaluation.factionState.Factions[changed.FromFactionID]
 		if ruler == nil || !changed.Resisted {
 			return 1
 		}
 		return max(1, ceilDiv(ratingSum(ruler), 6))
 	default:
 		amount := spec.Amount
-		if spec.ContestedBonus > 0 && rivalPresentOn(completing.world, ctx.faction.ID, ctx.factionState) {
+		if spec.ContestedBonus > 0 && rivalPresentOn(completing.world, evaluation.faction.ID, evaluation.factionState) {
 			amount += spec.ContestedBonus
 		}
 		return amount

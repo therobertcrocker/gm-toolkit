@@ -422,6 +422,26 @@ func TestEvaluate_PeaceableKingdom(t *testing.T) {
 
 		fixture.want(got, append([]domain.Mutation{fixture.progressed(1, causeProgress)}, fixture.completed(1)...)...)
 	})
+	t.Run("abandoning the goal neither moves nor completes it", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Peaceable Kingdom", 3)
+
+		got := fixture.evaluate(
+			domain.ActionTaken{FactionID: "f1", Action: "Abandon Goal"},
+			domain.GoalAbandoned{FactionID: "f1", GoalID: fixture.compiled.goal.ID, Cause: "player_choice", CausedByFactionID: "f1"},
+		)
+
+		fixture.want(got)
+	})
+	t.Run("a rival abandoning its goal does not stop the holder's", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Peaceable Kingdom", 0)
+
+		got := fixture.evaluate(
+			domain.ActionTaken{FactionID: "f1", Action: "Buy Asset"},
+			domain.GoalAbandoned{FactionID: "f2", GoalID: "CORE-G-001", Cause: "player_choice", CausedByFactionID: "f2"},
+		)
+
+		fixture.want(got, fixture.progressed(1, causeProgress))
+	})
 }
 
 // --- Government taken (CORE-G-004), D-8 and D-9 ---

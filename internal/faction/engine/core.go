@@ -53,11 +53,6 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine
 	e.Turn = turn.New(e.Rand, e.Rulebook, log)
 	e.Mutation = mutation.New(log)
 	e.Action = action.New(log)
-	goalEngine, err := goal.New(rulebook, log)
-	if err != nil {
-		return nil, fmt.Errorf("engine: %w", err)
-	}
-	e.Goal = goalEngine
 	e.Effect = effect.New(effects.Registrars(), log)
 	for _, defID := range slices.Sorted(maps.Keys(rulebook.Assets)) {
 		def := rulebook.Assets[defID]
@@ -78,5 +73,10 @@ func NewWithRulebook(rulebook *rulebook.Rulebook, worldEngine *world.WorldEngine
 		}
 	}
 	actions.RegisterDefaultActions(e.Action, func() dice.Roller { return e.Rand }, e.Hooks, e.World, e.Effect)
+	goalEngine, err := goal.New(rulebook, e.Action.Names(), log)
+	if err != nil {
+		return nil, fmt.Errorf("engine: %w", err)
+	}
+	e.Goal = goalEngine
 	return e, nil
 }

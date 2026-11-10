@@ -16,7 +16,7 @@ func discardLog() *slog.Logger {
 
 func newEngine(t *testing.T, loaded *rulebook.Rulebook) *GoalEngine {
 	t.Helper()
-	goalEngine, err := New(loaded, discardLog())
+	goalEngine, err := New(loaded, testActionNames, discardLog())
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestNew_RefusesABadGoal(t *testing.T) {
 	badGoal.XP = nil
 	loaded := &rulebook.Rulebook{Goals: map[string]*domain.Goal{"X-1": badGoal}}
 
-	_, err := New(loaded, discardLog())
+	_, err := New(loaded, testActionNames, discardLog())
 
 	if err == nil {
 		t.Fatal("New returned no error for a goal with no xp part")
@@ -55,7 +55,7 @@ func TestUpdateProgress_NoActiveGoal(t *testing.T) {
 	faction := &domain.Faction{ID: "f1"}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	mutations := goalEngine.UpdateProgress("f1", nil, factionState, loaded, discardLog())
+	mutations := goalEngine.UpdateProgress("f1", nil, factionState, discardLog())
 
 	if mutations != nil {
 		t.Errorf("mutations = %v, want nil", mutations)
@@ -67,7 +67,7 @@ func TestUpdateProgress_UnknownFaction(t *testing.T) {
 	goalEngine := newEngine(t, loaded)
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{}}
 
-	mutations := goalEngine.UpdateProgress("f1", nil, factionState, loaded, discardLog())
+	mutations := goalEngine.UpdateProgress("f1", nil, factionState, discardLog())
 
 	if mutations != nil {
 		t.Errorf("mutations = %v, want nil", mutations)
@@ -80,7 +80,7 @@ func TestUpdateProgress_UnknownGoalIsSkipped(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", ActiveGoal: &domain.ActiveGoal{GoalID: "CORE-G-012"}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	mutations := goalEngine.UpdateProgress("f1", nil, factionState, loaded, discardLog())
+	mutations := goalEngine.UpdateProgress("f1", nil, factionState, discardLog())
 
 	if mutations != nil {
 		t.Errorf("mutations = %v, want nil", mutations)
@@ -92,7 +92,7 @@ func TestUpdateProgress_RunsTheHeldGoal(t *testing.T) {
 	fixture.give(fixture.rival, "a1", "force-def", "Krylos")
 	goalEngine := newEngine(t, fixture.rulebook)
 
-	got := goalEngine.UpdateProgress("f1", []domain.Mutation{kill("f2", "a1", "attack", "f1")}, fixture.factionState, fixture.rulebook, discardLog())
+	got := goalEngine.UpdateProgress("f1", []domain.Mutation{kill("f2", "a1", "attack", "f1")}, fixture.factionState, discardLog())
 
 	fixture.want(got, fixture.progressed(1, causeProgress))
 }
