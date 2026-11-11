@@ -493,6 +493,33 @@ func TestGoalCompleted_XPRollBonusJoinsTheGoalLine(t *testing.T) {
 	}
 }
 
+func TestGoalCompleted_OnARivalsTurnGoesToTheHolder(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "goal_completed", domain.GoalCompleted{
+				FactionID: "faction-b", GoalID: "goal-1", XPAwarded: 2, Cause: "goal_completed",
+			}),
+			mutRec(t, "xp_awarded", domain.XPAwarded{
+				FactionID: "faction-b", Amount: 2, Cause: "goal_completed",
+			}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"}), minRulebook(map[string]string{"goal-1": "Military Conquest"}))
+	holder := findBeat(d, "faction-b")
+	if holder == nil {
+		t.Fatal("faction-b has no beat")
+	}
+	if len(holder.GoalEvents) != 1 || holder.GoalEvents[0].Kind != GoalCompleted {
+		t.Errorf("want 1 GoalCompleted event on faction-b, got %+v", holder.GoalEvents)
+	}
+	if holder.XPGained != 2 {
+		t.Errorf("want faction-b XPGained 2, got %d", holder.XPGained)
+	}
+	if acting := findBeat(d, "faction-a"); acting != nil && (len(acting.GoalEvents) != 0 || acting.XPGained != 0) {
+		t.Errorf("want no goal event and no XP on faction-a, got %+v and XPGained %d", acting.GoalEvents, acting.XPGained)
+	}
+}
+
 func TestGoalAbandoned(t *testing.T) {
 	records := []domain.EventRecord{
 		eventRec("faction-a",
@@ -508,6 +535,33 @@ func TestGoalAbandoned(t *testing.T) {
 	beat := findBeat(d, "faction-a")
 	if len(beat.GoalEvents) != 1 || beat.GoalEvents[0].Kind != GoalAbandoned {
 		t.Errorf("want 1 GoalAbandoned event, got %+v", beat.GoalEvents)
+	}
+}
+
+func TestGoalFailed(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "goal_failed", domain.GoalFailed{
+				FactionID: "faction-b", GoalID: "goal-1", Cause: domain.GoalFailedTargetLost,
+			}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"}), minRulebook(map[string]string{"goal-1": "Destroy the Foe"}))
+	holder := findBeat(d, "faction-b")
+	if holder == nil {
+		t.Fatal("faction-b has no beat")
+	}
+	if len(holder.GoalEvents) != 1 || holder.GoalEvents[0].Kind != GoalFailed {
+		t.Fatalf("want 1 GoalFailed event on faction-b, got %+v", holder.GoalEvents)
+	}
+	if holder.GoalEvents[0].GoalName != "Destroy the Foe" || holder.GoalEvents[0].Cause != domain.GoalFailedTargetLost {
+		t.Errorf("want goal 'Destroy the Foe' with cause target_lost, got %+v", holder.GoalEvents[0])
+	}
+	if acting := findBeat(d, "faction-a"); acting != nil && len(acting.GoalEvents) != 0 {
+		t.Errorf("want no goal event on faction-a, got %+v", acting.GoalEvents)
+	}
+	if d.Headline.Kind == HeadlineGoalAbandoned {
+		t.Error("a failed goal took the Goal Abandoned headline")
 	}
 }
 

@@ -65,6 +65,15 @@ var goalAbandonedTemplates = []string{
 	"{faction} walked away from {goal} this cycle.",
 }
 
+// goalFailedTemplates holds one template set per GoalFailed cause, so a later
+// cause never inherits wording about a target.
+var goalFailedTemplates = map[string][]string{
+	domain.GoalFailedTargetLost: {
+		"{faction}'s {goal} ends unfinished — another hand struck the target down first.",
+		"{faction} lost the chance at {goal}: a rival finished the foe before they could.",
+	},
+}
+
 var goalHomeworldTemplates = []string{
 	"{faction} shifted homeworld designation from {from} to {to}.",
 	"A new base of power: {faction} moved home from {from} to {to}.",

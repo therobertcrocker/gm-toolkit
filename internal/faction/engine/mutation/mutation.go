@@ -236,6 +236,12 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.GoalFailed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.ActiveGoal = nil
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
 		case domain.GoalCompleted:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				faction.ActiveGoal = nil

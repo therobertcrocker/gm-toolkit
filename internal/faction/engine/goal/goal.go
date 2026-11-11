@@ -35,28 +35,32 @@ func New(rulebook *rulebook.Rulebook, actionNames []string, log *slog.Logger) (*
 	return goalEngine, nil
 }
 
-// UpdateProgress reads a batch for the acting faction's active goal and returns
-// the goal mutations it causes. It must be called before MutationEngine.Apply.
+// UpdateProgress reads one batch for every faction's active goal, in faction ID
+// order, and returns the goal mutations it causes. Every goal reads the state
+// before the batch, so it must be called before MutationEngine.Apply.
 func (goalEngine *GoalEngine) UpdateProgress(
-	actingFactionID string,
 	mutations []domain.Mutation,
 	factionState *state.FactionState,
 	log *slog.Logger,
 ) []domain.Mutation {
-	actingFaction, ok := factionState.Factions[actingFactionID]
-	if !ok || actingFaction.ActiveGoal == nil {
-		return nil
+	var goalMutations []domain.Mutation
+	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
+		faction := factionState.Factions[factionID]
+		if faction.ActiveGoal == nil {
+			continue
+		}
+		compiled, ok := goalEngine.goals[faction.ActiveGoal.GoalID]
+		if !ok {
+			// deliberate: a held goal the rulebook does not know is skipped, not an error, because an older save can hold one (Decision 10).
+			log.Warn("faction holds an unknown goal", "faction", factionID, "goal", faction.ActiveGoal.GoalID)
+			continue
+		}
+		goalMutations = append(goalMutations, compiled.evaluate(evalContext{
+			faction:      faction,
+			batch:        mutations,
+			factionState: factionState,
+			rulebook:     goalEngine.rulebook,
+		})...)
 	}
-	compiled, ok := goalEngine.goals[actingFaction.ActiveGoal.GoalID]
-	if !ok {
-		// deliberate: a held goal the rulebook does not know is skipped, not an error, because an older save can hold one (Decision 10).
-		log.Warn("faction holds an unknown goal", "faction", actingFactionID, "goal", actingFaction.ActiveGoal.GoalID)
-		return nil
-	}
-	return compiled.evaluate(evalContext{
-		faction:      actingFaction,
-		batch:        mutations,
-		factionState: factionState,
-		rulebook:     goalEngine.rulebook,
-	})
+	return goalMutations
 }

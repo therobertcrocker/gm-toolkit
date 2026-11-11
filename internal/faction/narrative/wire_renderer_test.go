@@ -252,6 +252,43 @@ func TestRenderGoalEvent_GovernmentAndTagLoss(t *testing.T) {
 	}
 }
 
+func goalFailedDigest(cause string) digest.CycleDigest {
+	faction := digest.FactionRef{ID: "faction-a", Name: "Iron Hegemony"}
+	return digest.CycleDigest{
+		Cycle: 2,
+		ActiveFactions: []digest.FactionBeat{
+			{
+				Faction: faction,
+				GoalEvents: []digest.GoalEvent{
+					{Kind: digest.GoalFailed, GoalID: "goal-1", GoalName: "Destroy the Foe", Cause: cause},
+				},
+			},
+		},
+		Headline: digest.Headline{Kind: digest.HeadlineQuiet},
+	}
+}
+
+func TestWireRendererGoalFailed(t *testing.T) {
+	r := NewWireRenderer()
+	for seed := int64(1); seed <= 10; seed++ {
+		out, err := r.Render(goalFailedDigest(domain.GoalFailedTargetLost), seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out, "Iron Hegemony") || !strings.Contains(out, "Destroy the Foe") {
+			t.Errorf("seed %d: output %q, want the faction and the goal", seed, out)
+		}
+	}
+
+	out, err := r.Render(goalFailedDigest("unknown_cause"), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "Iron Hegemony's Destroy the Foe failed.") {
+		t.Errorf("unknown cause output %q, want the fallback line", out)
+	}
+}
+
 func TestRenderRefusalAndHold_Landing(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	refusal := renderRefusal(digest.RefusalEvent{AssetName: "Troops", World: "Krylos", DecidedBy: "Bravo", Landing: true}, "Alpha", rng)

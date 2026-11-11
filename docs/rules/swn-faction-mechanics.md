@@ -111,6 +111,9 @@ The book leaves these points open. The engine reads them as follows.
 - **Rounding** — every difficulty that divides rounds up. Three kills pay 2 XP. A
   resisting ruler at Force 3, Cunning 4, Wealth 4 pays 2 for a Planetary Seizure and
   1 + 4 for Destroy the Foe.
+- **When goals count** — a goal counts what happens on any faction's turn and in
+  any phase of it, not only during its holder's action. A kill made while
+  defending counts, and a goal can complete on another faction's turn.
 - **What counts as destroying or damaging** — any kill or damage the faction
   causes: an attack, a counterattack, an ability or an asset's special effect.
 - **Bases** — damage to any rival Base counts for Blood the Enemy, the homeworld
@@ -125,7 +128,8 @@ The book leaves these points open. The engine reads them as follows.
   not Attack. An Attack resets the count even if every attack misses. A turn with
   no action neither counts nor resets.
 - **Destroy the Foe** — the goal completes only when the faction itself lands the
-  blow that takes the target to 0 hit points.
+  blow that takes the target to 0 hit points. When another faction lands that
+  blow, the goal fails: it ends with no XP, and the faction loses no income.
 - **Inside Enemy Territory** — the goal counts the stealthed assets the faction
   holds at one time on worlds a rival governs, or on a rival's homeworld that has no
   faction government. An asset that loses stealth or leaves stops counting.

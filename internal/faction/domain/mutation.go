@@ -229,6 +229,20 @@ type GoalAbandoned struct {
 
 func (m GoalAbandoned) Type() string { return "goal_abandoned" }
 
+// GoalFailed records that a faction's active goal ended without completing. It
+// pays no XP and costs no income. Cause says why.
+type GoalFailed struct {
+	FactionID string `json:"faction_id"`
+	GoalID    string `json:"goal_id"`
+	Cause     string `json:"cause"`
+}
+
+func (m GoalFailed) Type() string { return "goal_failed" }
+
+// GoalFailedTargetLost is the GoalFailed cause when another faction destroys the
+// goal's target faction (D-21).
+const GoalFailedTargetLost = "target_lost"
+
 // GoalCompleted records successful goal resolution. XPAwarded is the amount
 // granted; a separate XPAwarded mutation applies it to faction.XP.
 type GoalCompleted struct {

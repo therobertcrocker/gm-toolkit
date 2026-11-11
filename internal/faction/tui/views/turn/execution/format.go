@@ -154,7 +154,9 @@ func formatMutation(m domain.Mutation) (string, bool) {
 	case domain.StatRaised:
 		return fmt.Sprintf("%s %d→%d", mut.Stat, mut.OldRating, mut.NewRating), true
 	case domain.GoalCompleted:
-		return fmt.Sprintf("goal completed (+%d XP)", mut.XPAwarded), true
+		return fmt.Sprintf("goal completed: %s (+%d XP)", mut.FactionID, mut.XPAwarded), true
+	case domain.GoalFailed:
+		return fmt.Sprintf("goal failed: %s (%s)", mut.FactionID, mut.Cause), true
 	case domain.XPAwarded:
 		// deliberate: surface an xp_roll bonus, fold the rest — the goal-completed
 		// line already reports a goal's own XP, a bonus roll has no other line.

@@ -419,7 +419,10 @@ func Build(
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {
 					return CycleDigest{}, err
 				}
-				beat.GoalEvents = append(beat.GoalEvents, GoalEvent{
+				// deliberate: the holder's beat, not the acting faction's, because a goal can complete on a rival's turn (D-13).
+				holder := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				holder.GoalEvents = append(holder.GoalEvents, GoalEvent{
 					Kind:      GoalCompleted,
 					GoalID:    m.GoalID,
 					GoalName:  resolveGoalName(m.GoalID, rulebook),
@@ -431,21 +434,23 @@ func Build(
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {
 					return CycleDigest{}, err
 				}
-				beat.XPGained += m.Amount
+				holder := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				holder.XPGained += m.Amount
 				// A goal's xp_roll bonus follows its completion in the batch, so it
 				// adds to the latest GoalCompleted.
 				if m.Cause == string(domain.SpecialXPRoll) {
-					for i := len(beat.GoalEvents) - 1; i >= 0; i-- {
-						if beat.GoalEvents[i].Kind == GoalCompleted {
-							beat.GoalEvents[i].XPAwarded += m.Amount
+					for i := len(holder.GoalEvents) - 1; i >= 0; i-- {
+						if holder.GoalEvents[i].Kind == GoalCompleted {
+							holder.GoalEvents[i].XPAwarded += m.Amount
 							break
 						}
 					}
 				} else {
 					// Fold into matching GoalCompleted if XPAwarded wasn't set by the mutation.
-					for i := range beat.GoalEvents {
-						if beat.GoalEvents[i].Kind == GoalCompleted && beat.GoalEvents[i].XPAwarded == 0 {
-							beat.GoalEvents[i].XPAwarded = m.Amount
+					for i := range holder.GoalEvents {
+						if holder.GoalEvents[i].Kind == GoalCompleted && holder.GoalEvents[i].XPAwarded == 0 {
+							holder.GoalEvents[i].XPAwarded = m.Amount
 							break
 						}
 					}
@@ -508,6 +513,20 @@ func Build(
 					Kind:     GoalAbandoned,
 					GoalID:   m.GoalID,
 					GoalName: resolveGoalName(m.GoalID, rulebook),
+				})
+
+			case "goal_failed":
+				var m domain.GoalFailed
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				holder := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				holder.GoalEvents = append(holder.GoalEvents, GoalEvent{
+					Kind:     GoalFailed,
+					GoalID:   m.GoalID,
+					GoalName: resolveGoalName(m.GoalID, rulebook),
+					Cause:    m.Cause,
 				})
 
 			case "influence_delta":

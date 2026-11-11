@@ -132,6 +132,46 @@ func TestMutationEngine_UnknownFactionErrors(t *testing.T) {
 	}
 }
 
+func TestApply_GoalFailedClearsTheGoal(t *testing.T) {
+	t.Run("the holder's goal is cleared and nothing else moves", func(t *testing.T) {
+		s := newMutationTestState()
+		holder := s.Factions["f1"]
+		holder.XP = 3
+		holder.ActiveGoal = &domain.ActiveGoal{GoalID: "CORE-G-008", TargetFactionID: "f2"}
+		me := New(slog.New(slog.DiscardHandler))
+
+		if err := me.Apply(s, []domain.Mutation{
+			domain.GoalFailed{FactionID: "f1", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
+		}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply() unexpected error: %v", err)
+		}
+		if holder.ActiveGoal != nil {
+			t.Errorf("ActiveGoal = %+v, want nil", holder.ActiveGoal)
+		}
+		if holder.XP != 3 {
+			t.Errorf("XP = %d, want 3", holder.XP)
+		}
+		if holder.Coin != 10 {
+			t.Errorf("Coin = %d, want 10", holder.Coin)
+		}
+	})
+
+	t.Run("an unknown faction is a miss", func(t *testing.T) {
+		s := newMutationTestState()
+		me := New(slog.New(slog.DiscardHandler))
+
+		err := me.Apply(s, []domain.Mutation{
+			domain.GoalFailed{FactionID: "missing", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
+		}, slog.New(slog.DiscardHandler))
+		if err == nil {
+			t.Fatal("Apply() expected error for unknown faction, got nil")
+		}
+		if len(err.Misses) != 1 {
+			t.Fatalf("len(Misses) = %d, want 1", len(err.Misses))
+		}
+	})
+}
+
 func TestMutationEngine_AssetStealthCleared(t *testing.T) {
 	s := newMutationTestState()
 	s.Factions["f1"].Assets["a1"].Stealthy = true

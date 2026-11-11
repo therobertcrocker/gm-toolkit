@@ -496,17 +496,19 @@ func hpLoss(factionID string, delta int, causedByID string) domain.FactionHPDelt
 
 func TestEvaluate_DestroyTheFoe(t *testing.T) {
 	cases := []struct {
-		name     string
-		targetID string
-		batch    []domain.Mutation
-		wantXP   int
+		name       string
+		targetID   string
+		batch      []domain.Mutation
+		wantXP     int
+		wantFailed bool
 	}{
-		{"the holder's blow destroys the target", "f2", []domain.Mutation{hpLoss("f2", -5, "f1")}, 5},
-		{"the holder's last blow after a third party's", "f2", []domain.Mutation{hpLoss("f2", -3, "f3"), hpLoss("f2", -2, "f1")}, 5},
-		{"a third party's last blow", "f2", []domain.Mutation{hpLoss("f2", -3, "f1"), hpLoss("f2", -2, "f3")}, 0},
-		{"a loss that leaves the target at 1 HP", "f2", []domain.Mutation{hpLoss("f2", -4, "f1")}, 0},
-		{"the destruction of a faction not targeted", "f2", []domain.Mutation{hpLoss("f3", -2, "f1")}, 0},
-		{"no target set", "", []domain.Mutation{hpLoss("f2", -5, "f1")}, 0},
+		{"the holder's blow destroys the target", "f2", []domain.Mutation{hpLoss("f2", -5, "f1")}, 5, false},
+		{"the holder's last blow after a third party's", "f2", []domain.Mutation{hpLoss("f2", -3, "f3"), hpLoss("f2", -2, "f1")}, 5, false},
+		{"a third party's last blow fails the goal", "f2", []domain.Mutation{hpLoss("f2", -3, "f1"), hpLoss("f2", -2, "f3")}, 0, true},
+		{"a third party's only blow fails the goal", "f2", []domain.Mutation{hpLoss("f2", -5, "f3")}, 0, true},
+		{"a third party's loss that leaves the target at 1 HP", "f2", []domain.Mutation{hpLoss("f2", -4, "f3")}, 0, false},
+		{"the destruction of a faction not targeted", "f2", []domain.Mutation{hpLoss("f3", -2, "f1")}, 0, false},
+		{"no target set", "", []domain.Mutation{hpLoss("f2", -5, "f1")}, 0, false},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -515,13 +517,25 @@ func TestEvaluate_DestroyTheFoe(t *testing.T) {
 
 			got := fixture.evaluate(testCase.batch...)
 
-			if testCase.wantXP == 0 {
+			switch {
+			case testCase.wantFailed:
+				fixture.want(got, domain.GoalFailed{FactionID: "f1", GoalID: fixture.compiled.goal.ID, Cause: domain.GoalFailedTargetLost})
+			case testCase.wantXP > 0:
+				fixture.want(got, fixture.completed(testCase.wantXP)...)
+			default:
 				fixture.want(got)
-				return
 			}
-			fixture.want(got, fixture.completed(testCase.wantXP)...)
 		})
 	}
+}
+
+func TestEvaluate_LostTargetNeedsATargetInput(t *testing.T) {
+	fixture := newGoalFixture(t, "Military Conquest", 0)
+	fixture.holder.ActiveGoal.TargetFactionID = "f2"
+
+	got := fixture.evaluate(hpLoss("f2", -5, "f3"))
+
+	fixture.want(got)
 }
 
 // --- Stealthed assets (CORE-G-009), D-10 and Decision 2 ---

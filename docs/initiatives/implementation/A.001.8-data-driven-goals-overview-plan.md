@@ -141,7 +141,7 @@ reversals of the decisions above.
 | Done | # | Effort | Scope | File |
 |------|---|--------|-------|------|
 | [x] | 1 | Goals as data | The goal vocabulary and its loader, `CORE-G-` IDs, the eleven goals as data, `ActionTaken`, the handlers, the goal-lock phase and the goal process deleted, `ActiveGoal` slimmed, the re-seed | [`A.001.8.E1-data-driven-goals-plan.md`](./A.001.8.E1-data-driven-goals-plan.md) |
-| [ ] | 2 | Every batch | Goals read every batch in every phase for every faction; `GoalFailed` and the lost-target rule | `A.001.8.E2-data-driven-goals-plan.md` (planned) |
+| [x] | 2 | Every batch | Goals read every batch in every phase for every faction; `GoalFailed` and the lost-target rule | [`A.001.8.E2-data-driven-goals-plan.md`](./A.001.8.E2-data-driven-goals-plan.md) |
 | [ ] | 3 | Turn-start pick | The pick step, its ask and start inputs, both gates and their records, the TUI overlay, the wizard's goal step removed | `A.001.8.E3-data-driven-goals-plan.md` (planned) |
 
 ## Shared Context

@@ -25,7 +25,7 @@ func TestApplyAndRecord_LogsMutationMisses(t *testing.T) {
 		mutations := []domain.Mutation{
 			domain.CoinDelta{FactionID: "ghost", Delta: 1},
 		}
-		err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost"}, mutations, paths, log)
+		_, err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost"}, mutations, paths, log)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -48,7 +48,7 @@ func TestApplyAndRecord_LogsMutationMisses(t *testing.T) {
 			domain.CoinDelta{FactionID: "ghost-a", Delta: 1},
 			domain.CoinDelta{FactionID: "ghost-b", Delta: 1},
 		}
-		err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost-a"}, mutations, paths, log)
+		_, err := eng.applyAndRecord(factionState, &domain.Faction{ID: "ghost-a"}, mutations, paths, log)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

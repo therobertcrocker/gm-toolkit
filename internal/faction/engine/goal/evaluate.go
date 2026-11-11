@@ -21,14 +21,25 @@ func (compiled *compiledGoal) evaluate(evaluation evalContext) []domain.Mutation
 	if abandonsHeldGoal(evaluation) {
 		return nil
 	}
+	mutations, completed := compiled.advance(evaluation)
+	if !completed && compiled.targetLost(evaluation) {
+		// deliberate: the failure replaces the batch's progress, not joins it, because the goal ends here and its progress ends with it (E2 Decision 8).
+		return []domain.Mutation{domain.GoalFailed{FactionID: evaluation.faction.ID, GoalID: compiled.goal.ID, Cause: domain.GoalFailedTargetLost}}
+	}
+	return mutations
+}
+
+// advance moves the goal's progress for one batch and completes the goal when
+// it is done. completed reports a completion.
+func (compiled *compiledGoal) advance(evaluation evalContext) ([]domain.Mutation, bool) {
 	goal := compiled.goal
 	progress := evaluation.faction.ActiveGoal.Progress
 	if compiled.reset != nil && len(compiled.reset.match(evaluation, goal.Reset.Filters)) > 0 {
 		// deliberate: a reset ends the batch for this goal, not only zeroes it, because progress counted in the same batch would outlive the reset (Decision 8).
 		if progress == 0 {
-			return nil
+			return nil, false
 		}
-		return []domain.Mutation{compiled.progressed(evaluation, -progress, causeReset)}
+		return []domain.Mutation{compiled.progressed(evaluation, -progress, causeReset)}, false
 	}
 	var mutations []domain.Mutation
 	delta := compiled.progressDelta(evaluation, progress)
@@ -38,13 +49,23 @@ func (compiled *compiledGoal) evaluate(evaluation evalContext) []domain.Mutation
 	}
 	completing, completed := compiled.completion(evaluation, progress, delta != 0)
 	if !completed {
-		return mutations
+		return mutations, false
 	}
 	xp := compiled.xp(evaluation, progress, completing)
 	return append(mutations,
 		domain.GoalCompleted{FactionID: evaluation.faction.ID, GoalID: goal.ID, XPAwarded: xp, Cause: causeCompleted},
 		domain.XPAwarded{FactionID: evaluation.faction.ID, Amount: xp, Cause: causeCompleted},
-	)
+	), true
+}
+
+// targetLost reports whether the batch destroys the goal's target faction, by
+// any hand: a built-in rule, not a part (D-21). Only a goal whose start names a
+// target_faction input has a target.
+func (compiled *compiledGoal) targetLost(evaluation evalContext) bool {
+	if !hasInput(compiled.goal, inputTargetFaction) {
+		return false
+	}
+	return len(matchFactionDestroyed(evaluation, domain.GoalFilters{Target: targetStartInput})) > 0
 }
 
 func abandonsHeldGoal(evaluation evalContext) bool {

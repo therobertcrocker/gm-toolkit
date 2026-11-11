@@ -55,19 +55,7 @@ func TestUpdateProgress_NoActiveGoal(t *testing.T) {
 	faction := &domain.Faction{ID: "f1"}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	mutations := goalEngine.UpdateProgress("f1", nil, factionState, discardLog())
-
-	if mutations != nil {
-		t.Errorf("mutations = %v, want nil", mutations)
-	}
-}
-
-func TestUpdateProgress_UnknownFaction(t *testing.T) {
-	loaded := shippedRulebook(t)
-	goalEngine := newEngine(t, loaded)
-	factionState := &state.FactionState{Factions: map[string]*domain.Faction{}}
-
-	mutations := goalEngine.UpdateProgress("f1", nil, factionState, discardLog())
+	mutations := goalEngine.UpdateProgress(nil, factionState, discardLog())
 
 	if mutations != nil {
 		t.Errorf("mutations = %v, want nil", mutations)
@@ -80,7 +68,7 @@ func TestUpdateProgress_UnknownGoalIsSkipped(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", ActiveGoal: &domain.ActiveGoal{GoalID: "CORE-G-012"}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 
-	mutations := goalEngine.UpdateProgress("f1", nil, factionState, discardLog())
+	mutations := goalEngine.UpdateProgress(nil, factionState, discardLog())
 
 	if mutations != nil {
 		t.Errorf("mutations = %v, want nil", mutations)
@@ -92,7 +80,27 @@ func TestUpdateProgress_RunsTheHeldGoal(t *testing.T) {
 	fixture.give(fixture.rival, "a1", "force-def", "Krylos")
 	goalEngine := newEngine(t, fixture.rulebook)
 
-	got := goalEngine.UpdateProgress("f1", []domain.Mutation{kill("f2", "a1", "attack", "f1")}, fixture.factionState, discardLog())
+	got := goalEngine.UpdateProgress([]domain.Mutation{kill("f2", "a1", "attack", "f1")}, fixture.factionState, discardLog())
 
 	fixture.want(got, fixture.progressed(1, causeProgress))
+}
+
+func TestUpdateProgress_ReadsEveryHolder(t *testing.T) {
+	fixture := newGoalFixture(t, "Military Conquest", 0)
+	bloodTheEnemy := shippedGoal(t, fixture.rulebook, "Blood the Enemy").goal.ID
+	fixture.rival.ActiveGoal = &domain.ActiveGoal{GoalID: bloodTheEnemy}
+	fixture.give(fixture.rival, "a1", "force-def", "Krylos")
+	fixture.give(fixture.holder, "b1", "force-def", "Krylos")
+	goalEngine := newEngine(t, fixture.rulebook)
+	batch := []domain.Mutation{
+		domain.AssetHPDelta{FactionID: "f1", AssetID: "b1", Delta: -2, Cause: "counterstrike", CausedByFactionID: "f2"},
+		kill("f2", "a1", "attack", "f1"),
+	}
+
+	got := goalEngine.UpdateProgress(batch, fixture.factionState, discardLog())
+
+	fixture.want(got,
+		fixture.progressed(1, causeProgress),
+		domain.GoalProgressed{FactionID: "f2", GoalID: bloodTheEnemy, Delta: 2, Cause: causeProgress},
+	)
 }
