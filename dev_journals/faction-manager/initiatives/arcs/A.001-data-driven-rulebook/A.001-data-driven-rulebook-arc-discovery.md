@@ -8,7 +8,7 @@
 >
 > **Inputs mined (not re-derived):** the [arc concept](A.001-data-driven-rulebook-arc-concept.md),
 > the [arc-shaped discovery](../../discovery/hawk-rulebook-discovery.md), and the
-> [ability & effect catalog](../../../architecture/engine/ability-catalog.md).
+> [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md).
 >
 > **Status:** arc-discovery, written for sign-off. Decisions here are binding on the
 > initiatives below.
@@ -36,12 +36,12 @@ the first non-reference rulebook — the precondition for any rulebook after it.
 ## Architecture Context
 
 Pages read for re-grounding (their `Key Decisions` are binding context):
-[architecture-overview](../../../architecture/architecture-overview.md),
-[persistence](../../../architecture/engine/persistence.md),
-[actions](../../../architecture/engine/actions.md),
-[effect-mutation](../../../architecture/engine/effect-mutation.md),
-[hooks](../../../architecture/engine/hooks.md), and the
-[ability & effect catalog](../../../architecture/engine/ability-catalog.md).
+[architecture-overview](../../../../../docs/architecture/architecture-overview.md),
+[persistence](../../../../../docs/architecture/engine/persistence.md),
+[actions](../../../../../docs/architecture/engine/actions.md),
+[effect-mutation](../../../../../docs/architecture/engine/effect-mutation.md),
+[hooks](../../../../../docs/architecture/engine/hooks.md), and the
+[ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md).
 
 Load-bearing claims verified directly against source this session (docs had drifted
 in two places — noted under Reconciliation):
@@ -89,7 +89,7 @@ effect/primitive instead of its asset ID — is the prerequisite increment.
   *target-selection → (stat-contest | die-roll + outcome-table) → effect → mutations.*
   Dispatch is keyed on the effect/primitive, not the asset ID.
 - **S-side (passive/reactive features):** a profile in the data registers the right
-  hook from the [five canonical categories](../../../architecture/engine/hooks.md),
+  hook from the [five canonical categories](../../../../../docs/architecture/engine/hooks.md),
   exactly the way `transport` registers a Cat 3 reactor today. The mechanic decides
   the category (ACD-1).
 
@@ -130,7 +130,7 @@ into both rulebooks (ACD-6), a neutralized tag has to read neutral for *both* ga
 at once.
 
 **ACD-8 — The catalog is binding mechanical input. [carried-in]**
-The [ability & effect catalog](../../../architecture/engine/ability-catalog.md),
+The [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md),
 organized by primitive, is the decomposition every registry initiative builds
 against; the arc does not re-derive it. **Anchor all hook-category references on the
 canonical `hooks/doc.go` numbering** (Cat 4 = RuleModifier family, Cat 5 =

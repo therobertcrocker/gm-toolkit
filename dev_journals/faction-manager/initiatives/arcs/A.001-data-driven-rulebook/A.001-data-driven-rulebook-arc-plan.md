@@ -10,7 +10,7 @@
 > **Inputs:** the [arc-discovery](A.001-data-driven-rulebook-arc-discovery.md) (binding —
 > its Per-initiative seed, Open Questions, and Reconciliation items are the raw
 > material here), the [arc-concept](A.001-data-driven-rulebook-arc-concept.md) (non-binding
-> candidate list), and the [ability & effect catalog](../../../architecture/engine/ability-catalog.md)
+> candidate list), and the [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
 > **Status:** signed off, and **amended three times since**. The A.001.3 Discovery split the

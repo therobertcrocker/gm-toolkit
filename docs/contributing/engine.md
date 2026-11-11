@@ -55,7 +55,7 @@ header, with every nested part written in braces under it. TomlSmith's Format
 Document, at the 120-column width the devcontainer sets, does the layout: it applies
 the line rule, keeps an open list open, and removes alignment. The other rules (one
 header per entry, no dotted keys, key order, a part all inline) are yours to keep;
-the formatter leaves them as it finds them. (Why: [R.029 exploration](../initiatives/explorations/R.029-toml-1-1-migration-exploration.md), H-2.)
+the formatter leaves them as it finds them. (Why: [R.029 exploration](../../dev_journals/faction-manager/initiatives/explorations/R.029-toml-1-1-migration-exploration.md), H-2.)
 
 - **One header per entry.** `[assets.Smugglers]`, `[tags.Colonists]`,
   `[goals.MilitaryConquest]`. A part (`attack`, `transport`, `ability`, `effects`,
