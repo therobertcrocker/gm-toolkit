@@ -105,6 +105,11 @@ var measures = map[string]measureSpec{
 	},
 }
 
+// deliberate: a destroyed faction is no rival, not a rival with leftovers, because the engine keeps it in state and a dead faction counts nothing (E2 Decision Record 4).
+func isLivingRival(other *domain.Faction, holderID string) bool {
+	return other != nil && other.ID != holderID && other.CurrentHP > 0
+}
+
 // sideMatches reads an own/rival filter against the goal's holder. An absent
 // filter matches every faction.
 func sideMatches(want, factionID, holderID string) bool {

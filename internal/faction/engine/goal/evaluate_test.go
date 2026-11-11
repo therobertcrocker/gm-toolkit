@@ -278,6 +278,51 @@ func TestEvaluate_BloodTheEnemy_DamageThatDoesNotCount(t *testing.T) {
 	}
 }
 
+func TestEvaluate_BloodTheEnemy_OverkillDoesNotCount(t *testing.T) {
+	t.Run("a hit counts only the HP the asset had left", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Blood the Enemy", 0)
+		fixture.give(fixture.rival, "a1", "force-def", "Krylos").CurrentHP = 1
+
+		got := fixture.evaluate(domain.AssetHPDelta{FactionID: "f2", AssetID: "a1", Delta: -10, CausedByFactionID: "f1"})
+
+		fixture.want(got, fixture.progressed(1, causeProgress))
+	})
+	t.Run("hits in one batch share the HP left", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Blood the Enemy", 0)
+		fixture.give(fixture.rival, "a1", "force-def", "Krylos").CurrentHP = 3
+
+		got := fixture.evaluate(
+			domain.AssetHPDelta{FactionID: "f2", AssetID: "a1", Delta: -2, CausedByFactionID: "f1"},
+			domain.AssetHPDelta{FactionID: "f2", AssetID: "a1", Delta: -2, CausedByFactionID: "f1"},
+			domain.AssetHPDelta{FactionID: "f2", AssetID: "a1", Delta: -2, CausedByFactionID: "f1"},
+		)
+
+		fixture.want(got, fixture.progressed(3, causeProgress))
+	})
+	t.Run("a Base hit counts only the HP the Base had left", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Blood the Enemy", 0)
+		fixture.rival.Bases = []*domain.Base{{ID: "b2", OwnerID: "f2", CurrentHP: 2, Location: domain.Location{WorldID: "Krylos"}}}
+
+		got := fixture.evaluate(
+			domain.BaseHPDelta{FactionID: "f2", BaseID: "b2", Delta: -5, CausedByFactionID: "f1"},
+			domain.FactionHPDelta{FactionID: "f2", Delta: -5, CausedByFactionID: "f1"},
+		)
+
+		fixture.want(got, fixture.progressed(2, causeProgress))
+	})
+	t.Run("a third party's hit uses up the HP first", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Blood the Enemy", 0)
+		fixture.give(fixture.rival, "a1", "force-def", "Krylos").CurrentHP = 3
+
+		got := fixture.evaluate(
+			domain.AssetHPDelta{FactionID: "f2", AssetID: "a1", Delta: -2, CausedByFactionID: "f3"},
+			domain.AssetHPDelta{FactionID: "f2", AssetID: "a1", Delta: -4, CausedByFactionID: "f1"},
+		)
+
+		fixture.want(got, fixture.progressed(1, causeProgress))
+	})
+}
+
 func TestEvaluate_BloodTheEnemy_Completes(t *testing.T) {
 	fixture := newGoalFixture(t, "Blood the Enemy", 6)
 
@@ -320,6 +365,16 @@ func TestEvaluate_ExpandInfluence(t *testing.T) {
 		got := fixture.evaluate(basePlanted("f1", "Hadrian"))
 
 		fixture.want(got, fixture.completed(2)...)
+	})
+	t.Run("a destroyed rival's leftovers on the world pay 1", func(t *testing.T) {
+		fixture := newGoalFixture(t, "Expand Influence", 0)
+		fixture.rival.CurrentHP = 0
+		fixture.give(fixture.rival, "a1", "force-def", "Hadrian")
+		fixture.rival.Bases = []*domain.Base{{ID: "b2", OwnerID: "f2", Location: domain.Location{WorldID: "Hadrian"}}}
+
+		got := fixture.evaluate(basePlanted("f1", "Hadrian"))
+
+		fixture.want(got, fixture.completed(1)...)
 	})
 	t.Run("a world the holder already holds gives nothing", func(t *testing.T) {
 		fixture := newGoalFixture(t, "Expand Influence", 0)
@@ -679,6 +734,22 @@ func TestEvaluate_InsideEnemyTerritory_CountsRivalGround(t *testing.T) {
 
 	// Krylos, Anchorage and Brennus count; at Cunning 5 the goal does not complete.
 	fixture.want(got, fixture.progressed(3, causeProgress))
+}
+
+func TestEvaluate_InsideEnemyTerritory_DestroyedRivalIsNoRivalGround(t *testing.T) {
+	fixture := newGoalFixture(t, "Inside Enemy Territory", 0)
+	fixture.third.CurrentHP = 0
+	fixture.factionState.Governments["Ossuary"] = "f3"
+	var batch []domain.Mutation
+	for assetID, worldID := range map[string]string{"dead-governed": "Ossuary", "dead-homeworld": "Vesta", "live-governed": "Krylos"} {
+		fixture.give(fixture.holder, assetID, "cunning-def", worldID)
+		batch = append(batch, domain.AssetStealthApplied{FactionID: "f1", AssetID: assetID})
+	}
+
+	got := fixture.evaluate(batch...)
+
+	// Only Krylos counts: f3 is destroyed, so neither its world nor its homeworld is rival ground.
+	fixture.want(got, fixture.progressed(1, causeProgress))
 }
 
 func TestEvaluate_InsideEnemyTerritory_HeldAtStartNeverCounts(t *testing.T) {

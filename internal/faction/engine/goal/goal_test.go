@@ -75,6 +75,26 @@ func TestUpdateProgress_UnknownGoalIsSkipped(t *testing.T) {
 	}
 }
 
+func TestRuns(t *testing.T) {
+	goalEngine := newEngine(t, shippedRulebook(t))
+	cases := map[string]struct {
+		heldGoal *domain.ActiveGoal
+		want     bool
+	}{
+		"a known goal with no input":        {&domain.ActiveGoal{GoalID: "CORE-G-001"}, true},
+		"a targeted goal with a target":     {&domain.ActiveGoal{GoalID: "CORE-G-008", TargetFactionID: "f2"}, true},
+		"a targeted goal with no target":    {&domain.ActiveGoal{GoalID: "CORE-G-008"}, false},
+		"a goal the rulebook does not know": {&domain.ActiveGoal{GoalID: "G-004"}, false},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := goalEngine.Runs(testCase.heldGoal); got != testCase.want {
+				t.Errorf("Runs(%+v) = %v, want %v", testCase.heldGoal, got, testCase.want)
+			}
+		})
+	}
+}
+
 func TestUpdateProgress_RunsTheHeldGoal(t *testing.T) {
 	fixture := newGoalFixture(t, "Military Conquest", 0)
 	fixture.give(fixture.rival, "a1", "force-def", "Krylos")
@@ -101,7 +121,7 @@ func TestUpdateProgress_ReadsEveryHolder(t *testing.T) {
 	bloodTheEnemy := shippedGoal(t, fixture.rulebook, "Blood the Enemy").goal.ID
 	fixture.rival.ActiveGoal = &domain.ActiveGoal{GoalID: bloodTheEnemy}
 	fixture.give(fixture.rival, "a1", "force-def", "Krylos")
-	fixture.give(fixture.holder, "b1", "force-def", "Krylos")
+	fixture.give(fixture.holder, "b1", "force-def", "Krylos").CurrentHP = 5
 	goalEngine := newEngine(t, fixture.rulebook)
 	batch := []domain.Mutation{
 		domain.AssetHPDelta{FactionID: "f1", AssetID: "b1", Delta: -2, Cause: "counterstrike", CausedByFactionID: "f2"},

@@ -94,10 +94,12 @@
    turn, and Effort 2 reads goals on every batch. The reading is D-22's: a rival
    asset or Base on the world.
 
-10. **A faction that holds a goal ID the rulebook does not know is skipped, with a
-    warning.** Planning call. An older save can hold one (`G-004`, or `G-012`). Same
-    contract as a held tag (persistence, Key Decisions). This is not the old silent
-    skip: every goal in the data has behavior or the engine refuses to start.
+10. **A faction that holds a goal ID the rulebook does not know is skipped, and the
+    turn-start pick replaces it.** Planning call, amended at the initiative close
+    (Decision Record 16). An older save can hold one (`G-004`, or `G-012`). Goal
+    progress skips it with a debug line; the pick warns once and offers a new goal.
+    This is not the old silent skip: every goal in the data has behavior or the
+    engine refuses to start.
 
 11. **`GoalProgressed.Cause` is `goal_progress` or `goal_reset`.** Planning call. The
     old causes named the goal (`military_conquest`), and no Go names a goal now. No
@@ -229,6 +231,24 @@
     goes uncounted; the full clone stays until E2 gives real per-batch costs. The
     code blocks in Phases 2 to 4 are not rewritten for entries 11 to
     15; the source wins where they differ.
+
+16. **A held goal the engine cannot run no longer blocks the pick (initiative
+    review).** Robert's call; reverses the "warning" half of Decision 10. A skipped
+    unknown goal never completed or failed, and the pick asked only a faction with
+    no goal, so the faction stayed stuck until it paid for Abandon Goal; Robert's
+    `sandbox` seeds still hold `G-004` and `G-009`. `GoalEngine.Runs` says whether
+    the engine can run a held goal (known, and a target set when the goal takes
+    one). `UpdateProgress` skips one it cannot run with a debug line, not a warning
+    on every batch, and the pick treats it as no goal, warns once and asks.
+    `GoalPicked` replaces it. Also covers Effort 2 Decision Record 9.
+
+17. **Blood the Enemy counts the HP a hit takes off, not the damage rolled
+    (initiative review).** Robert's rules call. `attack.go` emits the full rolled
+    damage, so a 10 on a 1 HP asset counted 10. `matchDamage` caps each hit at the
+    HP its asset or Base had left: the state before the batch plus the batch's
+    earlier deltas, as `matchFactionDestroyed` measures a faction. A hit on an
+    entity not in state stays uncapped. Decision 1 stands. The rules doc gains a
+    "Damage inflicted" entry.
 
 ---
 

@@ -39,18 +39,22 @@ func ceilDiv(value, divisor int) int {
 }
 
 func ratingSum(faction *domain.Faction) int {
-	return faction.Force + faction.Cunning + faction.Wealth
+	total := 0
+	for _, rating := range faction.Ratings() {
+		total += rating
+	}
+	return total
 }
 
-// rivalPresentOn reports whether a faction other than factionID has an asset or
-// a Base on worldID (D-22). It reads live state, not the world index, which is
-// rebuilt only at turn setup (Decision 9).
+// rivalPresentOn reports whether a living faction other than factionID has an
+// asset or a Base on worldID (D-22). It reads live state, not the world index,
+// which is rebuilt only at turn setup (Decision 9).
 func rivalPresentOn(worldID, factionID string, factionState *state.FactionState) bool {
 	if worldID == "" {
 		return false
 	}
-	for otherID, other := range factionState.Factions {
-		if otherID == factionID {
+	for _, other := range factionState.Factions {
+		if !isLivingRival(other, factionID) {
 			continue
 		}
 		if other.HasBaseOn(worldID) {

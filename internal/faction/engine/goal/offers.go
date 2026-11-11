@@ -54,12 +54,10 @@ func (goalEngine *GoalEngine) gatesOpen(goal *domain.Goal, faction *domain.Facti
 	return true
 }
 
-// livingRivals is every other faction above 0 HP, in faction ID order.
 func livingRivals(factionID string, factionState *state.FactionState) []*domain.Faction {
 	var rivals []*domain.Faction
 	for _, rivalID := range slices.Sorted(maps.Keys(factionState.Factions)) {
-		rival := factionState.Factions[rivalID]
-		if rivalID != factionID && rival.CurrentHP > 0 {
+		if rival := factionState.Factions[rivalID]; isLivingRival(rival, factionID) {
 			rivals = append(rivals, rival)
 		}
 	}
@@ -90,13 +88,11 @@ func (goalEngine *GoalEngine) Pick(faction *domain.Faction, offers []domain.Goal
 	return picked, nil
 }
 
-// stealthedAssetIDs is the IDs of faction's stealthed assets, wherever they are,
-// in ID order.
 func stealthedAssetIDs(faction *domain.Faction) []string {
 	var assetIDs []string
-	for _, assetID := range slices.Sorted(maps.Keys(faction.Assets)) {
-		if faction.Assets[assetID].Stealthy {
-			assetIDs = append(assetIDs, assetID)
+	for _, asset := range domain.SortedAssets(faction) {
+		if asset.Stealthy {
+			assetIDs = append(assetIDs, asset.ID)
 		}
 	}
 	return assetIDs

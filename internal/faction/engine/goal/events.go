@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
 // matchKill reads the removed asset from the state before the batch, where it
@@ -35,26 +36,68 @@ func matchKill(evaluation evalContext, filters domain.GoalFilters) []match {
 	return matches
 }
 
+// matchDamage counts the hit points a hit takes off: the damage, capped at the HP
+// its asset or Base had left, read from the state before the batch plus the
+// batch's earlier deltas.
 func matchDamage(evaluation evalContext, filters domain.GoalFilters) []match {
 	var matches []match
+	remaining := make(map[string]int)
 	for _, mutation := range evaluation.batch {
-		var ownerID, causedByID string
-		var delta int
+		var ownerID, causedByID, hitKey string
+		var delta, hpBefore int
+		var known bool
 		// deliberate: FactionHPDelta is not damage here, because every Base hit emits one beside its BaseHPDelta and would count twice (Decision 1).
 		switch hit := mutation.(type) {
 		case domain.AssetHPDelta:
 			ownerID, causedByID, delta = hit.FactionID, hit.CausedByFactionID, hit.Delta
+			hitKey = "asset/" + hit.AssetID
+			hpBefore, known = assetHP(evaluation.factionState, hit.FactionID, hit.AssetID)
 		case domain.BaseHPDelta:
 			ownerID, causedByID, delta = hit.FactionID, hit.CausedByFactionID, hit.Delta
+			hitKey = "base/" + hit.BaseID
+			hpBefore, known = baseHP(evaluation.factionState, hit.FactionID, hit.BaseID)
 		default:
 			continue
 		}
+		hp, seen := remaining[hitKey]
+		if !seen {
+			hp = hpBefore
+		}
+		remaining[hitKey] = hp + delta
 		if delta >= 0 || !sideMatches(filters.Owner, ownerID, evaluation.faction.ID) || !sideMatches(filters.CausedBy, causedByID, evaluation.faction.ID) {
 			continue
 		}
-		matches = append(matches, match{amount: -delta})
+		taken := -delta
+		// deliberate: overkill does not count, not the damage rolled, because the goal asks for hit points of damage inflicted (Robert's rules call at the A.001.8 close).
+		if known {
+			taken = min(taken, max(hp, 0))
+		}
+		if taken > 0 {
+			matches = append(matches, match{amount: taken})
+		}
 	}
 	return matches
+}
+
+func assetHP(factionState *state.FactionState, factionID, assetID string) (int, bool) {
+	owner := factionState.Factions[factionID]
+	if owner == nil || owner.Assets[assetID] == nil {
+		return 0, false
+	}
+	return owner.Assets[assetID].CurrentHP, true
+}
+
+func baseHP(factionState *state.FactionState, factionID, baseID string) (int, bool) {
+	owner := factionState.Factions[factionID]
+	if owner == nil {
+		return 0, false
+	}
+	for _, base := range owner.Bases {
+		if base.ID == baseID {
+			return base.CurrentHP, true
+		}
+	}
+	return 0, false
 }
 
 func matchBasePlanted(evaluation evalContext, filters domain.GoalFilters) []match {

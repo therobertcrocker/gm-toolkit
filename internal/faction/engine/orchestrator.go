@@ -308,7 +308,7 @@ func (e *Engine) runGoalPickPhase(
 	logging.PhaseStart(phaseLog, "goal_pick")
 	phaseLog.Info("phase begin")
 
-	pickMutations, err := e.prepareGoalPick(faction, factionState, collectors.Phase)
+	pickMutations, err := e.prepareGoalPick(faction, factionState, collectors.Phase, phaseLog)
 	if err == nil && len(pickMutations) > 0 {
 		pickMutations, err = e.applyAndRecord(factionState, faction, pickMutations, paths, phaseLog)
 	}
@@ -331,17 +331,24 @@ func (e *Engine) runGoalPickPhase(
 	return nil
 }
 
-// prepareGoalPick asks a faction with no goal to pick one of the goals on offer.
-// It asks nothing when the faction holds a goal, is destroyed, resumes a turn
-// whose bookkeeping already ran, or has nothing on offer. A nil answer
-// declines, and the ask comes back next turn (D-4).
-func (e *Engine) prepareGoalPick(faction *domain.Faction, factionState *state.FactionState, collector PhaseCollector) ([]domain.Mutation, error) {
-	if faction.ActiveGoal != nil || faction.CurrentHP <= 0 {
+// prepareGoalPick asks a faction with no goal it can run to pick one of the goals
+// on offer. It asks nothing when the faction holds a goal the engine runs, is
+// destroyed, resumes a turn whose bookkeeping already ran, or has nothing on
+// offer. A nil answer declines, and the ask comes back next turn (D-4).
+func (e *Engine) prepareGoalPick(faction *domain.Faction, factionState *state.FactionState, collector PhaseCollector, phaseLog *slog.Logger) ([]domain.Mutation, error) {
+	if faction.CurrentHP <= 0 {
+		return nil, nil
+	}
+	if faction.ActiveGoal != nil && e.Goal.Runs(faction.ActiveGoal) {
 		return nil, nil
 	}
 	// deliberate: skip once bookkeeping ran, not ask again, because a resumed turn re-runs from the top and a goal completed in bookkeeping would be replaced mid-turn, not at the next turn start.
 	if e.Turn.InProgress(factionState) && factionState.CurrentTurn.BookkeepingApplied {
 		return nil, nil
+	}
+	if faction.ActiveGoal != nil {
+		// deliberate: a held goal the engine cannot run counts as no goal, not a goal to keep, because it can never complete or fail and would block the pick for good.
+		phaseLog.Warn("faction holds a goal the engine cannot run; offering a new pick", "faction", faction.ID, "goal", faction.ActiveGoal.GoalID)
 	}
 	offers := e.Goal.Offers(faction, factionState)
 	if len(offers) == 0 {

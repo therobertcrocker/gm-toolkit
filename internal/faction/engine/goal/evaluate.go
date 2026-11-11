@@ -29,8 +29,6 @@ func (compiled *compiledGoal) evaluate(evaluation evalContext) []domain.Mutation
 	return mutations
 }
 
-// advance moves the goal's progress for one batch and completes the goal when
-// it is done. completed reports a completion.
 func (compiled *compiledGoal) advance(evaluation evalContext) ([]domain.Mutation, bool) {
 	goal := compiled.goal
 	progress := evaluation.faction.ActiveGoal.Progress

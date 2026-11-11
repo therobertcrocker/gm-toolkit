@@ -130,7 +130,8 @@
    missing from state or at 0 HP or less before the batch. A goal with no target
    set is not lost: execution call, because Effort 3's pick sets the target and a
    save from before it can hold Destroy the Foe with none, which the existing "no
-   target set" case keeps as a no-op.
+   target set" case keeps as a no-op. *(Amended by Decision Record 9: the goal
+   is still not lost, and the turn-start pick now replaces it.)*
 
 6. **A targeted goal that can no longer complete fails, whoever ended it (effort
    review).** Robert's call. The review flagged that the rule matches the
@@ -155,6 +156,20 @@
    Execution call. `s`, `me`, `h`, `d`, `r` and `m` follow file-wide conventions
    in the test files and the digest builder; only the lines this effort added are
    renamed, not the older uses around them.
+
+9. **A targeted goal with no target is replaced at the pick (initiative
+   review).** Robert's call; reverses the "no target set is a no-op" half of
+   Decision Record 5. Such a goal can never complete or fail, so the faction was
+   stuck with it. `GoalEngine.Runs` reports it as a goal the engine cannot run, and
+   the turn-start pick offers a new goal (Effort 1 Decision Record 16).
+   `targetLost` keeps its empty-target guard for a direct `evaluate` call.
+
+10. **A destroyed faction is no rival (initiative review).** Robert's call;
+    widens Decision Record 4. Its leftover assets and Bases no longer contest a
+    world for Expand Influence's bonus, and neither a world it governs nor its
+    independent homeworld is rival ground for Inside Enemy Territory.
+    `isLivingRival` holds the check, and `livingRivals` (Effort 3's pick) uses it
+    too. A way to mark a dead faction's assets is a follow-up.
 
 ---
 

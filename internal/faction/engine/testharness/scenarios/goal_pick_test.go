@@ -109,6 +109,37 @@ func TestRunCycle_GoalPick_HeldGoalIsNotAsked(t *testing.T) {
 		fmt.Sprintf("goal = %s", alpha.ActiveGoal.GoalID))
 }
 
+func TestRunCycle_GoalPick_GoalTheEngineCannotRunIsReplaced(t *testing.T) {
+	cases := map[string]func(h *testharness.Harness) *domain.ActiveGoal{
+		"a goal the rulebook does not know": func(*testharness.Harness) *domain.ActiveGoal {
+			return &domain.ActiveGoal{GoalID: "G-004"}
+		},
+		"Destroy the Foe with no target": func(h *testharness.Harness) *domain.ActiveGoal {
+			return &domain.ActiveGoal{GoalID: goalID(t, h, "Destroy the Foe")}
+		},
+	}
+	for name, heldGoal := range cases {
+		t.Run(name, func(t *testing.T) {
+			h := testharness.NewHarness(t)
+			alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)
+			scriptAction(t, h, "")
+			alpha.ActiveGoal = heldGoal(h)
+			militaryConquest := goalID(t, h, "Military Conquest")
+			h.Collector.SelectGoalFn = func(_ *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
+				return &domain.GoalChoice{GoalID: militaryConquest}, nil
+			}
+
+			runOneCycle(t, h)
+
+			if alpha.ActiveGoal == nil {
+				t.Fatal("alpha holds no goal")
+			}
+			testharness.CheckStep(t, "alpha now holds Military Conquest", alpha.ActiveGoal.GoalID == militaryConquest,
+				fmt.Sprintf("goal = %s", alpha.ActiveGoal.GoalID))
+		})
+	}
+}
+
 func TestRunCycle_GoalPick_DestroyedFactionIsNotAsked(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)

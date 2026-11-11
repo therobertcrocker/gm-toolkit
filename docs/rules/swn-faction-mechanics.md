@@ -114,12 +114,17 @@ The book leaves these points open. The engine reads them as follows.
 - **When goals count** — a goal counts what happens on any faction's turn and in
   any phase of it, not only during its holder's action. A kill made while
   defending counts, and a goal can complete on another faction's turn. A
-  destroyed faction's goal counts nothing.
+  destroyed faction's goal counts nothing, and a destroyed faction is no rival:
+  the assets, Bases and worlds it leaves behind do not contest a world or make
+  rival ground.
 - **What counts as destroying or damaging** — any kill or damage the faction
   causes: an attack, a counterattack, an ability or an asset's special effect.
 - **Bases** — damage to any rival Base counts for Blood the Enemy, the homeworld
   Base included. It counts once, although the Base and the faction both lose the
   hit points.
+- **Damage inflicted** — Blood the Enemy counts the hit points a hit takes off,
+  not the damage rolled. A 10-damage hit on an asset with 1 hit point left counts
+  as 1.
 - **Planetary Seizure** — the previous ruler resisted when it had an unstealthed
   asset on the world as the seizure began. Stealthed assets are not resistance. With
   no resisting ruler, and on a world with no faction ruler, the difficulty is 1.
@@ -146,7 +151,9 @@ The book leaves these points open. The engine reads them as follows.
   such limit.
 - **Picking a goal** — a faction with no goal is asked at the start of its turn,
   after any XP spend and before income. It may decline; the question comes back
-  each turn until it picks. A goal that names a target faction asks for one among
+  each turn until it picks. A faction that holds a goal the engine cannot run (a
+  goal ID the rulebook no longer has, or Destroy the Foe with no target, from an
+  older save) is asked as if it held none. A goal that names a target faction asks for one among
   the factions still standing, and is not offered when there is none. Planetary
   Seizure is not offered while the Seize Planet action is off.
 

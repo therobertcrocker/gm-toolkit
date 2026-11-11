@@ -169,7 +169,6 @@ func (faction *Faction) StatScore(stat FactionStat) int {
 	}
 }
 
-// Ratings is the faction's three attribute ratings by stat.
 func (faction *Faction) Ratings() map[FactionStat]int {
 	return map[FactionStat]int{StatForce: faction.Force, StatCunning: faction.Cunning, StatWealth: faction.Wealth}
 }

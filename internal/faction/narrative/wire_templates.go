@@ -79,7 +79,6 @@ var goalPickedTemplates = []string{
 	"New orders for {faction}: {goal}.",
 }
 
-// goalPickedTargetTemplates name the target faction a picked goal is aimed at.
 var goalPickedTargetTemplates = []string{
 	"{faction} took up {goal}, with {target} in their sights.",
 	"{faction} marked {target} for {goal}.",

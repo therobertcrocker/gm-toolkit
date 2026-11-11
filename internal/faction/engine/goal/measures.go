@@ -47,8 +47,8 @@ func project(factionState *state.FactionState, batch []domain.Mutation) *state.F
 
 func rivalHomeworldsOf(factionID string, factionState *state.FactionState) map[string]bool {
 	homeworlds := make(map[string]bool, len(factionState.Factions))
-	for otherID, other := range factionState.Factions {
-		if otherID != factionID {
+	for _, other := range factionState.Factions {
+		if isLivingRival(other, factionID) {
 			homeworlds[other.Homeworld.WorldID] = true
 		}
 	}
@@ -56,14 +56,14 @@ func rivalHomeworldsOf(factionID string, factionState *state.FactionState) map[s
 }
 
 // isRivalGround reports whether worldID is a rival's ground for factionID: a
-// rival governs it, or it is independent and a rival's homeworld. A world the
-// faction governs never is, a seized rival homeworld included.
+// living rival governs it, or it is independent and a living rival's homeworld. A
+// world the faction governs never is, a seized rival homeworld included.
 func isRivalGround(factionID, worldID string, rivalHomeworlds map[string]bool, factionState *state.FactionState) bool {
 	if worldID == "" {
 		return false
 	}
 	if !factionState.IsIndependent(worldID) {
-		return factionState.Ruler(worldID) != factionID
+		return isLivingRival(factionState.Factions[factionState.Ruler(worldID)], factionID)
 	}
 	return rivalHomeworlds[worldID]
 }

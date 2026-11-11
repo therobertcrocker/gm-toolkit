@@ -15,7 +15,6 @@ type Goal struct {
 	XP          *GoalXP
 }
 
-// GoalStart is what the pick needs before it may offer the goal.
 type GoalStart struct {
 	Inputs       []string
 	NeedsActions []string
@@ -33,14 +32,11 @@ type GoalOffer struct {
 	Targets []*Faction
 }
 
-// GoalChoice is a pick's answer: the goal, and the target faction when the goal
-// takes one.
 type GoalChoice struct {
 	GoalID          string
 	TargetFactionID string
 }
 
-// GoalEvent names an event and the filters a mutation must pass to match it.
 type GoalEvent struct {
 	Event   string
 	Filters GoalFilters

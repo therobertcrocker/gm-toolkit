@@ -7,8 +7,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 )
 
-// compiledGoal is a goal whose every name is known: each part is bound to the
-// spec that runs it.
 type compiledGoal struct {
 	goal     *domain.Goal
 	progress *eventSpec
