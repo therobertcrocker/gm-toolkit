@@ -152,7 +152,19 @@ flowchart LR
   the narrative in step with the apply switch. Where a new event can reuse a type,
   the digest keys on its cause instead: a Cat 6 save adds no type, and its one
   distinctive mutation adds the save to the cross event. (A.001.6 overview
-  Decision 13; Effort 2 Decision 18.)
+  Decision 13; Effort 2 Decision 18.) A type with nothing to tell gets an explicit
+  case that drops it: `action_taken`, whose action the record's other mutations
+  already show. (A.001.8 Effort 1 Decision 3.)
+- **Goal events go to the holder's beat.** A goal can complete or fail inside
+  another faction's batch, so `goal_completed`, `xp_awarded`, `goal_failed` and
+  `goal_picked` read the mutation's `FactionID`, not the record's acting faction.
+  `goal_abandoned` keeps the acting beat; only the holder emits it. A pick makes
+  the picker's beat non-quiet but writes no headline. (A.001.8 Effort 2 Decision
+  5; Effort 3 Decision 12.)
+- **A `GoalFailed` headline is weighed per cause.** The wire line's templates are
+  chosen by cause, and `target_lost` gets no headline: it follows a faction's
+  fall, which is the bigger story. A later cause decides its own. (A.001.8 Effort
+  2 Decision 3.)
 
 ## Dependencies
 

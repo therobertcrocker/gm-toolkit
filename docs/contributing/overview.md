@@ -16,7 +16,7 @@ a short procedural unit keyed to the same subsystem axis as the
 Two side guides, because the codebase has two sides with one shared setup:
 
 - **[engine.md](engine.md)** — the headless faction-turn engine. Read it to add
-  an action, a tag/effect/goal handler, a mutation type, or a hook dispatch site.
+  an action, a tag/effect handler, a goal, a mutation type, or a hook dispatch site.
 - **[interface.md](interface.md)** — the TUI projection over the engine. Read it
   to wire a prompt, enable a mode slot, or add a manage sub-view.
 
@@ -162,15 +162,15 @@ If a rebuild gives you a plain bash prompt, check those settings first.
 
 # The extension pattern
 
-Four of the engine's sub-engines — **tag**, **effect**, **goal**, and (with a
-twist) **action** — share one shape, and learning it once covers most of the
+Three of the engine's sub-engines — **tag**, **effect**, and (with a twist)
+**action** — share one shape, and learning it once covers most of the
 [engine guide](engine.md):
 
 1. **A registry keyed by a data ID.** Each engine holds a `map[string]Handler`
    (or, for actions, an ordered `[]ActionFactory`) populated up front and looked
-   up at runtime by a rulebook ID — a tag ID, an asset-definition ID, a goal ID.
+   up at runtime by a rulebook ID — a tag ID, an asset-definition ID.
    You extend the subsystem by writing a `Handler` and registering it.
-2. **Data-only entries silently skip.** A tag, asset, or goal that exists in the
+2. **Data-only entries silently skip.** A tag or asset that exists in the
    rulebook TOML with *no* registered Go handler is an intentional no-op, not an
    error. This is the seam that lets a GM add flavor data without writing Go — and
    it means **the data leads the implementation**: the TOML entry can exist before
@@ -178,11 +178,16 @@ twist) **action** — share one shape, and learning it once covers most of the
 
 The practical consequence for you: to add behavior, the rulebook ID must already
 exist in the TOML, *and* you register a handler against it. Miss the data and your
-handler is dead code; miss the handler and the data is inert. Both worked
-instances live in the arch wiki —
-[tags & effects](../architecture/engine/effect-mutation.md) and
-[goals](../architecture/engine/goals.md) — and each engine recipe says which file
-holds its registration call.
+handler is dead code; miss the handler and the data is inert. The worked instance
+lives in the arch wiki — [tags & effects](../architecture/engine/effect-mutation.md)
+— and each engine recipe says which file holds its registration call.
+
+**Goals are the exception.** A goal has no handler: it states its behavior in
+`goals.toml` as parts built from a fixed vocabulary of events, filters, measures
+and XP formulas, and the engine refuses to start on a name it cannot run. A new
+goal is data only; a new kind of event or formula is a Go entry in the goal
+package's tables. See [goals](../architecture/engine/goals.md) and the engine
+guide's "Add a goal" recipe.
 
 <br/>
 <br/>

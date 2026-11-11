@@ -1,170 +1,214 @@
 # Goals
 
-> **Code:** `internal/faction/engine/goal/` (`goal.go`, `goals/`, `locks/locks.go`)
+> **Code:** `internal/faction/engine/goal/` (`goal.go`, `compile.go`, `vocabulary.go`, `events.go`, `measures.go`, `xp.go`, `evaluate.go`, `offers.go`), `internal/faction/rulebook/goals.go`, `internal/faction/domain/goal.go`
 
 ## Purpose
 
-A faction pursues one active goal at a time; the goal engine decides what that
-goal *does* to a turn — whether it constrains the faction's choices, and whether
-this turn's events advanced or completed it. Each goal is a small `Handler`
-registered by goal ID; the engine looks one up for the faction's active goal and
-asks it two questions per turn. Like every sub-engine it emits mutations and
-applies nothing.
+A faction pursues one active goal at a time. The goal engine reads each goal's
+behavior from the rulebook, as six named parts, and decides after every mutation
+batch whether that batch moved, reset, completed or failed each faction's goal. It
+also offers the goals a faction may pick at the start of its turn and builds the
+pick. Like every sub-engine it emits mutations and applies nothing. No Go code
+names a goal ID.
 
 ## Shape
 
-### The `Handler` contract and registry
+### Goals as data
 
-```go
-type Handler interface {
-	GoalID() string
-	CheckLock(faction, factionState, rulebook) (locks.GoalLock, []domain.Mutation)
-	UpdateProgress(actingFaction, mutations, factionState, rulebook, index) []domain.Mutation
-}
+A goal in `rulebooks/_core/goals.toml` holds its text (`id`, `name`,
+`description`) and up to six parts, each an inline table:
+
+| Part | Job | Keys |
+|---|---|---|
+| `start` | What the pick needs and when it may offer the goal | `inputs` (`target_faction`), `needs_actions`, `gate` |
+| `progress` | How progress moves: an amount per matching event, or a count read from state | `event` + `amount` + `filters`, or `measure` + `filters` |
+| `reset` | An event that sets progress to 0 | `event` + `filters` |
+| `threshold` | The progress that completes the goal | `ratings` (summed, times `multiplier`), or `constant` |
+| `complete` | The first matching event completes the goal | `event` + `filters` |
+| `xp` | The XP paid on completion | `formula` + its parameters |
+
+A goal has exactly one of `threshold` or `complete`. `threshold` and `reset` need
+`progress`.
+
+```toml
+[goals.PeaceableKingdom]
+id = "CORE-G-007"
+progress = { event = "action_taken", amount = "one", filters = { faction = "own", action_not = ["Attack"] } }
+reset = { event = "action_taken", filters = { faction = "own", action = ["Attack"] } }
+threshold = { constant = 4 }
+xp = { formula = "constant", amount = 1 }
 ```
 
-`GoalEngine` holds a `map[string]Handler` keyed by `GoalID()`, populated in `New`
-with the twelve standard goal handlers (Military Conquest, Planetary Seizure,
-Change Homeworld, …). This is the same handler-registry-keyed-by-data-ID pattern
-the tag and effect engines use. A faction's `ActiveGoal.GoalID` with no
-registered handler is a **data-only goal**: it is silently skipped, not an error
-(the fence-signed twin of the tag/effect skip). The goal definitions live in the
-shared `rulebooks/_core/goals.toml`, which the SWN rulebook composes into its
-campaigns.
+### Two checks: the loader, then the engine
 
-### The lock taxonomy
+`loadGoals` (`rulebook/goals.go`) reads the parts strictly, refuses unknown keys,
+and converts stat names (`"Force"`) to `FactionStat`. Every other name (an event,
+a filter value, an amount, a measure, a formula, a start input) stays a string in
+`domain.Goal`, because `rulebook` cannot import the goal engine.
 
-`CheckLock` returns a `locks.GoalLock` from the leaf `locks` package:
+`goal.New(rulebook, actionNames, log)` compiles every goal. `compile` binds each
+part to the spec that runs it and refuses an unknown name, a filter the event does
+not accept, a bad value, a wrong combination of parts, or an `action` filter that
+names no registered action. `NewWithRulebook` builds the goal engine after the
+actions register and returns its error, so a bad goal stops the engine from
+starting. `needs_actions` is not checked there: Seize Planet is unregistered on
+purpose until `F.040`.
 
-```go
-const (
-	LockNone            // normal flow
-	LockSkip            // skip the faction's turn entirely
-	LockRestrictActions // limit the action menu to AllowedActions
-)
-```
+### The vocabulary
 
-`LockSkip` short-circuits the whole turn (a faction mid-transit during Change
-Homeworld does nothing); the orchestrator's goal-lock phase carries a `LockSkip`
-straight to finish. `LockRestrictActions` narrows the action menu to a named set
-(Planetary Seizure's combat phase allows only `Attack`). `LockNone` is the
-common case.
+The events, measures and formulas are tables in the goal package.
 
-### Two advancement paths
+| Event | Matches | Filters | Amount |
+|---|---|---|---|
+| `kill` | `AssetRemoved` | `owner`, `caused_by`, `category`, `rated_above` | `one` |
+| `damage` | `AssetHPDelta`, `BaseHPDelta` with a negative delta, capped at the HP left | `owner`, `caused_by` | `damage` |
+| `base_planted` | `BaseAdded` | `caused_by`, `new_world` | `one` |
+| `influence_bought` | `InfluenceDelta` with a positive delta | `caused_by` | `delta` |
+| `government_taken` | `WorldGovernmentChanged` | `to` | `one` |
+| `faction_destroyed` | The `FactionHPDelta` that takes a faction to 0 HP or less | `target`, `caused_by` | `one` |
+| `action_taken` | `ActionTaken` | `faction`, `action`, `action_not` | `one` |
 
-A goal can advance on either of two distinct beats, and the split is the heart of
-this engine:
+- **Filters** — `owner` and `caused_by` take `own` or `rival`, read against the
+  goal's holder; any cause counts when the holder caused it. `category` and
+  `rated_above` read the removed asset's definition from the state before the
+  batch. `target = "start_input"` names the faction the pick recorded.
+- **Measure** — `stealthed_assets` counts the holder's stealthed assets on rival
+  ground: a world a living rival governs, or the independent homeworld of a
+  living rival. With `exclude_held_at_start`, the assets recorded at the pick
+  never count.
+- **XP formulas** — `constant` (`amount`, plus `contested_bonus` when a living
+  rival has an asset or Base on the completing event's world), `half_progress`
+  (half the progress, rounded up), `target_average` (1 plus the target's average
+  rating, rounded up), `ruler_average` (half the resisting ruler's average
+  rating, rounded up, minimum 1; 1 when no ruler resisted).
+- **Gates** — `needs_actions` is open when every named action is registered.
+  `rating_above_last_completion` is open when the named rating is above its value
+  in the faction's `CompletionRatings` record for the goal, or when there is no
+  record.
 
-- **`CheckLock` — the goal-lock phase, time/condition-driven.** Called after
-  bookkeeping and movement, immediately *before* action selection. Besides
-  returning the lock, it emits the mutations for goals that advance by the
-  *passage of a turn* rather
-  than by an action: `GoalTurnsTick` countdowns, `HomeworldChanged` on arrival,
-  occupation completions. Change Homeworld lives entirely here — it `LockSkip`s
-  each transit turn and decrements `TurnsRemaining` until the move completes.
-- **`UpdateProgress` — after the action, event-driven.** Called once the faction's
-  action has produced its mutations, it inspects that list for goal-relevant
-  events and emits supplemental mutations. Military Conquest counts
-  `AssetRemoved` mutations caused by this faction's attacks against Force-category
-  rivals and emits `GoalProgressed` / `GoalCompleted`.
+### One beat: every batch
 
-`UpdateProgress` must run **before** `MutationEngine.Apply`. Progress counting
-looks up the about-to-be-destroyed rival assets in state to read their category;
-if the destructive mutations had already applied, the assets would be gone and
-the kills uncountable. The orchestrator therefore folds `UpdateProgress`'s output
-into the action's mutations and applies the combined batch in one pass.
-`UpdateProgress` reads the batch after `dispatch.MutationReactors`, so a reactor's
-capture or removal counts as progress; reactors do not see goal output.
+`UpdateProgress(mutations, factionState, log)` runs inside the orchestrator's
+`applyAndRecord`, for every batch in every phase, after the phase's reactors and
+before the batch applies. It reads every faction's goal in faction ID order. It
+skips a faction with no goal, a destroyed faction, and a goal the engine cannot
+run (`Runs`: a goal ID the rulebook does not know, or a target goal with no
+target, from an older save).
 
-### Worked example — Planetary Seizure
+For one holder and one batch, `evaluate`:
 
-`PlanetarySeizure` (G-004, named World Seizure in `goals.toml`) exercises every mechanism across a multi-turn
-`ProcessPhase`:
+1. Returns nothing when the batch abandons the held goal.
+2. Checks `reset`. A match sets progress to 0 and ends the batch for that goal.
+3. Adds the batch's progress: the sum of the event's match amounts, or the gap
+   between the measure's count and the progress held. A measure counts in a copy
+   of the state with the batch applied.
+4. Checks completion: the `complete` event, or the threshold in a batch that moved
+   progress. On completion it emits `GoalCompleted` and `XPAwarded`, with XP from
+   the state before the batch.
+5. When the goal did not complete, checks the built-in lost-target rule: a goal
+   with a `target_faction` input fails with `GoalFailed` (cause `target_lost`)
+   when its target is gone, already destroyed, or destroyed in this batch. The
+   failure replaces the batch's progress.
 
-- **Phase 0 → 1:** the [`Seize Planet`](actions.md) action emits `GoalInitiated`
-  to start the goal on a contested world the faction does not govern.
-- **Phase 1 (combat):** `CheckLock` returns `LockRestrictActions` allowing only
-  `Attack`. `UpdateProgress` watches for the moment no unstealthed rival asset
-  remains on the target world and emits `GoalPhaseAdvanced` to phase 2.
-- **Phase 2 (occupation):** `CheckLock` ticks `TurnsRemaining` down each turn,
-  abandons the goal if the faction loses its foothold, and on the final tick
-  emits the completion bundle — `GoalCompleted`, `XPAwarded`, a
-  `WorldGovernmentChanged` that makes the faction the world's ruler in the
-  government record, a `TagAdded` for the `T-011` Planetary Government
-  [tag](effect-mutation.md) when the faction does not hold it, and a `TagRemoved`
-  for a previous ruler that governs no other world. The XP reads the previous
-  ruler's ratings (half their average, at least 1); a world with no faction ruler
-  gives 1.
+The orchestrator runs the reactors over the goal mutations alone, then applies the
+whole batch at once.
 
-## Goals catalogue
+### The turn-start pick
 
-The twelve registered goal handlers. "Advances by" names which beat does the
-work — most read action mutations in `UpdateProgress`; Change Homeworld counts
-down in `CheckLock`; Planetary Seizure does both. Only G-004 and G-012 impose a
-turn lock; the rest run `LockNone`. Completion awards XP per the rules in
-[`swn-faction-mechanics.md`](../../rules/swn-faction-mechanics.md).
+`Offers(faction, factionState)` lists the goals whose gates are open, in goal ID
+order, each with its target candidates when it takes a `target_faction` input:
+every other faction above 0 HP. A goal with an input and no candidate is left
+out. `Pick(faction, offers, choice)` checks the choice against the offers and
+builds `GoalPicked`; a goal whose progress uses `exclude_held_at_start` records
+the faction's stealthed asset IDs there. The [orchestrator](orchestrator.md) runs
+the pick after stat-raise; `GoalPicked` is the one mutation that sets
+`ActiveGoal`.
 
-| Goal | Advances by | Completes when |
-|------|-------------|----------------|
-| Military Conquest (G-001) | Destroying rival **Force** assets in combat | Kills reach the faction's Force rating |
-| Commercial Expansion (G-002) | Destroying rival **Wealth** assets | Kills reach the faction's Wealth rating |
-| Intelligence Coup (G-003) | Destroying rival **Cunning** assets | Kills reach the faction's Cunning rating |
-| World Seizure (G-004) | Multi-phase: clear, then occupy the target world | Occupation countdown elapses (grants the T-011 tag) |
-| Expand Influence (G-005) | Placing a Base on a world it held none on | The base is placed — single turn |
-| Blood the Enemy (G-006) | Dealing damage to rival assets and bases | Cumulative damage reaches Force + Cunning + Wealth |
-| Peaceable Kingdom (G-007) | Passing turns without attacking (resets to 0 if it attacks) | Four uninterrupted peaceful turns |
-| Destroy the Foe (G-008) | Reducing the target faction's HP | The target faction reaches 0 HP |
-| Inside Enemy Territory (G-009) | Stealthing assets on worlds a rival governs, or on a rival's independent homeworld | Stealthed assets reach the faction's Cunning rating |
-| Invincible Valor (G-010) | Destroying a Force asset rated above the faction's own Force | Any such kill — single turn |
-| Wealth of Worlds (G-011) | Spending Coin to raise rival Base influence | Cumulative spend reaches 4 × Wealth |
-| Change Homeworld (G-012) | Transit countdown that skips the faction's turns | Arrival at the destination world |
+## Goals Catalogue
 
-The three stat-kill goals (G-001/002/003) share `countAssetKillsByCategory` and
-differ only in the category counted and the threshold stat — the keyed-handler
-pattern paying off as near-identical small types.
+The eleven goals in `rulebooks/_core/goals.toml`. The rulings behind the numbers
+are in [`swn-faction-mechanics.md`](../../rules/swn-faction-mechanics.md), Goal
+Rulings.
+
+| Goal | Moves on | Completes when | XP |
+|---|---|---|---|
+| Military Conquest (`CORE-G-001`) | `kill` of a rival Force asset | Kills reach Force | `half_progress` |
+| Commercial Expansion (`CORE-G-002`) | `kill` of a rival Wealth asset | Kills reach Wealth | `half_progress` |
+| Intelligence Coup (`CORE-G-003`) | `kill` of a rival Cunning asset | Kills reach Cunning | `half_progress` |
+| World Seizure (`CORE-G-004`) | — | `government_taken` to the holder; needs Seize Planet (`F.040`) | `ruler_average` |
+| Expand Influence (`CORE-G-005`) | — | `base_planted` on a world with no holder Base | 1, +1 contested |
+| Blood the Enemy (`CORE-G-006`) | `damage` to rival assets and Bases | Damage reaches Force + Cunning + Wealth | 2 |
+| Peaceable Kingdom (`CORE-G-007`) | Own `action_taken` that is not Attack; an Attack resets | 4 | 1 |
+| Destroy the Foe (`CORE-G-008`) | — | The holder's blow destroys the picked target | `target_average` |
+| Inside Enemy Territory (`CORE-G-009`) | `stealthed_assets` on rival ground | The count reaches Cunning | 2 |
+| Invincible Valor (`CORE-G-010`) | — | `kill` of a rival Force asset rated above the holder's Force | 2 |
+| Wealth of Worlds (`CORE-G-011`) | `influence_bought` | Coin spent reaches 4 × Wealth; offered again only above the last completion's Wealth | 2 |
 
 ## Key Decisions
 
-- **Two advancement paths, by beat.** Time- and condition-based progress runs in
-  `CheckLock` in the goal-lock phase (after bookkeeping, before the action);
-  event-based progress runs in `UpdateProgress` after the action. A goal
-  implements whichever path(s) it needs
-  — Change Homeworld is pure `CheckLock`, Military Conquest pure `UpdateProgress`,
-  Planetary Seizure both. (Frozen log 110–123.)
-- **`UpdateProgress` runs before mutations apply.** The ordering is a real data
-  dependency, not convention: progress is counted by inspecting
-  about-to-be-destroyed entities in live state. Apply-after-inspect keeps the
-  kill counts correct. (Frozen log 110–123.) It runs after `MutationReactors`,
-  so a reactor's capture or removal counts as progress (Treachery clears
-  Planetary Seizure's phase 1 in the same turn as a kill does), and no reactor
-  reads goal output. Rejected: goals before reactors, which hid a capture until
-  the next `CheckLock`. (A.001.6 overview Decision 17; Effort 1 Decision Record
-  12.)
-- **`locks` is a separate leaf package.** `LockType`/`GoalLock` live in their own
-  package because both `goal` (the engine) and `goals` (the handlers) reference
-  them, and `goal` already imports `goals`. A shared leaf breaks the import cycle
-  that putting the lock types in either package would create. (Frozen log 215.)
-- **Data-only goals are a silent skip, as an incremental seam.** A goal ID in
-  `goals.toml` with no registered handler returns `LockNone` and no progress, the
-  same silent-skip contract as tags and effects. This is not an end state: a goal
-  a GM adds without Go does nothing until goal behavior comes from data (A.001.8,
-  planned).
-- **Goals emit, never mutate.** Every handler returns `[]domain.Mutation`;
-  completion, XP, ticks, phase advances, even a world's change of government are all
-  expressed as mutations the orchestrator applies. The goal engine never touches
-  faction state directly.
+- **Behavior comes from data, checked at construction.** A goal states its
+  behavior in six parts, and the engine refuses to start on a name it cannot run.
+  This closes the old "data-only goals are a silent skip" seam: no goal in the
+  data does nothing. Rejected: one `shape` field, and Go kernels for the process
+  goals. (A.001.8 discovery, `E.002` G-1; reverses frozen log 111.)
+- **The loader checks shape; the goal engine checks names.** `rulebook` cannot
+  import the goal engine, so goal-only names stay strings in `domain.Goal` and
+  `goal.New` compiles them. (A.001.8 Effort 1 Decision 6.)
+- **Goals have their own events and filters.** A goal event is a matcher over a
+  finished batch; an effect trigger picks a hook route. They share only the
+  layout, the value words (`own`, `rival`, stat names) and strict loading, so a
+  change on one side is never a question for the other. Goals' `kill` counts any
+  cause; effects' `asset_destroyed` counts combat only. (A.001.8 discovery D-18.)
+- **No Go names a goal ID.** Behavior is keyed on parts and roles; goal IDs carry
+  the `CORE-` prefix and appear only in data. (A.001.8 discovery D-26.)
+- **One beat: every batch, for every faction.** Goals read every mutation batch in
+  every phase, on any faction's turn, so a kill made while defending counts and a
+  goal can complete on a rival's turn. Replaces "two advancement paths, by beat"
+  (`CheckLock` before the action, `UpdateProgress` after it). Rejected: the
+  holder's own turn only. (A.001.8 discovery D-13; Effort 2 Decision 1.)
+- **Goals run after the reactors and before the batch applies.** Progress reads
+  about-to-be-removed assets in live state, and XP is worked out before the loss,
+  so the apply must follow. A reactor's capture or removal counts as progress; a
+  reactor pass over the goal output alone follows. (Frozen log 110–123, 119;
+  A.001.6 overview Decision 17.)
+- **A measure reads a projected copy of the state.** A count read from state
+  would be one batch late, so the measure clones the state and applies the batch
+  to the copy. Accepted: a full clone per holder per batch, while states are small.
+  (A.001.8 Effort 1 Decision 2; Effort 2 Decision 10.)
+- **A reset wins its batch.** When `reset` matches, progress goes to 0 and the
+  batch's progress events do not count. (A.001.8 Effort 1 Decision 8.)
+- **A lost target fails the goal, after completion is checked.** A goal with a
+  `target_faction` input that can no longer complete fails with `GoalFailed`, by
+  whatever hand the target fell; a blow that completes the goal is not a loss. The
+  failure replaces the batch's progress. Rejected: a per-goal `fail` part, and
+  `GoalAbandoned` with a cause. (A.001.8 discovery D-21; Effort 2 Decisions 8 and
+  9, Decision Record 6.)
+- **A destroyed faction counts nothing and is no rival.** The engine keeps a
+  faction at 0 HP in state, so its goal is skipped and its leftovers neither
+  contest a world nor make rival ground. (A.001.8 Effort 2 Decision Records 4 and
+  10.)
+- **The goal engine owns the offers, the gates and the start record.** The gate
+  names and the start-record rule stay with the vocabulary. The pick's choice is
+  checked against the offers; anything else is a collector bug, not recoverable.
+  (A.001.8 Effort 3 Decisions 5 to 8.)
+- **A held goal the engine cannot run is replaced at the pick.** An older save can
+  hold an unknown goal ID or a target goal with no target. Progress skips it, and
+  the turn-start pick treats it as no goal, so it never blocks the faction.
+  (A.001.8 Effort 1 Decision Record 16.)
+- **Goals emit, never mutate.** Progress, completion, XP and failure are mutations
+  the orchestrator applies; `GoalPicked` sets `ActiveGoal` and `GoalCompleted`
+  writes the completion record when they apply.
 
 ## Dependencies
 
-**Depends on** `domain` (the goal mutation vocabulary — `GoalProgressed`,
-`GoalCompleted`, `GoalPhaseAdvanced`, `GoalTurnsTick`, `GoalAbandoned`,
-`XPAwarded`, `HomeworldChanged` — and `Faction.ActiveGoal`), the leaf `locks`
-package, [world & movement](world-movement.md) for the spatial `Index` that
-location-aware goals query, and [persistence & static data](persistence.md) for
-`FactionState` and the rulebook (goal definitions, the `T-011` tag).
+**Depends on** `domain` (the `Goal` parts, `ActiveGoal`, the goal mutations
+`GoalProgressed`, `GoalCompleted`, `GoalFailed`, `GoalPicked` and `XPAwarded`),
+[persistence & static data](persistence.md) for the rulebook and `FactionState`,
+and the [mutation](effect-mutation.md) engine, which the stealth measure uses to
+project a batch onto a copy of the state.
 
-**Depended on by** the [orchestrator](orchestrator.md), which calls `CheckLock`
-in the goal-lock phase and `UpdateProgress` in the action phase. Goals are
-*started* by the goal-initiating [actions](actions.md) (`Seize Planet`, `Change
-Homeworld`) and dropped by `Abandon Goal`; the mutations goals emit are applied
-through the [effect & mutation](effect-mutation.md) layer.
+**Depended on by** the [orchestrator](orchestrator.md), which builds the engine in
+`NewWithRulebook`, calls `UpdateProgress` in `applyAndRecord` for every batch, and
+calls `Offers` and `Pick` in the goal-pick phase. `Abandon Goal`, an
+[action](actions.md), ends a goal from outside the engine. Exchange Consulate's
+`xp_roll` [effect](effect-mutation.md) reacts to `GoalCompleted`.

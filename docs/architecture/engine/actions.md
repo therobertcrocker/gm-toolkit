@@ -45,7 +45,7 @@ and does the real work in `Resolve`. Same contract, different center of gravity.
 
 Actions are not registered as singletons but as **factories** —
 `ActionFactory func(Collector) Action`. `RegisterDefaultActions`
-(`actions/register.go`) wires the twelve standard SWN actions into the engine,
+(`actions/register.go`) wires the ten standard SWN actions into the engine,
 each as a closure that builds a fresh action bound to the turn's collector.
 `ActionEngine` holds them as an ordered `[]ActionFactory`.
 
@@ -60,8 +60,9 @@ That is what lets `engine` own registration without an import cycle.
 ones whose `Validate` passes — so each turn gets a fresh, freshly-wired set of
 candidate actions. The orchestrator presents that list, the GM picks one, and
 `Run` calls `Inputs` → `Resolve` → `Output` on the selected action, returning its
-mutations. The orchestrator then folds in goal-progress mutations before
-dispatching reactor hooks (see [orchestrator](orchestrator.md)).
+mutations. The orchestrator opens the batch with a record-only `ActionTaken`,
+dispatches reactor hooks, and applies it through `applyAndRecord`, which adds every
+faction's goal mutations (see [orchestrator](orchestrator.md)).
 
 ### The collector seam
 
@@ -102,7 +103,7 @@ before a later unbuilt one short-circuits.
 
 ## Actions catalogue
 
-The twelve standard actions wired by `RegisterDefaultActions`. "Prompts" are the
+The ten standard actions wired by `RegisterDefaultActions`. "Prompts" are the
 `Collector` methods each calls; "emits" lists the mutation types it can produce
 (parenthesised ones are conditional). A `—` prompt means the action is fully
 determined once selected. The rules behind the numbers live in
@@ -120,12 +121,10 @@ determined once selected. The rules behind the numbers live in
 | Bribe | Spend Coin to raise a rival Base's influence | `SelectBribeTarget` → `CoinDelta`, `InfluenceDelta` |
 | Use Asset Ability | Activate the special ability of one or more A-flagged assets | `SelectAbilityAssets` (+ ability-specific prompts) → varies by ability |
 | Abandon Goal | Drop the active goal, forfeiting this turn's income | — → `CoinDelta`, `GoalAbandoned` |
-| Seize Planet | Begin the Planetary Seizure goal (G-004) on a contested world the faction does not govern | `SelectSeizeTarget` → `GoalInitiated` |
-| Change Homeworld | Begin the Change Homeworld goal (G-012) toward an owned base world | `SelectChangeHomeworldTarget` → `GoalInitiated`, `GoalPhaseAdvanced` |
-
-`Seize Planet` and `Change Homeworld` are *goal-initiating* actions — they don't
-resolve an outcome so much as start a multi-turn [goal](goals.md); `Abandon Goal`
-is the inverse. The combat rows (`Attack`, `Expand Influence`) emit the widest
+The rules' Seize Planet and Change Homeworld are not registered. Both span turns,
+and the engine once ran each as a goal; they come back as multi-turn actions with
+their own in-progress state in `F.040` (A.001.8 overview Decision 3). `Abandon
+Goal` is the one action that ends a [goal](goals.md). The combat rows (`Attack`, `Expand Influence`) emit the widest
 mutation sets because their rolls run through the [dice](dice.md) routes and the
 [hooks](hooks.md), and can cascade to bases and faction HP.
 
@@ -228,6 +227,7 @@ the rulebook (asset definitions, costs, flags), [hooks](hooks.md) (the embedded
 actions target through.
 
 **Depended on by** the [orchestrator](orchestrator.md), which calls
-`AvailableActions` and `Run` in the action phase and folds the result with
-goal-progress mutations. The concrete `Collector` is implemented on the
+`AvailableActions` and `Run` in the action phase, and by the [goal](goals.md)
+engine, which takes the registered action names (`Names`) to check its action
+filters and its `needs_actions` gate. The concrete `Collector` is implemented on the
 interface side by the [event stream](../interface/event-stream.md) adapter.

@@ -17,7 +17,7 @@
 ## Context / Goal
 
 - Exploration (Discovery for this refactor): [R.029 exploration](../../explorations/R.029-toml-1-1-migration-exploration.md). It covers H-2 (one block per entry), the house style, G-1 (goals), S-1 (state) and the Reach table
-- Related: [`A.001.8` discovery](../../discovery/A.001.8-data-driven-goals-discovery.md) D-17, amended by the `A.001.8` tracker row
+- Related: [`A.001.8` discovery](../arcs/A.001-data-driven-rulebook/initiatives/A.001.8-data-driven-goals/A.001.8-data-driven-goals-discovery.md) D-17, amended by the `A.001.8` tracker row
 - Goal: every hand-written rulebook file decodes the same as before (`reflect.DeepEqual` on the loaded `Rulebook`) and is a TomlSmith fixed point at 120 columns. `state.toml` has no location headers. Live docs call the effects model "the `effects` list"
 
 ## Decisions Ratified in Planning

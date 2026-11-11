@@ -56,10 +56,18 @@ a thin wrapper over a `huh` form themed with `styles.FormTheme()`:
 
 Prompts that need more than a list — `buyorder`, `refitorder`, `repairorders`,
 `bribe`, `expand`, `movement`, `cargo`, `attack`, `selectaction`,
-`relocateorders`, `purchaseenabler`, the ability prompts — are bespoke `huh` forms
-in their own files (~18 overlays in all), but
+`relocateorders`, `purchaseenabler`, `goalpick`, the ability prompts — are bespoke
+`huh` forms in their own files (~18 overlays in all), but
 follow the identical pattern: build the form in the constructor, watch for
 `huh.StateCompleted` in `Update`, emit `OverlayDoneMsg` with the collected value.
+
+`GoalPick` answers the turn-start goal pick. One select lists the offered goals by
+name, with "Decline goal" first, and the highlighted goal's description follows
+the cursor. A second select asks the target faction and is hidden unless the goal
+takes one. Decline is an option, so Esc is swallowed, as in `StatRaise`. Lists
+that hold a "do nothing" option put it first, because `huh` scrolls the list to the
+option that matches the nil starting value (A.001.8 Effort 3 Decision 2 and
+Decision Record 6).
 
 The two roll cards in `rollcard.go` use no form. Each draws its rows by hand and
 handles `↑/↓` and `enter` itself, and the before card handles `space`, so rows with

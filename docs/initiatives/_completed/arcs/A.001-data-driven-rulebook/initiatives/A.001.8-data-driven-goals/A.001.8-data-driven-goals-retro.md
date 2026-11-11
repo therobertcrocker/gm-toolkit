@@ -18,7 +18,8 @@
   and fails with a new `GoalFailed` record when the target falls any other way.
 - **Rules readings settled:** every XP formula rounds up; Inside Enemy Territory
   counts the stealthed assets held, not stealth events; Wealth of Worlds comes back
-  only after Wealth rises.
+  only after Wealth rises; Blood the Enemy counts the HP a hit takes off; a
+  destroyed faction is no rival and its goal counts nothing.
 - **Removed until `F.040`:** the Seize Planet and Change Homeworld actions, the
   goal-lock phase and the goal process around them. World Seizure stays in the data
   and leaves the pick until Seize Planet returns. Goal IDs are now `CORE-G-001` to
@@ -50,7 +51,10 @@ in the three efforts D-27 set.
   is not asked to pick, and a resumed turn does not ask twice (Effort 3 Decision
   Record 7); "do nothing" options lead three lists (Effort 3 Decision Record 6); a
   new `GoalPicked` mutation, since Effort 1 had deleted the only other goal writer
-  (Effort 3 Decision 1).
+  (Effort 3 Decision 1). At this close: a held goal the engine cannot run no
+  longer blocks the pick, a destroyed faction is no rival, and Blood the Enemy
+  counts HP taken off, not damage rolled (Robert's rules call; Effort 1 Decision
+  Records 16 and 17, Effort 2 Decision Records 9 and 10).
 - **Shipped with known gaps:** the goal pick cuts long descriptions at the panel
   edge (Effort 3 Decision Record 5), and a GM who picks and then quits before the
   turn's first save is asked again on resume (Effort 3 Decision Record 7).
@@ -145,12 +149,14 @@ architecture pages are stale until this close, as planned.
 |---|---|---|
 | Delivered | 4 | All three efforts landed and six bugs closed; the pick cuts goal descriptions at the panel edge, which blunts the overlay's main aid |
 | Plan held | 4 | No overview reversal; three Plan-time widenings of discovery decisions, all made before code; Effort 2's lost-target rule reshaped at review |
-| Rework | | |
+| Rework | 3 | A fix pass at every effort close (about 640 lines in all); this close found 9, of which 7 were fixed: two ways an old save left a goal stuck, dead factions still counted as rivals, and overkill counted as damage |
 | Fit | 4 | Data-driven, emit-never-mutate and strict loading all hold; two Key Decisions reversed on purpose, stale on the pages until this close; an unrelated seed doc rode in |
 | Simplicity | 4 | About 900 lines of table-driven goal engine replace twelve handlers, a lock package and a goal process; the stealth measure clones the whole state per holder per batch |
-| **Total** | | |
+| **Total** | **19 / 25** | Mean 3.8: above "as expected", held back by review rework around dead factions and old saves |
 
-**Verdict:**
+**Verdict:** Shipped all three efforts on a plain, table-driven design, with
+leaner plans than `A.001.7`; most of the rework came from the edge cases that
+every-batch reading opened up: dead factions, old saves and lost targets.
 
 **What surprised me:** the discovery's two misses (D-20's mechanism, D-24 against
 Imperialists) both came from reading history in place of source, and both were
@@ -164,4 +170,7 @@ caught by the next Plan session reading the code.
 | `B.049` | A pick before the first save is asked again | when a resume loses a pick | A GM who picks a goal and then quits at a later prompt before the turn's first save leaves `goal_picked` in history that the saved state lacks; on resume the pick is asked again. The stat raise has the same shape (`A.001.8` Effort 3 Decision Record 7) |
 | `C.001` | Live phase name in the logging tests | -- | `internal/logging/handler_test.go` and `banner_test.go` use `goal_lock` as a sample two-word phase name; that phase is gone. Swap in a live one, such as `goal_pick` (`A.001.8` Effort 1 Decision Record 4) |
 | `C.002` | TomlSmith pass on `goals.toml` | -- | `goals.toml` was laid out by hand; a Format Document pass in the editor should change nothing, and if it does, keep its layout (`A.001.8` Effort 1 Decision Record 6) |
+| `F.042` | Mark a destroyed faction's leftovers | -- | The engine keeps a faction at 0 HP in state with its assets, Bases and governments, so every reader must check `CurrentHP` itself (`isLivingRival`, the pick, goal progress). Give a destroyed faction's leftovers a mark, or a cleanup, that readers can see. Robert's note at the `A.001.8` close |
+| `R.030` | Stealth count clones the state per holder | when turns feel slow | `countStealthedAssets` clones the whole state and replays the batch once per Inside Enemy Territory holder on every batch, even one that cannot move the count. Build the copy once per batch and share it (`A.001.8` close review, not picked; Effort 2 Decision 10) |
+| `R.031` | Goal `progress.amount` is never read | -- | The loader and compiler check `amount`, but each event accepts one amount and its matcher hard-codes it. Make the matchers read it, or drop the key and re-compose the campaigns (`A.001.8` close review, not picked) |
 | `F.040` (amend) | One name for the seizure goal | with `F.040` | The rules doc says "Planetary Seizure", `goals.toml` says "World Seizure" (`A.001.8` Effort 1 Decision Record 10); pick one when Seize Planet is rebuilt |

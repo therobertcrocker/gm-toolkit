@@ -98,7 +98,9 @@ turn:
   (`core_assets.toml`, `homebrew_assets.toml`) that merge transparently.
 - **Tags, goals, drift costs** load from single files (`tags.toml`, `goals.toml`,
   `drift_costs.toml`). The tag and goal loaders refuse unknown keys and a
-  duplicate ID, as the asset loader does.
+  duplicate ID, as the asset loader does. A goal's parts are inline tables; the
+  loader checks their keys and stat names, and the [goal](goals.md) engine checks
+  every other name when it is built.
 - Loading is also **validating conversion**: every TOML record is converted into
   a domain type, and an unknown faction stat, asset type, asset flag (`P`/`A`/`S`),
   or ability effect is a load-time error — bad rulebook data fails loudly at
@@ -151,8 +153,9 @@ because they live under `state/`, but their logic lives on those pages.
   for its government. A nil map reads as empty, so an older `state.toml` loads
   with every world independent and needs no migration. The record and the tag hold
   different facts, so neither is a copy of the other, and every writer keeps them
-  coupled: Planetary Seizure adds the tag with a faction's first world and removes
-  it with its last; faction create writes the entry for a government-tag pick, or
+  coupled: Planetary Seizure added the tag with a faction's first world and removed
+  it with its last, and `F.040`'s Seize Planet action takes that writer over (until
+  it lands, nothing in play changes a government); faction create writes the entry for a government-tag pick, or
   for the homeworld with a `homeworld_government` tag (Colonists), and refuses a
   world another faction governs; faction delete clears the entries. The government
   tag is the one marked `government = true` in the data (`Rulebook.GovernmentTagID`),
@@ -193,6 +196,13 @@ because they live under `state/`, but their logic lives on those pages.
   skipped. Saves of the old shape moved by a sandbox re-seed, with no migration
   code. Rejected: a full `Tag` copy in state (it froze the rules at pick time).
   (A.001.7 discovery D-4 and D-20; `E.002` I-1.)
+- **Goal IDs carry the `_core` prefix (`CORE-G-001`).** A goal reference in tag
+  data (`xp_roll`'s `goal` filter) is checked at load. `ActiveGoal` holds the goal
+  ID, its progress, its target faction and the assets stealthed at the start; a
+  held goal ID the rulebook does not know is skipped and replaced at the next
+  turn-start pick. Saves moved by a sandbox re-seed, with no migration code, as
+  the tag IDs did. Rejected: migration code that renames IDs in state. (A.001.8
+  discovery D-24 and D-26; Effort 1 Decision Record 16.)
 - **Per-setting rule values live in `settings.toml`.** A rulebook folder supplies
   `settings.toml`, composed like any other data file; `rulebook.Load` requires it.
   It holds the drift costs (once `drift_costs.toml`) and the least world

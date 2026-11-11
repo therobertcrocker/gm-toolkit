@@ -321,7 +321,8 @@ costs).
 
 **Depended on by** the [orchestrator](orchestrator.md), which rebuilds the index
 at setup and runs the movement phase, and the [effect & mutation](effect-mutation.md)
-transport reactor, which reads the cargo manifest these orders carry. The index
-is also read by [goals](goals.md) for location-aware progress checks. Every order
+transport reactor, which reads the cargo manifest these orders carry.
+[Goals](goals.md) read live state, not the index, because it goes stale inside a
+turn. Every order
 change is a [mutation](effect-mutation.md), applied through the same gate as all
 other state changes.
