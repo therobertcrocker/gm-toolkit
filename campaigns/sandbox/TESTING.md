@@ -31,6 +31,7 @@ A reset with a scenario name copies `state/scenarios/<scenario>.toml` to `state.
 - **Turn order is fixed for cycle 1 only.** Each seed sets the order in `[current_turn]`. From cycle 2, the engine rolls the order.
 - **The board does not show conditions.** `disabled`, `no_ability`, `no_attack`, `sheltered` and `locked_out` show in the execution feed (for example, `asset X +disabled`). To see the current set, open `state/state.toml` and find `conditions` on the asset.
 - **One action per turn.** Some steps below need more than one cycle.
+- **A faction with no goal is asked to pick one** at the start of its turn, after any stat raise. The steps below assume you pick **Decline goal**, the first option, unless they say otherwise. The question comes back each turn. See [Goal pick](#goal-pick).
 - **Asset IDs** use the form `<faction>-<definition>-<n>`, for example `veiled-hand-SWN-C7-003-1`.
 
 <br/>
@@ -93,7 +94,7 @@ Every seed uses this cast, these homeworlds and these governments. Only the asse
 
 # Scenario: combat
 
-Order: Veiled Hand, Ashfall, Gilt Exchange, Iron Concord. Veiled Hand has Planetary Seizure (G-004) at phase 1 on Farpost, so its only action is Attack.
+Order: Veiled Hand, Ashfall, Gilt Exchange, Iron Concord. No faction holds a goal.
 
 ## Board
 
@@ -114,7 +115,6 @@ Order: Veiled Hand, Ashfall, Gilt Exchange, Iron Concord. Veiled Hand has Planet
 - **Saboteurs** — `asset ashfall-SWN-W1-002-1 +no_ability` on a hit **or** a miss. On Ashfall's turn, **Use Asset Ability is not in the action list**. At Veiled Hand's next turn start: `-no_ability` (`condition_expired`). If the rolled order puts Ashfall before Veiled Hand in cycle 2, the block holds through that Ashfall turn too.
 - **Treachery** — the label reads `Treachery · Cunning · special`, with no redirect prompt. On a hit: `hit (no damage)`, then the Treachery is removed, Veiled Hand gains 5 Coin and the target is `captured by veiled-hand`. The captured asset keeps its ID (`ashfall-SWN-C7-002-1`) in Veiled Hand's list. On a miss, the counter hits the Treachery.
 - **Hook re-registration** — after the capture, the Book of Secrets row on a Mireholt roll card names Veiled Hand as its owner, not Ashfall. Ashfall's Party Machine attack in step 2 is a roll on that world.
-- **Planetary Seizure** — the Farpost capture takes Ashfall's last asset there, so the goal moves to phase 2 with 3 turns in the same turn (`goal_phase_advanced`).
 - **Cracked Comms** — if Veiled Hand defends outright, a prompt shows, asked of Veiled Hand: "Turn Party Machine's attack back on itself?". **Turn it**: Party Machine rolls Cunning against its own Cunning. A self-hit deals its 2d6 and a self-miss deals its 1d6 counter, both as `HP -N (counterstrike)`. **Let it pass**: nothing happens. On a tie there is no prompt.
 
 ## Edge cases
@@ -211,7 +211,7 @@ Order: Gilt Exchange, Veiled Hand, Ashfall, Iron Concord. Everything is on Cross
 
 # Scenario: purchase
 
-Order: Ashfall, Iron Concord, Veiled Hand, Gilt Exchange. Veiled Hand has Inside Enemy Territory (G-009). Gilt Exchange has Planetary Seizure (G-004) at phase 2 with 1 turn left on Mireholt.
+Order: Ashfall, Iron Concord, Veiled Hand, Gilt Exchange. Veiled Hand has Inside Enemy Territory (`CORE-G-009`), so it is not asked to pick a goal. No other faction holds a goal.
 
 ## Board
 
@@ -231,20 +231,29 @@ Buy Asset lists only the homeworld and the worlds where the faction has an asset
    - Second buy: refused with no prompt, as `barred`.
 2. **Cycle 1, Iron Concord: Buy Asset.** Capital Fleet on Citadel: no prompt (own homeworld, and Iron Concord governs it).
 3. **Cycle 1, Veiled Hand: Buy Asset.** Militia Unit on Citadel: no prompt, because the Popular Movement grants it. Then the contest offer shows, asked of Iron Concord for its Lobbyists. Cunning 5 against 8, so the grant usually stands.
-4. **Cycle 1, Gilt Exchange turn start.** The seizure completes with no input: `world_government_changed` (Mireholt to Gilt Exchange), `tag_added` T-011 for Gilt Exchange, `tag_removed` T-011 for Ashfall (Mireholt was its only world), `goal_completed`, `xp_awarded`.
-5. **Later cycles** (one action per turn):
+4. **Later cycles** (one action per turn):
    - Iron Concord: Capital Fleet on Crossway, then on Aurum. Each asks the GM: "Asked of the GM (no faction governs …)".
    - Veiled Hand: Stealth on Ferrum. Three own Special Forces there, so a select prompt shows. Inside Enemy Territory +1, because a rival governs Ferrum.
    - Veiled Hand: Stealth on Aurum. One target, so no prompt. +1, because Aurum is a rival's homeworld.
    - Veiled Hand: Stealth on Crossway. One target, no prompt, and no progress (independent, no homeworld).
    - Veiled Hand: Refit Hardened Personnel to Postech Infantry on Ferrum. This asks Iron Concord (cause `refit`).
    - Veiled Hand: Militia Unit on Gloam. No prompt (own homeworld).
-   - Gilt Exchange: Mercenaries on Mireholt. No prompt, because Gilt Exchange now governs it.
-6. **Refuse any ask.** The action is used up, no Coin is spent and no asset is added. The feed shows `permission refused: … on …`.
+   - Gilt Exchange: Mercenaries on Mireholt. This asks Ashfall, the government of Mireholt.
+5. **Refuse any ask.** The action is used up, no Coin is spent and no asset is added. The feed shows `permission refused: … on …`.
 
 ## Faction wizard (T-011)
 
-In Manage mode, create a faction and pick the Planetary Government tag. A "Governed world" select shows. It lists the worlds that no faction governs, with the homeworld first. Delete the faction afterwards. Known gap `B.020`: when every world is governed, the select has no options.
+In Manage mode, create a faction and pick the Planetary Government tag. A "Governed world" select shows. It lists the worlds that no faction governs, with the homeworld first. The wizard asks for no goal. Delete the faction afterwards. Known gap `B.020`: when every world is governed, the select has no options.
+
+## Goal pick
+
+Any scenario works; `combat` is the simplest, since no faction holds a goal.
+
+1. **Cycle 1, first faction's turn start.** The goal pick shows after the stat raise. "Decline goal" is first and has the cursor. World Seizure is not listed (Seize Planet is off until `F.040`).
+2. **Highlight Destroy the Foe.** A target select shows, with every other faction above 0 HP. Pick one and finish. The feed shows the pick with the target, and Manage mode's faction detail names the goal and the target.
+3. **Next faction: Decline goal.** The turn goes on. At that faction's next turn the pick shows again.
+
+Known gap `B.048`: a goal's description is cut at the panel edge.
 
 <br/>
 <br/>
@@ -291,3 +300,4 @@ Order: Ashfall, Iron Concord, Veiled Hand, Gilt Exchange. A movement phase runs 
 - Every asset needs `ready = true`. A resumed turn does not ready assets.
 - A faction that governs a world in `[governments]` must hold tag T-011, and only those factions hold it.
 - `min_rating` applies to purchase and refit only, so a seed can give a faction any asset.
+- A seed that gives a faction a goal writes `active_goal = { goal_id = "CORE-G-…", target_faction_id = "", progress = 0 }`. Destroy the Foe needs a `target_faction_id`. A goal the engine cannot run (an unknown ID, or Destroy the Foe with no target) is replaced at the turn-start pick.

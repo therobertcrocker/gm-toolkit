@@ -65,7 +65,7 @@ effects = [
   {
     trigger = "goal_completed",
     effect = "xp_roll",
-    filters = { owner = "own", scope = "faction", goal = "G-007" },
+    filters = { owner = "own", scope = "faction", goal = "CORE-G-007" },
     xp_roll = { die = "1d6", target = 4, amount = 1 },
   },
 ]
@@ -90,14 +90,6 @@ id = "SWN-T-006"
 name = "Imperialists"
 description = "This faction nurses wild dreams of controlling the sector."
 effect = "May roll an extra d10 for attacks made as part of a Seize Planet action."
-effects = [
-  {
-    trigger = "own_roll",
-    effect = "bonus_die",
-    filters = { owner = "own", scope = "faction", phase = ["attack"], goal = "G-004", action = "Attack" },
-    bonus_die = { sides = 10, count = 1 },
-  },
-]
 
 [tags.Machiavellian]
 id = "SWN-T-007"

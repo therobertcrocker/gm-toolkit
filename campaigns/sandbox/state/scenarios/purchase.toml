@@ -1,6 +1,5 @@
 # Scenario: purchase (A.001.6 Effort 4) — purchase permission, the government record,
-# Stealth as a quality, Popular Movement, Capital Fleet, Refit, Planetary Seizure,
-# Inside Enemy Territory.
+# Stealth as a quality, Popular Movement, Capital Fleet, Refit, Inside Enemy Territory.
 # Load: ./cmd/scripts/reset-campaign.sh sandbox purchase
 # Governments: Citadel and Ferrum = Iron Concord; Mireholt = Ashfall. The rest are independent.
 # Stages:
@@ -9,7 +8,7 @@
 #   Citadel   Veiled Hand Popular Movement; Iron Concord Lobbyists
 #   Crossway  Iron Concord Security Personnel; Veiled Hand Informers
 #   Aurum     Iron Concord Security Personnel; Veiled Hand Informers
-#   Mireholt  Gilt Exchange Franchise; Gilt's Planetary Seizure completes at its turn start
+#   Mireholt  Gilt Exchange Franchise (a buy here asks Ashfall, the government)
 # See campaigns/sandbox/TESTING.md for the steps.
 
 campaign_id = "sandbox"
@@ -84,7 +83,7 @@ cycle_number = 1
   xp = 0
   homeworld = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
   tags = []
-  active_goal = { goal_id = "G-009", target_faction_id = "", progress = 0, process_phase = 0, turns_remaining = 0, target_world = { world_id = "", region_hex = { RegionID = "", Coord = { Q = 0, R = 0 } } } }
+  active_goal = { goal_id = "CORE-G-009", target_faction_id = "", progress = 0 }
   bases = [
     { id = "veiled-hand-homeworld", owner_id = "veiled-hand", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } } },
   ]
@@ -156,7 +155,6 @@ cycle_number = 1
   xp = 0
   homeworld = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } }
   tags = []
-  active_goal = { goal_id = "G-004", target_faction_id = "", progress = 0, process_phase = 2, turns_remaining = 1, target_world = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } } }
   bases = [
     { id = "gilt-exchange-homeworld", owner_id = "gilt-exchange", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } } },
   ]

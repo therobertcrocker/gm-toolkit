@@ -1,7 +1,7 @@
 # Scenario: combat (A.001.6 Effort 1) — Saboteurs, Treachery, Cracked Comms.
 # Load: ./cmd/scripts/reset-campaign.sh sandbox combat
 # Stages: Mireholt (Veiled Hand vs Ashfall, Ashfall homeworld Base present);
-#         Farpost (Planetary Seizure phase 1, one Ashfall asset left).
+#         Farpost (one Ashfall asset left, the Treachery's capture target).
 # See campaigns/sandbox/TESTING.md for the steps.
 
 campaign_id = "sandbox"
@@ -50,7 +50,6 @@ cycle_number = 1
   xp = 0
   homeworld = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
   tags = []
-  active_goal = { goal_id = "G-004", target_faction_id = "", progress = 0, process_phase = 1, turns_remaining = 0, target_world = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } } }
   bases = [
     { id = "veiled-hand-homeworld", owner_id = "veiled-hand", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } } },
   ]
