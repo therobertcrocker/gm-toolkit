@@ -1,7 +1,14 @@
-# Scenario: combat (A.001.6 Effort 1) — Saboteurs, Treachery, Cracked Comms.
-# Load: ./cmd/scripts/reset-campaign.sh sandbox combat
-# Stages: Mireholt (Veiled Hand vs Ashfall, Ashfall homeworld Base present);
-#         Farpost (one Ashfall asset left, the Treachery's capture target).
+# Scenario: purchase (A.001.6 Effort 4) — purchase permission, the government record,
+# Stealth as a quality, Popular Movement, Capital Fleet, Refit, Inside Enemy Territory.
+# Load: ./cmd/scripts/reset-campaign.sh sandbox purchase
+# Governments: Citadel and Ferrum = Iron Concord; Mireholt = Ashfall. The rest are independent.
+# Stages:
+#   Ferrum    Ashfall 2x Pretech Logistics (enabler); Veiled Hand Lobbyists, Informers,
+#             Hardened Personnel (Refit and Stealth targets)
+#   Citadel   Veiled Hand Popular Movement; Iron Concord Lobbyists
+#   Crossway  Iron Concord Security Personnel; Veiled Hand Informers
+#   Aurum     Iron Concord Security Personnel; Veiled Hand Informers
+#   Mireholt  Gilt Exchange Franchise (a buy here asks Ashfall, the government)
 # See campaigns/sandbox/TESTING.md for the steps.
 
 campaign_id = "sandbox"
@@ -15,7 +22,7 @@ cycle_number = 1
 [current_turn]
   in_progress = true
   cycle_number = 1
-  faction_order = ["veiled-hand", "ashfall", "gilt-exchange", "iron-concord"]
+  faction_order = ["ashfall", "iron-concord", "veiled-hand", "gilt-exchange"]
   current_index = 0
   bookkeeping_applied = false
 
@@ -28,14 +35,40 @@ cycle_number = 1
   wealth = 7
   current_hp = 49
   max_hp = 49
-  coin = 20
+  coin = 130
   xp = 0
   homeworld = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } }
   tags = ["SWN-T-011"]
   bases = [
     { id = "iron-concord-homeworld", owner_id = "iron-concord", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } } },
   ]
-  [factions.iron-concord.assets]
+  [factions.iron-concord.assets.iron-concord-SWN-C2-001-1]
+    id = "iron-concord-SWN-C2-001-1"
+    definition_id = "SWN-C2-001"
+    owner_id = "iron-concord"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } }
+  [factions.iron-concord.assets.iron-concord-SWN-F1-001-1]
+    id = "iron-concord-SWN-F1-001-1"
+    definition_id = "SWN-F1-001"
+    owner_id = "iron-concord"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "crossway", region_hex = { RegionID = "B", Coord = { Q = 9, R = 2 } } }
+  [factions.iron-concord.assets.iron-concord-SWN-F1-001-2]
+    id = "iron-concord-SWN-F1-001-2"
+    definition_id = "SWN-F1-001"
+    owner_id = "iron-concord"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } }
 
 [factions.veiled-hand]
   id = "veiled-hand"
@@ -46,49 +79,23 @@ cycle_number = 1
   wealth = 7
   current_hp = 49
   max_hp = 49
-  coin = 20
+  coin = 30
   xp = 0
   homeworld = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } }
   tags = []
+  active_goal = { goal_id = "CORE-G-009", target_faction_id = "", progress = 0 }
   bases = [
     { id = "veiled-hand-homeworld", owner_id = "veiled-hand", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "gloam", region_hex = { RegionID = "E", Coord = { Q = -1, R = 8 } } } },
   ]
-  [factions.veiled-hand.assets.veiled-hand-SWN-C2-002-1]
-    id = "veiled-hand-SWN-C2-002-1"
-    definition_id = "SWN-C2-002"
+  [factions.veiled-hand.assets.veiled-hand-SWN-C2-001-1]
+    id = "veiled-hand-SWN-C2-001-1"
+    definition_id = "SWN-C2-001"
     owner_id = "veiled-hand"
-    current_hp = 6
+    current_hp = 4
     stealthy = false
     ready = true
     maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.veiled-hand.assets.veiled-hand-SWN-C7-003-1]
-    id = "veiled-hand-SWN-C7-003-1"
-    definition_id = "SWN-C7-003"
-    owner_id = "veiled-hand"
-    current_hp = 5
-    stealthy = false
-    ready = true
-    maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.veiled-hand.assets.veiled-hand-SWN-C5-002-1]
-    id = "veiled-hand-SWN-C5-002-1"
-    definition_id = "SWN-C5-002"
-    owner_id = "veiled-hand"
-    current_hp = 6
-    stealthy = false
-    ready = true
-    maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.veiled-hand.assets.veiled-hand-SWN-C7-003-2]
-    id = "veiled-hand-SWN-C7-003-2"
-    definition_id = "SWN-C7-003"
-    owner_id = "veiled-hand"
-    current_hp = 5
-    stealthy = false
-    ready = true
-    maintained = true
-    location = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } }
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
   [factions.veiled-hand.assets.veiled-hand-SWN-C1-002-1]
     id = "veiled-hand-SWN-C1-002-1"
     definition_id = "SWN-C1-002"
@@ -97,7 +104,43 @@ cycle_number = 1
     stealthy = false
     ready = true
     maintained = true
-    location = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } }
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-F2-003-1]
+    id = "veiled-hand-SWN-F2-003-1"
+    definition_id = "SWN-F2-003"
+    owner_id = "veiled-hand"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-C7-001-1]
+    id = "veiled-hand-SWN-C7-001-1"
+    definition_id = "SWN-C7-001"
+    owner_id = "veiled-hand"
+    current_hp = 16
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "citadel", region_hex = { RegionID = "A", Coord = { Q = 1, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-C1-002-2]
+    id = "veiled-hand-SWN-C1-002-2"
+    definition_id = "SWN-C1-002"
+    owner_id = "veiled-hand"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "crossway", region_hex = { RegionID = "B", Coord = { Q = 9, R = 2 } } }
+  [factions.veiled-hand.assets.veiled-hand-SWN-C1-002-3]
+    id = "veiled-hand-SWN-C1-002-3"
+    definition_id = "SWN-C1-002"
+    owner_id = "veiled-hand"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } }
 
 [factions.gilt-exchange]
   id = "gilt-exchange"
@@ -115,7 +158,15 @@ cycle_number = 1
   bases = [
     { id = "gilt-exchange-homeworld", owner_id = "gilt-exchange", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "aurum", region_hex = { RegionID = "C", Coord = { Q = 15, R = 5 } } } },
   ]
-  [factions.gilt-exchange.assets]
+  [factions.gilt-exchange.assets.gilt-exchange-SWN-W1-001-1]
+    id = "gilt-exchange-SWN-W1-001-1"
+    definition_id = "SWN-W1-001"
+    owner_id = "gilt-exchange"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
 
 [factions.ashfall]
   id = "ashfall"
@@ -126,55 +177,28 @@ cycle_number = 1
   wealth = 3
   current_hp = 15
   max_hp = 15
-  coin = 10
+  coin = 20
   xp = 0
   homeworld = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
   tags = ["SWN-T-011"]
   bases = [
     { id = "ashfall-homeworld", owner_id = "ashfall", current_hp = 15, max_hp = 15, influence = 0, ready = false, is_homeworld = true, location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } } },
   ]
-  [factions.ashfall.assets.ashfall-SWN-W1-002-1]
-    id = "ashfall-SWN-W1-002-1"
-    definition_id = "SWN-W1-002"
+  [factions.ashfall.assets.ashfall-SWN-F5-002-1]
+    id = "ashfall-SWN-F5-002-1"
+    definition_id = "SWN-F5-002"
     owner_id = "ashfall"
-    current_hp = 4
+    current_hp = 6
     stealthy = false
     ready = true
     maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.ashfall.assets.ashfall-SWN-F1-003-1]
-    id = "ashfall-SWN-F1-003-1"
-    definition_id = "SWN-F1-003"
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
+  [factions.ashfall.assets.ashfall-SWN-F5-002-2]
+    id = "ashfall-SWN-F5-002-2"
+    definition_id = "SWN-F5-002"
     owner_id = "ashfall"
-    current_hp = 4
+    current_hp = 6
     stealthy = false
     ready = true
     maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.ashfall.assets.ashfall-SWN-C7-002-1]
-    id = "ashfall-SWN-C7-002-1"
-    definition_id = "SWN-C7-002"
-    owner_id = "ashfall"
-    current_hp = 10
-    stealthy = false
-    ready = true
-    maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.ashfall.assets.ashfall-SWN-C4-001-1]
-    id = "ashfall-SWN-C4-001-1"
-    definition_id = "SWN-C4-001"
-    owner_id = "ashfall"
-    current_hp = 10
-    stealthy = false
-    ready = true
-    maintained = true
-    location = { world_id = "mireholt", region_hex = { RegionID = "F", Coord = { Q = 7, R = 10 } } }
-  [factions.ashfall.assets.ashfall-SWN-F1-001-1]
-    id = "ashfall-SWN-F1-001-1"
-    definition_id = "SWN-F1-001"
-    owner_id = "ashfall"
-    current_hp = 3
-    stealthy = false
-    ready = true
-    maintained = true
-    location = { world_id = "farpost", region_hex = { RegionID = "D", Coord = { Q = 16, R = 10 } } }
+    location = { world_id = "ferrum", region_hex = { RegionID = "A", Coord = { Q = 3, R = 2 } } }
