@@ -29,7 +29,7 @@ reference/
 # notes, etc
 scratch.txt
 scratch/
-docs/initiatives/implementation/*-handoff.md
+dev_journals/*/initiatives/implementation/*-handoff.md
 
 # OS
 .DS_Store

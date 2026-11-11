@@ -6,6 +6,7 @@
 
 ## This project
 
+- **Multi-product:** gm-toolkit holds more than one product, `faction-manager` and `codex`. Each product keeps its tracker and initiatives under `dev_journals/<product>/`.
 - **Override (working-together, Files and tools):** search the codebase with the LSP tools, not grep. Grep stays fine for docs.
 
 ## Extra docs

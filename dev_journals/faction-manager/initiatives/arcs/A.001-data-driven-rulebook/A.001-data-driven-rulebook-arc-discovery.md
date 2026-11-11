@@ -7,7 +7,7 @@
 > goals/tags, and the catalog as binding input.
 >
 > **Inputs mined (not re-derived):** the [arc concept](A.001-data-driven-rulebook-arc-concept.md),
-> the [arc-shaped discovery](../../discovery/hawk-rulebook-discovery.md), and the
+> the arc-shaped discovery (`hawk-rulebook-discovery.md`, removed in `ce2d790`), and the
 > [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md).
 >
 > **Status:** arc-discovery, written for sign-off. Decisions here are binding on the
