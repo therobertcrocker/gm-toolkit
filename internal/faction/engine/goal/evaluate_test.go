@@ -2,6 +2,7 @@ package goal
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -527,6 +528,75 @@ func TestEvaluate_DestroyTheFoe(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEvaluate_DestroyTheFoe_TargetAlreadyLost(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(fixture *goalFixture)
+	}{
+		{"a target destroyed before the batch", func(fixture *goalFixture) { fixture.rival.CurrentHP = 0 }},
+		{"a target gone from state", func(fixture *goalFixture) { delete(fixture.factionState.Factions, "f2") }},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			fixture := newGoalFixture(t, "Destroy the Foe", 0)
+			fixture.holder.ActiveGoal.TargetFactionID = "f2"
+			testCase.setup(fixture)
+
+			got := fixture.evaluate()
+
+			fixture.want(got, domain.GoalFailed{FactionID: "f1", GoalID: fixture.compiled.goal.ID, Cause: domain.GoalFailedTargetLost})
+		})
+	}
+}
+
+// targetedGoal is a shipped goal given a target_faction input, held by f1 with
+// f2 as its target: a GM-authored goal shape no shipped goal has.
+func targetedGoal(t *testing.T, goalName string, progress int) *goalFixture {
+	t.Helper()
+	fixture := newGoalFixture(t, goalName, progress)
+	goal := *fixture.compiled.goal
+	start := domain.GoalStart{}
+	if goal.Start != nil {
+		start = *goal.Start
+	}
+	start.Inputs = append(slices.Clone(start.Inputs), inputTargetFaction)
+	goal.Start = &start
+	compiled, err := compile(&goal, testActionNames)
+	if err != nil {
+		t.Fatalf("compile targeted %s: %v", goalName, err)
+	}
+	fixture.compiled = compiled
+	fixture.holder.ActiveGoal.TargetFactionID = "f2"
+	return fixture
+}
+
+func TestEvaluate_LostTarget_ReplacesTheBatchProgress(t *testing.T) {
+	failed := func(fixture *goalFixture) domain.GoalFailed {
+		return domain.GoalFailed{FactionID: "f1", GoalID: fixture.compiled.goal.ID, Cause: domain.GoalFailedTargetLost}
+	}
+	t.Run("a batch that also moves progress", func(t *testing.T) {
+		fixture := targetedGoal(t, "Peaceable Kingdom", 0)
+
+		got := fixture.evaluate(domain.ActionTaken{FactionID: "f1", Action: "Buy Asset"}, hpLoss("f2", -5, "f3"))
+
+		fixture.want(got, failed(fixture))
+	})
+	t.Run("a batch that also resets progress", func(t *testing.T) {
+		fixture := targetedGoal(t, "Peaceable Kingdom", 2)
+
+		got := fixture.evaluate(domain.ActionTaken{FactionID: "f1", Action: "Attack"}, hpLoss("f2", -5, "f3"))
+
+		fixture.want(got, failed(fixture))
+	})
+	t.Run("the holder's own blow fails a goal it does not complete", func(t *testing.T) {
+		fixture := targetedGoal(t, "Peaceable Kingdom", 0)
+
+		got := fixture.evaluate(hpLoss("f2", -5, "f1"))
+
+		fixture.want(got, failed(fixture))
+	})
 }
 
 func TestEvaluate_LostTargetNeedsATargetInput(t *testing.T) {

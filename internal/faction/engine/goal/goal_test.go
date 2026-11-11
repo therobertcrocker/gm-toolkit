@@ -85,6 +85,17 @@ func TestUpdateProgress_RunsTheHeldGoal(t *testing.T) {
 	fixture.want(got, fixture.progressed(1, causeProgress))
 }
 
+func TestUpdateProgress_SkipsADestroyedHolder(t *testing.T) {
+	fixture := newGoalFixture(t, "Military Conquest", 0)
+	fixture.holder.CurrentHP = 0
+	fixture.give(fixture.rival, "a1", "force-def", "Krylos")
+	goalEngine := newEngine(t, fixture.rulebook)
+
+	got := goalEngine.UpdateProgress([]domain.Mutation{kill("f2", "a1", "counterstrike", "f1")}, fixture.factionState, discardLog())
+
+	fixture.want(got)
+}
+
 func TestUpdateProgress_ReadsEveryHolder(t *testing.T) {
 	fixture := newGoalFixture(t, "Military Conquest", 0)
 	bloodTheEnemy := shippedGoal(t, fixture.rulebook, "Blood the Enemy").goal.ID

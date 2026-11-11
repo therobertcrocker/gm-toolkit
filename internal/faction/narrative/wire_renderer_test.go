@@ -269,9 +269,9 @@ func goalFailedDigest(cause string) digest.CycleDigest {
 }
 
 func TestWireRendererGoalFailed(t *testing.T) {
-	r := NewWireRenderer()
+	renderer := NewWireRenderer()
 	for seed := int64(1); seed <= 10; seed++ {
-		out, err := r.Render(goalFailedDigest(domain.GoalFailedTargetLost), seed)
+		out, err := renderer.Render(goalFailedDigest(domain.GoalFailedTargetLost), seed)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -280,7 +280,7 @@ func TestWireRendererGoalFailed(t *testing.T) {
 		}
 	}
 
-	out, err := r.Render(goalFailedDigest("unknown_cause"), 1)
+	out, err := renderer.Render(goalFailedDigest("unknown_cause"), 1)
 	if err != nil {
 		t.Fatal(err)
 	}

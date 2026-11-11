@@ -113,7 +113,8 @@ The book leaves these points open. The engine reads them as follows.
   1 + 4 for Destroy the Foe.
 - **When goals count** — a goal counts what happens on any faction's turn and in
   any phase of it, not only during its holder's action. A kill made while
-  defending counts, and a goal can complete on another faction's turn.
+  defending counts, and a goal can complete on another faction's turn. A
+  destroyed faction's goal counts nothing.
 - **What counts as destroying or damaging** — any kill or damage the faction
   causes: an attack, a counterattack, an ability or an asset's special effect.
 - **Bases** — damage to any rival Base counts for Blood the Enemy, the homeworld
@@ -130,6 +131,12 @@ The book leaves these points open. The engine reads them as follows.
 - **Destroy the Foe** — the goal completes only when the faction itself lands the
   blow that takes the target to 0 hit points. When another faction lands that
   blow, the goal fails: it ends with no XP, and the faction loses no income.
+- **Goals with a target** — if a goal names a target faction and the faction
+  loses the conditions that let it complete the goal, the goal fails. Today the
+  one such condition is the target itself: the goal fails when the target is
+  destroyed, by any faction, and the goal did not complete with that blow, or
+  when the target is removed from the campaign. A faction that destroys its own
+  target before the goal is done fails the goal.
 - **Inside Enemy Territory** — the goal counts the stealthed assets the faction
   holds at one time on worlds a rival governs, or on a rival's homeworld that has no
   faction government. An asset that loses stealth or leaves stops counting.

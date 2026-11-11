@@ -239,8 +239,8 @@ type GoalFailed struct {
 
 func (m GoalFailed) Type() string { return "goal_failed" }
 
-// GoalFailedTargetLost is the GoalFailed cause when another faction destroys the
-// goal's target faction (D-21).
+// GoalFailedTargetLost is the GoalFailed cause when the goal's target faction is
+// lost, destroyed or gone, and the goal did not complete (D-21).
 const GoalFailedTargetLost = "target_lost"
 
 // GoalCompleted records successful goal resolution. XPAwarded is the amount

@@ -5,7 +5,8 @@
 - **What:** every faction's goal reads every batch of changes, on any faction's
   turn and in any phase, not only the acting faction's action. A goal that names a
   target faction fails, with a new `GoalFailed` record, when another faction
-  destroys that target. The digest and the TUI feed credit each goal line to the
+  destroys that target, or when the target is already destroyed or gone (Decision
+  Record 5). The digest and the TUI feed credit each goal line to the
   faction that holds the goal.
 - **Why:** today a kill made while defending, or anything in a movement or
   bookkeeping batch, never counts toward a goal, and the rules name no turn. And
@@ -68,7 +69,8 @@
    `goal_abandoned` keeps the acting beat; only the holder emits it.
 
 6. **`UpdateProgress` reads every holder, in faction ID order, against the state
-   before the batch.** Planning call. It drops `actingFactionID`. No goal reads
+   before the batch.** Planning call. A destroyed holder is skipped (Decision
+   Record 4). It drops `actingFactionID`. No goal reads
    another goal's output in the same batch. A held goal the rulebook does not know
    now warns once per batch, not once per action batch; accepted.
 
@@ -115,6 +117,44 @@
 3. **`TestWireRendererGoalFailed` renders a whole digest with a quiet headline
    (Commit 2).** The goal line is the only content, so the check that the output
    holds the faction and the goal name reads that line alone.
+
+4. **A destroyed faction's goal is not read (effort review).** Robert's call. The
+   engine keeps a faction at 0 HP or less in state, so under Decision 6 its goal
+   could progress and pay XP on a rival's turn. `UpdateProgress` skips it, and the
+   rules doc says a destroyed faction's goal counts nothing.
+
+5. **A target already destroyed or gone is lost (effort review).** Robert's call.
+   The rule matched only the batch that holds the destroying blow, so a target
+   deleted in the manage view, or killed before the goal took it, left the goal
+   unable to complete or fail. `targetLost` now also fires when the target is
+   missing from state or at 0 HP or less before the batch. A goal with no target
+   set is not lost: execution call, because Effort 3's pick sets the target and a
+   save from before it can hold Destroy the Foe with none, which the existing "no
+   target set" case keeps as a no-op.
+
+6. **A targeted goal that can no longer complete fails, whoever ended it (effort
+   review).** Robert's call. The review flagged that the rule matches the
+   destroying blow by any hand, while the rules doc said "when another faction
+   lands that blow". A `caused_by = rival` filter was tried and backed out: with
+   Decision Record 5, the holder's own blow only delayed the failure by one batch,
+   because the target is dead in the next one. The principle, in Robert's words:
+   "if we have a target-based goal, if you lose the conditions that allow you to
+   complete said goal, the goal fails." Destroy the Foe completes on the holder's
+   own blow, so only a rival's blow fails it; a rulebook goal with a target input
+   and a different completion fails when its holder destroys the target first.
+   The rules doc states the principle in a "Goals with a target" entry. Rejected:
+   a per-goal `target_lost` outcome in the data (no shipped goal needs it).
+
+7. **An error from the goal reactor pass names the goal holders (effort
+   review).** Robert's call. The recursion error named only the acting faction.
+   `withGoalProgress` wraps it with the holders from `goalHolders` and the acting
+   faction. The failure still drops the whole batch in every phase, as the action
+   phase did before; accepted, as an error path that already existed.
+
+8. **Short variable names renamed in Effort 2's new code only (effort review).**
+   Execution call. `s`, `me`, `h`, `d`, `r` and `m` follow file-wide conventions
+   in the test files and the digest builder; only the lines this effort added are
+   renamed, not the older uses around them.
 
 ---
 
@@ -209,8 +249,8 @@ func (goalEngine *GoalEngine) UpdateProgress(
 ```
 **Replace with:**
 ```go
-// UpdateProgress reads one batch for every faction's active goal, in faction ID
-// order, and returns the goal mutations it causes. Every goal reads the state
+// UpdateProgress reads one batch for the active goal of every faction not
+// destroyed, in faction ID order, and returns the goal mutations it causes. Every goal reads the state
 // before the batch, so it must be called before MutationEngine.Apply.
 func (goalEngine *GoalEngine) UpdateProgress(
 	mutations []domain.Mutation,
@@ -220,7 +260,8 @@ func (goalEngine *GoalEngine) UpdateProgress(
 	var goalMutations []domain.Mutation
 	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 		faction := factionState.Factions[factionID]
-		if faction.ActiveGoal == nil {
+		// deliberate: a destroyed faction's goal is skipped, not read, because the engine keeps destroyed factions in state and they must not earn goal XP.
+		if faction.ActiveGoal == nil || faction.CurrentHP <= 0 {
 			continue
 		}
 		compiled, ok := goalEngine.goals[faction.ActiveGoal.GoalID]
@@ -328,11 +369,30 @@ func (e *Engine) withGoalProgress(
 		return mutations, nil
 	}
 	// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
-	goalMutations, err := dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
+	reacted, err := dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reacting to the goal mutations of %v in the batch of %s: %w", goalHolders(goalMutations), faction.ID, err)
 	}
-	return append(mutations, goalMutations...), nil
+	return append(mutations, reacted...), nil
+}
+
+// goalHolders is the sorted IDs of the factions whose goals the goal mutations
+// move, so an error from their reactor pass names them and not only the acting
+// faction.
+func goalHolders(goalMutations []domain.Mutation) []string {
+	var holders []string
+	for _, mutation := range goalMutations {
+		switch goalMutation := mutation.(type) {
+		case domain.GoalProgressed:
+			holders = append(holders, goalMutation.FactionID)
+		case domain.GoalCompleted:
+			holders = append(holders, goalMutation.FactionID)
+		case domain.GoalFailed:
+			holders = append(holders, goalMutation.FactionID)
+		}
+	}
+	slices.Sort(holders)
+	return slices.Compact(holders)
 }
 ```
 
@@ -618,8 +678,8 @@ type GoalFailed struct {
 
 func (m GoalFailed) Type() string { return "goal_failed" }
 
-// GoalFailedTargetLost is the GoalFailed cause when another faction destroys the
-// goal's target faction (D-21).
+// GoalFailedTargetLost is the GoalFailed cause when the goal's target faction is
+// lost, destroyed or gone, and the goal did not complete (D-21).
 const GoalFailedTargetLost = "target_lost"
 ```
 
@@ -723,13 +783,20 @@ func (compiled *compiledGoal) advance(evaluation evalContext) ([]domain.Mutation
 	), true
 }
 
-// targetLost reports whether the batch destroys the goal's target faction, by
-// any hand: a built-in rule, not a part (D-21). Only a goal whose start names a
-// target_faction input has a target.
+// targetLost reports whether the goal's target faction is lost: gone from state,
+// destroyed before the batch, or destroyed in it. It is a built-in rule, not a
+// part (D-21). Only a goal whose start names a target_faction input, and that
+// holds a target, has one to lose.
 func (compiled *compiledGoal) targetLost(evaluation evalContext) bool {
-	if !hasInput(compiled.goal, inputTargetFaction) {
+	targetID := evaluation.faction.ActiveGoal.TargetFactionID
+	if !hasInput(compiled.goal, inputTargetFaction) || targetID == "" {
 		return false
 	}
+	target := evaluation.factionState.Factions[targetID]
+	if target == nil || target.CurrentHP <= 0 {
+		return true
+	}
+	// deliberate: a blow by any hand loses the target, not only a rival's, because a goal that can no longer complete fails, whoever ended it (E2 Decision Record 6).
 	return len(matchFactionDestroyed(evaluation, domain.GoalFilters{Target: targetStartInput})) > 0
 }
 ```
@@ -1038,7 +1105,8 @@ The readings of D-13 and D-21 (Decision 12).
 ```markdown
 - **When goals count** — a goal counts what happens on any faction's turn and in
   any phase of it, not only during its holder's action. A kill made while
-  defending counts, and a goal can complete on another faction's turn.
+  defending counts, and a goal can complete on another faction's turn. A
+  destroyed faction's goal counts nothing.
 - **What counts as destroying or damaging** — any kill or damage the faction
   causes: an attack, a counterattack, an ability or an asset's special effect.
 ```
@@ -1053,6 +1121,12 @@ The readings of D-13 and D-21 (Decision 12).
 - **Destroy the Foe** — the goal completes only when the faction itself lands the
   blow that takes the target to 0 hit points. When another faction lands that
   blow, the goal fails: it ends with no XP, and the faction loses no income.
+- **Goals with a target** — if a goal names a target faction and the faction
+  loses the conditions that let it complete the goal, the goal fails. Today the
+  one such condition is the target itself: the goal fails when the target is
+  destroyed, by any faction, and the goal did not complete with that blow, or
+  when the target is removed from the campaign. A faction that destroys its own
+  target before the goal is done fails the goal.
 ```
 
 ##### Task 2 — tick the boxes

@@ -609,11 +609,30 @@ func (e *Engine) withGoalProgress(
 		return mutations, nil
 	}
 	// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
-	goalMutations, err := dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
+	reacted, err := dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reacting to the goal mutations of %v in the batch of %s: %w", goalHolders(goalMutations), faction.ID, err)
 	}
-	return append(mutations, goalMutations...), nil
+	return append(mutations, reacted...), nil
+}
+
+// goalHolders is the sorted IDs of the factions whose goals the goal mutations
+// move, so an error from their reactor pass names them and not only the acting
+// faction.
+func goalHolders(goalMutations []domain.Mutation) []string {
+	var holders []string
+	for _, mutation := range goalMutations {
+		switch goalMutation := mutation.(type) {
+		case domain.GoalProgressed:
+			holders = append(holders, goalMutation.FactionID)
+		case domain.GoalCompleted:
+			holders = append(holders, goalMutation.FactionID)
+		case domain.GoalFailed:
+			holders = append(holders, goalMutation.FactionID)
+		}
+	}
+	slices.Sort(holders)
+	return slices.Compact(holders)
 }
 
 // firePurchaseEffects runs the on_purchase effects of every asset the action

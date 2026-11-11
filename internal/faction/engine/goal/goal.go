@@ -35,8 +35,8 @@ func New(rulebook *rulebook.Rulebook, actionNames []string, log *slog.Logger) (*
 	return goalEngine, nil
 }
 
-// UpdateProgress reads one batch for every faction's active goal, in faction ID
-// order, and returns the goal mutations it causes. Every goal reads the state
+// UpdateProgress reads one batch for the active goal of every faction not
+// destroyed, in faction ID order, and returns the goal mutations it causes. Every goal reads the state
 // before the batch, so it must be called before MutationEngine.Apply.
 func (goalEngine *GoalEngine) UpdateProgress(
 	mutations []domain.Mutation,
@@ -46,7 +46,8 @@ func (goalEngine *GoalEngine) UpdateProgress(
 	var goalMutations []domain.Mutation
 	for _, factionID := range slices.Sorted(maps.Keys(factionState.Factions)) {
 		faction := factionState.Factions[factionID]
-		if faction.ActiveGoal == nil {
+		// deliberate: a destroyed faction's goal is skipped, not read, because the engine keeps destroyed factions in state and they must not earn goal XP.
+		if faction.ActiveGoal == nil || faction.CurrentHP <= 0 {
 			continue
 		}
 		compiled, ok := goalEngine.goals[faction.ActiveGoal.GoalID]

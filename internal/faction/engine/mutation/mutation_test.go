@@ -134,13 +134,13 @@ func TestMutationEngine_UnknownFactionErrors(t *testing.T) {
 
 func TestApply_GoalFailedClearsTheGoal(t *testing.T) {
 	t.Run("the holder's goal is cleared and nothing else moves", func(t *testing.T) {
-		s := newMutationTestState()
-		holder := s.Factions["f1"]
+		factionState := newMutationTestState()
+		holder := factionState.Factions["f1"]
 		holder.XP = 3
 		holder.ActiveGoal = &domain.ActiveGoal{GoalID: "CORE-G-008", TargetFactionID: "f2"}
-		me := New(slog.New(slog.DiscardHandler))
+		mutationEngine := New(slog.New(slog.DiscardHandler))
 
-		if err := me.Apply(s, []domain.Mutation{
+		if err := mutationEngine.Apply(factionState, []domain.Mutation{
 			domain.GoalFailed{FactionID: "f1", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
 		}, slog.New(slog.DiscardHandler)); err != nil {
 			t.Fatalf("Apply() unexpected error: %v", err)
@@ -157,10 +157,10 @@ func TestApply_GoalFailedClearsTheGoal(t *testing.T) {
 	})
 
 	t.Run("an unknown faction is a miss", func(t *testing.T) {
-		s := newMutationTestState()
-		me := New(slog.New(slog.DiscardHandler))
+		factionState := newMutationTestState()
+		mutationEngine := New(slog.New(slog.DiscardHandler))
 
-		err := me.Apply(s, []domain.Mutation{
+		err := mutationEngine.Apply(factionState, []domain.Mutation{
 			domain.GoalFailed{FactionID: "missing", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
 		}, slog.New(slog.DiscardHandler))
 		if err == nil {

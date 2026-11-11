@@ -601,3 +601,18 @@ func TestRunGrantedMovement_RefusedLandingStays(t *testing.T) {
 		t.Errorf("resolved[0] = %T, want PermissionRefused", resolved[0])
 	}
 }
+
+func TestGoalHolders_NamesEachHolderOnce(t *testing.T) {
+	goalMutations := []domain.Mutation{
+		domain.GoalProgressed{FactionID: "f2", GoalID: "CORE-G-006", Delta: 2},
+		domain.GoalCompleted{FactionID: "f1", GoalID: "CORE-G-001", XPAwarded: 2},
+		domain.XPAwarded{FactionID: "f1", Amount: 2},
+		domain.GoalFailed{FactionID: "f2", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
+	}
+
+	got := goalHolders(goalMutations)
+
+	if want := []string{"f1", "f2"}; !slices.Equal(got, want) {
+		t.Errorf("goalHolders = %v, want %v", got, want)
+	}
+}

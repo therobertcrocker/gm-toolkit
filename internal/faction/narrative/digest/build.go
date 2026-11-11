@@ -516,17 +516,17 @@ func Build(
 				})
 
 			case "goal_failed":
-				var m domain.GoalFailed
-				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+				var failed domain.GoalFailed
+				if err := json.Unmarshal(mr.Payload, &failed); err != nil {
 					return CycleDigest{}, err
 				}
-				holder := getOrCreateBeat(beats, m.FactionID, factionState)
-				seenFactionIDs[m.FactionID] = struct{}{}
+				holder := getOrCreateBeat(beats, failed.FactionID, factionState)
+				seenFactionIDs[failed.FactionID] = struct{}{}
 				holder.GoalEvents = append(holder.GoalEvents, GoalEvent{
 					Kind:     GoalFailed,
-					GoalID:   m.GoalID,
-					GoalName: resolveGoalName(m.GoalID, rulebook),
-					Cause:    m.Cause,
+					GoalID:   failed.GoalID,
+					GoalName: resolveGoalName(failed.GoalID, rulebook),
+					Cause:    failed.Cause,
 				})
 
 			case "influence_delta":

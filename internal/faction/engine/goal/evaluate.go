@@ -58,13 +58,20 @@ func (compiled *compiledGoal) advance(evaluation evalContext) ([]domain.Mutation
 	), true
 }
 
-// targetLost reports whether the batch destroys the goal's target faction, by
-// any hand: a built-in rule, not a part (D-21). Only a goal whose start names a
-// target_faction input has a target.
+// targetLost reports whether the goal's target faction is lost: gone from state,
+// destroyed before the batch, or destroyed in it. It is a built-in rule, not a
+// part (D-21). Only a goal whose start names a target_faction input, and that
+// holds a target, has one to lose.
 func (compiled *compiledGoal) targetLost(evaluation evalContext) bool {
-	if !hasInput(compiled.goal, inputTargetFaction) {
+	targetID := evaluation.faction.ActiveGoal.TargetFactionID
+	if !hasInput(compiled.goal, inputTargetFaction) || targetID == "" {
 		return false
 	}
+	target := evaluation.factionState.Factions[targetID]
+	if target == nil || target.CurrentHP <= 0 {
+		return true
+	}
+	// deliberate: a blow by any hand loses the target, not only a rival's, because a goal that can no longer complete fails, whoever ended it (E2 Decision Record 6).
 	return len(matchFactionDestroyed(evaluation, domain.GoalFilters{Target: targetStartInput})) > 0
 }
 
