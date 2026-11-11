@@ -80,11 +80,11 @@ func targetOptions(offer *domain.GoalOffer) []huh.Option[string] {
 func (o GoalPick) Init() tea.Cmd { return o.form.Init() }
 
 func (o GoalPick) Update(msg tea.Msg) (Overlay, tea.Cmd) {
-	if k, ok := msg.(tea.KeyMsg); ok && k.String() == "esc" {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
 		return o, nil // decline is an option, so Esc must not abort the form
 	}
-	fm, cmd := o.form.Update(msg)
-	o.form = fm.(*huh.Form)
+	updatedForm, cmd := o.form.Update(msg)
+	o.form = updatedForm.(*huh.Form)
 	if o.form.State == huh.StateCompleted {
 		answer := o.answer()
 		return o, func() tea.Msg { return OverlayDoneMsg{Answer: answer} }

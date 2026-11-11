@@ -332,10 +332,15 @@ func (e *Engine) runGoalPickPhase(
 }
 
 // prepareGoalPick asks a faction with no goal to pick one of the goals on offer.
-// It asks nothing when the faction holds a goal or nothing is on offer. A nil
-// answer declines, and the ask comes back next turn (D-4).
+// It asks nothing when the faction holds a goal, is destroyed, resumes a turn
+// whose bookkeeping already ran, or has nothing on offer. A nil answer
+// declines, and the ask comes back next turn (D-4).
 func (e *Engine) prepareGoalPick(faction *domain.Faction, factionState *state.FactionState, collector PhaseCollector) ([]domain.Mutation, error) {
-	if faction.ActiveGoal != nil {
+	if faction.ActiveGoal != nil || faction.CurrentHP <= 0 {
+		return nil, nil
+	}
+	// deliberate: skip once bookkeeping ran, not ask again, because a resumed turn re-runs from the top and a goal completed in bookkeeping would be replaced mid-turn, not at the next turn start.
+	if e.Turn.InProgress(factionState) && factionState.CurrentTurn.BookkeepingApplied {
 		return nil, nil
 	}
 	offers := e.Goal.Offers(faction, factionState)

@@ -135,6 +135,26 @@
    nothing. Rejected: start the cursor on the first real option (Enter would then
    act); patch huh.
 
+7. **Effort review fixes: two pick guards and full-word names.** Robert picked three
+   of six review findings.
+   - A destroyed faction (`CurrentHP` 0) is not asked to pick. Dead factions still
+     get turns, and the plan guarded only the targets, not the picker.
+   - The pick is skipped when a resumed turn's bookkeeping already ran, with the
+     same `BookkeepingApplied` gate the turn-start effects use. Without it a resume
+     asked again, and a goal completed in bookkeeping was replaced mid-turn.
+   - `rb`, `k`, `fm` and `muts` became full words. `muts` changed in all six
+     `adapter/observer.go` methods, not only `OnGoalPicked`, so the file stays
+     consistent.
+
+   Declined: a `Miss` when `GoalPicked` lands on a held goal, plain-value goal
+   targets in place of `*Faction` pointers, and one shared `offeredGoalIDs` test
+   helper.
+
+   Gap, not fixed: a GM who picks and then quits at a later prompt before the
+   turn's first save leaves a `goal_picked` in history that the saved state lacks.
+   On resume the pick is asked again. The stat raise, which also records before
+   that save, has the same shape, so it is not the pick's alone.
+
 ---
 
 ## Shared Context
@@ -892,10 +912,15 @@ func (e *Engine) runGoalPickPhase(
 }
 
 // prepareGoalPick asks a faction with no goal to pick one of the goals on offer.
-// It asks nothing when the faction holds a goal or nothing is on offer. A nil
-// answer declines, and the ask comes back next turn (D-4).
+// It asks nothing when the faction holds a goal, is destroyed, resumes a turn
+// whose bookkeeping already ran, or has nothing on offer. A nil answer
+// declines, and the ask comes back next turn (D-4).
 func (e *Engine) prepareGoalPick(faction *domain.Faction, factionState *state.FactionState, collector PhaseCollector) ([]domain.Mutation, error) {
-	if faction.ActiveGoal != nil {
+	if faction.ActiveGoal != nil || faction.CurrentHP <= 0 {
+		return nil, nil
+	}
+	// deliberate: skip once bookkeeping ran, not ask again, because a resumed turn re-runs from the top and a goal completed in bookkeeping would be replaced mid-turn, not at the next turn start.
+	if e.Turn.InProgress(factionState) && factionState.CurrentTurn.BookkeepingApplied {
 		return nil, nil
 	}
 	offers := e.Goal.Offers(faction, factionState)
@@ -1016,6 +1041,13 @@ Package `scenarios`, in the style of `stat_raise_test.go`: `Turn.Start`, then
 - `TestRunCycle_GoalPick_HeldGoalIsNotAsked`: `alpha` alone, holding Military
   Conquest. `SelectGoalFn` fails the test if called. `alpha` still holds Military
   Conquest.
+- `TestRunCycle_GoalPick_DestroyedFactionIsNotAsked` (added at the effort close,
+  Decision Record 7): `alpha` at `CurrentHP` 0 and `beta`. `SelectGoalFn` fails
+  the test if called for `alpha`. `alpha.ActiveGoal` is nil.
+- `TestGoalPick_ResumedTurnDoesNotAskAgain` (added at the effort close, Decision
+  Record 7): `alpha` alone, `Turn.Start`, `BookkeepingApplied` set to true, then
+  `RunFactionTurn`, in the style of `TestTurnStartEffect_ResumedTurnDoesNotPayTwice`.
+  `SelectGoalFn` fails the test if called.
 - `TestRunCycle_GoalPick_DeclineAsksAgainNextTurn`: `alpha` alone. `SelectGoalFn`
   counts its calls and declines. After two cycles (`Turn.Start` and `RunCycle`
   twice) it was called twice, `alpha.ActiveGoal` is nil, and history holds no
@@ -1103,10 +1135,10 @@ func (o *observer) OnMovementTicked(faction *domain.Faction, muts []domain.Mutat
 ```
 **Replace with:**
 ```go
-func (o *observer) OnGoalPicked(faction *domain.Faction, muts []domain.Mutation) {
-	o.adapter.emit(EvtGoalPicked, GoalPickedPayload{Mutations: muts})
+func (o *observer) OnGoalPicked(faction *domain.Faction, mutations []domain.Mutation) {
+	o.adapter.emit(EvtGoalPicked, GoalPickedPayload{Mutations: mutations})
 }
-func (o *observer) OnMovementTicked(faction *domain.Faction, muts []domain.Mutation) {
+func (o *observer) OnMovementTicked(faction *domain.Faction, mutations []domain.Mutation) {
 ```
 
 ##### Task 10 — `tui/adapter/smoke.go`
@@ -1256,11 +1288,11 @@ func targetOptions(offer *domain.GoalOffer) []huh.Option[string] {
 func (o GoalPick) Init() tea.Cmd { return o.form.Init() }
 
 func (o GoalPick) Update(msg tea.Msg) (Overlay, tea.Cmd) {
-	if k, ok := msg.(tea.KeyMsg); ok && k.String() == "esc" {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.String() == "esc" {
 		return o, nil // decline is an option, so Esc must not abort the form
 	}
-	fm, cmd := o.form.Update(msg)
-	o.form = fm.(*huh.Form)
+	updatedForm, cmd := o.form.Update(msg)
+	o.form = updatedForm.(*huh.Form)
 	if o.form.State == huh.StateCompleted {
 		answer := o.answer()
 		return o, func() tea.Msg { return OverlayDoneMsg{Answer: answer} }
@@ -1584,11 +1616,11 @@ type Model struct {
 	keys         keyMap
 }
 
-func New(faction *domain.Faction, factionState *state.FactionState, rb *rulebook.Rulebook, width, height int) Model {
+func New(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, width, height int) Model {
 	m := Model{
 		faction:      faction,
 		factionState: factionState,
-		rulebook:     rb,
+		rulebook:     rulebook,
 		width:        width,
 		height:       height,
 ```

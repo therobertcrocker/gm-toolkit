@@ -109,6 +109,46 @@ func TestRunCycle_GoalPick_HeldGoalIsNotAsked(t *testing.T) {
 		fmt.Sprintf("goal = %s", alpha.ActiveGoal.GoalID))
 }
 
+func TestRunCycle_GoalPick_DestroyedFactionIsNotAsked(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)
+	h.AddFaction("beta", "Tartarus", 2, 2, 2)
+	scriptAction(t, h, "")
+	alpha.CurrentHP = 0
+	h.Collector.SelectGoalFn = func(faction *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
+		if faction.ID == "alpha" {
+			t.Error("SelectGoal called for alpha, which is destroyed")
+		}
+		return nil, nil
+	}
+
+	runOneCycle(t, h)
+
+	testharness.CheckStep(t, "alpha holds no goal", alpha.ActiveGoal == nil,
+		fmt.Sprintf("goal = %+v", alpha.ActiveGoal))
+}
+
+func TestGoalPick_ResumedTurnDoesNotAskAgain(t *testing.T) {
+	h := testharness.NewHarness(t)
+	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)
+	h.Collector.SelectActionFn = skipAction
+	h.Collector.SelectGoalFn = func(faction *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
+		t.Errorf("SelectGoal called for %s on a turn whose bookkeeping already ran", faction.ID)
+		return nil, nil
+	}
+
+	if err := h.Engine.Turn.Start(h.FactionState); err != nil {
+		t.Fatalf("Turn.Start: %v", err)
+	}
+	h.FactionState.CurrentTurn.BookkeepingApplied = true
+	if _, err := h.Engine.RunFactionTurn(h.FactionState, h.Paths, h.Collectors, h.Observer); err != nil {
+		t.Fatalf("RunFactionTurn: %v", err)
+	}
+
+	testharness.CheckStep(t, "alpha holds no goal", alpha.ActiveGoal == nil,
+		fmt.Sprintf("goal = %+v", alpha.ActiveGoal))
+}
+
 func TestRunCycle_GoalPick_DeclineAsksAgainNextTurn(t *testing.T) {
 	h := testharness.NewHarness(t)
 	alpha := h.AddFaction("alpha", "Tartarus", 3, 2, 1)

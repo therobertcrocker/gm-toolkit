@@ -37,11 +37,11 @@ type Model struct {
 	keys         keyMap
 }
 
-func New(faction *domain.Faction, factionState *state.FactionState, rb *rulebook.Rulebook, width, height int) Model {
+func New(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook, width, height int) Model {
 	m := Model{
 		faction:      faction,
 		factionState: factionState,
-		rulebook:     rb,
+		rulebook:     rulebook,
 		width:        width,
 		height:       height,
 		keys: keyMap{
