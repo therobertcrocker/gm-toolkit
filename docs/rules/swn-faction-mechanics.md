@@ -92,17 +92,70 @@ Abandoning a goal costs the faction that turn's Coin income and they may take no
 
 | Goal | Completion Condition | Difficulty |
 |------|---------------------|------------|
-| Military Conquest | Destroy Force assets of rivals equal to your Force rating | half assets destroyed |
-| Commercial Expansion | Destroy Wealth assets of rivals equal to your Wealth rating | half assets destroyed |
-| Intelligence Coup | Destroy Cunning assets of rivals equal to your Cunning rating | half assets destroyed |
-| Planetary Seizure | Take control of a planet, becoming its government | half avg of ruling faction's F/C/W (min 1) |
+| Military Conquest | Destroy Force assets of rivals equal to your Force rating | half assets destroyed, rounded up |
+| Commercial Expansion | Destroy Wealth assets of rivals equal to your Wealth rating | half assets destroyed, rounded up |
+| Intelligence Coup | Destroy Cunning assets of rivals equal to your Cunning rating | half assets destroyed, rounded up |
+| Planetary Seizure | Take control of a planet, becoming its government | half avg of the resisting ruler's F/C/W, rounded up (min 1); 1 if no faction resisted |
 | Expand Influence | Plant a Base of Influence on a new planet | 1, +1 if contested |
 | Blood the Enemy | Inflict HP damage on enemy assets/bases equal to total F+C+W | 2 |
 | Peaceable Kingdom | Don't take an Attack action for four turns | 1 |
-| Destroy the Foe | Destroy a rival faction | 1 + avg of target faction's F/C/W |
+| Destroy the Foe | Destroy a rival faction | 1 + avg of target faction's F/C/W, rounded up |
 | Inside Enemy Territory | Have Stealthed assets on worlds with other governments equal to Cunning score (assets already stealthed when this goal is adopted don't count) | 2 |
 | Invincible Valor | Destroy a Force asset with min_rating higher than your Force rating | 2 |
 | Wealth of Worlds | Spend Coin equal to 4× Wealth rating on bribes (lost); Wealth must increase before selecting again | 2 |
+
+### Goal Rulings
+
+The book leaves these points open. The engine reads them as follows.
+
+- **Rounding** — every difficulty that divides rounds up. Three kills pay 2 XP. A
+  resisting ruler at Force 3, Cunning 4, Wealth 4 pays 2 for a Planetary Seizure and
+  1 + 4 for Destroy the Foe.
+- **When goals count** — a goal counts what happens on any faction's turn and in
+  any phase of it, not only during its holder's action. A kill made while
+  defending counts, and a goal can complete on another faction's turn. A
+  destroyed faction's goal counts nothing, and a destroyed faction is no rival:
+  the assets, Bases and worlds it leaves behind do not contest a world or make
+  rival ground.
+- **What counts as destroying or damaging** — any kill or damage the faction
+  causes: an attack, a counterattack, an ability or an asset's special effect.
+- **Bases** — damage to any rival Base counts for Blood the Enemy, the homeworld
+  Base included. It counts once, although the Base and the faction both lose the
+  hit points.
+- **Damage inflicted** — Blood the Enemy counts the hit points a hit takes off,
+  not the damage rolled. A 10-damage hit on an asset with 1 hit point left counts
+  as 1.
+- **Planetary Seizure** — the previous ruler resisted when it had an unstealthed
+  asset on the world as the seizure began. Stealthed assets are not resistance. With
+  no resisting ruler, and on a world with no faction ruler, the difficulty is 1.
+- **Expand Influence** — the attempt is contested when a rival asset or Base is on
+  the world.
+- **Peaceable Kingdom** — a turn counts when the faction takes an action that is
+  not Attack. An Attack resets the count even if every attack misses. A turn with
+  no action neither counts nor resets.
+- **Destroy the Foe** — the goal completes only when the faction itself lands the
+  blow that takes the target to 0 hit points. When another faction lands that
+  blow, the goal fails: it ends with no XP, and the faction loses no income.
+- **Goals with a target** — if a goal names a target faction and the faction
+  loses the conditions that let it complete the goal, the goal fails. Today the
+  one such condition is the target itself: the goal fails when the target is
+  destroyed, by any faction, and the goal did not complete with that blow, or
+  when the target is removed from the campaign. A faction that destroys its own
+  target before the goal is done fails the goal.
+- **Inside Enemy Territory** — the goal counts the stealthed assets the faction
+  holds at one time on worlds a rival governs, or on a rival's homeworld that has no
+  faction government. An asset that loses stealth or leaves stops counting. Assets
+  already stealthed when the goal is picked never count, wherever they go.
+- **Wealth of Worlds** — the goal is offered again only when the faction's Wealth
+  is above its Wealth when it last completed the goal. Abandoning the goal sets no
+  such limit.
+- **Picking a goal** — a faction with no goal is asked at the start of its turn,
+  after any XP spend and before income. It may decline; the question comes back
+  each turn until it picks. A faction that holds a goal the engine cannot run (a
+  goal ID the rulebook no longer has, or Destroy the Foe with no target, from an
+  older save) is asked as if it held none. A goal that names a target faction asks for one among
+  the factions still standing, and is not offered when there is none. Planetary
+  Seizure is not offered while the Seize Planet action is off.
 
 ---
 
@@ -265,7 +318,8 @@ A successful **Transport Lockdown** attack locks the struck faction out of the w
 2. **Assign attributes** — primary, secondary, tertiary per scale
 3. **Calculate Max HP** — 4 + HP value of each attribute
 4. **Select tags** — generally one tag; two at most
-5. **Select starting goal**
+5. **Select starting goal** — at the faction's first turn, through the goal pick;
+   the faction wizard sets none
 6. **Place homeworld Base of Influence** — automatically at max HP
 7. **Select starting assets:**
    - Minor: 1 asset in primary attribute + 1 asset in any other attribute

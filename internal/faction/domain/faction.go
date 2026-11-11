@@ -39,21 +39,14 @@ type Tag struct {
 	Ability *AbilityDefinition
 }
 
-type Goal struct {
-	ID          string `toml:"id"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	Difficulty  string `toml:"difficulty"`
-}
-
 // ActiveGoal holds the faction's current goal and live progress state.
 type ActiveGoal struct {
-	GoalID          string   `toml:"goal_id"`
-	TargetFactionID string   `toml:"target_faction_id"`
-	TargetWorld     Location `toml:"target_world"`
-	Progress        int      `toml:"progress"`
-	ProcessPhase    int      `toml:"process_phase"`
-	TurnsRemaining  int      `toml:"turns_remaining"`
+	GoalID          string `toml:"goal_id"`
+	TargetFactionID string `toml:"target_faction_id"`
+	Progress        int    `toml:"progress"`
+	// StealthedAtStart holds the IDs of the assets already stealthed when the goal
+	// was picked; a measure with exclude_held_at_start never counts them (D-10).
+	StealthedAtStart []string `toml:"stealthed_at_start,omitempty"`
 }
 
 type Faction struct {
@@ -80,6 +73,9 @@ type Faction struct {
 	// WorldTechLevels holds the worlds that count as a higher tech level for this
 	// faction's purchases, by world ID (raise_tech_level, D-11).
 	WorldTechLevels map[string]int `toml:"world_tech_levels,omitempty"`
+	// CompletionRatings holds the faction's ratings when it last completed each
+	// goal, by goal ID; a rating_above_last_completion gate reads it (D-11).
+	CompletionRatings map[string]map[FactionStat]int `toml:"completion_ratings,omitempty"`
 }
 
 // HasTag reports whether the faction holds the tag with ID tagID.
@@ -113,6 +109,7 @@ func (faction *Faction) Clone() *Faction {
 	clone.Tags = slices.Clone(faction.Tags)
 	if faction.ActiveGoal != nil {
 		goalCopy := *faction.ActiveGoal
+		goalCopy.StealthedAtStart = slices.Clone(faction.ActiveGoal.StealthedAtStart)
 		clone.ActiveGoal = &goalCopy
 	}
 	if faction.HookBudgets != nil {
@@ -121,6 +118,12 @@ func (faction *Faction) Clone() *Faction {
 	}
 	if faction.WorldTechLevels != nil {
 		clone.WorldTechLevels = maps.Clone(faction.WorldTechLevels)
+	}
+	if faction.CompletionRatings != nil {
+		clone.CompletionRatings = make(map[string]map[FactionStat]int, len(faction.CompletionRatings))
+		for goalID, ratings := range faction.CompletionRatings {
+			clone.CompletionRatings[goalID] = maps.Clone(ratings)
+		}
 	}
 	return &clone
 }
@@ -166,6 +169,10 @@ func (faction *Faction) StatScore(stat FactionStat) int {
 	}
 }
 
+func (faction *Faction) Ratings() map[FactionStat]int {
+	return map[FactionStat]int{StatForce: faction.Force, StatCunning: faction.Cunning, StatWealth: faction.Wealth}
+}
+
 // BudgetSpent reports whether the hook budget key is spent this turn. An empty
 // key is unlimited and is never spent.
 func (faction *Faction) BudgetSpent(key string) bool {
@@ -209,13 +216,13 @@ func HPValueForRating(rating int) int {
 
 // NewFaction synthesizes a Faction from creation-time inputs. Applies SWN
 // derivations: attribute ratings from scale, MaxHP from attributes,
-// CurrentHP = MaxHP, homeworld Base of Influence at MaxHP.
+// CurrentHP = MaxHP, homeworld Base of Influence at MaxHP. A new faction holds
+// no goal; it picks one at its first turn (D-25).
 func NewFaction(
 	id, name string,
 	scale FactionScale,
 	primaryStat, secondaryStat, tertiaryStat FactionStat,
 	tagIDs []string,
-	goal *Goal,
 	homeworld Location,
 	assets []*Asset,
 	coin int,
@@ -256,10 +263,6 @@ func NewFaction(
 
 	faction.MaxHP = CalcMaxHP(faction)
 	faction.CurrentHP = faction.MaxHP
-
-	if goal != nil {
-		faction.ActiveGoal = &ActiveGoal{GoalID: goal.ID}
-	}
 
 	for _, asset := range assets {
 		faction.Assets[asset.ID] = asset

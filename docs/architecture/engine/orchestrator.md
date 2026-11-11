@@ -70,20 +70,17 @@ config:
 flowchart LR
   Setup["setup"]:::process
   Stat["stat-raise"]:::process
+  Pick["goal pick"]:::process
   Book["bookkeeping"]:::process
   Save1[("save")]:::muted
   Move["movement"]:::process
-  Lock{"goal-lock<br>LockSkip?"}:::decision
   Action["action"]:::process
   Save2[("save")]:::muted
   Finish["finish<br>save"]:::process
 
-  Setup --> Stat --> Book --> Save1 --> Move --> Lock
-  Lock -- skip --> Finish
-  Lock -- no --> Action --> Save2 --> Finish
+  Setup --> Stat --> Pick --> Book --> Save1 --> Move --> Action --> Save2 --> Finish
 
   classDef process  fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e
-  classDef decision fill:#f38ba8,stroke:#d6607f,color:#1e1e2e
   classDef muted    fill:#45475a,stroke:#585b70,color:#cdd6f4
 ```
 
@@ -102,7 +99,7 @@ config:
 flowchart LR
   Sub["① <br> call sub-engine<br>compute · emit mutations"]:::process
   Hooks["② <br> dispatch hooks<br>over emitted mutations"]:::cond
-  Apply["③ <br> applyAndRecord<br>Mutation.Apply · append history"]:::core
+  Apply["③ <br> applyAndRecord<br>goal progress · Mutation.Apply · append history"]:::core
   Notify["④ <br> notify observer<br>On…(event)"]:::process
   Check["⑤ <br> await checkpoint<br>AwaitCheckpoint"]:::cond
 
@@ -113,37 +110,41 @@ flowchart LR
   classDef cond    fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e,stroke-dasharray:4 3
 ```
 
-Setup rebuilds the world index and resolves the current faction. Goal-lock runs
-immediately before the action phase it gates: a `LockSkip` goal lock short-circuits
-past action straight to finish. State is
+Setup rebuilds the world index and resolves the current faction. The goal pick
+runs after stat-raise: a faction with no goal it can run, not destroyed, and not
+resuming a turn whose bookkeeping already ran, gets `PhaseCollector.SelectGoal`
+with the goals the goal engine offers; a nil answer declines, and the ask comes
+back next turn. Every phase runs on to the action; nothing skips a turn. State is
 saved at two interior gates (after bookkeeping, after action) and again in
 finish — never mid-phase.
 
 
 ### The per-phase beat
 
-Each phase function (`runGoalLockPhase`, `runBookkeepingPhase`, … ) is a
+Each phase function (`runGoalPickPhase`, `runBookkeepingPhase`, … ) is a
 variation on one beat:
 
 1. **Call the sub-engine** for this phase's mechanics (e.g.
-   `Goal.CheckLock`, `Turn.ApplyBookkeeping`, `World.TickMovementOrders`,
+   `Goal.Offers` and `Goal.Pick`, `Turn.ApplyBookkeeping`, `World.TickMovementOrders`,
    `Action.Run`). Sub-engines compute and *emit mutations*; they never touch
    state directly.
 2. **Dispatch hooks** over the emitted mutations where the phase has reactive
    rules — `dispatch.MutationReactors` in the movement and action phases.
-3. **Apply and record** via `applyAndRecord`: apply the mutations to in-memory
-   state through `Mutation.Apply`, then append one `EventRecord` to the history
-   file.
+3. **Apply and record** via `applyAndRecord`: read the batch for every faction's
+   goal and add the goal mutations after a reactor pass over them alone, apply
+   the whole batch to in-memory state through `Mutation.Apply`, then append one
+   `EventRecord` to the history file. It returns the batch as applied, which is
+   what the phase passes to its observer.
 4. **Notify the observer** of what happened (`OnBookkeepingApplied`,
    `OnMovementResolved`, … ).
 5. **Await a checkpoint** where the phase is a GM pause point
    (`collectors.Phase.AwaitCheckpoint`).
 
 This beat is a synthesis, not a literal invariant. Phases vary in both which
-steps they have and their order: goal-lock has no hook dispatch and notifies the
-observer *before* applying; the action phase folds the `on_purchase` effects of
-every bought asset, then goal-progress mutations, into the action's own before
-dispatching. What is uniform is the recoverable-vs-fatal
+steps they have and their order: the goal pick has no hook dispatch and no
+checkpoint; the action phase opens its batch with a record-only `ActionTaken` and
+folds the `on_purchase` effects of every bought asset into the action's own
+before dispatching. What is uniform is the recoverable-vs-fatal
 handling wrapped around every fallible step (see Key Decisions).
 
 ### The two input contracts
@@ -159,7 +160,7 @@ type Collectors struct {
 ```
 
 `PhaseCollector` is the orchestrator's own prompt surface: `ConfirmPayment` (embedded `hooks.PaymentCollector`; the turn-start lift), `RequestPermission` and `ConfirmPermissionContest` (embedded `hooks.PermissionCollector`; an arriving asset's permission request, and a rival Lobbyists' contest of the grant), `AwaitCheckpoint`,
-`SelectAction`, `SelectStatRaise`, `SelectMovementDecisions`,
+`SelectAction`, `SelectStatRaise`, `SelectGoal`, `SelectMovementDecisions`,
 `SelectTransportCargo`, `SelectRelocateOrders` (a free movement grant's prompt; it
 shares the signature of the action collector's, so both satisfy
 `relocate.Collector`). `action.Collector` is a separate, richer contract passed
@@ -180,9 +181,9 @@ source of truth.
 
 ### applyAndRecord and the save cadence
 
-`applyAndRecord` is the single choke point for state change: it applies a
-mutation batch and appends history, and it deliberately does **not** persist to
-disk. `Mutation.Apply` reports per-mutation misses, which the orchestrator logs
+`applyAndRecord` is the single choke point for state change: it reads goals over
+a mutation batch, applies the batch with its goal mutations, and appends history,
+and it deliberately does **not** persist to disk. `Mutation.Apply` reports per-mutation misses, which the orchestrator logs
 before failing. `state.Save` is called only at phase gates — after bookkeeping,
 after action resolution, and in `finish` — so a turn's on-disk state always
 lands on a phase boundary, never inside one.
@@ -194,7 +195,7 @@ lands on a phase boundary, never inside one.
   staged bootstrap. The engine owns its own wiring; callers hand it a rulebook
   and a world engine and get a ready engine back. (Resolves R-012; frozen log
   285–294.) Construction can fail: it is the first point that knows both the
-  rulebook's `[[effects]]` data and the effect registrars, so it checks every
+  rulebook's `effects` data and the effect registrars, so it checks every
   entry there and `NewWithRulebook` returns an error on bad effect data.
   (s-flag-effect-registry plan, Planning Decision 7.)
 - **Two input contracts, split by audience.** `PhaseCollector` is the
@@ -219,17 +220,29 @@ lands on a phase boundary, never inside one.
   decoupled from disk persistence. `state.Save` runs only at phase gates, so
   durable state always reflects a completed phase. (Frozen log 195–196.)
 - **Checkpoints are the named pause points.** The `Checkpoint*` constants
-  (`bookkeeping`, `movement`, `action_result`, `goal_locked`, `cycle_summary`)
+  (`bookkeeping`, `movement`, `action_result`, `cycle_summary`)
   enumerate where the orchestrator yields to `AwaitCheckpoint`. A GM-driven
   caller blocks there for acknowledgement; an AI or test caller returns
   immediately. The pause points are part of the contract, not an interface
   artifact.
-- **Goal-lock sits adjacent to the phase it gates.** Goal-lock runs immediately
-  before the action phase rather than at the top of the turn. A `LockSkip` is
-  precisely the signal to short-circuit past action straight to finish, so the
-  lock decision belongs next to what it controls; its earlier position was
-  incidental ordering, not a dependency — no phase between setup and action
-  consumes the lock.
+- **No goal-lock phase.** The phase ran only for the two process goals (Planetary
+  Seizure, Change Homeworld). With those gone to the multi-turn actions of
+  `F.040`, it had nothing to run, so it went with its `goal_locked` checkpoint and
+  `OnGoalLockApplied`. A future lock lives on the action that holds it, not in a
+  turn phase. Retires "goal-lock sits adjacent to the phase it gates". (A.001.8
+  overview Decision 2.)
+- **The goal pick runs after stat-raise and before bookkeeping.** The rules put
+  the pick at the start of the turn, as the XP spend is; with the raise first, a
+  Wealth raise this turn can open Wealth of Worlds for the same turn's pick. A
+  resumed turn whose bookkeeping ran skips the pick, so a goal completed in
+  bookkeeping is not replaced mid-turn. Rejected: the pick before stat-raise.
+  (A.001.8 discovery D-2; Effort 3 Decision Record 7.)
+- **Goals run inside `applyAndRecord`.** Every batch in every phase passes
+  through it, so every faction's goal reads every batch by construction, and a
+  batch added later cannot skip goals. The goal output gets its own reactor pass
+  there, because a completion can land in a batch whose phase runs no reactors.
+  Rejected: a goal call at each site. (A.001.8 discovery D-13; Effort 2
+  Decisions 1 and 7.)
 - **The orchestrator owns the inter-phase work, sub-engines own the mechanics.**
   Sub-engines emit mutations and never mutate state; hook dispatch, mutation
   application, history, persistence, and checkpoint handling all live in the

@@ -45,7 +45,7 @@ type Accepts struct {
 	Gates   []domain.EffectGateName
 }
 
-// Holder is who declared an [[effects]] entry: an asset through its definition,
+// Holder is who declared an effects entry: an asset through its definition,
 // or a faction through a tag (Tag set, Asset and Def nil). A registrar reads its
 // holder only through this value, so one registrar serves both. A quality's
 // purchase has a Def and no Asset.
@@ -160,7 +160,7 @@ func IsHookTrigger(trigger domain.EffectTrigger) bool {
 	return !IsPhaseTrigger(trigger) && !IsMatchupTrigger(trigger)
 }
 
-// effectsListHandler holds a definition's whole [[effects]] list, because the
+// effectsListHandler holds a definition's whole effects list, because the
 // engine keys handlers by definition and one definition may declare several effects.
 type effectsListHandler struct {
 	def        *domain.AssetDefinition

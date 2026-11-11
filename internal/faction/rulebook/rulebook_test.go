@@ -648,15 +648,27 @@ func TestLoad(t *testing.T) {
 		if len(rb.Goals) == 0 {
 			t.Fatal("expected goals to be loaded, got none")
 		}
-		goal, ok := rb.Goals["G-001"]
+		goal, ok := rb.Goals["CORE-G-001"]
 		if !ok {
-			t.Fatal("expected goal G-001 (Military Conquest) to be present")
+			t.Fatal("expected goal CORE-G-001 (Military Conquest) to be present")
 		}
 		if goal.Name != "Military Conquest" {
 			t.Errorf("goal name: got %q, want %q", goal.Name, "Military Conquest")
 		}
-		if goal.Difficulty != "half_assets_destroyed" {
-			t.Errorf("difficulty: got %q, want %q", goal.Difficulty, "half_assets_destroyed")
+		wantProgress := &domain.GoalProgress{Event: "kill", Amount: "one", Filters: domain.GoalFilters{Owner: "rival", CausedBy: "own", Category: []domain.FactionStat{domain.StatForce}}}
+		if !reflect.DeepEqual(goal.Progress, wantProgress) {
+			t.Errorf("progress: got %+v, want %+v", goal.Progress, wantProgress)
+		}
+		wantThreshold := &domain.GoalThreshold{Ratings: []domain.FactionStat{domain.StatForce}}
+		if !reflect.DeepEqual(goal.Threshold, wantThreshold) {
+			t.Errorf("threshold: got %+v, want %+v", goal.Threshold, wantThreshold)
+		}
+		wantXP := &domain.GoalXP{Formula: "half_progress"}
+		if !reflect.DeepEqual(goal.XP, wantXP) {
+			t.Errorf("xp: got %+v, want %+v", goal.XP, wantXP)
+		}
+		if goal.Start != nil || goal.Reset != nil || goal.Complete != nil {
+			t.Errorf("start, reset, complete = %+v, %+v, %+v, want all nil", goal.Start, goal.Reset, goal.Complete)
 		}
 	})
 }
@@ -751,15 +763,57 @@ func TestLoadTagsAndGoals_Strict(t *testing.T) {
 		},
 		{
 			name: "goal unknown key",
-			body: "[goals.Alpha]\nid = \"G-001\"\nname = \"Alpha\"\ndificulty = \"low\"\n",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\nname = \"Alpha\"\ndificulty = \"low\"\n",
 			load: loadGoalFile,
 			want: "unknown keys in",
 		},
 		{
 			name: "goal duplicate ID",
-			body: "[goals.Alpha]\nid = \"G-001\"\n\n[goals.Beta]\nid = \"G-001\"\n",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n\n[goals.Beta]\nid = \"CORE-G-001\"\n",
 			load: loadGoalFile,
-			want: `duplicate goal ID "G-001"`,
+			want: `duplicate goal ID "CORE-G-001"`,
+		},
+		{
+			name: "goal old difficulty key",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\ndifficulty = \"low\"\n",
+			load: loadGoalFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "goal unknown key inside a part",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n" + `xp = { formula = "constant", amout = 1 }` + "\n",
+			load: loadGoalFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "goal unknown filter key",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n" + `complete = { event = "kill", filters = { ownr = "rival" } }` + "\n",
+			load: loadGoalFile,
+			want: "unknown keys in",
+		},
+		{
+			name: "goal bad category stat",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n" + `progress = { event = "kill", amount = "one", filters = { category = ["force"] } }` + "\n",
+			load: loadGoalFile,
+			want: "progress: filters.category[0]: unknown faction stat",
+		},
+		{
+			name: "goal bad rated_above stat",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n" + `complete = { event = "kill", filters = { rated_above = "force" } }` + "\n",
+			load: loadGoalFile,
+			want: "complete: filters.rated_above: unknown faction stat",
+		},
+		{
+			name: "goal bad threshold rating",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n" + `threshold = { ratings = ["Might"] }` + "\n",
+			load: loadGoalFile,
+			want: "threshold ratings[0]: unknown faction stat",
+		},
+		{
+			name: "goal bad gate rating",
+			body: "[goals.Alpha]\nid = \"CORE-G-001\"\n" + `start = { gate = { rating_above_last_completion = "" } }` + "\n",
+			load: loadGoalFile,
+			want: "start.gate rating_above_last_completion: unknown faction stat",
 		},
 	}
 	for _, testCase := range cases {
@@ -837,7 +891,7 @@ func TestLoad_TagBonusDice(t *testing.T) {
 		{"SWN-T-004", append(tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, OpponentAttribute: domain.StatWealth}, domain.OncePerOwnerFaction), domain.EffectDefinition{
 			Trigger: domain.TriggerGoalCompleted,
 			Effect:  domain.SpecialXPRoll,
-			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-007"},
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "CORE-G-007"},
 			XPRoll:  &domain.TargetRoll{Die: domain.DiceRoll{NumDice: 1, Sides: 6}, Target: 4, Amount: 1},
 		})},
 		{"SWN-T-015", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: defense, TechLevel: &zero}, domain.OncePerOwnerFaction)},
@@ -845,12 +899,14 @@ func TestLoad_TagBonusDice(t *testing.T) {
 			tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, OpponentTechLevel: &five}, domain.OncePerOwnerFaction),
 			tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, "")...,
 		)},
-		{"SWN-T-006", tagBonusDie(domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Phases: attack, Goal: "G-004", Action: "Attack"}, "")},
 	}
 	for _, tc := range cases {
 		if got := rb.Tags[tc.tagID].Effects; !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s effects = %+v, want %+v", tc.tagID, got, tc.want)
 		}
+	}
+	if got := rb.Tags["SWN-T-006"].Effects; len(got) != 0 {
+		t.Errorf("SWN-T-006 effects = %+v, want none until F.040", got)
 	}
 }
 
@@ -867,7 +923,7 @@ func TestLoad_SecretiveStealthsPurchases(t *testing.T) {
 }
 
 func TestCheckReferences(t *testing.T) {
-	goals := map[string]*domain.Goal{"G-004": {ID: "G-004"}}
+	goals := map[string]*domain.Goal{"CORE-G-004": {ID: "CORE-G-004"}}
 	tags := map[string]*domain.Tag{"T-1": {ID: "T-1"}}
 	assets := map[string]*domain.AssetDefinition{"A-1": {ID: "A-1"}}
 	naming := func(filters domain.EffectFilters) []domain.EffectDefinition {
@@ -877,7 +933,7 @@ func TestCheckReferences(t *testing.T) {
 		return map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: entries}}
 	}
 
-	if err := checkReferences(assets, withTag(naming(domain.EffectFilters{Goal: "G-004", AssetDefinition: "A-1"})), goals); err != nil {
+	if err := checkReferences(assets, withTag(naming(domain.EffectFilters{Goal: "CORE-G-004", AssetDefinition: "A-1"})), goals); err != nil {
 		t.Errorf("known references: err = %v, want nil", err)
 	}
 	cases := []struct {

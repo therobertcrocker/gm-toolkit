@@ -2,6 +2,7 @@ package mutation
 
 import (
 	"log/slog"
+	"reflect"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -128,6 +129,131 @@ func TestMutationEngine_UnknownFactionErrors(t *testing.T) {
 	}
 	if got := s.Factions["f1"].Coin; got != 10 {
 		t.Errorf("Coin = %d, want 10 (unrelated faction must be unmodified)", got)
+	}
+}
+
+func TestApply_GoalFailedClearsTheGoal(t *testing.T) {
+	t.Run("the holder's goal is cleared and nothing else moves", func(t *testing.T) {
+		factionState := newMutationTestState()
+		holder := factionState.Factions["f1"]
+		holder.XP = 3
+		holder.ActiveGoal = &domain.ActiveGoal{GoalID: "CORE-G-008", TargetFactionID: "f2"}
+		mutationEngine := New(slog.New(slog.DiscardHandler))
+
+		if err := mutationEngine.Apply(factionState, []domain.Mutation{
+			domain.GoalFailed{FactionID: "f1", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
+		}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply() unexpected error: %v", err)
+		}
+		if holder.ActiveGoal != nil {
+			t.Errorf("ActiveGoal = %+v, want nil", holder.ActiveGoal)
+		}
+		if holder.XP != 3 {
+			t.Errorf("XP = %d, want 3", holder.XP)
+		}
+		if holder.Coin != 10 {
+			t.Errorf("Coin = %d, want 10", holder.Coin)
+		}
+	})
+
+	t.Run("an unknown faction is a miss", func(t *testing.T) {
+		factionState := newMutationTestState()
+		mutationEngine := New(slog.New(slog.DiscardHandler))
+
+		err := mutationEngine.Apply(factionState, []domain.Mutation{
+			domain.GoalFailed{FactionID: "missing", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
+		}, slog.New(slog.DiscardHandler))
+		if err == nil {
+			t.Fatal("Apply() expected error for unknown faction, got nil")
+		}
+		if len(err.Misses) != 1 {
+			t.Fatalf("len(Misses) = %d, want 1", len(err.Misses))
+		}
+	})
+}
+
+func TestApply_GoalPickedSetsTheGoal(t *testing.T) {
+	t.Run("the picker holds the goal", func(t *testing.T) {
+		factionState := newMutationTestState()
+		picker := factionState.Factions["f1"]
+		mutationEngine := New(slog.New(slog.DiscardHandler))
+		picked := domain.GoalPicked{FactionID: "f1", GoalID: "CORE-G-009", StealthedAtStart: []string{"a2"}}
+
+		if err := mutationEngine.Apply(factionState, []domain.Mutation{picked}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply() unexpected error: %v", err)
+		}
+		want := &domain.ActiveGoal{GoalID: "CORE-G-009", Progress: 0, StealthedAtStart: []string{"a2"}}
+		if !reflect.DeepEqual(picker.ActiveGoal, want) {
+			t.Fatalf("ActiveGoal = %+v, want %+v", picker.ActiveGoal, want)
+		}
+		picked.StealthedAtStart[0] = "a1"
+		if picker.ActiveGoal.StealthedAtStart[0] != "a2" {
+			t.Errorf("StealthedAtStart = %v, want it apart from the mutation's slice", picker.ActiveGoal.StealthedAtStart)
+		}
+	})
+
+	t.Run("the target is kept", func(t *testing.T) {
+		factionState := newMutationTestState()
+		mutationEngine := New(slog.New(slog.DiscardHandler))
+
+		if err := mutationEngine.Apply(factionState, []domain.Mutation{
+			domain.GoalPicked{FactionID: "f1", GoalID: "CORE-G-008", TargetFactionID: "f2"},
+		}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply() unexpected error: %v", err)
+		}
+		if got := factionState.Factions["f1"].ActiveGoal.TargetFactionID; got != "f2" {
+			t.Errorf("TargetFactionID = %q, want f2", got)
+		}
+	})
+
+	t.Run("an unknown faction is a miss", func(t *testing.T) {
+		factionState := newMutationTestState()
+		mutationEngine := New(slog.New(slog.DiscardHandler))
+
+		err := mutationEngine.Apply(factionState, []domain.Mutation{
+			domain.GoalPicked{FactionID: "missing", GoalID: "CORE-G-009"},
+		}, slog.New(slog.DiscardHandler))
+		if err == nil {
+			t.Fatal("Apply() expected error for unknown faction, got nil")
+		}
+		if len(err.Misses) != 1 {
+			t.Fatalf("len(Misses) = %d, want 1", len(err.Misses))
+		}
+	})
+}
+
+func TestApply_GoalCompletedRecordsTheRatings(t *testing.T) {
+	factionState := newMutationTestState()
+	holder := factionState.Factions["f1"]
+	holder.Force, holder.Cunning, holder.Wealth = 3, 2, 4
+	holder.ActiveGoal = &domain.ActiveGoal{GoalID: "CORE-G-011"}
+	mutationEngine := New(slog.New(slog.DiscardHandler))
+
+	if err := mutationEngine.Apply(factionState, []domain.Mutation{
+		domain.GoalCompleted{FactionID: "f1", GoalID: "CORE-G-011"},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if holder.ActiveGoal != nil {
+		t.Errorf("ActiveGoal = %+v, want nil", holder.ActiveGoal)
+	}
+	wantWealthOfWorlds := map[domain.FactionStat]int{domain.StatForce: 3, domain.StatCunning: 2, domain.StatWealth: 4}
+	if got := holder.CompletionRatings["CORE-G-011"]; !reflect.DeepEqual(got, wantWealthOfWorlds) {
+		t.Fatalf("CompletionRatings[CORE-G-011] = %v, want %v", got, wantWealthOfWorlds)
+	}
+
+	holder.Wealth = 5
+	if err := mutationEngine.Apply(factionState, []domain.Mutation{
+		domain.GoalPicked{FactionID: "f1", GoalID: "CORE-G-001"},
+		domain.GoalCompleted{FactionID: "f1", GoalID: "CORE-G-001"},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if len(holder.CompletionRatings) != 2 {
+		t.Errorf("CompletionRatings has %d entries, want 2", len(holder.CompletionRatings))
+	}
+	if got := holder.CompletionRatings["CORE-G-011"][domain.StatWealth]; got != 4 {
+		t.Errorf("CORE-G-011 Wealth = %d, want 4", got)
 	}
 }
 
@@ -357,6 +483,31 @@ func TestMutationEngine_PermissionRefusedIsRecordOnly(t *testing.T) {
 	}
 	if got := s.Factions["f1"].Coin; got != 10 {
 		t.Errorf("Coin = %d, want 10 unchanged", got)
+	}
+}
+
+func TestApply_ActionTakenChangesNoState(t *testing.T) {
+	cases := []struct {
+		name      string
+		factionID string
+	}{
+		{name: "held faction", factionID: "f1"},
+		{name: "unknown faction", factionID: "missing"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			s := newMutationTestState()
+			before := s.Factions["f1"].Clone()
+			me := New(slog.New(slog.DiscardHandler))
+
+			actionTaken := domain.ActionTaken{FactionID: testCase.factionID, Action: "Attack"}
+			if err := me.Apply(s, []domain.Mutation{actionTaken}, slog.New(slog.DiscardHandler)); err != nil {
+				t.Errorf("Apply = %v, want no miss for a record-only mutation", err)
+			}
+			if !reflect.DeepEqual(s.Factions["f1"], before) {
+				t.Errorf("faction after Apply = %+v, want %+v unchanged", s.Factions["f1"], before)
+			}
+		})
 	}
 }
 

@@ -1,25 +1,13 @@
 # Region metadata. Every region letter that appears in the layout
 # needs an entry; the CLI errors on missing ones.
-[regions.A]
-name = "Concord Core"
-
-[regions.B]
-name = "Crossway Hub"
-
-[regions.C]
-name = "Gilded Reach"
-
-[regions.D]
-name = "Far Drift"
-
-[regions.E]
-name = "Umbral Shoals"
-
-[regions.F]
-name = "Mire Basin"
-
-[regions.G]
-name = "Ironway"
+[regions]
+A = { name = "Concord Core" }
+B = { name = "Crossway Hub" }
+C = { name = "Gilded Reach" }
+D = { name = "Far Drift" }
+E = { name = "Umbral Shoals" }
+F = { name = "Mire Basin" }
+G = { name = "Ironway" }
 
 # Worlds. `at` is the marker glyph (integer for 1-9, string for a-z).
 # Every world declares its region, so a marker beside a boundary never infers wrong.

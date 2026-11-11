@@ -6,7 +6,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 )
 
 // RegisterDefaultActions wires the standard SWN faction actions into the action
@@ -23,7 +22,6 @@ func RegisterDefaultActions(
 	resolveRoller func() dice.Roller,
 	hookRegistry *hooks.Registry,
 	worldEngine *world.WorldEngine,
-	rulebook *rulebook.Rulebook,
 	effectsEngine *effect.EffectsEngine,
 ) {
 	ae.Register(func(c action.Collector) action.Action { return NewSellAsset(c) })
@@ -44,8 +42,6 @@ func RegisterDefaultActions(
 		return NewUseAssetAbility(c, resolveRoller(), hookRegistry, worldEngine)
 	})
 	ae.Register(func(_ action.Collector) action.Action { return NewAbandonGoal() })
-	ae.Register(func(c action.Collector) action.Action { return NewSeizePlanet(c, worldIndex(worldEngine)) })
-	ae.Register(func(c action.Collector) action.Action { return NewChangeHomeworld(c, worldEngine, rulebook) })
 }
 
 // worldIndex returns the spatial index the world-aware actions need, tolerating

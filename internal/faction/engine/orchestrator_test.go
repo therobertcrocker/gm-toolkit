@@ -3,7 +3,6 @@ package engine
 import (
 	"errors"
 	"log/slog"
-	"reflect"
 	"slices"
 	"testing"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
@@ -22,21 +20,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
-
-// stubAction implements action.Action with a fixed name and no-op methods.
-type stubAction struct{ name string }
-
-func (s *stubAction) Name() string { return s.name }
-func (s *stubAction) Validate(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) bool {
-	return true
-}
-func (s *stubAction) Inputs(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
-	return nil
-}
-func (s *stubAction) Resolve(_ *domain.Faction, _ *state.FactionState, _ *rulebook.Rulebook) error {
-	return nil
-}
-func (s *stubAction) Output() ([]domain.Mutation, error) { return nil, nil }
 
 // minimalPhaseCollector satisfies PhaseCollector with configurable fns and
 // safe no-op defaults. Used in unit tests that exercise orchestrator helpers
@@ -53,6 +36,9 @@ func (c *minimalPhaseCollector) SelectAction(_ *domain.Faction, _ []action.Actio
 	return nil, nil
 }
 func (c *minimalPhaseCollector) SelectStatRaise(_ *domain.Faction, _ []domain.FactionStat) (*domain.FactionStat, error) {
+	return nil, nil
+}
+func (c *minimalPhaseCollector) SelectGoal(_ *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
 	return nil, nil
 }
 func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
@@ -352,39 +338,6 @@ func TestPrepareMovementDecisions_AnOrderedAssetIsNotCargo(t *testing.T) {
 	}
 }
 
-func TestFilterAllowedActions(t *testing.T) {
-	available := []action.Action{
-		&stubAction{"Attack"},
-		&stubAction{"Sell Asset"},
-		&stubAction{"Expand Influence"},
-	}
-
-	tests := []struct {
-		name    string
-		allowed []string
-		want    []string
-	}{
-		{"nil allowed returns nothing", nil, nil},
-		{"empty allowed returns nothing", []string{}, nil},
-		{"no-match returns nothing", []string{"Buy Asset"}, nil},
-		{"single match", []string{"Attack"}, []string{"Attack"}},
-		{"multiple matches", []string{"Attack", "Expand Influence"}, []string{"Attack", "Expand Influence"}},
-		{"preserves available order not allowed order", []string{"Expand Influence", "Sell Asset"}, []string{"Sell Asset", "Expand Influence"}},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := filterAllowedActions(available, tc.allowed)
-			var gotNames []string
-			for _, a := range got {
-				gotNames = append(gotNames, a.Name())
-			}
-			if !reflect.DeepEqual(gotNames, tc.want) {
-				t.Errorf("got %v, want %v", gotNames, tc.want)
-			}
-		})
-	}
-}
-
 // errorObserver satisfies TurnObserver and records only the errors it is sent.
 type errorObserver struct{ errs []error }
 
@@ -395,8 +348,6 @@ func (o *errorObserver) OnError(_ *domain.Faction, err error) {
 func (o *errorObserver) OnFactionTurnStarted(_ *domain.Faction) {}
 
 func (o *errorObserver) OnFactionSkipped(_ *domain.Faction) {}
-
-func (o *errorObserver) OnGoalLockApplied(_ *domain.Faction, _ locks.GoalLock, _ []domain.Mutation) {}
 
 func (o *errorObserver) OnBookkeepingApplied(_ *domain.Faction, _ turn.BookkeepingResult, _ []domain.Mutation) {
 }
@@ -413,6 +364,8 @@ func (o *errorObserver) OnStatRaiseApplied(_ *domain.Faction, _ *domain.FactionS
 }
 
 func (o *errorObserver) OnStatRaiseSkipped(_ *domain.Faction) {}
+
+func (o *errorObserver) OnGoalPicked(_ *domain.Faction, _ []domain.Mutation) {}
 
 func (o *errorObserver) OnMovementTicked(_ *domain.Faction, _ []domain.Mutation) {}
 
@@ -651,5 +604,20 @@ func TestRunGrantedMovement_RefusedLandingStays(t *testing.T) {
 	}
 	if _, ok := resolved[0].(domain.PermissionRefused); !ok {
 		t.Errorf("resolved[0] = %T, want PermissionRefused", resolved[0])
+	}
+}
+
+func TestGoalHolders_NamesEachHolderOnce(t *testing.T) {
+	goalMutations := []domain.Mutation{
+		domain.GoalProgressed{FactionID: "f2", GoalID: "CORE-G-006", Delta: 2},
+		domain.GoalCompleted{FactionID: "f1", GoalID: "CORE-G-001", XPAwarded: 2},
+		domain.XPAwarded{FactionID: "f1", Amount: 2},
+		domain.GoalFailed{FactionID: "f2", GoalID: "CORE-G-008", Cause: domain.GoalFailedTargetLost},
+	}
+
+	got := goalHolders(goalMutations)
+
+	if want := []string{"f1", "f2"}; !slices.Equal(got, want) {
+		t.Errorf("goalHolders = %v, want %v", got, want)
 	}
 }

@@ -19,9 +19,8 @@ import (
 // what keeps an entry to its own side. attribute reads the stat this roll uses;
 // opponent_attribute the stat the other side rolls against it. tech_level reads
 // the rolling asset's definition, opponent_tech_level the other side's; neither
-// matches without a rulebook. goal matches a roll against a rival on the target
-// world of the owner's active goal. detection matches only a roll made by the
-// side testing to detect stealth.
+// matches without a rulebook. detection matches only a roll made by the side
+// testing to detect stealth.
 func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFactionID string, asset *domain.Asset, filters domain.EffectFilters, rulebook *rulebook.Rulebook) bool {
 	if ctx.Actor == nil {
 		return false
@@ -83,18 +82,7 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 	if filters.AssetDefinition != "" && (ctx.Asset == nil || ctx.Asset.DefinitionID != filters.AssetDefinition) {
 		return false
 	}
-	// deliberate: a goal roll needs a rival, not only the target world, because the counterstrike rolls the attacker against itself with no Opponent (Effort 2 Decision Record 6).
-	if filters.Goal != "" && (ctx.Opponent == nil || !onGoalTarget(owner, filters.Goal, ctx.World)) {
-		return false
-	}
 	return true
-}
-
-// onGoalTarget reports whether owner's active goal is goalID and world is its
-// target. A goal with no target chosen yet has none.
-func onGoalTarget(owner *domain.Faction, goalID, world string) bool {
-	goal := owner.ActiveGoal
-	return goal != nil && goal.GoalID == goalID && world != "" && goal.TargetWorld.WorldID == world
 }
 
 // techLevelMatches reports whether asset's definition requires exactly want. A nil

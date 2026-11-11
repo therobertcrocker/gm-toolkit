@@ -260,6 +260,20 @@ func TestAssetMaintainedFlagDropped(t *testing.T) {
 	}
 }
 
+func TestBuild_ActionTakenLeavesNoNote(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "action_taken", domain.ActionTaken{FactionID: "faction-a", Action: "Attack"}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha"}), nil)
+	for _, beat := range d.ActiveFactions {
+		if len(beat.Notes) != 0 {
+			t.Errorf("%s Notes = %v, want none", beat.Faction.ID, beat.Notes)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Repair
 // ---------------------------------------------------------------------------
@@ -479,6 +493,33 @@ func TestGoalCompleted_XPRollBonusJoinsTheGoalLine(t *testing.T) {
 	}
 }
 
+func TestGoalCompleted_OnARivalsTurnGoesToTheHolder(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "goal_completed", domain.GoalCompleted{
+				FactionID: "faction-b", GoalID: "goal-1", XPAwarded: 2, Cause: "goal_completed",
+			}),
+			mutRec(t, "xp_awarded", domain.XPAwarded{
+				FactionID: "faction-b", Amount: 2, Cause: "goal_completed",
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"}), minRulebook(map[string]string{"goal-1": "Military Conquest"}))
+	holder := findBeat(cycleDigest, "faction-b")
+	if holder == nil {
+		t.Fatal("faction-b has no beat")
+	}
+	if len(holder.GoalEvents) != 1 || holder.GoalEvents[0].Kind != GoalCompleted {
+		t.Errorf("want 1 GoalCompleted event on faction-b, got %+v", holder.GoalEvents)
+	}
+	if holder.XPGained != 2 {
+		t.Errorf("want faction-b XPGained 2, got %d", holder.XPGained)
+	}
+	if acting := findBeat(cycleDigest, "faction-a"); acting != nil && (len(acting.GoalEvents) != 0 || acting.XPGained != 0) {
+		t.Errorf("want no goal event and no XP on faction-a, got %+v and XPGained %d", acting.GoalEvents, acting.XPGained)
+	}
+}
+
 func TestGoalAbandoned(t *testing.T) {
 	records := []domain.EventRecord{
 		eventRec("faction-a",
@@ -495,6 +536,81 @@ func TestGoalAbandoned(t *testing.T) {
 	if len(beat.GoalEvents) != 1 || beat.GoalEvents[0].Kind != GoalAbandoned {
 		t.Errorf("want 1 GoalAbandoned event, got %+v", beat.GoalEvents)
 	}
+}
+
+func TestGoalFailed(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "goal_failed", domain.GoalFailed{
+				FactionID: "faction-b", GoalID: "goal-1", Cause: domain.GoalFailedTargetLost,
+			}),
+		),
+	}
+	cycleDigest := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"}), minRulebook(map[string]string{"goal-1": "Destroy the Foe"}))
+	holder := findBeat(cycleDigest, "faction-b")
+	if holder == nil {
+		t.Fatal("faction-b has no beat")
+	}
+	if len(holder.GoalEvents) != 1 || holder.GoalEvents[0].Kind != GoalFailed {
+		t.Fatalf("want 1 GoalFailed event on faction-b, got %+v", holder.GoalEvents)
+	}
+	if holder.GoalEvents[0].GoalName != "Destroy the Foe" || holder.GoalEvents[0].Cause != domain.GoalFailedTargetLost {
+		t.Errorf("want goal 'Destroy the Foe' with cause target_lost, got %+v", holder.GoalEvents[0])
+	}
+	if acting := findBeat(cycleDigest, "faction-a"); acting != nil && len(acting.GoalEvents) != 0 {
+		t.Errorf("want no goal event on faction-a, got %+v", acting.GoalEvents)
+	}
+	if cycleDigest.Headline.Kind == HeadlineGoalAbandoned {
+		t.Error("a failed goal took the Goal Abandoned headline")
+	}
+}
+
+func TestGoalPicked(t *testing.T) {
+	factionState := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"})
+	rulebook := minRulebook(map[string]string{"goal-1": "Destroy the Foe"})
+
+	t.Run("with a target", func(t *testing.T) {
+		records := []domain.EventRecord{
+			eventRec("faction-a",
+				mutRec(t, "goal_picked", domain.GoalPicked{
+					FactionID: "faction-a", GoalID: "goal-1", TargetFactionID: "faction-b",
+				}),
+			),
+		}
+		cycleDigest := buildOne(t, records, factionState, rulebook)
+		picker := findBeat(cycleDigest, "faction-a")
+		if picker == nil {
+			t.Fatal("faction-a has no beat")
+		}
+		if len(picker.GoalEvents) != 1 || picker.GoalEvents[0].Kind != GoalPicked {
+			t.Fatalf("want 1 GoalPicked event on faction-a, got %+v", picker.GoalEvents)
+		}
+		if picker.GoalEvents[0].GoalName != "Destroy the Foe" || picker.GoalEvents[0].TargetName != "Beta" {
+			t.Errorf("want goal 'Destroy the Foe' aimed at Beta, got %+v", picker.GoalEvents[0])
+		}
+		if target := findBeat(cycleDigest, "faction-b"); target != nil && len(target.GoalEvents) != 0 {
+			t.Errorf("want no goal event on faction-b, got %+v", target.GoalEvents)
+		}
+		if cycleDigest.Headline.Kind != HeadlineQuiet {
+			t.Errorf("Headline.Kind = %v, want HeadlineQuiet", cycleDigest.Headline.Kind)
+		}
+	})
+
+	t.Run("with no target", func(t *testing.T) {
+		records := []domain.EventRecord{
+			eventRec("faction-a",
+				mutRec(t, "goal_picked", domain.GoalPicked{FactionID: "faction-a", GoalID: "goal-1"}),
+			),
+		}
+		cycleDigest := buildOne(t, records, factionState, rulebook)
+		picker := findBeat(cycleDigest, "faction-a")
+		if picker == nil || len(picker.GoalEvents) != 1 {
+			t.Fatalf("want 1 goal event on faction-a, got %+v", picker)
+		}
+		if picker.GoalEvents[0].TargetName != "" {
+			t.Errorf("TargetName = %q, want empty", picker.GoalEvents[0].TargetName)
+		}
+	})
 }
 
 func TestHomeworldChanged(t *testing.T) {

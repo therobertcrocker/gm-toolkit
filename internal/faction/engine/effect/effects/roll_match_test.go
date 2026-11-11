@@ -9,11 +9,7 @@ import (
 )
 
 func TestRollMatches(t *testing.T) {
-	alpha := &domain.Faction{
-		ID: "alpha", Homeworld: domain.Location{WorldID: "Krylos"},
-		ActiveGoal: &domain.ActiveGoal{GoalID: "G-004", TargetWorld: domain.Location{WorldID: "Krylos"}},
-	}
-	planning := &domain.Faction{ID: "alpha", ActiveGoal: &domain.ActiveGoal{GoalID: "G-004"}}
+	alpha := &domain.Faction{ID: "alpha", Homeworld: domain.Location{WorldID: "Krylos"}}
 	beta := &domain.Faction{ID: "beta"}
 	gamma := &domain.Faction{ID: "gamma"}
 	declaring := &domain.Asset{ID: "x", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}
@@ -40,8 +36,6 @@ func TestRollMatches(t *testing.T) {
 	againstCunning := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, OpponentAttribute: domain.StatCunning}
 	withPrimitive := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, TechLevel: &zero}
 	againstAdvanced := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, OpponentTechLevel: &five}
-	seizure := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-004"}
-	otherGoal := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Goal: "G-001"}
 	rivalHomeworld := domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeHomeworld}
 	slavesRoll := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, AssetDefinition: "tl0"}
 
@@ -83,11 +77,6 @@ func TestRollMatches(t *testing.T) {
 		{"tech level, no rolling asset", domain.TriggerOwnRoll, withPrimitive, hooks.RollContext{Actor: alpha}, false},
 		{"opponent tech level match", domain.TriggerOwnRoll, againstAdvanced, hooks.RollContext{Actor: alpha, OpponentAsset: advanced}, true},
 		{"opponent tech level mismatch", domain.TriggerOwnRoll, againstAdvanced, hooks.RollContext{Actor: alpha, OpponentAsset: primitive}, false},
-		{"goal target world", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Krylos"}, true},
-		{"goal target, no rival (counterstrike)", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, World: "Krylos"}, false},
-		{"off the goal target", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Tartarus"}, false},
-		{"another goal", domain.TriggerOwnRoll, otherGoal, hooks.RollContext{Actor: alpha, Opponent: beta, World: "Krylos"}, false},
-		{"goal target not yet chosen", domain.TriggerOwnRoll, seizure, hooks.RollContext{Actor: planning, Opponent: beta, World: ""}, false},
 		{"detection, a detecting roll", domain.TriggerOwnRoll, domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, hooks.RollContext{Actor: alpha, Detection: true}, true},
 		{"detection, any other roll", domain.TriggerOwnRoll, domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, Detection: true}, hooks.RollContext{Actor: alpha}, false},
 		{"rival roll, a bystander's roll", domain.TriggerRivalRoll, domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction}, hooks.RollContext{Actor: beta, Opponent: gamma, World: "Tartarus"}, true},

@@ -236,9 +236,29 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
+		case domain.GoalFailed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.ActiveGoal = nil
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.GoalPicked:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.ActiveGoal = &domain.ActiveGoal{
+					GoalID:           v.GoalID,
+					TargetFactionID:  v.TargetFactionID,
+					StealthedAtStart: slices.Clone(v.StealthedAtStart),
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
 		case domain.GoalCompleted:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				faction.ActiveGoal = nil
+				if faction.CompletionRatings == nil {
+					faction.CompletionRatings = map[string]map[domain.FactionStat]int{}
+				}
+				faction.CompletionRatings[v.GoalID] = faction.Ratings()
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
@@ -286,6 +306,8 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			}
 		case domain.PermissionRefused:
 			// record only: the refused action bought nothing
+		case domain.ActionTaken:
+			// record only: goals read it from the batch
 		case domain.InfluenceDelta:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				found := false
@@ -302,37 +324,10 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
-		case domain.GoalInitiated:
-			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				faction.ActiveGoal = &domain.ActiveGoal{
-					GoalID:       v.GoalID,
-					ProcessPhase: v.ProcessPhase,
-					TargetWorld:  v.TargetWorld,
-				}
-			} else {
-				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
-			}
 		case domain.GoalProgressed:
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if faction.ActiveGoal != nil && faction.ActiveGoal.GoalID == v.GoalID {
 					faction.ActiveGoal.Progress += v.Delta
-				}
-			} else {
-				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
-			}
-		case domain.GoalTurnsTick:
-			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				if faction.ActiveGoal != nil && faction.ActiveGoal.GoalID == v.GoalID {
-					faction.ActiveGoal.TurnsRemaining--
-				}
-			} else {
-				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
-			}
-		case domain.GoalPhaseAdvanced:
-			if faction, ok := factionState.Factions[v.FactionID]; ok {
-				if faction.ActiveGoal != nil && faction.ActiveGoal.GoalID == v.GoalID {
-					faction.ActiveGoal.ProcessPhase = v.ProcessPhase
-					faction.ActiveGoal.TurnsRemaining = v.TurnsRemaining
 				}
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})

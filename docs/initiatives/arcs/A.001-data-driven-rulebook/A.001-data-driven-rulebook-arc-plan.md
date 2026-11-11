@@ -296,6 +296,11 @@ named parts (start, progress, tick, reset, threshold, complete, XP, phases).
 - Renames the goal references in tag data when goal IDs gain the prefix (AP-9):
   Imperialists names Planetary Seizure, and Exchange Consulate names Peaceable Kingdom.
 
+> **Narrowed by the A.001.8 Discovery.** The vocabulary is six parts, with no `phases`
+> or `tick`. Seize Planet and Change Homeworld become multi-turn actions in `F.040`,
+> a standalone row outside the arc, and `G-012` leaves the goals (discovery D-1, D-5,
+> D-7, D-19).
+
 **Covers:** the goal half of `E.002`. **Punts:** `F.013` (the `complete` predicate
 leaves it open). **Gates nothing** — `_core` goals serve both rulebooks before and
 after it.
@@ -346,7 +351,7 @@ that owns it.
 | Whether any already-scaffolded campaign needs SWN-ID re-prefix migration | **A.001.1** |
 | Monopoly's flag-vs-text mismatch — re-derive its home from the mechanic | **A.001.2** |
 | Exact `[ability]` sub-block nesting + fate of each dead field (A-side) | **A.001.2** |
-| Exact `[effect]` sub-block nesting + fate of each dead field (S-side) | **A.001.3** — *resolved in its Discovery:* an `[[effects]]` list of trigger / `filters` / `gates` / named param block; `[transport]` untouched, so ACD-5's hybrid stands |
+| Exact `[effect]` sub-block nesting + fate of each dead field (S-side) | **A.001.3** — *resolved in its Discovery:* an `effects` list of trigger / `filters` / `gates` / named param block; `[transport]` untouched, so ACD-5's hybrid stands |
 | Neutralization's flavor-vs-mechanic line + `_core` compose mechanics | **A.001.4** |
 | What `_core` holds: goals and tags, goals only, or a hybrid *(raised in the A.001.4 Discovery)* | **Resolved by AP-8** — goals only |
 | Precursor lore session — when it runs, how it seeds the canon | **A.001.5** (Effort 1) |

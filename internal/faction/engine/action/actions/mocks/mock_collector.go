@@ -285,21 +285,6 @@ func (mr *MockCollectorMockRecorder) SelectBuyOrder(purchasablePerWorld any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectBuyOrder", reflect.TypeOf((*MockCollector)(nil).SelectBuyOrder), purchasablePerWorld)
 }
 
-// SelectChangeHomeworldTarget mocks base method.
-func (m *MockCollector) SelectChangeHomeworldTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectChangeHomeworldTarget", faction, factionState)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectChangeHomeworldTarget indicates an expected call of SelectChangeHomeworldTarget.
-func (mr *MockCollectorMockRecorder) SelectChangeHomeworldTarget(faction, factionState any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectChangeHomeworldTarget", reflect.TypeOf((*MockCollector)(nil).SelectChangeHomeworldTarget), faction, factionState)
-}
-
 // SelectDefender mocks base method.
 func (m *MockCollector) SelectDefender(attacker *domain.Asset, eligible []*domain.Asset, arg2 *rulebook.Rulebook) (*domain.Asset, error) {
 	m.ctrl.T.Helper()
@@ -416,19 +401,4 @@ func (m *MockCollector) SelectReroll(card hooks.PostRollCard) *hooks.RerollDirec
 func (mr *MockCollectorMockRecorder) SelectReroll(card any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectReroll", reflect.TypeOf((*MockCollector)(nil).SelectReroll), card)
-}
-
-// SelectSeizeTarget mocks base method.
-func (m *MockCollector) SelectSeizeTarget(faction *domain.Faction, factionState *state.FactionState) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SelectSeizeTarget", faction, factionState)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SelectSeizeTarget indicates an expected call of SelectSeizeTarget.
-func (mr *MockCollectorMockRecorder) SelectSeizeTarget(faction, factionState any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectSeizeTarget", reflect.TypeOf((*MockCollector)(nil).SelectSeizeTarget), faction, factionState)
 }

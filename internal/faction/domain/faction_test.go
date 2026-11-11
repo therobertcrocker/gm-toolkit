@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -14,14 +15,11 @@ func TestNewFaction(t *testing.T) {
 		WorldID:   "world-a",
 		RegionHex: spatial.RegionHex{RegionID: "r1", Coord: spatial.HexCoord{Q: 1, R: 2}},
 	}
-	goal := &domain.Goal{ID: "goal-expand", Name: "Expand Influence"}
-
 	faction := domain.NewFaction(
 		"test-faction", "Test Faction",
 		domain.ScaleMinor,
 		domain.StatForce, domain.StatCunning, domain.StatWealth,
 		[]string{"SWN-T-020"},
-		goal,
 		homeworld,
 		nil,
 		10,
@@ -51,8 +49,8 @@ func TestNewFaction(t *testing.T) {
 		t.Errorf("CurrentHP = %d, want MaxHP (%d)", faction.CurrentHP, faction.MaxHP)
 	}
 
-	if faction.ActiveGoal == nil || faction.ActiveGoal.GoalID != goal.ID {
-		t.Errorf("ActiveGoal = %v, want GoalID=%q", faction.ActiveGoal, goal.ID)
+	if faction.ActiveGoal != nil {
+		t.Errorf("ActiveGoal = %+v, want nil", faction.ActiveGoal)
 	}
 
 	homeworldBases := 0
@@ -141,6 +139,55 @@ func TestFaction_HookBudgets_TOMLRoundTrip(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestFactionClone_CopiesTheCompletionRecord(t *testing.T) {
+	original := &domain.Faction{
+		ID:                "f1",
+		CompletionRatings: map[string]map[domain.FactionStat]int{"CORE-G-011": {domain.StatWealth: 2}},
+	}
+	clone := original.Clone()
+	clone.CompletionRatings["CORE-G-011"][domain.StatWealth] = 5
+	clone.CompletionRatings["CORE-G-001"] = map[domain.FactionStat]int{domain.StatForce: 3}
+
+	if len(original.CompletionRatings) != 1 {
+		t.Errorf("original has %d entries, want 1", len(original.CompletionRatings))
+	}
+	if got := original.CompletionRatings["CORE-G-011"][domain.StatWealth]; got != 2 {
+		t.Errorf("original Wealth = %d, want 2", got)
+	}
+
+	if clone := (&domain.Faction{ID: "f2"}).Clone(); clone.CompletionRatings != nil {
+		t.Errorf("CompletionRatings = %v, want nil", clone.CompletionRatings)
+	}
+}
+
+func TestFaction_CompletionRatings_TOMLRoundTrip(t *testing.T) {
+	original := &domain.Faction{
+		ID: "f1",
+		CompletionRatings: map[string]map[domain.FactionStat]int{
+			"CORE-G-011": {domain.StatForce: 3, domain.StatCunning: 2, domain.StatWealth: 4},
+		},
+	}
+	var buf bytes.Buffer
+	if err := toml.NewEncoder(&buf).Encode(original); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	var decoded domain.Faction
+	if _, err := toml.Decode(buf.String(), &decoded); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !reflect.DeepEqual(decoded.CompletionRatings, original.CompletionRatings) {
+		t.Errorf("CompletionRatings = %v, want %v", decoded.CompletionRatings, original.CompletionRatings)
+	}
+
+	buf.Reset()
+	if err := toml.NewEncoder(&buf).Encode(&domain.Faction{ID: "f2"}); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if bytes.Contains(buf.Bytes(), []byte("completion_ratings")) {
+		t.Errorf("expected completion_ratings to be omitted when nil, got:\n%s", buf.String())
+	}
 }
 
 func TestAttackBlocked(t *testing.T) {

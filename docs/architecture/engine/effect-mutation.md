@@ -33,8 +33,8 @@ populate a registry the orchestrator drives.
 Both follow the same shape — a `map[string]Handler` keyed by a data ID and an
 `ApplyAll` that, once per cycle, walks live entities and lets the matching handler
 register its hooks. A tag or asset with no registered handler is **silently
-skipped**: the fence-signed data-only contract shared with [goals](goals.md), and
-the mechanism that lets the *data* lead the *implementation*. Both engines are
+skipped**: the fence-signed data-only contract (which [goals](goals.md) no longer
+share: a goal the engine cannot run stops it from starting), and the mechanism that lets the *data* lead the *implementation*. Both engines are
 deliberately framework-complete but handler-partial — the event-hooks effort
 shipped all five categories and a proof-of-life handler each, leaving the full
 sets to follow (see Key Decisions).
@@ -82,7 +82,7 @@ that transport moves with cargo, charges the per-issuance Coin cost and emits an
 transport. That last point is deliberate — it keeps cargo recoverable if the
 transport is destroyed mid-flight.
 
-Every other `S`-flag feature is an `[[effects]]` list in asset data. The effects
+Every other `S`-flag feature is an `effects` list in asset data. The effects
 engine keys a registrar on each entry's effect name (`effect/registrar.go`,
 `effects/registrars.go`) and checks every entry against it at construction. Most
 entries register hooks in `ApplyAll`, as transport does. Two triggers are **phase
@@ -171,10 +171,11 @@ is the string written to history; the rules behind the numbers live in
 - `base_expanded` — raise both MaxHP and CurrentHP
 
 **Goals**
-- `goal_initiated` / `goal_abandoned` / `goal_completed` — set / clear the active goal
+- `goal_picked` — set the active goal, with its target and the assets stealthed at the start (the turn-start pick)
 - `goal_progressed` — increment (or reset) progress
-- `goal_turns_tick` — decrement `TurnsRemaining`
-- `goal_phase_advanced` — set ProcessPhase and TurnsRemaining atomically
+- `goal_completed` — clear the active goal and record the faction's ratings for that goal ID in `CompletionRatings`
+- `goal_abandoned` / `goal_failed` — clear the active goal; a failure pays no XP and costs no income
+- `action_taken` — record-only: opens each action batch with the action's name; changes no state
 
 **Movement orders**
 - `movement_order_issued` / `_progressed` / `_revised` / `_cancelled` / `_completed` — the in-flight order lifecycle (see [world & movement](world-movement.md))
@@ -219,8 +220,23 @@ is the string written to history; the rules behind the numbers live in
   changes no state, and `MovementOrderHeld` changes only the order's step and hex,
   as `_progressed` does. Without them, a refused purchase that used the turn's
   action leaves nothing in history, and a held arrival reads as a move. Each has an
-  apply arm, a digest line and a TUI line. Precedent: `GoalInitiated`. (A.001.6
-  overview Decision 22.)
+  apply arm, a digest line and a TUI line. Precedent: `GoalInitiated`, since
+  removed. (A.001.6 overview Decision 22.)
+- **Each action batch opens with a record-only `ActionTaken`.** Nothing else in a
+  batch names the action, so a goal could not tell a missed Attack from no
+  Attack. A pass or a failed action emits none. It shows in neither the feed nor
+  the digest: the feed header already names the action, and the digest drops it
+  on purpose. History keeps it. (A.001.8 discovery D-19; Effort 1 Decision 3.)
+- **`GoalPicked` is the one writer of `ActiveGoal`.** Goals emit, never mutate:
+  the turn-start pick builds `GoalPicked`, and its apply arm sets the goal, its
+  target and its start record. `GoalCompleted`'s arm writes the faction's ratings
+  to `CompletionRatings`, which Wealth of Worlds' gate reads. (A.001.8 Effort 3
+  Decisions 1 and 9.)
+- **A lost target ends a goal with `GoalFailed`, not `GoalAbandoned`.** It pays no
+  XP and costs no income, and it has its own apply arm, digest line and feed line,
+  so history tells a lost target apart from a GM's Abandon Goal. Its `Cause` is a
+  `domain` constant (`target_lost`). (A.001.8 discovery D-21; Effort 2 Decision
+  11.)
 - **The rule layer registers hooks, it never dispatches.** The effects engine
   translates asset and tag data into [hooks](hooks.md) and stops there; the orchestrator and the
   actions own every dispatch site. This is the same consumer-owned-registration pattern as the
@@ -243,7 +259,7 @@ is the string written to history; the rules behind the numbers live in
   plan, Planning Decision 5; Effort 1 plan, Decisions 5 and 7; Effort 5 plan,
   Decisions 10 and 11; A.001.7 overview R-2.)
 - **An S effect is data keyed on its effect name, and the registrar picks the
-  hook category.** The `[[effects]]` data never names a hook category. Each
+  hook category.** The `effects` data never names a hook category. Each
   registrar is a spec struct: the owners, scopes, filters and gates it accepts,
   keyed per trigger, plus a hook route (`Register`) and a phase route (`Fire`).
   The sets are keyed per trigger because one field set per kind would accept a
@@ -254,7 +270,7 @@ is the string written to history; the rules behind the numbers live in
   forces a no-op route on every single-route effect. (Effort 1 plan, Decision 1
   and Decision Record 10.)
 - **Effects are blind to their holder; the entry's scope decides who may hold
-  it.** An asset definition and a tag record carry the same `[[effects]]` list,
+  it.** An asset definition and a tag record carry the same `effects` list,
   and one effects engine checks, registers and fires both: `engine/tag` and its
   four Go handlers are gone. Every registrar signs up through one `effect.Holder`
   (the faction, plus the asset or the tag), which names the hook ID, the offer
@@ -268,7 +284,7 @@ is the string written to history; the rules behind the numbers live in
   to 3.)
 - **A rule value or reference lives in the entry, never in engine code.** A
   number, a die, a threshold, or the ID of another record (a goal, a tag, an asset
-  type) is read from the `[[effects]]` entry or from `settings.toml`. The test: a
+  type) is read from the `effects` entry or from `settings.toml`. The test: a
   second asset or tag can use the effect with TOML only. So the population floor
   names no asset type in Go (`population_floor` with an `asset_type` filter), and
   `xp_roll` reads its die, threshold and goal from the entry. A reference is
@@ -307,6 +323,12 @@ is the string written to history; the rules behind the numbers live in
   changes every reader of `Cause == "attack"` (digest, Scavengers, goals).
   (s-flag-effect-registry plan, Planning Decision 9 and Decision Records 4, 5
   and 25.)
+- **Every Base hit emits a `BaseHPDelta` and a `FactionHPDelta`.** Homeworld or
+  not, the damage lands on the Base and on the faction. A reader that counts
+  damage reads one of the two: goals' `damage` event reads `BaseHPDelta`, so a
+  Base hit counts once. Damage carries the full roll, not capped at the HP left;
+  a reader that counts HP taken off caps it itself. (A.001.8 Effort 1 Decision 1
+  and Decision Record 17.)
 - **Passive and active asset specialness are split.** `S`-flag features register
   reactive hooks through the effect engine; `A`-flag abilities are resolved by the
   [actions](actions.md) ability dispatch. The effect engine deliberately owns only

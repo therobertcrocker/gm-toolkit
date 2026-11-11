@@ -56,8 +56,11 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 		{"BaseAdded", domain.BaseAdded{Base: domain.Base{ID: "base-1"}}, "+base base-1"},
 		{"BaseDestroyed", domain.BaseDestroyed{BaseID: "base-1"}, "base base-1 destroyed"},
 		{"StatRaised", domain.StatRaised{Stat: domain.StatForce, OldRating: 2, NewRating: 3}, "Force 2→3"},
-		{"GoalCompleted", domain.GoalCompleted{XPAwarded: 5}, "goal completed (+5 XP)"},
+		{"GoalPicked", domain.GoalPicked{GoalID: "CORE-G-001"}, "goal picked: CORE-G-001"},
+		{"GoalPicked target", domain.GoalPicked{GoalID: "CORE-G-008", TargetFactionID: "beta"}, "goal picked: CORE-G-008 → beta"},
+		{"GoalCompleted", domain.GoalCompleted{FactionID: "beta", XPAwarded: 5}, "goal completed: beta (+5 XP)"},
 		{"XPAwarded xp_roll", domain.XPAwarded{Amount: 1, Cause: string(domain.SpecialXPRoll)}, "bonus XP +1"},
+		{"GoalFailed", domain.GoalFailed{FactionID: "beta", Cause: domain.GoalFailedTargetLost}, "goal failed: beta (target_lost)"},
 		{"GoalAbandoned", domain.GoalAbandoned{}, "goal abandoned"},
 		{"HomeworldChanged", domain.HomeworldChanged{ToWorld: domain.Location{WorldID: "Andama"}}, "homeworld → Andama"},
 		{"MovementOrderIssued", domain.MovementOrderIssued{}, "move issued"},
@@ -86,7 +89,7 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 
 func TestFormatMutation_Folded(t *testing.T) {
 	folded := []domain.Mutation{
-		domain.GoalTurnsTick{},
+		domain.ActionTaken{},
 		domain.GoalProgressed{},
 		domain.AssetMaintainedFlag{},
 		domain.XPAwarded{Cause: "goal_completed"},
@@ -152,15 +155,6 @@ func TestRenderEvent_FactionEvents(t *testing.T) {
 			contains(t, out, "Red Star", tc.phrase)
 		})
 	}
-}
-
-func TestRenderEvent_GoalLockApplied_IncludesMutations(t *testing.T) {
-	muts := []domain.Mutation{domain.CoinDelta{Delta: -2}}
-	out := renderEvent(adapter.ObserverEventMsg{
-		Kind:    adapter.EvtGoalLockApplied,
-		Payload: adapter.GoalLockAppliedPayload{Mutations: muts},
-	})
-	contains(t, out, "goal-lock applied", "Coin -2")
 }
 
 func TestRenderEvent_BookkeepingApplied_IncludesMutations(t *testing.T) {
@@ -257,7 +251,6 @@ func TestRenderEvent_Error(t *testing.T) {
 
 func TestRenderEvent_FoldedMutationsOmitted(t *testing.T) {
 	muts := []domain.Mutation{
-		domain.GoalTurnsTick{},
 		domain.CoinDelta{Delta: 5},
 		domain.GoalProgressed{},
 	}
@@ -266,8 +259,8 @@ func TestRenderEvent_FoldedMutationsOmitted(t *testing.T) {
 		Payload: adapter.BookkeepingAppliedPayload{Mutations: muts},
 	})
 	contains(t, out, "bookkeeping applied", "Coin +5")
-	// GoalTurnsTick and GoalProgressed fold — their types should not appear as text
-	if strings.Contains(out, "GoalTurnsTick") || strings.Contains(out, "GoalProgressed") {
+	// GoalProgressed folds — its type should not appear as text
+	if strings.Contains(out, "GoalProgressed") {
 		t.Error("folded mutation type names leaked into rendered output")
 	}
 }

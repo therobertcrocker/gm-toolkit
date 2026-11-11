@@ -1,71 +1,90 @@
 [goals.MilitaryConquest]
-id = "G-001"
+id = "CORE-G-001"
 name = "Military Conquest"
 description = "Destroy a number of Force assets of rival factions equal to your faction's Force rating."
-difficulty = "half_assets_destroyed"
+progress = { event = "kill", amount = "one", filters = { owner = "rival", caused_by = "own", category = ["Force"] } }
+threshold = { ratings = ["Force"] }
+xp = { formula = "half_progress" }
 
 [goals.CommercialExpansion]
-id = "G-002"
+id = "CORE-G-002"
 name = "Commercial Expansion"
 description = "Destroy a number of Wealth assets of rival factions equal to your faction's Wealth rating."
-difficulty = "half_assets_destroyed"
+progress = { event = "kill", amount = "one", filters = { owner = "rival", caused_by = "own", category = ["Wealth"] } }
+threshold = { ratings = ["Wealth"] }
+xp = { formula = "half_progress" }
 
 [goals.IntelligenceCoup]
-id = "G-003"
+id = "CORE-G-003"
 name = "Intelligence Coup"
 description = "Destroy a number of Cunning assets of rival factions equal to your faction's Cunning rating."
-difficulty = "half_assets_destroyed"
+progress = { event = "kill", amount = "one", filters = { owner = "rival", caused_by = "own", category = ["Cunning"] } }
+threshold = { ratings = ["Cunning"] }
+xp = { formula = "half_progress" }
 
 [goals.WorldSeizure]
-id = "G-004"
+id = "CORE-G-004"
 name = "World Seizure"
 description = "Take control of a world, becoming the world's legitimate government. If no opposing faction resists, counts as difficulty low."
-difficulty = "half_avg_ruling_faction"
+start = { needs_actions = ["Seize Planet"] }
+complete = { event = "government_taken", filters = { to = "own" } }
+xp = { formula = "ruler_average" }
 
 [goals.ExpandInfluence]
-id = "G-005"
+id = "CORE-G-005"
 name = "Expand Influence"
 description = "Plant a Base of Influence on a new world. Difficulty increases by one if the attempt is contested by a rival faction."
-difficulty = "low_plus_contested"
+complete = { event = "base_planted", filters = { caused_by = "own", new_world = true } }
+xp = { formula = "constant", amount = 1, contested_bonus = 1 }
 
 [goals.BloodTheEnemy]
-id = "G-006"
+id = "CORE-G-006"
 name = "Blood the Enemy"
 description = "Inflict a number of hit points of damage on enemy faction assets or bases equal to your faction's total Force, Cunning, and Wealth ratings."
-difficulty = "moderate"
+progress = { event = "damage", amount = "damage", filters = { owner = "rival", caused_by = "own" } }
+threshold = { ratings = ["Force", "Cunning", "Wealth"] }
+xp = { formula = "constant", amount = 2 }
 
 [goals.PeaceableKingdom]
-id = "G-007"
+id = "CORE-G-007"
 name = "Peaceable Kingdom"
 description = "Do not take an Attack action for four consecutive turns."
-difficulty = "low"
+progress = { event = "action_taken", amount = "one", filters = { faction = "own", action_not = ["Attack"] } }
+reset = { event = "action_taken", filters = { faction = "own", action = ["Attack"] } }
+threshold = { constant = 4 }
+xp = { formula = "constant", amount = 1 }
 
 [goals.DestroyTheFoe]
-id = "G-008"
+id = "CORE-G-008"
 name = "Destroy the Foe"
 description = "Destroy a rival faction entirely."
-difficulty = "one_plus_avg_target"
+start = { inputs = ["target_faction"] }
+complete = { event = "faction_destroyed", filters = { target = "start_input", caused_by = "own" } }
+xp = { formula = "target_average" }
 
 [goals.InsideEnemyTerritory]
-id = "G-009"
+id = "CORE-G-009"
 name = "Inside Enemy Territory"
 description = "Have a number of stealthed assets on worlds with other governments equal to your Cunning score. Units already stealthed when this goal is adopted do not count."
-difficulty = "moderate"
+progress = { measure = "stealthed_assets", filters = { ground = "rival", exclude_held_at_start = true } }
+threshold = { ratings = ["Cunning"] }
+xp = { formula = "constant", amount = 2 }
 
 [goals.InvincibleValor]
-id = "G-010"
+id = "CORE-G-010"
 name = "Invincible Valor"
 description = "Destroy a Force asset with a minimum purchase rating higher than your faction's Force rating."
-difficulty = "moderate"
+complete = {
+  event = "kill",
+  filters = { owner = "rival", caused_by = "own", category = ["Force"], rated_above = "Force" },
+}
+xp = { formula = "constant", amount = 2 }
 
 [goals.WealthOfWorlds]
-id = "G-011"
+id = "CORE-G-011"
 name = "Wealth of Worlds"
 description = "Spend Coins equal to four times your faction's Wealth rating on bribes and influence. The faction's Wealth rating must increase before this goal can be selected again."
-difficulty = "moderate"
-
-[goals.ChangeHomeworld]
-id = "G-012"
-name = "Change Homeworld"
-description = "Relocate the faction's homeworld to another world where it has a Base of Influence. The move takes a number of turns equal to the distance between the two worlds plus one."
-difficulty = "none"
+start = { gate = { rating_above_last_completion = "Wealth" } }
+progress = { event = "influence_bought", amount = "delta", filters = { caused_by = "own" } }
+threshold = { ratings = ["Wealth"], multiplier = 4 }
+xp = { formula = "constant", amount = 2 }

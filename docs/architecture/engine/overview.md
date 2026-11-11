@@ -49,21 +49,20 @@ to the page named beside it:
    and resolve the current faction ([turn pipeline](turn-pipeline.md)).
 2. **Stat raise** — spend XP to raise a stat if eligible (orchestrator-owned,
    drawing on faction XP).
-3. **Bookkeeping** — income and maintenance ([turn pipeline](turn-pipeline.md)),
+3. **Goal pick** — a faction with no goal may pick one of the goals on offer
+   ([goals](goals.md)).
+4. **Bookkeeping** — income and maintenance ([turn pipeline](turn-pipeline.md)),
    then save.
-4. **Movement** — tick in-flight orders and resolve new movement decisions
+5. **Movement** — tick in-flight orders and resolve new movement decisions
    ([world & movement](world-movement.md)), with reactor hooks
    ([hooks](hooks.md)) firing on the emitted mutations.
-5. **Goal lock** — check whether the active goal constrains or skips the turn
-   ([goals](goals.md)).
-6. **Action** — pick and resolve one action ([actions](actions.md)), fold in
-   goal-progress mutations ([goals](goals.md)), dispatch reactors
-   ([hooks](hooks.md)), then save.
+6. **Action** — pick and resolve one action ([actions](actions.md)), dispatch
+   reactors ([hooks](hooks.md)), then save.
 7. **Finish** — advance the turn cursor ([turn pipeline](turn-pipeline.md)) and
    persist ([persistence & static data](persistence.md)).
 
-A goal lock of the *skip* kind short-circuits past the action phase. Every
-phase applies its mutations through the same path — the
+Every phase applies its mutations through the same path — `applyAndRecord`, which
+first reads the batch for every faction's [goal](goals.md), then the
 [effect & mutation](effect-mutation.md) apply layer — and the
 [orchestrator](orchestrator.md) page covers the per-phase beat and its
 error handling in full.
@@ -80,21 +79,17 @@ config:
 flowchart TD
   Setup["Setup<br>rebuild spatial index · resolve faction"]:::process
   StatRaise["Stat raise<br>spend XP if eligible"]:::process
+  GoalPick["Goal pick<br>a faction with no goal may pick one"]:::process
   Bookkeeping["Bookkeeping<br>income · maintenance"]:::process
   SaveBook[("save")]:::muted
   Movement["Movement<br>tick orders · resolve decisions"]:::process
-  GoalLock["Goal lock<br>check active-goal constraint"]:::process
-  Skip{"lock = skip?"}:::decision
-  Action["Action<br>select · resolve · fold goal progress"]:::process
+  Action["Action<br>select · resolve"]:::process
   SaveAction[("save")]:::muted
   Finish["Finish<br>advance cursor · persist"]:::process
 
-  Setup --> StatRaise --> Bookkeeping --> SaveBook --> Movement --> GoalLock --> Skip
-  Skip -- yes --> Finish
-  Skip -- no --> Action --> SaveAction --> Finish
+  Setup --> StatRaise --> GoalPick --> Bookkeeping --> SaveBook --> Movement --> Action --> SaveAction --> Finish
 
   classDef process  fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e
-  classDef decision fill:#f38ba8,stroke:#d6607f,color:#1e1e2e
   classDef muted    fill:#45475a,stroke:#585b70,color:#cdd6f4
 ```
 
@@ -104,15 +99,17 @@ flowchart TD
 
 Patterns that recur across engine subsystems, each verified in source:
 
-- **Handler registries keyed by a data ID.** Three sub-engines hold a
+- **Handler registries keyed by a data ID.** Sub-engines hold a
   `map[string]Handler` populated up front and looked up by a rulebook ID at
-  runtime: **tag** (keyed by tag ID), **effect** (by asset-definition ID), and
-  **goal** (by goal ID). The [actions](actions.md) engine is kin but distinct —
+  runtime: **tag** (keyed by tag ID) and **effect** (by asset-definition ID).
+  [Goals](goals.md) left this pattern: a goal's behavior is its data, compiled
+  when the engine is built. The [actions](actions.md) engine is kin but distinct —
   an ordered `[]ActionFactory` filtered by `Validate` rather than keyed by ID —
   and the [hooks](hooks.md) registry is keyed by `Scope`, not a data ID.
 - **Data-only TOML entries are silently and intentionally skipped.** The flip
-  side of keyed lookup: a tag, asset, or goal present in the TOML with no
-  registered Go handler is a no-op, not an error (`tag.go` carries the
+  side of keyed lookup: a tag or asset present in the TOML with no
+  registered Go handler is a no-op, not an error (a goal is not: the engine
+  refuses to start on a goal it cannot run) (`tag.go` carries the
   fence-sign: *"Data-only tag … no Go handler registered. Intentional."*). This
   is how a GM adds flavor data without touching code.
 - **Mutations are the only state-change currency.** Sub-engines never mutate
@@ -148,7 +145,7 @@ Patterns that recur across engine subsystems, each verified in source:
 | [orchestrator](orchestrator.md) | Composition root; the phase pipeline and its per-phase beat | Written |
 | [turn pipeline](turn-pipeline.md) | Turn lifecycle, bookkeeping math, rotation order, history | Written |
 | [actions](actions.md) | The `Action` contract, factory registration, eligibility, abilities | Written |
-| [goals](goals.md) | Per-goal handlers, the lock taxonomy, progress tracking | Written |
+| [goals](goals.md) | Goals as data, the goal vocabulary, progress on every batch, the turn-start pick | Written |
 | [hooks](hooks.md) | The six hook categories, scope lookup, dispatch | Written |
 | [dice](dice.md) | The named roll routes, the hooked roll, ability roll data | Written |
 | [world & movement](world-movement.md) | Per-turn spatial index and movement orders | Written |

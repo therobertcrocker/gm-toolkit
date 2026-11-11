@@ -92,17 +92,21 @@ const (
 	GoalWorldGoverned
 	GoalTagLost
 	GoalTechLevelRaised
+	GoalFailed
+	GoalPicked
 )
 
 type GoalEvent struct {
-	Kind      GoalEventKind
-	GoalID    string
-	GoalName  string
-	XPAwarded int
-	FromWorld string
-	ToWorld   string
-	TagName   string
-	TechLevel int
+	Kind       GoalEventKind
+	GoalID     string
+	GoalName   string
+	XPAwarded  int
+	FromWorld  string
+	ToWorld    string
+	TagName    string
+	TechLevel  int
+	Cause      string
+	TargetName string
 }
 
 type StealthEvent struct {

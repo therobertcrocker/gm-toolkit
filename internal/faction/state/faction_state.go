@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -47,6 +48,23 @@ func (factionState *FactionState) WorldsRuledBy(factionID string) []string {
 	}
 	slices.Sort(worlds)
 	return worlds
+}
+
+// Clone deep-copies the state so a caller can apply mutations to the copy without
+// touching live state. Update this when FactionState gains a reference-typed field.
+func (factionState *FactionState) Clone() *FactionState {
+	clone := *factionState
+	clone.Factions = make(map[string]*domain.Faction, len(factionState.Factions))
+	for factionID, faction := range factionState.Factions {
+		clone.Factions[factionID] = faction.Clone()
+	}
+	clone.Governments = maps.Clone(factionState.Governments)
+	if factionState.CurrentTurn != nil {
+		turn := *factionState.CurrentTurn
+		turn.FactionOrder = slices.Clone(turn.FactionOrder)
+		clone.CurrentTurn = &turn
+	}
+	return &clone
 }
 
 // Load reads campaign state from path. Returns an empty State if the file does not exist.

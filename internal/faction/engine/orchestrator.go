@@ -9,7 +9,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/campaigns"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
@@ -27,7 +26,6 @@ const (
 	CheckpointBookkeeping  = "bookkeeping"
 	CheckpointMovement     = "movement"
 	CheckpointActionResult = "action_result"
-	CheckpointGoalLocked   = "goal_locked"
 	CheckpointCycleSummary = "cycle_summary"
 )
 
@@ -75,7 +73,7 @@ func (e *Engine) registerCapturedAssets(factionState *state.FactionState, mutati
 }
 
 // RunFactionTurn drives one faction's turn from setup through state save:
-// stat-raise, bookkeeping, movement, goal-lock (gating the action), action.
+// stat-raise, goal pick, bookkeeping, movement, action.
 // Errors are reported to the observer via OnError and returned to the
 // caller; partial mutations already applied stay applied.
 //
@@ -99,6 +97,11 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 
+	// deliberate: the pick follows the raise, not precedes it, because a Wealth raise this turn can open Wealth of Worlds for the same turn's pick (D-2).
+	if err := e.runGoalPickPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
+		return false, err
+	}
+
 	if err := e.runBookkeepingPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
@@ -117,16 +120,7 @@ func (e *Engine) RunFactionTurn(
 		return false, err
 	}
 
-	lock, err := e.runGoalLockPhase(faction, factionState, paths, collectors, observer, turnLog)
-	if err != nil {
-		return false, err
-	}
-
-	if lock.Type == locks.LockSkip {
-		return e.finishFactionTurn(factionState, faction, paths, collectors, observer, turnLog)
-	}
-
-	if err := e.runActionPhase(faction, factionState, paths, collectors, observer, lock, turnLog); err != nil {
+	if err := e.runActionPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 	if err := state.Save(paths.StatePath, factionState); err != nil {
@@ -165,66 +159,6 @@ func (e *Engine) setupFactionTurn(factionState *state.FactionState, observer Tur
 	return faction, nil
 }
 
-func (e *Engine) runGoalLockPhase(
-	faction *domain.Faction,
-	factionState *state.FactionState,
-	paths *campaigns.Paths,
-	collectors Collectors,
-	observer TurnObserver,
-	turnLog *slog.Logger,
-) (locks.GoalLock, error) {
-	phaseLog := turnLog.With("phase", "goal_lock")
-	logging.PhaseStart(phaseLog, "goal_lock")
-	phaseLog.Info("phase begin")
-
-	lock, lockMutations := e.Goal.CheckLock(faction, factionState, e.Rulebook, phaseLog.With("engine", "goal"))
-	if len(lockMutations) > 0 {
-		var err error
-		// deliberate: reactors read the lock's mutations, not only action and movement batches, because a goal completion or homeworld change is an event a rule reacts to (Effort 3 Decision 6).
-		lockMutations, err = dispatch.MutationReactors(e.Hooks, faction, lockMutations, factionState, e.Rulebook)
-		if err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return lock, nil
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return lock, err
-		}
-	}
-	observer.OnGoalLockApplied(faction, lock, lockMutations)
-
-	if len(lockMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, lockMutations, paths, phaseLog); err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return lock, nil
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return lock, err
-		}
-	}
-
-	if lock.Type == locks.LockSkip {
-		if err := collectors.Phase.AwaitCheckpoint(CheckpointGoalLocked); err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return lock, nil
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return lock, err
-		}
-	}
-
-	phaseLog.Info("phase end", "lock", lock.Type)
-	return lock, nil
-}
-
 func (e *Engine) runBookkeepingPhase(
 	faction *domain.Faction,
 	factionState *state.FactionState,
@@ -246,7 +180,7 @@ func (e *Engine) runBookkeepingPhase(
 			return err
 		}
 		startMutations = append(turn.ExpireConditions(factionState, faction.ID), e.Effect.FireTurnStart(faction, factionState, e.Rulebook, e.Hooks, e.Rand)...)
-		if err := e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
+		if startMutations, err = e.applyAndRecord(factionState, faction, startMutations, paths, phaseLog); err != nil {
 			if !factionErrors.IsRecoverable(err) {
 				phaseLog.Error("failure", "err", err)
 				observer.OnError(faction, err)
@@ -271,7 +205,7 @@ func (e *Engine) runBookkeepingPhase(
 		return err
 	}
 	if len(bookMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, bookMutations, paths, phaseLog); err != nil {
+		if bookMutations, err = e.applyAndRecord(factionState, faction, bookMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -302,7 +236,7 @@ func (e *Engine) runBookkeepingPhase(
 func (e *Engine) runConditionLifts(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, collector PhaseCollector, observer TurnObserver, phaseLog *slog.Logger) ([]domain.Mutation, error) {
 	mutations, err := turn.OfferConditionLifts(faction, e.Rulebook, collector)
 	if err == nil && len(mutations) > 0 {
-		err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
+		mutations, err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
 	}
 	if err == nil {
 		return mutations, nil
@@ -346,7 +280,7 @@ func (e *Engine) runStatRaisePhase(
 		return nil
 	}
 	if len(raiseMutations) > 0 {
-		if err := e.applyAndRecord(factionState, faction, raiseMutations, paths, phaseLog); err != nil {
+		if raiseMutations, err = e.applyAndRecord(factionState, faction, raiseMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -360,6 +294,78 @@ func (e *Engine) runStatRaisePhase(
 	}
 	phaseLog.Info("phase end", "outcome", "raised", "stat", *statToRaise)
 	return nil
+}
+
+func (e *Engine) runGoalPickPhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	paths *campaigns.Paths,
+	collectors Collectors,
+	observer TurnObserver,
+	turnLog *slog.Logger,
+) error {
+	phaseLog := turnLog.With("phase", "goal_pick")
+	logging.PhaseStart(phaseLog, "goal_pick")
+	phaseLog.Info("phase begin")
+
+	pickMutations, err := e.prepareGoalPick(faction, factionState, collectors.Phase, phaseLog)
+	if err == nil && len(pickMutations) > 0 {
+		pickMutations, err = e.applyAndRecord(factionState, faction, pickMutations, paths, phaseLog)
+	}
+	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
+		observer.OnError(faction, err)
+		return err
+	}
+	if len(pickMutations) == 0 {
+		phaseLog.Info("phase end", "outcome", "skipped")
+		return nil
+	}
+	observer.OnGoalPicked(faction, pickMutations)
+	phaseLog.Info("phase end", "outcome", "picked")
+	return nil
+}
+
+// prepareGoalPick asks a faction with no goal it can run to pick one of the goals
+// on offer. It asks nothing when the faction holds a goal the engine runs, is
+// destroyed, resumes a turn whose bookkeeping already ran, or has nothing on
+// offer. A nil answer declines, and the ask comes back next turn (D-4).
+func (e *Engine) prepareGoalPick(faction *domain.Faction, factionState *state.FactionState, collector PhaseCollector, phaseLog *slog.Logger) ([]domain.Mutation, error) {
+	if faction.CurrentHP <= 0 {
+		return nil, nil
+	}
+	if faction.ActiveGoal != nil && e.Goal.Runs(faction.ActiveGoal) {
+		return nil, nil
+	}
+	// deliberate: skip once bookkeeping ran, not ask again, because a resumed turn re-runs from the top and a goal completed in bookkeeping would be replaced mid-turn, not at the next turn start.
+	if e.Turn.InProgress(factionState) && factionState.CurrentTurn.BookkeepingApplied {
+		return nil, nil
+	}
+	if faction.ActiveGoal != nil {
+		// deliberate: a held goal the engine cannot run counts as no goal, not a goal to keep, because it can never complete or fail and would block the pick for good.
+		phaseLog.Warn("faction holds a goal the engine cannot run; offering a new pick", "faction", faction.ID, "goal", faction.ActiveGoal.GoalID)
+	}
+	offers := e.Goal.Offers(faction, factionState)
+	if len(offers) == 0 {
+		return nil, nil
+	}
+	choice, err := collector.SelectGoal(faction, offers)
+	if err != nil {
+		return nil, fmt.Errorf("selecting goal: %w", err)
+	}
+	if choice == nil {
+		return nil, nil
+	}
+	picked, err := e.Goal.Pick(faction, offers, *choice)
+	if err != nil {
+		return nil, fmt.Errorf("picking goal: %w", err)
+	}
+	return []domain.Mutation{picked}, nil
 }
 
 func (e *Engine) runMovementPhase(
@@ -413,7 +419,7 @@ func (e *Engine) runMovementPhase(
 			observer.OnError(faction, err)
 			return err
 		}
-		if err := e.applyAndRecord(factionState, faction, tickMutations, paths, phaseLog); err != nil {
+		if tickMutations, err = e.applyAndRecord(factionState, faction, tickMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -449,7 +455,7 @@ func (e *Engine) runMovementPhase(
 			observer.OnError(faction, err)
 			return err
 		}
-		if err := e.applyAndRecord(factionState, faction, decisionMutations, paths, phaseLog); err != nil {
+		if decisionMutations, err = e.applyAndRecord(factionState, faction, decisionMutations, paths, phaseLog); err != nil {
 			if factionErrors.IsRecoverable(err) {
 				phaseLog.Warn("recoverable failure", "err", err)
 				observer.OnError(faction, err)
@@ -494,7 +500,6 @@ func (e *Engine) runActionPhase(
 	paths *campaigns.Paths,
 	collectors Collectors,
 	observer TurnObserver,
-	lock locks.GoalLock,
 	turnLog *slog.Logger,
 ) error {
 	phaseLog := turnLog.With("phase", "action")
@@ -503,9 +508,6 @@ func (e *Engine) runActionPhase(
 
 	actionLog := phaseLog.With("engine", "action")
 	available := e.Action.AvailableActions(faction, factionState, e.Rulebook, collectors.Action, actionLog)
-	if lock.Type == locks.LockRestrictActions {
-		available = filterAllowedActions(available, lock.AllowedActions)
-	}
 
 	selectedAction, err := collectors.Phase.SelectAction(faction, available)
 	if err != nil {
@@ -538,11 +540,9 @@ func (e *Engine) runActionPhase(
 		return err
 	}
 
-	var worldIndex *world.Index
-	if e.World == nil {
-		return ErrWorldEngineUnavailable
-	}
-	worldIndex = e.World.Index
+	// deliberate: the record opens the batch, and a pass or a failed action leaves none, because goals count only an action the faction took (D-16, D-19).
+	actionMutations = append([]domain.Mutation{domain.ActionTaken{FactionID: faction.ID, Action: selectedAction.Name()}}, actionMutations...)
+
 	actionMutations = append(actionMutations, e.firePurchaseEffects(faction, actionMutations, factionState)...)
 
 	combined, err := dispatch.MutationReactors(e.Hooks, faction, actionMutations, factionState, e.Rulebook)
@@ -556,25 +556,7 @@ func (e *Engine) runActionPhase(
 		observer.OnError(faction, err)
 		return err
 	}
-	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
-	goalMutations := e.Goal.UpdateProgress(faction.ID, combined, factionState, e.Rulebook, worldIndex, phaseLog.With("engine", "goal"))
-	if len(goalMutations) > 0 {
-		// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
-		goalMutations, err = dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
-		if err != nil {
-			if factionErrors.IsRecoverable(err) {
-				phaseLog.Warn("recoverable failure", "err", err)
-				observer.OnError(faction, err)
-				return nil // continue past this sub-engine call
-			}
-			phaseLog.Error("failure", "err", err)
-			observer.OnError(faction, err)
-			return err
-		}
-	}
-	combined = append(combined, goalMutations...)
-
-	if err := e.applyAndRecord(factionState, faction, combined, paths, phaseLog); err != nil {
+	if combined, err = e.applyAndRecord(factionState, faction, combined, paths, phaseLog); err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
 			observer.OnError(faction, err)
@@ -654,18 +636,24 @@ func (e *Engine) finishFactionTurn(
 	return cycleDone, nil
 }
 
-// applyAndRecord applies mutations to in-memory state and appends a single
-// EventRecord to the history file. It does not persist state to disk — callers
-// are responsible for calling state.Save at phase-gate checkpoints.
+// applyAndRecord reads the batch for every faction's goal, applies the batch and
+// its goal mutations to in-memory state, and appends a single EventRecord to the
+// history file. It returns the batch as applied, goal mutations included. It
+// does not persist state to disk — callers are responsible for calling
+// state.Save at phase-gate checkpoints.
 func (e *Engine) applyAndRecord(
 	factionState *state.FactionState,
 	faction *domain.Faction,
 	mutations []domain.Mutation,
 	paths *campaigns.Paths,
 	phaseLog *slog.Logger,
-) error {
+) ([]domain.Mutation, error) {
 	if len(mutations) == 0 {
-		return nil
+		return nil, nil
+	}
+	mutations, err := e.withGoalProgress(faction, mutations, factionState, phaseLog)
+	if err != nil {
+		return nil, err
 	}
 	if err := e.Mutation.Apply(factionState, mutations, phaseLog.With("engine", "mutation")); err != nil {
 		for _, miss := range err.Misses {
@@ -675,17 +663,55 @@ func (e *Engine) applyAndRecord(
 				"entity_id", miss.EntityID,
 			)
 		}
-		return fmt.Errorf("applying mutations: %w", err)
+		return nil, fmt.Errorf("applying mutations: %w", err)
 	}
 	if err := turn.RecordHistory(paths.HistoryPath, factionState, faction, mutations, phaseLog.With("engine", "turn")); err != nil {
-		return fmt.Errorf("recording history: %w", err)
+		return nil, fmt.Errorf("recording history: %w", err)
 	}
-	return nil
+	return mutations, nil
 }
 
-// filterAllowedActions narrows a list of available actions to those whose
-// Name() appears in allowed. Used when a goal lock restricts the action set
-// (e.g. Planetary Seizure Phase 1 → Attack only).
+// withGoalProgress appends every faction's goal mutations for the batch, after a
+// reactor pass over them. Where the phase has reactors, they have already run
+// over the batch.
+func (e *Engine) withGoalProgress(
+	faction *domain.Faction,
+	mutations []domain.Mutation,
+	factionState *state.FactionState,
+	phaseLog *slog.Logger,
+) ([]domain.Mutation, error) {
+	// deliberate: goals read the batch after the reactors, not before, because a reactor's capture or removal is progress too (Effort 1 Decision Record 12).
+	goalMutations := e.Goal.UpdateProgress(mutations, factionState, phaseLog.With("engine", "goal"))
+	if len(goalMutations) == 0 {
+		return mutations, nil
+	}
+	// deliberate: a second pass over the goal mutations alone, not the whole batch again, because the first pass already reacted to the rest (Effort 3 Decision 6).
+	reacted, err := dispatch.MutationReactors(e.Hooks, faction, goalMutations, factionState, e.Rulebook)
+	if err != nil {
+		return nil, fmt.Errorf("reacting to the goal mutations of %v in the batch of %s: %w", goalHolders(goalMutations), faction.ID, err)
+	}
+	return append(mutations, reacted...), nil
+}
+
+// goalHolders is the sorted IDs of the factions whose goals the goal mutations
+// move, so an error from their reactor pass names them and not only the acting
+// faction.
+func goalHolders(goalMutations []domain.Mutation) []string {
+	var holders []string
+	for _, mutation := range goalMutations {
+		switch goalMutation := mutation.(type) {
+		case domain.GoalProgressed:
+			holders = append(holders, goalMutation.FactionID)
+		case domain.GoalCompleted:
+			holders = append(holders, goalMutation.FactionID)
+		case domain.GoalFailed:
+			holders = append(holders, goalMutation.FactionID)
+		}
+	}
+	slices.Sort(holders)
+	return slices.Compact(holders)
+}
+
 // firePurchaseEffects runs the on_purchase effects of every asset the action
 // bought, in batch order. The asset is the copy the AssetAdded carries, because
 // it is not in state until the batch applies.
@@ -700,23 +726,6 @@ func (e *Engine) firePurchaseEffects(faction *domain.Faction, actionMutations []
 		mutations = append(mutations, e.Effect.FirePurchase(faction, &added.Asset, factionState, e.Rulebook, e.Hooks, e.Rand)...)
 	}
 	return mutations
-}
-
-func filterAllowedActions(available []action.Action, allowed []string) []action.Action {
-	if len(allowed) == 0 {
-		return nil
-	}
-	allowedSet := make(map[string]bool, len(allowed))
-	for _, name := range allowed {
-		allowedSet[name] = true
-	}
-	filtered := make([]action.Action, 0, len(available))
-	for _, a := range available {
-		if allowedSet[a.Name()] {
-			filtered = append(filtered, a)
-		}
-	}
-	return filtered
 }
 
 func eligibleStatRaises(faction *domain.Faction) []domain.FactionStat {
@@ -929,7 +938,7 @@ func (e *Engine) runGrantedMovement(
 		if err != nil {
 			return resolved, err
 		}
-		if err := e.applyAndRecord(factionState, faction, mutations, paths, phaseLog); err != nil {
+		if mutations, err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog); err != nil {
 			return resolved, err
 		}
 		resolved = append(resolved, mutations...)

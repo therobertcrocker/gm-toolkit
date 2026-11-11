@@ -218,6 +218,18 @@ type AssetStealthApplied struct {
 
 func (m AssetStealthApplied) Type() string { return "asset_stealth_applied" }
 
+// GoalPicked records the goal a faction picked at the start of its turn, with the
+// target faction the goal asked for and the assets stealthed when it started
+// (D-10). Its apply sets ActiveGoal.
+type GoalPicked struct {
+	FactionID        string   `json:"faction_id"`
+	GoalID           string   `json:"goal_id"`
+	TargetFactionID  string   `json:"target_faction_id,omitempty"`
+	StealthedAtStart []string `json:"stealthed_at_start,omitempty"`
+}
+
+func (m GoalPicked) Type() string { return "goal_picked" }
+
 // GoalAbandoned records that a faction abandoned their active goal. Income for
 // the turn is forfeited via a separate CoinDelta emitted alongside this.
 type GoalAbandoned struct {
@@ -228,6 +240,20 @@ type GoalAbandoned struct {
 }
 
 func (m GoalAbandoned) Type() string { return "goal_abandoned" }
+
+// GoalFailed records that a faction's active goal ended without completing. It
+// pays no XP and costs no income. Cause says why.
+type GoalFailed struct {
+	FactionID string `json:"faction_id"`
+	GoalID    string `json:"goal_id"`
+	Cause     string `json:"cause"`
+}
+
+func (m GoalFailed) Type() string { return "goal_failed" }
+
+// GoalFailedTargetLost is the GoalFailed cause when the goal's target faction is
+// lost, destroyed or gone, and the goal did not complete (D-21).
+const GoalFailedTargetLost = "target_lost"
 
 // GoalCompleted records successful goal resolution. XPAwarded is the amount
 // granted; a separate XPAwarded mutation applies it to faction.XP.
@@ -285,11 +311,13 @@ func (m TagRemoved) Type() string { return "tag_removed" }
 
 // WorldGovernmentChanged sets the faction that governs a world. An empty
 // ToFactionID makes the world independent; FromFactionID is the ruler it replaces,
-// empty for an independent world.
+// empty for an independent world. Resisted says the replaced ruler had an
+// unstealthed asset on the world when the seizure began (D-8).
 type WorldGovernmentChanged struct {
 	WorldID           string `json:"world_id"`
 	FromFactionID     string `json:"from_faction_id"`
 	ToFactionID       string `json:"to_faction_id"`
+	Resisted          bool   `json:"resisted,omitempty"`
 	Cause             string `json:"cause"`
 	CausedByFactionID string `json:"caused_by_faction_id"`
 }
@@ -348,18 +376,6 @@ type InfluenceDelta struct {
 
 func (m InfluenceDelta) Type() string { return "influence_delta" }
 
-// GoalInitiated records that a faction initiated a goal. Used for bookkeeping and validation of goal-specific actions; has no direct mechanical effect.
-type GoalInitiated struct {
-	FactionID         string   `json:"faction_id"`
-	GoalID            string   `json:"goal_id"`
-	TargetWorld       Location `json:"target_world"`
-	ProcessPhase      int      `json:"process_phase"`
-	Cause             string   `json:"cause"`
-	CausedByFactionID string   `json:"caused_by_faction_id"`
-}
-
-func (m GoalInitiated) Type() string { return "goal_initiated" }
-
 // GoalProgressed records a progress increment (or reset) on the active goal.
 type GoalProgressed struct {
 	FactionID         string `json:"faction_id"`
@@ -371,26 +387,15 @@ type GoalProgressed struct {
 
 func (m GoalProgressed) Type() string { return "goal_progressed" }
 
-// GoalTurnsTick decrements ActiveGoal.TurnsRemaining by 1.
-type GoalTurnsTick struct {
+// ActionTaken records the action a faction took in its action phase. It changes
+// no state: goals read it from the batch, and history keeps it (D-19). Action is
+// the action's display name.
+type ActionTaken struct {
 	FactionID string `json:"faction_id"`
-	GoalID    string `json:"goal_id"`
-	Cause     string `json:"cause"`
+	Action    string `json:"action"`
 }
 
-func (m GoalTurnsTick) Type() string { return "goal_turns_tick" }
-
-// GoalPhaseAdvanced records a phase transition in a multi-phase goal,
-// setting both ProcessPhase and TurnsRemaining atomically.
-type GoalPhaseAdvanced struct {
-	FactionID      string `json:"faction_id"`
-	GoalID         string `json:"goal_id"`
-	ProcessPhase   int    `json:"process_phase"`
-	TurnsRemaining int    `json:"turns_remaining"`
-	Cause          string `json:"cause"`
-}
-
-func (m GoalPhaseAdvanced) Type() string { return "goal_phase_advanced" }
+func (m ActionTaken) Type() string { return "action_taken" }
 
 // XPSpent decrements a faction's XP by Amount. Emitted by the stat raise phase.
 type XPSpent struct {

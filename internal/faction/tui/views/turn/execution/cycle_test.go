@@ -35,7 +35,7 @@ func answerFor(t *testing.T, ask adapter.CollectorAskMsg) any {
 	switch ask.Kind {
 	case adapter.AskAwaitCheckpoint:
 		return true
-	case adapter.AskSelectStatRaise:
+	case adapter.AskSelectStatRaise, adapter.AskSelectGoal:
 		return nil
 	case adapter.AskSelectMovementDecisions:
 		return []world.MovementDecision{}

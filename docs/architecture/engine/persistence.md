@@ -71,6 +71,10 @@ pause/resume state from the [turn pipeline](turn-pipeline.md)). It is one TOML f
   `state.seed.toml` beside it *if one doesn't already exist* — a one-time
   snapshot of the starting state that `reset-campaign.sh` restores. Every
   subsequent save leaves the seed untouched.
+- **A location writes itself on one line.** `domain.Location` and
+  `spatial.RegionHex` implement `toml.Marshaler`, so the encoder writes each
+  location as one inline table (`location = { world_id = …, region_hex = { … } }`),
+  not as three nested headers. `[[bases]]` and `current_order` keep their headers.
 
 ### Atomic faction CRUD
 
@@ -94,7 +98,9 @@ turn:
   (`core_assets.toml`, `homebrew_assets.toml`) that merge transparently.
 - **Tags, goals, drift costs** load from single files (`tags.toml`, `goals.toml`,
   `drift_costs.toml`). The tag and goal loaders refuse unknown keys and a
-  duplicate ID, as the asset loader does.
+  duplicate ID, as the asset loader does. A goal's parts are inline tables; the
+  loader checks their keys and stat names, and the [goal](goals.md) engine checks
+  every other name when it is built.
 - Loading is also **validating conversion**: every TOML record is converted into
   a domain type, and an unknown faction stat, asset type, asset flag (`P`/`A`/`S`),
   or ability effect is a load-time error — bad rulebook data fails loudly at
@@ -127,14 +133,29 @@ because they live under `state/`, but their logic lives on those pages.
   rules and the current snapshot; line-delimited JSON suits an ever-growing
   append-only event log. The formats match their access patterns. (Frozen log
   1–18.)
+- **Hand-written rulebook files are TOML 1.1, one block per entry.** An asset, tag
+  or goal has one header, and every nested part (`attack`, `ability`, `effects`,
+  `filters`, `gates`) is an inline table under it, so a GM reads and copies an
+  entry as one unit. The loader needs no code for it: `BurntSushi/toml` reads 1.1,
+  1.0 files still load, and `refuseUnknownKeys` works the same inside braces. The
+  house style lives in `docs/contributing/engine.md`; TomlSmith's formatter does its
+  layout. Rejected: a header per effect (each repeats the entry's key, so a typo
+  makes a new, broken entry). (`R.029` exploration H-2; plan Decisions 1 and 4.)
+- **State stays encoder-written TOML; small types write themselves inline.** The
+  encoder cannot write 1.1, so `Location` and `RegionHex` implement `MarshalTOML`
+  and write one-line inline tables, valid in 1.0 and 1.1. Rejected: a state writer
+  of our own (a few hundred lines on the save path) and another format for state
+  (it would reverse the TOML decision and hurt scenario authors, who edit state by
+  hand). (`R.029` exploration S-1, S-2, S-3; plan Decision 9.)
 - **The government record holds which worlds a faction rules; the government tag
   says whether it rules any.** `FactionState.Governments` maps a world ID to the
   ruling faction's ID. A world with no entry is independent, and the GM answers
   for its government. A nil map reads as empty, so an older `state.toml` loads
   with every world independent and needs no migration. The record and the tag hold
   different facts, so neither is a copy of the other, and every writer keeps them
-  coupled: Planetary Seizure adds the tag with a faction's first world and removes
-  it with its last; faction create writes the entry for a government-tag pick, or
+  coupled: Planetary Seizure added the tag with a faction's first world and removed
+  it with its last, and `F.040`'s Seize Planet action takes that writer over (until
+  it lands, nothing in play changes a government); faction create writes the entry for a government-tag pick, or
   for the homeworld with a `homeworld_government` tag (Colonists), and refuses a
   world another faction governs; faction delete clears the entries. The government
   tag is the one marked `government = true` in the data (`Rulebook.GovernmentTagID`),
@@ -175,6 +196,13 @@ because they live under `state/`, but their logic lives on those pages.
   skipped. Saves of the old shape moved by a sandbox re-seed, with no migration
   code. Rejected: a full `Tag` copy in state (it froze the rules at pick time).
   (A.001.7 discovery D-4 and D-20; `E.002` I-1.)
+- **Goal IDs carry the `_core` prefix (`CORE-G-001`).** A goal reference in tag
+  data (`xp_roll`'s `goal` filter) is checked at load. `ActiveGoal` holds the goal
+  ID, its progress, its target faction and the assets stealthed at the start; a
+  held goal ID the rulebook does not know is skipped and replaced at the next
+  turn-start pick. Saves moved by a sandbox re-seed, with no migration code, as
+  the tag IDs did. Rejected: migration code that renames IDs in state. (A.001.8
+  discovery D-24 and D-26; Effort 1 Decision Record 16.)
 - **Per-setting rule values live in `settings.toml`.** A rulebook folder supplies
   `settings.toml`, composed like any other data file; `rulebook.Load` requires it.
   It holds the drift costs (once `drift_costs.toml`) and the least world

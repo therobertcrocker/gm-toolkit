@@ -53,7 +53,7 @@ func (e *EffectsEngine) RegisterEffectsList(def *domain.AssetDefinition) error {
 	return e.Register(&effectsListHandler{def: def, registrars: e.registrars})
 }
 
-// CheckTagEffects checks a tag's [[effects]] entries for a faction holder. A tag
+// CheckTagEffects checks a tag's effects entries for a faction holder. A tag
 // registers no handler: ApplyAll and the phase routes read its entries from the
 // rulebook, whose every tag NewWithRulebook has checked.
 func (e *EffectsEngine) CheckTagEffects(tag *domain.Tag) error {

@@ -769,43 +769,8 @@ func checkTagAbility(ability *domain.AbilityDefinition) error {
 // Goals
 // ---------------------------------------------------------------------------
 
-type goalFile struct {
-	Goals map[string]goalRecord `toml:"goals"`
-}
-
-type goalRecord struct {
-	ID          string `toml:"id"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	Difficulty  string `toml:"difficulty"`
-}
-
-func loadGoals(path string) (map[string]*domain.Goal, error) {
-	var f goalFile
-	metadata, err := toml.DecodeFile(path, &f)
-	if err != nil {
-		return nil, err
-	}
-	if err := refuseUnknownKeys(path, metadata); err != nil {
-		return nil, err
-	}
-	result := make(map[string]*domain.Goal, len(f.Goals))
-	for _, r := range f.Goals {
-		if _, exists := result[r.ID]; exists {
-			return nil, fmt.Errorf("duplicate goal ID %q in %s", r.ID, path)
-		}
-		result[r.ID] = &domain.Goal{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			Difficulty:  r.Difficulty,
-		}
-	}
-	return result, nil
-}
-
 // checkReferences refuses a data-to-data reference to a record the rulebook does
-// not have, checked once here: an [[effects]] entry's goal filter (D-5) or
+// not have, checked once here: an effects entry's goal filter (D-5) or
 // asset_definition filter (Effort 5 Decision 9), and an asset's requires_tag
 // (D-13).
 func checkReferences(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, goals map[string]*domain.Goal) error {

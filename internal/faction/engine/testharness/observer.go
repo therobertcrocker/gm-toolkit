@@ -8,7 +8,6 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/goal/locks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -36,14 +35,6 @@ func (r *RecordingObserver) OnFactionTurnStarted(faction *domain.Faction) {
 
 func (r *RecordingObserver) OnFactionSkipped(faction *domain.Faction) {
 	r.Events = append(r.Events, ObservedEvent{Kind: "FactionSkipped", Faction: faction})
-}
-
-func (r *RecordingObserver) OnGoalLockApplied(faction *domain.Faction, lock locks.GoalLock, mutations []domain.Mutation) {
-	r.Events = append(r.Events, ObservedEvent{
-		Kind:    "GoalLockApplied",
-		Faction: faction,
-		Payload: GoalLockPayload{Lock: lock, Mutations: mutations},
-	})
 }
 
 func (r *RecordingObserver) OnBookkeepingApplied(faction *domain.Faction, result turn.BookkeepingResult, mutations []domain.Mutation) {
@@ -93,6 +84,10 @@ func (r *RecordingObserver) OnStatRaiseSkipped(faction *domain.Faction) {
 	r.Events = append(r.Events, ObservedEvent{Kind: "StatRaiseSkipped", Faction: faction})
 }
 
+func (r *RecordingObserver) OnGoalPicked(faction *domain.Faction, mutations []domain.Mutation) {
+	r.Events = append(r.Events, ObservedEvent{Kind: "GoalPicked", Faction: faction, Payload: mutations})
+}
+
 func (r *RecordingObserver) OnMovementTicked(faction *domain.Faction, mutations []domain.Mutation) {
 	r.Events = append(r.Events, ObservedEvent{
 		Kind:    "MovementTicked",
@@ -121,12 +116,6 @@ func (r *RecordingObserver) Kinds() []string {
 		kinds[i] = event.Kind
 	}
 	return kinds
-}
-
-// GoalLockPayload is the Payload type for GoalLockApplied events.
-type GoalLockPayload struct {
-	Lock      locks.GoalLock
-	Mutations []domain.Mutation
 }
 
 // BookkeepingPayload is the Payload type for BookkeepingApplied events.

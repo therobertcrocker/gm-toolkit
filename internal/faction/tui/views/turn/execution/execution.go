@@ -268,6 +268,9 @@ var askEntries = map[adapter.AskKind]askEntry{
 	adapter.AskSelectStatRaise: {"Stat Raise", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewStatRaise(msg.Faction, msg.Payload.(adapter.SelectStatRaisePayload).Eligible)
 	}},
+	adapter.AskSelectGoal: {"Goal", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewGoalPick(msg.Payload.(adapter.SelectGoalPayload).Offers)
+	}},
 	adapter.AskSelectMovementDecisions: {"Movement", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
 	}},
@@ -297,14 +300,6 @@ var askEntries = map[adapter.AskKind]askEntry{
 	adapter.AskSelectBribeTarget: {"Bribe", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectBribeTargetPayload)
 		return overlay.NewBribe(p.Bases, p.OwnerNames, p.Coin)
-	}},
-	adapter.AskSelectSeizeTarget: {"Seize Planet", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		p := msg.Payload.(adapter.SelectSeizeTargetPayload)
-		return overlay.NewWorldSelect("Seize which world?", "", p.Worlds, p.WorldNames)
-	}},
-	adapter.AskSelectChangeHomeworldTarget: {"Change Homeworld", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		p := msg.Payload.(adapter.SelectChangeHomeworldTargetPayload)
-		return overlay.NewWorldSelect("New homeworld?", "", p.Worlds, p.WorldNames)
 	}},
 	adapter.AskSelectAttackers: {"Select Attackers", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewSelectAttackers(msg.Payload.(adapter.SelectAttackersPayload).Eligible, m.rulebook)

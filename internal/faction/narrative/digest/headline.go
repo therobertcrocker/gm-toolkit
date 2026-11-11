@@ -69,6 +69,7 @@ func selectHeadline(activeFactions []FactionBeat, crossEvents []CrossEvent, dest
 		}
 	}
 
+	// deliberate: a failed goal gets no headline here, not one beside Goal Abandoned, because its one cause, target_lost, follows a faction's fall, the bigger story; each new cause weighs its own (A.001.8 E2 Decision 3).
 	// Priority 5: Goal Abandoned
 	for _, beat := range activeFactions {
 		for _, ge := range beat.GoalEvents {

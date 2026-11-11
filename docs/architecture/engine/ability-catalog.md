@@ -19,7 +19,7 @@
 > (Marketers, Seditionists, Monopoly) are still future.
 >
 > **As-built (A.001.3 Effort 1):** the S-side model ships. An asset declares an
-> `[[effects]]` list; the effects engine keys a registrar table on the effect name
+> `effects` list; the effects engine keys a registrar table on the effect name
 > (`effect/registrar.go`, `effects/registrars.go`) and checks every entry against it
 > at engine construction. Party Machine's `coin_gain` is the first S-side effect; the
 > rest of the S-flag table below is still future.
@@ -29,7 +29,7 @@
 > Department) and `restrict_attack` (Planetary Defenses, Lawyers, Integral
 > Protocols) register Cat 4 hooks. `restrict_attack` answers the new
 > `AttackEligibilityRule` query ([hooks](hooks.md)), not a tie resolver. A ✅ in the
-> S-flag table marks an authored `[[effects]]` entry.
+> S-flag table marks an authored `effects` entry.
 >
 > **As-built (A.001.3 Effort 5):** free relocate-other ships as `grant_movement`
 > (Transit Web), a Cat 4 `AssetMovementGranter` — not the Cat 3 reactor this page

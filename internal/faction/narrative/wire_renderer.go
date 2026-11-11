@@ -134,6 +134,21 @@ func renderGoalEvent(ge digest.GoalEvent, factionName string, rng *rand.Rand) st
 		tmpl := pick(rng, goalAbandonedTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 		return strings.ReplaceAll(result, "{goal}", ge.GoalName)
+	case digest.GoalFailed:
+		templates, ok := goalFailedTemplates[ge.Cause]
+		if !ok {
+			return fmt.Sprintf("%s's %s failed.", factionName, ge.GoalName)
+		}
+		result := strings.ReplaceAll(pick(rng, templates), "{faction}", factionName)
+		return strings.ReplaceAll(result, "{goal}", ge.GoalName)
+	case digest.GoalPicked:
+		templates := goalPickedTemplates
+		if ge.TargetName != "" {
+			templates = goalPickedTargetTemplates
+		}
+		result := strings.ReplaceAll(pick(rng, templates), "{faction}", factionName)
+		result = strings.ReplaceAll(result, "{goal}", ge.GoalName)
+		return strings.ReplaceAll(result, "{target}", ge.TargetName)
 	case digest.GoalHomeworldShift:
 		tmpl := pick(rng, goalHomeworldTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)

@@ -346,7 +346,7 @@ type PopulationFloorParams struct {
 	Percent int
 }
 
-// EffectDefinition is one entry of an asset's [[effects]] list. At most one
+// EffectDefinition is one entry of an asset's effects list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
 type EffectDefinition struct {

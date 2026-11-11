@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 func TestFactionStateRoundTrip(t *testing.T) {
@@ -29,7 +30,7 @@ func TestFactionStateRoundTrip(t *testing.T) {
 				Homeworld: domain.Location{WorldID: "Tartarus"},
 				Tags:      []string{"SWN-T-001"},
 				ActiveGoal: &domain.ActiveGoal{
-					GoalID: "G-001",
+					GoalID: "CORE-G-001",
 				},
 				Assets: map[string]*domain.Asset{
 					"iron-collective-asset-0": {
@@ -126,6 +127,65 @@ func TestFactionStateRoundTrip(t *testing.T) {
 	}
 	if a.Location != wa.Location || a.CurrentHP != wa.CurrentHP || a.Ready != wa.Ready || a.Maintained != wa.Maintained {
 		t.Errorf("Asset state: got %+v, want %+v", a, wa)
+	}
+}
+
+func TestSaveWritesLocationsInline(t *testing.T) {
+	mireholt := domain.Location{WorldID: "mireholt", RegionHex: spatial.RegionHex{RegionID: "F", Coord: spatial.HexCoord{Q: 7, R: -2}}}
+	awkward := domain.Location{WorldID: `quote"back\slash`, RegionHex: spatial.RegionHex{RegionID: "A", Coord: spatial.HexCoord{Q: 1, R: 2}}}
+	inFlight := domain.Location{RegionHex: spatial.RegionHex{RegionID: "B", Coord: spatial.HexCoord{Q: 3, R: 4}}}
+	original := &FactionState{
+		CampaignID:  "test-campaign",
+		CycleNumber: 1,
+		Factions: map[string]*domain.Faction{
+			"ashfall": {
+				ID:         "ashfall",
+				Name:       "Ashfall",
+				Homeworld:  mireholt,
+				Tags:       []string{"SWN-T-001"},
+				ActiveGoal: &domain.ActiveGoal{GoalID: "CORE-G-004"},
+				Assets: map[string]*domain.Asset{
+					"ashfall-SWN-F1-001-1": {
+						ID:           "ashfall-SWN-F1-001-1",
+						DefinitionID: "SWN-F1-001",
+						OwnerID:      "ashfall",
+						Location:     inFlight,
+						CurrentHP:    3,
+						CurrentOrder: &domain.MovementOrder{
+							AssetID:     "ashfall-SWN-F1-001-1",
+							Origin:      mireholt,
+							Destination: awkward,
+							Path:        []spatial.RegionHex{mireholt.RegionHex, inFlight.RegionHex, awkward.RegionHex},
+							StepIdx:     1,
+						},
+					},
+				},
+				Bases: []*domain.Base{{ID: "ashfall-homeworld", OwnerID: "ashfall", Location: mireholt, CurrentHP: 20, MaxHP: 20, IsHomeworld: true}},
+			},
+		},
+	}
+
+	path := filepath.Join(t.TempDir(), "state.toml")
+	if err := Save(path, original); err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading state.toml: %v", err)
+	}
+	for _, header := range []string{"homeworld]", "location]", "region_hex]", "Coord]", "target_world]", "origin]", "destination]", "path]]"} {
+		if strings.Contains(string(written), header) {
+			t.Errorf("state.toml has a %q header, want every location inline:\n%s", header, written)
+		}
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if !reflect.DeepEqual(loaded.Factions, original.Factions) {
+		t.Errorf("Factions after round trip:\n got %+v\nwant %+v", loaded.Factions["ashfall"], original.Factions["ashfall"])
 	}
 }
 
@@ -282,5 +342,30 @@ func TestIsIndependent(t *testing.T) {
 	}
 	if !governed.IsIndependent("Hadrian") {
 		t.Error("a world with no entry IsIndependent = false, want true")
+	}
+}
+
+func TestClone_LeavesTheOriginalUntouched(t *testing.T) {
+	original := &FactionState{
+		Factions:    map[string]*domain.Faction{"f1": {ID: "f1", Coin: 3}},
+		Governments: map[string]string{"Tartarus": "f1"},
+		CurrentTurn: &domain.TurnState{FactionOrder: []string{"f1"}},
+	}
+
+	clone := original.Clone()
+	clone.Factions["f1"].Coin = 9
+	clone.Factions["f2"] = &domain.Faction{ID: "f2"}
+	clone.Governments["Tartarus"] = "f2"
+	clone.CurrentTurn.FactionOrder[0] = "f2"
+	clone.CurrentTurn.CurrentIndex = 1
+
+	if original.Factions["f1"].Coin != 3 || len(original.Factions) != 1 {
+		t.Errorf("original factions changed: %+v", original.Factions)
+	}
+	if original.Governments["Tartarus"] != "f1" {
+		t.Errorf("original governments changed: %v", original.Governments)
+	}
+	if original.CurrentTurn.FactionOrder[0] != "f1" || original.CurrentTurn.CurrentIndex != 0 {
+		t.Errorf("original turn changed: %+v", original.CurrentTurn)
 	}
 }
