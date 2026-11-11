@@ -1,20 +1,29 @@
 # GM Toolkit — Project Plan
 
-Tracks planned tools within the gm-toolkit suite. Each tool is its own binary (`cmd/<tool>`) with domain logic under `internal/<tool>`. Feature-level planning for every tool lives in the one tracker, [`planned-work.md`](faction-manager/planned-work.md).
+Tracks the products within the gm-toolkit suite. Each product keeps its own tracker and initiatives under `dev_journals/<product>/`.
+
+**Initiative IDs share one counter across all products.** A new row takes the next free number for its prefix across every tracker and every `_completed/` folder, so no two products ever hold the same ID.
 
 <br/>
 
-## Tools
+## Products
 
-| # | Tool | Status | Trigger |
-|---|------|--------|---------|
-| 1 | `faction-manager` | In progress | — |
-| 2 | `codex` | Planned | `internal/spatial` package established; spatial model complete |
+| # | Product | Status | Trigger | Tracker |
+|---|---------|--------|---------|---------|
+| 1 | `campaigns` | In progress | — | [`campaigns/planned-work.md`](campaigns/planned-work.md) |
+| 2 | `faction-manager` | In progress | — | [`faction-manager/planned-work.md`](faction-manager/planned-work.md) |
+| 3 | `codex` | Planned | `internal/spatial` package established; spatial model complete | [`codex/planned-work.md`](codex/planned-work.md) |
 
 <br/>
 <br/>
 
-# Planned Tools
+# Products
+
+<br/>
+
+## Campaigns
+
+The umbrella product: the campaign as a whole, which every other product serves. Holds campaign-level tools that are not part of another product, such as the PF2e encounter simulator (`F.041`).
 
 <br/>
 
@@ -27,3 +36,5 @@ A campaign knowledge-base and wiki for GMs. Stores structured information about 
 **Shared dependencies:** `internal/spatial` — the Codex owns the canonical Fragment and Region TOML files; the faction tool reads from the same files via `SPATIAL_DATA_DIR`.
 
 **Trigger:** Pick up once `internal/spatial` is established and the shared TOML schema is proven in the faction tool.
+
+**Seed:** [`codex-assistant-seed.md`](codex/initiatives/seeds/codex-assistant-seed.md) — the GM Assistant concept the Codex is the first step of. Awareness, not a plan.

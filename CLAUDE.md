@@ -6,7 +6,7 @@
 
 ## This project
 
-- **Multi-product:** gm-toolkit holds more than one product, `faction-manager` and `codex`. Each product keeps its tracker and initiatives under `dev_journals/<product>/`.
+- **Multi-product:** gm-toolkit holds three products: `campaigns` (the umbrella, with campaign-level tools such as the PF2e simulator), `faction-manager` and `codex`. Each product keeps its tracker and initiatives under `dev_journals/<product>/`; `dev_journals/project-planning.md` lists them. Initiative IDs share one counter across all products.
 - **Override (working-together, Files and tools):** search the codebase with the LSP tools, not grep. Grep stays fine for docs.
 
 ## Extra docs
