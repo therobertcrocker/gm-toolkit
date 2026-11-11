@@ -73,7 +73,7 @@ func (e *Engine) registerCapturedAssets(factionState *state.FactionState, mutati
 }
 
 // RunFactionTurn drives one faction's turn from setup through state save:
-// stat-raise, bookkeeping, movement, action.
+// stat-raise, goal pick, bookkeeping, movement, action.
 // Errors are reported to the observer via OnError and returned to the
 // caller; partial mutations already applied stay applied.
 //
@@ -94,6 +94,11 @@ func (e *Engine) RunFactionTurn(
 	logging.TurnStart(turnLog, factionState.CycleNumber, faction.ID)
 
 	if err := e.runStatRaisePhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
+		return false, err
+	}
+
+	// deliberate: the pick follows the raise, not precedes it, because a Wealth raise this turn can open Wealth of Worlds for the same turn's pick (D-2).
+	if err := e.runGoalPickPhase(faction, factionState, paths, collectors, observer, turnLog); err != nil {
 		return false, err
 	}
 
@@ -289,6 +294,66 @@ func (e *Engine) runStatRaisePhase(
 	}
 	phaseLog.Info("phase end", "outcome", "raised", "stat", *statToRaise)
 	return nil
+}
+
+func (e *Engine) runGoalPickPhase(
+	faction *domain.Faction,
+	factionState *state.FactionState,
+	paths *campaigns.Paths,
+	collectors Collectors,
+	observer TurnObserver,
+	turnLog *slog.Logger,
+) error {
+	phaseLog := turnLog.With("phase", "goal_pick")
+	logging.PhaseStart(phaseLog, "goal_pick")
+	phaseLog.Info("phase begin")
+
+	pickMutations, err := e.prepareGoalPick(faction, factionState, collectors.Phase)
+	if err == nil && len(pickMutations) > 0 {
+		pickMutations, err = e.applyAndRecord(factionState, faction, pickMutations, paths, phaseLog)
+	}
+	if err != nil {
+		if factionErrors.IsRecoverable(err) {
+			phaseLog.Warn("recoverable failure", "err", err)
+			observer.OnError(faction, err)
+			return nil // continue past this sub-engine call
+		}
+		phaseLog.Error("failure", "err", err)
+		observer.OnError(faction, err)
+		return err
+	}
+	if len(pickMutations) == 0 {
+		phaseLog.Info("phase end", "outcome", "skipped")
+		return nil
+	}
+	observer.OnGoalPicked(faction, pickMutations)
+	phaseLog.Info("phase end", "outcome", "picked")
+	return nil
+}
+
+// prepareGoalPick asks a faction with no goal to pick one of the goals on offer.
+// It asks nothing when the faction holds a goal or nothing is on offer. A nil
+// answer declines, and the ask comes back next turn (D-4).
+func (e *Engine) prepareGoalPick(faction *domain.Faction, factionState *state.FactionState, collector PhaseCollector) ([]domain.Mutation, error) {
+	if faction.ActiveGoal != nil {
+		return nil, nil
+	}
+	offers := e.Goal.Offers(faction, factionState)
+	if len(offers) == 0 {
+		return nil, nil
+	}
+	choice, err := collector.SelectGoal(faction, offers)
+	if err != nil {
+		return nil, fmt.Errorf("selecting goal: %w", err)
+	}
+	if choice == nil {
+		return nil, nil
+	}
+	picked, err := e.Goal.Pick(faction, offers, *choice)
+	if err != nil {
+		return nil, fmt.Errorf("picking goal: %w", err)
+	}
+	return []domain.Mutation{picked}, nil
 }
 
 func (e *Engine) runMovementPhase(

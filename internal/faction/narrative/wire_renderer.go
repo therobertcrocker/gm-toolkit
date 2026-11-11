@@ -141,6 +141,14 @@ func renderGoalEvent(ge digest.GoalEvent, factionName string, rng *rand.Rand) st
 		}
 		result := strings.ReplaceAll(pick(rng, templates), "{faction}", factionName)
 		return strings.ReplaceAll(result, "{goal}", ge.GoalName)
+	case digest.GoalPicked:
+		templates := goalPickedTemplates
+		if ge.TargetName != "" {
+			templates = goalPickedTargetTemplates
+		}
+		result := strings.ReplaceAll(pick(rng, templates), "{faction}", factionName)
+		result = strings.ReplaceAll(result, "{goal}", ge.GoalName)
+		return strings.ReplaceAll(result, "{target}", ge.TargetName)
 	case digest.GoalHomeworldShift:
 		tmpl := pick(rng, goalHomeworldTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)

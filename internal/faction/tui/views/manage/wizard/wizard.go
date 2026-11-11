@@ -31,7 +31,6 @@ type formData struct {
 	secondaryStat    domain.FactionStat
 	tertiaryStat     domain.FactionStat
 	selectedTags     []*domain.Tag
-	selectedGoal     *domain.Goal
 	homeworldID      string
 	governedWorldID  string
 	populationWaiver bool
@@ -164,7 +163,6 @@ func (m *Model) synthesize() *domain.Faction {
 		m.data.scale,
 		m.data.primaryStat, m.data.secondaryStat, m.data.tertiaryStat,
 		tags,
-		m.data.selectedGoal,
 		homeworld,
 		assets,
 		coin,
@@ -252,13 +250,6 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 			}),
 	)
 
-	goalGroup := huh.NewGroup(
-		huh.NewSelect[*domain.Goal]().
-			Title("Starting goal").
-			Options(goalsToOptions(rb.Goals)...).
-			Value(&data.selectedGoal),
-	)
-
 	homeworldGroup := huh.NewGroup(
 		huh.NewSelect[string]().
 			Title("Homeworld").
@@ -303,7 +294,6 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 		statsGroup,
 		hpGroup,
 		tagsGroup,
-		goalGroup,
 		homeworldGroup,
 		governmentGroup,
 		waiverGroup,
@@ -436,20 +426,6 @@ func tagIDs(tags []*domain.Tag) []string {
 		ids[i] = tag.ID
 	}
 	return ids
-}
-
-func goalsToOptions(goals map[string]*domain.Goal) []huh.Option[*domain.Goal] {
-	sorted := make([]*domain.Goal, 0, len(goals))
-	for _, goal := range goals {
-		sorted = append(sorted, goal)
-	}
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Name < sorted[j].Name })
-
-	options := make([]huh.Option[*domain.Goal], len(sorted))
-	for i, goal := range sorted {
-		options[i] = huh.NewOption(goal.Name, goal)
-	}
-	return options
 }
 
 func worldsToOptions(spatialMap *spatial.RegionMap) []huh.Option[string] {

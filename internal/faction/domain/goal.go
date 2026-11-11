@@ -26,6 +26,20 @@ type GoalGate struct {
 	RatingAboveLastCompletion FactionStat
 }
 
+// GoalOffer is one goal the turn-start pick may offer, with the candidates for
+// the start inputs it declares. Targets is set only for a target_faction input.
+type GoalOffer struct {
+	Goal    *Goal
+	Targets []*Faction
+}
+
+// GoalChoice is a pick's answer: the goal, and the target faction when the goal
+// takes one.
+type GoalChoice struct {
+	GoalID          string
+	TargetFactionID string
+}
+
 // GoalEvent names an event and the filters a mutation must pass to match it.
 type GoalEvent struct {
 	Event   string

@@ -565,6 +565,54 @@ func TestGoalFailed(t *testing.T) {
 	}
 }
 
+func TestGoalPicked(t *testing.T) {
+	factionState := minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"})
+	rulebook := minRulebook(map[string]string{"goal-1": "Destroy the Foe"})
+
+	t.Run("with a target", func(t *testing.T) {
+		records := []domain.EventRecord{
+			eventRec("faction-a",
+				mutRec(t, "goal_picked", domain.GoalPicked{
+					FactionID: "faction-a", GoalID: "goal-1", TargetFactionID: "faction-b",
+				}),
+			),
+		}
+		cycleDigest := buildOne(t, records, factionState, rulebook)
+		picker := findBeat(cycleDigest, "faction-a")
+		if picker == nil {
+			t.Fatal("faction-a has no beat")
+		}
+		if len(picker.GoalEvents) != 1 || picker.GoalEvents[0].Kind != GoalPicked {
+			t.Fatalf("want 1 GoalPicked event on faction-a, got %+v", picker.GoalEvents)
+		}
+		if picker.GoalEvents[0].GoalName != "Destroy the Foe" || picker.GoalEvents[0].TargetName != "Beta" {
+			t.Errorf("want goal 'Destroy the Foe' aimed at Beta, got %+v", picker.GoalEvents[0])
+		}
+		if target := findBeat(cycleDigest, "faction-b"); target != nil && len(target.GoalEvents) != 0 {
+			t.Errorf("want no goal event on faction-b, got %+v", target.GoalEvents)
+		}
+		if cycleDigest.Headline.Kind != HeadlineQuiet {
+			t.Errorf("Headline.Kind = %v, want HeadlineQuiet", cycleDigest.Headline.Kind)
+		}
+	})
+
+	t.Run("with no target", func(t *testing.T) {
+		records := []domain.EventRecord{
+			eventRec("faction-a",
+				mutRec(t, "goal_picked", domain.GoalPicked{FactionID: "faction-a", GoalID: "goal-1"}),
+			),
+		}
+		cycleDigest := buildOne(t, records, factionState, rulebook)
+		picker := findBeat(cycleDigest, "faction-a")
+		if picker == nil || len(picker.GoalEvents) != 1 {
+			t.Fatalf("want 1 goal event on faction-a, got %+v", picker)
+		}
+		if picker.GoalEvents[0].TargetName != "" {
+			t.Errorf("TargetName = %q, want empty", picker.GoalEvents[0].TargetName)
+		}
+	})
+}
+
 func TestHomeworldChanged(t *testing.T) {
 	records := []domain.EventRecord{
 		eventRec("faction-a",

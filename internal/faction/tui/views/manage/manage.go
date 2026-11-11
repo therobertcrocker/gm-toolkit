@@ -119,7 +119,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		m.detail = detail.New(faction, m.rulebook, m.termWidth, m.termHeight)
+		m.detail = detail.New(faction, m.factionState, m.rulebook, m.termWidth, m.termHeight)
 		m.view = viewDetail
 		return m, nil
 

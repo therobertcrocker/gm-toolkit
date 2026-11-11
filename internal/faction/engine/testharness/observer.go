@@ -84,6 +84,10 @@ func (r *RecordingObserver) OnStatRaiseSkipped(faction *domain.Faction) {
 	r.Events = append(r.Events, ObservedEvent{Kind: "StatRaiseSkipped", Faction: faction})
 }
 
+func (r *RecordingObserver) OnGoalPicked(faction *domain.Faction, mutations []domain.Mutation) {
+	r.Events = append(r.Events, ObservedEvent{Kind: "GoalPicked", Faction: faction, Payload: mutations})
+}
+
 func (r *RecordingObserver) OnMovementTicked(faction *domain.Faction, mutations []domain.Mutation) {
 	r.Events = append(r.Events, ObservedEvent{
 		Kind:    "MovementTicked",

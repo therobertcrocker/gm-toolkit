@@ -38,6 +38,9 @@ func (c *minimalPhaseCollector) SelectAction(_ *domain.Faction, _ []action.Actio
 func (c *minimalPhaseCollector) SelectStatRaise(_ *domain.Faction, _ []domain.FactionStat) (*domain.FactionStat, error) {
 	return nil, nil
 }
+func (c *minimalPhaseCollector) SelectGoal(_ *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
+	return nil, nil
+}
 func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
 	if c.movementDecisionsFn != nil {
 		return c.movementDecisionsFn(faction, eligible)
@@ -361,6 +364,8 @@ func (o *errorObserver) OnStatRaiseApplied(_ *domain.Faction, _ *domain.FactionS
 }
 
 func (o *errorObserver) OnStatRaiseSkipped(_ *domain.Faction) {}
+
+func (o *errorObserver) OnGoalPicked(_ *domain.Faction, _ []domain.Mutation) {}
 
 func (o *errorObserver) OnMovementTicked(_ *domain.Faction, _ []domain.Mutation) {}
 

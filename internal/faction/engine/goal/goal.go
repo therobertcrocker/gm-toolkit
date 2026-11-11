@@ -14,16 +14,23 @@ import (
 // GoalEngine advances faction goals from the parts each goal states in the
 // rulebook. It holds no goal ID of its own.
 type GoalEngine struct {
-	goals    map[string]*compiledGoal
-	rulebook *rulebook.Rulebook
-	log      *slog.Logger
+	goals       map[string]*compiledGoal
+	actionNames []string
+	rulebook    *rulebook.Rulebook
+	log         *slog.Logger
 }
 
 // New compiles every goal in the rulebook. A goal whose parts name something the
 // engine cannot run is an error, not a goal that does nothing. actionNames are the
-// registered actions a goal's action filters may name.
+// registered actions: a goal's action filters may name only these, and its
+// needs_actions gate is open only when it names these.
 func New(rulebook *rulebook.Rulebook, actionNames []string, log *slog.Logger) (*GoalEngine, error) {
-	goalEngine := &GoalEngine{goals: make(map[string]*compiledGoal, len(rulebook.Goals)), rulebook: rulebook, log: log}
+	goalEngine := &GoalEngine{
+		goals:       make(map[string]*compiledGoal, len(rulebook.Goals)),
+		actionNames: actionNames,
+		rulebook:    rulebook,
+		log:         log,
+	}
 	for _, goalID := range slices.Sorted(maps.Keys(rulebook.Goals)) {
 		compiled, err := compile(rulebook.Goals[goalID], actionNames)
 		if err != nil {

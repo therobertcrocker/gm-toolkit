@@ -42,6 +42,10 @@ func (s *SmokePhaseCollector) SelectStatRaise(_ *domain.Faction, _ []domain.Fact
 	return nil, nil
 }
 
+func (s *SmokePhaseCollector) SelectGoal(_ *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
+	return nil, nil
+}
+
 func (s *SmokePhaseCollector) SelectMovementDecisions(_ *domain.Faction, _ []*domain.Asset) ([]world.MovementDecision, error) {
 	return nil, nil
 }
@@ -192,6 +196,9 @@ func (o *SmokeObserver) OnStatRaiseApplied(faction *domain.Faction, raised *doma
 }
 func (o *SmokeObserver) OnStatRaiseSkipped(faction *domain.Faction) {
 	o.log.Info("EVT StatRaiseSkipped", "faction", faction.ID)
+}
+func (o *SmokeObserver) OnGoalPicked(faction *domain.Faction, mutations []domain.Mutation) {
+	o.log.Info("EVT GoalPicked", "faction", faction.ID, "mutations", len(mutations))
 }
 func (o *SmokeObserver) OnMovementTicked(faction *domain.Faction, mutations []domain.Mutation) {
 	o.log.Info("EVT MovementTicked", "faction", faction.ID, "mutations", len(mutations))

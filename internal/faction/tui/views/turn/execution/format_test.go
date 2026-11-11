@@ -56,6 +56,8 @@ func TestFormatMutation_Surfaced(t *testing.T) {
 		{"BaseAdded", domain.BaseAdded{Base: domain.Base{ID: "base-1"}}, "+base base-1"},
 		{"BaseDestroyed", domain.BaseDestroyed{BaseID: "base-1"}, "base base-1 destroyed"},
 		{"StatRaised", domain.StatRaised{Stat: domain.StatForce, OldRating: 2, NewRating: 3}, "Force 2→3"},
+		{"GoalPicked", domain.GoalPicked{GoalID: "CORE-G-001"}, "goal picked: CORE-G-001"},
+		{"GoalPicked target", domain.GoalPicked{GoalID: "CORE-G-008", TargetFactionID: "beta"}, "goal picked: CORE-G-008 → beta"},
 		{"GoalCompleted", domain.GoalCompleted{FactionID: "beta", XPAwarded: 5}, "goal completed: beta (+5 XP)"},
 		{"XPAwarded xp_roll", domain.XPAwarded{Amount: 1, Cause: string(domain.SpecialXPRoll)}, "bonus XP +1"},
 		{"GoalFailed", domain.GoalFailed{FactionID: "beta", Cause: domain.GoalFailedTargetLost}, "goal failed: beta (target_lost)"},

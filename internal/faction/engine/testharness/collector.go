@@ -45,6 +45,7 @@ type ScriptedCollector struct {
 	SelectModifiersFn            func(hooks.PreRollCard) []hooks.ModifierOffer
 	SelectRerollFn               func(hooks.PostRollCard) *hooks.RerollDirective
 	SelectStatRaiseFn            func(*domain.Faction, []domain.FactionStat) (*domain.FactionStat, error)
+	SelectGoalFn                 func(*domain.Faction, []domain.GoalOffer) (*domain.GoalChoice, error)
 	SelectMovementDecisionsFn    func(*domain.Faction, []*domain.Asset) ([]world.MovementDecision, error)
 	SelectTransportCargoFn       func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
 	SelectPurchaseEnablerAssetFn func(string, []action.PurchaseEnablerOption) (*domain.AssetDefinition, error)
@@ -251,6 +252,13 @@ func (c *ScriptedCollector) SelectStatRaise(faction *domain.Faction, eligible []
 		return c.SelectStatRaiseFn(faction, eligible)
 	}
 	return nil, nil // default: skip raise
+}
+
+func (c *ScriptedCollector) SelectGoal(faction *domain.Faction, offers []domain.GoalOffer) (*domain.GoalChoice, error) {
+	if c.SelectGoalFn != nil {
+		return c.SelectGoalFn(faction, offers)
+	}
+	return nil, nil // default: decline, so a scenario runs with no goal unless it picks one
 }
 
 func (c *ScriptedCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {

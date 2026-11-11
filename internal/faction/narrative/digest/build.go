@@ -529,6 +529,19 @@ func Build(
 					Cause:    failed.Cause,
 				})
 
+			case "goal_picked":
+				var picked domain.GoalPicked
+				if err := json.Unmarshal(mr.Payload, &picked); err != nil {
+					return CycleDigest{}, err
+				}
+				picker := getOrCreateBeat(beats, picked.FactionID, factionState)
+				seenFactionIDs[picked.FactionID] = struct{}{}
+				event := GoalEvent{Kind: GoalPicked, GoalID: picked.GoalID, GoalName: resolveGoalName(picked.GoalID, rulebook)}
+				if picked.TargetFactionID != "" {
+					event.TargetName = resolveFactionName(picked.TargetFactionID, factionState)
+				}
+				picker.GoalEvents = append(picker.GoalEvents, event)
+
 			case "influence_delta":
 				var m domain.InfluenceDelta
 				if err := json.Unmarshal(mr.Payload, &m); err != nil {

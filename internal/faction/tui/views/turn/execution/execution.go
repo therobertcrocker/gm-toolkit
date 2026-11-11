@@ -268,6 +268,9 @@ var askEntries = map[adapter.AskKind]askEntry{
 	adapter.AskSelectStatRaise: {"Stat Raise", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewStatRaise(msg.Faction, msg.Payload.(adapter.SelectStatRaisePayload).Eligible)
 	}},
+	adapter.AskSelectGoal: {"Goal", func(_ Model, msg adapter.CollectorAskMsg) overlay.Overlay {
+		return overlay.NewGoalPick(msg.Payload.(adapter.SelectGoalPayload).Offers)
+	}},
 	adapter.AskSelectMovementDecisions: {"Movement", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
 	}},

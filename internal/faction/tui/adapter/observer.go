@@ -43,6 +43,9 @@ func (o *observer) OnError(faction *domain.Faction, err error) {
 func (o *observer) OnStatRaiseApplied(faction *domain.Faction, raised *domain.FactionStat, muts []domain.Mutation) {
 	o.adapter.emit(EvtStatRaiseApplied, StatRaiseAppliedPayload{Raised: raised, Mutations: muts})
 }
+func (o *observer) OnGoalPicked(faction *domain.Faction, muts []domain.Mutation) {
+	o.adapter.emit(EvtGoalPicked, GoalPickedPayload{Mutations: muts})
+}
 func (o *observer) OnMovementTicked(faction *domain.Faction, muts []domain.Mutation) {
 	o.adapter.emit(EvtMovementTicked, MovementTickedPayload{Mutations: muts})
 }

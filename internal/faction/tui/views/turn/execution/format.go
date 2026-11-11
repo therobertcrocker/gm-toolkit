@@ -47,6 +47,8 @@ func eventHeader(msg adapter.ObserverEventMsg) (string, []domain.Mutation) {
 		return phaseHeader("bookkeeping applied"), msg.Payload.(adapter.BookkeepingAppliedPayload).Mutations
 	case adapter.EvtStatRaiseApplied:
 		return phaseHeader("stat raise applied"), msg.Payload.(adapter.StatRaiseAppliedPayload).Mutations
+	case adapter.EvtGoalPicked:
+		return phaseHeader("goal pick"), msg.Payload.(adapter.GoalPickedPayload).Mutations
 	case adapter.EvtMovementTicked:
 		return phaseHeader("movement ticked"), msg.Payload.(adapter.MovementTickedPayload).Mutations
 	case adapter.EvtMovementResolved:
@@ -153,6 +155,11 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		return fmt.Sprintf("base %s destroyed", mut.BaseID), true
 	case domain.StatRaised:
 		return fmt.Sprintf("%s %d→%d", mut.Stat, mut.OldRating, mut.NewRating), true
+	case domain.GoalPicked:
+		if mut.TargetFactionID != "" {
+			return fmt.Sprintf("goal picked: %s → %s", mut.GoalID, mut.TargetFactionID), true
+		}
+		return fmt.Sprintf("goal picked: %s", mut.GoalID), true
 	case domain.GoalCompleted:
 		return fmt.Sprintf("goal completed: %s (+%d XP)", mut.FactionID, mut.XPAwarded), true
 	case domain.GoalFailed:

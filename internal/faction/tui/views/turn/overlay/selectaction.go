@@ -26,6 +26,8 @@ type SelectAction struct {
 func NewSelectAction(available []action.Action) SelectAction {
 	data := &selectActionData{}
 	opts := make([]huh.Option[action.Action], 0, len(available)+1)
+	// deliberate: skip first, not last, because huh scrolls the list down to the option matching the nil starting value.
+	opts = append(opts, huh.NewOption("Skip faction (take no action)", action.Action(nil)))
 	for _, a := range available {
 		label := a.Name()
 		if !ImplementedActions[a.Name()] {
@@ -33,7 +35,6 @@ func NewSelectAction(available []action.Action) SelectAction {
 		}
 		opts = append(opts, huh.NewOption(label, a))
 	}
-	opts = append(opts, huh.NewOption("Skip faction (take no action)", action.Action(nil)))
 
 	form := huh.NewForm(
 		huh.NewGroup(

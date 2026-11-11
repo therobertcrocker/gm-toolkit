@@ -218,6 +218,18 @@ type AssetStealthApplied struct {
 
 func (m AssetStealthApplied) Type() string { return "asset_stealth_applied" }
 
+// GoalPicked records the goal a faction picked at the start of its turn, with the
+// target faction the goal asked for and the assets stealthed when it started
+// (D-10). Its apply sets ActiveGoal.
+type GoalPicked struct {
+	FactionID        string   `json:"faction_id"`
+	GoalID           string   `json:"goal_id"`
+	TargetFactionID  string   `json:"target_faction_id,omitempty"`
+	StealthedAtStart []string `json:"stealthed_at_start,omitempty"`
+}
+
+func (m GoalPicked) Type() string { return "goal_picked" }
+
 // GoalAbandoned records that a faction abandoned their active goal. Income for
 // the turn is forfeited via a separate CoinDelta emitted alongside this.
 type GoalAbandoned struct {

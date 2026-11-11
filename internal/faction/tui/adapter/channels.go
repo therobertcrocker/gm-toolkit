@@ -43,6 +43,7 @@ const (
 	AskRequestPermission
 	AskConfirmPermissionContest
 	AskSelectAbilityWorldTarget
+	AskSelectGoal
 	// AskKindCount counts the kinds above; keep it last.
 	AskKindCount
 )
@@ -78,6 +79,7 @@ const (
 	EvtIndexSkipped
 	EvtCycleStarted
 	EvtRollSettled
+	EvtGoalPicked
 )
 
 type ObserverEventMsg struct {
@@ -94,6 +96,7 @@ type EngineDoneMsg struct {
 type AwaitCheckpointPayload struct{ Phase string }
 type SelectActionPayload struct{ Available []action.Action }
 type SelectStatRaisePayload struct{ Eligible []domain.FactionStat }
+type SelectGoalPayload struct{ Offers []domain.GoalOffer }
 type SelectMovementDecisionsPayload struct{ Eligible []*domain.Asset }
 type SelectTransportCargoPayload struct {
 	Transport     *domain.Asset
@@ -273,6 +276,7 @@ type StatRaiseAppliedPayload struct {
 	Raised    *domain.FactionStat
 	Mutations []domain.Mutation
 }
+type GoalPickedPayload struct{ Mutations []domain.Mutation }
 type MovementTickedPayload struct{ Mutations []domain.Mutation }
 type MovementResolvedPayload struct{ Mutations []domain.Mutation }
 type IndexSkippedPayload struct{ Skipped []string }

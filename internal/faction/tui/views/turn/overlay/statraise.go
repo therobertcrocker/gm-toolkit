@@ -30,6 +30,8 @@ func NewStatRaise(faction *domain.Faction, eligible []domain.FactionStat) StatRa
 		domain.StatWealth:  faction.Wealth,
 	}
 	opts := make([]huh.Option[*domain.FactionStat], 0, len(eligible)+1)
+	// deliberate: decline first, not last, because huh scrolls the list down to the option matching the nil starting value.
+	opts = append(opts, huh.NewOption("Decline raise", (*domain.FactionStat)(nil)))
 	for i := range eligible {
 		stat := &eligible[i]
 		opts = append(opts, huh.NewOption(
@@ -37,7 +39,6 @@ func NewStatRaise(faction *domain.Faction, eligible []domain.FactionStat) StatRa
 			stat,
 		))
 	}
-	opts = append(opts, huh.NewOption("Decline raise", (*domain.FactionStat)(nil)))
 
 	form := huh.NewForm(
 		huh.NewGroup(

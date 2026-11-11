@@ -139,7 +139,16 @@ The book leaves these points open. The engine reads them as follows.
   target before the goal is done fails the goal.
 - **Inside Enemy Territory** — the goal counts the stealthed assets the faction
   holds at one time on worlds a rival governs, or on a rival's homeworld that has no
-  faction government. An asset that loses stealth or leaves stops counting.
+  faction government. An asset that loses stealth or leaves stops counting. Assets
+  already stealthed when the goal is picked never count, wherever they go.
+- **Wealth of Worlds** — the goal is offered again only when the faction's Wealth
+  is above its Wealth when it last completed the goal. Abandoning the goal sets no
+  such limit.
+- **Picking a goal** — a faction with no goal is asked at the start of its turn,
+  after any XP spend and before income. It may decline; the question comes back
+  each turn until it picks. A goal that names a target faction asks for one among
+  the factions still standing, and is not offered when there is none. Planetary
+  Seizure is not offered while the Seize Planet action is off.
 
 ---
 
@@ -302,7 +311,8 @@ A successful **Transport Lockdown** attack locks the struck faction out of the w
 2. **Assign attributes** — primary, secondary, tertiary per scale
 3. **Calculate Max HP** — 4 + HP value of each attribute
 4. **Select tags** — generally one tag; two at most
-5. **Select starting goal**
+5. **Select starting goal** — at the faction's first turn, through the goal pick;
+   the faction wizard sets none
 6. **Place homeworld Base of Influence** — automatically at max HP
 7. **Select starting assets:**
    - Minor: 1 asset in primary attribute + 1 asset in any other attribute

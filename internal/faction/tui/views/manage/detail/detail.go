@@ -14,6 +14,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/styles"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/manage/msgs"
 )
@@ -27,20 +28,22 @@ type keyMap struct {
 }
 
 type Model struct {
-	faction  *domain.Faction
-	rulebook *rulebook.Rulebook
-	viewport viewport.Model
-	width    int
-	height   int
-	keys     keyMap
+	faction      *domain.Faction
+	factionState *state.FactionState
+	rulebook     *rulebook.Rulebook
+	viewport     viewport.Model
+	width        int
+	height       int
+	keys         keyMap
 }
 
-func New(faction *domain.Faction, rb *rulebook.Rulebook, width, height int) Model {
+func New(faction *domain.Faction, factionState *state.FactionState, rb *rulebook.Rulebook, width, height int) Model {
 	m := Model{
-		faction:  faction,
-		rulebook: rb,
-		width:    width,
-		height:   height,
+		faction:      faction,
+		factionState: factionState,
+		rulebook:     rb,
+		width:        width,
+		height:       height,
 		keys: keyMap{
 			Scroll: key.NewBinding(key.WithKeys("up", "down", "j", "k"), key.WithHelp("↑/↓", "scroll")),
 			Delete: key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "delete")),
@@ -122,8 +125,16 @@ func (m Model) renderBody() string {
 			goalName = goal.Name
 			goalDesc = goal.Description
 		}
+		target := ""
+		if targetID := f.ActiveGoal.TargetFactionID; targetID != "" {
+			targetName := targetID
+			if targetFaction, ok := m.factionState.Factions[targetID]; ok {
+				targetName = targetFaction.Name
+			}
+			target = "   →   " + targetName
+		}
 		b.WriteString("  " + styles.Strong.Render(goalName) +
-			styles.Dim.Render(fmt.Sprintf("   ·   progress %d", f.ActiveGoal.Progress)) + "\n")
+			styles.Dim.Render(fmt.Sprintf("%s   ·   progress %d", target, f.ActiveGoal.Progress)) + "\n")
 		if goalDesc != "" {
 			b.WriteString(m.wrap(goalDesc, 4, styles.Label) + "\n")
 		}

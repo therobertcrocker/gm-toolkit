@@ -22,6 +22,7 @@ type TurnObserver interface {
 	OnError(faction *domain.Faction, err error)
 	OnStatRaiseApplied(faction *domain.Faction, raised *domain.FactionStat, mutations []domain.Mutation)
 	OnStatRaiseSkipped(faction *domain.Faction)
+	OnGoalPicked(faction *domain.Faction, mutations []domain.Mutation)
 	OnMovementTicked(faction *domain.Faction, mutations []domain.Mutation)
 	OnMovementResolved(faction *domain.Faction, mutations []domain.Mutation)
 	OnIndexSkipped(skipped []string)

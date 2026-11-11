@@ -74,6 +74,17 @@ var goalFailedTemplates = map[string][]string{
 	},
 }
 
+var goalPickedTemplates = []string{
+	"{faction} took up a new objective: {goal}.",
+	"New orders for {faction}: {goal}.",
+}
+
+// goalPickedTargetTemplates name the target faction a picked goal is aimed at.
+var goalPickedTargetTemplates = []string{
+	"{faction} took up {goal}, with {target} in their sights.",
+	"{faction} marked {target} for {goal}.",
+}
+
 var goalHomeworldTemplates = []string{
 	"{faction} shifted homeworld designation from {from} to {to}.",
 	"A new base of power: {faction} moved home from {from} to {to}.",
