@@ -21,17 +21,35 @@ Turn the discovery's six efforts into an executable sequence: specify Effort 1 t
 4. **Robert runs each live turn** — D-1 says Robert opens the campaign and runs a turn, and Claude drives the app only on `sandbox-claude`. Claude prepares the turn (build, compose, map build, seed reset). Robert plays it as the effort's last step and reports what he saw. Rejected: Claude playing `campaigns/hawk` in tmux; a gitignored `hawk-claude` copy.
 5. **Every campaign command carries `GM_TOOLKIT_HOME=/workspaces/gm-toolkit/campaigns`** — The registry lives at `$GM_TOOLKIT_HOME/campaigns-registry.toml` (`internal/campaigns/registry.go`), and Claude's shell does not set the variable. Writing the prefix every time makes each command work the same in any shell.
 6. **Efforts 2 to 6 each get a plan file, `A.001.5.E<n>-hawk-asset-authoring-plan.md`. A pass with no build rows skips Phase 1** — D-9 gives each pass a Phase 1 for build rows only (primitive code and tests) and a Phase 2 for the data. When a pass's sort table has no build row, the effort plan has a single data phase. E3 is not a pass, and its plan sets its own phases.
-7. **The lore interview is a Markdown form Robert fills in his editor. Robert's setting docs come first, as context only. Forms and docs live in gitignored `scratch/` and are deleted once the canon holds the facts** — Robert's calls: long answers are easier to write in a file than in chat, and the docs help Claude follow the answers without standing in for them. Each form's full text is in this plan, so the questions are fixed before the session starts. Claude reads the docs, then the filled form, asks follow-ups in chat about blanks and contradictions, then writes the canon. Canon text comes only from Robert's form answers and chat replies, never straight from the docs. The canon is the only kept copy of the fiction (D-5); `scratch/` is already in `.gitignore`, so `git add -A` stays safe. Rejected: an Artifact web form (the answers go through claude.ai and must be read back); committing the forms or the docs (a second copy of the fiction that drifts); pre-filling form answers from the docs.
+7. **The lore interview is a Markdown form Robert fills in his editor. Robert's setting docs come first, as context only. Forms and docs live in gitignored `scratch/` and are deleted once the canon holds the facts** — Robert's calls: long answers are easier to write in a file than in chat, and the docs help Claude follow the answers without standing in for them. Each form's full text is in this plan, so the questions are fixed before the session starts. Claude reads the docs, then the filled form, asks follow-ups in chat about blanks and contradictions, then writes the canon. Canon text comes only from Robert's form answers and chat replies, never straight from the docs. The canon is the only kept copy of the fiction (D-5); `scratch/` is already in `.gitignore`, so `git add -A` stays safe. Rejected: an Artifact web form (the answers go through claude.ai and must be read back); committing the forms or the docs (a second copy of the fiction that drifts); pre-filling form answers from the docs. Amended in execution: three source images are committed to the canon (Decision Record 5).
 8. **The campaign premise gets its own canon file, `campaign.md`** — Robert's call. It covers the PF2e campaign (the party, the story so far) and what the faction game does for it, which is about the campaign, not the world. Amends the discovery's Canon Layout by one file; `setting.md` stays about the world. Rejected: a `## Campaign` section at the top of `setting.md`.
 9. **The forms ask in H.A.W.K's own terms and show the engine's fixed shape openly** — H.A.W.K is magic as technology, a fantasy and sci-fi mix (Eberron, Mistborn, Stormlight Archive, Spelljammer), not SWN's space setting. The engine still fixes the map's shape (hexes, regions, places it calls worlds, links between regions) and each faction's (one homeworld, three stats). Form 2 states that shape in a short box, then asks what plays each part in H.A.W.K. Answers stay descriptive ("a city", "best at guile"); E3 turns them into tech levels, populations and stats. Each open question carries two or three prompts, so no single answer has to be a whole document. From a review of the first form drafts, which assumed a space setting and SWN numbers.
 
 ## Decision Record — Execution
 
+1. **E1 Commit 2: secrets in the canon carry a `> **GM-only:** …` callout** — Robert's call when Form 1's answers held a GM-only reveal (Asmodeus) and a secret about the hidden gates. The canon may feed the Codex later, so a secret is marked, not left out. Rejected: leaving secrets out of the canon; writing them as plain text.
+2. **E1 Commit 2: History and the extra glossary terms come from the docs, each with Robert's say-so** — Form 1's History answer pointed at the docs. Claude drafted 24 history lines from the brief, and Robert kept them all in chat. For the glossary, Robert asked for every term in the docs; his own answers override the docs where they differ (Fragment, Divine Realm, Aetherstone and Aether-Core). This keeps Decision 7: the docs reach the canon only through Robert's chat replies. The OLD timeline stays canon because Robert kept its lines.
+3. **E1 Commit 2: the season 2 finale is canon as planned, with its outcome `TBD`** — The finale arc has not been played. `campaign.md` holds the setup, the arc, the possible endings and the open threads. A later session fills in the outcome once it is played. The faction game's start year (about 707) and its turn length are recorded as not yet fixed.
+4. **E1 Commit 2: `setting.md` gains a `## The Gods` section after Scale** — Robert supplied a table of the gods during review: five divine bodies, their members and titles, and which god rules which sector. It is setting-wide, so it sits in `setting.md`; the Scale table gains a Ruler column. Fuller fiction for any one god goes in `people.md` if Form 2 brings it. Rejected: holding the gods for `people.md` in Phase 2.
+5. **E1 Commit 2: three source images join the canon at `campaigns/hawk/canon/images/`** — Partly reverses Decision 7, which kept every source doc out of the repo. Robert's call: the world map of Myr, the Core Sector grid and the Magical Traditions chart are reference the canon needs. Decision 7's worry was text that drifts from the canon; an image is not a second copy of the canon's text. The PNGs total 33 MB, more than the repo's whole history (22 MB), so they are committed as full-size WebP copies (3.9 MB total, labels checked by eye); the originals stay outside the repo. Names: `myr-world-map.webp`, `core-sector-grid.webp`, `magical-traditions.webp`. The sector menu and the gods table stay in `scratch/`. Rejected: the PNGs as they are; only the chart, with the maps gitignored; Git LFS.
+6. **E1 Commit 2: lore points left open in the canon** — Raised in chat and not settled; written into the canon as the sources have them, or not written at all. Who is the First Witch, Morgana or Baba Yaga (only Morgana is in the canon). Is Ulsidor alive (history says he "reportedly dies" in 505 EA). The 5-Day War is dated 23–28 Peony, which is six days. When Haven was founded. Whether Season 1 is the Year of Dark (655). Whether the clouds on the Core Sector grid show the Drift. The gods of Tranquility and the Perilous Wilds (marked unknown, with a GM-only note). Form 2 or a later canon edit can settle them. All but the gods are settled in entry 7.
+7. **E1, after Commit 2: Robert settles six of entry 6's open points** — Morgana is the First Witch and was also known as Baba Yaga, so the 17 EA exile joins the history under that name. Ulsidor is alive, but takes no part in season 3. The 5-Day War keeps its six-day dates, because the people who named it are bad at math. Season 1 is the Year of Dark, 655. The clouds on the Core Sector grid show the Drift. Haven's founding is set at 672, Claude's pick at Robert's request: after Veil's partnerships of 665 gave the Coven its gates, and before Blackwater reaches Veil in 680. The gods of Tranquility and the Perilous Wilds stay open; Robert has no answer yet.
+8. **E1, after Commit 2: the eras are tied to the gods** — Robert's note in chat: mortals worshipped the Fey Royals in the First Era; the Aetheric Gods taking over began the Divine Era; and the forming of the Pact, unknown to its makers, is what allowed the Era of Magic. The history and the glossary (Fey Royals, the Pact, Eon Deus) carry it; the undated Fey Royals line moved into the eras. In the same exchange: Morgana worked on the Weave through her exile from 17 EA and released it to the Material Plane in 655. That dates the last undated line, so the history's Undated list is gone. Two follow-ups: the Pact was formed at the end of the Divine Era, and opening the way to arcane magic was a happy accident, not a secret (plain canon). Arcano-Tech predates the Weave: before 655 it ran on raw Threads of Magic and was clunky and unstable, and the Weave made it reliable.
+9. **E1 Commit 3: Form 2's Map answers come from the Core Sector grid** — Robert's call: the grid (`Astral_Sea_Grid_v4_topdown_vtt.png`, canon copy `core-sector-grid.webp`) answers the map questions. Claude drafted Name and Shape and Layout from it, marked as drafted in the form, and Robert corrects them in place. This keeps Decision 7 as entry 2 did: a source reaches the canon only on Robert's say-so. Settled in chat from the draft: each label on the clouds names a region (19); the unlabelled markers are places, named Somewhere, Lethe and Last Light by Robert from Claude's options; The Gravemind is out of date and is not a place; the four gates are places on the map. The form carries a stub block for each region and place, with Claude's reading of each place's region marked for Robert to check.
+10. **E1 Commit 3: the faction game maps only the Core Sector for now** — Robert's call. The full game will have a map for each realm; E3 builds the Core Sector alone. `setting.md`'s Scale section, which said the game spans the Core and the six rim sectors, is amended to match.
+11. **E1 Commit 3: Drift currents are the map's fast links, and E3's Plan session draws them** — Robert's call: one lane of current joins two regions. The canon records the rule; which pairs of regions get a lane is drafted in E3's Plan session, which writes the map in full (Decision 1). Rejected: settling the lane pairs in this session.
+12. **E1 Commit 3: Claude drafted the region and place fiction and the smaller factions' fields; Robert reviewed them** — Form 2 came back with its 19 region and 16 place blocks blank, and with four one-line smaller factions. At Robert's request Claude drafted them from the names, the grid and the sources, in `scratch/A.001.5.E1-drafts.md`. Robert kept the flavor, adjusted the magic and technology of Soma and Arcadia (Low) and Odium (Moderate, infernal), and dropped the town-and-city size words. Claude also drafted which Core places each faction controls. The places with two possible regions settle as Somewhere in Nowhere, Last Light in Oblivion, Solar Gate in Radiance's Edge and Tranquil Gate in Forgetfulness Nebula. Region slugs drop a leading "The". Rejected: `TBD` for E3 to fill; Robert writing them in the form.
+13. **E1 Commit 3: a place's `Size` line becomes `Population`** — Robert's call: most Astral Sea places are Fragments, so town, city and fortress don't fit. The line now gives how many people live there, on the scale empty, sparse, settled, crowded, teeming, and E3 turns it into the population number. Task 3's entry form is updated to match. Rejected: a Fragment-size word next to the population word; dropping the line.
+14. **E1 Commit 3: a seat of power is not the same as government, and `Controls` lists every governed place** — Robert's call when Seraph Industries took Veil as its seat without ruling it. The engine keeps the two apart: `CreateFaction` (`internal/faction/state/crud.go`) takes the governed world separately from the homeworld. Every faction governs its seat except Seraph, and the Fey Royals govern Veil, with the Coven of Morgana running the city day to day. `Controls` names the seat when the faction rules it, so E3 builds the government record from that line alone. Task 4 is updated to match.
+15. **E1 Commit 3: the factions in play and their seats on the Core map** — Robert's calls. Four major factions: O.W.L. (seat Haven; its home stays Iskalur on the Material Plane), the Court of Lies (Abaddon's Gate), the Radiant Throne (Solar Gate) and the Fey Royals (Veil). Four smaller ones: Blackwater Industries, the Thymian Armada (Last Light), the Witherblight Collective (Canon IV) and Seraph Industries (Veil). H.A.W.K stays out of play, as a canon mention only. Blackwater was first given no seat, only bases. The engine needs one: `domain/base.go` says every faction has exactly one homeworld base, at the faction's own max HP. So Robert demoted Blackwater to the smaller tier and seated it at Ouroboros. Rejected: engine support for factions with no seat (outside this initiative); Blackwater out of play. Best and worst at are read as best first, worst second.
+16. **E1 Commit 3: the Pact is broken, and the canon follows** — Robert's call: the Pact broke the moment Luna made her move in season 2's finale, and it stays broken even if she is defeated. `campaign.md` (Where Season 3 Opens) and the glossary's Fey Royals and The Pact entries say so. Contract magic now works beyond the Material Plane, but only near the influence of a Fey Royal (glossary, Contract). The Feywild and the Shadowfell join the glossary from Robert's words. The faction answers' "upper axis" and "lower axis" become the upper and lower sectors, so the glossary's Axis keeps its one meaning.
+17. **E1 Commit 3: people are deferred** — Robert's note in Form 2: the faction game doesn't need to track individuals yet. `people.md` keeps its scope line only, and the commit message drops its people line.
+
 ## Effort Summary
 
 | Done | # | Effort | Scope | File |
 |------|---|--------|-------|------|
-| [ ] | 1 | Lore seed | Scaffold `campaigns/hawk/`, then the docs and two forms seed the canon at `campaigns/hawk/canon/` | This plan, Phases 1–2 |
+| [x] | 1 | Lore seed | Scaffold `campaigns/hawk/`, then the docs and two forms seed the canon at `campaigns/hawk/canon/` | This plan, Phases 1–2 |
 | [ ] | 2 | Tag pass | `rulebooks/hawk/` begins: `rulebook.toml`, H.A.W.K `tags.toml`, SWN stand-ins for the asset files and `settings.toml` | `A.001.5.E2-hawk-asset-authoring-plan.md` (planned) |
 | [ ] | 3 | Campaign setup | The map, the starting factions as a seed state, the real `settings.toml`, the first live turn | `A.001.5.E3-hawk-asset-authoring-plan.md` (planned) |
 | [ ] | 4 | Force pass | `assets/force_assets.toml` replaces its stand-in; a live turn | `A.001.5.E4-hawk-asset-authoring-plan.md` (planned) |
@@ -120,10 +138,10 @@ The discovery's Out of Scope list holds, unchanged. In addition:
 
 **Overview**
 
-- [ ] **Phase 1 — Scaffold, campaign and setting**
+- [x] **Phase 1 — Scaffold, campaign and setting**
   - Commit 1 — `feat(E1): scaffold the H.A.W.K campaign and canon` (3 tasks)
   - Commit 2 — `docs(E1): seed the H.A.W.K campaign, setting and glossary` (7 tasks)
-- [ ] **Phase 2 — Places, factions and people**
+- [x] **Phase 2 — Places, factions and people**
   - Commit 3 — `docs(E1): seed the H.A.W.K places, factions and people` (7 tasks)
 
 The canon tasks can't hold the fiction as literal text, because the fiction is what the session produces. What is literal is the form Robert fills in and the canon entry form each answer goes into. Each interview commit runs:
@@ -594,7 +612,7 @@ The map entry comes first, then each region followed by its places:
 
 **Region** — `<region-slug>`
 **Magic and technology** — <how advanced, compared with other places>
-**Size** — <outpost, town, city, nation, …>
+**Population** — <empty, sparse, settled, crowded or teeming>
 
 <The place's fiction.>
 ```
@@ -617,7 +635,7 @@ One entry per faction block in the form:
 <The faction's fiction.>
 ```
 
-These fields are what E3 reads. It sets the scale and the three stats from `Size and strength` and `Best and worst at`, places the homeworld base at `Seat of power`, and works out the government record from `Controls`. E2 reads `What sets them apart` when it drafts the tags. The faction ID is kebab-case and becomes the faction's key in the seed state (Decision 3), so Robert confirms every one. Cross-checks, settled in chat before writing: every `Seat of power` and `Controls` names a place entry from Task 3, and a place two factions both claim to control is raised with Robert.
+These fields are what E3 reads. It sets the scale and the three stats from `Size and strength` and `Best and worst at`, places the homeworld base at `Seat of power`, and works out the government record from `Controls`, which lists every place the faction governs, its seat included when it rules there (Decision Record 14). E2 reads `What sets them apart` when it drafts the tags. The faction ID is kebab-case and becomes the faction's key in the seed state (Decision 3), so Robert confirms every one. Cross-checks, settled in chat before writing: every `Seat of power` and `Controls` names a place entry from Task 3, and a place two factions both claim to control is raised with Robert.
 
 ##### Task 5 — transcribe: `campaigns/hawk/canon/people.md`
 
@@ -646,12 +664,16 @@ Delete `scratch/A.001.5.E1-lore-form-2.md` and the `scratch/A.001.5.E1-sources/`
 ```
 docs(E1): seed the H.A.W.K places, factions and people
 
-- places.md: the map and its layout, its regions, and its places
-  with their magic and technology and their size, from lore form 2
-- factions.md: the starting factions with size and strength,
-  best and worst at, seat of power, controlled places, and what
-  sets them apart
-- people.md: named characters, if the form turned any up
+- places.md: the Core Sector map and its layout, its 19 regions, and
+  its 16 places with their magic and technology and their population,
+  from lore form 2 and the Core Sector grid
+- factions.md: four major and four smaller factions in play, with
+  size and strength, best and worst at, seat of power, governed
+  places, and what sets them apart
+- glossary.md, campaign.md: the Pact is broken; Contract magic works
+  near a Fey Royal's influence; the Feywild and the Shadowfell
+- setting.md: the faction game maps only the Core Sector for now
+- people.md stays empty: individuals are deferred
 ```
 
 ### Effort 2 — Tag pass
@@ -670,7 +692,7 @@ docs(E1): seed the H.A.W.K places, factions and people
 ### Effort 3 — Campaign setup
 
 **Scope:** discovery D-10 and the Effort Breakdown.
-- `campaigns/hawk/spatial/source/layout.txt` and `data.toml`, from `canon/places.md`, built with `spatial build`. The descriptive answers become numbers here: each place's tech level and population (Decision 9).
+- `campaigns/hawk/spatial/source/layout.txt` and `data.toml`, from `canon/places.md`, built with `spatial build`. The descriptive answers become numbers here: each place's tech level and population (Decision 9). The map is the Core Sector alone, and its Plan session drafts which regions the Drift lanes join (Decision Record 10 and 11).
 - `campaigns/hawk/state/state.seed.toml`, from `canon/factions.md`: factions, scale and stats, homeworlds, governments, H.A.W.K tags, and starting assets that use the SWN stand-in IDs for now.
 - The real `rulebooks/hawk/settings.toml`: drift costs from the canon's travel, and a population floor set against the map's populations.
 - The first live turn.

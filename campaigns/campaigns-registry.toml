@@ -7,3 +7,7 @@ active = "sandbox"
 [[campaigns]]
   id = "sandbox-claude"
   path = "/workspaces/gm-toolkit/campaigns/sandbox-claude"
+
+[[campaigns]]
+  id = "hawk"
+  path = "/workspaces/gm-toolkit/campaigns/hawk"
