@@ -42,8 +42,9 @@ Turn the discovery's six efforts into an executable sequence: specify Effort 1 t
 13. **E1 Commit 3: a place's `Size` line becomes `Population`** — Robert's call: most Astral Sea places are Fragments, so town, city and fortress don't fit. The line now gives how many people live there, on the scale empty, sparse, settled, crowded, teeming, and E3 turns it into the population number. Task 3's entry form is updated to match. Rejected: a Fragment-size word next to the population word; dropping the line.
 14. **E1 Commit 3: a seat of power is not the same as government, and `Controls` lists every governed place** — Robert's call when Seraph Industries took Veil as its seat without ruling it. The engine keeps the two apart: `CreateFaction` (`internal/faction/state/crud.go`) takes the governed world separately from the homeworld. Every faction governs its seat except Seraph, and the Fey Royals govern Veil, with the Coven of Morgana running the city day to day. `Controls` names the seat when the faction rules it, so E3 builds the government record from that line alone. Task 4 is updated to match.
 15. **E1 Commit 3: the factions in play and their seats on the Core map** — Robert's calls. Four major factions: O.W.L. (seat Haven; its home stays Iskalur on the Material Plane), the Court of Lies (Abaddon's Gate), the Radiant Throne (Solar Gate) and the Fey Royals (Veil). Four smaller ones: Blackwater Industries, the Thymian Armada (Last Light), the Witherblight Collective (Canon IV) and Seraph Industries (Veil). H.A.W.K stays out of play, as a canon mention only. Blackwater was first given no seat, only bases. The engine needs one: `domain/base.go` says every faction has exactly one homeworld base, at the faction's own max HP. So Robert demoted Blackwater to the smaller tier and seated it at Ouroboros. Rejected: engine support for factions with no seat (outside this initiative); Blackwater out of play. Best and worst at are read as best first, worst second.
-16. **E1 Commit 3: the Pact is broken, and the canon follows** — Robert's call: the Pact broke the moment Luna made her move in season 2's finale, and it stays broken even if she is defeated. `campaign.md` (Where Season 3 Opens) and the glossary's Fey Royals and The Pact entries say so. Contract magic now works beyond the Material Plane, but only near the influence of a Fey Royal (glossary, Contract). The Feywild and the Shadowfell join the glossary from Robert's words. The faction answers' "upper axis" and "lower axis" become the upper and lower sectors, so the glossary's Axis keeps its one meaning.
+16. **E1 Commit 3: the Pact is broken, and the canon follows** — Robert's call: the Pact broke the moment Luna made her move in season 2's finale, and it stays broken even if she is defeated. `campaign.md` (Where Season 3 Opens) and the glossary's Fey Royals and The Pact entries say so. Contract magic now works beyond the Material Plane, but only near the influence of a Fey Royal (glossary, Contract). The Feywild and the Shadowfell join the glossary from Robert's words. The faction answers' "upper axis" and "lower axis" become the upper and lower sectors, so the glossary's Axis keeps its one meaning. Amended in the effort review: the break point is the Gate's ignition (entry 18).
 17. **E1 Commit 3: people are deferred** — Robert's note in Form 2: the faction game doesn't need to track individuals yet. `people.md` keeps its scope line only, and the commit message drops its people line.
+18. **E1 effort review: canon fixes from the interim review** — Robert's picks and calls. (a) Slugs drop a leading "The" everywhere, not only for regions (entry 12). The README and Task 2's README text say so, and five glossary IDs change (`drift`, `forged`, `pact`, `verse`, `weave`). Nothing referenced the old IDs, and the change lands before the merge. (b) The Pact breaks when Luna's Gate ignites in The Marathon, not when Luna starts moving, so Nyx is still bound in The Call (amends entry 16). (c) Season 1's party is a different group, played by mostly the same players. Only Kas carries over to the current party, the one H.A.W.K sanctions in 705. (d) Ulsidor the Mad Mage is Ulsidor Blackwater; his survival after 505 EA is public. (e) The Asmodeus reveal's plain-text hints move into its GM-only callout, and the README's callout example uses a placeholder, not the real secret. (f) Seraph's `Controls` line is a bare `none`, so E3 can read it as written. (g) Canon IV stays as written: it refers to a story Canon, not a typo for Cannon.
 
 ## Effort Summary
 
@@ -226,7 +227,7 @@ The written canon of the H.A.W.K campaign and its setting: the fiction behind it
 - **Factions** — the faction ID in `state/state.seed.toml`
 - **Places** — the world `id` in `spatial/source/data.toml`
 - **Tags and assets** — the `HAWK-` ID in the rulebook (`HAWK-T-001`, `HAWK-F1-001`)
-- **Everything else** (the map, regions, terms, people) — a kebab-case slug of the name
+- **Everything else** (the map, regions, terms, people) — a kebab-case slug of the name, without a leading "The"
 
 An ID never changes once committed, even if the name does. The ID of a cut entity is never reused.
 
@@ -482,9 +483,13 @@ docs(E1): seed the H.A.W.K campaign, setting and glossary
 - campaign.md: the campaign, the story so far, and what the faction
   game does in it, from lore form 1
 - setting.md: pitch, conflicts, history, tone, magic as technology,
-  travel and scale
-- glossary.md: H.A.W.K terms, including its words for the faction
-  game's concepts
+  travel and scale, plus the gods and the sectors they rule
+- glossary.md: H.A.W.K terms, including the setting's terms from
+  Robert's docs
+- canon/images: WebP copies of the Myr world map, the Core Sector
+  grid and the Magical Traditions chart
+- canon/README.md: the GM-only callout and the image files
+- overview plan: Phase 1 ticked; Decision Record entries 1-6
 ```
 
 ### Phase 2 — Places, factions and people

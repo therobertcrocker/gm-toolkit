@@ -88,7 +88,7 @@ The people of dragon descent.
 
 A Dragonkin colony in the Thymian ruins broke away from the Queendom of Dragons in 660.
 
-## The Drift — `the-drift`
+## The Drift — `drift`
 
 The space between realms in the Astral Sea, full of unpredictable magical phenomena and dangerous entities.
 
@@ -118,7 +118,7 @@ One of the two realms the Fey Royals rule, with the Shadowfell.
 
 The Pact confined the Fey Royals to the Feywild and the Shadowfell until it broke.
 
-## The Forged — `the-forged`
+## The Forged — `forged`
 
 Sentient mechanical people. Older texts call them Warforged.
 
@@ -154,11 +154,11 @@ Dragonkin of mixed lineage. Many emigrated to the Dragonkin colony after 660.
 
 The Material Plane's own name.
 
-## The Pact — `the-pact`
+## The Pact — `pact`
 
 The binding that held the Fey Royals and stopped at least some of them from acting directly.
 
-It was formed at the end of the Divine Era. It was never meant to allow arcane magic; that it opened the way to the Era of Magic was a happy accident. It broke the moment Luna made her move in the finale of *The Coming War*, and it stays broken even if Luna is defeated.
+It was formed at the end of the Divine Era. It was never meant to allow arcane magic; that it opened the way to the Era of Magic was a happy accident. It broke the moment Luna's Gate ignited in the finale of *The Coming War*, and it stays broken even if Luna is defeated.
 
 ## Pantheon Wars — `pantheon-wars`
 
@@ -200,9 +200,9 @@ It gives raw access to the realm's power anywhere in the Astral Sea, but the god
 
 ## Thread of Magic — `thread-of-magic`
 
-A tiny hole in reality that the earliest arcane casters pulled raw, unstable power through. Precursor to The Weave
+A tiny hole in reality that the earliest arcane casters pulled raw, unstable power through. Precursor to The Weave.
 
-## The 'Verse — `the-verse`
+## The 'Verse — `verse`
 
 The whole cosmos.
 
@@ -212,7 +212,7 @@ H.A.W.K's assistant for a sanctioned party: a handler linked to the Weave that t
 
 Its link may falter off the Material Plane.
 
-## The Weave — `the-weave`
+## The Weave — `weave`
 
 The structured network of magical currents that allows controlled spellcasting and the shaping of magical effects.
 

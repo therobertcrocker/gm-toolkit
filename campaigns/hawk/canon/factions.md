@@ -109,7 +109,7 @@ A cabal of arcano-tech engineers and rebel forces who overthrew Ulsidor Blackwat
 **Size and strength** — Smaller: a company on the rise
 **Best and worst at** — Best at Wealth, worst at Cunning
 **Seat of power** — `veil`
-**Controls** — none; the Fey Royals rule Veil
+**Controls** — none
 **What sets them apart** — It has recently amassed significant resources and technology.
 
-A powerful organization building its influence on the Material Plane. Having recently amassed significant resources and technology, it aims to tighten its hold on the Material Plane while O.W.L. turns ever more toward the Astral Sea and celestial matters. Veil, the gateway between the two, is its seat in the Core.
+A powerful organization building its influence on the Material Plane. Having recently amassed significant resources and technology, it aims to tighten its hold on the Material Plane while O.W.L. turns ever more toward the Astral Sea and celestial matters. Veil, the gateway between the two, is its seat in the Core, but the Fey Royals rule Veil, not Seraph.

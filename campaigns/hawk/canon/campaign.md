@@ -6,7 +6,7 @@ The campaign, the story so far, and what the faction game does in it.
 
 The campaign runs in three seasons:
 
-1. **The Fall of Magic** — set in 655, the Year of Dark. The party stops a plot to remove arcane magic from the world. Their success sets off an explosion of magical infrastructure and the wide adoption of arcano-tech.
+1. **The Fall of Magic** — set in 655, the Year of Dark. A different party, played by mostly the same players, stops a plot to remove arcane magic from the world. Of its characters, only Kas carries over to the current party. Their success sets off an explosion of magical infrastructure and the wide adoption of arcano-tech.
 2. **The Coming War** — the current season, now in its final arc. The party opposes Blackwater Industries and deals with the rising tension between the Astral Gods as Blackwater's control weakens.
 3. **The War in Heaven** — the third and final season, and the one the faction game serves. It deals with the aftermath of season two and the cataclysmic war between the Astral Gods.
 
@@ -40,7 +40,7 @@ The party chooses to stop Luna. The other two crises play out without them. With
 
 **The Flip.** Cornered, Luna would rather become something else than lose. She gives herself to Lilith and becomes her vessel. The final battle takes place on the collapsing Gate, against what Luna has turned into.
 
-**The Aftermath.** The party counts the cost: who holds Porta Sol now, how the coup ended, and what became of Seraphina, the Charm and Luna. Off-screen, Lady Witherblight reaches Axiom with the M.T. Nest Device, and something unexpected rides along with it. Then comes the final turn: the ritual was too precise to be the work of chaos.
+**The Aftermath.** The party counts the cost: who holds Porta Sol now, how the coup ended, and what became of Seraphina, the Charm and Luna. Off-screen, Lady Witherblight reaches Axiom with the M.T. Nest Device, and something unexpected rides along with it.
 
 ### How It Can End
 
@@ -54,17 +54,16 @@ The party chooses to stop Luna. The other two crises play out without them. With
 
 - **Luna's fate** — does she die, get consumed, or survive in some form?
 - **Arabesque** — her storyline with Nyx and the Endless she hosts is improvised at the table.
-- **Asmodeus** — when the truth lands: at the climax, in the aftermath, or held for the next season.
 - **The final note** — the season ends cleanly with a seed for what comes next, or on a cliffhanger.
 
-> **GM-only:** Asmodeus engineered all of it. Lilith's chaos is only his cover, and the players are meant to believe the threat is Lilith for as long as possible. The tell is plotting too precise to come from pure chaos.
+> **GM-only:** Asmodeus engineered all of it. Lilith's chaos is only his cover, and the players are meant to believe the threat is Lilith for as long as possible. The tell is plotting too precise to come from pure chaos, and the arc ends on it: after the aftermath comes the realization that the ritual was too precise to be the work of chaos. When the whole truth lands is still open: at the climax, in the aftermath, or held for the next season.
 
 ### Where Season 3 Opens
 
 - Blackwater Industries has fallen as the overlord megacorporation. Splinter factions that carry its name fight on in *The War in Heaven*.
 - The Core Sector is neutral ground. Blackwater used to control it.
 - Ulsidor Blackwater is alive, but takes no part in season 3.
-- The Pact broke the moment Luna made her move, and it stays broken even if Luna is defeated. The Fey Royals are free to reach beyond the Feywild and the Shadowfell.
+- The Pact broke the moment Luna's Gate ignited, and it stays broken even if Luna is defeated. The Fey Royals are free to reach beyond the Feywild and the Shadowfell.
 
 ## The Faction Game
 

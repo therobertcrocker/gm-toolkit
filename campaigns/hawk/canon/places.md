@@ -6,7 +6,7 @@ The map, its regions and its places.
 
 The neutral hub of the Astral Sea, and for now the only part of it the faction game maps. On the grid it is a broad, ragged mass, wider east to west than north to south: about 21 hexes across and 15 rows deep. The Drift, shown as clouds, covers most of it. Open space, where the hex grid shows through, appears only in scattered clearings.
 
-Beyond its edges is open Astral Sea: dark space, with a huge orange-red nebula along the west and south-west and a red one off the south-east. Four charted gates sit on the rim and lead out to the rim sectors: Solar Gate (north), Axial Gate (north-east), Tranquil Gate (west) and Abaddon's Gate (south).
+Beyond its edges is open Astral Sea: dark space, with a huge orange-red nebula along the west and south-west and a red one off the south-east. Four charted gates sit on the rim and lead out to the rim sectors: Solar Gate (north), Axial Gate (north-east), Tranquil Gate (north-west) and Abaddon's Gate (south).
 
 ![The Core Sector grid](images/core-sector-grid.webp)
 

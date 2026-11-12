@@ -29,13 +29,13 @@ The images are compressed copies at full size. The original files live outside t
 - **Factions** — the faction ID in `state/state.seed.toml`
 - **Places** — the world `id` in `spatial/source/data.toml`
 - **Tags and assets** — the `HAWK-` ID in the rulebook (`HAWK-T-001`, `HAWK-F1-001`)
-- **Everything else** (the map, regions, terms, people) — a kebab-case slug of the name
+- **Everything else** (the map, regions, terms, people) — a kebab-case slug of the name, without a leading "The"
 
 An ID never changes once committed, even if the name does. The ID of a cut entity is never reused.
 
 A secret the players must not learn sits in its own callout, so it can be kept out of anything player-facing:
 
-    > **GM-only:** Asmodeus engineered the whole war.
+    > **GM-only:** <the secret, in a sentence or two>
 
 ## Canon and rulebook
 

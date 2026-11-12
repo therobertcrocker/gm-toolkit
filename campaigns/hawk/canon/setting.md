@@ -39,7 +39,7 @@ The War in Heaven is fought in three places:
 - **345 EA** — Ulsidor the Mage founds his Laboratory on "the Mountain", and its technology becomes the base of modern society.
 - **400 EA** — the Trade Cities and the Alliance of Open Seas form. H.A.W.K is founded in Witchlyn as a guild for adventurers left over from the war.
 - **The Year of Ash** (410 or 455 EA; the old record disagrees with itself) — planar energy mutates the Huron region, and the Republic of Urn is founded.
-- **505 EA** — Ulsidor the Mad Mage reportedly dies. He is in fact still alive.
+- **505 EA** — Ulsidor the Mad Mage is believed dead, but survives. He is Ulsidor Blackwater, who later leads Blackwater Industries.
 
 ### The Last Fifty Years
 
@@ -54,7 +54,7 @@ The War in Heaven is fought in three places:
 - **672** — O.W.L. and the Coven found Haven, the first Material Plane colony in the Astral Sea.
 - **680** — Blackwater Industries arrives at Veil and offers a trade deal, with The Laboratory as liaison.
 - **695** — forces gather at the borders of the Astral Realms. What remains of the Celestial and Infernal Courts skirmishes, and armadas fly the dead Thymian Court's flag.
-- **705** — H.A.W.K sanctions its first Phoenix-Class Adventurers: the party.
+- **705** — H.A.W.K sanctions its first Phoenix-Class Adventurers: the current party, not the season 1 party of 655.
 - **Around 707** — season 3 opens. Blackwater Industries has fallen as a megacorporation, and the Core Sector is neutral ground.
 
 ## Tone
