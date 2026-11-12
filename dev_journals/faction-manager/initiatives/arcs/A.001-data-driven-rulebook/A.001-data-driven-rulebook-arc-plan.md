@@ -13,12 +13,13 @@
 > candidate list), and the [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
-> **Status:** signed off, and **amended three times since**. The A.001.3 Discovery split the
+> **Status:** signed off, and **amended four times since**. The A.001.3 Discovery split the
 > S side into two initiatives and reset A.001.3's boundary (AP-7). The A.001.4
 > Discovery narrowed `_core` to goals, kept tags per rulebook, and added A.001.7 and
 > A.001.8 from the `E.002` exploration (AP-8). The A.001.7 Discovery widened A.001.7
 > to all 20 SWN tags, including tags that grant actions or assets, and added a
-> dependency on A.001.2 (AP-9). Amendments are
+> dependency on A.001.2 (AP-9). The A.001.5 promotion set its session shape and moved
+> the lore canon to `campaigns/hawk/canon/` (AP-10). Amendments are
 > recorded in the Decision Record and folded into the body, so this doc stays the
 > current arc shape rather than a snapshot of sign-off. Each initiative is registered in
 > `planned-work.md` and runs its own lifecycle (session-modes section 9).
@@ -236,7 +237,7 @@ Owns the living lore canon (ACD-9) and ships H.A.W.K's assets.
 
 - **Effort 1 — lore-seed session (precursor).** Interview Robert on H.A.W.K's setting,
   factions, terminology, and the fiction behind its elements; seed the canon at
-  `docs/campaigns/hawk/`. **Carries no registry dependency — schedulable from the start
+  `campaigns/hawk/canon/` (AP-10). **Carries no registry dependency — schedulable from the start
   of the arc**, ahead of the registries, so authoring never invents canon cold.
 - **Effort 2+ — by-category passes.** One category file at a time, Force → Cunning →
   Wealth. Each pass: **lore-gate** (confirm the batch against canon) → **reflavor**
@@ -334,8 +335,9 @@ load**, not uniform:
   precursor **lore-seed session** (an interview), and its execution loop (lore-gate →
   reflavor → mechanical sort → review) is already specified in the seed. The session
   type this needs is one of the **deferred process-level items** (custom lore /
-  ability-catalog session types); A.001.5 is the initiative that forces that gap, and
-  the shape is settled when it is promoted, not here.
+  ability-catalog session types); A.001.5 is the initiative that forces that gap. Its
+  promotion settled the shape (AP-10): a short Discovery first, then the lore interview
+  as Effort 1 in its own session.
 - **A.001.7 / A.001.8 — shape set at promotion.** The `E.002` exploration already holds
   their audit, options and recommendation, so their Discovery starts from it. The
   A.001.7 Discovery set four efforts (AP-9).
@@ -542,3 +544,18 @@ relevant arch page at pre-merge).
     leaves five tags inert and sends A.001.5's tag pass to a smaller vocabulary; a
     separate initiative for the action- and asset-granting tags, which would reopen the
     faction holder on a second surface.
+- **AP-10 — A.001.5 runs a short Discovery, then the lore interview; the canon lives at
+  `campaigns/hawk/canon/`.** From the A.001.5 promotion, Robert's calls. Settles the
+  session shape AP-5 deferred, and amends ACD-9's canon path. What this amends:
+  - **Session shape.** A short Discovery settles the efforts, the canon home's layout,
+    the `HAWK-` ID scheme, and how each pass records its sort calls. The lore interview
+    then runs as Effort 1 in its own session; its output is the seeded canon. This keeps
+    one mode per session, and the interview stays on fiction. Rejected: the interview as
+    the Discovery (one session fewer, but it mixes fiction with process calls and
+    yields two artifacts).
+  - **Canon home.** `campaigns/hawk/canon/`, not ACD-9's `docs/campaigns/hawk/`. Since
+    the arc-discovery, the repo split into products, and `F.041` keeps H.A.W.K
+    encounter data under `campaigns/hawk/`; `docs/` holds project docs, not campaign
+    content. The canon stays plain Markdown, so the Codex can take it over later.
+    ACD-9's other terms (a living doc, seeded by the interview, grown by authoring)
+    stand. Rejected: `docs/campaigns/hawk/` as written.

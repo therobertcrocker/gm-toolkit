@@ -11,6 +11,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
 | `A.001` | Data-Driven Rulebook (H.A.W.K) | `arc` | In-Progress | Engine goes truly multi-rulebook: data-driven A/S registry both surfaces, agnostic goals/tags + shared `_core`, H.A.W.K authored; see arc concept |
+| `A.001.5` | H.A.W.K asset authoring | `feature` | In-Progress | Lore-seed session (E1) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass in `A.001.7`'s data form (AP-8); the passes use `R.028`'s roll data shapes (`E.004`); owns lore canon; the arc's last initiative; see arc-plan |
 
 
 ---
@@ -21,7 +22,8 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `A.001.5` | H.A.W.K asset authoring | `feature` | ready | Lore-seed session (E1, startable early) then Force→Cunning→Wealth passes, then a H.A.W.K tag pass in `A.001.7`'s data form (AP-8; `A.001.7` complete); the authoring passes run after `R.028`, so they use its roll data shapes (`E.004`); owns lore canon; see arc-plan |
+
+_None._
 
 
 ---
@@ -249,5 +251,27 @@ This section contains detailed write-ups for each planned initiative, including 
 
 **Provenance** — promoted directly from post-E2E direction-setting (2026-06-15); no prior Backlog entry. Subsumes the campaign-content motivation behind `F.010`/`F.014`; is the evidence source for `R.004` (which the catalog session has since settled — build the full data-driven registry, both surfaces).
 
-**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](initiatives/arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `effects` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. **`A.001.6` complete** (the 14 remaining SWN S-flag assets: asset conditions, change of owner, special attacks, Cat 6 lethal interception, purchase qualities, the world government record, and permission at purchase and arrival, on `feature/s-flag-rule-extensions`; [plan](initiatives/_completed/_archive/implementation/s-flag-rule-extensions-plan.md)); every SWN S-flag asset now runs as data. **`A.001.4` complete** (the goals move to a shared `rulebooks/_core/` that a `rulebook.toml` manifest composes into each campaign, with setting-free goal text and a strict tag/goal loader, on `feature/goals-tags-core`; [plan](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.4-goals-tags-core/A.001.4-goals-tags-core-plan.md)). **`A.001.7` complete** (tags run from rulebook `effects` through a faction holder, all 20 SWN tags in data, factions hold prefixed tag IDs, `settings.toml` with a population floor, tag-granted abilities, on `feature/data-driven-tags`; [retro](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.7-data-driven-tags/A.001.7-data-driven-tags-retro.md)). **`A.001.8` complete** (goals run from data in six parts, every faction's goal reads every batch, a turn-start goal pick in the engine and the TUI, prefixed goal IDs, Seize Planet and Change Homeworld removed until `F.040`, on `feature/data-driven-goals`; [retro](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.8-data-driven-goals/A.001.8-data-driven-goals-retro.md)). `A.001.5` is ready, and is the arc's last initiative. The `A.001.4` Discovery added `A.001.7` (data-driven tags) and `A.001.8` (data-driven goals) from `E.002` (arc-plan AP-8).
+**Status** — In-Progress — Arc-Discovery and Arc-Plan complete; sliced into `A.001.1`–`A.001.5` (see the [arc-plan](initiatives/arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md)). The former `R.018` refactor row is subsumed by `A.001.1`. **`A.001.1` complete** (effect-keyed dispatch + SWN re-prefix, on `refactor/effect-keyed-a-dispatch`). **`A.001.2` complete** (A-flag composition pipeline + instant-relocate primitive + action-spent harness, on `feature/a-flag-ability-registry`). **`A.001.3` complete** (data-driven S-flag `effects` model + 19 SWN assets + free relocate harness, on `feature/s-flag-effect-registry`); the serial spine is done. **`A.001.6` complete** (the 14 remaining SWN S-flag assets: asset conditions, change of owner, special attacks, Cat 6 lethal interception, purchase qualities, the world government record, and permission at purchase and arrival, on `feature/s-flag-rule-extensions`; [plan](initiatives/_completed/_archive/implementation/s-flag-rule-extensions-plan.md)); every SWN S-flag asset now runs as data. **`A.001.4` complete** (the goals move to a shared `rulebooks/_core/` that a `rulebook.toml` manifest composes into each campaign, with setting-free goal text and a strict tag/goal loader, on `feature/goals-tags-core`; [plan](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.4-goals-tags-core/A.001.4-goals-tags-core-plan.md)). **`A.001.7` complete** (tags run from rulebook `effects` through a faction holder, all 20 SWN tags in data, factions hold prefixed tag IDs, `settings.toml` with a population floor, tag-granted abilities, on `feature/data-driven-tags`; [retro](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.7-data-driven-tags/A.001.7-data-driven-tags-retro.md)). **`A.001.8` complete** (goals run from data in six parts, every faction's goal reads every batch, a turn-start goal pick in the engine and the TUI, prefixed goal IDs, Seize Planet and Change Homeworld removed until `F.040`, on `feature/data-driven-goals`; [retro](initiatives/_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.8-data-driven-goals/A.001.8-data-driven-goals-retro.md)). **`A.001.5` In-Progress** (the arc's last initiative, on `feature/hawk-asset-authoring`). The `A.001.4` Discovery added `A.001.7` (data-driven tags) and `A.001.8` (data-driven goals) from `E.002` (arc-plan AP-8).
+
+<br />
+
+## A.001.5 — H.A.W.K Asset Authoring
+
+**Feature**, constituent of arc `A.001`, and its last initiative. Full boundary in the [arc-plan](initiatives/arcs/A.001-data-driven-rulebook/A.001-data-driven-rulebook-arc-plan.md), section "A.001.5 — H.A.W.K asset authoring".
+
+**Problem** — The engine now runs every SWN asset, tag and goal from rulebook data, but it has only ever run SWN. H.A.W.K, the campaign the tool exists to serve, has no rulebook folder, no assets, no tags and no written canon. Until it does, the arc's claim (the engine holds a non-reference rulebook) is untested.
+
+**Approach** — Three kinds of work, in order:
+
+- **Effort 1 — lore seed.** Interview Robert on H.A.W.K's setting, factions, terminology and the fiction behind its elements; seed the living canon (ACD-9) at `campaigns/hawk/canon/` (AP-10) so authoring never invents canon cold.
+- **Asset passes** — one category file at a time, Force → Cunning → Wealth. Each pass: lore-gate (confirm the batch against canon) → reflavor (name, description and fiction per asset, folded back into canon) → mechanical sort (reuse a primitive, build a missing one, or parameterize a near-miss) → review. Output: `rulebooks/hawk/assets/<category>_assets.toml` with `HAWK-` IDs, any new primitives, and canon updates. Rolls use `R.028`'s roll data shapes (`E.004`).
+- **Tag pass** — `rulebooks/hawk/tags.toml` in `A.001.7`'s data form, same loop. The folder also gets a `rulebook.toml` that includes `../_core` for goals.
+
+**Session shape** (AP-10) — a short Discovery first: the efforts, the canon home's layout, the `HAWK-` ID scheme, and how each pass records its sort calls. The lore interview then runs as Effort 1 in its own session.
+
+**Related items** — `F.041` (PF2e encounter simulator, campaigns product) keeps H.A.W.K encounter data under `campaigns/hawk/`. The Codex seed plans the Codex as the home for campaign lore.
+
+**Unlocks** — The "H.A.W.K playable" milestone: H.A.W.K runs end to end with its own assets and tags and the shared `_core` goals. Closing this initiative opens the arc close (`/gestalt:arc-close A.001`).
+
+**Trigger** — `A.001.2`, `A.001.3` and `A.001.7` complete (met); `R.028` complete (met).
 
