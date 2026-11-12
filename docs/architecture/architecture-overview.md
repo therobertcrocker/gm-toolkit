@@ -61,6 +61,28 @@ block
 
 <br/>
 
+## Design principles
+
+The standing commitments behind both sides. Each subsystem page's Key Decisions
+apply them; these are the reasons a change that breaks one needs a conversation
+first.
+
+- **Source-agnostic actions** — decisions reach the engine only through the
+  collector, so a human, a script or an AI planner drives a turn the same way.
+- **Extensible static data** — rules content (assets, tags, goals, settings)
+  lives in the campaign's rulebook TOML, which the GM owns; changing it needs no
+  Go. See [ability catalog](engine/ability-catalog.md) and
+  [goals](engine/goals.md).
+- **Robust history** — every state change is a mutation applied at one choke
+  point and recorded in the append-only `history.jsonl`; nothing is lost. See
+  [effect-mutation](engine/effect-mutation.md) and
+  [persistence](engine/persistence.md).
+- **Review apart from play** — browsing faction state (Manage mode) is a
+  separate flow from running a turn (Turn mode), the only mode that drives the
+  engine. See [interface overview](interface/overview.md).
+
+<br/>
+
 ## How these pages work
 
 Each side has the same shape:

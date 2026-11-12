@@ -15,7 +15,7 @@ Before any feature discussion or implementation, read the doc(s) relevant to the
 
 | If you're working on…                | Read first                                  |
 |--------------------------------------|---------------------------------------------|
-| Overall design or open questions     | `dev_journals/faction-manager/dev-journal-factions.md`          |
+| Overall design or open questions     | `docs/architecture/architecture-overview.md` (design principles); `dev_journals/<product>/planned-work.md` (open questions) |
 | Setup, workflow, or dev conventions  | `docs/contributing/overview.md` (front door; routes to engine/interface guides) |
 | Historical decision archaeology      | `dev_journals/faction-manager/archive/decisions-log.md` — frozen archive, never appended |
 | Rules behavior                       | `docs/rules/swn-faction-mechanics.md`       |
