@@ -1261,6 +1261,36 @@ func TestGovernmentChangeAndTagLoss(t *testing.T) {
 	}
 }
 
+func TestUpkeepLapseRestoreAndDamage(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "tag_lapsed", domain.TagLapsed{FactionID: "f1", TagID: "HAWK-T-009", Lapsed: true, Cause: "upkeep", CausedByFactionID: "f1"}),
+			mutRec(t, "tag_lapsed", domain.TagLapsed{FactionID: "f1", TagID: "HAWK-T-016", Lapsed: false, Cause: "upkeep", CausedByFactionID: "f1"}),
+			mutRec(t, "faction_hp_delta", domain.FactionHPDelta{FactionID: "f1", Delta: -2, Cause: "upkeep", CausedByFactionID: "f1"}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	beat := findBeat(cycleDigest, "f1")
+	if beat == nil {
+		t.Fatal("f1 is quiet, want the lapse to make it active")
+	}
+	want := []GoalEvent{
+		{Kind: GoalTagLapsed, TagName: "HAWK-T-009"},
+		{Kind: GoalTagRestored, TagName: "HAWK-T-016"},
+	}
+	if !slices.Equal(beat.GoalEvents, want) {
+		t.Errorf("GoalEvents = %+v, want %+v", beat.GoalEvents, want)
+	}
+	if beat.HPDelta != -2 {
+		t.Errorf("HPDelta = %d, want -2 from unpaid upkeep", beat.HPDelta)
+	}
+	if len(beat.Notes) != 0 {
+		t.Errorf("Notes = %v, want none", beat.Notes)
+	}
+}
+
 func TestPermissionRefusedIsARefusalLine(t *testing.T) {
 	factionState := minState(map[string]string{"f1": "Alpha", "f2": "Bravo"})
 	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"gunships": {ID: "gunships", Name: "Gunships"}}}

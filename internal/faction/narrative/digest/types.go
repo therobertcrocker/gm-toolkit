@@ -94,6 +94,8 @@ const (
 	GoalTechLevelRaised
 	GoalFailed
 	GoalPicked
+	GoalTagLapsed
+	GoalTagRestored
 )
 
 type GoalEvent struct {

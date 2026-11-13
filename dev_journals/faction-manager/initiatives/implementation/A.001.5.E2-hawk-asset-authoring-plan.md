@@ -35,8 +35,10 @@ Design the tag pass (lore-gate, reflavor, sort; discovery D-9) and specify its b
 
 ## Decision Record — Execution
 
-1. **Commit 5: a movement order still records the definition's drift rating, not the resolved one** — `BuildMovementMutations` prices the crossing from `AssetDriftRatingResolver`, but `MovementOrder.DriftRating` keeps `def.DriftRating`, as the plan wrote it. Nothing outside tests reads the field today, so the two never disagree in play. Deferred: if a later view shows an order's rating, it should store the resolved one.
-2. **Commit 6: the cycle digest notes a `tag_lapsed` mutation as unknown** — `digest/build.go` has no case for it, so its `default` adds `unknown mutation: tag_lapsed` to the beat's `Notes`. Nothing outside tests reads `Notes`, so no player sees it; Out of Scope already defers a digest line for a lapse. Deferred with that line: the digest case, a drop or a real line, lands when play asks for one.
+1. **Commit 5: a movement order still records the definition's drift rating, not the resolved one** — `BuildMovementMutations` prices the crossing from `AssetDriftRatingResolver`, but `MovementOrder.DriftRating` keeps `def.DriftRating`, as the plan wrote it. Nothing outside tests reads the field today, so the two never disagree in play. Deferred: if a later view shows an order's rating, it should store the resolved one. Reversed in the effort review (entry 3).
+2. **Commit 6: the cycle digest notes a `tag_lapsed` mutation as unknown** — `digest/build.go` has no case for it, so its `default` adds `unknown mutation: tag_lapsed` to the beat's `Notes`. Nothing outside tests reads `Notes`, so no player sees it; Out of Scope already defers a digest line for a lapse. Deferred with that line: the digest case, a drop or a real line, lands when play asks for one. Reversed in the effort review (entry 3).
+3. **Effort review: five fixes, two of them reverse entries 1 and 2** — Robert's picks from the interim review. (a) The turn feed shows a tag lapsing, a tag restored by paid upkeep, and a tag lost to upkeep; other `TagRemoved` lines stay folded. The faction detail view marks a lapsed tag. Without them, a lapse in play had no visible sign. (b) The digest gives `tag_lapsed` real lines, new `GoalTagLapsed` and `GoalTagRestored` events with their own templates, and counts upkeep damage in the beat's `HPDelta`. This reverses entry 2 and the Out of Scope digest line. (c) A movement order stores the resolved drift rating it was priced at. This reverses entry 1: the review found the stored value wrong for any unrated asset, bonus or not. (d) `TagLapsed` on a tag the faction does not hold records a miss and changes nothing, as `TagRemoved` does. (e) `governmentTitle`'s parameter is `rulebook`, not `rb`.
+4. **Effort review: findings left as they are** — Robert's call, not picked. (a) Upkeep reads hooks registered once per cycle, so a tag gained earlier in the same cycle is not charged until the next one. This gap is older than E2 and holds for every tag hook; reading the held tags in bookkeeping would close it for upkeep. (b) The `opponent_tag` filter does not check a lapse; no H.A.W.K filter names a tag that can lapse. (c) `turn_start` fires before upkeep, so it sees last turn's lapse state; no H.A.W.K tag has both. (d) `CanPurchase` ignores a lapse for `requires_tag`; a rules call for when an asset needs a tag that can lapse. (e) `AssetDriftRatingResolver` repeats `AssetSpeedResolver`.
 
 ## Sort Table
 
@@ -70,7 +72,7 @@ Every row's surface is a tag. Primitives are the registrar names in `internal/fa
 ## Out of Scope
 
 - **Which faction takes which tag** — E3, when it writes the seed state.
-- **A bookkeeping card line for upkeep and a digest line for a lapse** — the mutations reach the history and the feed folds them; a dedicated line waits for play to ask for it.
+- **A bookkeeping card line for upkeep and a digest line for a lapse** — the mutations reach the history and the feed folds them; a dedicated line waits for play to ask for it. Amended in the effort review: the feed and the digest now show a lapse, a restore and a tag lost to upkeep (Decision Record 3); the bookkeeping card line still waits.
 - **A two-strike upkeep counter** — Decision 10.
 - **Seat-change costs firing** — Weave Anchors and Aether Refiners lose the tag when the seat changes, but nothing changes a seat until `F.040`.
 - **Renaming SWN's asset types in the H.A.W.K stand-ins and setting Aethership floors** — E3 for the floors, E4 to E6 for the assets.
@@ -2639,6 +2641,8 @@ In `FireMatchup`:
 		// XPSpent, MovementOrderProgressed, InfluenceDelta, TagAdded,
 		// TagRemoved, TagLapsed.
 ```
+
+Amended in the effort review: the feed surfaces `TagLapsed` and an upkeep `TagRemoved` instead of folding them (Decision Record 3).
 
 ##### Task 9 — tests
 

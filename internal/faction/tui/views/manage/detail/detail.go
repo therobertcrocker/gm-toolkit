@@ -105,12 +105,16 @@ func (m Model) renderBody() string {
 		b.WriteString("  " + styles.Dim.Render("none") + "\n")
 	}
 	for _, tagID := range f.Tags {
+		lapsedMark := ""
+		if f.HasLapsedTag(tagID) {
+			lapsedMark = styles.Dim.Render("  lapsed: upkeep unpaid, effects off")
+		}
 		tag, known := m.rulebook.Tags[tagID]
 		if !known {
-			b.WriteString("  " + styles.Strong.Render(tagID) + "\n")
+			b.WriteString("  " + styles.Strong.Render(tagID) + lapsedMark + "\n")
 			continue
 		}
-		b.WriteString("  " + styles.Strong.Render(tag.Name) + "\n")
+		b.WriteString("  " + styles.Strong.Render(tag.Name) + lapsedMark + "\n")
 		b.WriteString(m.wrap(tag.Description, 4, styles.Label) + "\n")
 		if tag.Effect != "" {
 			b.WriteString(m.wrap("Effect: "+tag.Effect, 4, styles.Muted) + "\n")

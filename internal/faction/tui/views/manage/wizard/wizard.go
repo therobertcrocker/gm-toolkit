@@ -307,8 +307,8 @@ func pickedGovernmentTag(tags []*domain.Tag) bool {
 
 // governmentTitle names the governed-world select after the rulebook's government
 // tag, or plainly when the rulebook has none.
-func governmentTitle(rb *rulebook.Rulebook) string {
-	if tag := rb.Tags[rb.GovernmentTagID]; tag != nil {
+func governmentTitle(rulebook *rulebook.Rulebook) string {
+	if tag := rulebook.Tags[rulebook.GovernmentTagID]; tag != nil {
 		return fmt.Sprintf("Governed world (%s)", tag.Name)
 	}
 	return "Governed world"

@@ -86,7 +86,8 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 			if !ok {
 				return nil, fmt.Errorf("BuildMovementMutations: unknown asset definition %q", asset.DefinitionID)
 			}
-			crossingCost := rulebook.DriftCost(driftRatingOf(def))
+			driftRating := driftRatingOf(def)
+			crossingCost := rulebook.DriftCost(driftRating)
 
 			destLoc, ok := engine.spatialMap.Location(decision.Destination.WorldID)
 			if !ok {
@@ -109,7 +110,7 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 				Destination:   *decision.Destination,
 				Path:          path,
 				StepIdx:       0,
-				DriftRating:   def.DriftRating,
+				DriftRating:   driftRating,
 				CargoAssetIDs: decision.CargoAssetIDs,
 			}
 			mutations = append(mutations, domain.MovementOrderIssued{
@@ -128,7 +129,8 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 			if !ok {
 				return nil, fmt.Errorf("BuildMovementMutations: unknown asset definition %q", asset.DefinitionID)
 			}
-			crossingCost := rulebook.DriftCost(driftRatingOf(def))
+			driftRating := driftRatingOf(def)
+			crossingCost := rulebook.DriftCost(driftRating)
 			from := asset.Location.RegionHex
 			to := decision.Destination.RegionHex
 			newPath, _, err := engine.spatialMap.Path(from, to, crossingCost)
@@ -141,7 +143,7 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 				Origin:        asset.Location,
 				Destination:   *decision.Destination,
 				Path:          newPath,
-				DriftRating:   def.DriftRating,
+				DriftRating:   driftRating,
 				CargoAssetIDs: asset.CurrentOrder.CargoAssetIDs,
 			}
 			mutations = append(mutations,

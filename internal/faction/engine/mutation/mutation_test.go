@@ -487,6 +487,13 @@ func TestMutationEngine_TagLapsed(t *testing.T) {
 	if len(faction.LapsedTags) != 0 {
 		t.Errorf("after removing a lapsed tag: LapsedTags = %v, want none", faction.LapsedTags)
 	}
+	err := me.Apply(s, []domain.Mutation{domain.TagLapsed{FactionID: "f1", TagID: "T-404", Lapsed: true}}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != "T-404" {
+		t.Errorf("lapsing a tag not held = %v, want one miss naming T-404", err)
+	}
+	if len(faction.LapsedTags) != 0 {
+		t.Errorf("after lapsing a tag not held: LapsedTags = %v, want none", faction.LapsedTags)
+	}
 }
 
 func TestMutationEngine_TagAdded(t *testing.T) {

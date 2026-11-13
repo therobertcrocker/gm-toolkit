@@ -293,13 +293,15 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
 		case domain.TagLapsed:
-			if faction, ok := factionState.Factions[v.FactionID]; ok {
+			if faction, ok := factionState.Factions[v.FactionID]; !ok {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			} else if !faction.HasTag(v.TagID) {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.TagID})
+			} else {
 				faction.LapsedTags = slices.DeleteFunc(faction.LapsedTags, func(tagID string) bool { return tagID == v.TagID })
 				if v.Lapsed {
 					faction.LapsedTags = append(faction.LapsedTags, v.TagID)
 				}
-			} else {
-				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
 			}
 		case domain.WorldGovernmentChanged:
 			_, known := factionState.Factions[v.ToFactionID]

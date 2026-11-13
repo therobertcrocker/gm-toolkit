@@ -96,6 +96,43 @@ func TestBuildMovementMutations_RevisionCost(t *testing.T) {
 	}
 }
 
+func TestBuildMovementMutations_RevisedOrderStoresTheResolvedDriftRating(t *testing.T) {
+	we := regionWorldEngine(t)
+	rules := &rulebook.Rulebook{
+		Assets:     map[string]*domain.AssetDefinition{"unrated-def": {ID: "unrated-def", Speed: 2}},
+		DriftCosts: []int{5},
+	}
+	faction := &domain.Faction{
+		ID: "alpha",
+		Assets: map[string]*domain.Asset{
+			"asset-1": {
+				ID:           "asset-1",
+				DefinitionID: "unrated-def",
+				OwnerID:      "alpha",
+				Location:     domain.Location{RegionHex: spatial.RegionHex{Coord: spatial.HexCoord{Q: 1}, RegionID: "void"}},
+				CurrentOrder: &domain.MovementOrder{AssetID: "asset-1", Path: makePath(5), StepIdx: 1},
+			},
+		},
+	}
+	decisions := []world.MovementDecision{{
+		AssetID:     "asset-1",
+		Kind:        world.MovementDecisionRevise,
+		Destination: &domain.Location{RegionHex: spatial.RegionHex{Coord: spatial.HexCoord{Q: 3}, RegionID: "void"}},
+	}}
+
+	mutations, err := we.BuildMovementMutations(decisions, faction, rules, nil, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	revised, ok := mutations[len(mutations)-1].(domain.MovementOrderRevised)
+	if !ok {
+		t.Fatalf("expected MovementOrderRevised last, got %T", mutations[len(mutations)-1])
+	}
+	if revised.NewOrder.DriftRating != 1 {
+		t.Errorf("NewOrder.DriftRating = %d, want 1, the rating the path was priced at", revised.NewOrder.DriftRating)
+	}
+}
+
 func TestTickMovementOrders_InAssetIDOrder(t *testing.T) {
 	path := []spatial.RegionHex{{RegionID: "void", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "void", Coord: spatial.HexCoord{Q: 1}}}
 	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{}}

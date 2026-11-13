@@ -166,6 +166,14 @@ func renderGoalEvent(ge digest.GoalEvent, factionName string, rng *rand.Rand) st
 		tmpl := pick(rng, goalTagLostTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
 		return strings.ReplaceAll(result, "{tag}", ge.TagName)
+	case digest.GoalTagLapsed:
+		tmpl := pick(rng, goalTagLapsedTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		return strings.ReplaceAll(result, "{tag}", ge.TagName)
+	case digest.GoalTagRestored:
+		tmpl := pick(rng, goalTagRestoredTemplates)
+		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
+		return strings.ReplaceAll(result, "{tag}", ge.TagName)
 	case digest.GoalTechLevelRaised:
 		tmpl := pick(rng, goalTechLevelTemplates)
 		result := strings.ReplaceAll(tmpl, "{faction}", factionName)
