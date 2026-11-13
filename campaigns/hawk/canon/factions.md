@@ -10,6 +10,7 @@ The factions in play when the faction game opens: four major powers, then four s
 **Best and worst at** — Best at Wealth, worst at Force
 **Seat of power** — `haven`
 **Controls** — `haven`, `arcadia`
+**Tags** — Proprietor (`HAWK-T-001`), Aether-Tech Evangelists (`HAWK-T-011`), Monopolists (`HAWK-T-010`)
 **What sets them apart** — The primary producer and distributor of arcano-tech, with wide influence over both the Material Plane and the Astral Sea through its colonies and its technological reach.
 
 The Occult Worker's League is a powerful conglomerate of arcano-tech manufacturers, financiers and influential agents. The Laboratory in Iskalur backs it, and an eccentric magical golem runs it: Sir Professor Mister, Esquire, MD (Professor Mister for short). Its monopoly on making and selling arcano-tech gives it unmatched influence over the Material Plane and its colonies in the Astral Sea. Its home is Iskalur, on the Material Plane; Haven is its seat in the Core.
@@ -26,6 +27,7 @@ It clashes with any faction that threatens its arcano-tech monopoly: rival corpo
 **Best and worst at** — Best at Cunning, worst at Wealth
 **Seat of power** — `abaddons-gate`
 **Controls** — `abaddons-gate`, `odium`
+**Tags** — Proprietor (`HAWK-T-001`), Soul-Bonded (`HAWK-T-004`), Shell Company (`HAWK-T-008`)
 **What sets them apart** — It commands hordes of demons, devils and cults that serve its aim: the absolute destruction of all existence.
 
 The Court of Lies is a secretive, malevolent faction that thrives on deception, manipulation and orchestrated chaos across the Astral Sea. It is known for its mastery of dark forces and its ability to bend others to its will. Beyond the Core it holds the lower sectors, Abyss and Abaddon, and rules from Abaddon itself; Abaddon's Gate is its foothold in the Core.
@@ -42,6 +44,7 @@ It clashes with nearly every other faction in the Astral Sea, above all those wh
 **Best and worst at** — Best at Force, worst at Cunning
 **Seat of power** — `solar-gate`
 **Controls** — `solar-gate`, `lumos`
+**Tags** — Proprietor (`HAWK-T-001`), Soul-Bonded (`HAWK-T-004`), Aether Burners (`HAWK-T-003`)
 **What sets them apart** — Unmatched control over celestial forces, and a rigid hierarchy that enforces its will across the upper sectors of the Astral Sea.
 
 The Radiant Throne is the gods of light: celestial beings once thought to embody order, justice and good. It turns out they are as ruthless and power-hungry as their "lower" brethren, and they want to dominate the Material Plane and use it as a source of food. Beyond the Core they hold the upper sector, Solar, and rule from Solar itself; Solar Gate is their foothold in the Core.
@@ -58,6 +61,7 @@ They clash with factions and beings that resist their control: other divine powe
 **Best and worst at** — Best at Cunning, worst at Force
 **Seat of power** — `veil`
 **Controls** — `veil`
+**Tags** — Proprietor (`HAWK-T-001`), Old Faith (`HAWK-T-015`), Informant Network (`HAWK-T-016`)
 **What sets them apart** — They are the true gods of mortalkind. With the Pact broken, they can at last reach beyond the Feywild and the Shadowfell, even out into the Astral Sea.
 
 The Fey Royals are ancient, enigmatic beings, rulers of the Feywild and the Shadowfell, who have long shaped mortal affairs from behind the scenes. They are cunning and manipulative, with a deep understanding of both magic and politics. Since the Pact broke they rule Veil, and the Coven of Morgana runs the city day to day.
@@ -74,6 +78,7 @@ They clash with the Radiant Throne and the other celestial powers that seek to d
 **Best and worst at** — Best at Cunning, worst at Wealth
 **Seat of power** — `ouroboros`
 **Controls** — `ouroboros`
+**Tags** — Proprietor (`HAWK-T-001`), Insurgents (`HAWK-T-014`)
 **What sets them apart** — Once the dominant force in the Core Sector. Since Ulsidor Blackwater's fall it has split into many smaller factions, each vying for control with no central authority. Its splinters still carry the name, the contacts and the old access codes.
 
 Blackwater Industries is what remains of the mega corporation that once dominated the Core Sector. Since its leader, Ulsidor Blackwater, fell, it has splintered into many smaller factions, each trying to assert control without a central authority. Ouroboros, its old hub, is the nearest thing it has to a seat.
@@ -90,6 +95,7 @@ It clashes with rival factions in the Astral Sea: the Occult Worker's League, in
 **Best and worst at** — Best at Force, worst at Cunning
 **Seat of power** — `last-light`
 **Controls** — `last-light`
+**Tags** — Proprietor (`HAWK-T-001`), Godslayers (`HAWK-T-013`)
 **What sets them apart** — Every citizen of the fleet is devoted to one cause: the eradication of the Astral Gods.
 
 A diaspora of elves who exiled themselves after their defeat in season 1, when the Astral Gods slew their false gods. The whole fleet lives for one cause: the absolute eradication of all Astral Gods.
@@ -100,6 +106,7 @@ A diaspora of elves who exiled themselves after their defeat in season 1, when t
 **Best and worst at** — Best at Cunning, worst at Wealth
 **Seat of power** — `canon-iv`
 **Controls** — `canon-iv`
+**Tags** — Proprietor (`HAWK-T-001`), Drift-Runners (`HAWK-T-012`)
 **What sets them apart** — The engineers and rebels who brought down Ulsidor Blackwater, and who know Blackwater's systems from the inside.
 
 A cabal of arcano-tech engineers and rebel forces who overthrew Ulsidor Blackwater. They now seek to wipe out what remains of the former mega corporation.
@@ -110,6 +117,7 @@ A cabal of arcano-tech engineers and rebel forces who overthrew Ulsidor Blackwat
 **Best and worst at** — Best at Wealth, worst at Cunning
 **Seat of power** — `veil`
 **Controls** — none
+**Tags** — War Profiteers (`HAWK-T-007`)
 **What sets them apart** — It has recently amassed significant resources and technology.
 
 A powerful organization building its influence on the Material Plane. Having recently amassed significant resources and technology, it aims to tighten its hold on the Material Plane while O.W.L. turns ever more toward the Astral Sea and celestial matters. Veil, the gateway between the two, is its seat in the Core, but the Fey Royals rule Veil, not Seraph.

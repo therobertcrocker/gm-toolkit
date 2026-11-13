@@ -1,0 +1,155 @@
+# Region metadata. Every region letter that appears in the layout
+# needs an entry; the CLI errors on missing ones.
+[regions]
+A = { name = "Radiance's Edge" }
+B = { name = "Helios" }
+C = { name = "The Bastion" }
+D = { name = "Forgetfulness Nebula" }
+E = { name = "Harmony" }
+F = { name = "Concordia" }
+G = { name = "The Enclave" }
+H = { name = "The Prime Material" }
+I = { name = "Discordia" }
+J = { name = "Pax Proxima" }
+K = { name = "Enigma" }
+L = { name = "Nowhere" }
+M = { name = "The Gulf of Null" }
+N = { name = "The Gulf of Recursion" }
+O = { name = "The Boundless Reach" }
+P = { name = "The Meridian Cascade" }
+Q = { name = "Oblivion" }
+R = { name = "Infernus" }
+S = { name = "The Maelstrom" }
+
+# Worlds. `at` is the marker glyph (integer for 1-9, string for a-z).
+# Tech level from the canon's magic and technology: Low 2, Moderate 3, High 4, Highest 5.
+# Population from the canon's word: empty 0, sparse 5,000, settled 100,000,
+# crowded 1,000,000, teeming 10,000,000.
+
+[[worlds]]
+id = "lumos"
+name = "Lumos"
+at = 1
+region = "A"
+tech_level = 4
+population = 100000
+
+[[worlds]]
+id = "solar-gate"
+name = "Solar Gate"
+at = 2
+region = "A"
+tech_level = 4
+population = 5000
+
+[[worlds]]
+id = "canon-iv"
+name = "Canon IV"
+at = 3
+region = "C"
+tech_level = 4
+population = 5000
+
+[[worlds]]
+id = "axial-gate"
+name = "Axial Gate"
+at = 4
+region = "C"
+tech_level = 4
+population = 5000
+
+[[worlds]]
+id = "tranquil-gate"
+name = "Tranquil Gate"
+at = 5
+region = "D"
+tech_level = 3
+population = 0
+
+[[worlds]]
+id = "eventide"
+name = "Eventide"
+at = 6
+region = "F"
+tech_level = 4
+population = 1000000
+
+[[worlds]]
+id = "ouroboros"
+name = "Ouroboros"
+at = 7
+region = "F"
+tech_level = 4
+population = 100000
+
+[[worlds]]
+id = "veil"
+name = "Veil"
+at = 8
+region = "H"
+tech_level = 5
+population = 10000000
+
+[[worlds]]
+id = "haven"
+name = "Haven"
+at = 9
+region = "H"
+tech_level = 5
+population = 1000000
+
+[[worlds]]
+id = "somewhere"
+name = "Somewhere"
+at = "a"
+region = "L"
+tech_level = 2
+population = 5000
+
+[[worlds]]
+id = "soma"
+name = "Soma"
+at = "b"
+region = "P"
+tech_level = 2
+population = 100000
+
+[[worlds]]
+id = "lethe"
+name = "Lethe"
+at = "c"
+region = "Q"
+tech_level = 2
+population = 5000
+
+[[worlds]]
+id = "last-light"
+name = "Last Light"
+at = "d"
+region = "Q"
+tech_level = 4
+population = 1000000
+
+[[worlds]]
+id = "odium"
+name = "Odium"
+at = "e"
+region = "R"
+tech_level = 3
+population = 1000000
+
+[[worlds]]
+id = "abaddons-gate"
+name = "Abaddon's Gate"
+at = "f"
+region = "R"
+tech_level = 4
+population = 5000
+
+[[worlds]]
+id = "arcadia"
+name = "Arcadia"
+at = "g"
+region = "S"
+tech_level = 2
+population = 5000

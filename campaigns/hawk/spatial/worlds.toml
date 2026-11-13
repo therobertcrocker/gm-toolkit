@@ -1,0 +1,143 @@
+[[world]]
+  id = "abaddons-gate"
+  name = "Abaddon's Gate"
+  tech_level = 4
+  population = 5000
+  region = "R"
+  hex_q = 7
+  hex_r = 28
+
+[[world]]
+  id = "arcadia"
+  name = "Arcadia"
+  tech_level = 2
+  population = 5000
+  region = "S"
+  hex_q = 23
+  hex_r = 19
+
+[[world]]
+  id = "axial-gate"
+  name = "Axial Gate"
+  tech_level = 4
+  population = 5000
+  region = "C"
+  hex_q = 28
+  hex_r = 2
+
+[[world]]
+  id = "canon-iv"
+  name = "Canon IV"
+  tech_level = 4
+  population = 5000
+  region = "C"
+  hex_q = 28
+  hex_r = 4
+
+[[world]]
+  id = "eventide"
+  name = "Eventide"
+  tech_level = 4
+  population = 1000000
+  region = "F"
+  hex_q = 17
+  hex_r = 9
+
+[[world]]
+  id = "haven"
+  name = "Haven"
+  tech_level = 5
+  population = 1000000
+  region = "H"
+  hex_q = 16
+  hex_r = 15
+
+[[world]]
+  id = "last-light"
+  name = "Last Light"
+  tech_level = 4
+  population = 1000000
+  region = "Q"
+  hex_q = 3
+  hex_r = 23
+
+[[world]]
+  id = "lethe"
+  name = "Lethe"
+  tech_level = 2
+  population = 5000
+  region = "Q"
+  hex_q = 1
+  hex_r = 22
+
+[[world]]
+  id = "lumos"
+  name = "Lumos"
+  tech_level = 4
+  population = 100000
+  region = "A"
+  hex_q = 8
+  hex_r = 5
+
+[[world]]
+  id = "odium"
+  name = "Odium"
+  tech_level = 3
+  population = 1000000
+  region = "R"
+  hex_q = 9
+  hex_r = 23
+
+[[world]]
+  id = "ouroboros"
+  name = "Ouroboros"
+  tech_level = 4
+  population = 100000
+  region = "F"
+  hex_q = 19
+  hex_r = 8
+
+[[world]]
+  id = "solar-gate"
+  name = "Solar Gate"
+  tech_level = 4
+  population = 5000
+  region = "A"
+  hex_q = 15
+  hex_r = 1
+
+[[world]]
+  id = "soma"
+  name = "Soma"
+  tech_level = 2
+  population = 100000
+  region = "P"
+  hex_q = 28
+  hex_r = 14
+
+[[world]]
+  id = "somewhere"
+  name = "Somewhere"
+  tech_level = 2
+  population = 5000
+  region = "L"
+  hex_q = 0
+  hex_r = 17
+
+[[world]]
+  id = "tranquil-gate"
+  name = "Tranquil Gate"
+  tech_level = 3
+  population = 0
+  region = "D"
+  hex_q = 0
+  hex_r = 9
+
+[[world]]
+  id = "veil"
+  name = "Veil"
+  tech_level = 5
+  population = 10000000
+  region = "H"
+  hex_q = 16
+  hex_r = 13

@@ -9,7 +9,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Registry is the in-memory form of $GM_TOOLKIT_HOME/campaigns.toml.
+// Registry is the in-memory form of $GM_TOOLKIT_HOME/campaigns-registry.toml.
 type Registry struct {
 	Active    string          `toml:"active,omitempty"`
 	Campaigns []RegistryEntry `toml:"campaigns"`
@@ -20,7 +20,7 @@ type RegistryEntry struct {
 	Path string `toml:"path"`
 }
 
-// RegistryPath returns $GM_TOOLKIT_HOME/campaigns.toml. Errors if
+// RegistryPath returns $GM_TOOLKIT_HOME/campaigns-registry.toml. Errors if
 // GM_TOOLKIT_HOME is not set.
 func RegistryPath() (string, error) {
 	home := os.Getenv("GM_TOOLKIT_HOME")

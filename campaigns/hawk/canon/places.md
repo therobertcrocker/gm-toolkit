@@ -4,7 +4,7 @@ The map, its regions and its places.
 
 ## The Core Sector — `core-sector`
 
-The neutral hub of the Astral Sea, and for now the only part of it the faction game maps. On the grid it is a broad, ragged mass, wider east to west than north to south: about 21 hexes across and 15 rows deep. The Drift, shown as clouds, covers most of it. Open space, where the hex grid shows through, appears only in scattered clearings.
+The neutral hub of the Astral Sea, and for now the only part of it the faction game maps. On the grid it is a broad, ragged mass, wider east to west than north to south: about 40 hexes across and 28 rows deep. The Drift, shown as clouds, covers most of it. Open space, where the hex grid shows through, appears only in scattered clearings.
 
 Beyond its edges is open Astral Sea: dark space, with a huge orange-red nebula along the west and south-west and a red one off the south-east. Four charted gates sit on the rim and lead out to the rim sectors: Solar Gate (north), Axial Gate (north-east), Tranquil Gate (north-west) and Abaddon's Gate (south).
 
@@ -12,15 +12,35 @@ Beyond its edges is open Astral Sea: dark space, with a huge orange-red nebula a
 
 **Layout** — Each label on the clouds names a region, 19 in all. The clearings fall into seven groups by the colour of their hexes:
 
-- **North rim (dark blue)** — a band of open hexes along the top edge. West to east: Radiance's Edge (just south of Solar Gate), Helios, and The Bastion (by Axial Gate).
-- **North-west (teal)** — Forgetfulness Nebula, with Harmony to its east. Tranquil Gate is on the rim at their west end.
-- **Centre (purple)** — the hub. Concordia (Eventide and Ouroboros) with The Enclave to its west; south of them The Prime Material (Veil and Haven). Discordia is a separate purple clearing further south.
-- **West (black)** — Pax Proxima on the western edge, Enigma between it and the centre, and Nowhere and The Gulf of Null to the south-west.
-- **East (green)** — down the eastern side, north to south: The Gulf of Recursion, The Boundless Reach, and The Meridian Cascade.
-- **South (red-orange)** — Oblivion in the south-west, then Infernus: the widest open stretch on the map, with Abaddon's Gate on the southern rim.
-- **South-east (crimson)** — The Maelstrom.
+- **North rim (dark blue)** — open patches along the top edge, west to east. Radiance's Edge runs from Solar Gate down through a gap in the clouds to Lumos's teal clearing. Helios runs from the top edge down into Concordia. The Bastion curves from Axial Gate down past Canon IV.
+- **North-west (teal)** — Forgetfulness Nebula and Harmony share one clearing: Forgetfulness to the west, with Tranquil Gate at its west end, and Harmony to the east.
+- **Centre (purple)** — the hub. Concordia (Eventide and Ouroboros) opens straight onto Helios to its north. The Enclave lies to its west and The Prime Material (Veil and Haven) to its south, each across the Drift. Discordia is a separate purple clearing further south.
+- **West (black)** — Pax Proxima on the western edge, Enigma between it and the centre, and Nowhere to the south-west. The Gulf of Null is a separate clearing of purple rock just east of Nowhere.
+- **East (green)** — three separate clearings down the eastern side, north to south: The Gulf of Recursion, The Boundless Reach, and The Meridian Cascade, whose glowing falls spill east of Soma.
+- **South (red-orange)** — one long clearing: Oblivion in the south-west, with Lethe and Last Light, then Infernus, the widest open stretch on the map, with Abaddon's Gate on the southern rim.
+- **South-east (crimson)** — The Maelstrom, around Arcadia. Its crimson clearing runs under the clouds into Infernus.
 
-The grid draws no routes, and Drift surrounds every clearing. Drift currents work as fast links: one lane of current joins two regions. Which regions the lanes join is not yet fixed. The four gates are the only marked ways in or out of the sector, and each is a place on the map. The largest open areas are the north rim band and the red-orange south. The thickest Drift runs as a band across the middle, between the centre and the east, and along the western and south-western edges.
+The grid draws no routes, and Drift surrounds every clearing. Where two regions share a clearing, ships cross on open space. Everywhere else they ride Drift currents, the fast links: one lane of current joins two regions. The four gates are the only marked ways in or out of the sector, and each is a place on the map. The largest open areas are the red-orange south and the hub. The thickest Drift runs as a band across the middle, between the centre and the east, and no current crosses it; it also runs along the western and south-western edges.
+
+**Drift lanes** — 17 currents:
+
+- Radiance's Edge — Helios
+- Radiance's Edge — Harmony
+- Helios — The Bastion
+- The Bastion — The Gulf of Recursion
+- The Gulf of Recursion — The Boundless Reach
+- The Boundless Reach — The Meridian Cascade
+- The Meridian Cascade — The Maelstrom
+- Concordia — The Enclave
+- Concordia — The Prime Material, two currents side by side: the busiest crossing in the Core
+- The Prime Material — Enigma
+- The Prime Material — Discordia
+- Discordia — Infernus
+- Harmony — Enigma
+- Enigma — Pax Proxima
+- Pax Proxima — Nowhere
+- Nowhere — Oblivion
+- Nowhere — The Gulf of Null
 
 ## Radiance's Edge — `radiances-edge`
 
@@ -189,7 +209,7 @@ A field of wrecks drifting in from Oblivion, worked by salvagers who don't ask w
 ## Last Light — `last-light`
 
 **Region** — `oblivion`
-**Magic and technology** — Moderate
+**Magic and technology** — High
 **Population** — Crowded
 
 An anchorage around a white flare that never goes out, and the home port of the Thymian Armada.

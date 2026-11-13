@@ -1,17 +1,18 @@
 # Setting rules for this rulebook. drift_costs and asset_types are required; every
 # other key is optional, and a key left out turns its rule off.
-#
-# A stand-in: SWN's values, plus Aethership for the H.A.W.K tags that name it.
-# A.001.5 Effort 3 writes H.A.W.K's own values.
 
-# drift_costs[i] = hex-equivalent crossing cost for drift rating (i+1)
-drift_costs = [5, 4, 3, 2, 1]
+# drift_costs[i] = hex-equivalent crossing cost for drift rating (i+1). The Drift
+# is dangerous: a crossing always costs more than a step.
+drift_costs = [6, 5, 4, 3, 2]
 
 # Every asset type this rulebook's data may name: an asset's type, a transport's
-# cargo, a relocate's filter, an effects filter and the floors below.
+# cargo, a relocate's filter, an effects filter and the floors below. SWN's types
+# stay until Efforts 4 to 6 replace the stand-in assets.
 asset_types = ["Military Unit", "Special Forces", "Facility", "Starship", "Tactic", "Logistics Facility", "Special", "Aethership"]
 
 # The least world population on which an asset of each type may be bought. A
 # type left out has no floor. Quote a type with a space: "Military Unit".
+# Ships need a crowded or teeming place: 1,000,000 people or more.
 [purchase_population]
+Aethership = 500000
 Starship = 500000

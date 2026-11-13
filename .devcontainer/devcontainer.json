@@ -37,6 +37,7 @@
   ],
   "containerEnv": {
     // deliberate: moves .claude.json inside the mount, so login and project trust survive a rebuild
-    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+    "GM_TOOLKIT_HOME": "/workspaces/gm-toolkit/campaigns"
   }
 }
