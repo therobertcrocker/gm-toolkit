@@ -12,6 +12,7 @@ func TestRollMatches(t *testing.T) {
 	alpha := &domain.Faction{ID: "alpha", Homeworld: domain.Location{WorldID: "Krylos"}}
 	beta := &domain.Faction{ID: "beta"}
 	gamma := &domain.Faction{ID: "gamma"}
+	devout := &domain.Faction{ID: "delta", Tags: []string{"T-9"}}
 	declaring := &domain.Asset{ID: "x", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}
 	other := &domain.Asset{ID: "y", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}
 	primitive := &domain.Asset{ID: "p", OwnerID: "alpha", DefinitionID: "tl0"}
@@ -38,6 +39,8 @@ func TestRollMatches(t *testing.T) {
 	againstAdvanced := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, OpponentTechLevel: &five}
 	rivalHomeworld := domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeHomeworld}
 	slavesRoll := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, AssetDefinition: "tl0"}
+	againstDevout := domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction, OpponentTag: "T-9"}
+	devoutRollsAtMe := domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeWorld, OpponentTag: "T-9"}
 
 	cases := []struct {
 		name    string
@@ -85,6 +88,11 @@ func TestRollMatches(t *testing.T) {
 		{"asset definition match", domain.TriggerOwnRoll, slavesRoll, hooks.RollContext{Actor: alpha, Asset: primitive}, true},
 		{"asset definition mismatch", domain.TriggerOwnRoll, slavesRoll, hooks.RollContext{Actor: alpha, Asset: advanced}, false},
 		{"asset definition, no rolling asset", domain.TriggerOwnRoll, slavesRoll, hooks.RollContext{Actor: alpha}, false},
+		{"opponent tag held", domain.TriggerOwnRoll, againstDevout, hooks.RollContext{Actor: alpha, Opponent: devout}, true},
+		{"opponent tag not held", domain.TriggerOwnRoll, againstDevout, hooks.RollContext{Actor: alpha, Opponent: beta}, false},
+		{"opponent tag, no opponent", domain.TriggerOwnRoll, againstDevout, hooks.RollContext{Actor: alpha}, false},
+		{"opponent tag, enemy roll reads the roller", domain.TriggerEnemyRollAtMe, devoutRollsAtMe, hooks.RollContext{Actor: devout, Opponent: alpha, World: "Krylos"}, true},
+		{"opponent tag, enemy roll by another", domain.TriggerEnemyRollAtMe, devoutRollsAtMe, hooks.RollContext{Actor: beta, Opponent: alpha, World: "Krylos"}, false},
 		{"unknown trigger", domain.TriggerTurnStart, self, hooks.RollContext{Actor: alpha, Asset: declaring}, false},
 	}
 	for _, tc := range cases {

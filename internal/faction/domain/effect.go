@@ -37,6 +37,8 @@ const (
 	SpecialXPRoll             SpecialEffectType = "xp_roll"
 	SpecialPopulationFloor    SpecialEffectType = "population_floor"
 	SpecialArrivalToll        SpecialEffectType = "arrival_toll"
+	SpecialDriftRatingBonus   SpecialEffectType = "drift_rating_bonus"
+	SpecialCoinUpkeep         SpecialEffectType = "coin_upkeep"
 )
 
 type EffectTrigger string
@@ -68,6 +70,8 @@ const (
 	TriggerGoalCompleted          EffectTrigger = "goal_completed"
 	TriggerPopulationFloorQuery   EffectTrigger = "population_floor_query"
 	TriggerArrivalQuery           EffectTrigger = "arrival_query"
+	TriggerDriftRatingQuery       EffectTrigger = "drift_rating_query"
+	TriggerUpkeep                 EffectTrigger = "upkeep"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -111,6 +115,7 @@ const (
 	FilterGoal              EffectFilterName = "goal"
 	FilterDetection         EffectFilterName = "detection"
 	FilterAssetDefinition   EffectFilterName = "asset_definition"
+	FilterOpponentTag       EffectFilterName = "opponent_tag"
 )
 
 type EffectGateName string
@@ -199,6 +204,9 @@ type EffectFilters struct {
 	// AssetDefinition names the rolling asset's definition ID (the Eugenics Cult
 	// die on Gengineered Slaves).
 	AssetDefinition string
+	// OpponentTag names a tag the faction on the other side of the roll holds
+	// (Godslayers' die against Soul-Bonded).
+	OpponentTag string
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
@@ -244,6 +252,9 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	}
 	if filters.AssetDefinition != "" {
 		present = append(present, FilterAssetDefinition)
+	}
+	if filters.OpponentTag != "" {
+		present = append(present, FilterOpponentTag)
 	}
 	return present
 }
@@ -346,29 +357,54 @@ type PopulationFloorParams struct {
 	Percent int
 }
 
+// DriftRatingBonusParams raises the drift rating the holder's assets cross with.
+type DriftRatingBonusParams struct {
+	Amount int
+}
+
+// UpkeepUnpaid names what an unpaid upkeep costs the tag's holder.
+type UpkeepUnpaid string
+
+const (
+	UnpaidLapse   UpkeepUnpaid = "lapse"
+	UnpaidLoseTag UpkeepUnpaid = "lose_tag"
+	UnpaidDamage  UpkeepUnpaid = "damage"
+)
+
+// CoinUpkeepParams is a tag's turn upkeep: Amount Coin, charged in bookkeeping
+// after income and before asset maintenance. OnUnpaid is what a miss costs; Damage
+// is the faction HP an UnpaidDamage miss takes, and 0 otherwise.
+type CoinUpkeepParams struct {
+	Amount   int
+	OnUnpaid UpkeepUnpaid
+	Damage   int
+}
+
 // EffectDefinition is one entry of an asset's effects list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
 type EffectDefinition struct {
-	Trigger         EffectTrigger
-	Effect          SpecialEffectType
-	Filters         EffectFilters
-	Gates           EffectGates
-	CoinGain        *CoinGainParams
-	CoinSteal       *CoinStealParams
-	SelfDamage      *SelfDamageParams
-	BonusDie        *BonusDieParams
-	Reroll          *RerollParams
-	TechLevelFloor  *TechLevelFloorParams
-	CostSurcharge   *CostSurchargeParams
-	RestrictAttack  *RestrictAttackParams
-	GrantMovement   *GrantMovementParams
-	CaptureTarget   *CaptureTargetParams
-	DiscountRepair  *DiscountRepairParams
-	CostDiscount    *CostDiscountParams
-	SpeedFloor      *SpeedFloorParams
-	XPRoll          *TargetRoll
-	PopulationFloor *PopulationFloorParams
-	ArrivalToll     *ArrivalTollParams
-	LockOut         *LockOutParams
+	Trigger          EffectTrigger
+	Effect           SpecialEffectType
+	Filters          EffectFilters
+	Gates            EffectGates
+	CoinGain         *CoinGainParams
+	CoinSteal        *CoinStealParams
+	SelfDamage       *SelfDamageParams
+	BonusDie         *BonusDieParams
+	Reroll           *RerollParams
+	TechLevelFloor   *TechLevelFloorParams
+	CostSurcharge    *CostSurchargeParams
+	RestrictAttack   *RestrictAttackParams
+	GrantMovement    *GrantMovementParams
+	CaptureTarget    *CaptureTargetParams
+	DiscountRepair   *DiscountRepairParams
+	CostDiscount     *CostDiscountParams
+	SpeedFloor       *SpeedFloorParams
+	XPRoll           *TargetRoll
+	PopulationFloor  *PopulationFloorParams
+	ArrivalToll      *ArrivalTollParams
+	LockOut          *LockOutParams
+	DriftRatingBonus *DriftRatingBonusParams
+	CoinUpkeep       *CoinUpkeepParams
 }

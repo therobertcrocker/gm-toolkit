@@ -247,7 +247,7 @@ func TestBuildMovementMutations_CargoManifestPassthrough(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, rb, slog.New(slog.DiscardHandler))
+	mutations, err := we.BuildMovementMutations(decisions, faction, rb, nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

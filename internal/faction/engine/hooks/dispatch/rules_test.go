@@ -398,9 +398,9 @@ func (stub *stubPopulationFloor) ModifyPopulationFloor(_ *domain.Faction, _ *dom
 }
 
 func TestResolvePopulationFloor(t *testing.T) {
-	floors := map[domain.AssetType]int{domain.TypeStarship: 500000}
-	starship := &domain.AssetDefinition{ID: "ship", Type: domain.TypeStarship}
-	facility := &domain.AssetDefinition{ID: "plant", Type: domain.TypeFacility}
+	floors := map[domain.AssetType]int{domain.AssetType("Starship"): 500000}
+	starship := &domain.AssetDefinition{ID: "ship", Type: domain.AssetType("Starship")}
+	facility := &domain.AssetDefinition{ID: "plant", Type: domain.AssetType("Facility")}
 	asset := &domain.Asset{ID: "a1", OwnerID: "f1"}
 
 	plain := &domain.Faction{ID: "f1"}

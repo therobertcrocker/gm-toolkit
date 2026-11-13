@@ -11,7 +11,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-var medicalCenterTypes = []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit}
+var medicalCenterTypes = []domain.AssetType{domain.AssetType("Special Forces"), domain.AssetType("Military Unit")}
 
 // medicalCenterState is alpha (10 Coin) with Medical Center mc and Military Unit mu
 // on Anchorage, and beta's Military Unit x there too.
@@ -53,7 +53,7 @@ func restoreOffer(t *testing.T, factionState *state.FactionState, ctx hooks.Leth
 func TestRestoreAsset_Offer(t *testing.T) {
 	factionState := medicalCenterState()
 	mu := factionState.Factions["alpha"].Assets["mu"]
-	unitDef := &domain.AssetDefinition{ID: "SWN-F1-001", Type: domain.TypeMilitaryUnit, Cost: 6}
+	unitDef := &domain.AssetDefinition{ID: "SWN-F1-001", Type: domain.AssetType("Military Unit"), Cost: 6}
 
 	offer := restoreOffer(t, factionState, hooks.LethalContext{Target: mu, TargetDef: unitDef, HPAfter: -2, Damage: 6})
 
@@ -78,7 +78,7 @@ func TestRestoreAsset_Offer(t *testing.T) {
 func TestRestoreAsset_PriceIsAtLeastOne(t *testing.T) {
 	factionState := medicalCenterState()
 	mu := factionState.Factions["alpha"].Assets["mu"]
-	cheapDef := &domain.AssetDefinition{ID: "SWN-F1-001", Type: domain.TypeMilitaryUnit, Cost: 1}
+	cheapDef := &domain.AssetDefinition{ID: "SWN-F1-001", Type: domain.AssetType("Military Unit"), Cost: 1}
 
 	offer := restoreOffer(t, factionState, hooks.LethalContext{Target: mu, TargetDef: cheapDef, HPAfter: 0, Damage: 4})
 

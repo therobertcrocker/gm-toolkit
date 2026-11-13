@@ -52,12 +52,50 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 	var mutations []domain.Mutation
 	mutations = append(mutations, domain.CoinDelta{FactionID: faction.ID, Delta: total, Cause: "bookkeeping"})
 
-	result := applyMaintenance(registry, faction, faction.Coin+total, &mutations, t.rulebook)
+	runningCoin := faction.Coin + total
+	applyUpkeep(registry, faction, &runningCoin, &mutations)
+	result := applyMaintenance(registry, faction, runningCoin, &mutations, t.rulebook)
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
 
 	factionState.CurrentTurn.BookkeepingApplied = true
 	return result, mutations, nil
+}
+
+// applyUpkeep charges each upkeep a held tag declares against runningCoin, after
+// income and before asset maintenance, so tags are paid first (A.001.5 Effort 2
+// Decision 10). A paid upkeep lifts the tag's lapse; an unpaid one runs the entry's
+// consequence: the tag lapses, the tag is lost, or the faction takes damage.
+func applyUpkeep(registry *hooks.Registry, faction *domain.Faction, runningCoin *int, mutations *[]domain.Mutation) {
+	if registry == nil {
+		return
+	}
+	for _, registered := range registry.UpkeepChargersFor(faction.ID) {
+		upkeep, due := registered.Hook.UpkeepDue(faction)
+		if !due {
+			continue
+		}
+		params := upkeep.Params
+		lapsed := faction.HasLapsedTag(upkeep.TagID)
+		if *runningCoin >= params.Amount {
+			*runningCoin -= params.Amount
+			*mutations = append(*mutations, domain.CoinDelta{FactionID: faction.ID, Delta: -params.Amount, Cause: "upkeep"})
+			if lapsed {
+				*mutations = append(*mutations, domain.TagLapsed{FactionID: faction.ID, TagID: upkeep.TagID, Lapsed: false, Cause: "upkeep", CausedByFactionID: faction.ID})
+			}
+			continue
+		}
+		switch params.OnUnpaid {
+		case domain.UnpaidLapse:
+			if !lapsed {
+				*mutations = append(*mutations, domain.TagLapsed{FactionID: faction.ID, TagID: upkeep.TagID, Lapsed: true, Cause: "upkeep", CausedByFactionID: faction.ID})
+			}
+		case domain.UnpaidLoseTag:
+			*mutations = append(*mutations, domain.TagRemoved{FactionID: faction.ID, TagID: upkeep.TagID, Cause: "upkeep", CausedByFactionID: faction.ID})
+		case domain.UnpaidDamage:
+			*mutations = append(*mutations, domain.FactionHPDelta{FactionID: faction.ID, Delta: -params.Damage, Cause: "upkeep", CausedByFactionID: faction.ID})
+		}
+	}
 }
 
 // applyMaintenance evaluates per-asset maintenance costs against startCoin,

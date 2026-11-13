@@ -102,8 +102,8 @@ func relocEngine() *world.WorldEngine {
 
 func relocRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
-		"SF": {ID: "SF", Type: domain.TypeSpecialForces},
-		"MU": {ID: "MU", Type: domain.TypeMilitaryUnit},
+		"SF": {ID: "SF", Type: domain.AssetType("Special Forces")},
+		"MU": {ID: "MU", Type: domain.AssetType("Military Unit")},
 	}}
 }
 

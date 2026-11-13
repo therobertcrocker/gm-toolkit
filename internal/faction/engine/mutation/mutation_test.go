@@ -461,6 +461,34 @@ func TestMutationEngine_TagRemoved(t *testing.T) {
 	}
 }
 
+func TestMutationEngine_TagLapsed(t *testing.T) {
+	s := newMutationTestState()
+	faction := s.Factions["f1"]
+	faction.Tags = []string{"T-1", "T-2"}
+	me := New(slog.New(slog.DiscardHandler))
+	apply := func(mutation domain.Mutation) {
+		t.Helper()
+		if err := me.Apply(s, []domain.Mutation{mutation}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply: %v", err)
+		}
+	}
+
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-1", Lapsed: true})
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-1", Lapsed: true})
+	if !reflect.DeepEqual(faction.LapsedTags, []string{"T-1"}) {
+		t.Errorf("after two lapses: LapsedTags = %v, want [T-1] once", faction.LapsedTags)
+	}
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-1", Lapsed: false})
+	if len(faction.LapsedTags) != 0 {
+		t.Errorf("after the lift: LapsedTags = %v, want none", faction.LapsedTags)
+	}
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-2", Lapsed: true})
+	apply(domain.TagRemoved{FactionID: "f1", TagID: "T-2"})
+	if len(faction.LapsedTags) != 0 {
+		t.Errorf("after removing a lapsed tag: LapsedTags = %v, want none", faction.LapsedTags)
+	}
+}
+
 func TestMutationEngine_TagAdded(t *testing.T) {
 	s := newMutationTestState()
 	me := New(slog.New(slog.DiscardHandler))

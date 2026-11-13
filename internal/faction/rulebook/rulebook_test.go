@@ -192,7 +192,7 @@ func TestLoad(t *testing.T) {
 		if step.Effect != domain.EffectRelocate || step.Relocate == nil {
 			t.Fatalf("step: got effect %q relocate %+v, want relocate effect with params", step.Effect, step.Relocate)
 		}
-		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, CoinCostMode: domain.RelocateCostPerAsset, AssetType: domain.TypeSpecialForces, MaxAssets: 1}
+		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, CoinCostMode: domain.RelocateCostPerAsset, AssetType: domain.AssetType("Special Forces"), MaxAssets: 1}
 		if !reflect.DeepEqual(*step.Relocate, want) {
 			t.Errorf("relocate: got %+v, want %+v", *step.Relocate, want)
 		}
@@ -210,7 +210,7 @@ func TestLoad(t *testing.T) {
 		if step.Effect != domain.EffectRelocate || step.Relocate == nil {
 			t.Fatalf("step: got effect %q relocate %+v, want relocate effect with params", step.Effect, step.Relocate)
 		}
-		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeRegion, CoinCostMode: domain.RelocateCostPerAsset, AssetType: domain.TypeSpecialForces, MaxAssets: 0}
+		want := domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeRegion, CoinCostMode: domain.RelocateCostPerAsset, AssetType: domain.AssetType("Special Forces"), MaxAssets: 0}
 		if !reflect.DeepEqual(*step.Relocate, want) {
 			t.Errorf("relocate: got %+v, want %+v", *step.Relocate, want)
 		}
@@ -339,12 +339,12 @@ func TestLoad(t *testing.T) {
 
 	t.Run("transport profiles populated", func(t *testing.T) {
 		allTypes := []domain.AssetType{
-			domain.TypeFacility, domain.TypeStarship, domain.TypeMilitaryUnit,
-			domain.TypeSpecialForces, domain.TypeTactic, domain.TypeLogisticsFacility,
+			domain.AssetType("Facility"), domain.AssetType("Starship"), domain.AssetType("Military Unit"),
+			domain.AssetType("Special Forces"), domain.AssetType("Tactic"), domain.AssetType("Logistics Facility"),
 		}
 		nonStarship := []domain.AssetType{
-			domain.TypeFacility, domain.TypeMilitaryUnit, domain.TypeSpecialForces,
-			domain.TypeTactic, domain.TypeLogisticsFacility,
+			domain.AssetType("Facility"), domain.AssetType("Military Unit"), domain.AssetType("Special Forces"),
+			domain.AssetType("Tactic"), domain.AssetType("Logistics Facility"),
 		}
 		type transportExpect struct {
 			id           string
@@ -357,8 +357,8 @@ func TestLoad(t *testing.T) {
 		cases := []transportExpect{
 			{"SWN-W2-001", 2, 1, allTypes, 1, []domain.FactionStat{domain.StatForce}},                           // FreighterContract
 			{"SWN-W4-001", 2, 1, allTypes, 10, []domain.FactionStat{domain.StatForce}},                          // ShippingCombine
-			{"SWN-W5-003", 3, 2, []domain.AssetType{domain.TypeMilitaryUnit, domain.TypeSpecialForces}, 1, nil}, // BlockadeRunners
-			{"SWN-C1-001", 2, 1, []domain.AssetType{domain.TypeSpecialForces}, 1, nil},                          // Smugglers
+			{"SWN-W5-003", 3, 2, []domain.AssetType{domain.AssetType("Military Unit"), domain.AssetType("Special Forces")}, 1, nil}, // BlockadeRunners
+			{"SWN-C1-001", 2, 1, []domain.AssetType{domain.AssetType("Special Forces")}, 1, nil},                          // Smugglers
 			{"SWN-F2-001", 1, 1, nonStarship, 1, nil},                                                           // HeavyDropAssets
 			{"SWN-F4-001", 1, 1, allTypes, 10, nil},                                                             // BeachheadLanders
 			{"SWN-F4-002", 2, 1, nonStarship, 1, nil},                                                           // ExtendedTheater
@@ -539,7 +539,7 @@ func TestLoad(t *testing.T) {
 			Filters: domain.EffectFilters{
 				Owner:      domain.OwnerOwn,
 				Scope:      domain.ScopeWorld,
-				AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+				AssetTypes: []domain.AssetType{domain.AssetType("Special Forces"), domain.AssetType("Military Unit")},
 			},
 		}}
 		if !reflect.DeepEqual(asset.Effects, want) {
@@ -570,7 +570,7 @@ func TestLoad(t *testing.T) {
 		filters := domain.EffectFilters{
 			Owner:      domain.OwnerOwn,
 			Scope:      domain.ScopeWorld,
-			AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+			AssetTypes: []domain.AssetType{domain.AssetType("Special Forces"), domain.AssetType("Military Unit")},
 		}
 		want := []domain.EffectDefinition{
 			{
@@ -635,7 +635,7 @@ func TestLoad(t *testing.T) {
 			Filters: domain.EffectFilters{
 				Owner:      domain.OwnerOwn,
 				Scope:      domain.ScopeWorld,
-				AssetTypes: []domain.AssetType{domain.TypeSpecialForces},
+				AssetTypes: []domain.AssetType{domain.AssetType("Special Forces")},
 				Stealthy:   &stealthy,
 			},
 		}}
@@ -933,7 +933,7 @@ func TestCheckReferences(t *testing.T) {
 		return map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: entries}}
 	}
 
-	if err := checkReferences(assets, withTag(naming(domain.EffectFilters{Goal: "CORE-G-004", AssetDefinition: "A-1"})), goals); err != nil {
+	if err := checkReferences(assets, withTag(naming(domain.EffectFilters{Goal: "CORE-G-004", AssetDefinition: "A-1", OpponentTag: "T-1"})), goals); err != nil {
 		t.Errorf("known references: err = %v, want nil", err)
 	}
 	cases := []struct {
@@ -946,6 +946,7 @@ func TestCheckReferences(t *testing.T) {
 		{"unknown goal on an asset", map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Effects: naming(domain.EffectFilters{Goal: "G-404"})}}, tags, `asset "A-1" effects[0]: unknown goal "G-404"`},
 		{"unknown asset definition", assets, withTag(naming(domain.EffectFilters{AssetDefinition: "A-404"})), `tag "T-1" effects[0]: unknown asset "A-404"`},
 		{"unknown required tag", map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", RequiresTag: "T-404"}}, tags, `asset "A-1": requires_tag names unknown tag "T-404"`},
+		{"unknown opponent tag", assets, withTag(naming(domain.EffectFilters{OpponentTag: "T-404"})), `tag "T-1" effects[0]: unknown tag "T-404"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -960,7 +961,7 @@ func TestCheckReferences(t *testing.T) {
 func TestLoad_EugenicsCult(t *testing.T) {
 	rb := loadShippedRulebook(t)
 	slaves := rb.Assets["SWN-F1-004"]
-	if slaves == nil || slaves.RequiresTag != "SWN-T-003" || slaves.Type != domain.TypeMilitaryUnit {
+	if slaves == nil || slaves.RequiresTag != "SWN-T-003" || slaves.Type != domain.AssetType("Military Unit") {
 		t.Fatalf("Gengineered Slaves = %+v, want a Military Unit that requires SWN-T-003", slaves)
 	}
 	want := []domain.EffectDefinition{{
@@ -1075,10 +1076,12 @@ func TestLoadSettings(t *testing.T) {
 		body string
 		want string
 	}{
-		{name: "drift costs left out", body: "[purchase_population]\nStarship = 500000\n", want: "drift_costs is required"},
-		{name: "unknown key", body: "drift_costs = [5]\nstarship_floor = 500000\n", want: "unknown keys in"},
-		{name: "unknown asset type", body: "drift_costs = [5]\n[purchase_population]\nSpaceship = 500000\n", want: "purchase_population"},
-		{name: "floor not above 0", body: "drift_costs = [5]\n[purchase_population]\nStarship = 0\n", want: "must be > 0"},
+		{name: "drift costs left out", body: "asset_types = [\"Starship\"]\n[purchase_population]\nStarship = 500000\n", want: "drift_costs is required"},
+		{name: "asset types left out", body: "drift_costs = [5]\n", want: "asset_types is required"},
+		{name: "asset type listed twice", body: "drift_costs = [5]\nasset_types = [\"Starship\", \"Starship\"]\n", want: "listed twice"},
+		{name: "unknown key", body: "drift_costs = [5]\nasset_types = [\"Starship\"]\nstarship_floor = 500000\n", want: "unknown keys in"},
+		{name: "undeclared asset type", body: "drift_costs = [5]\nasset_types = [\"Starship\"]\n[purchase_population]\nSpaceship = 500000\n", want: "not in asset_types"},
+		{name: "floor not above 0", body: "drift_costs = [5]\nasset_types = [\"Starship\"]\n[purchase_population]\nStarship = 0\n", want: "must be > 0"},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1086,7 +1089,7 @@ func TestLoadSettings(t *testing.T) {
 			if err := os.WriteFile(path, []byte(testCase.body), 0o644); err != nil {
 				t.Fatalf("writing fixture: %v", err)
 			}
-			_, _, err := loadSettings(path)
+			_, err := loadSettings(path)
 			if err == nil || !strings.Contains(err.Error(), testCase.want) {
 				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
 			}
@@ -1096,18 +1099,56 @@ func TestLoadSettings(t *testing.T) {
 
 func TestLoadSettings_OptionalKeyLeftOut(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.toml")
-	if err := os.WriteFile(path, []byte("drift_costs = [3, 2]\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("drift_costs = [3, 2]\nasset_types = [\"Starship\"]\n"), 0o644); err != nil {
 		t.Fatalf("writing fixture: %v", err)
 	}
-	driftCosts, purchasePopulation, err := loadSettings(path)
+	loaded, err := loadSettings(path)
 	if err != nil {
 		t.Fatalf("loadSettings: %v", err)
 	}
-	if !reflect.DeepEqual(driftCosts, []int{3, 2}) {
-		t.Errorf("drift costs = %v, want [3 2]", driftCosts)
+	if !reflect.DeepEqual(loaded.driftCosts, []int{3, 2}) {
+		t.Errorf("drift costs = %v, want [3 2]", loaded.driftCosts)
 	}
-	if len(purchasePopulation) != 0 {
-		t.Errorf("purchase population = %v, want no floor for any type", purchasePopulation)
+	if !reflect.DeepEqual(loaded.assetTypes, []domain.AssetType{"Starship"}) {
+		t.Errorf("asset types = %v, want [Starship]", loaded.assetTypes)
+	}
+	if len(loaded.purchasePopulation) != 0 {
+		t.Errorf("purchase population = %v, want no floor for any type", loaded.purchasePopulation)
+	}
+}
+
+func TestCheckAssetTypes(t *testing.T) {
+	declared := []domain.AssetType{"Starship", "Facility"}
+	starship := func(def domain.AssetDefinition) map[string]*domain.AssetDefinition {
+		def.ID, def.Type = "A-1", "Starship"
+		return map[string]*domain.AssetDefinition{"A-1": &def}
+	}
+	cases := []struct {
+		name   string
+		assets map[string]*domain.AssetDefinition
+		tags   map[string]*domain.Tag
+		want   string
+	}{
+		{name: "every name declared", assets: starship(domain.AssetDefinition{Transport: &domain.TransportProfile{CargoTypes: []domain.AssetType{"Facility"}}})},
+		{name: "asset type", assets: map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Type: "Gunboat"}}, want: `asset "A-1": asset type "Gunboat"`},
+		{name: "transport cargo", assets: starship(domain.AssetDefinition{Transport: &domain.TransportProfile{CargoTypes: []domain.AssetType{"Gunboat"}}}), want: `asset "A-1" transport`},
+		{name: "ability relocate", assets: starship(domain.AssetDefinition{Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{Relocate: &domain.RelocateParams{ExcludeTypes: []domain.AssetType{"Gunboat"}}}}}}), want: `asset "A-1" ability step 0`},
+		{name: "asset effects filter", assets: starship(domain.AssetDefinition{Effects: []domain.EffectDefinition{{Filters: domain.EffectFilters{AssetTypes: []domain.AssetType{"Gunboat"}}}}}), want: `asset "A-1" effects[0]`},
+		{name: "tag effects filter", tags: map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: []domain.EffectDefinition{{Filters: domain.EffectFilters{AssetTypes: []domain.AssetType{"Gunboat"}}}}}}, want: `tag "T-1" effects[0]`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkAssetTypes(tc.assets, tc.tags, declared)
+			if tc.want == "" {
+				if err != nil {
+					t.Errorf("err = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
 	}
 }
 
@@ -1116,7 +1157,7 @@ func TestLoad_ShippedSettings(t *testing.T) {
 	if !reflect.DeepEqual(shipped.DriftCosts, []int{5, 4, 3, 2, 1}) {
 		t.Errorf("drift costs = %v, want [5 4 3 2 1]", shipped.DriftCosts)
 	}
-	want := map[domain.AssetType]int{domain.TypeStarship: 500000}
+	want := map[domain.AssetType]int{domain.AssetType("Starship"): 500000}
 	if !reflect.DeepEqual(shipped.PurchasePopulation, want) {
 		t.Errorf("purchase population = %v, want %v", shipped.PurchasePopulation, want)
 	}
@@ -1137,7 +1178,7 @@ func TestLoad_ColonistsAndTechnicalExpertise(t *testing.T) {
 			Trigger: domain.TriggerPopulationFloorQuery,
 			Effect:  domain.SpecialPopulationFloor,
 			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
-				AssetTypes: []domain.AssetType{domain.TypeStarship}},
+				AssetTypes: []domain.AssetType{domain.AssetType("Starship")}},
 			PopulationFloor: &domain.PopulationFloorParams{Percent: percent},
 		}
 	}
@@ -1347,5 +1388,28 @@ func TestConvertAbilityStep_ContestRoll(t *testing.T) {
 	}
 	if got := rb.Assets["SWN-C2-004"].Ability.Steps[1].Contest.Roll; got != domain.ContestRollAttack {
 		t.Errorf("Seductress contest roll = %q, want attack", got)
+	}
+}
+
+func TestConvertEffectFilters_OpponentTag(t *testing.T) {
+	filters, err := convertEffectFilters(effectFiltersRecord{Owner: "own", Scope: "faction", OpponentTag: "T-1"})
+	if err != nil {
+		t.Fatalf("convertEffectFilters: %v", err)
+	}
+	if filters.OpponentTag != "T-1" || !slices.Equal(filters.Used(), []domain.EffectFilterName{domain.FilterOpponentTag}) {
+		t.Errorf("filters = %+v, used = %v; want OpponentTag T-1 and only opponent_tag used", filters, filters.Used())
+	}
+}
+
+func TestDriftCost_ClampsToTheTable(t *testing.T) {
+	rb := &Rulebook{DriftCosts: []int{5, 4, 3, 2, 1}}
+	cases := []struct {
+		rating int
+		want   int
+	}{{0, 5}, {1, 5}, {3, 3}, {5, 1}, {6, 1}}
+	for _, tc := range cases {
+		if got := rb.DriftCost(tc.rating); got != tc.want {
+			t.Errorf("DriftCost(%d) = %d, want %d", tc.rating, got, tc.want)
+		}
 	}
 }

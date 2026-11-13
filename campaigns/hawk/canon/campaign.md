@@ -62,7 +62,7 @@ The party chooses to stop Luna. The other two crises play out without them. With
 
 - Blackwater Industries has fallen as the overlord megacorporation. Splinter factions that carry its name fight on in *The War in Heaven*.
 - The Core Sector is neutral ground. Blackwater used to control it.
-- Ulsidor Blackwater is alive, but takes no part in season 3.
+- Ulsidor Blackwater is dead.
 - The Pact broke the moment Luna's Gate ignited, and it stays broken even if Luna is defeated. The Fey Royals are free to reach beyond the Feywild and the Shadowfell.
 
 ## The Faction Game

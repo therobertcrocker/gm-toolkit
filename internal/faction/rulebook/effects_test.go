@@ -114,7 +114,7 @@ scope = "self"
 				Attribute:  domain.StatCunning,
 				Phases:     []domain.RollPhase{domain.RollPhaseDefense},
 				Action:     "Expand Influence",
-				AssetTypes: []domain.AssetType{domain.TypeStarship},
+				AssetTypes: []domain.AssetType{domain.AssetType("Starship")},
 				Categories: []domain.FactionStat{domain.StatForce, domain.StatWealth},
 				Stealthy:   &stealthy,
 			},
@@ -139,7 +139,7 @@ scope = "self"
 				CoinCost:     1,
 				CoinCostMode: domain.RelocateCostFlat,
 				Categories:   []domain.FactionStat{domain.StatCunning, domain.StatWealth},
-				ExcludeTypes: []domain.AssetType{domain.TypeStarship},
+				ExcludeTypes: []domain.AssetType{domain.AssetType("Starship")},
 			}},
 		},
 		{
@@ -635,7 +635,7 @@ exclude_types  = ["Starship"]
 	if !reflect.DeepEqual(relocate.Categories, []domain.FactionStat{domain.StatWealth}) {
 		t.Errorf("Categories = %v, want [Wealth]", relocate.Categories)
 	}
-	if !reflect.DeepEqual(relocate.ExcludeTypes, []domain.AssetType{domain.TypeStarship}) {
+	if !reflect.DeepEqual(relocate.ExcludeTypes, []domain.AssetType{domain.AssetType("Starship")}) {
 		t.Errorf("ExcludeTypes = %v, want [Starship]", relocate.ExcludeTypes)
 	}
 	if relocate.CoinCostMode != domain.RelocateCostFlat {

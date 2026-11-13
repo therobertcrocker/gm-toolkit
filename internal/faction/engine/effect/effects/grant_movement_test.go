@@ -20,7 +20,7 @@ func transitWebRelocate() domain.RelocateParams {
 		CoinCost:     1,
 		CoinCostMode: domain.RelocateCostFlat,
 		Categories:   []domain.FactionStat{domain.StatCunning, domain.StatWealth},
-		ExcludeTypes: []domain.AssetType{domain.TypeStarship},
+		ExcludeTypes: []domain.AssetType{domain.AssetType("Starship")},
 	}
 }
 

@@ -197,7 +197,7 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		// ActionTaken (the header names the action), GoalProgressed,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
 		// XPSpent, MovementOrderProgressed, InfluenceDelta, TagAdded,
-		// TagRemoved.
+		// TagRemoved, TagLapsed.
 		return "", false
 	}
 }

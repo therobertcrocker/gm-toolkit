@@ -20,26 +20,27 @@ import (
 // opponent_attribute the stat the other side rolls against it. tech_level reads
 // the rolling asset's definition, opponent_tech_level the other side's; neither
 // matches without a rulebook. detection matches only a roll made by the side
-// testing to detect stealth.
+// testing to detect stealth. opponent_tag reads the tags of the faction across the
+// roll from the owner: the opponent of its own roll, the roller of an enemy roll.
 func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFactionID string, asset *domain.Asset, filters domain.EffectFilters, rulebook *rulebook.Rulebook) bool {
 	if ctx.Actor == nil {
 		return false
 	}
-	var owner *domain.Faction
+	var owner, other *domain.Faction
 	var subject *domain.Asset
 	switch trigger {
 	case domain.TriggerOwnRoll:
 		if ctx.Actor.ID != ownerFactionID {
 			return false
 		}
-		owner, subject = ctx.Actor, ctx.Asset
+		owner, other, subject = ctx.Actor, ctx.Opponent, ctx.Asset
 	case domain.TriggerEnemyRollAtMe:
 		if ctx.Actor.ID == ownerFactionID || ctx.Opponent == nil || ctx.Opponent.ID != ownerFactionID {
 			return false
 		}
-		owner, subject = ctx.Opponent, ctx.OpponentAsset
+		owner, other, subject = ctx.Opponent, ctx.Actor, ctx.OpponentAsset
 	case domain.TriggerRivalRoll:
-		// deliberate: return here, not read scope or filters, because the owner takes no part in the roll and the registrar accepts only scope faction and no filters (Effort 3 Decision 7).
+		// deliberate: return here, not read scope or filters, because the owner takes no part in the roll and the registrar accepts no filters; scope base is read by the reroll hook (Effort 3 Decision 7; A.001.5 Effort 2 Decision 8).
 		return ctx.Actor.ID != ownerFactionID
 	default:
 		return false
@@ -80,6 +81,9 @@ func rollMatches(ctx hooks.RollContext, trigger domain.EffectTrigger, ownerFacti
 		return false
 	}
 	if filters.AssetDefinition != "" && (ctx.Asset == nil || ctx.Asset.DefinitionID != filters.AssetDefinition) {
+		return false
+	}
+	if filters.OpponentTag != "" && (other == nil || !other.HasTag(filters.OpponentTag)) {
 		return false
 	}
 	return true

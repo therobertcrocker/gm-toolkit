@@ -91,7 +91,7 @@ func abilityCandidates(faction *domain.Faction, factionState *state.FactionState
 	}
 	for _, tagID := range slices.Sorted(slices.Values(faction.Tags)) {
 		tag, ok := rulebook.Tags[tagID]
-		if !ok || tag.Ability == nil {
+		if !ok || tag.Ability == nil || faction.HasLapsedTag(tagID) {
 			continue
 		}
 		holder := domain.AbilityHolder{Tag: tag}

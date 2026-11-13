@@ -8,17 +8,9 @@ import (
 	"strings"
 )
 
+// AssetType names an asset type. Each rulebook's settings.toml declares the names
+// its data uses; the engine names none (A.001.5 Effort 2 Decision 3).
 type AssetType string
-
-const (
-	TypeMilitaryUnit      AssetType = "Military Unit"
-	TypeSpecialForces     AssetType = "Special Forces"
-	TypeFacility          AssetType = "Facility"
-	TypeStarship          AssetType = "Starship"
-	TypeTactic            AssetType = "Tactic"
-	TypeLogisticsFacility AssetType = "Logistics Facility"
-	TypeSpecial           AssetType = "Special"
-)
 
 type AssetFlag string
 

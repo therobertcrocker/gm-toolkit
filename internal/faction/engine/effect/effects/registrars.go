@@ -39,5 +39,7 @@ func Registrars() map[domain.SpecialEffectType]effect.Registrar {
 		domain.SpecialXPRoll:             xpRollRegistrar,
 		domain.SpecialPopulationFloor:    populationFloorRegistrar,
 		domain.SpecialArrivalToll:        arrivalTollRegistrar,
+		domain.SpecialDriftRatingBonus:   driftRatingBonusRegistrar,
+		domain.SpecialCoinUpkeep:         coinUpkeepRegistrar,
 	}
 }

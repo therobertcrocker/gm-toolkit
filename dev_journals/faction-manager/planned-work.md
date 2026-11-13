@@ -86,6 +86,7 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 | `F.044` | Turn Digest Panel | -- | Add a panel to the TUI that displays turn history in the digest format |
 | `F.045` | Material Plane map and canon | after `F.046` | H.A.W.K maps only the Core Sector for now (`A.001.5` Decision Record 10), and season 3 is Astral-focused; once a campaign can hold a map per realm, give the Material Plane (Myr) its own map plus places and factions canon. Start from `campaigns/hawk/canon/images/myr-world-map.webp` and the nations in `setting.md`'s history. |
 | `F.046` | Multi-map support | -- | A campaign holds one map today (`SpatialDataDir`, `internal/campaigns/campaigns.go:50`); H.A.W.K's full game wants a map per realm, joined by gates. Covers the spatial build, world IDs across maps, movement between maps, and the TUI; may grow into an arc. Unblocks `F.045`. |
+| `F.047` | Shared tag library in `_core` | -- | Move SWN's setting-free tags (temperaments such as Fanatical, Secretive, Warlike, Mercenary Group) into `rulebooks/_core/`, so any rulebook can include them without copying. Reverses part of arc-plan AP-8 ("`_core` holds goals only"); needs tags loaded from more than one file, since compose copies whole files, and a `CORE-T-` ID scheme that moves SWN's pinned IDs (sandbox seeds and scenarios). Raised in the `A.001.5` Effort 2 plan session. |
 
 ### Refactors
 

@@ -61,6 +61,26 @@ type AssetSpeedModifier interface {
 	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int) int
 }
 
+// UpkeepCharger is a tag's turn upkeep, read by bookkeeping after income and
+// before asset maintenance (Cat 4). UpkeepDue reports the upkeep while faction
+// still holds the tag, lapsed or not: a lapsed tag keeps paying, so it can lift
+// its own lapse.
+type UpkeepCharger interface {
+	UpkeepDue(faction *domain.Faction) (TagUpkeep, bool)
+}
+
+// TagUpkeep is one tag's upkeep for one turn.
+type TagUpkeep struct {
+	TagID  string
+	Params domain.CoinUpkeepParams
+}
+
+// AssetDriftRatingModifier adjusts the drift rating an asset faction owns crosses
+// the Drift with, read when a movement order is priced (Cat 4).
+type AssetDriftRatingModifier interface {
+	ModifyAssetDriftRating(faction *domain.Faction, def *domain.AssetDefinition, rating int) int
+}
+
 // ArrivalToll is the Coin a landing asset owes FactionID, the faction that
 // charges it.
 type ArrivalToll struct {

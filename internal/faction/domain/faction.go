@@ -76,11 +76,20 @@ type Faction struct {
 	// CompletionRatings holds the faction's ratings when it last completed each
 	// goal, by goal ID; a rating_above_last_completion gate reads it (D-11).
 	CompletionRatings map[string]map[FactionStat]int `toml:"completion_ratings,omitempty"`
+	// LapsedTags holds the held tags whose effects are off until their upkeep is
+	// paid (A.001.5 Effort 2 Decision 11).
+	LapsedTags []string `toml:"lapsed_tags,omitempty"`
 }
 
 // HasTag reports whether the faction holds the tag with ID tagID.
 func (faction *Faction) HasTag(tagID string) bool {
 	return slices.Contains(faction.Tags, tagID)
+}
+
+// HasLapsedTag reports whether the faction's tag tagID is lapsed: held, with its
+// effects off until its upkeep is paid.
+func (faction *Faction) HasLapsedTag(tagID string) bool {
+	return slices.Contains(faction.LapsedTags, tagID)
 }
 
 // HasBaseOn reports whether the faction has a Base of Influence on worldID.
@@ -107,6 +116,7 @@ func (faction *Faction) Clone() *Faction {
 		}
 	}
 	clone.Tags = slices.Clone(faction.Tags)
+	clone.LapsedTags = slices.Clone(faction.LapsedTags)
 	if faction.ActiveGoal != nil {
 		goalCopy := *faction.ActiveGoal
 		goalCopy.StealthedAtStart = slices.Clone(faction.ActiveGoal.StealthedAtStart)

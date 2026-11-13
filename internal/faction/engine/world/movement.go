@@ -68,9 +68,13 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 	return mutations, nil
 }
 
-func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, faction *domain.Faction, rulebook *rulebook.Rulebook, log *slog.Logger) ([]domain.Mutation, error) {
+// BuildMovementMutations issues, revises and cancels movement orders. A crossing
+// is priced from the drift rating registry's drift-rating hooks resolve
+// (Drift-Runners).
+func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry, log *slog.Logger) ([]domain.Mutation, error) {
 	var mutations []domain.Mutation
 
+	driftRatingOf := dispatch.AssetDriftRatingResolver(registry, faction)
 	for _, decision := range decisions {
 		asset, ok := faction.Assets[decision.AssetID]
 		if !ok {
@@ -82,7 +86,7 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 			if !ok {
 				return nil, fmt.Errorf("BuildMovementMutations: unknown asset definition %q", asset.DefinitionID)
 			}
-			crossingCost := rulebook.DriftCost(def.DriftRating)
+			crossingCost := rulebook.DriftCost(driftRatingOf(def))
 
 			destLoc, ok := engine.spatialMap.Location(decision.Destination.WorldID)
 			if !ok {
@@ -124,7 +128,7 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 			if !ok {
 				return nil, fmt.Errorf("BuildMovementMutations: unknown asset definition %q", asset.DefinitionID)
 			}
-			crossingCost := rulebook.DriftCost(def.DriftRating)
+			crossingCost := rulebook.DriftCost(driftRatingOf(def))
 			from := asset.Location.RegionHex
 			to := decision.Destination.RegionHex
 			newPath, _, err := engine.spatialMap.Path(from, to, crossingCost)

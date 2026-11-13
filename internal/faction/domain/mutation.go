@@ -309,6 +309,18 @@ type TagRemoved struct {
 
 func (m TagRemoved) Type() string { return "tag_removed" }
 
+// TagLapsed turns a held tag's effects off (Lapsed) or back on: an upkeep the
+// faction could not pay, then one it paid.
+type TagLapsed struct {
+	FactionID         string `json:"faction_id"`
+	TagID             string `json:"tag_id"`
+	Lapsed            bool   `json:"lapsed"`
+	Cause             string `json:"cause"`
+	CausedByFactionID string `json:"caused_by_faction_id"`
+}
+
+func (m TagLapsed) Type() string { return "tag_lapsed" }
+
 // WorldGovernmentChanged sets the faction that governs a world. An empty
 // ToFactionID makes the world independent; FromFactionID is the ruler it replaces,
 // empty for an independent world. Resisted says the replaced ruler had an

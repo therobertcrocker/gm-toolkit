@@ -55,17 +55,22 @@ func TestNewWithRulebook_RefusesBadGoalData(t *testing.T) {
 
 // TestNewWithRulebook_ShippedRulebook catches an authored effects entry that
 // loads but fails registrar validation, which otherwise surfaces only at runtime.
+// It is H.A.W.K's load check too (A.001.5 Effort 2 Decision 5).
 func TestNewWithRulebook_ShippedRulebook(t *testing.T) {
-	camp := &campaigns.Campaign{Root: t.TempDir()}
-	if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/swn", false); err != nil {
-		t.Fatalf("compose shipped rulebook: %v", err)
-	}
-	rb, err := rulebook.Load(camp.Paths().FactionDataDir)
-	if err != nil {
-		t.Fatalf("load shipped rulebook: %v", err)
-	}
-	if _, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler)); err != nil {
-		t.Fatalf("construct engine from shipped rulebook: %v", err)
+	for _, name := range []string{"swn", "hawk"} {
+		t.Run(name, func(t *testing.T) {
+			camp := &campaigns.Campaign{Root: t.TempDir()}
+			if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/"+name, false); err != nil {
+				t.Fatalf("compose shipped rulebook: %v", err)
+			}
+			rb, err := rulebook.Load(camp.Paths().FactionDataDir)
+			if err != nil {
+				t.Fatalf("load shipped rulebook: %v", err)
+			}
+			if _, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler)); err != nil {
+				t.Fatalf("construct engine from shipped rulebook: %v", err)
+			}
+		})
 	}
 }
 

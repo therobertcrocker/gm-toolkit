@@ -840,7 +840,7 @@ func prepareMovementDecisions(
 		decisions[i].CargoAssetIDs = cargoIDs
 	}
 
-	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, worldLog)
+	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, registry, worldLog)
 }
 
 func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry) []*domain.Asset {

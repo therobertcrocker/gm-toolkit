@@ -285,8 +285,18 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 				index := slices.Index(faction.Tags, v.TagID)
 				if index >= 0 {
 					faction.Tags = slices.Delete(faction.Tags, index, index+1)
+					faction.LapsedTags = slices.DeleteFunc(faction.LapsedTags, func(tagID string) bool { return tagID == v.TagID })
 				} else {
 					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.TagID})
+				}
+			} else {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.TagLapsed:
+			if faction, ok := factionState.Factions[v.FactionID]; ok {
+				faction.LapsedTags = slices.DeleteFunc(faction.LapsedTags, func(tagID string) bool { return tagID == v.TagID })
+				if v.Lapsed {
+					faction.LapsedTags = append(faction.LapsedTags, v.TagID)
 				}
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})

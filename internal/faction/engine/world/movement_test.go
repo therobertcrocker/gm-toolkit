@@ -74,7 +74,7 @@ func TestBuildMovementMutations_RevisionCost(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, reviseRulebook(), slog.New(slog.DiscardHandler))
+	mutations, err := we.BuildMovementMutations(decisions, faction, reviseRulebook(), nil, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

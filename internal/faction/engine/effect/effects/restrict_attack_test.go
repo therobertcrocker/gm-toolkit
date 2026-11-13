@@ -12,22 +12,22 @@ import (
 )
 
 var (
-	planetaryDefensesDef = &domain.AssetDefinition{ID: "SWN-F6-002", Category: domain.StatForce, Type: domain.TypeFacility}
-	lawyersDef           = &domain.AssetDefinition{ID: "SWN-W2-002", Category: domain.StatWealth, Type: domain.TypeSpecialForces,
+	planetaryDefensesDef = &domain.AssetDefinition{ID: "SWN-F6-002", Category: domain.StatForce, Type: domain.AssetType("Facility")}
+	lawyersDef           = &domain.AssetDefinition{ID: "SWN-W2-002", Category: domain.StatWealth, Type: domain.AssetType("Special Forces"),
 		Attack: &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatWealth}}
 
-	starshipDef = &domain.AssetDefinition{ID: "starship", Category: domain.StatForce, Type: domain.TypeStarship,
+	starshipDef = &domain.AssetDefinition{ID: "starship", Category: domain.StatForce, Type: domain.AssetType("Starship"),
 		Attack: &domain.AttackProfile{AttackerStat: domain.StatForce, DefenderStat: domain.StatForce}}
-	infantryDef = &domain.AssetDefinition{ID: "infantry", Category: domain.StatForce, Type: domain.TypeMilitaryUnit,
+	infantryDef = &domain.AssetDefinition{ID: "infantry", Category: domain.StatForce, Type: domain.AssetType("Military Unit"),
 		Attack: &domain.AttackProfile{AttackerStat: domain.StatForce, DefenderStat: domain.StatForce}}
-	infiltratorDef = &domain.AssetDefinition{ID: "infiltrator", Category: domain.StatCunning, Type: domain.TypeSpecialForces,
+	infiltratorDef = &domain.AssetDefinition{ID: "infiltrator", Category: domain.StatCunning, Type: domain.AssetType("Special Forces"),
 		Attack: &domain.AttackProfile{AttackerStat: domain.StatCunning, DefenderStat: domain.StatCunning}}
-	bankDef = &domain.AssetDefinition{ID: "bank", Category: domain.StatWealth, Type: domain.TypeFacility}
+	bankDef = &domain.AssetDefinition{ID: "bank", Category: domain.StatWealth, Type: domain.AssetType("Facility")}
 )
 
 func planetaryDefensesEntry() domain.EffectDefinition {
 	return restrictEntry(domain.RestrictDefense, domain.AllowOnlyListed,
-		domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeSelf, AssetTypes: []domain.AssetType{domain.TypeStarship}})
+		domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeSelf, AssetTypes: []domain.AssetType{domain.AssetType("Starship")}})
 }
 
 func lawyersEntry() domain.EffectDefinition {

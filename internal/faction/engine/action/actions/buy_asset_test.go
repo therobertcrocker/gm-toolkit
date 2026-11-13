@@ -357,9 +357,9 @@ func stealthBuyRulebook() *rulebook.Rulebook {
 				Trigger: domain.TriggerOnPurchase,
 				Effect:  domain.SpecialGrantStealth,
 				Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld,
-					AssetTypes: []domain.AssetType{domain.TypeSpecialForces}, Stealthy: &stealthy},
+					AssetTypes: []domain.AssetType{domain.AssetType("Special Forces")}, Stealthy: &stealthy},
 			}}},
-		"sf": {ID: "sf", Name: "Saboteurs", Category: domain.StatCunning, Cost: 5, HP: 6, MinRating: 9, Type: domain.TypeSpecialForces},
+		"sf": {ID: "sf", Name: "Saboteurs", Category: domain.StatCunning, Cost: 5, HP: 6, MinRating: 9, Type: domain.AssetType("Special Forces")},
 	}}
 }
 
@@ -552,10 +552,10 @@ func TestPurchasableDefinitions_PopulationFloorPerType(t *testing.T) {
 	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
 	populationRulebook := &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
-			"ship":  {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeStarship},
-			"plant": {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeFacility},
+			"ship":  {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.AssetType("Starship")},
+			"plant": {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.AssetType("Facility")},
 		},
-		PurchasePopulation: map[domain.AssetType]int{domain.TypeStarship: 500000},
+		PurchasePopulation: map[domain.AssetType]int{domain.AssetType("Starship"): 500000},
 	}
 	faction := &domain.Faction{ID: "f1", Coin: 5, Homeworld: domain.Location{WorldID: "a", RegionHex: worldHex}, Assets: map[string]*domain.Asset{}}
 

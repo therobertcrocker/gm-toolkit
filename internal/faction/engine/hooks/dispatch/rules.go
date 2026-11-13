@@ -121,6 +121,29 @@ func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(
 	}
 }
 
+// AssetDriftRatingResolver returns the drift rating an asset faction owns crosses
+// the Drift with, by definition: the definition's own, a missing rating counted as
+// 1 (A.001.5 Effort 2 Decision 9), run through faction's drift-rating hooks, then
+// those registered against each asset faction owns, in asset ID order. With a nil
+// registry it returns the definition's rating, counted the same way.
+func AssetDriftRatingResolver(registry *hooks.Registry, faction *domain.Faction) func(*domain.AssetDefinition) int {
+	base := func(definition *domain.AssetDefinition) int { return max(definition.DriftRating, 1) }
+	if registry == nil {
+		return base
+	}
+	modifiers := registry.AssetDriftRatingModifiersFor(faction.ID)
+	for _, asset := range domain.SortedAssets(faction) {
+		modifiers = append(modifiers, registry.AssetDriftRatingModifiersForAsset(faction.ID, asset.ID)...)
+	}
+	return func(definition *domain.AssetDefinition) int {
+		rating := base(definition)
+		for _, registered := range modifiers {
+			rating = registered.Hook.ModifyAssetDriftRating(faction, definition, rating)
+		}
+		return rating
+	}
+}
+
 // ArrivalTolls returns the tolls one of mover's assets owes on landing on world:
 // one per rule that charges, each paid to the faction that registered it. It asks
 // every faction but mover, in ID order, its faction bucket and then its own

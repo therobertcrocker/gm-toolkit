@@ -51,6 +51,18 @@ type RegisteredAssetSpeedModifier struct {
 	Hook   AssetSpeedModifier
 }
 
+type RegisteredUpkeepCharger struct {
+	Scope  Scope
+	Source string
+	Hook   UpkeepCharger
+}
+
+type RegisteredAssetDriftRatingModifier struct {
+	Scope  Scope
+	Source string
+	Hook   AssetDriftRatingModifier
+}
+
 type RegisteredArrivalTollRule struct {
 	Scope  Scope
 	Source string
@@ -112,6 +124,8 @@ type Registry struct {
 	repairCostModifiers      map[Scope][]RegisteredRepairCostModifier
 	permissionGranters       map[Scope][]RegisteredPermissionGranter
 	permissionContesters     map[Scope][]RegisteredPermissionContester
+	driftRatingModifiers     map[Scope][]RegisteredAssetDriftRatingModifier
+	upkeepChargers           map[Scope][]RegisteredUpkeepCharger
 }
 
 // NewRegistry returns an empty Registry ready for registration.
@@ -141,6 +155,8 @@ func (registry *Registry) Reset() {
 	registry.repairCostModifiers = make(map[Scope][]RegisteredRepairCostModifier)
 	registry.permissionGranters = make(map[Scope][]RegisteredPermissionGranter)
 	registry.permissionContesters = make(map[Scope][]RegisteredPermissionContester)
+	registry.driftRatingModifiers = make(map[Scope][]RegisteredAssetDriftRatingModifier)
+	registry.upkeepChargers = make(map[Scope][]RegisteredUpkeepCharger)
 }
 
 // ClearAsset removes every hook registered under one asset's scope.
@@ -163,6 +179,8 @@ func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
 	delete(registry.repairCostModifiers, scope)
 	delete(registry.permissionGranters, scope)
 	delete(registry.permissionContesters, scope)
+	delete(registry.driftRatingModifiers, scope)
+	delete(registry.upkeepChargers, scope)
 }
 
 // RegisterRollModifier registers a Cat 1 hook under the given scope.
@@ -203,6 +221,16 @@ func (registry *Registry) RegisterWorldTechLevelModifier(scope Scope, source str
 // RegisterAssetSpeedModifier registers a Cat 4 speed hook under the given scope.
 func (registry *Registry) RegisterAssetSpeedModifier(scope Scope, source string, hook AssetSpeedModifier) {
 	registry.assetSpeedModifiers[scope] = append(registry.assetSpeedModifiers[scope], RegisteredAssetSpeedModifier{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterUpkeepCharger registers a Cat 4 upkeep hook under the given scope.
+func (registry *Registry) RegisterUpkeepCharger(scope Scope, source string, hook UpkeepCharger) {
+	registry.upkeepChargers[scope] = append(registry.upkeepChargers[scope], RegisteredUpkeepCharger{Scope: scope, Source: source, Hook: hook})
+}
+
+// RegisterAssetDriftRatingModifier registers a Cat 4 drift-rating hook under the given scope.
+func (registry *Registry) RegisterAssetDriftRatingModifier(scope Scope, source string, hook AssetDriftRatingModifier) {
+	registry.driftRatingModifiers[scope] = append(registry.driftRatingModifiers[scope], RegisteredAssetDriftRatingModifier{Scope: scope, Source: source, Hook: hook})
 }
 
 // RegisterArrivalTollRule registers a Cat 4 arrival-toll hook under the given scope.
@@ -330,6 +358,27 @@ func (registry *Registry) AssetSpeedModifiersFor(factionID string) []RegisteredA
 // asset instance, without the global or faction buckets.
 func (registry *Registry) AssetSpeedModifiersForAsset(factionID, assetInstanceID string) []RegisteredAssetSpeedModifier {
 	return registry.assetSpeedModifiers[AssetScope(factionID, assetInstanceID)]
+}
+
+// UpkeepChargersFor returns the faction's Cat 4 upkeep hooks, in registration
+// order. Only a tag holds upkeep, so there is no global or asset bucket.
+func (registry *Registry) UpkeepChargersFor(factionID string) []RegisteredUpkeepCharger {
+	return registry.upkeepChargers[FactionScope(factionID)]
+}
+
+// AssetDriftRatingModifiersFor returns the global and faction Cat 4 drift-rating
+// hooks; the asset buckets come from AssetDriftRatingModifiersForAsset.
+func (registry *Registry) AssetDriftRatingModifiersFor(factionID string) []RegisteredAssetDriftRatingModifier {
+	var result []RegisteredAssetDriftRatingModifier
+	result = append(result, registry.driftRatingModifiers[GlobalScope()]...)
+	result = append(result, registry.driftRatingModifiers[FactionScope(factionID)]...)
+	return result
+}
+
+// AssetDriftRatingModifiersForAsset returns the Cat 4 drift-rating hooks registered
+// against one asset instance, without the global or faction buckets.
+func (registry *Registry) AssetDriftRatingModifiersForAsset(factionID, assetInstanceID string) []RegisteredAssetDriftRatingModifier {
+	return registry.driftRatingModifiers[AssetScope(factionID, assetInstanceID)]
 }
 
 // ArrivalTollRulesAt returns the Cat 4 arrival-toll hooks of one bucket. There is

@@ -31,7 +31,7 @@ func setupTransportHarness(t *testing.T) *testharness.Harness {
 	transportProfile := &domain.TransportProfile{
 		MaxHex:     4,
 		CoinCost:   1,
-		CargoTypes: []domain.AssetType{domain.TypeSpecialForces},
+		CargoTypes: []domain.AssetType{domain.AssetType("Special Forces")},
 		MaxCargo:   1,
 	}
 	transportDef := &domain.AssetDefinition{
@@ -42,7 +42,7 @@ func setupTransportHarness(t *testing.T) *testharness.Harness {
 	}
 	cargoDef := &domain.AssetDefinition{
 		ID:   "test-cargo",
-		Type: domain.TypeSpecialForces,
+		Type: domain.AssetType("Special Forces"),
 	}
 	h.Engine.Rulebook.Assets["test-transport"] = transportDef
 	h.Engine.Rulebook.Assets["test-cargo"] = cargoDef

@@ -40,13 +40,13 @@ func TestEffectsEngine_RegistersTransportReactor(t *testing.T) {
 		Transport: &domain.TransportProfile{
 			MaxHex:     3,
 			CoinCost:   1,
-			CargoTypes: []domain.AssetType{domain.TypeSpecialForces},
+			CargoTypes: []domain.AssetType{domain.AssetType("Special Forces")},
 			MaxCargo:   1,
 		},
 	}
 	nonTransportDef := &domain.AssetDefinition{
 		ID:   nonTransportDefID,
-		Type: domain.TypeSpecialForces,
+		Type: domain.AssetType("Special Forces"),
 	}
 
 	rb := &rulebook.Rulebook{

@@ -97,12 +97,12 @@ func relocEngine() *world.WorldEngine {
 // relocRulebook types and categorises each definition ID for matchesFilters.
 func relocRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
-		"SF": {ID: "SF", Category: domain.StatForce, Type: domain.TypeSpecialForces},
-		"MU": {ID: "MU", Category: domain.StatForce, Type: domain.TypeMilitaryUnit},
-		"WF": {ID: "WF", Category: domain.StatWealth, Type: domain.TypeFacility},
-		"CS": {ID: "CS", Category: domain.StatCunning, Type: domain.TypeStarship},
-		"WS": {ID: "WS", Category: domain.StatWealth, Type: domain.TypeStarship},
-		"MP": {ID: "MP", Name: "Mercenaries", Category: domain.StatWealth, Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"SF": {ID: "SF", Category: domain.StatForce, Type: domain.AssetType("Special Forces")},
+		"MU": {ID: "MU", Category: domain.StatForce, Type: domain.AssetType("Military Unit")},
+		"WF": {ID: "WF", Category: domain.StatWealth, Type: domain.AssetType("Facility")},
+		"CS": {ID: "CS", Category: domain.StatCunning, Type: domain.AssetType("Starship")},
+		"WS": {ID: "WS", Category: domain.StatWealth, Type: domain.AssetType("Starship")},
+		"MP": {ID: "MP", Name: "Mercenaries", Category: domain.StatWealth, Type: domain.AssetType("Military Unit"), Flags: []domain.AssetFlag{domain.FlagPermission}},
 	}}
 }
 
@@ -116,7 +116,7 @@ func transitWebParams() *domain.RelocateParams {
 		CoinCost:     1,
 		CoinCostMode: domain.RelocateCostFlat,
 		Categories:   []domain.FactionStat{domain.StatCunning, domain.StatWealth},
-		ExcludeTypes: []domain.AssetType{domain.TypeStarship},
+		ExcludeTypes: []domain.AssetType{domain.AssetType("Starship")},
 	}
 }
 
@@ -130,7 +130,7 @@ func TestRelocate_OtherSingle_Hex(t *testing.T) {
 		"cs": shipping, "sf-near": sfInRange, "mu-near": wrongType, "sf-far": sfOutOfRange,
 	}}
 	params := &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1,
+		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.AssetType("Special Forces"), MaxAssets: 1,
 	}
 
 	collector := mocks.NewMockCollector(ctrl)
@@ -163,7 +163,7 @@ func TestRelocate_OtherSingle_InsufficientCoin(t *testing.T) {
 	sfInRange := &domain.Asset{ID: "sf-near", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
 	faction := &domain.Faction{ID: "f1", Coin: 0, Assets: map[string]*domain.Asset{"cs": shipping, "sf-near": sfInRange}}
 	params := &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1,
+		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.AssetType("Special Forces"), MaxAssets: 1,
 	}
 
 	collector := mocks.NewMockCollector(ctrl) // no EXPECT: an unaffordable move is never prompted
@@ -187,7 +187,7 @@ func TestRelocate_ExceedsMaxAssets(t *testing.T) {
 	sf2 := &domain.Asset{ID: "sf-2", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "mid", RegionHex: relocHex("r1", 2)}}
 	faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"cs": shipping, "sf-1": sf1, "sf-2": sf2}}
 	params := &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.TypeSpecialForces, MaxAssets: 1,
+		Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3, CoinCost: 1, AssetType: domain.AssetType("Special Forces"), MaxAssets: 1,
 	}
 
 	// Collector over-selects (two orders) against a MaxAssets=1 cap; the guard in Run rejects it.
@@ -214,7 +214,7 @@ func TestRelocate_OtherMulti_Region(t *testing.T) {
 	sf2 := &domain.Asset{ID: "sf-2", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "far", RegionHex: relocHex("r1", 5)}}
 	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"net": net, "sf-1": sf1, "sf-2": sf2}}
 	params := &domain.RelocateParams{
-		Scope: domain.RelocateOther, Range: domain.RangeRegion, AssetType: domain.TypeSpecialForces, MaxAssets: 0,
+		Scope: domain.RelocateOther, Range: domain.RangeRegion, AssetType: domain.AssetType("Special Forces"), MaxAssets: 0,
 	}
 
 	collector := mocks.NewMockCollector(ctrl)
@@ -245,7 +245,7 @@ func TestRun_NoCandidatesIsSentinel(t *testing.T) {
 	acting := &domain.Asset{ID: "cs", DefinitionID: "MU", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
 	sfFar := &domain.Asset{ID: "sf-far", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "far", RegionHex: relocHex("r1", 5)}}
 	faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"cs": acting, "sf-far": sfFar}}
-	params := &domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 1, AssetType: domain.TypeSpecialForces}
+	params := &domain.RelocateParams{Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 1, AssetType: domain.AssetType("Special Forces")}
 
 	collector := mocks.NewMockCollector(ctrl) // no EXPECT: any prompt fails the test
 
@@ -276,7 +276,7 @@ func TestEligibleAssets_Filtering(t *testing.T) {
 	request := Request{
 		Faction:  faction,
 		Acting:   acting,
-		Params:   &domain.RelocateParams{Scope: domain.RelocateOther, AssetType: domain.TypeSpecialForces},
+		Params:   &domain.RelocateParams{Scope: domain.RelocateOther, AssetType: domain.AssetType("Special Forces")},
 		Rulebook: relocRulebook(),
 	}
 
@@ -300,18 +300,18 @@ func TestMatchesFilters(t *testing.T) {
 	}{
 		{"no filter passes any def", book.Assets["SF"], &domain.RelocateParams{}, true},
 		{"no filter passes an unknown def", nil, &domain.RelocateParams{}, true},
-		{"type match", book.Assets["SF"], &domain.RelocateParams{AssetType: domain.TypeSpecialForces}, true},
-		{"type mismatch", book.Assets["MU"], &domain.RelocateParams{AssetType: domain.TypeSpecialForces}, false},
+		{"type match", book.Assets["SF"], &domain.RelocateParams{AssetType: domain.AssetType("Special Forces")}, true},
+		{"type mismatch", book.Assets["MU"], &domain.RelocateParams{AssetType: domain.AssetType("Special Forces")}, false},
 		{"category in list", book.Assets["WF"], &domain.RelocateParams{Categories: []domain.FactionStat{domain.StatWealth}}, true},
 		{"category out of list", book.Assets["SF"], &domain.RelocateParams{Categories: []domain.FactionStat{domain.StatWealth}}, false},
-		{"excluded type", book.Assets["WS"], &domain.RelocateParams{ExcludeTypes: []domain.AssetType{domain.TypeStarship}}, false},
+		{"excluded type", book.Assets["WS"], &domain.RelocateParams{ExcludeTypes: []domain.AssetType{domain.AssetType("Starship")}}, false},
 		{"transit web passes a wealth facility", book.Assets["WF"], transitWebParams(), true},
 		{"transit web refuses a cunning starship", book.Assets["CS"], transitWebParams(), false},
 		{"transit web refuses a wealth starship", book.Assets["WS"], transitWebParams(), false},
 		{"transit web refuses a force asset", book.Assets["SF"], transitWebParams(), false},
-		{"unknown def fails a type filter", nil, &domain.RelocateParams{AssetType: domain.TypeSpecialForces}, false},
+		{"unknown def fails a type filter", nil, &domain.RelocateParams{AssetType: domain.AssetType("Special Forces")}, false},
 		{"unknown def fails a category filter", nil, &domain.RelocateParams{Categories: []domain.FactionStat{domain.StatWealth}}, false},
-		{"unknown def fails an excluded-type filter", nil, &domain.RelocateParams{ExcludeTypes: []domain.AssetType{domain.TypeStarship}}, false},
+		{"unknown def fails an excluded-type filter", nil, &domain.RelocateParams{ExcludeTypes: []domain.AssetType{domain.AssetType("Starship")}}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	boltholesDef    = &domain.AssetDefinition{ID: "SWN-C5-003", Type: domain.TypeSpecial}
-	militaryUnitDef = &domain.AssetDefinition{ID: "SWN-F1-001", Type: domain.TypeMilitaryUnit}
-	facilityDef     = &domain.AssetDefinition{ID: "SWN-F2-001", Type: domain.TypeFacility}
+	boltholesDef    = &domain.AssetDefinition{ID: "SWN-C5-003", Type: domain.AssetType("Special")}
+	militaryUnitDef = &domain.AssetDefinition{ID: "SWN-F1-001", Type: domain.AssetType("Military Unit")}
+	facilityDef     = &domain.AssetDefinition{ID: "SWN-F2-001", Type: domain.AssetType("Facility")}
 )
 
 func placedOn(asset *domain.Asset, worldID string) *domain.Asset {
@@ -50,7 +50,7 @@ func registerBoltholes(factionState *state.FactionState) *hooks.Registry {
 			Filters: domain.EffectFilters{
 				Owner:      domain.OwnerOwn,
 				Scope:      domain.ScopeWorld,
-				AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit},
+				AssetTypes: []domain.AssetType{domain.AssetType("Special Forces"), domain.AssetType("Military Unit")},
 			},
 		},
 	})

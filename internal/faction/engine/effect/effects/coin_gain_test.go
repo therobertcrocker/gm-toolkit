@@ -1,6 +1,7 @@
 package effects_test
 
 import (
+	"log/slog"
 	"reflect"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -100,5 +102,74 @@ func TestCoinGain_ScavengersPaysOwnKillsAndLossesOnly(t *testing.T) {
 	alpha.Tags = nil
 	if got := paid(domain.AssetRemoved{FactionID: "alpha", Cause: "attack", CausedByFactionID: "beta"}); got != 0 {
 		t.Errorf("dropped tag: paid %d, want 0", got)
+	}
+}
+
+func TestCoinGain_OncePerPaysOneRemovalATurn(t *testing.T) {
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{"HAWK-T-007"}, HookBudgets: map[string]int{}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": {ID: "beta"}, "gamma": {ID: "gamma"}}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialCoinGain].Register(effect.RegisterContext{
+		Holder:   effect.Holder{Faction: alpha, Tag: &domain.Tag{ID: "HAWK-T-007", Name: "War Profiteers"}},
+		Registry: registry,
+		Roller:   dicetest.Constant{Value: 1},
+		Entry: domain.EffectDefinition{
+			Trigger:  domain.TriggerAssetDestroyed,
+			Effect:   domain.SpecialCoinGain,
+			Filters:  domain.EffectFilters{Owner: domain.OwnerRival, Scope: domain.ScopeFaction},
+			Gates:    domain.EffectGates{OncePer: domain.OncePerOwnerFaction},
+			CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}},
+		},
+	})
+	removals := []domain.Mutation{
+		domain.AssetRemoved{FactionID: "beta", Cause: "attack", CausedByFactionID: "gamma"},
+		domain.AssetRemoved{FactionID: "gamma", Cause: "attack", CausedByFactionID: "beta"},
+	}
+	paid := func() int {
+		emitted, err := dispatch.MutationReactors(registry, factionState.Factions["beta"], removals, factionState, nil)
+		if err != nil {
+			t.Fatalf("MutationReactors: %v", err)
+		}
+		total := 0
+		for _, mutation := range emitted {
+			if gain, ok := mutation.(domain.CoinDelta); ok && gain.FactionID == "alpha" && gain.Cause == "coin_gain" {
+				total += gain.Delta
+			}
+		}
+		return total
+	}
+
+	if got := paid(); got != 1 {
+		t.Errorf("first batch: paid %d, want 1 for two removals under once_per", got)
+	}
+	if got := paid(); got != 0 {
+		t.Errorf("second batch: paid %d, want 0 with the budget spent", got)
+	}
+}
+
+func TestCoinGain_TagPaysAtTurnStartUnlessLapsed(t *testing.T) {
+	refiners := &domain.Tag{ID: "HAWK-T-006", Name: "Aether Refiners", Effects: []domain.EffectDefinition{{
+		Trigger:  domain.TriggerTurnStart,
+		Effect:   domain.SpecialCoinGain,
+		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+		CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}},
+	}}}
+	engine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+	if err := engine.CheckTagEffects(refiners); err != nil {
+		t.Fatalf("CheckTagEffects: %v", err)
+	}
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{refiners.ID}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha}}
+	book := &rulebook.Rulebook{Tags: map[string]*domain.Tag{refiners.ID: refiners}}
+
+	got := engine.FireTurnStart(alpha, factionState, book, hooks.NewRegistry(), dicetest.Constant{Value: 1})
+	want := []domain.Mutation{domain.CoinDelta{FactionID: "alpha", Delta: 1, Cause: "coin_gain", CausedByFactionID: "alpha"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("FireTurnStart = %+v, want %+v", got, want)
+	}
+
+	alpha.LapsedTags = []string{refiners.ID}
+	if got := engine.FireTurnStart(alpha, factionState, book, hooks.NewRegistry(), dicetest.Constant{Value: 1}); len(got) != 0 {
+		t.Errorf("lapsed: FireTurnStart = %+v, want nothing", got)
 	}
 }

@@ -11,19 +11,22 @@ import (
 )
 
 // coinGainRegistrar pays the owner the amount. turn_start fires at the owner's
-// turn start. asset_destroyed reacts to each asset or Base destroyed in a fight: owner
-// reads as whose asset it was ("own" the owner's, "rival" another faction's), and
-// caused_by as who destroyed it. scope = "faction" is any world.
+// turn start: scope = "self" for an asset, "faction" for a tag (Aether Refiners).
+// asset_destroyed reacts to each asset or Base destroyed in a fight: owner reads as
+// whose asset it was ("own" the owner's, "rival" another faction's), and caused_by
+// as who destroyed it. scope = "faction" is any world. once_per caps the payouts
+// (War Profiteers).
 var coinGainRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerTurnStart: {
 			Owners: []domain.EffectOwner{domain.OwnerOwn},
-			Scopes: []domain.EffectScope{domain.ScopeSelf},
+			Scopes: []domain.EffectScope{domain.ScopeSelf, domain.ScopeFaction},
 		},
 		domain.TriggerAssetDestroyed: {
 			Owners:  []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival},
 			Scopes:  []domain.EffectScope{domain.ScopeFaction},
 			Filters: []domain.EffectFilterName{domain.FilterCausedBy},
+			Gates:   []domain.EffectGateName{domain.GateOncePer},
 		},
 	},
 	Register: registerCoinGain,
@@ -47,6 +50,7 @@ func registerCoinGain(ctx effect.RegisterContext) {
 			holder:   refOf(ctx.Holder),
 			owner:    ctx.Entry.Filters.Owner,
 			causedBy: ctx.Entry.Filters.CausedBy,
+			oncePer:  ctx.Entry.Gates.OncePer,
 			amount:   ctx.Entry.CoinGain.Amount,
 			roller:   ctx.Roller,
 		},
@@ -75,12 +79,13 @@ type coinGainReactor struct {
 	holder   holderRef
 	owner    domain.EffectOwner
 	causedBy domain.EffectOwner
+	oncePer  domain.OncePerKey
 	amount   domain.DiceRoll
 	roller   dice.Roller
 }
 
 // OnMutations pays once for each combat removal in the batch that the entry's
-// owner and caused_by filters match.
+// owner and caused_by filters match, while its once_per budget lasts.
 func (reactor *coinGainReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
 	if _, live := reactor.holder.live(factionState); !live {
 		return nil
@@ -96,6 +101,9 @@ func (reactor *coinGainReactor) OnMutations(mutations []domain.Mutation, faction
 			continue
 		}
 		if reactor.causedBy != "" && !onSide(reactor.causedBy, causedBy, ownerID) {
+			continue
+		}
+		if reactor.oncePer != "" && !spendBudget(factionState.Factions[ownerID], budgetKey(reactor.oncePer, domain.SpecialCoinGain, reactor.holder.sourceID, reactor.holder.assetID, lostBy)) {
 			continue
 		}
 		extra = append(extra, domain.CoinDelta{

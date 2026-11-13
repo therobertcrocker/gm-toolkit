@@ -287,3 +287,29 @@ func TestReroll_RivalRollIsForTagsOnly(t *testing.T) {
 		t.Errorf("tag holder: err = %v, want none", err)
 	}
 }
+
+func TestReroll_RivalRollAtBaseScopeNeedsTheOwnersBase(t *testing.T) {
+	alpha := &domain.Faction{
+		ID: "alpha", Tags: []string{"HAWK-T-005"}, HookBudgets: map[string]int{},
+		Bases: []*domain.Base{{ID: "b-1", OwnerID: "alpha", Location: domain.Location{WorldID: "Krylos"}}},
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha, "beta": {ID: "beta"}, "gamma": {ID: "gamma"}}}
+	entry := psychicAcademyEntry()
+	entry.Filters.Scope = domain.ScopeBase
+	tag := &domain.Tag{ID: "HAWK-T-005", Name: "Contract-Bound", Effects: []domain.EffectDefinition{entry}}
+	if err := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler)).CheckTagEffects(tag); err != nil {
+		t.Fatalf("CheckTagEffects: %v", err)
+	}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialReroll].Register(effect.RegisterContext{Holder: effect.Holder{Faction: alpha, Tag: tag}, Entry: entry, Registry: registry})
+	collector := &rollCollector{accept: true}
+
+	away := rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "beta", "gamma", "Tartarus"), 8)
+	if away.Sum != 8 || collector.rerolls != 0 {
+		t.Errorf("roll off alpha's bases: Sum = %d, rerolls asked = %d; want 8 and 0", away.Sum, collector.rerolls)
+	}
+	atBase := rollThroughDispatcher(factionState, registry, collector, rollOn(factionState, "beta", "gamma", "Krylos"), 8, 2)
+	if atBase.Sum != 2 || collector.rerolls != 1 {
+		t.Errorf("roll on alpha's base: Sum = %d, rerolls asked = %d; want 2 and 1", atBase.Sum, collector.rerolls)
+	}
+}

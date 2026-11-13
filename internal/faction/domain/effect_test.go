@@ -27,7 +27,7 @@ func TestEffectFiltersUsed(t *testing.T) {
 				Attribute:    domain.StatCunning,
 				Phases:       []domain.RollPhase{domain.RollPhaseDefense},
 				Action:       "Expand Influence",
-				AssetTypes:   []domain.AssetType{domain.TypeStarship},
+				AssetTypes:   []domain.AssetType{domain.AssetType("Starship")},
 				Categories:   []domain.FactionStat{domain.StatForce},
 				Stealthy:     &stealthy,
 				MinTechLevel: 4,

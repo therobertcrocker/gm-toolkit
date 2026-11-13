@@ -1175,7 +1175,7 @@ func registerSeizeTarget(registry *hooks.Registry, faction *domain.Faction, asse
 // Rolls: attack=8, defense=3, damage=6.
 func TestAttack_BoltholesBeforeHostileTakeover(t *testing.T) {
 	rulebook := makeAttackRulebook()
-	rulebook.Assets["military-unit"] = &domain.AssetDefinition{ID: "military-unit", Name: "Troops", HP: 8, Type: domain.TypeMilitaryUnit}
+	rulebook.Assets["military-unit"] = &domain.AssetDefinition{ID: "military-unit", Name: "Troops", HP: 8, Type: domain.AssetType("Military Unit")}
 	factionState, attackerAsset, defenderAsset := makeAttackState(8, 3, "military-unit", false)
 	f2 := factionState.Factions["f2"]
 	boltholes := &domain.Asset{ID: "bolt", DefinitionID: "force-defender-nocounter", OwnerID: "f2", Location: domain.Location{WorldID: "Anchorage"}, CurrentHP: 2, Ready: true, Maintained: true}
@@ -1186,7 +1186,7 @@ func TestAttack_BoltholesBeforeHostileTakeover(t *testing.T) {
 		Entry: domain.EffectDefinition{
 			Trigger: domain.TriggerLethalDamage,
 			Effect:  domain.SpecialShelterAsset,
-			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, AssetTypes: []domain.AssetType{domain.TypeSpecialForces, domain.TypeMilitaryUnit}},
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, AssetTypes: []domain.AssetType{domain.AssetType("Special Forces"), domain.AssetType("Military Unit")}},
 		},
 	})
 	registerSeizeTarget(registry, factionState.Factions["f1"], attackerAsset)

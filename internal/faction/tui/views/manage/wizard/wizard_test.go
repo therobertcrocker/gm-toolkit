@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -30,5 +31,15 @@ func TestHomeworldGovernedElsewhere(t *testing.T) {
 				t.Errorf("err = %v, wantErr %v", err, testCase.wantErr)
 			}
 		})
+	}
+}
+
+func TestGovernmentTitle(t *testing.T) {
+	proprietor := &rulebook.Rulebook{GovernmentTagID: "HAWK-T-001", Tags: map[string]*domain.Tag{"HAWK-T-001": {ID: "HAWK-T-001", Name: "Proprietor"}}}
+	if got := governmentTitle(proprietor); got != "Governed world (Proprietor)" {
+		t.Errorf("title = %q, want the rulebook's government tag named", got)
+	}
+	if got := governmentTitle(&rulebook.Rulebook{}); got != "Governed world" {
+		t.Errorf("title with no government tag = %q, want %q", got, "Governed world")
 	}
 }

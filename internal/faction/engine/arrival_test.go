@@ -24,13 +24,13 @@ func arrivalHex(q int) spatial.RegionHex {
 func arrivalRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
 		"ship": {ID: "ship", Name: "Ship", Speed: 2, Transport: &domain.TransportProfile{
-			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.TypeMilitaryUnit},
+			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.AssetType("Military Unit")},
 		}},
-		"troops":  {ID: "troops", Name: "Troops", Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
-		"militia": {ID: "militia", Name: "Militia", Type: domain.TypeMilitaryUnit},
-		"mercs":   {ID: "mercs", Name: "Mercs", Speed: 2, Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"troops":  {ID: "troops", Name: "Troops", Type: domain.AssetType("Military Unit"), Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"militia": {ID: "militia", Name: "Militia", Type: domain.AssetType("Military Unit")},
+		"mercs":   {ID: "mercs", Name: "Mercs", Speed: 2, Type: domain.AssetType("Military Unit"), Flags: []domain.AssetFlag{domain.FlagPermission}},
 		"landers": {ID: "landers", Name: "Landers", Speed: 3, Transport: &domain.TransportProfile{
-			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.TypeMilitaryUnit}, IgnoresLockdown: true,
+			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.AssetType("Military Unit")}, IgnoresLockdown: true,
 		}},
 		"lockdown": {ID: "lockdown", Name: "Lockdown", Effects: []domain.EffectDefinition{{
 			Effect: domain.SpecialLockOut, LockOut: &domain.LockOutParams{Fee: domain.DiceRoll{NumDice: 1, Sides: 4}},

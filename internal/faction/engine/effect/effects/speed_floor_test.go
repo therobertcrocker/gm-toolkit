@@ -44,6 +44,11 @@ func TestSpeedFloor_RaisesTheOwnersSlowAssets(t *testing.T) {
 		}
 	}
 
+	alpha.LapsedTags = []string{mercenaries.ID}
+	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility); got != 0 {
+		t.Errorf("speed while the tag is lapsed = %d, want 0", got)
+	}
+
 	alpha.Tags = nil
 	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility); got != 0 {
 		t.Errorf("speed after the tag is dropped = %d, want 0", got)

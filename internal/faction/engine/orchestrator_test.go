@@ -94,12 +94,12 @@ func transportRulebook() *rulebook.Rulebook {
 				Transport: &domain.TransportProfile{
 					MaxHex:     4,
 					CoinCost:   1,
-					CargoTypes: []domain.AssetType{domain.TypeSpecialForces},
+					CargoTypes: []domain.AssetType{domain.AssetType("Special Forces")},
 					MaxCargo:   1,
 				},
 			},
-			"sf-def": {ID: "sf-def", Type: domain.TypeSpecialForces},
-			"mu-def": {ID: "mu-def", Type: domain.TypeMilitaryUnit},
+			"sf-def": {ID: "sf-def", Type: domain.AssetType("Special Forces")},
+			"mu-def": {ID: "mu-def", Type: domain.AssetType("Military Unit")},
 		},
 		DriftCosts: []int{5},
 	}
