@@ -38,6 +38,9 @@ Turn the canon into the campaign's data: the map, the settings and the seed stat
 ## Decision Record — Execution
 
 1. **Commit 2: the live turn's three faults are filed, not fixed here** — Robert's call: none comes from the map, the settings or the seed, so all three sit outside this effort. (a) A goal's description is cut off at the panel's side: the existing `B.048`, now noted as seen again. (b) On Radiant Throne's turn the movement form's top scrolled off, so the asset each page is for could not be seen: `B.050`, likely the same missing `.Height(` as `B.035`. (c) On that form "Hold position" could not be picked for the second asset: `B.051`, needs triage. Filed in `250e9bd`.
+2. **Effort review: two seeded ships stay below the ship floor** — Robert's call. Radiant Throne's Strike Fleet sits at Solar Gate (5,000) and Blackwater's Freighter Contract at Ouroboros (100,000), both under the 500,000 floor; Decision 15 checked the seat's tech level, not its population. The floor limits buying, and the seed builds nothing, so the ships may exist there. Neither faction can buy or refit a ship at that seat. Rejected: swapping them for non-ship stand-ins; moving them; a `population_waiver`.
+3. **Effort review: the registry's active campaign is `sandbox-claude`** — Robert's call. `a4704ed` set `GM_TOOLKIT_HOME` for every shell, so a command without `--campaign` now resolves the registry's active campaign. With `sandbox` active, it ran on Robert's copy. Rejected: dropping the env var; leaving it and relying on `--campaign`.
+4. **Effort review: text fixes** — The ship-floor comment in `settings.toml` named 1,000,000; the floor is 500,000 (Decision 8), and the comment now says so. The lane list in `places.md` said "17 currents"; it has 17 lanes and 18 currents (Decision 5). Both are fixed in the plan body too.
 
 ## Shared Context
 
@@ -320,7 +323,8 @@ asset_types = ["Military Unit", "Special Forces", "Facility", "Starship", "Tacti
 
 # The least world population on which an asset of each type may be bought. A
 # type left out has no floor. Quote a type with a space: "Military Unit".
-# Ships need a crowded or teeming place: 1,000,000 people or more.
+# Ships need 500,000 people or more, SWN's floor: on this map, a crowded or
+# teeming place.
 [purchase_population]
 Aethership = 500000
 Starship = 500000
@@ -374,7 +378,7 @@ The grid draws no routes, and Drift surrounds every clearing. Drift currents wor
 ```markdown
 The grid draws no routes, and Drift surrounds every clearing. Where two regions share a clearing, ships cross on open space. Everywhere else they ride Drift currents, the fast links: one lane of current joins two regions. The four gates are the only marked ways in or out of the sector, and each is a place on the map. The largest open areas are the red-orange south and the hub. The thickest Drift runs as a band across the middle, between the centre and the east, and no current crosses it; it also runs along the western and south-western edges.
 
-**Drift lanes** — 17 currents:
+**Drift lanes** — 17 lanes, 18 currents:
 
 - Radiance's Edge — Helios
 - Radiance's Edge — Harmony

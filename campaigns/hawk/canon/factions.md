@@ -6,7 +6,7 @@ The factions in play when the faction game opens: four major powers, then four s
 
 ## Occult Worker's League (O.W.L.) — `occult-workers-league`
 
-**Size and strength** — Major: a mega corporation
+**Size and strength** — Major (engine scale `hegemon`): a mega corporation
 **Best and worst at** — Best at Wealth, worst at Force
 **Seat of power** — `haven`
 **Controls** — `haven`, `arcadia`
@@ -23,7 +23,7 @@ It clashes with any faction that threatens its arcano-tech monopoly: rival corpo
 
 ## The Court of Lies — `court-of-lies`
 
-**Size and strength** — Major: a divine power
+**Size and strength** — Major (engine scale `hegemon`): a divine power
 **Best and worst at** — Best at Cunning, worst at Wealth
 **Seat of power** — `abaddons-gate`
 **Controls** — `abaddons-gate`, `odium`
@@ -40,7 +40,7 @@ It clashes with nearly every other faction in the Astral Sea, above all those wh
 
 ## The Radiant Throne — `radiant-throne`
 
-**Size and strength** — Major: a divine power
+**Size and strength** — Major (engine scale `hegemon`): a divine power
 **Best and worst at** — Best at Force, worst at Cunning
 **Seat of power** — `solar-gate`
 **Controls** — `solar-gate`, `lumos`
@@ -57,7 +57,7 @@ They clash with factions and beings that resist their control: other divine powe
 
 ## The Fey Royals — `fey-royals`
 
-**Size and strength** — Major: a divine power
+**Size and strength** — Major (engine scale `hegemon`): a divine power
 **Best and worst at** — Best at Cunning, worst at Force
 **Seat of power** — `veil`
 **Controls** — `veil`
@@ -74,7 +74,7 @@ They clash with the Radiant Throne and the other celestial powers that seek to d
 
 ## Blackwater Industries — `blackwater-industries`
 
-**Size and strength** — Smaller: the fragmented remains of a mega corporation
+**Size and strength** — Smaller (engine scale `major`): the fragmented remains of a mega corporation
 **Best and worst at** — Best at Cunning, worst at Wealth
 **Seat of power** — `ouroboros`
 **Controls** — `ouroboros`
@@ -91,7 +91,7 @@ It clashes with rival factions in the Astral Sea: the Occult Worker's League, in
 
 ## The Thymian Armada — `thymian-armada`
 
-**Size and strength** — Smaller: an exile fleet
+**Size and strength** — Smaller (engine scale `major`): an exile fleet
 **Best and worst at** — Best at Force, worst at Cunning
 **Seat of power** — `last-light`
 **Controls** — `last-light`
@@ -102,7 +102,7 @@ A diaspora of elves who exiled themselves after their defeat in season 1, when t
 
 ## Witherblight Collective — `witherblight-collective`
 
-**Size and strength** — Smaller: rebel cells and engineers
+**Size and strength** — Smaller (engine scale `major`): rebel cells and engineers
 **Best and worst at** — Best at Cunning, worst at Wealth
 **Seat of power** — `canon-iv`
 **Controls** — `canon-iv`
@@ -113,7 +113,7 @@ A cabal of arcano-tech engineers and rebel forces who overthrew Ulsidor Blackwat
 
 ## Seraph Industries — `seraph-industries`
 
-**Size and strength** — Smaller: a company on the rise
+**Size and strength** — Smaller (engine scale `major`): a company on the rise
 **Best and worst at** — Best at Wealth, worst at Cunning
 **Seat of power** — `veil`
 **Controls** — none

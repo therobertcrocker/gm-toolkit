@@ -12,7 +12,8 @@ asset_types = ["Military Unit", "Special Forces", "Facility", "Starship", "Tacti
 
 # The least world population on which an asset of each type may be bought. A
 # type left out has no floor. Quote a type with a space: "Military Unit".
-# Ships need a crowded or teeming place: 1,000,000 people or more.
+# Ships need 500,000 people or more, SWN's floor: on this map, a crowded or
+# teeming place.
 [purchase_population]
 Aethership = 500000
 Starship = 500000

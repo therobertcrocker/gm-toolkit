@@ -22,7 +22,7 @@ Beyond its edges is open Astral Sea: dark space, with a huge orange-red nebula a
 
 The grid draws no routes, and Drift surrounds every clearing. Where two regions share a clearing, ships cross on open space. Everywhere else they ride Drift currents, the fast links: one lane of current joins two regions. The four gates are the only marked ways in or out of the sector, and each is a place on the map. The largest open areas are the red-orange south and the hub. The thickest Drift runs as a band across the middle, between the centre and the east, and no current crosses it; it also runs along the western and south-western edges.
 
-**Drift lanes** — 17 currents:
+**Drift lanes** — 17 lanes, 18 currents:
 
 - Radiance's Edge — Helios
 - Radiance's Edge — Harmony

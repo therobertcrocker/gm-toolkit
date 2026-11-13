@@ -1,4 +1,4 @@
-active = "sandbox"
+active = "sandbox-claude"
 
 [[campaigns]]
   id = "sandbox"
