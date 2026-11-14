@@ -55,6 +55,7 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 	domain.EffectBlockAttack:      blockAttack,
 	domain.EffectLevyCoin:         levyCoin,
 	domain.EffectRaiseTechLevel:   raiseTechLevel,
+	domain.EffectShelter:          shelter,
 }
 
 // Dispatch runs a holder's ability as a sequence of steps: resolve the step's
@@ -110,7 +111,7 @@ func Dispatch(
 	var mutations []domain.Mutation
 	for _, step := range abilityDefinition.Steps {
 		handler := handlers[step.Effect]
-		target, err := resolveTarget(step, workingFaction, domain.AbilityHolder{Asset: workingAsset, Tag: holder.Tag}, view, collector, worldEngine, registry)
+		target, err := resolveTarget(step, workingFaction, domain.AbilityHolder{Asset: workingAsset, Tag: holder.Tag}, view, collector, worldEngine, registry, rulebook)
 		// deliberate: fizzle this asset, not fail the action, because an earlier asset in the same action may have used up the targets and its result must stand (Effort 3 Decision Record 1).
 		if errors.Is(err, errNoTargets) {
 			break

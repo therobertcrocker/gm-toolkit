@@ -59,6 +59,7 @@ const (
 	EffectBlockAttack      AbilityEffectType = "block_attack"
 	EffectLevyCoin         AbilityEffectType = "levy_coin"
 	EffectRaiseTechLevel   AbilityEffectType = "raise_tech_level"
+	EffectShelter          AbilityEffectType = "shelter"
 )
 
 type RelocateScope string
@@ -127,6 +128,13 @@ type RaiseTechLevelParams struct {
 	TechLevel int
 }
 
+// ShelterParams configures a shelter step (Leased Demiplane): AssetTypes are the
+// own asset types it may take in, and Capacity is how many it holds at once.
+type ShelterParams struct {
+	AssetTypes []AssetType
+	Capacity   int
+}
+
 type TargetKind string
 
 const (
@@ -174,6 +182,7 @@ type AbilityStep struct {
 	Relocate       *RelocateParams
 	Purchase       *PurchaseParams
 	RaiseTechLevel *RaiseTechLevelParams
+	Shelter        *ShelterParams
 }
 
 type AbilityOutcome struct {
@@ -266,6 +275,20 @@ func (def *AssetDefinition) NeedsArrivalPermission(asset *Asset) bool {
 // use it; a sale is worth Cost / 2 with no floor.
 func (def *AssetDefinition) HalfPrice() int {
 	return max(1, def.Cost/2)
+}
+
+// Shelter returns the parameters of the definition's shelter step (Leased
+// Demiplane), or nil when it has none.
+func (def *AssetDefinition) Shelter() *ShelterParams {
+	if def == nil || def.Ability == nil {
+		return nil
+	}
+	for _, step := range def.Ability.Steps {
+		if step.Effect == EffectShelter {
+			return step.Shelter
+		}
+	}
+	return nil
 }
 
 type ConditionKind string

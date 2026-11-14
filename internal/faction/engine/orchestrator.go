@@ -231,10 +231,16 @@ func (e *Engine) runBookkeepingPhase(
 	return nil
 }
 
-// runConditionLifts offers the faction's disabled assets their price and applies
-// the lifts it pays for. A recoverable failure is reported and lifts nothing.
+// runConditionLifts offers the faction's disabled assets their price and its
+// sheltered assets a free release, and applies what it accepts. A recoverable
+// failure is reported and lifts nothing.
 func (e *Engine) runConditionLifts(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, collector PhaseCollector, observer TurnObserver, phaseLog *slog.Logger) ([]domain.Mutation, error) {
 	mutations, err := turn.OfferConditionLifts(faction, e.Rulebook, collector)
+	if err == nil {
+		var releases []domain.Mutation
+		releases, err = turn.OfferShelterReleases(faction, factionState, e.Rulebook, collector)
+		mutations = append(mutations, releases...)
+	}
 	if err == nil && len(mutations) > 0 {
 		mutations, err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
 	}

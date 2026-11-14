@@ -134,6 +134,12 @@ type abilityStepRecord struct {
 	Relocate       *relocateRecord       `toml:"relocate"`
 	Purchase       *purchaseRecord       `toml:"purchase"`
 	RaiseTechLevel *raiseTechLevelRecord `toml:"raise_tech_level"`
+	Shelter        *shelterRecord        `toml:"shelter"`
+}
+
+type shelterRecord struct {
+	AssetTypes []string `toml:"asset_types"`
+	Capacity   int      `toml:"capacity"`
 }
 
 type raiseTechLevelRecord struct {
@@ -425,6 +431,16 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		}
 		step.RaiseTechLevel = &domain.RaiseTechLevelParams{CoinCost: raise.CoinCost, TechLevel: raise.TechLevel}
 	}
+	if shelter := record.Shelter; shelter != nil {
+		if len(shelter.AssetTypes) == 0 || shelter.Capacity <= 0 {
+			return domain.AbilityStep{}, fmt.Errorf("shelter needs asset_types and capacity > 0, got %d types and capacity %d", len(shelter.AssetTypes), shelter.Capacity)
+		}
+		params := &domain.ShelterParams{Capacity: shelter.Capacity}
+		for _, name := range shelter.AssetTypes {
+			params.AssetTypes = append(params.AssetTypes, domain.AssetType(name))
+		}
+		step.Shelter = params
+	}
 	if record.Die != "" && step.TargetRoll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both a die and a target_roll; use one")
 	}
@@ -467,6 +483,12 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	}
 	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("levy_coin requires target = %q and no contest or die", "faction")
+	}
+	if step.Effect == domain.EffectShelter && (step.Target != domain.TargetAsset || step.Shelter == nil || step.Contest != nil || step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
+		return domain.AbilityStep{}, fmt.Errorf("shelter requires target = %q, a [shelter] block and no contest or die", "asset")
+	}
+	if step.Shelter != nil && step.Effect != domain.EffectShelter {
+		return domain.AbilityStep{}, fmt.Errorf("a [shelter] block needs effect = %q, got %q", domain.EffectShelter, step.Effect)
 	}
 	if step.TargetRoll != nil && step.Effect != domain.EffectCoinDelta && step.Effect != domain.EffectRaiseTechLevel {
 		return domain.AbilityStep{}, fmt.Errorf("effect %q does not read a target_roll; only %q and %q do", step.Effect, domain.EffectCoinDelta, domain.EffectRaiseTechLevel)
@@ -583,6 +605,8 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectLevyCoin, nil
 	case "raise_tech_level":
 		return domain.EffectRaiseTechLevel, nil
+	case "shelter":
+		return domain.EffectShelter, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
@@ -674,8 +698,8 @@ func loadSettings(path string) (settings, error) {
 
 // checkAssetTypes refuses an asset type settings.toml does not declare, wherever
 // the data names one: an asset's type, its transport's cargo types, a relocate's
-// asset type and excluded types, and an effects entry's asset_type filter, on an
-// asset or a tag.
+// asset type and excluded types, a shelter's asset types, and an effects entry's
+// asset_type filter, on an asset or a tag.
 func checkAssetTypes(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, declared []domain.AssetType) error {
 	check := func(holder string, names ...domain.AssetType) error {
 		for _, name := range names {
@@ -715,8 +739,14 @@ func checkAssetTypes(assets map[string]*domain.AssetDefinition, tags map[string]
 			return nil
 		}
 		for i, step := range ability.Steps {
-			if err := checkRelocate(fmt.Sprintf("%s ability step %d", holder, i), step.Relocate); err != nil {
+			stepHolder := fmt.Sprintf("%s ability step %d", holder, i)
+			if err := checkRelocate(stepHolder, step.Relocate); err != nil {
 				return err
+			}
+			if step.Shelter != nil {
+				if err := check(stepHolder, step.Shelter.AssetTypes...); err != nil {
+					return err
+				}
 			}
 		}
 		return nil

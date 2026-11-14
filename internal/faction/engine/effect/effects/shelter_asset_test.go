@@ -212,3 +212,32 @@ func TestShelterAsset_LossTakesShelteredAssets(t *testing.T) {
 		})
 	}
 }
+
+func TestShelterAsset_AssetDestroyedRoute(t *testing.T) {
+	factionState := boltholesState()
+	alpha := factionState.Factions["alpha"]
+	alpha.Assets["mu"].Conditions = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialShelterAsset].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["bolt"], Def: boltholesDef}, Registry: registry,
+		Entry: domain.EffectDefinition{
+			Trigger: domain.TriggerAssetDestroyed,
+			Effect:  domain.SpecialShelterAsset,
+			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+		},
+	})
+
+	if interceptors := registry.LethalInterceptorsForAsset("alpha", "bolt"); len(interceptors) != 0 {
+		t.Errorf("interceptors = %d, want 0: the asset_destroyed route rescues no one", len(interceptors))
+	}
+	var reactors []hooks.MutationReactor
+	for _, registered := range registry.MutationReactorsForAsset("alpha", "bolt") {
+		reactors = append(reactors, registered.Hook)
+	}
+	killed := domain.AssetRemoved{FactionID: "alpha", AssetID: "bolt", Cause: "attack", CausedByFactionID: "beta"}
+	got := runReactors(reactors, []domain.Mutation{killed}, factionState)
+	want := []domain.Mutation{domain.AssetRemoved{FactionID: "alpha", AssetID: "mu", Cause: "attack", CausedByFactionID: "beta"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("mutations = %+v, want %+v", got, want)
+	}
+}

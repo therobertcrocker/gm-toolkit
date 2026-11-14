@@ -7,11 +7,11 @@
 drift_costs = [10, 7, 5, 3, 2]
 
 # Every asset type this rulebook's data may name: an asset's type, a transport's
-# cargo, a relocate's filter, an effects filter and the floors below. H.A.W.K's
-# types come first; SWN's stay for the Cunning and Wealth stand-ins until
-# Efforts 5 and 6 replace them.
+# cargo, a relocate's filter, a shelter, an effects filter and the floors below.
+# H.A.W.K's types come first; SWN's stay for the Wealth stand-in until Effort 6
+# replaces it.
 asset_types = [
-  "Security Personnel", "Operative", "Facility", "Aethership", "Stratagem", "Beast",
+  "Security Personnel", "Operative", "Facility", "Aethership", "Stratagem", "Beast", "Front",
   "Military Unit", "Special Forces", "Starship", "Tactic", "Logistics Facility", "Special",
 ]
 

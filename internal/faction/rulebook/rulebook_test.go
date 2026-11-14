@@ -1133,6 +1133,7 @@ func TestCheckAssetTypes(t *testing.T) {
 		{name: "asset type", assets: map[string]*domain.AssetDefinition{"A-1": {ID: "A-1", Type: "Gunboat"}}, want: `asset "A-1": asset type "Gunboat"`},
 		{name: "transport cargo", assets: starship(domain.AssetDefinition{Transport: &domain.TransportProfile{CargoTypes: []domain.AssetType{"Gunboat"}}}), want: `asset "A-1" transport`},
 		{name: "ability relocate", assets: starship(domain.AssetDefinition{Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{Relocate: &domain.RelocateParams{ExcludeTypes: []domain.AssetType{"Gunboat"}}}}}}), want: `asset "A-1" ability step 0`},
+		{name: "ability shelter", assets: starship(domain.AssetDefinition{Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{Shelter: &domain.ShelterParams{AssetTypes: []domain.AssetType{"Gunboat"}, Capacity: 1}}}}}), want: `asset "A-1" ability step 0`},
 		{name: "asset effects filter", assets: starship(domain.AssetDefinition{Effects: []domain.EffectDefinition{{Filters: domain.EffectFilters{AssetTypes: []domain.AssetType{"Gunboat"}}}}}), want: `asset "A-1" effects[0]`},
 		{name: "tag effects filter", tags: map[string]*domain.Tag{"T-1": {ID: "T-1", Effects: []domain.EffectDefinition{{Filters: domain.EffectFilters{AssetTypes: []domain.AssetType{"Gunboat"}}}}}}, want: `tag "T-1" effects[0]`},
 	}
@@ -1271,6 +1272,44 @@ func TestConvertAbilityStep_RaiseTechLevel(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := loadAssetsFromTOML(t, effectTestAsset+header+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestConvertAbilityStep_Shelter(t *testing.T) {
+	const header = "\n[assets.Machine.ability]\neffect = \"shelter\"\n"
+	const target = "target = \"asset\"\n"
+	const block = "[assets.Machine.ability.shelter]\nasset_types = [\"Operative\", \"Security Personnel\"]\ncapacity = 1\n"
+
+	t.Run("loads", func(t *testing.T) {
+		assets, err := loadAssetsFromTOML(t, effectTestAsset+header+target+block)
+		if err != nil {
+			t.Fatalf("load: %v", err)
+		}
+		want := &domain.ShelterParams{AssetTypes: []domain.AssetType{"Operative", "Security Personnel"}, Capacity: 1}
+		if got := assets["T-001"].Ability.Steps[0].Shelter; !reflect.DeepEqual(got, want) {
+			t.Errorf("shelter = %+v, want %+v", got, want)
+		}
+	})
+
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"no asset target", header + block, "shelter requires"},
+		{"no block", header + target, "shelter requires"},
+		{"a contest", header + target + "roll = \"test\"\nattacker_stat = \"Cunning\"\ndefender_stat = \"Cunning\"\n" + block, "shelter requires"},
+		{"no capacity", header + target + "[assets.Machine.ability.shelter]\nasset_types = [\"Operative\"]\n", "capacity > 0"},
+		{"no types", header + target + "[assets.Machine.ability.shelter]\ncapacity = 1\n", "asset_types"},
+		{"a block on another effect", "\n[assets.Machine.ability]\neffect = \"levy_coin\"\ntarget = \"faction\"\n" + block, "needs effect = \"shelter\""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, effectTestAsset+tc.body)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
 			}

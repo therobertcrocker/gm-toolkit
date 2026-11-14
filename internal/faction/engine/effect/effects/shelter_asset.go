@@ -16,12 +16,19 @@ import (
 // brings it to full HP. If damage destroys the Boltholes first, its sheltered
 // assets are destroyed with it. owner = "own" reads as "the struck asset is the
 // declaring asset's faction's", scope = "world" as "on the declaring asset's world".
+// The asset_destroyed route (owner = "own", scope = "self") keeps only the second
+// rule: an asset that shelters by its ability (Leased Demiplane) takes what it
+// shelters with it when damage destroys it, and rescues no one.
 var shelterAssetRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerLethalDamage: {
 			Owners:  []domain.EffectOwner{domain.OwnerOwn},
 			Scopes:  []domain.EffectScope{domain.ScopeWorld},
 			Filters: []domain.EffectFilterName{domain.FilterAssetType},
+		},
+		domain.TriggerAssetDestroyed: {
+			Owners: []domain.EffectOwner{domain.OwnerOwn},
+			Scopes: []domain.EffectScope{domain.ScopeSelf},
 		},
 	},
 	Register: registerShelterAsset,
@@ -31,7 +38,9 @@ func registerShelterAsset(ctx effect.RegisterContext) {
 	scope := ctx.Holder.Scope()
 	source := ctx.Holder.HookID(domain.SpecialShelterAsset)
 	holder := refOf(ctx.Holder)
-	ctx.Registry.RegisterLethalInterceptor(scope, source, &shelterAssetInterceptor{holder: holder, assetTypes: ctx.Entry.Filters.AssetTypes})
+	if ctx.Entry.Trigger == domain.TriggerLethalDamage {
+		ctx.Registry.RegisterLethalInterceptor(scope, source, &shelterAssetInterceptor{holder: holder, assetTypes: ctx.Entry.Filters.AssetTypes})
+	}
 	ctx.Registry.RegisterMutationReactor(scope, source, &shelterLossReactor{holder: holder})
 }
 

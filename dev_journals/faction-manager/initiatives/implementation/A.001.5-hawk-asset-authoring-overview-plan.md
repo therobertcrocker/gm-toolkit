@@ -54,7 +54,7 @@ Turn the discovery's six efforts into an executable sequence: specify Effort 1 t
 | [x] | 2 | Tag pass | `rulebooks/hawk/` begins: `rulebook.toml`, H.A.W.K `tags.toml`, SWN stand-ins for the asset files and `settings.toml` | [`A.001.5.E2-hawk-asset-authoring-plan.md`](A.001.5.E2-hawk-asset-authoring-plan.md) |
 | [x] | 3 | Campaign setup | The map, the starting factions as a seed state, the real `settings.toml`, the first live turn | [`A.001.5.E3-hawk-asset-authoring-plan.md`](A.001.5.E3-hawk-asset-authoring-plan.md) |
 | [x] | 4 | Force pass | `assets/force_assets.toml` replaces its stand-in; a live turn | [`A.001.5.E4-hawk-asset-authoring-plan.md`](A.001.5.E4-hawk-asset-authoring-plan.md) |
-| [ ] | 5 | Cunning pass | `assets/cunning_assets.toml` replaces its stand-in; a live turn | `A.001.5.E5-hawk-asset-authoring-plan.md` (planned) |
+| [x] | 5 | Cunning pass | `assets/cunning_assets.toml` replaces its stand-in; a live turn | [`A.001.5.E5-hawk-asset-authoring-plan.md`](A.001.5.E5-hawk-asset-authoring-plan.md) |
 | [ ] | 6 | Wealth pass | `assets/wealth_assets.toml` replaces the last stand-in; "H.A.W.K playable" | `A.001.5.E6-hawk-asset-authoring-plan.md` (planned) |
 
 The order is a straight line; each effort depends on the one before it:

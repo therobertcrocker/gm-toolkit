@@ -1,35 +1,18 @@
-# Cunning Assets
+# Cunning Assets — H.A.W.K (A.001.5 Effort 5)
 
-[assets.Smugglers]
-id = "SWN-C1-001"
-name = "Smugglers"
-category = "Cunning"
-min_rating = 1
-hp = 4
-cost = 2
-maintenance = 0
-tech_level = 4
-speed = 2
-type = "Starship"
-flags = ["S"]
-counter = ""
-description = "Men and women skilled in extracting personnel. For one Coin, the smugglers asset can transport itself and/or any one Special Forces unit to a planet up to two hexes away."
-attack = { attacker_stat = "Cunning", defender_stat = "Wealth", damage = "1d4" }
-transport = { max_hex = 2, coin_cost = 1, cargo_types = ["Special Forces"], max_cargo = 1 }
-
-[assets.Informers]
-id = "SWN-C1-002"
-name = "Informers"
+[assets.ImpFamiliars]
+id = "HAWK-C1-001"
+name = "Imp Familiars"
 category = "Cunning"
 min_rating = 1
 hp = 3
 cost = 2
 maintenance = 0
 tech_level = 0
-type = "Special Forces"
+type = "Operative"
 flags = ["A", "S"]
 counter = ""
-description = "Minions that lace a planet's underworld, watchful for intruders. On a successful Cunning vs. Cunning attack, all Stealthed assets on the planet belonging to that faction are revealed. Can target a faction even if none of their assets are visible."
+description = "Contract imps issued as assistants. As an action, make a Cunning vs. Cunning attack on a faction; on a success, all its Stealthed assets on this place are revealed."
 ability = {
   roll = "attack",
   attacker_stat = "Cunning",
@@ -38,36 +21,97 @@ ability = {
   target = "faction",
 }
 
-[assets.FalseFront]
-id = "SWN-C1-003"
-name = "False Front"
+[assets.GlamouredDoubles]
+id = "HAWK-C1-002"
+name = "Glamoured Doubles"
 category = "Cunning"
 min_rating = 1
 hp = 2
 cost = 1
 maintenance = 0
 tech_level = 0
-type = "Logistics Facility"
+type = "Operative"
 flags = ["S"]
 counter = ""
-description = "If another asset on the planet suffers enough damage to destroy it, the faction can sacrifice the False Front instead to nullify the killing blow."
+description = "Stand-ins glamoured to wear an agent's face. If another of the faction's Operatives on this place takes enough damage to destroy it, the faction may sacrifice the Doubles instead to nullify the killing blow."
 effects = [
-  { trigger = "lethal_damage", effect = "sacrifice_self", filters = { owner = "own", scope = "world" } },
+  {
+    trigger = "lethal_damage",
+    effect = "sacrifice_self",
+    filters = { owner = "own", scope = "world", asset_type = ["Operative"] },
+  },
 ]
 
-[assets.Lobbyists]
-id = "SWN-C2-001"
-name = "Lobbyists"
+[assets.BlackHullSmugglers]
+id = "HAWK-C1-003"
+name = "Black-hull Smugglers"
+category = "Cunning"
+min_rating = 1
+hp = 4
+cost = 2
+maintenance = 0
+tech_level = 4
+speed = 14
+drift_rating = 2
+type = "Aethership"
+flags = ["S"]
+counter = ""
+description = "Unlit smuggling skiffs with no registry. Moves at speed 14 (mid-range). For 1 Coin, carries itself and one Operative, landing even past a lockdown."
+attack = { attacker_stat = "Cunning", defender_stat = "Wealth", damage = "1d4" }
+transport = { coin_cost = 1, cargo_types = ["Operative"], max_cargo = 1, ignores_lockdown = true }
+
+[assets.ProsperityGospel]
+id = "HAWK-C1-004"
+name = "Prosperity Gospel"
+category = "Cunning"
+min_rating = 1
+hp = 2
+cost = 1
+maintenance = 0
+tech_level = 2
+type = "Stratagem"
+flags = ["S"]
+counter = ""
+description = "A doctrine that wealth is grace. Any other faction buying an asset on this place pays 1 extra Coin, which is lost. This applies once, however many are present."
+attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "1d4-1" }
+effects = [
+  {
+    trigger = "asset_cost_query",
+    effect = "cost_surcharge",
+    filters = { owner = "rival", scope = "world" },
+    gates = { no_stack = true },
+    cost_surcharge = { amount = 1 },
+  },
+]
+
+[assets.CharmPeddlers]
+id = "HAWK-C1-005"
+name = "Charm Peddlers"
+category = "Cunning"
+min_rating = 1
+hp = 4
+cost = 2
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = ["A"]
+counter = "1d4"
+description = "Luck sold door to door. As an action, roll 1d6; on a 3 or higher, gain 1 Coin."
+ability = { effect = "coin_delta", target_roll = { die = "1d6", target = 3, amount = 1 } }
+
+[assets.OldBargains]
+id = "HAWK-C2-001"
+name = "Old Bargains"
 category = "Cunning"
 min_rating = 2
 hp = 4
 cost = 4
 maintenance = 1
 tech_level = 0
-type = "Special Forces"
+type = "Stratagem"
 flags = ["S"]
 counter = ""
-description = "When a rival faction gains governmental permission to buy or transport an asset, the Lobbyists can make an immediate Cunning vs. Cunning test; if successful, the permission is withdrawn and cannot be re-attempted until next turn."
+description = "Favours the Fey are owed. When a rival gains permission to buy or bring in an asset on this place, make an immediate Cunning vs. Cunning test; on a success, the permission is withdrawn and cannot be asked again until next turn."
 effects = [
   {
     trigger = "permission_granted",
@@ -77,59 +121,58 @@ effects = [
   },
 ]
 
-[assets.Saboteurs]
-id = "SWN-C2-002"
-name = "Saboteurs"
+[assets.SkeletonKeys]
+id = "HAWK-C2-002"
+name = "Skeleton Keys"
 category = "Cunning"
 min_rating = 2
 hp = 6
 cost = 5
 maintenance = 0
 tech_level = 0
-type = "Special Forces"
+type = "Stratagem"
 flags = ["S"]
 counter = ""
-description = "An asset attacked by Saboteurs cannot apply any Use Asset Ability action until the start of the attacking faction's next turn, whether or not the attack was successful."
+description = "Master keys to an old security system. An asset attacked with the Keys cannot use its ability until the start of the attacking faction's next turn, whether or not the attack succeeds."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d4" }
 effects = [
   { trigger = "own_attack", effect = "block_ability", filters = { owner = "own", scope = "self" } },
 ]
 
-[assets.Blackmail]
-id = "SWN-C2-003"
-name = "Blackmail"
+[assets.CorporateAuditors]
+id = "HAWK-C2-003"
+name = "Corporate Auditors"
 category = "Cunning"
 min_rating = 2
 hp = 4
 cost = 4
 maintenance = 0
 tech_level = 0
-type = "Tactic"
+type = "Operative"
 flags = ["S"]
 counter = ""
-description = "Selectively degrades the effectiveness of an asset. Any attempt to attack or defend against Blackmail loses any bonus dice earned by tags."
+description = "Auditors sworn to disallow. Any attack on or defence against the Auditors loses the bonus dice the rival's tags would give."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "1d4+1" }
 effects = [
   { trigger = "enemy_roll_at_me", effect = "remove_tag_dice", filters = { owner = "rival", scope = "self" } },
 ]
 
-[assets.Seductress]
-id = "SWN-C2-004"
-name = "Seductress"
+[assets.FeyCourtiers]
+id = "HAWK-C2-004"
+name = "Fey Courtiers"
 category = "Cunning"
 min_rating = 2
 hp = 4
 cost = 4
 maintenance = 0
 tech_level = 0
-speed = 1
-type = "Special Forces"
+type = "Operative"
 flags = ["A", "S"]
 counter = ""
-description = "As an action, can travel to any world within one hex. On a successful Cunning vs. Cunning attack, does no damage but immediately reveals any other Stealthed assets of that faction on the planet. Only Special Forces units can attack a Seductress."
+description = "Courtiers who charm a rival's staff. As an action, move to a place within 4 hexes, then make a Cunning vs. Cunning attack on a faction there; on a success, it takes no damage but its Stealthed assets on that place are revealed. Only Operatives can attack Fey Courtiers."
 ability = {
   steps = [
-    { effect = "relocate", relocate = { scope = "self", max_hex = 1 } },
+    { effect = "relocate", relocate = { scope = "self", max_hex = 4 } },
     {
       effect = "reveal_stealth",
       target = "faction",
@@ -139,24 +182,57 @@ ability = {
     },
   ],
 }
+effects = [
+  {
+    trigger = "attack_eligibility_query",
+    effect = "restrict_attack",
+    filters = { owner = "rival", scope = "self", asset_type = ["Operative"] },
+    restrict_attack = { side = "defense", allow = "only_listed" },
+  },
+]
 
-[assets.Cyberninjas]
-id = "SWN-C3-001"
-name = "Cyberninjas"
+[assets.OccultLodge]
+id = "HAWK-C2-005"
+name = "Occult Lodge"
+category = "Cunning"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 0
+type = "Front"
+flags = ["S"]
+counter = ""
+description = "A secret society, run as a franchise. Roll an extra d10 on the test to Expand Influence on this place."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "world", phase = ["faction_test"], action = "Expand Influence" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[assets.Wardbreakers]
+id = "HAWK-C3-001"
+name = "Wardbreakers"
 category = "Cunning"
 min_rating = 3
 hp = 4
 cost = 6
 maintenance = 0
 tech_level = 4
-type = "Special Forces"
-flags = []
+type = "Operative"
+flags = ["S"]
 counter = ""
-description = "Outfitted with the latest in personal stealth cyberware, cyberninjas are designed to avoid all but the most careful scans."
+description = "Engineers who walk through wards. Wardbreakers start Stealthed when bought."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d6" }
+effects = [
+  { trigger = "on_purchase", effect = "apply_stealth", filters = { owner = "own", scope = "self" } },
+]
 
 [assets.Stealth]
-id = "SWN-C3-002"
+id = "HAWK-C3-002"
 name = "Stealth"
 category = "Cunning"
 min_rating = 3
@@ -164,50 +240,50 @@ hp = 0
 cost = 2
 maintenance = 0
 tech_level = 0
-type = "Tactic"
+type = "Stratagem"
 flags = ["S"]
 quality = true
 counter = ""
-description = "Not a standard asset but a special quality purchased for another Special Forces asset on the planet. A Stealthed asset cannot be detected or attacked. If the unit normally requires government permission to land, that permission may be foregone. Stealth is lost if the asset attacks or defends."
+description = "Not a standard asset but a special quality, bought for one of the faction's Operatives on this place. A Stealthed asset cannot be detected or attacked. If it would need government permission to land, that permission may be foregone. Stealth is lost if the asset attacks or defends."
 effects = [
   {
     trigger = "on_purchase",
     effect = "grant_stealth",
-    filters = { owner = "own", scope = "world", asset_type = ["Special Forces"], stealthy = false },
+    filters = { owner = "own", scope = "world", asset_type = ["Operative"], stealthy = false },
   },
 ]
 
-[assets.CovertShipping]
-id = "SWN-C3-003"
-name = "Covert Shipping"
+[assets.Mirrorways]
+id = "HAWK-C3-003"
+name = "Mirrorways"
 category = "Cunning"
 min_rating = 3
 hp = 4
 cost = 8
 maintenance = 0
 tech_level = 4
-type = "Logistics Facility"
+type = "Front"
 flags = ["A", "S"]
 counter = ""
-description = "Any one Special Forces unit can be moved between any worlds within three hexes of the Covert Shipping at the cost of one Coin."
+description = "Paired mirrors to step through. As an action, for 1 Coin, move one Operative between any places within 12 hexes of the Mirrorways."
 ability = {
   effect = "relocate",
-  relocate = { scope = "other", max_hex = 3, coin_cost = 1, asset_type = "Special Forces", max_assets = 1 },
+  relocate = { scope = "other", max_hex = 12, coin_cost = 1, asset_type = "Operative", max_assets = 1 },
 }
 
-[assets.PartyMachine]
-id = "SWN-C4-001"
-name = "Party Machine"
+[assets.AscensionProgram]
+id = "HAWK-C4-001"
+name = "Ascension Program"
 category = "Cunning"
 min_rating = 4
 hp = 10
 cost = 8
 maintenance = 0
 tech_level = 0
-type = "Logistics Facility"
+type = "Front"
 flags = ["S"]
 counter = "1d6"
-description = "Political blocks firmly in control of the faction. Each turn, a Party Machine provides 1 Coin to its owning faction."
+description = "A path to godhood in twelve paid levels. Each turn, gain 1 Coin."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d6" }
 effects = [
   {
@@ -218,34 +294,34 @@ effects = [
   },
 ]
 
-[assets.VanguardCadres]
-id = "SWN-C4-002"
-name = "Vanguard Cadres"
+[assets.ChosenInitiates]
+id = "HAWK-C4-002"
+name = "Chosen Initiates"
 category = "Cunning"
 min_rating = 4
 hp = 12
 cost = 8
 maintenance = 0
 tech_level = 3
-type = "Military Unit"
+type = "Security Personnel"
 flags = []
 counter = "1d6"
-description = "Followers of the movement inspired sufficiently to take up arms and fight on behalf of their leadership."
+description = "The inner circle's sworn guard, who keep the doors, collect the dues and remove disruptive guests."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "1d6" }
 
-[assets.TripwireCells]
-id = "SWN-C4-003"
-name = "Tripwire Cells"
+[assets.TrainedHellhounds]
+id = "HAWK-C4-003"
+name = "Trained Hellhounds"
 category = "Cunning"
 min_rating = 4
 hp = 8
 cost = 12
 maintenance = 0
 tech_level = 4
-type = "Special Forces"
+type = "Beast"
 flags = ["S"]
 counter = "1d4"
-description = "Observers alert to the arrival of stealthed units. Whenever a stealthed asset lands or is purchased on a planet with Tripwire Cells, the Cells make an immediate Cunning vs. Cunning attack against the owning faction. If successful, the asset loses its stealth."
+description = "Hellhounds trained to smell glamour. Whenever a rival's Stealthed asset arrives or is bought on this place, make an immediate Cunning vs. Cunning attack on its faction; on a success, the asset loses its Stealth."
 effects = [
   {
     trigger = "stealth_arrival",
@@ -255,87 +331,119 @@ effects = [
   },
 ]
 
-[assets.Seditionists]
-id = "SWN-C4-004"
-name = "Seditionists"
+[assets.DiabolicInterlopers]
+id = "HAWK-C4-004"
+name = "Diabolic Interlopers"
 category = "Cunning"
 min_rating = 4
 hp = 8
 cost = 12
 maintenance = 0
 tech_level = 0
-type = "Special Forces"
+type = "Operative"
 flags = ["A"]
 counter = ""
-description = "For a cost of 1d4 Coins, the Seditionists can attach themselves to an enemy asset. Until they attach to a different asset or no longer share the same planet, the affected asset cannot attack. If the asset is destroyed, the Seditionists survive."
+description = "Devils that slip into a host. As an action, for 1d4 Coin, attach to a rival asset on this place. Until they attach to another asset or no longer share its place, that asset cannot attack. If it is destroyed, the Interlopers survive."
 ability = { effect = "block_attack", target = "asset", die = "1d4" }
 
-[assets.OrganizationMoles]
-id = "SWN-C5-001"
-name = "Organization Moles"
+[assets.MembershipDues]
+id = "HAWK-C5-001"
+name = "Membership Dues"
 category = "Cunning"
 min_rating = 5
 hp = 8
 cost = 10
 maintenance = 0
 tech_level = 0
-type = "Tactic"
-flags = []
+type = "Stratagem"
+flags = ["S"]
 counter = ""
-description = "Can subvert and confuse enemy assets, striking to damage their cohesion."
+description = "A rival's staff, secretly members. When the Dues successfully attack an enemy asset, they steal 1d4 Coin from its faction, once per turn per faction, however many attack."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d6" }
+effects = [
+  {
+    trigger = "own_attack_hit",
+    effect = "coin_steal",
+    filters = { owner = "rival", scope = "world" },
+    gates = { once_per = "target_faction" },
+    coin_steal = { amount = "1d4" },
+  },
+]
 
-[assets.CrackedComms]
-id = "SWN-C5-002"
-name = "Cracked Comms"
+[assets.Dreamwalkers]
+id = "HAWK-C5-002"
+name = "Dreamwalkers"
 category = "Cunning"
 min_rating = 5
 hp = 6
 cost = 14
 maintenance = 0
 tech_level = 0
-type = "Tactic"
+type = "Operative"
 flags = ["S"]
 counter = ""
-description = "A cryptographic asset for intercepting and deciphering enemy communications. If Cracked Comms succeeds in defending against an attack, it can immediately cause the attacking asset to make an attack against itself for normal damage or counterattack results."
+description = "They rewrite a commander's plan in their sleep. If the Dreamwalkers defend successfully against an attack, the attacking asset immediately attacks itself, for normal damage or counterattack results."
 effects = [
   { trigger = "own_defense_win", effect = "counterstrike", filters = { owner = "own", scope = "self" } },
 ]
 
-[assets.Boltholes]
-id = "SWN-C5-003"
-name = "Boltholes"
+[assets.LeasedDemiplane]
+id = "HAWK-C5-003"
+name = "Leased Demiplane"
 category = "Cunning"
 min_rating = 5
 hp = 6
 cost = 12
 maintenance = 0
 tech_level = 4
-type = "Logistics Facility"
-flags = ["S"]
+type = "Front"
+flags = ["A", "S"]
 counter = "2d6"
-description = "If a faction Special Forces or Military Unit asset on the same planet as the Boltholes suffers damage sufficient to destroy it, it is instead set at 0 HP and rendered untouchable and unusable until repaired to full strength. If the Boltholes are destroyed first, the asset is destroyed with them."
+description = "A room outside the world, rented monthly. As an action, move one of the faction's Operatives or Security Personnel on this place inside; the Demiplane holds one asset at a time. While inside, the asset cannot be detected, attacked or moved, and cannot act. At the start of the faction's turn, it may bring the asset out at no cost. If the Demiplane is destroyed, the asset inside is destroyed with it."
+ability = {
+  effect = "shelter",
+  target = "asset",
+  shelter = { asset_types = ["Operative", "Security Personnel"], capacity = 1 },
+}
 effects = [
-  {
-    trigger = "lethal_damage",
-    effect = "shelter_asset",
-    filters = { owner = "own", scope = "world", asset_type = ["Special Forces", "Military Unit"] },
-  },
+  { trigger = "asset_destroyed", effect = "shelter_asset", filters = { owner = "own", scope = "self" } },
 ]
 
-[assets.TransportLockdown]
-id = "SWN-C6-001"
-name = "Transport Lockdown"
+[assets.GeasBackedNDA]
+id = "HAWK-C5-004"
+name = "Geas-Backed NDA"
+category = "Cunning"
+min_rating = 5
+hp = 8
+cost = 10
+maintenance = 0
+tech_level = 0
+type = "Stratagem"
+flags = ["A"]
+counter = ""
+description = "A geas that gags a rival asset's staff. As an action, test Cunning vs. Cunning against a rival faction's asset; on a success, its faction must at once pay half that asset's purchase cost (rounded down), or the asset is disabled until the price is paid."
+attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "1d6" }
+ability = {
+  roll = "test",
+  attacker_stat = "Cunning",
+  defender_stat = "Cunning",
+  effect = "disable_asset",
+  target = "asset",
+}
+
+[assets.RulesOfHospitality]
+id = "HAWK-C6-001"
+name = "Rules of Hospitality"
 category = "Cunning"
 min_rating = 6
 hp = 10
 cost = 20
 maintenance = 0
 tech_level = 4
-type = "Tactic"
+type = "Stratagem"
 flags = ["S"]
 counter = ""
-description = "On a successful Cunning vs. Cunning attack against a rival faction, the rival faction cannot transport assets onto that planet without spending 1d4 Coins and waiting one turn."
+description = "No one enters uninvited. On a successful Cunning vs. Cunning attack on a rival faction, it cannot bring assets onto this place without paying 1d4 Coin and waiting one turn."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning" }
 effects = [
   {
@@ -346,70 +454,79 @@ effects = [
   },
 ]
 
-[assets.CovertTransitNet]
-id = "SWN-C6-002"
-name = "Covert Transit Net"
+[assets.WhisperGateNetwork]
+id = "HAWK-C6-002"
+name = "WhisperGate™ Network"
 category = "Cunning"
 min_rating = 6
 hp = 15
 cost = 18
 maintenance = 0
 tech_level = 4
-type = "Logistics Facility"
+type = "Front"
 flags = ["A"]
 counter = ""
-description = "Webs an area of space with a network of smugglers and gray-market freighter captains. As an action, any Special Forces assets can be moved between any worlds within three hexes of the Covert Transit Net."
+description = "Gates across a region that open to a password. As an action, move any number of the faction's Operatives between places in this region."
 ability = {
   effect = "relocate",
-  relocate = { scope = "other", range = "region", asset_type = "Special Forces", max_assets = 0 },
+  relocate = { scope = "other", range = "region", asset_type = "Operative", max_assets = 0 },
 }
 
-[assets.Demagogue]
-id = "SWN-C6-003"
-name = "Demagogue"
+[assets.ProphetExecutive]
+id = "HAWK-C6-003"
+name = "Prophet-Executive"
 category = "Cunning"
 min_rating = 6
 hp = 10
 cost = 20
 maintenance = 0
 tech_level = 0
-type = "Special Forces"
-flags = []
+type = "Operative"
+flags = ["S"]
 counter = "1d8"
-description = "Popular leaders of a particular faith or ideology that can be relied upon to point their followers in the direction of maximum utility."
+description = "Prophet and chief executive in one. Once per turn, roll an extra d10 on one of the faction's Cunning attacks on this place."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d8" }
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "world", phase = ["attack"], attribute = "Cunning" },
+    gates = { once_per = "asset" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
 
-[assets.PopularMovement]
-id = "SWN-C7-001"
-name = "Popular Movement"
+[assets.StateFaith]
+id = "HAWK-C7-001"
+name = "State Faith"
 category = "Cunning"
 min_rating = 7
 hp = 16
 cost = 25
 maintenance = 0
 tech_level = 4
-type = "Tactic"
+type = "Stratagem"
 flags = ["S"]
 counter = "1d6"
-description = "A planet-wide surge of enthusiasm for a cause controlled by the faction. This support pervades all levels of government, and the government always grants any asset purchase or movement requests made by the faction."
+description = "The faith is the place's religion. The government always grants the faction's requests to buy or bring in assets here."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d6" }
 effects = [
   { trigger = "permission_query", effect = "grant_permission", filters = { owner = "own", scope = "world" } },
 ]
 
-[assets.BookOfSecrets]
-id = "SWN-C7-002"
-name = "Book of Secrets"
+[assets.AuguryDesk]
+id = "HAWK-C7-002"
+name = "Augury Desk"
 category = "Cunning"
 min_rating = 7
 hp = 10
 cost = 20
 maintenance = 0
 tech_level = 4
-type = "Tactic"
+type = "Front"
 flags = ["S"]
 counter = "2d8"
-description = "Exhaustively cataloged psychometric records on important local figures. Once per turn, allows the faction to reroll one die for an action on that world or force an enemy faction to reroll one die. This reroll can only be forced once per turn."
+description = "A trading desk of augurs. Once per turn, the faction may reroll one die for an action on this place, or force a rival to reroll one die."
 effects = [
   {
     trigger = "own_roll",
@@ -427,19 +544,19 @@ effects = [
   },
 ]
 
-[assets.Treachery]
-id = "SWN-C7-003"
-name = "Treachery"
+[assets.ChangelingAgents]
+id = "HAWK-C7-003"
+name = "Changeling Agents"
 category = "Cunning"
 min_rating = 7
 hp = 5
 cost = 10
 maintenance = 0
 tech_level = 0
-type = "Tactic"
+type = "Stratagem"
 flags = ["S"]
 counter = ""
-description = "On a successful Cunning vs. Cunning attack, the Treachery asset is lost, 5 Coins are gained, and the targeted asset switches sides to join the traitor's faction, even if the faction does not otherwise have the attributes necessary."
+description = "A rival officer swapped for a changeling. On a successful Cunning vs. Cunning attack, the Agents are lost, the faction gains 5 Coin, and the target asset joins the faction, even if the faction could not otherwise field it."
 attack = { attacker_stat = "Cunning", defender_stat = "Cunning" }
 effects = [
   {
@@ -450,19 +567,19 @@ effects = [
   },
 ]
 
-[assets.PanopticonMatrix]
-id = "SWN-C8-001"
-name = "Panopticon Matrix"
+[assets.OracleEngine]
+id = "HAWK-C8-001"
+name = "Oracle Engine"
 category = "Cunning"
 min_rating = 8
 hp = 20
 cost = 30
 maintenance = 2
 tech_level = 5
-type = "Logistics Facility"
+type = "Front"
 flags = ["S"]
 counter = "1d6"
-description = "Weaves braked-AI intelligence analysts into a web of observation. Every rival Stealthed asset on the planet must succeed in a Cunning vs. Cunning test at the beginning of every turn or lose their Stealth. The owner also gains an additional die on all Cunning attacks and defenses on that planet."
+description = "An Arcane Intelligence that sees one place whole. Every rival Stealthed asset on this place must pass a Cunning vs. Cunning test at the start of the faction's turn or lose its Stealth. The faction rolls an extra die on all Cunning attacks and defences on this place. Costs 2 Coin of maintenance each turn."
 effects = [
   {
     trigger = "own_roll",
