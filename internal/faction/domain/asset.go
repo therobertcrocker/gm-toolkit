@@ -92,16 +92,20 @@ const (
 // RangeHexes (ignored for RangeRegion); CoinCost is charged per CoinCostMode; AssetType
 // filters "other" candidates (empty = any), Categories narrows them by asset category
 // (empty = any) and ExcludeTypes drops types; MaxAssets caps the count moved (0 = unbounded).
+// IgnoresPermission lands each asset without asking the government, and IgnoresLockdown
+// lands it past a Transport Lockdown, as a transport profile's fields do (Deep-Insertion Gate).
 type RelocateParams struct {
-	Scope        RelocateScope
-	Range        RelocateRange
-	MaxHex       int
-	CoinCost     int
-	CoinCostMode RelocateCostMode
-	AssetType    AssetType
-	Categories   []FactionStat
-	ExcludeTypes []AssetType
-	MaxAssets    int
+	Scope             RelocateScope
+	Range             RelocateRange
+	MaxHex            int
+	CoinCost          int
+	CoinCostMode      RelocateCostMode
+	AssetType         AssetType
+	Categories        []FactionStat
+	ExcludeTypes      []AssetType
+	MaxAssets         int
+	IgnoresPermission bool
+	IgnoresLockdown   bool
 }
 
 // PurchaseParams configures a purchase_enabler step (Pretech Logistics). Category is the

@@ -782,3 +782,38 @@ func TestLoadTags_PopulationFloorPercent(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertEffect_RunningHot(t *testing.T) {
+	bonus, err := convertEffect(effectRecord{
+		Trigger:    "speed_query",
+		Effect:     "speed_bonus",
+		Filters:    &effectFiltersRecord{Owner: "own", Scope: "faction", AssetType: []string{"Aethership"}, Hot: true},
+		SpeedBonus: &speedBonusRecord{Amount: 5},
+	})
+	if err != nil {
+		t.Fatalf("speed_bonus: %v", err)
+	}
+	if bonus.SpeedBonus == nil || bonus.SpeedBonus.Amount != 5 || !bonus.Filters.Hot {
+		t.Errorf("speed_bonus = %+v, want amount 5 and the hot filter", bonus)
+	}
+
+	burn, err := convertEffect(effectRecord{
+		Trigger:    "hot_move",
+		Effect:     "self_damage",
+		Filters:    &effectFiltersRecord{Owner: "own", Scope: "faction"},
+		SelfDamage: &amountRecord{Amount: "1d4"},
+	})
+	if err != nil {
+		t.Fatalf("hot_move self_damage: %v", err)
+	}
+	if burn.Trigger != domain.TriggerHotMove {
+		t.Errorf("trigger = %q, want %q", burn.Trigger, domain.TriggerHotMove)
+	}
+
+	if _, err := convertEffect(effectRecord{
+		Trigger: "speed_query", Effect: "speed_bonus",
+		Filters: &effectFiltersRecord{Owner: "own", Scope: "faction"}, SpeedBonus: &speedBonusRecord{Amount: 0},
+	}); err == nil {
+		t.Error("speed_bonus amount 0: want an error")
+	}
+}

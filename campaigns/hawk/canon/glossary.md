@@ -18,6 +18,8 @@ Arcane casters off the Material Plane draw on Aether-Cores when the Weave cannot
 
 A vessel powered by Aether, able to cross the Astral Sea for exploration, trade or combat.
 
+An Aethership is built along a long, angular spine, often in a company's livery, around a glowing Aether-Core held in a ring or in cradling hull arms. Lit ward-domes enclose its open decks, and energy fins flare from the hull. The largest are built around a single spinal gun. Aetherships carry no sails.
+
 ## Aetherstone — `aetherstone`
 
 A small, stable store of concentrated Aether, used to fuel Aether-tech.

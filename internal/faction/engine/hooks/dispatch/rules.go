@@ -98,24 +98,24 @@ func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, de
 	return tl
 }
 
-// AssetSpeedResolver returns the speed of an asset faction owns, by definition:
+// AssetSpeedResolver returns the speed of an asset faction owns, by definition and by whether its order runs hot:
 // the definition's own, run through faction's AssetSpeedModifiers, then those
 // registered against each asset faction owns, in asset ID order. A speed floor
 // serves its owner only, so a rival's assets are never asked. The modifiers are
 // gathered once, so one resolver serves a whole pass over faction's assets. With
 // a nil registry it returns the definition's speed.
-func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(*domain.AssetDefinition) int {
+func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(definition *domain.AssetDefinition, hot bool) int {
 	if registry == nil {
-		return func(definition *domain.AssetDefinition) int { return definition.Speed }
+		return func(definition *domain.AssetDefinition, _ bool) int { return definition.Speed }
 	}
 	modifiers := registry.AssetSpeedModifiersFor(faction.ID)
 	for _, asset := range domain.SortedAssets(faction) {
 		modifiers = append(modifiers, registry.AssetSpeedModifiersForAsset(faction.ID, asset.ID)...)
 	}
-	return func(definition *domain.AssetDefinition) int {
+	return func(definition *domain.AssetDefinition, hot bool) int {
 		speed := definition.Speed
 		for _, registered := range modifiers {
-			speed = registered.Hook.ModifyAssetSpeed(faction, definition, speed)
+			speed = registered.Hook.ModifyAssetSpeed(faction, definition, speed, hot)
 		}
 		return speed
 	}

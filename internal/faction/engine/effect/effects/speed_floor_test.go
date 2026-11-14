@@ -39,18 +39,18 @@ func TestSpeedFloor_RaisesTheOwnersSlowAssets(t *testing.T) {
 		{"a rival's asset is not raised", beta, facility, 0},
 	}
 	for _, tc := range cases {
-		if got := dispatch.AssetSpeedResolver(registry, tc.faction)(tc.definition); got != tc.want {
+		if got := dispatch.AssetSpeedResolver(registry, tc.faction)(tc.definition, false); got != tc.want {
 			t.Errorf("%s: speed = %d, want %d", tc.name, got, tc.want)
 		}
 	}
 
 	alpha.LapsedTags = []string{mercenaries.ID}
-	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility); got != 0 {
+	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility, false); got != 0 {
 		t.Errorf("speed while the tag is lapsed = %d, want 0", got)
 	}
 
 	alpha.Tags = nil
-	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility); got != 0 {
+	if got := dispatch.AssetSpeedResolver(registry, alpha)(facility, false); got != 0 {
 		t.Errorf("speed after the tag is dropped = %d, want 0", got)
 	}
 }

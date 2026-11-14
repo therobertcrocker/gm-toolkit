@@ -55,10 +55,11 @@ type WorldTechLevelModifier interface {
 	ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int
 }
 
-// AssetSpeedModifier adjusts the speed, in hexes a turn, of an asset faction
-// owns, read by the movement phase (Cat 4).
+// AssetSpeedModifier adjusts the speed, in movement points a turn, of an asset
+// faction owns, read by the movement phase (Cat 4). hot reports a move order run
+// hot (Aether Burners).
 type AssetSpeedModifier interface {
-	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int) int
+	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int, hot bool) int
 }
 
 // UpkeepCharger is a tag's turn upkeep, read by bookkeeping after income and

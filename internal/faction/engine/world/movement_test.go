@@ -154,3 +154,106 @@ func TestTickMovementOrders_InAssetIDOrder(t *testing.T) {
 		t.Errorf("tick order = %v, want %v", order, want)
 	}
 }
+
+func driftRulebook(speed int) *rulebook.Rulebook {
+	return &rulebook.Rulebook{
+		Assets:     map[string]*domain.AssetDefinition{"ship": {ID: "ship", Speed: speed}},
+		DriftCosts: []int{6, 5, 4, 3, 2},
+	}
+}
+
+func laneOrder(driftRating, banked int) *domain.Asset {
+	path := []spatial.RegionHex{
+		{RegionID: "a", Coord: spatial.HexCoord{Q: 0}},
+		{RegionID: "b", Coord: spatial.HexCoord{Q: 5}},
+		{RegionID: "b", Coord: spatial.HexCoord{Q: 6}},
+	}
+	return &domain.Asset{ID: "s1", OwnerID: "f1", DefinitionID: "ship",
+		CurrentOrder: &domain.MovementOrder{AssetID: "s1", Path: path, DriftRating: driftRating, Banked: banked}}
+}
+
+func tickOne(t *testing.T, asset *domain.Asset, rb *rulebook.Rulebook) domain.Mutation {
+	t.Helper()
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{asset.ID: asset}}
+	mutations, err := regionWorldEngine(t).TickMovementOrders(faction, rb, nil, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("TickMovementOrders: %v", err)
+	}
+	if len(mutations) != 1 {
+		t.Fatalf("mutations = %+v, want one", mutations)
+	}
+	return mutations[0]
+}
+
+func TestTickMovementOrders_DriftJumpCostsItsRatedPoints(t *testing.T) {
+	first := tickOne(t, laneOrder(1, 0), driftRulebook(3))
+	if got, ok := first.(domain.MovementOrderProgressed); !ok || got.NewStepIdx != 0 || got.Banked != 3 {
+		t.Errorf("turn 1 = %+v, want no step and 3 points banked toward the 6-point jump", first)
+	}
+
+	second := tickOne(t, laneOrder(1, 3), driftRulebook(3))
+	if got, ok := second.(domain.MovementOrderProgressed); !ok || got.NewStepIdx != 1 || got.Banked != 0 {
+		t.Errorf("turn 2 = %+v, want the jump made with the banked points and nothing left", second)
+	}
+
+	rated := tickOne(t, laneOrder(5, 0), driftRulebook(3))
+	if _, ok := rated.(domain.MovementOrderCompleted); !ok {
+		t.Errorf("rating 5 = %+v, want the 2-point jump and the last step in one turn", rated)
+	}
+}
+
+func TestBuildMovementMutations_RunHot(t *testing.T) {
+	rb := &rulebook.Rulebook{
+		Assets: map[string]*domain.AssetDefinition{
+			"ship":   {ID: "ship", Speed: 2},
+			"troops": {ID: "troops"},
+		},
+		DriftCosts: []int{5},
+	}
+	order := func(id, def string) *domain.Asset {
+		return &domain.Asset{ID: id, DefinitionID: def, OwnerID: "alpha",
+			Location:     domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 1}}},
+			CurrentOrder: &domain.MovementOrder{AssetID: id, Path: makePath(5), StepIdx: 1}}
+	}
+	faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{
+		"cold": order("cold", "ship"), "hot": order("hot", "ship"), "forced": order("forced", "troops"),
+	}}
+	dest := &domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 3}}}
+	decisions := []world.MovementDecision{
+		{AssetID: "cold", Kind: world.MovementDecisionRevise, Destination: dest},
+		{AssetID: "hot", Kind: world.MovementDecisionRevise, Destination: dest, RunHot: true},
+		{AssetID: "forced", Kind: world.MovementDecisionRevise, Destination: dest},
+	}
+
+	mutations, err := regionWorldEngine(t).BuildMovementMutations(decisions, faction, rb, nil, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("BuildMovementMutations: %v", err)
+	}
+	want := map[string]bool{"cold": false, "hot": true, "forced": true}
+	for _, mutation := range mutations {
+		if revised, ok := mutation.(domain.MovementOrderRevised); ok && revised.NewOrder.RunHot != want[revised.AssetID] {
+			t.Errorf("%s: RunHot = %v, want %v", revised.AssetID, revised.NewOrder.RunHot, want[revised.AssetID])
+		}
+	}
+}
+
+func TestBuildMovementMutations_ReviseKeepsBankedPoints(t *testing.T) {
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"ship": {ID: "ship", Speed: 3}}, DriftCosts: []int{6}}
+	ship := &domain.Asset{ID: "s1", DefinitionID: "ship", OwnerID: "alpha",
+		Location:     domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 1}}},
+		CurrentOrder: &domain.MovementOrder{AssetID: "s1", Path: makePath(5), StepIdx: 1, Banked: 3}}
+	faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{"s1": ship}}
+	dest := &domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 3}}}
+
+	mutations, err := regionWorldEngine(t).BuildMovementMutations(
+		[]world.MovementDecision{{AssetID: "s1", Kind: world.MovementDecisionRevise, Destination: dest}},
+		faction, rb, nil, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("BuildMovementMutations: %v", err)
+	}
+	for _, mutation := range mutations {
+		if revised, ok := mutation.(domain.MovementOrderRevised); ok && revised.NewOrder.Banked != 3 {
+			t.Errorf("Banked = %d, want the 3 points carried into the new order", revised.NewOrder.Banked)
+		}
+	}
+}

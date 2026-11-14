@@ -422,6 +422,7 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok && asset.CurrentOrder != nil {
 					asset.CurrentOrder.StepIdx = v.NewStepIdx
+					asset.CurrentOrder.Banked = v.Banked
 					asset.Location = domain.Location{
 						RegionHex: v.RegionHex,
 					}
@@ -435,6 +436,7 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok && asset.CurrentOrder != nil {
 					asset.CurrentOrder.StepIdx = v.NewStepIdx
+					asset.CurrentOrder.Banked = 0
 					asset.Location = domain.Location{RegionHex: v.RegionHex}
 					if v.Reason == domain.HoldLockdownPaid {
 						asset.CurrentOrder.LockdownPaid = true

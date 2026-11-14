@@ -155,26 +155,26 @@ func TestResolveWorldTechLevel_PassesDefinition(t *testing.T) {
 // stubAssetSpeedModifier raises speed to a fixed floor.
 type stubAssetSpeedModifier struct{ floor int }
 
-func (stub stubAssetSpeedModifier) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+func (stub stubAssetSpeedModifier) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int, _ bool) int {
 	return max(speed, stub.floor)
 }
 
 func TestAssetSpeedResolver(t *testing.T) {
 	definition := &domain.AssetDefinition{ID: "facility"}
 	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": {ID: "a1", OwnerID: "f1"}}}
-	if got := AssetSpeedResolver(nil, faction)(definition); got != 0 {
+	if got := AssetSpeedResolver(nil, faction)(definition, false); got != 0 {
 		t.Errorf("nil registry: speed = %d, want the definition's 0", got)
 	}
 
 	registry := hooks.NewRegistry()
 	registry.RegisterAssetSpeedModifier(hooks.AssetScope("f1", "a1"), "own asset", stubAssetSpeedModifier{floor: 1})
 	registry.RegisterAssetSpeedModifier(hooks.AssetScope("rival", "r1"), "rival", stubAssetSpeedModifier{floor: 9})
-	if got := AssetSpeedResolver(registry, faction)(definition); got != 1 {
+	if got := AssetSpeedResolver(registry, faction)(definition, false); got != 1 {
 		t.Errorf("speed = %d, want 1: the own asset's floor is asked, the rival's never", got)
 	}
 
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("f1"), "faction", stubAssetSpeedModifier{floor: 2})
-	if got := AssetSpeedResolver(registry, faction)(definition); got != 2 {
+	if got := AssetSpeedResolver(registry, faction)(definition, false); got != 2 {
 		t.Errorf("speed = %d, want 2 from the faction's floor", got)
 	}
 }

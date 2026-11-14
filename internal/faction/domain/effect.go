@@ -39,6 +39,7 @@ const (
 	SpecialArrivalToll        SpecialEffectType = "arrival_toll"
 	SpecialDriftRatingBonus   SpecialEffectType = "drift_rating_bonus"
 	SpecialCoinUpkeep         SpecialEffectType = "coin_upkeep"
+	SpecialSpeedBonus         SpecialEffectType = "speed_bonus"
 )
 
 type EffectTrigger string
@@ -72,6 +73,7 @@ const (
 	TriggerArrivalQuery           EffectTrigger = "arrival_query"
 	TriggerDriftRatingQuery       EffectTrigger = "drift_rating_query"
 	TriggerUpkeep                 EffectTrigger = "upkeep"
+	TriggerHotMove                EffectTrigger = "hot_move"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -116,6 +118,7 @@ const (
 	FilterDetection         EffectFilterName = "detection"
 	FilterAssetDefinition   EffectFilterName = "asset_definition"
 	FilterOpponentTag       EffectFilterName = "opponent_tag"
+	FilterHot               EffectFilterName = "hot"
 )
 
 type EffectGateName string
@@ -207,6 +210,8 @@ type EffectFilters struct {
 	// OpponentTag names a tag the faction on the other side of the roll holds
 	// (Godslayers' die against Soul-Bonded).
 	OpponentTag string
+	// Hot limits a speed effect to move orders run hot (Aether Burners).
+	Hot bool
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
@@ -255,6 +260,9 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	}
 	if filters.OpponentTag != "" {
 		present = append(present, FilterOpponentTag)
+	}
+	if filters.Hot {
+		present = append(present, FilterHot)
 	}
 	return present
 }
@@ -362,6 +370,11 @@ type DriftRatingBonusParams struct {
 	Amount int
 }
 
+// SpeedBonusParams adds Amount to the speed of the holder's matching assets.
+type SpeedBonusParams struct {
+	Amount int
+}
+
 // UpkeepUnpaid names what an unpaid upkeep costs the tag's holder.
 type UpkeepUnpaid string
 
@@ -407,4 +420,5 @@ type EffectDefinition struct {
 	LockOut          *LockOutParams
 	DriftRatingBonus *DriftRatingBonusParams
 	CoinUpkeep       *CoinUpkeepParams
+	SpeedBonus       *SpeedBonusParams
 }

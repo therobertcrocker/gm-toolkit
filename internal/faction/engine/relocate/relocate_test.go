@@ -707,3 +707,60 @@ func TestRun_AssetPickedForItsOwnWorldPaysNoToll(t *testing.T) {
 		}
 	}
 }
+
+func TestRun_IgnoresPermissionAsksNoOne(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	faction, _, web, mercs, _, factionState := landingFixture()
+	params := transitWebParams()
+	params.IgnoresPermission = true
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: mercs, DestinationWorld: "mid"}}, nil)
+
+	mutations, err := Run(Request{
+		Faction: faction, Acting: web, Params: params,
+		Collector: collector, World: relocEngine(), Rulebook: relocRulebook(), FactionState: factionState,
+	})
+
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if moved, ok := mutations[0].(domain.AssetMoved); !ok || moved.AssetID != "mp-1" || moved.ToLocation.WorldID != "mid" {
+		t.Errorf("mutations[0] = %+v, want the mercenaries landed on mid without an ask", mutations[0])
+	}
+}
+
+func TestRun_IgnoresLockdownLandsOnALockedWorld(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	web := &domain.Asset{ID: "web", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}
+	works := &domain.Asset{ID: "wf-1", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "near", RegionHex: relocHex("r1", 1)}}
+	faction := &domain.Faction{ID: "f1", Coin: 1, Assets: map[string]*domain.Asset{"web": web, "wf-1": works}}
+	lockdown := &domain.Asset{ID: "lock", OwnerID: "f2", Location: domain.Location{WorldID: "mid"}, Ready: true, Maintained: true, CurrentHP: 10,
+		Conditions: []domain.Condition{{Kind: domain.ConditionLockedOut, SourceAssetID: "lock", TargetFactionID: "f1", WorldID: "mid"}}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{
+		"f1": faction,
+		"f2": {ID: "f2", Assets: map[string]*domain.Asset{"lock": lockdown}},
+	}}
+	params := transitWebParams()
+	params.IgnoresLockdown = true
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ *domain.Asset, _ []*domain.Asset, worlds []string, _ int) ([]action.RelocateOrder, error) {
+			if !slices.Contains(worlds, "mid") {
+				t.Errorf("destinations = %v, want the locked world kept", worlds)
+			}
+			return []action.RelocateOrder{{Asset: works, DestinationWorld: "mid"}}, nil
+		})
+
+	mutations, err := Run(Request{
+		Faction: faction, Acting: web, Params: params,
+		Collector: collector, World: relocEngine(), Rulebook: relocRulebook(), FactionState: factionState,
+	})
+
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if moved, ok := mutations[0].(domain.AssetMoved); !ok || moved.AssetID != "wf-1" || moved.ToLocation.WorldID != "mid" {
+		t.Errorf("mutations[0] = %+v, want wf-1 landed on the locked world", mutations[0])
+	}
+}

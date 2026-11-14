@@ -865,7 +865,7 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook,
 			continue
 		}
 		// deliberate: an open order keeps the asset listed at speed 0, not drops it, because a lost speed floor would freeze the order with no way to cancel it (Effort 2 Decision Record 5).
-		if asset.CurrentOrder != nil || speedOf(def) > 0 {
+		if asset.CurrentOrder != nil || speedOf(def, false) > 0 || speedOf(def, true) > 0 {
 			eligible = append(eligible, asset)
 		}
 	}

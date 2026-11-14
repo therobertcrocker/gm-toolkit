@@ -16,7 +16,7 @@ The strand always wants to snap back to Myr. Holding it costs every day, in Aeth
 
 ## Aether Burners — `HAWK-T-003`
 
-Refined Aether is for people with patience. Aether Burners pour it in raw, so their ships are fast, their guns are loud and their best moments go up in smoke. The crews call it "running hot". The insurers call it something else.
+Refined Aether is for people with patience. Aether Burners pour it in raw, so their ships are fast, their guns are loud and their best moments go up in smoke. The crews call it "running hot". The insurers call it something else. A fleet or a garrison running hot gets anywhere fast, and its hulls and its people pay for it every turn of the trip.
 
 ## Soul-Bonded — `HAWK-T-004`
 
@@ -48,7 +48,7 @@ Every dock fee, fuel tax and landing permit in a monopolist's territory goes to 
 
 ## Aether-Tech Evangelists — `HAWK-T-011`
 
-The evangelists believe Aether-tech lifts every Fragment it touches, and they will not stop explaining this. Wherever they set up, the stones are cut, the cores are wired in and the lights come on. The programs are free, because the locals are the product.
+The evangelists believe Aether-tech lifts every Fragment it touches, and they will not stop explaining this. Wherever they set up, the stones are cut, the cores are wired in and the lights come on. The programs are free, because the locals are the product. The Aether-tech houses also hold the patents on Arcano-Engineered Warbeasts, and only their licensees may field them.
 
 ## Drift-Runners — `HAWK-T-012`
 

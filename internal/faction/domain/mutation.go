@@ -445,6 +445,7 @@ type MovementOrderProgressed struct {
 	AssetID           string            `json:"asset_id"`
 	NewStepIdx        int               `json:"new_step_idx"`
 	RegionHex         spatial.RegionHex `json:"region_hex"`
+	Banked            int               `json:"banked,omitempty"`
 	Cause             string            `json:"cause"`
 	CausedByFactionID string            `json:"caused_by_faction_id"`
 }

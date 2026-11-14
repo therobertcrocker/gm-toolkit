@@ -13,6 +13,8 @@ bin/
 /campaigns/*/state/logs/
 # Claude's private copy of sandbox
 /campaigns/sandbox-claude/
+# Claude's private copy of hawk
+/campaigns/hawk-claude/
 
 # Reference materials (copyrighted)
 reference/

@@ -1,14 +1,19 @@
 # Setting rules for this rulebook. drift_costs and asset_types are required; every
 # other key is optional, and a key left out turns its rule off.
 
-# drift_costs[i] = hex-equivalent crossing cost for drift rating (i+1). The Drift
-# is dangerous: a crossing always costs more than a step.
-drift_costs = [6, 5, 4, 3, 2]
+# drift_costs[i] = movement points a Drift jump costs at drift rating (i+1). The
+# Drift is dangerous: a jump always costs more than a step. Front-loaded, so an
+# unrated ship struggles and the first rating upgrades matter most.
+drift_costs = [10, 7, 5, 3, 2]
 
 # Every asset type this rulebook's data may name: an asset's type, a transport's
-# cargo, a relocate's filter, an effects filter and the floors below. SWN's types
-# stay until Efforts 4 to 6 replace the stand-in assets.
-asset_types = ["Military Unit", "Special Forces", "Facility", "Starship", "Tactic", "Logistics Facility", "Special", "Aethership"]
+# cargo, a relocate's filter, an effects filter and the floors below. H.A.W.K's
+# types come first; SWN's stay for the Cunning and Wealth stand-ins until
+# Efforts 5 and 6 replace them.
+asset_types = [
+  "Security Personnel", "Operative", "Facility", "Aethership", "Stratagem", "Beast",
+  "Military Unit", "Special Forces", "Starship", "Tactic", "Logistics Facility", "Special",
+]
 
 # The least world population on which an asset of each type may be bought. A
 # type left out has no floor. Quote a type with a space: "Military Unit".

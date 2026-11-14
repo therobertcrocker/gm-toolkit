@@ -142,15 +142,17 @@ type raiseTechLevelRecord struct {
 }
 
 type relocateRecord struct {
-	Scope        string   `toml:"scope"`
-	Range        string   `toml:"range"`
-	MaxHex       int      `toml:"max_hex"`
-	CoinCost     int      `toml:"coin_cost"`
-	CoinCostMode string   `toml:"coin_cost_mode"`
-	AssetType    string   `toml:"asset_type"`
-	Categories   []string `toml:"categories"`
-	ExcludeTypes []string `toml:"exclude_types"`
-	MaxAssets    int      `toml:"max_assets"`
+	Scope             string   `toml:"scope"`
+	Range             string   `toml:"range"`
+	MaxHex            int      `toml:"max_hex"`
+	CoinCost          int      `toml:"coin_cost"`
+	CoinCostMode      string   `toml:"coin_cost_mode"`
+	AssetType         string   `toml:"asset_type"`
+	Categories        []string `toml:"categories"`
+	ExcludeTypes      []string `toml:"exclude_types"`
+	MaxAssets         int      `toml:"max_assets"`
+	IgnoresPermission bool     `toml:"ignores_permission"`
+	IgnoresLockdown   bool     `toml:"ignores_lockdown"`
 }
 
 type purchaseRecord struct {
@@ -519,12 +521,14 @@ func convertRelocate(record *relocateRecord) (*domain.RelocateParams, error) {
 		return nil, err
 	}
 	params := &domain.RelocateParams{
-		Scope:        scope,
-		Range:        rng,
-		MaxHex:       record.MaxHex,
-		CoinCost:     record.CoinCost,
-		CoinCostMode: costMode,
-		MaxAssets:    record.MaxAssets,
+		Scope:             scope,
+		Range:             rng,
+		MaxHex:            record.MaxHex,
+		CoinCost:          record.CoinCost,
+		CoinCostMode:      costMode,
+		MaxAssets:         record.MaxAssets,
+		IgnoresPermission: record.IgnoresPermission,
+		IgnoresLockdown:   record.IgnoresLockdown,
 	}
 	if record.AssetType != "" {
 		params.AssetType = domain.AssetType(record.AssetType)

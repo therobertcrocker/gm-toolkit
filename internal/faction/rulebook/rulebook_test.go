@@ -1413,3 +1413,35 @@ func TestDriftCost_ClampsToTheTable(t *testing.T) {
 		}
 	}
 }
+
+func TestConvertRelocate_IgnoresPermissionAndLockdown(t *testing.T) {
+	params, err := convertRelocate(&relocateRecord{Scope: "other", MaxHex: 3, CoinCost: 2, MaxAssets: 1, IgnoresPermission: true, IgnoresLockdown: true})
+	if err != nil {
+		t.Fatalf("convertRelocate: %v", err)
+	}
+	if !params.IgnoresPermission || !params.IgnoresLockdown {
+		t.Errorf("got %+v, want IgnoresPermission and IgnoresLockdown set", *params)
+	}
+}
+
+func TestRunsHot(t *testing.T) {
+	rb := &Rulebook{Tags: map[string]*domain.Tag{
+		"burners": {ID: "burners", Effects: []domain.EffectDefinition{{Filters: domain.EffectFilters{Hot: true}}}},
+		"plain":   {ID: "plain", Effects: []domain.EffectDefinition{{}}},
+	}}
+	cases := []struct {
+		name    string
+		faction *domain.Faction
+		want    bool
+	}{
+		{"holds a hot tag", &domain.Faction{Tags: []string{"plain", "burners"}}, true},
+		{"holds no hot tag", &domain.Faction{Tags: []string{"plain"}}, false},
+		{"the hot tag is lapsed", &domain.Faction{Tags: []string{"burners"}, LapsedTags: []string{"burners"}}, false},
+		{"no faction", nil, false},
+	}
+	for _, tc := range cases {
+		if got := rb.RunsHot(tc.faction); got != tc.want {
+			t.Errorf("%s: RunsHot = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

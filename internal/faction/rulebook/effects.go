@@ -30,6 +30,7 @@ type effectRecord struct {
 	LockOut          *amountRecord           `toml:"lock_out"`
 	DriftRatingBonus *driftRatingBonusRecord `toml:"drift_rating_bonus"`
 	CoinUpkeep       *coinUpkeepRecord       `toml:"coin_upkeep"`
+	SpeedBonus       *speedBonusRecord       `toml:"speed_bonus"`
 }
 
 type effectFiltersRecord struct {
@@ -50,6 +51,7 @@ type effectFiltersRecord struct {
 	Detection         bool     `toml:"detection"`
 	AssetDefinition   string   `toml:"asset_definition"`
 	OpponentTag       string   `toml:"opponent_tag"`
+	Hot               bool     `toml:"hot"`
 }
 
 type effectGatesRecord struct {
@@ -121,6 +123,10 @@ type driftRatingBonusRecord struct {
 	Amount int `toml:"amount"`
 }
 
+type speedBonusRecord struct {
+	Amount int `toml:"amount"`
+}
+
 type coinUpkeepRecord struct {
 	Amount   int    `toml:"amount"`
 	OnUnpaid string `toml:"on_unpaid"`
@@ -158,6 +164,7 @@ var (
 		domain.TriggerAssetDestroyed, domain.TriggerSpeedQuery, domain.TriggerRivalRoll,
 		domain.TriggerHomeworldChanged, domain.TriggerGoalCompleted, domain.TriggerPopulationFloorQuery,
 		domain.TriggerArrivalQuery, domain.TriggerDriftRatingQuery, domain.TriggerUpkeep,
+		domain.TriggerHotMove,
 	}
 	specialEffects = []domain.SpecialEffectType{
 		domain.SpecialCoinGain, domain.SpecialCoinSteal, domain.SpecialIgnoreCoinLoss,
@@ -170,7 +177,7 @@ var (
 		domain.SpecialGrantStealth, domain.SpecialGrantPermission, domain.SpecialWithdrawPermission,
 		domain.SpecialLockOut, domain.SpecialLoseTies, domain.SpecialCostDiscount, domain.SpecialSpeedFloor,
 		domain.SpecialRemoveTag, domain.SpecialXPRoll, domain.SpecialPopulationFloor, domain.SpecialArrivalToll,
-		domain.SpecialDriftRatingBonus, domain.SpecialCoinUpkeep,
+		domain.SpecialDriftRatingBonus, domain.SpecialCoinUpkeep, domain.SpecialSpeedBonus,
 	}
 	effectOwners     = []domain.EffectOwner{domain.OwnerOwn, domain.OwnerRival, domain.OwnerAny}
 	effectScopes     = []domain.EffectScope{domain.ScopeSelf, domain.ScopeWorld, domain.ScopeHomeworld, domain.ScopeFaction, domain.ScopeBase}
@@ -260,7 +267,7 @@ func convertEffectFilters(record effectFiltersRecord) (domain.EffectFilters, err
 		Owner: owner, Scope: scope, Action: record.Action, Stealthy: record.Stealthy,
 		MinTechLevel: record.MinTechLevel, TechLevel: record.TechLevel, OpponentTechLevel: record.OpponentTechLevel,
 		Goal: record.Goal, Detection: record.Detection, AssetDefinition: record.AssetDefinition,
-		OpponentTag: record.OpponentTag,
+		OpponentTag: record.OpponentTag, Hot: record.Hot,
 	}
 	if record.Attribute != "" {
 		attribute, err := toFactionStat(record.Attribute)
@@ -400,6 +407,9 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 	}
 	if record.CoinUpkeep != nil {
 		present = append(present, domain.SpecialCoinUpkeep)
+	}
+	if record.SpeedBonus != nil {
+		present = append(present, domain.SpecialSpeedBonus)
 	}
 	return present
 }
@@ -575,6 +585,14 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 			return fmt.Errorf("coin_upkeep damage is only for on_unpaid %q, got on_unpaid %q", domain.UnpaidDamage, onUnpaid)
 		}
 		definition.CoinUpkeep = &domain.CoinUpkeepParams{Amount: record.CoinUpkeep.Amount, OnUnpaid: onUnpaid, Damage: record.CoinUpkeep.Damage}
+	case domain.SpecialSpeedBonus:
+		if record.SpeedBonus == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		if record.SpeedBonus.Amount <= 0 {
+			return fmt.Errorf("speed_bonus amount must be > 0, got %d", record.SpeedBonus.Amount)
+		}
+		definition.SpeedBonus = &domain.SpeedBonusParams{Amount: record.SpeedBonus.Amount}
 	}
 	return nil
 }

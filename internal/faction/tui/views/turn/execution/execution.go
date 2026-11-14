@@ -272,7 +272,7 @@ var askEntries = map[adapter.AskKind]askEntry{
 		return overlay.NewGoalPick(msg.Payload.(adapter.SelectGoalPayload).Offers)
 	}},
 	adapter.AskSelectMovementDecisions: {"Movement", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
+		return overlay.NewMovement(msg.Faction, msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
 	}},
 	adapter.AskSelectTransportCargo: {"Load Cargo", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectTransportCargoPayload)
@@ -512,10 +512,7 @@ func resolveMovables(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap
 		if def, ok := rb.Assets[asset.DefinitionID]; ok {
 			name = def.Name
 		}
-		location := names[asset.Location.WorldID]
-		if location == "" {
-			location = asset.Location.WorldID
-		}
+		location := overlay.LocationLabel(asset, spatialMap)
 		order := "no order"
 		if asset.CurrentOrder != nil {
 			dest := asset.CurrentOrder.Destination.WorldID

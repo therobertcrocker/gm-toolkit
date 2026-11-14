@@ -31,6 +31,7 @@ type assetRow struct {
 	assetID string
 	kind    orderKind
 	worldID string
+	hot     bool
 }
 
 type movementData struct{ rows []assetRow }
@@ -45,20 +46,17 @@ type Movement struct {
 	spatialMap *spatial.RegionMap
 }
 
-func NewMovement(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) Movement {
+func NewMovement(faction *domain.Faction, eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) Movement {
 	data := &movementData{rows: make([]assetRow, len(eligible))}
 	worldOpts := worldOptions(spatialMap)
-	names := worldNames(spatialMap)
+	canRunHot := rb.RunsHot(faction)
 
 	groups := make([]*huh.Group, 0, len(eligible)*2)
 	for i, asset := range eligible {
 		idx := i
 		data.rows[idx].assetID = asset.ID
 
-		loc := names[asset.Location.WorldID]
-		if loc == "" {
-			loc = asset.Location.WorldID
-		}
+		loc := LocationLabel(asset, spatialMap)
 
 		kindOpts := []huh.Option[orderKind]{
 			huh.NewOption("Hold position", orderNone),
@@ -78,12 +76,19 @@ func NewMovement(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *sp
 				Value(&data.rows[idx].kind),
 		)
 
-		destGroup := huh.NewGroup(
+		destFields := []huh.Field{
 			huh.NewSelect[string]().
 				Title(fmt.Sprintf("%s → destination", assetName(asset, rb))).
 				Options(worldOpts...).
 				Value(&data.rows[idx].worldID),
-		).WithHideFunc(func() bool {
+		}
+		if canRunHot {
+			destFields = append(destFields, huh.NewConfirm().
+				Title("Run hot?").
+				Description("Faster, but the asset takes damage each turn it moves.").
+				Value(&data.rows[idx].hot))
+		}
+		destGroup := huh.NewGroup(destFields...).WithHideFunc(func() bool {
 			k := data.rows[idx].kind
 			return k != orderIssue && k != orderRevise
 		})
@@ -138,7 +143,7 @@ func (o Movement) decisions() []world.MovementDecision {
 			if r.kind == orderRevise {
 				kind = world.MovementDecisionRevise
 			}
-			out = append(out, world.MovementDecision{AssetID: r.assetID, Kind: kind, Destination: dest})
+			out = append(out, world.MovementDecision{AssetID: r.assetID, Kind: kind, Destination: dest, RunHot: r.hot})
 		}
 	}
 	return out
@@ -163,12 +168,29 @@ func worldOptions(spatialMap *spatial.RegionMap) []huh.Option[string] {
 	return opts
 }
 
-func worldNames(spatialMap *spatial.RegionMap) map[string]string {
-	out := make(map[string]string)
-	for _, w := range spatialMap.AllWorlds() {
-		out[w.ID()] = w.Name()
+// LocationLabel names where an asset is: its place or, in transit, the Drift lane
+// it is crossing or the region it is crossing toward its destination.
+func LocationLabel(asset *domain.Asset, spatialMap *spatial.RegionMap) string {
+	if asset.Location.WorldID != "" {
+		if world, ok := spatialMap.Location(asset.Location.WorldID); ok {
+			return world.Name()
+		}
+		return asset.Location.WorldID
 	}
-	return out
+	here := spatialMap.RegionName(asset.Location.RegionHex.RegionID)
+	order := asset.CurrentOrder
+	if order == nil {
+		return "In " + here
+	}
+	// deliberate: banked points mean a Drift jump is under way, not a hex step, because a hex step costs 1 and the tick takes it while any point is left.
+	if order.Banked > 0 && order.StepIdx+1 < len(order.Path) {
+		return fmt.Sprintf("In the Drift between %s and %s", here, spatialMap.RegionName(order.Path[order.StepIdx+1].RegionID))
+	}
+	destination := order.Destination.WorldID
+	if world, ok := spatialMap.Location(destination); ok {
+		destination = world.Name()
+	}
+	return fmt.Sprintf("In %s, en route to %s", here, destination)
 }
 
 var _ Overlay = Movement{}

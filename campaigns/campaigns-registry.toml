@@ -11,3 +11,7 @@ active = "sandbox-claude"
 [[campaigns]]
   id = "hawk"
   path = "/workspaces/gm-toolkit/campaigns/hawk"
+
+[[campaigns]]
+  id = "hawk-claude"
+  path = "/workspaces/gm-toolkit/campaigns/hawk-claude"

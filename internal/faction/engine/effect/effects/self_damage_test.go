@@ -9,6 +9,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
@@ -183,5 +184,45 @@ func TestSelfDamage_AutomaticInterceptorSaves(t *testing.T) {
 				t.Errorf("mutations = %+v, want %+v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestSelfDamage_HotMoveBurnsEachHotMover(t *testing.T) {
+	burners := &domain.Tag{ID: "HAWK-T-003", Name: "Aether Burners"}
+	hot := &domain.Asset{ID: "frigate", OwnerID: "alpha", DefinitionID: "ship", CurrentHP: 8,
+		CurrentOrder: &domain.MovementOrder{AssetID: "frigate", RunHot: true}}
+	cold := &domain.Asset{ID: "hauler", OwnerID: "alpha", DefinitionID: "ship", CurrentHP: 8,
+		CurrentOrder: &domain.MovementOrder{AssetID: "hauler"}}
+	alpha := &domain.Faction{ID: "alpha", Tags: []string{burners.ID}, Assets: map[string]*domain.Asset{hot.ID: hot, cold.ID: cold}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha}}
+	registry := hooks.NewRegistry()
+	effects.Registrars()[domain.SpecialSelfDamage].Register(effect.RegisterContext{
+		Holder: effect.Holder{Faction: alpha, Tag: burners}, Registry: registry, Roller: dicetest.Constant{Value: 3},
+		Entry: domain.EffectDefinition{
+			Trigger:    domain.TriggerHotMove,
+			Effect:     domain.SpecialSelfDamage,
+			Filters:    domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
+			SelfDamage: &domain.SelfDamageParams{Amount: domain.DiceRoll{NumDice: 1, Sides: 4}},
+		},
+	})
+	reactors := registry.MutationReactorsForFaction("alpha")
+	if len(reactors) != 1 {
+		t.Fatalf("reactors = %d, want 1", len(reactors))
+	}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"ship": {ID: "ship"}}}
+
+	got := reactors[0].Hook.OnMutations([]domain.Mutation{
+		domain.MovementOrderProgressed{FactionID: "alpha", AssetID: "frigate", Banked: 2},
+		domain.MovementOrderProgressed{FactionID: "alpha", AssetID: "hauler", NewStepIdx: 1},
+	}, factionState, rb)
+
+	want := []domain.Mutation{domain.AssetHPDelta{FactionID: "alpha", AssetID: "frigate", Delta: -3, Cause: string(domain.SpecialSelfDamage), CausedByFactionID: "alpha"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("burn = %+v, want %+v (the hot frigate only)", got, want)
+	}
+
+	alpha.LapsedTags = []string{burners.ID}
+	if got := reactors[0].Hook.OnMutations([]domain.Mutation{domain.MovementOrderProgressed{FactionID: "alpha", AssetID: "frigate"}}, factionState, rb); got != nil {
+		t.Errorf("burn while the tag is lapsed = %+v, want none", got)
 	}
 }

@@ -36,7 +36,7 @@ effects = [
 id = "HAWK-T-003"
 name = "Aether Burners"
 description = "This faction runs everything on raw, barely refined Aether: fast, loud, and liable to burn out at the worst moment."
-effect = "Once per turn, roll an extra d10 on a Force attack. Every asset can move itself one hex as an action. Every die that comes up 10 must be rerolled."
+effect = "Once per turn, roll an extra d10 on a Force attack. A move order may run hot: the faction's Aetherships move 5 faster, every other asset can move itself at speed 5, and each asset running hot takes 1d4 damage every turn it moves. Every die that comes up 10 must be rerolled."
 effects = [
   {
     trigger = "own_roll",
@@ -47,9 +47,21 @@ effects = [
   },
   {
     trigger = "speed_query",
+    effect = "speed_bonus",
+    filters = { owner = "own", scope = "faction", asset_type = ["Aethership"], hot = true },
+    speed_bonus = { amount = 5 },
+  },
+  {
+    trigger = "speed_query",
     effect = "speed_floor",
+    filters = { owner = "own", scope = "faction", hot = true },
+    speed_floor = { speed = 5 },
+  },
+  {
+    trigger = "hot_move",
+    effect = "self_damage",
     filters = { owner = "own", scope = "faction" },
-    speed_floor = { speed = 1 },
+    self_damage = { amount = "1d4" },
   },
   {
     trigger = "own_roll",
@@ -206,7 +218,7 @@ effects = [
 id = "HAWK-T-011"
 name = "Aether-Tech Evangelists"
 description = "This faction believes Aether-tech lifts every Fragment it touches, and will not stop explaining this."
-effect = "Every place with this faction's Base of Influence counts as at least tech level 4. Action: pay 2 Coin and roll 1d12; on a 12, the place's tech level becomes 4 for this faction."
+effect = "Every place with this faction's Base of Influence counts as at least tech level 4. Action: pay 2 Coin and roll 1d12; on a 12, the place's tech level becomes 4 for this faction. Only this faction may buy Arcano-Engineered Warbeasts."
 ability = {
   effect = "raise_tech_level",
   target = "world",

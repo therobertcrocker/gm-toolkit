@@ -22,12 +22,13 @@ const (
 type MovementDecision struct {
 	AssetID       string
 	Kind          MovementDecisionKind
+	RunHot        bool
 	Destination   *domain.Location // nil for Cancel
 	CargoAssetIDs []string
 }
 
-// TickMovementOrders advances each open order of faction's assets by the asset's
-// speed, as registry's speed floors resolve it (Mercenary Group).
+// TickMovementOrders spends each open order's banked points plus the asset's
+// speed, as registry's speed floors resolve it (Mercenary Group): a hex step costs 1, a Drift jump its rated cost, and what is left is banked.
 func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry, log *slog.Logger) ([]domain.Mutation, error) {
 	var mutations []domain.Mutation
 	log.Info("ticking movement orders")
@@ -41,9 +42,19 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 		if !ok {
 			return nil, fmt.Errorf("TickMovementOrders: unknown asset definition %q", asset.DefinitionID)
 		}
-		newStepIdx := asset.CurrentOrder.StepIdx + speedOf(def)
-		log.Debug("ticking movement order for asset", "asset_id", asset.ID, "from_hex", asset.Location.RegionHex, "to_hex", asset.CurrentOrder.Destination.RegionHex)
-		if newStepIdx >= len(asset.CurrentOrder.Path)-1 {
+		order := asset.CurrentOrder
+		points := order.Banked + speedOf(def, order.RunHot)
+		newStepIdx := order.StepIdx
+		for newStepIdx < len(order.Path)-1 {
+			cost := stepCost(order.Path[newStepIdx], order.Path[newStepIdx+1], rulebook, order.DriftRating)
+			if cost > points {
+				break
+			}
+			points -= cost
+			newStepIdx++
+		}
+		log.Debug("ticking movement order for asset", "asset_id", asset.ID, "from_hex", asset.Location.RegionHex, "to_hex", order.Destination.RegionHex, "banked", points)
+		if newStepIdx >= len(order.Path)-1 {
 			mutations = append(mutations, domain.MovementOrderCompleted{
 				FactionID:         asset.OwnerID,
 				AssetID:           asset.ID,
@@ -52,12 +63,13 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 				CausedByFactionID: faction.ID,
 			})
 		} else {
-			step := asset.CurrentOrder.Path[newStepIdx]
+			step := order.Path[newStepIdx]
 			mutations = append(mutations, domain.MovementOrderProgressed{
 				FactionID:         asset.OwnerID,
 				AssetID:           asset.ID,
 				NewStepIdx:        newStepIdx,
 				RegionHex:         step,
+				Banked:            points,
 				Cause:             domain.CauseMovementTick,
 				CausedByFactionID: faction.ID,
 			})
@@ -68,6 +80,15 @@ func (engine *WorldEngine) TickMovementOrders(faction *domain.Faction, rulebook 
 	return mutations, nil
 }
 
+// stepCost is the movement points one step of a path takes: 1 for a neighbouring
+// hex, the Drift cost of driftRating for a lane jump.
+func stepCost(from, to spatial.RegionHex, rulebook *rulebook.Rulebook, driftRating int) int {
+	if spatial.Adjacent(from.Coord, to.Coord) {
+		return 1
+	}
+	return rulebook.DriftCost(driftRating)
+}
+
 // BuildMovementMutations issues, revises and cancels movement orders. A crossing
 // is priced from the drift rating registry's drift-rating hooks resolve
 // (Drift-Runners).
@@ -75,6 +96,11 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 	var mutations []domain.Mutation
 
 	driftRatingOf := dispatch.AssetDriftRatingResolver(registry, faction)
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
+	// runsHot is the decision's choice, or forced when the asset moves only hot.
+	runsHot := func(decision MovementDecision, def *domain.AssetDefinition) bool {
+		return decision.RunHot || speedOf(def, false) == 0
+	}
 	for _, decision := range decisions {
 		asset, ok := faction.Assets[decision.AssetID]
 		if !ok {
@@ -112,6 +138,7 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 				StepIdx:       0,
 				DriftRating:   driftRating,
 				CargoAssetIDs: decision.CargoAssetIDs,
+				RunHot:        runsHot(decision, def),
 			}
 			mutations = append(mutations, domain.MovementOrderIssued{
 				FactionID:         faction.ID,
@@ -145,6 +172,9 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 				Path:          newPath,
 				DriftRating:   driftRating,
 				CargoAssetIDs: asset.CurrentOrder.CargoAssetIDs,
+				RunHot:        runsHot(decision, def),
+				// deliberate: banked points carry into the new order, not reset, because they are turns the asset already spent waiting (Effort 4 Decision Record 3).
+				Banked: asset.CurrentOrder.Banked,
 			}
 			mutations = append(mutations,
 				domain.CoinDelta{FactionID: faction.ID, Delta: -1, Cause: domain.CauseMovementRevision, CausedByFactionID: faction.ID},

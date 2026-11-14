@@ -53,7 +53,7 @@ Turn the discovery's six efforts into an executable sequence: specify Effort 1 t
 | [x] | 1 | Lore seed | Scaffold `campaigns/hawk/`, then the docs and two forms seed the canon at `campaigns/hawk/canon/` | This plan, Phases 1–2 |
 | [x] | 2 | Tag pass | `rulebooks/hawk/` begins: `rulebook.toml`, H.A.W.K `tags.toml`, SWN stand-ins for the asset files and `settings.toml` | [`A.001.5.E2-hawk-asset-authoring-plan.md`](A.001.5.E2-hawk-asset-authoring-plan.md) |
 | [x] | 3 | Campaign setup | The map, the starting factions as a seed state, the real `settings.toml`, the first live turn | [`A.001.5.E3-hawk-asset-authoring-plan.md`](A.001.5.E3-hawk-asset-authoring-plan.md) |
-| [ ] | 4 | Force pass | `assets/force_assets.toml` replaces its stand-in; a live turn | `A.001.5.E4-hawk-asset-authoring-plan.md` (planned) |
+| [x] | 4 | Force pass | `assets/force_assets.toml` replaces its stand-in; a live turn | [`A.001.5.E4-hawk-asset-authoring-plan.md`](A.001.5.E4-hawk-asset-authoring-plan.md) |
 | [ ] | 5 | Cunning pass | `assets/cunning_assets.toml` replaces its stand-in; a live turn | `A.001.5.E5-hawk-asset-authoring-plan.md` (planned) |
 | [ ] | 6 | Wealth pass | `assets/wealth_assets.toml` replaces the last stand-in; "H.A.W.K playable" | `A.001.5.E6-hawk-asset-authoring-plan.md` (planned) |
 
@@ -116,6 +116,8 @@ Each pass's Plan session runs lore-gate → reflavor → mechanical sort, and Ro
 |---------|------|--------------|---------|------|-----------|-------|
 
 `Call` is `reuse`, `parameterize` or `build`. The fiction for each row is drafted in the effort plan and written to `canon/tags.md` or `canon/assets.md` in the data phase. Phases follow Decision 6.
+
+**Travel on the H.A.W.K map** (set in Effort 4, its Decisions 18 to 24) — a move costs points: 1 per hex step, `drift_costs` `[10, 7, 5, 3, 2]` by drift rating per Drift jump, with unspent points banked. Movers take one of three speed classes: short 10, mid 14, long 19. A transport's range is its speed; `max_hex` is not read. Teleports (relocate) count hexes with lanes free: Effort 4 uses 8 and 14. Efforts 5 and 6 sort their movers into these classes and rate their ships. The voice and naming rules for every pass are in Effort 4's Decision 2.
 
 ## Out of Scope
 
@@ -725,6 +727,8 @@ docs(E1): seed the H.A.W.K places, factions and people
 ### Effort 6 — Wealth pass
 
 **Scope:** as Effort 4, for `wealth_assets.toml`, the last stand-in. Its live turn reaches "H.A.W.K playable" (D-1).
+
+**Long-range cargo lives in Wealth** — Robert's call in the Effort 4 Plan session. Travel on the Core Sector map matters, so Wealth keeps travelling transports that move cargo two or three hexes: the heirs of SWN's Freighter Contract, Shipping Combine, Blockade Runners and Transit Web. Their cargo lists carry H.A.W.K's Force types (Security Personnel, Operative, Stratagem, Beast, Facility, and Aethership where SWN carried Starship), they move at long-range speed (19), and their ships carry drift ratings. Force's own long-range movers teleport instead (Effort 4 Decision 7), so Wealth is where long-range cargo *travels*.
 
 **Depends on:** Effort 5.
 

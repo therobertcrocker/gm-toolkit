@@ -287,7 +287,7 @@ func TestTickMovementOrders_MultiHexPerTick(t *testing.T) {
 // speedFloor stands in for Mercenary Group's speed_floor hook.
 type speedFloor struct{ floor int }
 
-func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int, _ bool) int {
 	return max(speed, floor.floor)
 }
 

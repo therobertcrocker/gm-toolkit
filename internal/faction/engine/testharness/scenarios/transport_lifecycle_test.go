@@ -254,11 +254,11 @@ func TestTransport_CancelMidFlight(t *testing.T) {
 func TestTransport_ReviseMidFlight(t *testing.T) {
 	h := setupTransportHarness(t)
 
-	// Path to new destination; 3 hexes with Speed=2 completes in one tick.
+	// Path to new destination; 3 neighbouring hexes with Speed=2 completes in one tick.
 	pathToD := []spatial.RegionHex{
 		transportPath[2],
-		{RegionID: "void", Coord: spatial.HexCoord{Q: 5, R: 0}},
-		{RegionID: "void", Coord: spatial.HexCoord{Q: 6, R: 0}},
+		{RegionID: "void", Coord: spatial.HexCoord{Q: 2, R: 1}},
+		{RegionID: "void", Coord: spatial.HexCoord{Q: 2, R: 2}},
 	}
 
 	callCount := 0

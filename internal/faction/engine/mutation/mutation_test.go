@@ -627,3 +627,29 @@ func TestMutationEngine_WorldTechLevelRaised(t *testing.T) {
 		t.Errorf("WorldTechLevels[Backwater] after a lower value = %d, want 4 kept", got)
 	}
 }
+
+func TestMutationEngine_MovementBanksPointsAndAHoldClearsThem(t *testing.T) {
+	s := newMutationTestState()
+	asset := s.Factions["f1"].Assets["a1"]
+	path := []spatial.RegionHex{{RegionID: "a", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "b", Coord: spatial.HexCoord{Q: 5}}}
+	asset.CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: path}
+	me := New(slog.New(slog.DiscardHandler))
+
+	if err := me.Apply(s, []domain.Mutation{
+		domain.MovementOrderProgressed{FactionID: "f1", AssetID: "a1", NewStepIdx: 0, RegionHex: path[0], Banked: 4},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if asset.CurrentOrder.Banked != 4 {
+		t.Errorf("Banked = %d, want 4", asset.CurrentOrder.Banked)
+	}
+
+	if err := me.Apply(s, []domain.Mutation{
+		domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Anchorage", NewStepIdx: 0, RegionHex: path[0], Reason: domain.HoldLockdownPaid},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if asset.CurrentOrder.Banked != 0 {
+		t.Errorf("Banked after a hold = %d, want 0", asset.CurrentOrder.Banked)
+	}
+}

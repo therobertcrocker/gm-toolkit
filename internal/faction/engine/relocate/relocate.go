@@ -89,7 +89,10 @@ func Run(request Request) ([]domain.Mutation, error) {
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("relocate: %w", ErrNoCandidates)
 	}
-	destinations := lockedOutRemoved(request, candidateWorlds)
+	destinations := candidateWorlds
+	if !params.IgnoresLockdown {
+		destinations = lockedOutRemoved(request, candidateWorlds)
+	}
 	if len(destinations) == 0 {
 		return nil, fmt.Errorf("relocate: every destination is locked out: %w", ErrNoCandidates)
 	}
@@ -161,10 +164,11 @@ func Run(request Request) ([]domain.Mutation, error) {
 }
 
 // askLanding asks the destination's government whether order's asset may land
-// there: a relocate asks at its one step (D-24). It returns the refusal, or nil.
+// there: a relocate asks at its one step (D-24). A relocate that ignores
+// permission asks no one. It returns the refusal, or nil.
 func askLanding(request Request, order action.RelocateOrder) (*domain.PermissionRefused, error) {
 	def := request.Rulebook.Assets[order.Asset.DefinitionID]
-	if def == nil {
+	if def == nil || request.Params.IgnoresPermission {
 		return nil, nil
 	}
 	return dispatch.RequestArrivalPermission(request.Registry, request.Collector, request.FactionState, request.Rulebook, request.Faction, order.Asset, def, order.DestinationWorld, domain.PermissionCauseRelocate)
