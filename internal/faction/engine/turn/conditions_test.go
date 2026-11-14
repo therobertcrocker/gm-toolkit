@@ -135,7 +135,7 @@ func TestOfferShelterReleases(t *testing.T) {
 		return faction, &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 	}
 
-	t.Run("offers a Demiplane's asset and an orphan, free; a Boltholes asset waits", func(t *testing.T) {
+	t.Run("offers a Demiplane's asset, free; a Boltholes asset and an orphan wait", func(t *testing.T) {
 		collector := &paymentFake{answer: true}
 		faction, factionState := makeState()
 		mutations, err := OfferShelterReleases(faction, factionState, rulebook, collector)
@@ -144,7 +144,6 @@ func TestOfferShelterReleases(t *testing.T) {
 		}
 		want := []domain.Mutation{
 			domain.AssetConditionCleared{FactionID: "f1", AssetID: "x1", Condition: byDemiplane, Cause: "shelter_released", CausedByFactionID: "f1"},
-			domain.AssetConditionCleared{FactionID: "f1", AssetID: "x3", Condition: bySoldSource, Cause: "shelter_released", CausedByFactionID: "f1"},
 		}
 		if !reflect.DeepEqual(mutations, want) {
 			t.Errorf("mutations = %+v, want %+v", mutations, want)

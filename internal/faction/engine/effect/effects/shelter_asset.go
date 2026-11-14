@@ -41,7 +41,7 @@ func registerShelterAsset(ctx effect.RegisterContext) {
 	if ctx.Entry.Trigger == domain.TriggerLethalDamage {
 		ctx.Registry.RegisterLethalInterceptor(scope, source, &shelterAssetInterceptor{holder: holder, assetTypes: ctx.Entry.Filters.AssetTypes})
 	}
-	ctx.Registry.RegisterMutationReactor(scope, source, &shelterLossReactor{holder: holder})
+	ctx.Registry.RegisterMutationReactor(scope, source, &shelterLossReactor{holder: holder, door: ctx.Holder.Def.Shelter() != nil})
 }
 
 type shelterAssetInterceptor struct {
@@ -68,17 +68,25 @@ func (interceptor *shelterAssetInterceptor) OfferInterception(ctx hooks.LethalCo
 	}
 }
 
-// shelterLossReactor destroys the assets its Boltholes shelters when damage
-// destroys the Boltholes. A sale or a refit does not (Effort 2 Decision 13).
+// shelterLossReactor destroys the assets its holder shelters when damage destroys
+// the holder. A sale, a refit or any other loss of a Boltholes leaves them hidden
+// until repaired (Effort 2 Decision 13). The same loss of a door shelter, one
+// whose definition has a shelter step (Leased Demiplane), lets them out instead
+// (Effort 5 Decision 8).
 type shelterLossReactor struct {
 	holder holderRef
+	door   bool
 }
 
 func (reactor *shelterLossReactor) OnMutations(mutations []domain.Mutation, factionState *state.FactionState, _ *rulebook.Rulebook) []domain.Mutation {
 	for _, mutation := range mutations {
 		removed, ok := mutation.(domain.AssetRemoved)
-		if !ok || removed.AssetID != reactor.holder.assetID || !slices.Contains(combatLossCauses, removed.Cause) {
+		if !ok || removed.AssetID != reactor.holder.assetID {
 			continue
+		}
+		combatLoss := slices.Contains(combatLossCauses, removed.Cause)
+		if !combatLoss && !reactor.door {
+			return nil
 		}
 		// deliberate: no active check, because a disabled or unready Boltholes that is destroyed still takes its sheltered assets with it.
 		sheltered := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: reactor.holder.assetID}
@@ -90,6 +98,10 @@ func (reactor *shelterLossReactor) OnMutations(mutations []domain.Mutation, fact
 					continue
 				}
 				if domain.RemovesOrMoves(mutations, asset.ID) {
+					continue
+				}
+				if !combatLoss {
+					extra = append(extra, domain.AssetConditionCleared{FactionID: factionID, AssetID: asset.ID, Condition: sheltered, Cause: "shelter_released", CausedByFactionID: removed.CausedByFactionID})
 					continue
 				}
 				// deliberate: copy the Boltholes removal's cause, not one of its own, because a combat kill of the Boltholes is also a combat kill of each asset it held (Effort 2 Decision 13).

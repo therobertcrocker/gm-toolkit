@@ -213,6 +213,50 @@ func TestShelterAsset_LossTakesShelteredAssets(t *testing.T) {
 	}
 }
 
+// TestShelterAsset_DoorShelterLoss: a holder whose definition has a shelter step
+// (Leased Demiplane) takes its asset with it in combat, and lets it out on any
+// other loss.
+func TestShelterAsset_DoorShelterLoss(t *testing.T) {
+	demiplaneDef := &domain.AssetDefinition{ID: "HAWK-C5-003", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+		{Effect: domain.EffectShelter, Target: domain.TargetAsset, Shelter: &domain.ShelterParams{Capacity: 1}},
+	}}}
+	inside := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}
+	cases := []struct {
+		name  string
+		cause string
+		want  domain.Mutation
+	}{
+		{name: "a combat kill destroys the asset inside", cause: "attack", want: domain.AssetRemoved{FactionID: "alpha", AssetID: "mu", Cause: "attack", CausedByFactionID: "beta"}},
+		{name: "a sale lets the asset out", cause: "sell", want: domain.AssetConditionCleared{FactionID: "alpha", AssetID: "mu", Condition: inside, Cause: "shelter_released", CausedByFactionID: "beta"}},
+		{name: "a refit lets the asset out", cause: "refit", want: domain.AssetConditionCleared{FactionID: "alpha", AssetID: "mu", Condition: inside, Cause: "shelter_released", CausedByFactionID: "beta"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState := boltholesState()
+			alpha := factionState.Factions["alpha"]
+			alpha.Assets["mu"].Conditions = []domain.Condition{inside}
+			registry := hooks.NewRegistry()
+			effects.Registrars()[domain.SpecialShelterAsset].Register(effect.RegisterContext{
+				Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["bolt"], Def: demiplaneDef}, Registry: registry,
+				Entry: domain.EffectDefinition{
+					Trigger: domain.TriggerAssetDestroyed,
+					Effect:  domain.SpecialShelterAsset,
+					Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeSelf},
+				},
+			})
+			var reactors []hooks.MutationReactor
+			for _, registered := range registry.MutationReactorsForAsset("alpha", "bolt") {
+				reactors = append(reactors, registered.Hook)
+			}
+			lost := domain.AssetRemoved{FactionID: "alpha", AssetID: "bolt", Cause: tc.cause, CausedByFactionID: "beta"}
+			got := runReactors(reactors, []domain.Mutation{lost}, factionState)
+			if want := []domain.Mutation{tc.want}; !reflect.DeepEqual(got, want) {
+				t.Errorf("mutations = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
 func TestShelterAsset_AssetDestroyedRoute(t *testing.T) {
 	factionState := boltholesState()
 	alpha := factionState.Factions["alpha"]

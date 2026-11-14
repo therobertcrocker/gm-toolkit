@@ -104,6 +104,10 @@ func Dispatch(
 			// deliberate: fizzle, not act from real state, because an asset missing from the view was removed by an earlier asset in this action.
 			return nil, nil
 		}
+		if workingAsset.HasCondition(domain.ConditionSheltered) {
+			// deliberate: fizzle, because an earlier asset in this action sheltered this one, and a sheltered asset cannot act.
+			return nil, nil
+		}
 	}
 	discardLog := slog.New(slog.DiscardHandler)
 	mutationEngine := mutation.New(discardLog)

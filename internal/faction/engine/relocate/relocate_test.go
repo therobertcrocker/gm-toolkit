@@ -352,6 +352,27 @@ func TestEligibleAssets_SkipsSheltered(t *testing.T) {
 	}
 }
 
+func TestEligibleAssets_SkipsOccupiedDoorShelter(t *testing.T) {
+	book := relocRulebook()
+	book.Assets["DP"] = &domain.AssetDefinition{ID: "DP", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+		{Effect: domain.EffectShelter, Target: domain.TargetAsset, Shelter: &domain.ShelterParams{Capacity: 1}},
+	}}}
+	acting := &domain.Asset{ID: "web", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "origin"}}
+	occupied := &domain.Asset{ID: "dp-occupied", DefinitionID: "DP", OwnerID: "f1", Location: domain.Location{WorldID: "near"}}
+	empty := &domain.Asset{ID: "dp-empty", DefinitionID: "DP", OwnerID: "f1", Location: domain.Location{WorldID: "near"}}
+	inside := &domain.Asset{ID: "op", DefinitionID: "SF", OwnerID: "f1", Location: domain.Location{WorldID: "near"},
+		Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "dp-occupied"}}}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"web": acting, "dp-occupied": occupied, "dp-empty": empty, "op": inside}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+	request := Request{Faction: faction, Acting: acting, Params: &domain.RelocateParams{}, Rulebook: book, FactionState: factionState}
+
+	eligible := eligibleAssets(request, []string{"origin", "near"})
+
+	if len(eligible) != 1 || eligible[0].ID != "dp-empty" {
+		t.Errorf("eligible = %v, want [dp-empty] (the occupied Demiplane and its occupant stay)", assetIDs(eligible))
+	}
+}
+
 func TestRun_FlatCostChargesOnce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	web := &domain.Asset{ID: "web", DefinitionID: "WF", OwnerID: "f1", Location: domain.Location{WorldID: "origin", RegionHex: relocHex("r1", 0)}}

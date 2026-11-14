@@ -314,6 +314,21 @@ func AssetOwner(factions map[string]*Faction, assetID string) *Faction {
 	return nil
 }
 
+// ShelteredBy counts the assets, under any faction, that assetID shelters. A
+// captured holder may still shelter its old owner's asset.
+func ShelteredBy(factions map[string]*Faction, assetID string) int {
+	inside := Condition{Kind: ConditionSheltered, SourceAssetID: assetID}
+	count := 0
+	for _, faction := range factions {
+		for _, asset := range faction.Assets {
+			if slices.ContainsFunc(asset.Conditions, inside.Is) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 // AttackBlocked reports whether a no_attack condition on asset holds now. It is
 // checked when read: the source must still exist, share the asset's world, and
 // belong to another faction. The source need not be active.

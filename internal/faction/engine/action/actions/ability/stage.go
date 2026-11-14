@@ -174,23 +174,23 @@ func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, ac
 	return candidates
 }
 
+// ownAssetTargetRules lists the effects whose asset step picks among the acting
+// faction's own assets, with the rule that returns them. Every other asset step
+// picks a rival's asset (assetCandidates).
+var ownAssetTargetRules = map[domain.AbilityEffectType]func(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) []*domain.Asset{
+	domain.EffectShelter: shelterCandidates,
+}
+
 // shelterCandidates returns the faction's own assets on the acting asset's world
 // that a shelter step may take in, in asset-ID order: of a listed type, not the
 // holder, not sheltered already, and with no open move order. None while the
 // holder already shelters Capacity assets, or is in transit.
-func shelterCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, rulebook *rulebook.Rulebook) []*domain.Asset {
+func shelterCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) []*domain.Asset {
 	params := step.Shelter
 	if params == nil || rulebook == nil || acting == nil || acting.Location.WorldID == "" {
 		return nil
 	}
-	inside := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: acting.ID}
-	held := 0
-	for _, asset := range domain.SortedAssets(faction) {
-		if slices.ContainsFunc(asset.Conditions, inside.Is) {
-			held++
-		}
-	}
-	if held >= params.Capacity {
+	if domain.ShelteredBy(factionState.Factions, acting.ID) >= params.Capacity {
 		return nil
 	}
 	var candidates []*domain.Asset
@@ -224,9 +224,8 @@ func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *do
 	case domain.TargetFaction:
 		return domain.AbilityTargetCandidates{Factions: factionCandidates(step.Effect, faction.ID, acting, factionState)}, true
 	case domain.TargetAsset:
-		// deliberate: own assets, not rivals', because a shelter hides the faction's own asset; every other asset step acts on a rival.
-		if step.Effect == domain.EffectShelter {
-			return domain.AbilityTargetCandidates{Assets: shelterCandidates(step, faction, acting, rulebook)}, true
+		if rule := ownAssetTargetRules[step.Effect]; rule != nil {
+			return domain.AbilityTargetCandidates{Assets: rule(step, faction, acting, factionState, rulebook)}, true
 		}
 		return domain.AbilityTargetCandidates{Assets: assetCandidates(step.Effect, faction.ID, acting, factionState)}, true
 	case domain.TargetWorld:

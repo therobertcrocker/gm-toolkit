@@ -230,7 +230,12 @@ func eligibleAssets(request Request, candidateWorlds []string) []*domain.Asset {
 		if _, ok := inRange[asset.Location.WorldID]; !ok {
 			continue
 		}
-		if !matchesFilters(request.Rulebook.Assets[asset.DefinitionID], request.Params) {
+		def := request.Rulebook.Assets[asset.DefinitionID]
+		if !matchesFilters(def, request.Params) {
+			continue
+		}
+		// deliberate: skip a door shelter that holds an asset, because the asset is inside it and would be left on the old world.
+		if request.FactionState != nil && def.Shelter() != nil && domain.ShelteredBy(request.FactionState.Factions, asset.ID) > 0 {
 			continue
 		}
 		eligible = append(eligible, asset)

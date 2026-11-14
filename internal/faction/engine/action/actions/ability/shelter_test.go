@@ -85,6 +85,17 @@ func TestShelterCandidates(t *testing.T) {
 	}
 }
 
+// TestShelterCandidates_CountsOtherOwners: a captured Demiplane that still holds
+// its old owner's asset is full to its new owner.
+func TestShelterCandidates_CountsOtherOwners(t *testing.T) {
+	faction, acting, factionState, rulebook := makeDemiplaneFixture()
+	factionState.Factions["f2"].Assets["b2"].Conditions = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "d1"}}
+	candidates, _ := stepCandidates(shelterStep, faction, acting, factionState, nil, nil, rulebook)
+	if len(candidates.Assets) != 0 {
+		t.Errorf("candidates = %v, want none: the Demiplane is full", assetIDs(candidates.Assets))
+	}
+}
+
 func TestDispatch_Shelter(t *testing.T) {
 	faction, acting, factionState, rulebook := makeDemiplaneFixture()
 	ctrl := gomock.NewController(t)
@@ -108,6 +119,24 @@ func TestDispatch_Shelter(t *testing.T) {
 	}}
 	if !reflect.DeepEqual(mutations, want) {
 		t.Errorf("mutations = %+v, want %+v", mutations, want)
+	}
+}
+
+// TestDispatch_ShelteredActingAssetFizzles: an asset an earlier asset in the same
+// action took inside a Demiplane does not use its own ability.
+func TestDispatch_ShelteredActingAssetFizzles(t *testing.T) {
+	faction, _, factionState, rulebook := makeDemiplaneFixture()
+	view := NewView(factionState)
+	view.Factions["f1"].Assets["op1"].Conditions = []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "d1"}}
+	rulebook.Assets["operative"].Ability = &domain.AbilityDefinition{Steps: []domain.AbilityStep{shelterStep}}
+
+	collector := mocks.NewMockCollector(gomock.NewController(t))
+	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: faction.Assets["op1"]}, collector, &dicetest.Cycle{Values: []int{1}}, nil, factionState, view, rulebook, nil)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if len(mutations) != 0 {
+		t.Errorf("mutations = %+v, want none", mutations)
 	}
 }
 

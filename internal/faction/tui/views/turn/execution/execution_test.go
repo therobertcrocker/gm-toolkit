@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/adapter"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/views/turn/overlay"
 )
@@ -53,6 +55,34 @@ func TestModel_DetailCard_StatRaisePhase(t *testing.T) {
 	})
 	view := m.View()
 	contains(t, view, "Alliance", "Raise a stat", "Force")
+}
+
+// TestModel_BannerLabel_FreeRelease: a paid lift reads "Pay?" in the banner, and a
+// free shelter release, which goes through the same ask, reads "Release?".
+func TestModel_BannerLabel_FreeRelease(t *testing.T) {
+	faction := &domain.Faction{ID: "f1", Name: "Alliance"}
+	asset := &domain.Asset{ID: "a1", DefinitionID: "op"}
+	cases := []struct {
+		name   string
+		offer  hooks.PaymentOffer
+		want   string
+		absent string
+	}{
+		{name: "a paid lift", offer: hooks.PaymentOffer{Payer: faction, Asset: asset, Amount: 2, Reason: hooks.PaymentLiftDisable}, want: "Pay?", absent: "Release?"},
+		{name: "a free release", offer: hooks.PaymentOffer{Payer: faction, Asset: asset, Reason: hooks.PaymentReleaseShelter}, want: "Release?", absent: "Pay?"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := New(80, 24, &rulebook.Rulebook{}, nil)
+			m, _ = m.Update(adapter.ObserverEventMsg{Kind: adapter.EvtFactionTurnStarted, Payload: faction})
+			m, _ = m.Update(adapter.CollectorAskMsg{Kind: adapter.AskConfirmPayment, Faction: faction, Payload: adapter.ConfirmPaymentPayload{Offer: tc.offer}})
+			view := m.View()
+			contains(t, view, tc.want)
+			if strings.Contains(view, tc.absent) {
+				t.Errorf("View() shows %q, want only %q", tc.absent, tc.want)
+			}
+		})
+	}
 }
 
 // TestModel_DetailCard_NoFlashWithoutOverlay locks in the anti-flash gating:

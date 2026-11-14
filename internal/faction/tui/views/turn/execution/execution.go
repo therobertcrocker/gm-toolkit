@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/adapter"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/chrome"
@@ -74,6 +75,7 @@ type Model struct {
 
 	overlay      overlay.Overlay
 	activeAsk    adapter.AskKind // which modal is mounted; read only while overlay != nil
+	activeLabel  string          // the mounted modal's banner label; read only while overlay != nil
 	pendingReply chan<- any
 
 	latestErr error
@@ -138,6 +140,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		m.pendingReply = msg.Reply
 		m.activeAsk = msg.Kind
+		m.activeLabel = askLabel(msg)
 		m.overlay = m.newOverlay(msg)
 		return m, m.overlay.Init()
 
@@ -247,7 +250,7 @@ func (m Model) bannerView(width int) string {
 	}
 	phase := "resolving…"
 	if m.overlay != nil {
-		phase = askEntryFor(m.activeAsk).label
+		phase = m.activeLabel
 	}
 	return style.Render(styles.AccentAlt.Render("▶ "+m.detail.name) + styles.Subtle.Render(" · "+phase))
 }
@@ -382,6 +385,15 @@ func askEntryFor(kind adapter.AskKind) askEntry {
 		panic(fmt.Sprintf("execution: no askEntries row for AskKind %d", kind))
 	}
 	return entry
+}
+
+// askLabel is an ask's banner label: its row's label, except for a free shelter
+// release, which goes through the payment ask but costs nothing.
+func askLabel(msg adapter.CollectorAskMsg) string {
+	if payload, ok := msg.Payload.(adapter.ConfirmPaymentPayload); ok && payload.Offer.Reason == hooks.PaymentReleaseShelter {
+		return "Release?"
+	}
+	return askEntryFor(msg.Kind).label
 }
 
 // newOverlay builds the overlay for an ask. A method so the factory can read the

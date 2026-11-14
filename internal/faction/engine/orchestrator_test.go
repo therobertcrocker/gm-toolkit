@@ -29,6 +29,7 @@ type minimalPhaseCollector struct {
 	selectTransportCargo func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
 	selectRelocateOrders func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
 	requestPermission    func(hooks.PermissionRequest) (bool, error)
+	confirmPayment       func(hooks.PaymentOffer) (bool, error)
 }
 
 func (c *minimalPhaseCollector) AwaitCheckpoint(_ string) error { return nil }
@@ -59,7 +60,10 @@ func (c *minimalPhaseCollector) SelectRelocateOrders(acting *domain.Asset, candi
 	}
 	return nil, nil
 }
-func (c *minimalPhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+func (c *minimalPhaseCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	if c.confirmPayment != nil {
+		return c.confirmPayment(offer)
+	}
 	return false, nil
 }
 func (c *minimalPhaseCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
@@ -463,6 +467,53 @@ func TestRunGrantedMovement_AppliesEachGrant(t *testing.T) {
 	}
 	if len(resolved) != 2 {
 		t.Errorf("len(resolved) = %d, want 2 (AssetMoved + CoinDelta)", len(resolved))
+	}
+}
+
+// TestRunConditionLifts_FailedReleaseKeepsPaidLifts: a release prompt that fails
+// is reported, and the disable lift accepted before it still applies.
+func TestRunConditionLifts_FailedReleaseKeepsPaidLifts(t *testing.T) {
+	discard := slog.New(slog.DiscardHandler)
+	disabled := domain.Condition{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}
+	alpha := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{
+		"d1": {ID: "d1", DefinitionID: "demiplane", OwnerID: "alpha"},
+		"x1": {ID: "x1", DefinitionID: "operative", OwnerID: "alpha", Conditions: []domain.Condition{disabled}},
+		"x2": {ID: "x2", DefinitionID: "operative", OwnerID: "alpha", Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "d1"}}},
+	}}
+	eng := &Engine{
+		Rulebook: &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+			"demiplane": {ID: "demiplane", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+				{Effect: domain.EffectShelter, Target: domain.TargetAsset, Shelter: &domain.ShelterParams{Capacity: 1}},
+			}}},
+			"operative": {ID: "operative", Cost: 4},
+		}},
+		Hooks:    hooks.NewRegistry(),
+		Mutation: mutation.New(discard),
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha}}
+	paths := &campaigns.Paths{HistoryPath: t.TempDir() + "/history.jsonl"}
+	collector := &minimalPhaseCollector{confirmPayment: func(offer hooks.PaymentOffer) (bool, error) {
+		if offer.Reason == hooks.PaymentReleaseShelter {
+			return false, action.ErrTurnCanceled
+		}
+		return true, nil
+	}}
+	observer := &errorObserver{}
+
+	if _, err := eng.runConditionLifts(alpha, factionState, paths, collector, observer, discard); err != nil {
+		t.Fatalf("runConditionLifts: %v", err)
+	}
+	if alpha.Assets["x1"].HasCondition(domain.ConditionDisabled) {
+		t.Error("x1 still disabled, want the paid lift applied")
+	}
+	if alpha.Coin != 3 {
+		t.Errorf("Coin = %d, want 3", alpha.Coin)
+	}
+	if !alpha.Assets["x2"].HasCondition(domain.ConditionSheltered) {
+		t.Error("x2 released, want it still sheltered after the failed prompt")
+	}
+	if len(observer.errs) != 1 || !errors.Is(observer.errs[0], action.ErrTurnCanceled) {
+		t.Errorf("observer errors = %v, want one ErrTurnCanceled", observer.errs)
 	}
 }
 

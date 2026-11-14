@@ -231,16 +231,29 @@ func (e *Engine) runBookkeepingPhase(
 	return nil
 }
 
-// runConditionLifts offers the faction's disabled assets their price and its
-// sheltered assets a free release, and applies what it accepts. A recoverable
-// failure is reported and lifts nothing.
+// runConditionLifts offers the faction's disabled assets their price, then its
+// sheltered assets a free release, and applies each round's accepted offers on
+// its own, so a failed release prompt keeps the lifts already paid for.
 func (e *Engine) runConditionLifts(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, collector PhaseCollector, observer TurnObserver, phaseLog *slog.Logger) ([]domain.Mutation, error) {
-	mutations, err := turn.OfferConditionLifts(faction, e.Rulebook, collector)
-	if err == nil {
-		var releases []domain.Mutation
-		releases, err = turn.OfferShelterReleases(faction, factionState, e.Rulebook, collector)
-		mutations = append(mutations, releases...)
+	lifts, err := e.applyOffers(faction, factionState, paths, observer, phaseLog, func() ([]domain.Mutation, error) {
+		return turn.OfferConditionLifts(faction, e.Rulebook, collector)
+	})
+	if err != nil {
+		return nil, err
 	}
+	releases, err := e.applyOffers(faction, factionState, paths, observer, phaseLog, func() ([]domain.Mutation, error) {
+		return turn.OfferShelterReleases(faction, factionState, e.Rulebook, collector)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append(lifts, releases...), nil
+}
+
+// applyOffers makes one round of turn-start offers and applies what the faction
+// accepts. A recoverable failure is reported and applies nothing.
+func (e *Engine) applyOffers(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, observer TurnObserver, phaseLog *slog.Logger, offer func() ([]domain.Mutation, error)) ([]domain.Mutation, error) {
+	mutations, err := offer()
 	if err == nil && len(mutations) > 0 {
 		mutations, err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
 	}

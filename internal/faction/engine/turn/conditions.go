@@ -93,14 +93,13 @@ func OfferShelterReleases(faction *domain.Faction, factionState *state.FactionSt
 }
 
 // releasable reports whether a sheltered condition opens at its owner's turn
-// start: its source has a shelter ability (Leased Demiplane), or its source no
-// longer exists. An asset Boltholes sheltered waits for a repair to full
-// (Effort 5 Decision 8).
+// start: its source has a shelter ability (Leased Demiplane). An asset Boltholes
+// sheltered waits for a repair to full, even once the Boltholes is gone; a lost
+// Demiplane lets its asset out as it goes (Effort 5 Decision 8).
 func releasable(condition domain.Condition, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
-	for _, holder := range factionState.Factions {
-		if source, ok := holder.Assets[condition.SourceAssetID]; ok {
-			return rulebook.Assets[source.DefinitionID].Shelter() != nil
-		}
+	owner := domain.AssetOwner(factionState.Factions, condition.SourceAssetID)
+	if owner == nil {
+		return false
 	}
-	return true
+	return rulebook.Assets[owner.Assets[condition.SourceAssetID].DefinitionID].Shelter() != nil
 }
