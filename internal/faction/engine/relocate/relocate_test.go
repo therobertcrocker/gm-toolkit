@@ -708,6 +708,31 @@ func TestRun_AssetPickedForItsOwnWorldPaysNoToll(t *testing.T) {
 	}
 }
 
+func TestRun_IgnoresLockdownOwesNoToll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+	request, acting := tollRequest(t, 1, collector)
+	request.Params.IgnoresLockdown = true
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ *domain.Asset, _ []*domain.Asset, worlds []string, _ int) ([]action.RelocateOrder, error) {
+			if !slices.Contains(worlds, "mid") {
+				t.Errorf("destinations = %v, want mid kept (no toll is owed)", worlds)
+			}
+			return []action.RelocateOrder{{Asset: acting, DestinationWorld: "mid"}}, nil
+		})
+
+	mutations, err := Run(request)
+
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, mutation := range mutations {
+		if delta, ok := mutation.(domain.CoinDelta); ok && delta.Cause == "arrival_toll" {
+			t.Errorf("toll charged: %+v, want none (the relocate ignores lockdowns)", delta)
+		}
+	}
+}
+
 func TestRun_IgnoresPermissionAsksNoOne(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	faction, _, web, mercs, _, factionState := landingFixture()

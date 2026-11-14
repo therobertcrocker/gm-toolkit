@@ -89,6 +89,25 @@ func stepCost(from, to spatial.RegionHex, rulebook *rulebook.Rulebook, driftRati
 	return rulebook.DriftCost(driftRating)
 }
 
+// ChoosesHot reports whether running hot is the player's choice for an asset of
+// definition, with speedOf resolving its speed: running hot adds speed, and the
+// asset can also move cold.
+func ChoosesHot(speedOf func(*domain.AssetDefinition, bool) int, definition *domain.AssetDefinition) bool {
+	cold := speedOf(definition, false)
+	return cold > 0 && speedOf(definition, true) > cold
+}
+
+// runsHot reports whether an order for an asset of definition runs hot: never when
+// running hot adds no speed, always when the asset can move only hot (Effort 4
+// Decision 24), and otherwise as the player chose.
+func runsHot(speedOf func(*domain.AssetDefinition, bool) int, definition *domain.AssetDefinition, chosen bool) bool {
+	cold, hot := speedOf(definition, false), speedOf(definition, true)
+	if hot <= cold {
+		return false
+	}
+	return cold == 0 || chosen
+}
+
 // BuildMovementMutations issues, revises and cancels movement orders. A crossing
 // is priced from the drift rating registry's drift-rating hooks resolve
 // (Drift-Runners).
@@ -97,10 +116,6 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 
 	driftRatingOf := dispatch.AssetDriftRatingResolver(registry, faction)
 	speedOf := dispatch.AssetSpeedResolver(registry, faction)
-	// runsHot is the decision's choice, or forced when the asset moves only hot.
-	runsHot := func(decision MovementDecision, def *domain.AssetDefinition) bool {
-		return decision.RunHot || speedOf(def, false) == 0
-	}
 	for _, decision := range decisions {
 		asset, ok := faction.Assets[decision.AssetID]
 		if !ok {
@@ -108,6 +123,10 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 		}
 		switch decision.Kind {
 		case MovementDecisionIssue:
+			// deliberate: an asset with an open order is revised, not issued anew, because a fresh order would drop its banked points and skip the revise cost.
+			if asset.CurrentOrder != nil {
+				return nil, fmt.Errorf("movement issue: asset %q already has an order; revise it", asset.ID)
+			}
 			def, ok := rulebook.Assets[asset.DefinitionID]
 			if !ok {
 				return nil, fmt.Errorf("BuildMovementMutations: unknown asset definition %q", asset.DefinitionID)
@@ -138,7 +157,7 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 				StepIdx:       0,
 				DriftRating:   driftRating,
 				CargoAssetIDs: decision.CargoAssetIDs,
-				RunHot:        runsHot(decision, def),
+				RunHot:        runsHot(speedOf, def, decision.RunHot),
 			}
 			mutations = append(mutations, domain.MovementOrderIssued{
 				FactionID:         faction.ID,
@@ -172,9 +191,11 @@ func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, 
 				Path:          newPath,
 				DriftRating:   driftRating,
 				CargoAssetIDs: asset.CurrentOrder.CargoAssetIDs,
-				RunHot:        runsHot(decision, def),
-				// deliberate: banked points carry into the new order, not reset, because they are turns the asset already spent waiting (Effort 4 Decision Record 3).
-				Banked: asset.CurrentOrder.Banked,
+				RunHot:        runsHot(speedOf, def, decision.RunHot),
+			}
+			// deliberate: banked points carry into the new order, not reset, because they are turns the asset already spent waiting (Effort 4 Decision Record 3); a held order's points pay only for landing where it was held (Decision Record 6).
+			if !asset.CurrentOrder.Held {
+				newOrder.Banked = asset.CurrentOrder.Banked
 			}
 			mutations = append(mutations,
 				domain.CoinDelta{FactionID: faction.ID, Delta: -1, Cause: domain.CauseMovementRevision, CausedByFactionID: faction.ID},

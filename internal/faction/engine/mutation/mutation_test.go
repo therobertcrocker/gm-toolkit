@@ -549,16 +549,27 @@ func TestApply_ActionTakenChangesNoState(t *testing.T) {
 func TestMutationEngine_MovementOrderHeld(t *testing.T) {
 	s := newMutationTestState()
 	hexes := []spatial.RegionHex{{RegionID: "r", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 1}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 2}}}
-	s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes, Destination: domain.Location{WorldID: "Krylos", RegionHex: hexes[2]}}
+	s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes, Destination: domain.Location{WorldID: "Krylos", RegionHex: hexes[2]}, Banked: 2}
 	me := New(slog.New(slog.DiscardHandler))
 
-	held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: hexes[1], Reason: domain.HoldRefused}
+	held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: hexes[1], Banked: 6, Reason: domain.HoldRefused}
 	if err := me.Apply(s, []domain.Mutation{held}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 	asset := s.Factions["f1"].Assets["a1"]
 	if asset.CurrentOrder == nil || asset.CurrentOrder.StepIdx != 1 {
 		t.Errorf("order = %+v, want it open at step 1", asset.CurrentOrder)
+	}
+	if asset.CurrentOrder != nil && (asset.CurrentOrder.Banked != 6 || !asset.CurrentOrder.Held) {
+		t.Errorf("order = %+v, want the hold's 6 points banked and the order marked held", asset.CurrentOrder)
+	}
+
+	progressed := domain.MovementOrderProgressed{FactionID: "f1", AssetID: "a1", NewStepIdx: 1, RegionHex: hexes[1]}
+	if err := me.Apply(s, []domain.Mutation{progressed}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if asset.CurrentOrder.Held {
+		t.Error("Held = true after a step, want it cleared")
 	}
 	if asset.Location != (domain.Location{RegionHex: hexes[1]}) {
 		t.Errorf("Location = %+v, want the edge hex with no world", asset.Location)

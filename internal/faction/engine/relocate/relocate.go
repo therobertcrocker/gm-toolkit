@@ -151,7 +151,7 @@ func Run(request Request) ([]domain.Mutation, error) {
 			orderCost = 0
 		}
 		dest := domain.Location{WorldID: order.DestinationWorld, RegionHex: loc.RegionHex()}
-		// DR-2: the primitive validates membership in destinations (the range-filtered set, less the locked worlds).
+		// DR-2: the primitive validates membership in destinations (the range-filtered set, less the locked worlds unless the relocate ignores lockdowns).
 		muts, err := request.World.BuildRelocateMutations(request.Faction, order.Asset, dest, destinations, orderCost)
 		if err != nil {
 			return nil, fmt.Errorf("relocate: %w", err)
@@ -189,9 +189,9 @@ func lockedOutRemoved(request Request, candidateWorlds []string) []string {
 
 // affordableDestinations drops each world whose tolls, beside the relocate's own
 // cost for one asset, are more than the faction holds: a mover with no Coin cannot
-// order the move (D-6).
+// order the move (D-6). A relocate that ignores lockdowns owes no tolls.
 func affordableDestinations(request Request, destinations []string) []string {
-	if request.FactionState == nil {
+	if request.FactionState == nil || request.Params.IgnoresLockdown {
 		return destinations
 	}
 	return slices.DeleteFunc(slices.Clone(destinations), func(worldID string) bool {
@@ -203,9 +203,10 @@ func affordableDestinations(request Request, destinations []string) []string {
 
 // orderTolls returns the tolls order's asset owes on landing. An other-scope
 // relocate may pick the world an asset already stands on; that asset lands nowhere
-// and owes none.
+// and owes none. A relocate that ignores lockdowns owes none either, as a transport
+// that ignores them does.
 func orderTolls(request Request, order action.RelocateOrder) []hooks.ArrivalToll {
-	if request.FactionState == nil || order.Asset.Location.WorldID == order.DestinationWorld {
+	if request.FactionState == nil || request.Params.IgnoresLockdown || order.Asset.Location.WorldID == order.DestinationWorld {
 		return nil
 	}
 	return dispatch.AssetArrivalTolls(request.Registry, request.FactionState.Factions, order.Asset, order.DestinationWorld)

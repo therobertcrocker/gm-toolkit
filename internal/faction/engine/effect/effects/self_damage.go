@@ -108,13 +108,13 @@ func hotMovers(mutations []domain.Mutation, owner *domain.Faction) []*domain.Ass
 	var movers []*domain.Asset
 	for _, mutation := range mutations {
 		var factionID, assetID string
-		switch m := mutation.(type) {
+		switch movement := mutation.(type) {
 		case domain.MovementOrderProgressed:
-			factionID, assetID = m.FactionID, m.AssetID
+			factionID, assetID = movement.FactionID, movement.AssetID
 		case domain.MovementOrderCompleted:
-			factionID, assetID = m.FactionID, m.AssetID
+			factionID, assetID = movement.FactionID, movement.AssetID
 		case domain.MovementOrderHeld:
-			factionID, assetID = m.FactionID, m.AssetID
+			factionID, assetID = movement.FactionID, movement.AssetID
 		}
 		if factionID != owner.ID {
 			continue

@@ -50,7 +50,7 @@ func TestMovementDecisions(t *testing.T) {
 		{ID: "a-cancel", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}},
 	}
 
-	o := NewMovement(&domain.Faction{ID: "f1"}, eligible, rb, spatialMap)
+	o := NewMovement(eligible, nil, rb, spatialMap)
 	o.data.rows[0].kind = orderNone
 	o.data.rows[1].kind, o.data.rows[1].worldID = orderIssue, "world-b"
 	o.data.rows[2].kind, o.data.rows[2].worldID = orderRevise, "world-b"
@@ -125,7 +125,7 @@ func TestMovementEscDeclines(t *testing.T) {
 		{ID: "a-1", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}},
 	}
 
-	answer := escDoneAnswer(t, NewMovement(&domain.Faction{ID: "f1"}, eligible, rb, spatialMap))
+	answer := escDoneAnswer(t, NewMovement(eligible, nil, rb, spatialMap))
 	decisions, ok := answer.([]world.MovementDecision)
 	if !ok {
 		t.Fatalf("answer = %T, want []world.MovementDecision", answer)
@@ -198,17 +198,29 @@ func TestLocationLabel(t *testing.T) {
 
 func TestMovementDecisionsCarryRunHot(t *testing.T) {
 	spatialMap := testRegionMap(t)
-	rb := &rulebook.Rulebook{
-		Assets: map[string]*domain.AssetDefinition{"scout": {ID: "scout", Name: "Scout"}},
-		Tags:   map[string]*domain.Tag{"burners": {ID: "burners", Effects: []domain.EffectDefinition{{Filters: domain.EffectFilters{Hot: true}}}}},
-	}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"scout": {ID: "scout", Name: "Scout"}}}
 	eligible := []*domain.Asset{{ID: "a-1", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}}}
 
-	o := NewMovement(&domain.Faction{ID: "f1", Tags: []string{"burners"}}, eligible, rb, spatialMap)
+	o := NewMovement(eligible, map[string]bool{"a-1": true}, rb, spatialMap)
 	o.data.rows[0].kind, o.data.rows[0].worldID, o.data.rows[0].hot = orderIssue, "world-b", true
 
 	got := o.decisions()
 	if len(got) != 1 || !got[0].RunHot {
 		t.Errorf("decisions() = %+v, want one decision run hot", got)
+	}
+}
+
+func TestMovementReviseStartsAtTheOrdersHeat(t *testing.T) {
+	spatialMap := testRegionMap(t)
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"scout": {ID: "scout", Name: "Scout"}}}
+	eligible := []*domain.Asset{
+		{ID: "hot", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}, CurrentOrder: &domain.MovementOrder{RunHot: true}},
+		{ID: "cold", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}, CurrentOrder: &domain.MovementOrder{}},
+	}
+
+	o := NewMovement(eligible, map[string]bool{"hot": true, "cold": true}, rb, spatialMap)
+
+	if !o.data.rows[0].hot || o.data.rows[1].hot {
+		t.Errorf("toggles = %v, %v, want each to start at its order's RunHot", o.data.rows[0].hot, o.data.rows[1].hot)
 	}
 }

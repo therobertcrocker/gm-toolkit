@@ -46,7 +46,7 @@ func (s *SmokePhaseCollector) SelectGoal(_ *domain.Faction, _ []domain.GoalOffer
 	return nil, nil
 }
 
-func (s *SmokePhaseCollector) SelectMovementDecisions(_ *domain.Faction, _ []*domain.Asset) ([]world.MovementDecision, error) {
+func (s *SmokePhaseCollector) SelectMovementDecisions(_ *domain.Faction, _ []*domain.Asset, _ map[string]bool) ([]world.MovementDecision, error) {
 	return nil, nil
 }
 

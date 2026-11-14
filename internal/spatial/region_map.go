@@ -221,9 +221,9 @@ func (regionMap *RegionMap) RegionName(id string) string {
 
 // Adjacent reports whether two hexes are neighbours on the grid. The two ends of a
 // Drift lane are not.
-func Adjacent(a, b HexCoord) bool {
+func Adjacent(from, to HexCoord) bool {
 	for _, delta := range hexNeighbors {
-		if a.Q+delta.Q == b.Q && a.R+delta.R == b.R {
+		if from.Q+delta.Q == to.Q && from.R+delta.R == to.R {
 			return true
 		}
 	}

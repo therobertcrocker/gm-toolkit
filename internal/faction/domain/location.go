@@ -47,4 +47,8 @@ type MovementOrder struct {
 	// Lockdown and waited its turn; it lands without paying again (Effort 5
 	// Decision 14). A revised order is a new order and pays again.
 	LockdownPaid bool `toml:"lockdown_paid,omitempty" json:"lockdown_paid,omitempty"`
+	// Held marks an order held at its destination's edge. Its Banked points pay
+	// only for landing there, so a revise drops them (A.001.5 Effort 4 Decision
+	// Record 6).
+	Held bool `toml:"held,omitempty" json:"held,omitempty"`
 }

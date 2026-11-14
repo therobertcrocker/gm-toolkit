@@ -272,7 +272,8 @@ var askEntries = map[adapter.AskKind]askEntry{
 		return overlay.NewGoalPick(msg.Payload.(adapter.SelectGoalPayload).Offers)
 	}},
 	adapter.AskSelectMovementDecisions: {"Movement", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		return overlay.NewMovement(msg.Faction, msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
+		payload := msg.Payload.(adapter.SelectMovementDecisionsPayload)
+		return overlay.NewMovement(payload.Eligible, payload.HotChoices, m.rulebook, m.spatialMap)
 	}},
 	adapter.AskSelectTransportCargo: {"Load Cargo", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectTransportCargoPayload)
@@ -486,7 +487,9 @@ func (m Model) movementDetail() string {
 	for _, line := range m.movables {
 		b.WriteString(styles.Strong.Render(line.name) + "\n")
 		b.WriteString(styles.Subtle.Render("  at "+line.location) + "\n")
-		b.WriteString(styles.Subtle.Render("  "+line.order) + "\n")
+		if line.order != "" {
+			b.WriteString(styles.Subtle.Render("  "+line.order) + "\n")
+		}
 	}
 	return b.String()
 }
@@ -502,10 +505,6 @@ func (m Model) actionDetail() string {
 // Safe to read the live asset pointers here: the engine is parked on the ask's
 // reply when this runs (phase_collector.go ask round-trip).
 func resolveMovables(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) []movableLine {
-	names := make(map[string]string)
-	for _, w := range spatialMap.AllWorlds() {
-		names[w.ID()] = w.Name()
-	}
 	lines := make([]movableLine, 0, len(eligible))
 	for _, asset := range eligible {
 		name := asset.DefinitionID
@@ -515,11 +514,15 @@ func resolveMovables(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap
 		location := overlay.LocationLabel(asset, spatialMap)
 		order := "no order"
 		if asset.CurrentOrder != nil {
-			dest := asset.CurrentOrder.Destination.WorldID
-			if n, ok := names[dest]; ok {
-				dest = n
+			destination := asset.CurrentOrder.Destination.WorldID
+			if world, ok := spatialMap.Location(destination); ok {
+				destination = world.Name()
 			}
-			order = "→ " + dest
+			order = "→ " + destination
+			// deliberate: an en-route label already names the destination, so the order line is left out, not repeated.
+			if strings.HasSuffix(location, destination) {
+				order = ""
+			}
 		}
 		lines = append(lines, movableLine{name: name, location: location, order: order})
 	}

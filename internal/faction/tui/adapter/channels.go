@@ -97,7 +97,10 @@ type AwaitCheckpointPayload struct{ Phase string }
 type SelectActionPayload struct{ Available []action.Action }
 type SelectStatRaisePayload struct{ Eligible []domain.FactionStat }
 type SelectGoalPayload struct{ Offers []domain.GoalOffer }
-type SelectMovementDecisionsPayload struct{ Eligible []*domain.Asset }
+type SelectMovementDecisionsPayload struct {
+	Eligible   []*domain.Asset
+	HotChoices map[string]bool
+}
 type SelectTransportCargoPayload struct {
 	Transport     *domain.Asset
 	EligibleCargo []*domain.Asset

@@ -46,10 +46,11 @@ type Movement struct {
 	spatialMap *spatial.RegionMap
 }
 
-func NewMovement(faction *domain.Faction, eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) Movement {
+// NewMovement builds the form. hotChoices names the assets whose "Run hot?" is
+// the player's choice; the engine rules every other asset's heat.
+func NewMovement(eligible []*domain.Asset, hotChoices map[string]bool, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) Movement {
 	data := &movementData{rows: make([]assetRow, len(eligible))}
 	worldOpts := worldOptions(spatialMap)
-	canRunHot := rb.RunsHot(faction)
 
 	groups := make([]*huh.Group, 0, len(eligible)*2)
 	for i, asset := range eligible {
@@ -58,11 +59,11 @@ func NewMovement(faction *domain.Faction, eligible []*domain.Asset, rb *rulebook
 
 		loc := LocationLabel(asset, spatialMap)
 
-		kindOpts := []huh.Option[orderKind]{
-			huh.NewOption("Hold position", orderNone),
-			huh.NewOption("Issue move", orderIssue),
-		}
-		if asset.CurrentOrder != nil { // Revise/Cancel only for an asset with a live order
+		kindOpts := []huh.Option[orderKind]{huh.NewOption("Hold position", orderNone)}
+		if asset.CurrentOrder == nil {
+			kindOpts = append(kindOpts, huh.NewOption("Issue move", orderIssue))
+		} else {
+			data.rows[idx].hot = asset.CurrentOrder.RunHot
 			kindOpts = append(kindOpts,
 				huh.NewOption("Revise move", orderRevise),
 				huh.NewOption("Cancel move", orderCancel),
@@ -82,7 +83,7 @@ func NewMovement(faction *domain.Faction, eligible []*domain.Asset, rb *rulebook
 				Options(worldOpts...).
 				Value(&data.rows[idx].worldID),
 		}
-		if canRunHot {
+		if hotChoices[asset.ID] {
 			destFields = append(destFields, huh.NewConfirm().
 				Title("Run hot?").
 				Description("Faster, but the asset takes damage each turn it moves.").

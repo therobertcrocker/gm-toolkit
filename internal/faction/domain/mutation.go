@@ -498,13 +498,16 @@ const (
 
 // MovementOrderHeld keeps an order that would complete at the last hex before its
 // destination, WorldID. The order stays open and asks again at the next tick
-// (D-27). Its apply arm sets the step and hex as MovementOrderProgressed does.
+// (D-27). Its apply arm sets the step, hex and banked points as
+// MovementOrderProgressed does. Banked is the final step's cost when that step is
+// a Drift jump, so the next tick can land the order.
 type MovementOrderHeld struct {
 	FactionID         string            `json:"faction_id"`
 	AssetID           string            `json:"asset_id"`
 	WorldID           string            `json:"world_id"`
 	NewStepIdx        int               `json:"new_step_idx"`
 	RegionHex         spatial.RegionHex `json:"region_hex"`
+	Banked            int               `json:"banked,omitempty"`
 	Reason            HoldReason        `json:"reason"`
 	Cause             string            `json:"cause"`
 	CausedByFactionID string            `json:"caused_by_faction_id"`

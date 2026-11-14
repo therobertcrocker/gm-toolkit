@@ -791,7 +791,14 @@ func prepareMovementDecisions(
 	if len(eligible) == 0 {
 		return nil, nil
 	}
-	decisions, err := collector.SelectMovementDecisions(faction, eligible)
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
+	hotChoices := make(map[string]bool)
+	for _, asset := range eligible {
+		if world.ChoosesHot(speedOf, rulebook.Assets[asset.DefinitionID]) {
+			hotChoices[asset.ID] = true
+		}
+	}
+	decisions, err := collector.SelectMovementDecisions(faction, eligible, hotChoices)
 	if err != nil {
 		return nil, fmt.Errorf("selecting movement decisions: %w", err)
 	}

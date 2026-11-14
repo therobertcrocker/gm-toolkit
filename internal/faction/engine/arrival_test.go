@@ -272,6 +272,40 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 	}
 }
 
+func TestCheckArrivals_AHeldJumpKeepsItsCost(t *testing.T) {
+	cases := []struct {
+		name       string
+		finalHex   spatial.RegionHex
+		wantBanked int
+	}{
+		{name: "a final Drift jump banks its cost", finalHex: arrivalHex(5), wantBanked: 6},
+		{name: "a final hex step banks nothing", finalHex: arrivalHex(2), wantBanked: 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eng, factionState, alpha, completed := arrivalFixture("ship", "", 3)
+			eng.Rand = dicetest.Constant{Value: 3}
+			eng.Rulebook.DriftCosts = []int{6}
+			alpha.Assets["t1"].CurrentOrder.Path[2] = tc.finalHex
+			lockKrylos(factionState)
+			alpha.Coin = 5
+
+			got, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{completed}, &minimalPhaseCollector{})
+
+			if err != nil {
+				t.Fatalf("checkArrivals: %v", err)
+			}
+			held, ok := got[len(got)-1].(domain.MovementOrderHeld)
+			if !ok {
+				t.Fatalf("last mutation = %+v, want a hold", got[len(got)-1])
+			}
+			if held.Banked != tc.wantBanked {
+				t.Errorf("Banked = %d, want %d", held.Banked, tc.wantBanked)
+			}
+		})
+	}
+}
+
 func TestCheckArrivals_LockdownFeeComesFromTheEntry(t *testing.T) {
 	eng, factionState, alpha, completed := arrivalFixture("ship", "", 3)
 	eng.Rand = dicetest.Constant{Value: 3}

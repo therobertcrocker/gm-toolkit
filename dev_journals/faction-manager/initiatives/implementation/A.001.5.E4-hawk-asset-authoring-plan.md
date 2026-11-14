@@ -52,6 +52,10 @@ Design the Force pass (lore-gate, reflavor, sort; discovery D-9), retune travel 
 3. **After Commit 6: a revise keeps its banked points** — Robert's call. `BuildMovementMutations`' Revise branch built a fresh `MovementOrder`, so a ship that had banked 3 of a 6-point jump lost those points when revised. Now the new order copies `Banked` from the old one, and the next tick spends the points on whatever the new path needs first. Banked points are turns already spent waiting, as Decision 19 says, so a revise does not take them back; the 1 Coin revise cost is unchanged. The run-hot choice is re-taken on a revise, as Commit 5 Task 2 specifies. `LocationLabel`'s fence-sign still holds where it is read: the tick runs before the movement decisions in a turn, so a revised order is ticked before its label is shown again. Rejected: keeping the points only when the new path starts with the same jump (more edge cases for no gain); dropping them (the old behaviour, which no one chose).
 4. **Commit 8: Wizard Advisors and Battle Choir give their die once per turn per asset** — Robert's call; found before the live turn. Both descriptions say "once per turn", but Commit 7's data had no `gates` line, and `bonus_die` sets a budget only when `once_per` is set (`internal/faction/engine/effect/effects/bonus_die.go`), so the die came on every matching roll on the place. Both rows now carry `gates = { once_per = "asset" }`, like Shield Wardens: each copy gives one extra d10 a turn. This settles Decision 15's "Integral Protocols' extra d10" for Battle Choir: the die is Integral Protocols', the limit is the description's. Commit 7 Task 1 and the Sort Table now show the gate. Rejected: `once_per = "owner_faction"` (one die a turn however many copies); no limit, with "once per turn" dropped from the text.
 5. **Commit 8: the live turn's findings** — Robert played turns 2 and 3 on the reset board. The travel engine matched the rules: Radiant Throne's hot Runebound Frigate spent 14 of 19 points and banked 5 before a 7-point jump, showing "In the Drift between …"; its hot Batteries banked 2 before a 10-point jump; the burn took 1 and 3 HP. Two findings, neither a fix here. Blackwater's Covert Transit Net was offered with no Special Forces asset left to move (its Hardened Personnel is now an Operative) and cancelled the turn: Decision 11's gap in play, which Robert accepts with no Backlog row, as Effort 5 replaces the stand-in. Informers' reveal-stealth faction pick lists every rival: filed as `F.053` with Robert's idea of revealing with no pick.
+6. **Effort close: a held jump keeps its cost, and a revise after a hold drops it** — Robert's calls; reverses Commit 2 Task 4 ("a hold at the destination's edge starts its last step fresh"). A hold set `Banked` to 0, so a ship held before a final Drift jump had to bank the whole jump again: 2 or more turns, not the 1 waiting turn a lockdown names. Now `holdAtEdge` puts the final step's cost on `MovementOrderHeld.Banked` when that step is a jump, for every hold reason (lockdown paid or unpaid, toll unpaid, permission refused), so any held order tries to land again next turn. A held hex step banks nothing, so `LocationLabel`'s "In the Drift" reading holds. With Decision Record 3, a held ship could revise and spend those points on a new route; the order now carries `Held`, set by a hold and cleared by a step, and a revise of a held order drops `Banked`. The points pay for landing where the ship was held, not for travel elsewhere. Rejected: keeping the points through a revise (a one-time boost for being turned away); backing out the fix.
+7. **Effort close: the engine decides when an order runs hot** — Robert's call (the narrow reading); reverses Commit 5 Task 3 (`Rulebook.RunsHot`) and the movement form's faction-wide toggle. `runsHot` forced every speed-0 asset hot, even for a faction with no hot rules, and the form read a faction's tags while the engine read the hook registry. Now an order never runs hot when running hot adds no speed, always runs hot when the asset moves only hot (Decision 24), and otherwise runs as the player chose. `world.ChoosesHot` names the assets with a real choice; the orchestrator passes them as `hotChoices` through `SelectMovementDecisions` into the ask payload, and the form asks "Run hot?" for those assets only. `rulebook/hot.go` is deleted. A side effect, accepted: a non-Aethership at cold speed 5 or more can no longer run hot for no gain. Rejected: dropping the speed-0 forcing (reverses Decision 24); gating the old rule by faction only.
+8. **Effort close: an order already open is revised, not issued** — the engine refuses an Issue for an asset with an open order, and the form offers Issue only to an asset with none, so a fresh order cannot drop banked points or skip the 1 Coin revise cost. A revise's "Run hot?" starts at the order's own `RunHot`, so a hot order no longer drops to cold by default.
+9. **Effort close: a relocate that ignores lockdowns owes no tolls** — completes Decision 7. A transport with `ignores_lockdown` waives every toll (arrival.go's fence-sign), but the relocate switch only skipped the locked-world filter, so the Deep-Insertion Gate paid tolls and lost toll worlds it could not afford. Now `orderTolls` and `affordableDestinations` skip tolls for it, as the transport does.
 
 ## Sort Table
 
@@ -452,6 +456,8 @@ type MovementOrderProgressed struct {
 ##### Task 4 — `internal/faction/engine/mutation/mutation.go`
 
 A step keeps the points it banked. A hold at the destination's edge starts its last step fresh.
+
+> Reversed at effort close (Decision Record 6): a hold banks the final Drift jump's cost from `MovementOrderHeld.Banked` and marks the order `Held`; a step clears `Held`.
 
 **Find:**
 ```go
@@ -1445,6 +1451,8 @@ feat(E4): add hot-only speed effects and speed_bonus
 
 The decision carries the choice. An asset that cannot move at all unless hot always runs hot (Decision 24). The ticker reads the order's flag.
 
+> Amended at effort close (Decision Records 7 and 8): `runsHot` is a function of the resolved speeds. An order never runs hot when running hot adds no speed, and an asset that moves only hot runs hot only when its hot speed is above 0. An Issue over an open order is refused.
+
 **Find:**
 ```go
 type MovementDecision struct {
@@ -1519,6 +1527,8 @@ In the Revise branch:
 ```
 
 ##### Task 3 — `internal/faction/rulebook/hot.go`
+
+> Reversed at effort close (Decision Record 7): `hot.go` and `TestRunsHot` are deleted. The engine sends `hotChoices` (from `world.ChoosesHot`) in the movement payload, and `NewMovement(eligible, hotChoices, rb, spatialMap)` shows the toggle per asset.
 
 `internal/faction/rulebook/hot.go` (new) — full contents:
 

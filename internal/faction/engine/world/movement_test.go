@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
@@ -202,58 +204,138 @@ func TestTickMovementOrders_DriftJumpCostsItsRatedPoints(t *testing.T) {
 	}
 }
 
-func TestBuildMovementMutations_RunHot(t *testing.T) {
-	rb := &rulebook.Rulebook{
+// hotFloor stands in for Aether Burners' hot speed_floor: an asset moving hot has speed 5 at least.
+type hotFloor struct{}
+
+func (hotFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int, hot bool) int {
+	if hot {
+		return max(speed, 5)
+	}
+	return speed
+}
+
+func runHotRulebook() *rulebook.Rulebook {
+	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
 			"ship":   {ID: "ship", Speed: 2},
+			"fast":   {ID: "fast", Speed: 10},
 			"troops": {ID: "troops"},
 		},
 		DriftCosts: []int{5},
 	}
+}
+
+func hotRegistry() *hooks.Registry {
+	registry := hooks.NewRegistry()
+	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "burners", hotFloor{})
+	return registry
+}
+
+func TestBuildMovementMutations_RunHot(t *testing.T) {
 	order := func(id, def string) *domain.Asset {
 		return &domain.Asset{ID: id, DefinitionID: def, OwnerID: "alpha",
 			Location:     domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 1}}},
 			CurrentOrder: &domain.MovementOrder{AssetID: id, Path: makePath(5), StepIdx: 1}}
 	}
-	faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{
-		"cold": order("cold", "ship"), "hot": order("hot", "ship"), "forced": order("forced", "troops"),
-	}}
 	dest := &domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 3}}}
-	decisions := []world.MovementDecision{
-		{AssetID: "cold", Kind: world.MovementDecisionRevise, Destination: dest},
-		{AssetID: "hot", Kind: world.MovementDecisionRevise, Destination: dest, RunHot: true},
-		{AssetID: "forced", Kind: world.MovementDecisionRevise, Destination: dest},
+	cases := []struct {
+		name     string
+		def      string
+		chosen   bool
+		registry *hooks.Registry
+		want     bool
+	}{
+		{name: "cold when not chosen", def: "ship", registry: hotRegistry(), want: false},
+		{name: "hot when chosen", def: "ship", chosen: true, registry: hotRegistry(), want: true},
+		{name: "forced when it moves only hot", def: "troops", registry: hotRegistry(), want: true},
+		{name: "cold when hot adds no speed", def: "fast", chosen: true, registry: hotRegistry(), want: false},
+		{name: "cold at speed 0 for a faction that cannot run hot", def: "troops", registry: nil, want: false},
 	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{"a1": order("a1", tc.def)}}
+			decision := world.MovementDecision{AssetID: "a1", Kind: world.MovementDecisionRevise, Destination: dest, RunHot: tc.chosen}
 
-	mutations, err := regionWorldEngine(t).BuildMovementMutations(decisions, faction, rb, nil, slog.New(slog.DiscardHandler))
-	if err != nil {
-		t.Fatalf("BuildMovementMutations: %v", err)
+			mutations, err := regionWorldEngine(t).BuildMovementMutations([]world.MovementDecision{decision}, faction, runHotRulebook(), tc.registry, slog.New(slog.DiscardHandler))
+
+			if err != nil {
+				t.Fatalf("BuildMovementMutations: %v", err)
+			}
+			revised := mutations[len(mutations)-1].(domain.MovementOrderRevised)
+			if revised.NewOrder.RunHot != tc.want {
+				t.Errorf("RunHot = %v, want %v", revised.NewOrder.RunHot, tc.want)
+			}
+		})
 	}
-	want := map[string]bool{"cold": false, "hot": true, "forced": true}
-	for _, mutation := range mutations {
-		if revised, ok := mutation.(domain.MovementOrderRevised); ok && revised.NewOrder.RunHot != want[revised.AssetID] {
-			t.Errorf("%s: RunHot = %v, want %v", revised.AssetID, revised.NewOrder.RunHot, want[revised.AssetID])
+}
+
+func TestChoosesHot(t *testing.T) {
+	rb := runHotRulebook()
+	faction := &domain.Faction{ID: "alpha"}
+	cases := []struct {
+		def      string
+		registry *hooks.Registry
+		want     bool
+	}{
+		{def: "ship", registry: hotRegistry(), want: true},
+		{def: "fast", registry: hotRegistry(), want: false},
+		{def: "troops", registry: hotRegistry(), want: false},
+		{def: "ship", registry: nil, want: false},
+	}
+	for _, tc := range cases {
+		speedOf := dispatch.AssetSpeedResolver(tc.registry, faction)
+		if got := world.ChoosesHot(speedOf, rb.Assets[tc.def]); got != tc.want {
+			t.Errorf("ChoosesHot(%s, hooks %v) = %v, want %v", tc.def, tc.registry != nil, got, tc.want)
 		}
 	}
 }
 
-func TestBuildMovementMutations_ReviseKeepsBankedPoints(t *testing.T) {
-	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"ship": {ID: "ship", Speed: 3}}, DriftCosts: []int{6}}
+func TestBuildMovementMutations_IssueOverAnOpenOrderIsRefused(t *testing.T) {
 	ship := &domain.Asset{ID: "s1", DefinitionID: "ship", OwnerID: "alpha",
 		Location:     domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 1}}},
 		CurrentOrder: &domain.MovementOrder{AssetID: "s1", Path: makePath(5), StepIdx: 1, Banked: 3}}
 	faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{"s1": ship}}
-	dest := &domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 3}}}
+	decision := world.MovementDecision{AssetID: "s1", Kind: world.MovementDecisionIssue, Destination: &domain.Location{WorldID: "beta"}}
 
-	mutations, err := regionWorldEngine(t).BuildMovementMutations(
-		[]world.MovementDecision{{AssetID: "s1", Kind: world.MovementDecisionRevise, Destination: dest}},
-		faction, rb, nil, slog.New(slog.DiscardHandler))
-	if err != nil {
-		t.Fatalf("BuildMovementMutations: %v", err)
+	_, err := regionWorldEngine(t).BuildMovementMutations([]world.MovementDecision{decision}, faction, runHotRulebook(), nil, slog.New(slog.DiscardHandler))
+
+	if err == nil {
+		t.Error("BuildMovementMutations = nil, want an issue over an open order refused")
 	}
-	for _, mutation := range mutations {
-		if revised, ok := mutation.(domain.MovementOrderRevised); ok && revised.NewOrder.Banked != 3 {
-			t.Errorf("Banked = %d, want the 3 points carried into the new order", revised.NewOrder.Banked)
-		}
+}
+
+func TestBuildMovementMutations_ReviseKeepsBankedPoints(t *testing.T) {
+	cases := []struct {
+		name       string
+		held       bool
+		wantBanked int
+	}{
+		{name: "a moving order carries its points", held: false, wantBanked: 3},
+		{name: "a held order drops its points", held: true, wantBanked: 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"ship": {ID: "ship", Speed: 3}}, DriftCosts: []int{6}}
+			ship := &domain.Asset{ID: "s1", DefinitionID: "ship", OwnerID: "alpha",
+				Location:     domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 1}}},
+				CurrentOrder: &domain.MovementOrder{AssetID: "s1", Path: makePath(5), StepIdx: 1, Banked: 3, Held: tc.held}}
+			faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{"s1": ship}}
+			dest := &domain.Location{RegionHex: spatial.RegionHex{RegionID: "void", Coord: spatial.HexCoord{Q: 3}}}
+
+			mutations, err := regionWorldEngine(t).BuildMovementMutations(
+				[]world.MovementDecision{{AssetID: "s1", Kind: world.MovementDecisionRevise, Destination: dest}},
+				faction, rb, nil, slog.New(slog.DiscardHandler))
+
+			if err != nil {
+				t.Fatalf("BuildMovementMutations: %v", err)
+			}
+			revised := mutations[len(mutations)-1].(domain.MovementOrderRevised)
+			if revised.NewOrder.Banked != tc.wantBanked {
+				t.Errorf("Banked = %d, want %d", revised.NewOrder.Banked, tc.wantBanked)
+			}
+			if revised.NewOrder.Held {
+				t.Error("Held = true, want the new order unheld")
+			}
+		})
 	}
 }

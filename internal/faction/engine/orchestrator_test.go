@@ -41,7 +41,7 @@ func (c *minimalPhaseCollector) SelectStatRaise(_ *domain.Faction, _ []domain.Fa
 func (c *minimalPhaseCollector) SelectGoal(_ *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
 	return nil, nil
 }
-func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
+func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset, _ map[string]bool) ([]world.MovementDecision, error) {
 	if c.movementDecisionsFn != nil {
 		return c.movementDecisionsFn(faction, eligible)
 	}
