@@ -120,7 +120,7 @@ func validRefitReplacements(faction *domain.Faction, oldAsset *domain.Asset, rul
 	if oldAsset.HasCondition(domain.ConditionSheltered) {
 		return nil
 	}
-	// deliberate: no refit for an asset in transit, because an asset between worlds cannot be acted on (Effort 4 Decision 11; the general rule is F.028).
+	// deliberate: no refit for an asset in transit, because an asset between worlds cannot be acted on (Effort 4 Decision 11; F.052 decides the general rule).
 	if oldAsset.Location.WorldID == "" {
 		return nil
 	}

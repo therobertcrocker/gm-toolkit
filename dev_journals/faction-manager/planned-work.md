@@ -27,6 +27,66 @@ _None._
 ---
 <br />
 
+## Arcs
+
+Collections of connected initiatives, each with its own arc plan. Trigger values as in the Backlog.
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `A.002` | Edit Mode | -- | Freeform state manipulation outside turn rules; campaign setup, world-building, corrections; no mechanical validation. Spun out of the TUI rebuild (arc-plan Decision 4). Was `F.019`. |
+| `A.003` | AI Decision-Making | -- | Goal-oriented and in-character modes using the source-agnostic action interface; traditional game AI (not LLM). Was `F.020`. |
+
+
+---
+<br />
+
+## Explorations
+
+Look at a part of the system, weigh options and file each follow-on as its own row. Trigger values as in the Backlog.
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `E.001` | Display translation ownership | after `A.001` | Engine data reaches the GM through label, feed and card code spread across `tui/` with no single owner, and the sandbox runs placed most UX findings there; explore the current design (presentation, drivers, Manage mode, `narrative/digest`) and brainstorm options, from fixing in place to a frontend-neutral layer. Starting reference: [layer map](https://claude.ai/artifact/6UjHPwdY3mq8oQ24HRqvU1). |
+| `E.003` | Old-TUI feature parity | -- | `798cd45` (2026-05-03) deleted the old TUI and turn command (27 files, about 4,400 lines) before the orchestrator refactor, and no one compared it against the rebuild; goal selection was lost that way (`B.039`). List what each deleted file did (`git show 798cd45^:<path>`), with most risk in `phases/` (goal select, resume, skip, summary, bookkeeping), `model.go` and `narrate.go`, compare against today's engine, TUI and Cobra commands, and file each gap as its own row. |
+| `E.005` | Other mechanisms to consolidate | after `R.028` | `R.028` gathers the engine's scattered dice rolls into one package with a named route for each type of roll; look across the faction manager for other mechanisms with the same shape (one job done in several places, with no stated rule for which way to use), weigh each against no change, and file each one worth doing as its own row. |
+| `E.006` | H.A.W.K rulebook identity | after `A.001` | `A.001.5` gave H.A.W.K its own fiction, but outside the tags most assets keep SWN's numbers and rules unchanged, so it plays like reskinned SWN. Explore how to make the rulebook its own, then file each change worth making as its own row. Starting points from the post-`A.001.5` review: assets copied across categories (Charm Peddlers is Temp Workers, Prosperity Gospel is Permit Office, Occult Lodge is nearly Prospectors; Unpaid Interns in Force has SWN's full False Front, while Glamoured Doubles in Cunning has only the Operative version); a tech-level gate that barely limits anything (42 of 84 assets need tech level 4 or more and 10 of 16 places have it, so Monopolists' discount is near a flat −1 Coin); a ship floor that leaves 9 Aetherships buildable on 5 of 16 places; and one tag–asset link (Warbeasts to Evangelists) where the asset text suggests more (Corporate Chaplains to Soul-Bonded, Aether Refinery to Aether Refiners, Pact-Bound Assassins to Contract-Bound). |
+
+
+---
+<br />
+
+## Bundles
+
+Groups of Backlog rows, of any type, that touch the same code or the same moment of play and are worth doing together. A reference only: the rows stay in the Backlog, and a bundle lists their IDs. When a row ships, is deleted or is folded into another row, take its ID out of its bundle too. A promoted bundle takes a `K.` ID from the shared counter, a row in Current Initiatives and a write-up under Initiative Write-Ups, Bundles; the bundle flow is not defined yet.
+
+**Families.** Bundles that touch the display code (labels, the feed, cards, overlays, Manage mode, the digest) wait on `E.001`, so their fixes land where it puts that code; the rest can go any time. Bundle numbers are stable labels, not an order.
+
+### After `E.001`
+
+| # | Bundle | GM gets | Features | Bugfixes | Refactors | Other |
+|---|--------|---------|----------|----------|-----------|-------|
+| 1 | Forms that fit | every prompt fits on screen, focus shows without color, rows pick one by one | `F.035` `F.036` | `B.026` `B.029` `B.035` `B.046` `B.047` `B.048` `B.050` `B.051` | `R.017` | -- |
+| 2 | Names, not IDs | every label reads as words and names its owner and place | `F.034` | `B.027` `B.033` `B.034` `B.036` `B.037` `B.053` | -- | `C.003` |
+| 3 | A right panel you can trust | the turn panel shows current Coin, the goal, upkeep and the action's result | `F.038` `F.043` `F.058` | `B.025` `B.038` | `R.016` | -- |
+| 4 | Back, pause, resume | a wrong pick or a quit does not cost the turn | `F.017` `F.018` `F.024` `F.026` | `B.031` `B.049` | `R.013` `R.034` | -- |
+| 6 | Digest goes live | a cycle recap the GM can read, with no gaps | `F.021` `F.029` `F.044` | `B.004` `B.018` `B.019` | -- | -- |
+| 8 | Manage screen pass | a map view and a right panel on the manage screen | `F.015` `F.016` | -- | `R.006` `R.007` `R.009` `R.010` `R.011` | -- |
+
+Bundle 1's sizing fixes do not depend on `E.001`; only `B.029` does (the `E.001` captured idea fixes it with keyed options).
+
+### Any time
+
+| # | Bundle | GM gets | Features | Bugfixes | Refactors | Other |
+|---|--------|---------|----------|----------|-----------|-------|
+| 5 | Movement that holds up | transports and moves do what they say | `F.023` | `B.015` `B.023` `B.030` `B.032` | `R.005` `R.019` `R.032` | `D.008` |
+| 7 | Tag & upkeep tail | tags lapse and charge upkeep correctly | -- | `B.054` `B.055` `B.056` | `R.027` `R.033` | -- |
+| 9 | Rulebook data hygiene | rulebook data that is right and loaded strictly | `F.047` | `B.007` `B.021` `B.044` | `R.026` `R.035` | -- |
+| 10 | Engine housekeeping | no visible change; less rot in the engine | -- | `B.008` `B.012` `B.014` `B.017` `B.022` | `R.012` `R.021` `R.022` `R.024` | -- |
+
+
+---
+<br />
+
 ## Backlog
 
 Unscoped items waiting for their trigger. Move to Up Next when the trigger is close; move to Current Initiatives when fully scoped for discovery.
@@ -47,52 +107,86 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 4. **Presentation** — prompt labels, feed lines, the right-hand card, `narrative/digest`
 5. **Rendering** — views, overlays, styles
 
-### Arcs
+**Themes.** Features are grouped by theme, not by layer: a feature cuts through several layers, so a theme says what the GM gets from it. Rows sit in ID order inside each theme.
+
+- **Turn screen UX** — prompts, panels and flow on the execution screen during a cycle
+- **Map & movement** — maps, places, regions, transit and how assets move between them
+- **Rules & mechanics** — game rules, abilities, rolls and the rulebook data that drives them
+- **Narrative & history** — digest lines, recaps and the record of what happened
+- **Manage screen** — the faction manage screen
+- **AI groundwork** — engine shape that waits on AI decision-making (`A.003`)
+- **Tests** — test coverage work
+
+### Features
+
+#### Turn screen UX
 
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
-| `A.002` | Edit Mode | -- | Freeform state manipulation outside turn rules; campaign setup, world-building, corrections; no mechanical validation. Spun out of the TUI rebuild (arc-plan Decision 4). Was `F.019`. |
-| `A.003` | AI Decision-Making | -- | Goal-oriented and in-character modes using the source-agnostic action interface; traditional game AI (not LLM). Was `F.020`. |
+| `F.017` | Mid-cycle pause/cancel | -- | A running cycle currently locks the mode bar (Tab is a no-op) and can't be paused or aborted; add safe pause/resume + cancel so the GM can step out and back without wedging the engine. |
+| `F.018` | UX Pass: Confirm-on-Choice | -- | Binding cadence principle for the TUI UX pass: every consequential choice gets a confirm/pause. First instance ships in the action result panel (`F.038`). |
+| `F.024` | Collector form back-navigation | -- | Cancelling a multi-step ability form (e.g. relocate destinations) spends the faction's whole action via `ErrTurnCanceled`, and confirming a completed-but-empty form surfaces a false `ErrNoSelection` failure; add a discoverable cancel/back that unwinds to the asset/ability picker (then `SelectAction`) instead of burning the turn. Needs a re-prompt loop the linear action phase lacks today. Deferred from C11 (a-flag-ability-registry pre-merge review). A self-jump step (Fey Courtiers, Seductress) must move (`internal/faction/engine/relocate/relocate.go:61`) yet offers "— do not move —", which hits this failure and loses the turn; drop the option for a self-jump. Seen in the `A.001.5` Effort 5 live turn. The back step covers every action-phase prompt, not only ability forms: in the same live turn a wrong pick from the action menu opened Bribe, whose base select offers no back, and Esc ends the whole turn. |
+| `F.026` | Show why a target is refused | after `F.018` | An attack-eligibility hook (`restrict_attack`) drops a defender from the target list or cancels a counter with no reason shown; surface the refusing asset so the GM sees why a target is missing. Found in `A.001.3` Effort 4 Commit 4 review. |
+| `F.030` | Show who a Lockdown holds out | -- | No view shows the GM which factions a Transport Lockdown holds out of a world (`locked_out` sits on the Lockdown asset); surface it. Deferred from `A.001.6` Effort 5. |
+| `F.034` | Attacker labels name the world | -- | `attackerLabel` (`overlay/attack.go:71`) shows name, stat and damage only, so two Treacheries on different worlds read the same; add the world name. This does not fix `B.029`: same-world rows still match. Found in the sandbox combat test. |
+| `F.035` | Drop `(surcharged)` noise | -- | `overlay/purchaseenabler.go:19` tags every row `(surcharged)`, which says nothing when all rows carry it; say it once in the header and show the base cost next to the surcharged one. Found in manual test one, screenshot 06. |
+| `F.036` | Focus shown by more than color | -- | `styles.FormTheme()` (`styles/styles.go:47`) keeps huh's Charm confirm buttons, where only the fill color marks the focused choice; add a text cue (`> Keep`, brackets or underline) for monochrome and colorblind use. Found in manual test one, screenshots 09, 10 and 13. |
+| `F.038` | Action result panel | -- | Hold each action's result in the right panel, with its rolls, at a pause, and show earlier matchups during an attack. Never built; [its discovery doc](initiatives/discovery/action-result-panel-discovery.md) predates `R.028`, so re-ground it first, and weigh one roll event from `rollWithHooks` against widening every action's `Output()`. See the [`F.039` discovery doc](initiatives/_completed/F.039-roll-card/F.039-roll-card-discovery.md) for how the two fit. |
+| `F.043` | Goal in the turn side panel | -- | Show the faction's goal in the execution view's right panel during its turn, as Manage mode's detail does (`detail.go:120`): name, target and progress. `baseDetail()` draws from a `factionSnapshot` taken at turn start, before the goal pick, so refresh it on `EvtGoalPicked` from the `GoalPicked` mutation. Progress mid-turn goes stale as Coin does (`B.025`); fix the two together. Choices: target by ID (as the feed shows it) or by name (the view holds no faction state); progress as `2` or `2 / 8` (needs the goal engine's threshold sum exported). |
+| `F.058` | Upkeep line on the bookkeeping card | when play asks | Tag upkeep (`coin_upkeep`, `A.001.5` Effort 2 Decision 10) reaches history and the turn feed, and a lapse, restore or loss shows there, but the bookkeeping card has no line of its own for what upkeep charged (`A.001.5` Effort 2 Out of Scope). Filed in the `A.001.5` retro. |
 
-### Features
+#### Map & movement
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `F.023` | Region-scoped movement limits | ready | Generalize relocate's `range = "region"` beyond the instant primitive: let speed/drift movement abilities cap reach by region membership, not just hex distance. Relocate proved the enumerator pattern (`WorldsInRegion`); the drift subsystem (`MovementOrder`/`DriftCost`/movement phase) is the harder lift deferred here. |
+| `F.045` | Material Plane map and canon | after `F.046` | H.A.W.K maps only the Core Sector for now (`A.001.5` Decision Record 10), and season 3 is Astral-focused; once a campaign can hold a map per realm, give the Material Plane (Myr) its own map plus places and factions canon. Start from `campaigns/hawk/canon/images/myr-world-map.webp` and the nations in `setting.md`'s history. |
+| `F.046` | Multi-map support | -- | A campaign holds one map today (`SpatialDataDir`, `internal/campaigns/campaigns.go:50`); H.A.W.K's full game wants a map per realm, joined by gates. Covers the spatial build, world IDs across maps, movement between maps, and the TUI; may grow into an arc. Unblocks `F.045`. |
+| `F.052` | Fighting in transit | -- | Assets in transit that can reach each other should be able to fight; Robert expects a good part of faction interaction to happen in a region, not on a place. Attacks are place-based today, and an asset in transit has no place (`internal/faction/engine/action/actions/ability/stage.go:151`). Needs its own Discovery: what "reachable" means (same region, within N hexes, on one lane), fleets in a region against assets on its places, ships mid-jump in the Drift, where it sits in the turn (movement ticks in its own phase), effects and goals that read a place, and TUI targeting. Also decide which non-combat actions (repair, sale, refit, ability targets) an asset in transit can take or receive; Refit refuses it today (`A.001.6` Effort 4 Decision 11). Was `F.028`, which held every in-transit asset untouchable. Changes how the map works, so outside arc `A.001`. Raised in the `A.001.5` Effort 4 plan session (Decision 25). |
+| `F.054` | Embargo on a public mover | -- | `A.001.5` Effort 6 makes a movement grant public (`grant_movement` `public = true`, the Aether-Gate Transit Authority): every faction may ride, paying its fare to the owner, and the owner cannot refuse anyone. Robert's idea: let the owner embargo named factions. Needs per-asset state for the barred list, a way to set it in the TUI (an ability, a manage-screen edit, or a reaction to an attack), and a check in the granter. Raised in the `A.001.5` Effort 6 plan session (Decision 9). |
+| `F.055` | Teleport reach in Drift lanes | -- | A teleport's range counts hexes with Drift lanes free (`WorldsWithin`, `internal/faction/engine/world/world.go:111`), so on H.A.W.K's map, where no region holds more than two places, 12 hexes from Veil reach 12 of 16 places. Robert's model: a teleport stays in its region, and only the top tier crosses Drift, counted in lanes. Needs a lane-count range beside `hexes` and `region`, then a pass over H.A.W.K's teleports: Mirrorways (12 hexes), Teleportation Hubs (8), the Transit Authority (6, a stopgap); the Deep-Insertion Gate (14) is `F.056`. Raised in the `A.001.5` Effort 6 live turn (Decision Record 5). |
+| `F.059` | Bases on empty hexes | -- | Robert's idea: let a faction build a Base of Influence, such as a Station or an Outpost, on a hex with no place on it. Today Bases, purchases and asset positions all hang on a place (`WorldID`), so an empty hex can hold none of them. Open: whether building one makes a new place on the map or the Base stands alone; what an outpost has for population and tech level (purchase floors, tech gates); how assets move to and from it; whether it can be attacked and who governs it; and how it shows on the map. Touches `F.052` (fighting off a place) and `F.057` (what a faction needs on a place to buy there). |
+
+#### Rules & mechanics
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `F.031` | Loyalty roll for captured cargo | -- | House rule: cargo aboard a transport that changes sides rides on under its old owner (`A.001.6` Effort 1 Decision 8); a loyalty roll could decide whether it defects. Deferred from `A.001.6` Effort 1. |
+| `F.037` | Contests that ask | -- | Tripwire Cells, Panopticon Matrix and Lobbyists roll through `dice.Gate` with a nil collector, so limited dice (Machiavellian) and elective rerolls (Book of Secrets, Psychic Academy) never reach them; give them the roll card. Decide who sees it for a roll that fires after a batch or on another faction's turn; Lobbyists first, since its call site already prompts. `A.001.7` overview Decision 2. |
+| `F.040` | Multi-turn actions | -- | In the rules, Seize Planet and Change Homeworld are actions; the engine ran each as a goal (`G-004`, `G-012`) because only goals held state across turns (frozen log D112, D113, D237). `A.001.8` deleted both actions, their collector asks, payloads and overlays, the goal-lock phase and the process mutations (`GoalInitiated`, `GoalTurnsTick`, `GoalPhaseAdvanced`); rebuild them from git history on action state (lock, phases, countdown) and move the seizure's completion there: the government change, the `T-011` grant and removal, and `WorldGovernmentChanged.Resisted` (an unstealthed asset of the previous ruler on the world when the seizure began), which `CORE-G-004`'s `ruler_average` XP reads. Registering Seize Planet brings World Seizure back to the goal pick with no data change (`needs_actions`). Put Imperialists' (`SWN-T-006`) `effects` entry back in `tags.toml` with a seizure-in-progress filter, since the rule is "attacks made as part of a Seize Planet action" (`A.001.8` overview Decision 4). Give the seizure's start and phase changes their own feed and digest lines, not folded away (was `F.033`). Pick one name for the seizure goal: the rules doc says "Planetary Seizure", `goals.toml` says "World Seizure" (`A.001.8` Effort 1 Decision Record 10). Deep Rooted's homeworld loss has no trigger in play until Change Homeworld returns, and neither has the same loss on H.A.W.K's Weave Anchors (`HAWK-T-002`) and Aether Refiners (`HAWK-T-006`): nothing emits `homeworld_changed` (`A.001` close review). |
+| `F.042` | Mark a destroyed faction's leftovers | -- | The engine keeps a faction at 0 HP in state with its assets, Bases and governments, so every reader must check `CurrentHP` itself (goal progress, the goal pick, `isLivingRival` in the goal engine). Give a destroyed faction's leftovers a mark, or a cleanup, that readers can see. Robert's note at the `A.001.8` close. |
+| `F.047` | Shared tag library in `_core` | -- | Move SWN's setting-free tags (temperaments such as Fanatical, Secretive, Warlike, Mercenary Group) into `rulebooks/_core/`, so any rulebook can include them without copying. Reverses part of arc-plan AP-8 ("`_core` holds goals only"); needs tags loaded from more than one file, since compose copies whole files, and a `CORE-T-` ID scheme that moves SWN's pinned IDs (sandbox seeds and scenarios). Raised in the `A.001.5` Effort 2 plan session. |
+| `F.053` | Reveal stealth without a faction pick | -- | Robert's idea: choose the reveal-stealth ability, it rolls, and any Stealthed assets on the place are revealed. Today the GM picks a defending faction from every rival, with or without assets there (`factionTargetRules`, `internal/faction/engine/action/actions/ability/stage.go:238`), as SWN's Informers allow ("Can target a faction even if none of their assets are visible"); the blind pick hides nothing from a GM who sees every asset. Open: whose Cunning defends without a pick (a roll per faction with Stealthed assets there?), and whether Seductress, the other `reveal_stealth` user, changes too. Raised in the `A.001.5` Effort 4 live turn. |
+| `F.056` | Deep-Insertion Gate as a stealth beachhead | -- | Robert's idea: replace the gate's 14-hex relocate with a pull. While the gate is Stealthed, it moves Security Personnel or Operatives the faction controls from anywhere to the gate's place. The cost is getting it there unseen: bought Stealthed (`on_purchase` `apply_stealth`), carried in on a transport (stealth survives a move), at risk from reveals and Trained Hellhounds. Needs a pull relocate (destination fixed at the acting asset, sources anywhere) and an "only while Stealthed" rule on an ability. Open: one asset or any per use; the fare, per asset or per use; whether a pull reveals the gate; Force only or any category; whether arrival still ignores permission and lockdown. Raised in the `A.001.5` Effort 6 live turn. |
+| `F.057` | Per-asset purchase requirement | -- | Robert's idea: each asset says what the faction needs on a place to buy it there, such as a Base of Influence, an Operative present, or any asset present. Today one rule covers every asset: the homeworld or any place where the faction holds an asset (`availableWorlds`, `internal/faction/engine/action/actions/buy_asset.go:151`), looser than SWN's Base of Influence rule (`docs/rules/swn-faction-mechanics.md`). Needs a definition key read by `availableWorlds` per definition, a loader check, and a default for assets that set none. Open: the list of requirements, the default, and whether SWN's data moves to the Base rule. Raised after the `A.001.5` Effort 6 live turn. |
+
+#### Narrative & history
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `F.021` | Narrative Recap Surface | -- | `digest` builder + wire `Renderer` are built and unit-tested but unwired; no command or view renders a cycle recap. Add a frontend (CLI and/or TUI) that runs LoadCycle → Build → Render. |
+| `F.029` | Digest line for a paid lift | -- | A Marketers pay-to-lift (`turn.OfferConditionLifts`) reads only as Coin spent in bookkeeping; give the lift its own narrative line. Deferred from `A.001.6` Effort 3. |
+| `F.044` | Turn Digest Panel | -- | Add a panel to the TUI that displays turn history in the digest format |
+
+#### Manage screen
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `F.015` | TUI Manage: Map View | -- | Add a map view to the manage screen, showing the faction's homeworld and the planets it controls. |
+| `F.016` | TUI Manage: Right Panel | -- | Add a right-hand panel to the manage screen, showing additional faction details at a glance. |
+
+#### AI groundwork
 
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `F.013` | Goal State Predicates | when `A.003` starts | Add `Satisfied(state) bool` alongside per-goal `progressX`; both shapes coexist |
-| `F.015` | TUI Manage: Map View | -- | Add a map view to the manage screen, showing the faction's homeworld and the planets it controls. |
-| `F.016` | TUI Manage: Right Panel | -- | Add a right-hand panel to the manage screen, showing additional faction details at a glance. |
-| `F.017` | Mid-cycle pause/cancel | -- | A running cycle currently locks the mode bar (Tab is a no-op) and can't be paused or aborted; add safe pause/resume + cancel so the GM can step out and back without wedging the engine. |
-| `F.018` | UX Pass: Confirm-on-Choice | -- | Binding cadence principle for the TUI UX pass: every consequential choice gets a confirm/pause. First instance ships in the action result panel (`F.038`). |
-| `F.021` | Narrative Recap Surface | -- | `digest` builder + wire `Renderer` are built and unit-tested but unwired; no command or view renders a cycle recap. Add a frontend (CLI and/or TUI) that runs LoadCycle → Build → Render. |
-| `F.023` | Region-scoped movement limits | ready | Generalize relocate's `range = "region"` beyond the instant primitive: let speed/drift movement abilities cap reach by region membership, not just hex distance. Relocate proved the enumerator pattern (`WorldsInRegion`); the drift subsystem (`MovementOrder`/`DriftCost`/movement phase) is the harder lift deferred here. |
-| `F.024` | Collector form back-navigation | -- | Cancelling a multi-step ability form (e.g. relocate destinations) spends the faction's whole action via `ErrTurnCanceled`, and confirming a completed-but-empty form surfaces a false `ErrNoSelection` failure; add a discoverable cancel/back that unwinds to the asset/ability picker (then `SelectAction`) instead of burning the turn. Needs a re-prompt loop the linear action phase lacks today. Deferred from C11 (a-flag-ability-registry pre-merge review). A self-jump step (Fey Courtiers, Seductress) must move (`internal/faction/engine/relocate/relocate.go:61`) yet offers "— do not move —", which hits this failure and loses the turn; drop the option for a self-jump. Seen in the `A.001.5` Effort 5 live turn. The back step covers every action-phase prompt, not only ability forms: in the same live turn a wrong pick from the action menu opened Bribe, whose base select offers no back, and Esc ends the whole turn. |
 | `F.025` | Per-faction roll confirmation | after `A.003` | `rollWithHooks` asks the roll's one collector to confirm every elective directive, so a forced reroll (Book of Secrets) is confirmed by the roller's driver; route each directive to its `FactionID`'s driver once factions get separate drivers. |
-| `F.026` | Show why a target is refused | after `F.018` | An attack-eligibility hook (`restrict_attack`) drops a defender from the target list or cancels a counter with no reason shown; surface the refusing asset so the GM sees why a target is missing. Found in `A.001.3` Effort 4 Commit 4 review. |
+
+#### Tests
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
 | `F.027` | TUI adapter tests | with `E.001` | `F.039` covered the collector paths (one table over every method, one full cycle through the real channels); what is left is the observer and `derive*` tests, and `R.013` retires the `derive*` code; `D.002` N7 |
-| `F.028` | In-transit assets can't be acted on | -- | An asset between worlds (no `WorldID`, cargo included) should be untouchable by actions; Refit already refuses it (`A.001.6` Effort 4 Decision 11); audit repair, sale, ability targets and the rest, then block them. |
-| `F.029` | Digest line for a paid lift | -- | A Marketers pay-to-lift (`turn.OfferConditionLifts`) reads only as Coin spent in bookkeeping; give the lift its own narrative line. Deferred from `A.001.6` Effort 3. |
-| `F.030` | Show who a Lockdown holds out | -- | No view shows the GM which factions a Transport Lockdown holds out of a world (`locked_out` sits on the Lockdown asset); surface it. Deferred from `A.001.6` Effort 5. |
-| `F.031` | Loyalty roll for captured cargo | -- | House rule: cargo aboard a transport that changes sides rides on under its old owner (`A.001.6` Effort 1 Decision 8); a loyalty roll could decide whether it defects. Deferred from `A.001.6` Effort 1. |
-| `F.034` | Attacker labels name the world | -- | `attackerLabel` (`overlay/attack.go:71`) shows name, stat and damage only, so two Treacheries on different worlds read the same; add the world name. This does not fix `B.029`: same-world rows still match. Found in the sandbox combat test. |
-| `F.035` | Drop `(surcharged)` noise | -- | `overlay/purchaseenabler.go:19` tags every row `(surcharged)`, which says nothing when all rows carry it; say it once in the header and show the base cost next to the surcharged one. Found in manual test one, screenshot 06. |
-| `F.036` | Focus shown by more than color | -- | `styles.FormTheme()` (`styles/styles.go:47`) keeps huh's Charm confirm buttons, where only the fill color marks the focused choice; add a text cue (`> Keep`, brackets or underline) for monochrome and colorblind use. Found in manual test one, screenshots 09, 10 and 13. |
-| `F.037` | Contests that ask | -- | Tripwire Cells, Panopticon Matrix and Lobbyists roll through `dice.Gate` with a nil collector, so limited dice (Machiavellian) and elective rerolls (Book of Secrets, Psychic Academy) never reach them; give them the roll card. Decide who sees it for a roll that fires after a batch or on another faction's turn; Lobbyists first, since its call site already prompts. `A.001.7` overview Decision 2. |
-| `F.038` | Action result panel | -- | Hold each action's result in the right panel, with its rolls, at a pause, and show earlier matchups during an attack. Never built; [its discovery doc](initiatives/discovery/action-result-panel-discovery.md) predates `R.028`, so re-ground it first, and weigh one roll event from `rollWithHooks` against widening every action's `Output()`. See the [`F.039` discovery doc](initiatives/_completed/F.039-roll-card/F.039-roll-card-discovery.md) for how the two fit. |
-| `F.040` | Multi-turn actions | -- | In the rules, Seize Planet and Change Homeworld are actions; the engine ran each as a goal (`G-004`, `G-012`) because only goals held state across turns (frozen log D112, D113, D237). `A.001.8` deleted both actions, their collector asks, payloads and overlays, the goal-lock phase and the process mutations (`GoalInitiated`, `GoalTurnsTick`, `GoalPhaseAdvanced`); rebuild them from git history on action state (lock, phases, countdown) and move the seizure's completion there: the government change, the `T-011` grant and removal, and `WorldGovernmentChanged.Resisted` (an unstealthed asset of the previous ruler on the world when the seizure began), which `CORE-G-004`'s `ruler_average` XP reads. Registering Seize Planet brings World Seizure back to the goal pick with no data change (`needs_actions`). Put Imperialists' (`SWN-T-006`) `effects` entry back in `tags.toml` with a seizure-in-progress filter, since the rule is "attacks made as part of a Seize Planet action" (`A.001.8` overview Decision 4). Give the seizure's start and phase changes their own feed and digest lines, not folded away (was `F.033`). Pick one name for the seizure goal: the rules doc says "Planetary Seizure", `goals.toml` says "World Seizure" (`A.001.8` Effort 1 Decision Record 10). Deep Rooted's homeworld loss has no trigger in play until Change Homeworld returns, and neither has the same loss on H.A.W.K's Weave Anchors (`HAWK-T-002`) and Aether Refiners (`HAWK-T-006`): nothing emits `homeworld_changed` (`A.001` close review). |
-| `F.042` | Mark a destroyed faction's leftovers | -- | The engine keeps a faction at 0 HP in state with its assets, Bases and governments, so every reader must check `CurrentHP` itself (goal progress, the goal pick, `isLivingRival` in the goal engine). Give a destroyed faction's leftovers a mark, or a cleanup, that readers can see. Robert's note at the `A.001.8` close. |
-| `F.043` | Goal in the turn side panel | -- | Show the faction's goal in the execution view's right panel during its turn, as Manage mode's detail does (`detail.go:120`): name, target and progress. `baseDetail()` draws from a `factionSnapshot` taken at turn start, before the goal pick, so refresh it on `EvtGoalPicked` from the `GoalPicked` mutation. Progress mid-turn goes stale as Coin does (`B.025`); fix the two together. Choices: target by ID (as the feed shows it) or by name (the view holds no faction state); progress as `2` or `2 / 8` (needs the goal engine's threshold sum exported). |
-| `F.044` | Turn Digest Panel | -- | Add a panel to the TUI that displays turn history in the digest format |
-| `F.045` | Material Plane map and canon | after `F.046` | H.A.W.K maps only the Core Sector for now (`A.001.5` Decision Record 10), and season 3 is Astral-focused; once a campaign can hold a map per realm, give the Material Plane (Myr) its own map plus places and factions canon. Start from `campaigns/hawk/canon/images/myr-world-map.webp` and the nations in `setting.md`'s history. |
-| `F.046` | Multi-map support | -- | A campaign holds one map today (`SpatialDataDir`, `internal/campaigns/campaigns.go:50`); H.A.W.K's full game wants a map per realm, joined by gates. Covers the spatial build, world IDs across maps, movement between maps, and the TUI; may grow into an arc. Unblocks `F.045`. |
-| `F.047` | Shared tag library in `_core` | -- | Move SWN's setting-free tags (temperaments such as Fanatical, Secretive, Warlike, Mercenary Group) into `rulebooks/_core/`, so any rulebook can include them without copying. Reverses part of arc-plan AP-8 ("`_core` holds goals only"); needs tags loaded from more than one file, since compose copies whole files, and a `CORE-T-` ID scheme that moves SWN's pinned IDs (sandbox seeds and scenarios). Raised in the `A.001.5` Effort 2 plan session. |
-| `F.052` | Fighting in transit | -- | Assets in transit that can reach each other should be able to fight; Robert expects a good part of faction interaction to happen in a region, not on a place. Attacks are place-based today, and an asset in transit has no place (`internal/faction/engine/action/actions/ability/stage.go:151`). Needs its own Discovery: what "reachable" means (same region, within N hexes, on one lane), fleets in a region against assets on its places, ships mid-jump in the Drift, where it sits in the turn (movement ticks in its own phase), effects and goals that read a place, and TUI targeting. Changes how the map works, so outside arc `A.001`. Raised in the `A.001.5` Effort 4 plan session (Decision 25). |
-| `F.053` | Reveal stealth without a faction pick | -- | Robert's idea: choose the reveal-stealth ability, it rolls, and any Stealthed assets on the place are revealed. Today the GM picks a defending faction from every rival, with or without assets there (`factionTargetRules`, `internal/faction/engine/action/actions/ability/stage.go:238`), as SWN's Informers allow ("Can target a faction even if none of their assets are visible"); the blind pick hides nothing from a GM who sees every asset. Open: whose Cunning defends without a pick (a roll per faction with Stealthed assets there?), and whether Seductress, the other `reveal_stealth` user, changes too. Raised in the `A.001.5` Effort 4 live turn. |
-| `F.054` | Embargo on a public mover | -- | `A.001.5` Effort 6 makes a movement grant public (`grant_movement` `public = true`, the Aether-Gate Transit Authority): every faction may ride, paying its fare to the owner, and the owner cannot refuse anyone. Robert's idea: let the owner embargo named factions. Needs per-asset state for the barred list, a way to set it in the TUI (an ability, a manage-screen edit, or a reaction to an attack), and a check in the granter. Raised in the `A.001.5` Effort 6 plan session (Decision 9). |
-| `F.055` | Teleport reach in Drift lanes | -- | A teleport's range counts hexes with Drift lanes free (`WorldsWithin`, `internal/faction/engine/world/world.go:111`), so on H.A.W.K's map, where no region holds more than two places, 12 hexes from Veil reach 12 of 16 places. Robert's model: a teleport stays in its region, and only the top tier crosses Drift, counted in lanes. Needs a lane-count range beside `hexes` and `region`, then a pass over H.A.W.K's teleports: Mirrorways (12 hexes), Teleportation Hubs (8), the Transit Authority (6, a stopgap); the Deep-Insertion Gate (14) is `F.056`. Raised in the `A.001.5` Effort 6 live turn (Decision Record 5). |
-| `F.056` | Deep-Insertion Gate as a stealth beachhead | -- | Robert's idea: replace the gate's 14-hex relocate with a pull. While the gate is Stealthed, it moves Security Personnel or Operatives the faction controls from anywhere to the gate's place. The cost is getting it there unseen: bought Stealthed (`on_purchase` `apply_stealth`), carried in on a transport (stealth survives a move), at risk from reveals and Trained Hellhounds. Needs a pull relocate (destination fixed at the acting asset, sources anywhere) and an "only while Stealthed" rule on an ability. Open: one asset or any per use; the fare, per asset or per use; whether a pull reveals the gate; Force only or any category; whether arrival still ignores permission and lockdown. Raised in the `A.001.5` Effort 6 live turn. |
-| `F.057` | Per-asset purchase requirement | -- | Robert's idea: each asset says what the faction needs on a place to buy it there, such as a Base of Influence, an Operative present, or any asset present. Today one rule covers every asset: the homeworld or any place where the faction holds an asset (`availableWorlds`, `internal/faction/engine/action/actions/buy_asset.go:151`), looser than SWN's Base of Influence rule (`docs/rules/swn-faction-mechanics.md`). Needs a definition key read by `availableWorlds` per definition, a loader check, and a default for assets that set none. Open: the list of requirements, the default, and whether SWN's data moves to the Base rule. Raised after the `A.001.5` Effort 6 live turn. |
-| `F.058` | Upkeep line on the bookkeeping card | when play asks | Tag upkeep (`coin_upkeep`, `A.001.5` Effort 2 Decision 10) reaches history and the turn feed, and a lapse, restore or loss shows there, but the bookkeeping card has no line of its own for what upkeep charged (`A.001.5` Effort 2 Out of Scope). Filed in the `A.001.5` retro. |
-| `F.059` | Bases on empty hexes | -- | Robert's idea: let a faction build a Base of Influence, such as a Station or an Outpost, on a hex with no place on it. Today Bases, purchases and asset positions all hang on a place (`WorldID`), so an empty hex can hold none of them. Open: whether building one makes a new place on the map or the Base stands alone; what an outpost has for population and tech level (purchase floors, tech gates); how assets move to and from it; whether it can be attacked and who governs it; and how it shows on the map. Touches `F.052` (fighting off a place) and `F.057` (what a faction needs on a place to buy there). |
 
 ### Refactors
 
@@ -228,15 +322,6 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 |----|------|---------|--------|
 | `C.003` | Sacrifice text says "false front" | -- | The TUI's "false front" label and the narrative line "A false front fell in place of the asset it covered" (`internal/faction/narrative/wire_templates.go`) show for every `sacrifice_self` asset, H.A.W.K's Unpaid Interns and Glamoured Doubles included. Word them from the sacrificed asset (`A.001.5` Effort 5 Out of Scope). Filed in the `A.001.5` retro. |
 
-### Explorations
-
-| ID | Item | Trigger | Detail |
-|----|------|---------|--------|
-| `E.001` | Display translation ownership | after `A.001` | Engine data reaches the GM through label, feed and card code spread across `tui/` with no single owner, and the sandbox runs placed most UX findings there; explore the current design (presentation, drivers, Manage mode, `narrative/digest`) and brainstorm options, from fixing in place to a frontend-neutral layer. Starting reference: [layer map](https://claude.ai/artifact/6UjHPwdY3mq8oQ24HRqvU1). |
-| `E.003` | Old-TUI feature parity | -- | `798cd45` (2026-05-03) deleted the old TUI and turn command (27 files, about 4,400 lines) before the orchestrator refactor, and no one compared it against the rebuild; goal selection was lost that way (`B.039`). List what each deleted file did (`git show 798cd45^:<path>`), with most risk in `phases/` (goal select, resume, skip, summary, bookkeeping), `model.go` and `narrate.go`, compare against today's engine, TUI and Cobra commands, and file each gap as its own row. |
-| `E.005` | Other mechanisms to consolidate | after `R.028` | `R.028` gathers the engine's scattered dice rolls into one package with a named route for each type of roll; look across the faction manager for other mechanisms with the same shape (one job done in several places, with no stated rule for which way to use), weigh each against no change, and file each one worth doing as its own row. |
-| `E.006` | H.A.W.K rulebook identity | after `A.001` | `A.001.5` gave H.A.W.K its own fiction, but outside the tags most assets keep SWN's numbers and rules unchanged, so it plays like reskinned SWN. Explore how to make the rulebook its own, then file each change worth making as its own row. Starting points from the post-`A.001.5` review: assets copied across categories (Charm Peddlers is Temp Workers, Prosperity Gospel is Permit Office, Occult Lodge is nearly Prospectors; Unpaid Interns in Force has SWN's full False Front, while Glamoured Doubles in Cunning has only the Operative version); a tech-level gate that barely limits anything (42 of 84 assets need tech level 4 or more and 10 of 16 places have it, so Monopolists' discount is near a flat −1 Coin); a ship floor that leaves 9 Aetherships buildable on 5 of 16 places; and one tag–asset link (Warbeasts to Evangelists) where the asset text suggests more (Corporate Chaplains to Soul-Bonded, Aether Refinery to Aether Refiners, Pact-Bound Assassins to Contract-Bound). |
-
 ### Captured Ideas
 
 Prose notes attached to a Backlog row. Each one is an option to weigh when its row is worked, not a decision.
@@ -270,5 +355,27 @@ Unresolved design questions that feed into a backlog item. When the item ships, 
 This section contains detailed write-ups for each planned initiative, including problem statements, proposed approaches, tradeoffs, and triggers. This will be the source of truth when it comes time to start discovery work on any of these items.
 
 <br />
+
+## Arcs
+
+An arc's write-up is a pointer to its arc concept doc in `initiatives/arcs/<ID>-<arc-name>/`.
+
+_None._
+
+<br />
+
+## Bundles
+
+A promoted bundle's write-up names the bundle and its rows, then gives the Problem, Approach, Unlocks, Trigger and Status like any other write-up.
+
+_None._
+
+<br />
+
+## Initiatives
+
+Features, refactors, bugfixes, docs and chores promoted on their own.
+
+_None._
 
 
