@@ -5,7 +5,6 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
-	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
@@ -54,7 +53,7 @@ func (t *TurnEngine) ApplyBookkeeping(factionState *state.FactionState, registry
 
 	runningCoin := faction.Coin + total
 	applyUpkeep(registry, faction, &runningCoin, &mutations)
-	result := applyMaintenance(registry, faction, runningCoin, &mutations, t.rulebook)
+	result := applyMaintenance(faction, runningCoin, &mutations, t.rulebook)
 	result.WealthIncome = wealthIncome
 	result.StatIncome = statIncome
 
@@ -100,7 +99,7 @@ func applyUpkeep(registry *hooks.Registry, faction *domain.Faction, runningCoin 
 
 // applyMaintenance evaluates per-asset maintenance costs against startCoin,
 // appends the resulting mutations, and returns display-level asset events.
-func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCoin int, mutations *[]domain.Mutation, rulebook *rulebook.Rulebook) BookkeepingResult {
+func applyMaintenance(faction *domain.Faction, startCoin int, mutations *[]domain.Mutation, rulebook *rulebook.Rulebook) BookkeepingResult {
 	var result BookkeepingResult
 	runningCoin := startCoin
 
@@ -117,7 +116,7 @@ func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCo
 	}
 
 	for _, asset := range domain.SortedAssets(faction) {
-		cost := maintenanceCost(registry, faction, asset, rulebook)
+		cost := rulebook.Assets[asset.DefinitionID].Maintenance
 		category := rulebook.Assets[asset.DefinitionID].Category
 		if surcharge[category] > 0 {
 			cost++
@@ -145,11 +144,4 @@ func applyMaintenance(registry *hooks.Registry, faction *domain.Faction, startCo
 		}
 	}
 	return result
-}
-
-// maintenanceCost returns the per-turn Coin cost for an asset. Returns 0 as the
-// base until maintenance cost data is added to AssetDefinition; registered
-// MaintenanceCostModifiers may override via the hook registry.
-func maintenanceCost(registry *hooks.Registry, faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook) int {
-	return dispatch.ResolveMaintenanceCost(registry, faction, asset, rulebook.Assets[asset.DefinitionID].Maintenance)
 }

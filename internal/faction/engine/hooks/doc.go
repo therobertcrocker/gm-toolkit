@@ -10,18 +10,18 @@
 //	Cat 5  TieResolver                     tie-point rule overrides                      interfaces.go
 //	Cat 6  LethalInterceptor               lethal-damage interception                    lethal.go
 //
-// Cat 4 is a typed family (AssetCostModifier, MaintenanceCostModifier,
-// WorldTechLevelModifier, AttackEligibilityRule, AssetMovementGranter,
-// RepairCostModifier, PermissionGranter, PermissionContester) rather
-// than a single interface,
-// because each question has a different typed signature and a generic interface
-// would lose compile-time safety.
+// Cat 4 is a typed family (AssetCostModifier, WorldTechLevelModifier,
+// AssetSpeedModifier, UpkeepCharger, AssetDriftRatingModifier, ArrivalTollRule,
+// PopulationFloorModifier, AttackEligibilityRule, AssetMovementGranter,
+// RepairCostModifier, PermissionGranter, PermissionContester) rather than a single
+// interface, because each question has a different typed signature and a generic
+// interface would lose compile-time safety.
 //
 // # Registration and dispatch
 //
-// Registration happens once at engine startup. The Tag Engine and Effects Engine
-// call Register* for every hook their data produces; the Core Engine's dispatchers
-// consult the registry at the appropriate turn pipeline point.
+// Registration happens once per cycle. The Effects Engine calls Register* for
+// every hook the rulebook's asset and tag entries produce; the dispatchers consult
+// the registry at the appropriate turn pipeline point.
 //
 // Hooks are scoped to a faction, a specific asset instance, or globally.
 // Lookup returns global hooks first, then faction-scoped, then asset-scoped —

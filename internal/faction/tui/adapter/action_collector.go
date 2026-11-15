@@ -138,8 +138,8 @@ func (a *actionCollector) SelectAssetToLose(faction *domain.Faction, assets []*d
 func (a *actionCollector) SelectAbilityTarget(holder domain.AbilityHolder, step domain.AbilityStep, candidates domain.AbilityTargetCandidates) (domain.AbilityTarget, error) {
 	switch step.Target {
 	case domain.TargetFaction:
-		raw, err := a.adapter.ask(AskSelectFactionTestTarget, nil, SelectFactionTestTargetPayload{
-			Asset:      holder.Asset,
+		raw, err := a.adapter.ask(AskSelectAbilityFactionTarget, nil, SelectAbilityFactionTargetPayload{
+			Holder:     holder,
 			Effect:     step.Effect,
 			Candidates: candidates.Factions,
 		})
@@ -150,7 +150,7 @@ func (a *actionCollector) SelectAbilityTarget(holder domain.AbilityHolder, step 
 		return domain.AbilityTarget{Kind: domain.TargetFaction, Faction: chosen}, err
 	case domain.TargetAsset:
 		raw, err := a.adapter.ask(AskSelectAbilityAssetTarget, nil, SelectAbilityAssetTargetPayload{
-			Asset:      holder.Asset,
+			Holder:     holder,
 			Effect:     step.Effect,
 			Candidates: candidates.Assets,
 			OwnerNames: a.adapter.ownerNames(candidates.Assets),
@@ -466,13 +466,6 @@ func (a *actionCollector) SelectAbilityHolders(faction *domain.Faction, candidat
 		return nil, err
 	}
 	return replyAs[[]domain.AbilityHolder]("SelectAbilityHolders", raw)
-}
-func (a *actionCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
-	raw, err := a.adapter.ask(AskConfirmAbilityApplied, nil, ConfirmAbilityAppliedPayload{Asset: asset, Def: def})
-	if err != nil {
-		return false, err
-	}
-	return replyAs[bool]("ConfirmAbilityApplied", raw)
 }
 func (a *actionCollector) SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error) {
 	bases, ownerNames := deriveBribeTargets(factionState, faction.ID)

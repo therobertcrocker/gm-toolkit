@@ -31,8 +31,7 @@ const (
 	AskConfirmRivalFreeAttack
 	AskSelectBaseAttackers
 	AskSelectAbilityHolders
-	AskConfirmAbilityApplied
-	AskSelectFactionTestTarget
+	AskSelectAbilityFactionTarget
 	AskSelectRelocateOrders
 	AskSelectPurchaseEnablerAsset
 	AskConfirmCounterstrike
@@ -158,7 +157,7 @@ type ConfirmCounterstrikePayload struct {
 	Attacker        *domain.Asset
 }
 type SelectAbilityAssetTargetPayload struct {
-	Asset      *domain.Asset
+	Holder     domain.AbilityHolder
 	Effect     domain.AbilityEffectType
 	Candidates []*domain.Asset
 	OwnerNames map[string]string // ownerID -> faction name (candidates are rivals')
@@ -206,18 +205,14 @@ type SelectBaseAttackersPayload struct {
 	Eligible []*domain.Asset
 }
 type SelectAbilityHoldersPayload struct{ Candidates []domain.AbilityHolder }
-type ConfirmAbilityAppliedPayload struct {
-	Asset *domain.Asset
-	Def   *domain.AssetDefinition
-}
 type SelectAbilityWorldTargetPayload struct {
 	Holder     domain.AbilityHolder
 	Effect     domain.AbilityEffectType
 	Worlds     []string
 	WorldNames map[string]string // worldID -> display name (adapter-built)
 }
-type SelectFactionTestTargetPayload struct {
-	Asset      *domain.Asset
+type SelectAbilityFactionTargetPayload struct {
+	Holder     domain.AbilityHolder
 	Effect     domain.AbilityEffectType
 	Candidates []*domain.Faction
 }

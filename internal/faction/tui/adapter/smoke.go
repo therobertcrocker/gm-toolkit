@@ -142,9 +142,6 @@ func (SmokeActionCollector) SelectBaseAttackers(_ *domain.Faction, _ []*domain.A
 func (SmokeActionCollector) SelectAbilityHolders(_ *domain.Faction, _ []domain.AbilityHolder, _ *rulebook.Rulebook) ([]domain.AbilityHolder, error) {
 	return nil, action.ErrActionUnavailable
 }
-func (SmokeActionCollector) ConfirmAbilityApplied(_ *domain.Asset, _ *domain.AssetDefinition) (bool, error) {
-	return false, action.ErrActionUnavailable
-}
 func (SmokeActionCollector) SelectBribeTarget(_ *domain.Faction, _ *state.FactionState) (*domain.Base, int, error) {
 	return nil, 0, action.ErrActionUnavailable
 }

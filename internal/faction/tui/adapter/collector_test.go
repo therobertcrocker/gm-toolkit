@@ -115,7 +115,6 @@ func TestActionCollector_EveryReplyType(t *testing.T) {
 		{"ConfirmRivalFreeAttack", func() (any, error) { return collector.ConfirmRivalFreeAttack(beta, 9, 7) }, true, true},
 		{"SelectBaseAttackers", func() (any, error) { return collector.SelectBaseAttackers(beta, assets, rules) }, assets, assets},
 		{"SelectAbilityHolders", func() (any, error) { return collector.SelectAbilityHolders(alpha, holders, rules) }, holders, holders},
-		{"ConfirmAbilityApplied", func() (any, error) { return collector.ConfirmAbilityApplied(asset, definition) }, true, true},
 		{"SelectBribeTarget", func() (any, error) {
 			chosen, amount, err := collector.SelectBribeTarget(alpha, factionState)
 			return adapter.BribeReply{Base: chosen, Amount: amount}, err

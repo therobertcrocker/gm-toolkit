@@ -444,10 +444,11 @@ func TestDispatch_NoTargetsLeft_Fizzles(t *testing.T) {
 	}
 }
 
-// TestDispatch_Stub_ConfirmApplied: an effect with no registered handler (CoinDrain) falls through to confirmApplied, which calls ConfirmAbilityApplied.
-func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
-	faction := &domain.Faction{ID: "f1"}
+// TestDispatch_UnknownEffectFails: a step whose effect has no handler fails the
+// ability, and the collector is asked nothing.
+func TestDispatch_UnknownEffectFails(t *testing.T) {
 	asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-W1-002", OwnerID: "f1"}
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": asset}}
 	def := &domain.AssetDefinition{
 		ID:    "SWN-W1-002",
 		Name:  "Harvesters",
@@ -463,14 +464,24 @@ func TestDispatch_Stub_ConfirmApplied(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().ConfirmAbilityApplied(asset, def).Return(false, nil)
 
-	mutations, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, nil, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil)
-	if err != nil {
-		t.Fatalf("Dispatch: %v", err)
+	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, nil, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil); err == nil {
+		t.Fatal("Dispatch: want an error for an effect with no handler, got nil")
 	}
-	if len(mutations) != 0 {
-		t.Errorf("expected no mutations for stub handler, got %v", mutations)
+}
+
+// TestDispatch_NoAbilityFails: an asset with no ability fails, not a silent no-op.
+func TestDispatch_NoAbilityFails(t *testing.T) {
+	faction := &domain.Faction{ID: "f1"}
+	asset := &domain.Asset{ID: "a1", DefinitionID: "SWN-F8-001", OwnerID: "f1"}
+	def := &domain.AssetDefinition{ID: "SWN-F8-001", Name: "Capital Fleet"}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+
+	ctrl := gomock.NewController(t)
+	collector := mocks.NewMockCollector(ctrl)
+
+	if _, err := Dispatch(faction, domain.AbilityHolder{Asset: asset}, collector, nil, nil, factionState, NewView(factionState), dispatchRulebook(nil, def), nil); err == nil {
+		t.Fatal("Dispatch: want an error for an asset with no ability, got nil")
 	}
 }
 

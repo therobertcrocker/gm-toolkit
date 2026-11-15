@@ -94,8 +94,7 @@ func passesGate(
 	rulebook *rulebook.Rulebook,
 ) (bool, error) {
 	if step.Contest == nil {
-		// Ungated (self-move, roll-table) — always proceeds. Roll-table outcome
-		// resolution lands in Effort 2.
+		// Ungated (self-move, roll-table) — always proceeds.
 		return true, nil
 	}
 	if target.Faction == nil {

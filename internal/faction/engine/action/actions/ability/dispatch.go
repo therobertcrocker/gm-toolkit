@@ -60,10 +60,8 @@ var handlers = map[domain.AbilityEffectType]EffectHandler{
 
 // Dispatch runs a holder's ability as a sequence of steps: resolve the step's
 // target, run its gate, dispatch its terminal effect, collect the mutations. An
-// asset holder's definition is read from the rulebook; a tag has none. Assets with
-// no ability block, or whose effect has no registered handler, fall through to
-// confirmApplied (the not-yet-built effects). The loader lets a tag carry only
-// built effects.
+// asset holder's definition is read from the rulebook; a tag has none. The loader
+// gives every A asset an ability and every step a known effect.
 func Dispatch(
 	faction *domain.Faction,
 	holder domain.AbilityHolder,
@@ -81,17 +79,8 @@ func Dispatch(
 		return nil, err
 	}
 	abilityDefinition := holderAbility(holder, def)
-	if abilityDefinition == nil || len(abilityDefinition.Steps) == 0 {
-		return confirmApplied(asset, def, collector)
-	}
-	// Pre-flight: if any step's effect is not yet built, the whole ability is a
-	// not-yet-built no-op. Bail before executing any step, so a built early step
-	// never half-applies (moves an asset, spends Coin) only to be discarded when a
-	// later unbuilt step short-circuits to confirmApplied.
-	for _, step := range abilityDefinition.Steps {
-		if _, ok := handlers[step.Effect]; !ok {
-			return confirmApplied(asset, def, collector)
-		}
+	if abilityDefinition == nil {
+		return nil, errors.New("ability: the holder has no ability")
 	}
 	workingFaction := view.Factions[faction.ID]
 	if workingFaction == nil {
@@ -114,7 +103,10 @@ func Dispatch(
 
 	var mutations []domain.Mutation
 	for _, step := range abilityDefinition.Steps {
-		handler := handlers[step.Effect]
+		handler, ok := handlers[step.Effect]
+		if !ok {
+			return nil, fmt.Errorf("ability: no handler for effect %q", step.Effect)
+		}
 		target, err := resolveTarget(step, workingFaction, domain.AbilityHolder{Asset: workingAsset, Tag: holder.Tag}, view, collector, worldEngine, registry, rulebook)
 		// deliberate: fizzle this asset, not fail the action, because an earlier asset in the same action may have used up the targets and its result must stand (Effort 3 Decision Record 1).
 		if errors.Is(err, errNoTargets) {
@@ -164,8 +156,6 @@ func Dispatch(
 	return mutations, nil
 }
 
-// holderAbility returns the ability a holder uses: its tag's, or its asset
-// definition's.
 // holderDefinition returns an asset holder's definition from the rulebook, or nil
 // for a tag, which has none.
 func holderDefinition(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) (*domain.AssetDefinition, error) {
@@ -180,16 +170,11 @@ func holderDefinition(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) 
 	return nil, fmt.Errorf("ability: definition not found: %s", holder.Asset.DefinitionID)
 }
 
+// holderAbility returns the ability a holder uses: its tag's, or its asset
+// definition's.
 func holderAbility(holder domain.AbilityHolder, def *domain.AssetDefinition) *domain.AbilityDefinition {
 	if holder.Tag != nil {
 		return holder.Tag.Ability
 	}
 	return def.Ability
-}
-
-func confirmApplied(asset *domain.Asset, def *domain.AssetDefinition, collector action.Collector) ([]domain.Mutation, error) {
-	if _, err := collector.ConfirmAbilityApplied(asset, def); err != nil {
-		return nil, err
-	}
-	return nil, nil
 }

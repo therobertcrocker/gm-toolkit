@@ -95,7 +95,7 @@ half-wired. The catalog reuses and repairs it rather than inventing fresh:
 | `AbilityStep.Amount *DiceRoll` | a die whose total is the number | **wired** — a bare `die` with no rows ([dice](dice.md)) |
 | `AbilityStep.TargetRoll *TargetRoll` | a die that must meet or beat a number | **wired** — a `[target_roll]` block ([dice](dice.md)) |
 | `AbilityEffectType` = `reveal_stealth` | reveal effect | **wired** (Informers, Seductress) |
-| `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | **removed** by A.001.2 — `AbilityEffectType` has five constants, none a coin transfer. The S-side `coin_steal` is a `SpecialEffectType` (`domain/effect.go`) |
+| `AbilityEffectType` = `coin_drain`, `coin_steal` | coin transfer effects | **removed** by A.001.2 — `AbilityEffectType` has ten constants, none a coin transfer. The S-side `coin_steal` is a `SpecialEffectType` (`domain/effect.go`) |
 | `[[ability.steps]]` in Seductress TOML | multi-step ability | **wired** — `abilityRecord.Steps` parses it (relocate, then reveal) |
 
 A.001.2 built the parser path and handlers for every A-side row above; see
@@ -206,20 +206,30 @@ mechanic is the active one — the `S` flag is near-vestigial.
 
 ## The data shape (how a special is declared)
 
-The arc must make the surface **visible in the data**. A reader of an asset's
-TOML should see immediately which engine owns its special:
+The surface is **visible in the data**. A reader of an asset's TOML sees which
+engine owns its special:
 
-- An **`[ability]`** block (with `effect`, optional `[contest]`, optional
-  `[roll]`/`outcomes`) declares an `A`-flag active ability → abilities engine.
-- An **`[effect]`** block (or a typed profile like `[transport]`) declares an
-  `S`-flag passive/reactive feature → effects engine.
+- An **`[ability]`** block, or `[[ability.steps]]` for a multi-step ability,
+  declares an action-spent ability → abilities engine. Each step names its
+  `effect` and `target`, then gates on a contest (`roll`, `attacker_stat`,
+  `defender_stat`) or a die (`die` with `outcomes`, or `target_roll`), and may
+  carry a block named for its effect (`relocate`, `shelter`, `raise_tech_level`).
+- An **`effects`** list declares the passive and reactive features → effects
+  engine. Each entry names its `trigger` and `effect`, with optional `filters`,
+  `gates` and a block named for the effect. The typed `[transport]` profile is
+  the one older shape still beside it (`R.019`).
+- **The `A` flag and an `[ability]` block go together.** The loader refuses an
+  `A` asset with no ability, an ability with no `A` flag, and a step with no
+  effect, so no asset offers an ability that does nothing.
 
-The dead `Die`/`Outcomes` fields and the dropped `[[ability.steps]]` get
-resolved here: either fill them in as the real shape, or remove them. The
-`coin_steal`/`coin_drain` enum values get their handlers (S-side) so they stop
-being declared-but-dead.
+The same entries serve tags: a tag record carries `effects` and, for a tag that
+grants an action, an `ability` (`A.001.7`).
 
 ## R.004 decision — full data-driven registry, both engines
+
+> **Historical.** The call as made in the catalog session, before arc `A.001`.
+> As built, both registries key on the effect name: see [actions](actions.md) and
+> [effect-mutation](effect-mutation.md).
 
 **Decision (Robert, this session): build the full data-driven registry for
 *both* surfaces within this initiative, making F.022 an arc.** Not the middle
@@ -243,6 +253,10 @@ over 13 assets; the S-side maps cleanly onto the 5 existing hook categories), so
 
 ## Drift evidence (what ID-bound dispatch costs today)
 
+> **Historical.** The pre-arc state that motivated arc `A.001`. Each item is
+> fixed: the stubs and `confirmApplied` are gone, relocate is one shared package,
+> the dead coin values were removed, and Seductress runs its steps.
+
 - **The A-map is 1 real handler + 9 no-op stubs.** Every stub is an asset whose
   ability is "not yet coded," masked as `confirmApplied`.
 - **`relocate-other` is a parametric near-miss on *both* surfaces** — Covert
@@ -258,18 +272,21 @@ over 13 assets; the S-side maps cleanly onto the 5 existing hook categories), so
 
 ## Key Decisions
 
-- **The flag picks the engine, the effect picks the primitive.** `A` → abilities
-  engine (action-spent), `S` → effects engine (passive/reactive via hooks). The
-  same effect (e.g. relocate-other) can live on either surface; a catalog entry
-  is always *(surface, primitive)*.
+- **The flag picks the harness, the mechanic picks the engine** (arc `A.001`,
+  ACD-1). The SWN `A`/`S` flag says whether the GM spends the faction's action;
+  it is a note for a person, not a dispatch key. What the special does decides
+  its engine and hook category: Marketers and Seditionists are `A` but their
+  lasting restriction is S-side, and Transit Web is `S` but a movement grant,
+  not a reactor. A catalog entry is always *(harness, primitive)*.
 - **R.004 is built in full, both surfaces, within this arc.** Data-driven
   registries replace per-ID dispatch; R.018 (effect-keyed A-dispatch) is the
   prerequisite increment.
 - **Reuse the latent domain vocabulary, don't reinvent it.** `Die`/`Outcomes`,
   the `Effect` enum, and the `transport` profile are the seed; the arc fills the
   gaps and removes the dead branches.
-- **The surface is visible in the data.** `[ability]` vs `[effect]` blocks (or
-  typed profiles) tell a reader which engine owns a special without reading code.
+- **The surface is visible in the data.** An `[ability]` block or an `effects`
+  entry (or the `[transport]` profile) tells a reader which engine owns a special
+  without reading code.
 
 ## Dependencies
 

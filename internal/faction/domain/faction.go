@@ -31,7 +31,7 @@ type Tag struct {
 	ID                  string
 	Name                string
 	Description         string
-	Effect              string
+	RulesText           string
 	Government          bool
 	HomeworldGovernment bool
 	Effects             []EffectDefinition

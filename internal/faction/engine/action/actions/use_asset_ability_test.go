@@ -13,9 +13,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// makeAbilityRulebook returns a minimal Rulebook with two asset definitions:
-//   - "SWN-C1-002": A-flagged, Informers opposed-test (reveal_stealth)
-//   - "deferred-asset": A-flagged, no ability (GM adjudication)
+// makeAbilityRulebook returns a minimal Rulebook with one asset definition:
+// "SWN-C1-002", A-flagged, Informers opposed-test (reveal_stealth).
 func makeAbilityRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
@@ -34,13 +33,6 @@ func makeAbilityRulebook() *rulebook.Rulebook {
 						},
 					}},
 				},
-			},
-			"deferred-asset": {
-				ID:      "deferred-asset",
-				Name:    "Tripwire Cells",
-				Flags:   []domain.AssetFlag{domain.FlagAction},
-				HP:      4,
-				Ability: nil,
 			},
 		},
 	}
@@ -387,25 +379,6 @@ func TestUseAssetAbility_TwoMonopoliesSeeTheFirstLevy(t *testing.T) {
 	}
 	if !reflect.DeepEqual(mutations, want) {
 		t.Errorf("mutations = %+v, want %+v", mutations, want)
-	}
-}
-
-// TestUseAssetAbility_Resolve_NilAbility: asset with no structured ability.
-// Expects ConfirmAbilityApplied to be called and no mutations produced.
-func TestUseAssetAbility_Resolve_NilAbility(t *testing.T) {
-	rulebook := makeAbilityRulebook()
-	factionState, actingAsset := makeAbilityState("deferred-asset", false)
-	faction := factionState.Factions["f1"]
-
-	ctrl := gomock.NewController(t)
-	collector := mocks.NewMockCollector(ctrl)
-	collector.EXPECT().SelectAbilityHolders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.AbilityHolder{{Asset: actingAsset}}, nil)
-	collector.EXPECT().ConfirmAbilityApplied(gomock.Any(), gomock.Any()).Return(false, nil)
-
-	mutations := runAbility(t, collector, &dicetest.Cycle{Values: []int{1}}, faction, factionState, rulebook)
-
-	if len(mutations) != 0 {
-		t.Errorf("expected no mutations for nil-ability asset, got %v", mutations)
 	}
 }
 

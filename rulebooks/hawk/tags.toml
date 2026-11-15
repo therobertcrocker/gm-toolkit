@@ -3,13 +3,13 @@ id = "HAWK-T-001"
 name = "Proprietor"
 government = true
 description = "This faction holds the deed to a place in the Core, a legal fiction nobody believes and everybody enforces."
-effect = "Held while the faction governs at least one place; the campaign's government record lists each place it governs. On those places, the faction grants or refuses permission to buy or bring in assets marked as needing government permission."
+rules_text = "Held while the faction governs at least one place; the campaign's government record lists each place it governs. On those places, the faction grants or refuses permission to buy or bring in assets marked as needing government permission."
 
 [tags.WeaveAnchors]
 id = "HAWK-T-002"
 name = "Weave Anchors"
 description = "This faction has pinned a strand of the Weave to its seat, the one place in the Astral Sea where its casters are at full strength."
-effect = "Roll an extra d10 on every roll made on its seat. Its seat counts as tech level 5. Upkeep: 1 Coin each turn; unpaid, the tag is lost. Also lost if the faction's seat changes."
+rules_text = "Roll an extra d10 on every roll made on its seat. Its seat counts as tech level 5. Upkeep: 1 Coin each turn; unpaid, the tag is lost. Also lost if the faction's seat changes."
 effects = [
   {
     trigger = "own_roll",
@@ -36,7 +36,7 @@ effects = [
 id = "HAWK-T-003"
 name = "Aether Burners"
 description = "This faction runs everything on raw, barely refined Aether: fast, loud, and liable to burn out at the worst moment."
-effect = "Once per turn, roll an extra d10 on a Force attack. A move order may run hot: the faction's Aetherships move 5 faster, every other asset can move itself at speed 5, and each asset running hot takes 1d4 damage every turn it moves. Every die that comes up 10 must be rerolled."
+rules_text = "Once per turn, roll an extra d10 on a Force attack. A move order may run hot: the faction's Aetherships move 5 faster, every other asset can move itself at speed 5, and each asset running hot takes 1d4 damage every turn it moves. Every die that comes up 10 must be rerolled."
 effects = [
   {
     trigger = "own_roll",
@@ -75,7 +75,7 @@ effects = [
 id = "HAWK-T-004"
 name = "Soul-Bonded"
 description = "This faction's people are bound to an Astral God by Soul Bonds: the god's power anywhere, and the god slowly eats them for it."
-effect = "Once per turn, roll an extra d10 when attacking or defending. Upkeep: 1 Coin each turn; unpaid, the faction takes 2 damage."
+rules_text = "Once per turn, roll an extra d10 when attacking or defending. Upkeep: 1 Coin each turn; unpaid, the faction takes 2 damage."
 effects = [
   {
     trigger = "own_roll",
@@ -96,7 +96,7 @@ effects = [
 id = "HAWK-T-005"
 name = "Contract-Bound"
 description = "This faction lives by bargains sealed with a patron, and always knows which clause matters."
-effect = "Once per turn, force a rival rolling on a place where this faction has a Base of Influence to reroll one die. Action: roll 1d6; that many Coin come off its next asset purchase, down to half price."
+rules_text = "Once per turn, force a rival rolling on a place where this faction has a Base of Influence to reroll one die. Action: roll 1d6; that many Coin come off its next asset purchase, down to half price."
 ability = { effect = "purchase_discount", die = "1d6" }
 effects = [
   {
@@ -112,7 +112,7 @@ effects = [
 id = "HAWK-T-006"
 name = "Aether Refiners"
 description = "This faction turns raw Aether into Aetherstones and Aether-Cores, the fuel of everything in the Astral Sea."
-effect = "At the start of each turn, gain 1 Coin. Every die that comes up 10 must be rerolled. Lost if the faction's seat changes."
+rules_text = "At the start of each turn, gain 1 Coin. Every die that comes up 10 must be rerolled. Lost if the faction's seat changes."
 effects = [
   {
     trigger = "turn_start",
@@ -133,7 +133,7 @@ effects = [
 id = "HAWK-T-007"
 name = "War Profiteers"
 description = "This faction profits from everyone's war, and fights its own as little as it can."
-effect = "Once per turn, gain 1 Coin when any rival's asset is destroyed, by anyone. Once per turn, roll an extra d10 when defending against a Wealth attack. Always loses ties in an attack."
+rules_text = "Once per turn, gain 1 Coin when any rival's asset is destroyed, by anyone. Once per turn, roll an extra d10 when defending against a Wealth attack. Always loses ties in an attack."
 effects = [
   {
     trigger = "asset_destroyed",
@@ -156,7 +156,7 @@ effects = [
 id = "HAWK-T-008"
 name = "Shell Company"
 description = "Nothing this faction owns is on paper, and everything it loses is insured."
-effect = "Every asset it buys starts Stealthed. Gain 1 Coin whenever one of its own assets is destroyed."
+rules_text = "Every asset it buys starts Stealthed. Gain 1 Coin whenever one of its own assets is destroyed."
 effects = [
   { trigger = "on_purchase", effect = "apply_stealth", filters = { owner = "own", scope = "faction" } },
   {
@@ -171,7 +171,7 @@ effects = [
 id = "HAWK-T-009"
 name = "Outsourced"
 description = "This faction hires its problems out to H.A.W.K through Questing as a Service, and pays a subscription for the privilege."
-effect = "Once per turn, reroll one of its own lowest dice. When it completes any goal, roll 1d6; on 5+, gain 1 bonus XP. Upkeep: 1 Coin each turn; unpaid, the tag lapses until paid."
+rules_text = "Once per turn, reroll one of its own lowest dice. When it completes any goal, roll 1d6; on 5+, gain 1 bonus XP. Upkeep: 1 Coin each turn; unpaid, the tag lapses until paid."
 effects = [
   {
     trigger = "own_roll",
@@ -198,7 +198,7 @@ effects = [
 id = "HAWK-T-010"
 name = "Monopolists"
 description = "This faction owns the docks, the fuel and the roads, and everyone else pays to use them."
-effect = "Any rival asset that moves onto a place where this faction has a Base of Influence pays it 1 Coin. Assets that need tech level 4 or more cost it 1 less."
+rules_text = "Any rival asset that moves onto a place where this faction has a Base of Influence pays it 1 Coin. Assets that need tech level 4 or more cost it 1 less."
 effects = [
   {
     trigger = "arrival_query",
@@ -218,7 +218,7 @@ effects = [
 id = "HAWK-T-011"
 name = "Aether-Tech Evangelists"
 description = "This faction believes Aether-tech lifts every Fragment it touches, and will not stop explaining this."
-effect = "Every place with this faction's Base of Influence counts as at least tech level 4. Action: pay 2 Coin and roll 1d12; on a 12, the place's tech level becomes 4 for this faction. Only this faction may buy Arcano-Engineered Warbeasts."
+rules_text = "Every place with this faction's Base of Influence counts as at least tech level 4. Action: pay 2 Coin and roll 1d12; on a 12, the place's tech level becomes 4 for this faction. Only this faction may buy Arcano-Engineered Warbeasts."
 ability = {
   effect = "raise_tech_level",
   target = "world",
@@ -238,7 +238,7 @@ effects = [
 id = "HAWK-T-012"
 name = "Drift-Runners"
 description = "This faction lives in the Drift and reads its currents: smugglers, pilots, nomads."
-effect = "Its assets cross the Drift as if their drift rating were 1 higher. It can build Aetherships on any place with at least 1% of the usual population floor."
+rules_text = "Its assets cross the Drift as if their drift rating were 1 higher. It can build Aetherships on any place with at least 1% of the usual population floor."
 effects = [
   {
     trigger = "drift_rating_query",
@@ -258,7 +258,7 @@ effects = [
 id = "HAWK-T-013"
 name = "Godslayers"
 description = "This faction is sworn to destroy the Astral Gods and everyone who feeds them."
-effect = "Always rerolls dice that come up 1. Once per turn, roll an extra d10 when attacking a faction that holds Soul-Bonded. Always loses ties in an attack."
+rules_text = "Always rerolls dice that come up 1. Once per turn, roll an extra d10 when attacking a faction that holds Soul-Bonded. Always loses ties in an attack."
 effects = [
   {
     trigger = "own_roll",
@@ -280,7 +280,7 @@ effects = [
 id = "HAWK-T-014"
 name = "Insurgents"
 description = "This faction is rebel cells that fight whoever owns the docks, the fuel and the roads."
-effect = "Once per turn, roll an extra d10 when attacking a faction that holds Monopolists. Roll an extra d10 when testing to find Stealthed assets."
+rules_text = "Once per turn, roll an extra d10 when attacking a faction that holds Monopolists. Roll an extra d10 when testing to find Stealthed assets."
 effects = [
   {
     trigger = "own_roll",
@@ -301,7 +301,7 @@ effects = [
 id = "HAWK-T-015"
 name = "Old Faith"
 description = "This faction holds to the old gods of mortalkind, the Fey Royals, against the Astral Gods who replaced them."
-effect = "Roll an extra d10 on the test to Expand Influence. Once per turn, roll an extra d10 when defending against a faction that holds Soul-Bonded."
+rules_text = "Roll an extra d10 on the test to Expand Influence. Once per turn, roll an extra d10 when defending against a faction that holds Soul-Bonded."
 effects = [
   {
     trigger = "own_roll",
@@ -322,7 +322,7 @@ effects = [
 id = "HAWK-T-016"
 name = "Informant Network"
 description = "This faction runs on paid informants: it hears everything, as long as it keeps paying."
-effect = "Once per turn, roll an extra d10 on a Cunning attack or when defending against one. Upkeep: 1 Coin each turn; unpaid, the tag lapses until paid."
+rules_text = "Once per turn, roll an extra d10 on a Cunning attack or when defending against one. Upkeep: 1 Coin each turn; unpaid, the tag lapses until paid."
 effects = [
   {
     trigger = "own_roll",

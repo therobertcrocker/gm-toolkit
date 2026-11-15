@@ -82,9 +82,7 @@ an asset's upkeep, an already-unmaintained asset is removed (`AssetRemoved`), bu
 a currently-maintained one is only flagged unmaintained (`AssetMaintainedFlag`
 false) — it survives one lean turn before loss.
 
-Per-asset base cost comes from `rulebook.Assets[...].Maintenance`, resolved
-through `dispatch.ResolveMaintenanceCost` so registered `MaintenanceCostModifier`
-hooks can adjust it.
+Per-asset cost comes from `rulebook.Assets[...].Maintenance`; no hook adjusts it.
 
 ### History
 
