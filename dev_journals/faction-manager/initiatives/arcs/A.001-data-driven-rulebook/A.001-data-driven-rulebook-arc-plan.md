@@ -242,7 +242,7 @@ renames of Go types that carry goal names (A.001.8 deletes them).
 
 Owns the living lore canon (ACD-9) and ships H.A.W.K's tags, assets and a playable
 campaign (AP-11). Six efforts, in order; the full design is in the
-[A.001.5 discovery](../../discovery/A.001.5-hawk-asset-authoring-discovery.md).
+[A.001.5 discovery](../../_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.5-hawk-asset-authoring/A.001.5-hawk-asset-authoring-discovery.md).
 
 - **Effort 1 — lore-seed session (precursor).** Scaffold the H.A.W.K campaign at
   `campaigns/hawk/`, then interview Robert on H.A.W.K's setting, factions, places,
