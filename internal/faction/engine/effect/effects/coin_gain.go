@@ -46,9 +46,13 @@ var coinOnHitAccepts = effect.Accepts{
 }
 
 func fireCoinGain(ctx effect.FireContext) []domain.Mutation {
-	amount := dice.Amount(ctx.Entry.CoinGain.Amount, ctx.Roller)
+	payouts := 1
 	if ctx.Entry.Filters.Scope == domain.ScopeWorld {
-		amount *= countedAssets(ctx)
+		payouts = countedAssets(ctx)
+	}
+	amount := 0
+	for range payouts {
+		amount += dice.Amount(ctx.Entry.CoinGain.Amount, ctx.Roller)
 	}
 	if amount <= 0 {
 		return nil

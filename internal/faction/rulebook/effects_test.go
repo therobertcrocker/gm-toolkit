@@ -514,6 +514,21 @@ effect  = "grant_movement"` + filters + `
 			wantErr: "grant_movement requires a [grant_movement.relocate] block",
 		},
 		{
+			name: "public grant_movement with self scope",
+			body: `
+[[assets.Machine.effects]]
+trigger = "movement_options_query"
+effect  = "grant_movement"` + filters + `
+[assets.Machine.effects.grant_movement]
+public = true
+[assets.Machine.effects.grant_movement.relocate]
+scope = "self"
+range = "hexes"
+max_hex = 6
+`,
+			wantErr: `a public grant needs relocate scope "other"`,
+		},
+		{
 			name: "bonus_die with zero sides",
 			body: `
 [[assets.Machine.effects]]

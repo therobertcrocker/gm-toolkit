@@ -576,7 +576,6 @@ func fareRun(t *testing.T, payee string) []domain.Mutation {
 	return mutations
 }
 
-// coinTo returns the CoinDeltas to factionID in mutations.
 func coinTo(mutations []domain.Mutation, factionID string) []domain.CoinDelta {
 	var deltas []domain.CoinDelta
 	for _, mutation := range mutations {

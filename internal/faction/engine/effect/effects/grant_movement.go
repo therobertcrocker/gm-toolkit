@@ -44,14 +44,15 @@ type movementGranter struct {
 }
 
 // GrantMovementAbilities offers the grant to its owner, and to any other faction
-// when it is public. A rider other than the owner pays the fare to the owner.
+// when it is public and its asset is not hidden. A rider other than the owner
+// pays the fare to the owner.
 func (granter *movementGranter) GrantMovementAbilities(faction *domain.Faction) []hooks.MovementAbility {
 	rider := faction.ID != granter.owner.ID
 	if rider && !granter.grant.Public {
 		return nil
 	}
 	asset, live := granter.holder.liveIn(granter.owner)
-	if !live {
+	if !live || (rider && asset.Hidden()) {
 		return nil
 	}
 	relocate := granter.grant.Relocate

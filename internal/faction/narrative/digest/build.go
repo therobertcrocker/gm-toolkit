@@ -150,6 +150,11 @@ func Build(
 						ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAbilityStrike, factionState)
 						ce.CoinDrained -= m.Delta
 					}
+				} else if m.FactionID != record.FactionID {
+					// A fare or a counter-hit payout lands on another faction's purse.
+					otherBeat := getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					otherBeat.CoinDelta += m.Delta
 				} else {
 					beat.CoinDelta += m.Delta
 					switch m.Cause {

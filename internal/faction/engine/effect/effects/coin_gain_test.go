@@ -235,6 +235,33 @@ func TestCoinGain_CountCapsAtMax(t *testing.T) {
 	}
 }
 
+func TestCoinGain_CountRollsOncePerAsset(t *testing.T) {
+	holder := assetOn("a-coin", "coin", "veil")
+	faction := factionWith(
+		holder,
+		assetOn("a-w1", "worker", "veil"),
+		assetOn("a-w2", "worker", "veil"),
+		assetOn("a-w3", "worker", "veil"),
+	)
+	entry := countingEntry(0, false)
+	entry.CoinGain.Amount = domain.DiceRoll{NumDice: 1, Sides: 4}
+	book := countingBook()
+	roller := &dicetest.Sequence{Values: []int{1, 4, 2}}
+	got := effects.Registrars()[domain.SpecialCoinGain].Fire(effect.FireContext{
+		Holder:   effect.Holder{Faction: faction, Asset: holder, Def: book.Assets[holder.DefinitionID]},
+		Asset:    holder,
+		Entry:    entry,
+		Roller:   roller,
+		Rulebook: book,
+	})
+	if len(got) != 1 || got[0].(domain.CoinDelta).Delta != 7 {
+		t.Errorf("Fire = %+v, want one CoinDelta of 7 (1 + 4 + 2)", got)
+	}
+	if roller.Rolled() != 3 {
+		t.Errorf("rolled %d dice, want 3", roller.Rolled())
+	}
+}
+
 func TestCoinGain_CountSkipsInactiveAndInTransit(t *testing.T) {
 	holder := assetOn("a-coin", "coin", "veil")
 	disabled := assetOn("a-w2", "worker", "veil")

@@ -512,6 +512,9 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 		if err != nil {
 			return fmt.Errorf("grant_movement: %w", err)
 		}
+		if record.GrantMovement.Public && relocate.Scope == domain.RelocateSelf {
+			return fmt.Errorf("grant_movement: a public grant needs relocate scope %q, since a rider moves its own assets", domain.RelocateOther)
+		}
 		definition.GrantMovement = &domain.GrantMovementParams{Relocate: *relocate, Public: record.GrantMovement.Public}
 	case domain.SpecialCaptureTarget:
 		coin, err := convertAmount(definition.Effect, record.CaptureTarget)

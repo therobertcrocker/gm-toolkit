@@ -571,6 +571,32 @@ func TestRunGrantedMovement_UnaffordableSkipsWithoutPrompt(t *testing.T) {
 	}
 }
 
+func TestRunGrantedMovement_UnaffordableRideIsNotReported(t *testing.T) {
+	eng, factionState, alpha, paths := grantFixture(t, 0)
+	eng.Hooks = hooks.NewRegistry()
+	authority := &domain.Asset{ID: "authority", OwnerID: "beta", Location: domain.Location{WorldID: "Krylos"}}
+	eng.Hooks.RegisterAssetMovementGranter(hooks.AssetScope("beta", "authority"), "test", &stubMovementGranter{abilities: []hooks.MovementAbility{{
+		Source: authority,
+		Relocate: domain.RelocateParams{
+			Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3,
+			CoinCost: 1, CoinCostMode: domain.RelocateCostPerAsset,
+		},
+		Payee: "beta",
+	}}})
+	observer := &errorObserver{}
+
+	resolved, err := eng.runGrantedMovement(alpha, factionState, paths, &minimalPhaseCollector{}, observer, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("runGrantedMovement: %v, want a skipped ride", err)
+	}
+	if len(observer.errs) != 0 {
+		t.Errorf("observer errors = %v, want none for a ride alpha cannot pay", observer.errs)
+	}
+	if len(resolved) != 0 {
+		t.Errorf("resolved = %v, want none", resolved)
+	}
+}
+
 func TestRunGrantedMovement_CargoLoadedThisPhaseIsNotOffered(t *testing.T) {
 	eng, factionState, alpha, paths := grantFixture(t, 5)
 	alpha.Assets["cargo"] = &domain.Asset{ID: "cargo", OwnerID: "alpha"} // in transit: no WorldID

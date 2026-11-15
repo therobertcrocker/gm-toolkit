@@ -30,7 +30,6 @@ func registerWeb(t *testing.T) (*hooks.Registry, *domain.Faction, *domain.Factio
 	return registerWebGrant(t, domain.GrantMovementParams{Relocate: transitWebRelocate()})
 }
 
-// registerPublicWeb is registerWeb with a public grant.
 func registerPublicWeb(t *testing.T) (*hooks.Registry, *domain.Faction, *domain.Faction) {
 	t.Helper()
 	return registerWebGrant(t, domain.GrantMovementParams{Relocate: transitWebRelocate(), Public: true})
@@ -95,7 +94,6 @@ func TestGrantMovement_RivalFactionGetsNothing(t *testing.T) {
 	}
 }
 
-// oneGrant fails unless abilities holds exactly one grant, and returns it.
 func oneGrant(t *testing.T, abilities []hooks.MovementAbility) hooks.MovementAbility {
 	t.Helper()
 	if len(abilities) != 1 {
@@ -121,6 +119,15 @@ func TestGrantMovement_PublicGrantIsFreeForItsOwner(t *testing.T) {
 	if grant.Relocate.CoinCost != 0 || grant.Payee != "" {
 		t.Errorf("CoinCost %d, Payee %q; want a free ride with no payee", grant.Relocate.CoinCost, grant.Payee)
 	}
+}
+
+func TestGrantMovement_HiddenPublicGrantServesOnlyItsOwner(t *testing.T) {
+	registry, alpha, beta := registerPublicWeb(t)
+	alpha.Assets["web"].Stealthy = true
+	if got := webGrants(registry, beta); got != nil {
+		t.Errorf("rival abilities = %v, want nil while the web is stealthed", got)
+	}
+	oneGrant(t, webGrants(registry, alpha))
 }
 
 func TestGrantMovement_PrivateGrantKeepsItsCost(t *testing.T) {

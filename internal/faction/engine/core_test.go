@@ -38,6 +38,20 @@ func TestNewWithRulebook_ValidatesTagEffects(t *testing.T) {
 	}
 }
 
+func TestNewWithRulebook_RefusesACountingTag(t *testing.T) {
+	tag := &domain.Tag{ID: "HAWK-T-X", Effects: []domain.EffectDefinition{{
+		Trigger:  domain.TriggerTurnStart,
+		Effect:   domain.SpecialCoinGain,
+		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, AssetTypes: []domain.AssetType{"Workforce"}},
+		CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}},
+	}}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Tags: map[string]*domain.Tag{tag.ID: tag}}
+	_, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler))
+	if err == nil || !strings.Contains(err.Error(), `scope "world" cannot apply`) {
+		t.Fatalf("got %v, want a tag counting coin_gain refused at load", err)
+	}
+}
+
 func TestNewWithRulebook_RefusesBadGoalData(t *testing.T) {
 	goal := &domain.Goal{
 		ID:        "X-1",

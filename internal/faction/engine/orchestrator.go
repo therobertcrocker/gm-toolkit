@@ -951,7 +951,10 @@ func (e *Engine) runGrantedMovement(
 		})
 		if errors.Is(err, relocate.ErrInsufficientCoin) {
 			phaseLog.Warn("granted movement skipped", "source", grant.Source.ID, "err", err)
-			observer.OnError(faction, err)
+			// deliberate: only the grant's owner hears it cannot pay, not a rider, because a rider is offered a rival's public grant every turn without asking for it.
+			if grant.Payee == "" {
+				observer.OnError(faction, err)
+			}
 			continue
 		}
 		// deliberate: Esc declines this grant, not the turn, because the decision batch has already applied and must still resolve.

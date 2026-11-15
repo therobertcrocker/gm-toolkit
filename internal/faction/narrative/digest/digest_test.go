@@ -143,6 +143,38 @@ func TestCoinDeltaAbandonGoal(t *testing.T) {
 	}
 }
 
+func TestCoinDeltaToAnotherFactionCreditsThatFaction(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "asset_added", domain.AssetAdded{
+				FactionID: "faction-a",
+				Asset:     domain.Asset{ID: "asset-1", DefinitionID: "def-1"},
+				Cause:     "buy",
+			}),
+			mutRec(t, "coin_delta", domain.CoinDelta{
+				FactionID: "faction-a", Delta: -1, Cause: "ability",
+			}),
+			mutRec(t, "coin_delta", domain.CoinDelta{
+				FactionID: "faction-b", Delta: 1, Cause: "fare", CausedByFactionID: "faction-a",
+			}),
+		),
+		eventRec("faction-b",
+			mutRec(t, "asset_added", domain.AssetAdded{
+				FactionID: "faction-b",
+				Asset:     domain.Asset{ID: "asset-2", DefinitionID: "def-1"},
+				Cause:     "buy",
+			}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"}), nil)
+	if rider := findBeat(d, "faction-a"); rider.CoinDelta != -1 {
+		t.Errorf("rider CoinDelta: want -1, got %d", rider.CoinDelta)
+	}
+	if payee := findBeat(d, "faction-b"); payee.CoinDelta != 1 {
+		t.Errorf("payee CoinDelta: want 1, got %d", payee.CoinDelta)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // AssetAdded / AssetRemoved (buy, sell, refit)
 // ---------------------------------------------------------------------------
