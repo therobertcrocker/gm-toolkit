@@ -97,9 +97,9 @@ faction (`ability.NewView`) and every `Dispatch` re-projects each step's mutatio
 onto it via the same `mutation.Apply` the real `Output()` runs — so a later step, or a
 later asset in the same action, reads what an earlier one changed without a parallel
 projection that could drift. Rolls still spend hook budgets on the real factions.
-A pre-flight pass bails the whole ability to a `confirmApplied` no-op if
-*any* step's effect is not yet built, so a built early step never half-applies
-before a later unbuilt one short-circuits.
+The loader gives every `A` asset an ability and every step a known effect, so
+`Dispatch` treats a holder with no ability, or an effect with no handler, as an
+error, never a silent no-op.
 
 ## Actions catalogue
 
@@ -183,9 +183,10 @@ mutation sets because their rolls run through the [dice](dice.md) routes and the
   each step's `Effect`, not from the asset's `def.ID`. Handlers are named for the
   effect they implement (`reveal_stealth`, `coin_delta`, `relocate`,
   `purchase_discount`, `purchase_enabler`), so every asset that routes to an effect
-  shares one handler instead of needing a per-ID entry; an asset with no ability
-  block, or any step whose effect has no registered handler, falls through to
-  `confirmApplied` (a no-op confirmation) rather than erroring. This removed the
+  shares one handler instead of needing a per-ID entry. A holder with no ability,
+  or a step whose effect has no handler, is an error; the loader refuses both, so
+  the `A` flag and an `[ability]` block always go together (arc `A.001` close).
+  This removed the
   asset-ID prefix fragility that motivated R.018 and is the seam the data-driven
   ability registry ([ability catalog](ability-catalog.md)) builds on.
 - **Ability dispatch is a per-step pipeline that halts on failure.** Each

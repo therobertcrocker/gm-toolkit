@@ -110,7 +110,7 @@ func (engine *WorldEngine) Distance(from, to spatial.RegionHex, crossingCost int
 // Distance is raw hex count.
 func (engine *WorldEngine) WorldsWithin(from spatial.RegionHex, maxHex int, includeOrigin bool) ([]string, error) {
 	// deliberate: crossingCost 0 — "within N hexes" is raw hex distance, not the
-	// drift-priced journey ChangeHomeworld uses (Effort 3 Plan, Decision 5).
+	// drift-priced journey a movement order pays (Effort 3 Plan, Decision 5).
 	distances, err := engine.spatialMap.DistancesFrom(from, 0)
 	if err != nil {
 		return nil, err

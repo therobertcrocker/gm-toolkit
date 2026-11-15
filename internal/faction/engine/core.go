@@ -28,11 +28,11 @@ var ErrWorldEngineUnavailable = errors.New("engine: world engine unavailable")
 //   - orchestrator.go — drives one faction's turn through the pipeline stages
 //   - observer.go    — TurnObserver interface; fire-and-forget output channel
 //   - collector.go   — PhaseCollector interface + Collectors struct; abstracts GM vs. AI vs. test input
-//   - dispatch/      — category-based hook dispatch (Cat 3 mutations, Cat 1+2 rolls, Cat 4+5 rules)
+//   - arrival.go     — the toll, lockdown and permission checks when an asset lands
 //
-// Supporting files (roller.go) and sub-packages (action/, goal/,
-// mutation/, turn/, testharness/) provide the mechanics the orchestrator
-// delegates to.
+// Sub-packages (action/, dice/, effect/, goal/, hooks/, mutation/, relocate/,
+// turn/, world/, testharness/) provide the mechanics the orchestrator delegates to.
+// Hook dispatch lives in hooks/dispatch; the roll families dispatch from dice/.
 
 // Engine is the composition root. It owns the Rulebook and all sub-engines.
 type Engine struct {

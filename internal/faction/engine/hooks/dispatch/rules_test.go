@@ -16,13 +16,6 @@ func (stub *stubAssetCostModifier) ModifyAssetCost(_ *domain.Faction, _ *domain.
 	query.Cost -= stub.delta
 }
 
-// stubMaintenanceCostModifier reduces cost by a fixed delta.
-type stubMaintenanceCostModifier struct{ delta int }
-
-func (stub *stubMaintenanceCostModifier) ModifyMaintenanceCost(_ *domain.Faction, _ *domain.Asset, cost int) int {
-	return cost - stub.delta
-}
-
 func TestResolveAssetCost_NoModifiers(t *testing.T) {
 	registry := hooks.NewRegistry()
 	buyer := &domain.Faction{ID: "f1"}
@@ -176,28 +169,6 @@ func TestAssetSpeedResolver(t *testing.T) {
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("f1"), "faction", stubAssetSpeedModifier{floor: 2})
 	if got := AssetSpeedResolver(registry, faction)(definition, false); got != 2 {
 		t.Errorf("speed = %d, want 2 from the faction's floor", got)
-	}
-}
-
-func TestResolveMaintenanceCost_NoModifiers(t *testing.T) {
-	registry := hooks.NewRegistry()
-	owner := &domain.Faction{ID: "f1"}
-	asset := &domain.Asset{ID: "a1", OwnerID: "f1"}
-	got := ResolveMaintenanceCost(registry, owner, asset, 0)
-	if got != 0 {
-		t.Errorf("ResolveMaintenanceCost = %d, want 0", got)
-	}
-}
-
-func TestResolveMaintenanceCost_OneModifier(t *testing.T) {
-	registry := hooks.NewRegistry()
-	owner := &domain.Faction{ID: "f1"}
-	asset := &domain.Asset{ID: "a1", OwnerID: "f1"}
-	registry.RegisterMaintenanceCostModifier(hooks.FactionScope("f1"), "test", &stubMaintenanceCostModifier{delta: -2})
-	got := ResolveMaintenanceCost(registry, owner, asset, 0)
-	// delta=-2 means cost increases by 2
-	if got != 2 {
-		t.Errorf("ResolveMaintenanceCost = %d, want 2", got)
 	}
 }
 

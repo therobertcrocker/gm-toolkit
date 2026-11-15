@@ -39,7 +39,6 @@ type ScriptedCollector struct {
 	SelectMoveDestinationFn      func(*domain.Asset, []string) (string, error)
 	SelectAbilityTargetFn        func(domain.AbilityHolder, domain.AbilityStep, domain.AbilityTargetCandidates) (domain.AbilityTarget, error)
 	SelectRelocateOrdersFn       func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
-	ConfirmAbilityAppliedFn      func(*domain.Asset, *domain.AssetDefinition) (bool, error)
 	SelectBribeTargetFn          func(*domain.Faction, *state.FactionState) (*domain.Base, int, error)
 	SelectActionFn               func(*domain.Faction, []action.Action) (action.Action, error)
 	SelectModifiersFn            func(hooks.PreRollCard) []hooks.ModifierOffer
@@ -193,13 +192,6 @@ func (c *ScriptedCollector) SelectRelocateOrders(acting *domain.Asset, candidate
 		return c.SelectRelocateOrdersFn(acting, candidates, candidateWorlds, maxAssets)
 	}
 	return nil, nil
-}
-
-func (c *ScriptedCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
-	if c.ConfirmAbilityAppliedFn != nil {
-		return c.ConfirmAbilityAppliedFn(asset, def)
-	}
-	return true, nil
 }
 
 func (c *ScriptedCollector) SelectTransportCargo(transport *domain.Asset, eligibleCargo []*domain.Asset, profile *domain.TransportProfile) ([]*domain.Asset, error) {

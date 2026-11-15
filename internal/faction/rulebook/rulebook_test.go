@@ -1286,7 +1286,7 @@ func TestConvertAbilityStep_Shelter(t *testing.T) {
 	const loss = "effects = [{ trigger = \"asset_destroyed\", effect = \"shelter_asset\", filters = { owner = \"own\", scope = \"self\" } }]\n"
 
 	t.Run("loads", func(t *testing.T) {
-		assets, err := loadAssetsFromTOML(t, effectTestAsset+loss+header+target+block)
+		assets, err := loadAssetsFromTOML(t, abilityTestAsset+loss+header+target+block)
 		if err != nil {
 			t.Fatalf("load: %v", err)
 		}
@@ -1311,7 +1311,31 @@ func TestConvertAbilityStep_Shelter(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := loadAssetsFromTOML(t, effectTestAsset+tc.body)
+			_, err := loadAssetsFromTOML(t, abilityTestAsset+tc.body)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestConvertAsset_ActionFlagNeedsAbility: the A flag and an [ability] go
+// together, and an ability step names its effect, so no A asset offers an ability
+// that does nothing.
+func TestConvertAsset_ActionFlagNeedsAbility(t *testing.T) {
+	const ability = "\n[assets.Machine.ability]\neffect = \"levy_coin\"\ntarget = \"faction\"\n"
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"A flag with no ability", abilityTestAsset, "the A flag and an [ability] block go together"},
+		{"ability with no A flag", effectTestAsset + ability, "the A flag and an [ability] block go together"},
+		{"ability step with no effect", abilityTestAsset + "\n[assets.Machine.ability]\ntarget = \"faction\"\n", "unknown ability effect"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := loadAssetsFromTOML(t, tc.body)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
 			}

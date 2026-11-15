@@ -304,6 +304,9 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		PurchasePermission: r.PurchasePermission,
 		RequiresTag:        r.RequiresTag,
 	}
+	if definition.HasFlag(domain.FlagAction) != (ability != nil) {
+		return nil, fmt.Errorf("the A flag and an [ability] block go together: an A asset needs an ability, and an ability needs the A flag")
+	}
 	if definition.Shelter() != nil && !slices.ContainsFunc(effects, func(entry domain.EffectDefinition) bool {
 		return entry.Trigger == domain.TriggerAssetDestroyed && entry.Effect == domain.SpecialShelterAsset
 	}) {
@@ -354,13 +357,11 @@ func convertAbility(r *abilityRecord) (*domain.AbilityDefinition, error) {
 
 func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	var step domain.AbilityStep
-	if record.Effect != "" {
-		effect, err := toAbilityEffect(record.Effect)
-		if err != nil {
-			return domain.AbilityStep{}, err
-		}
-		step.Effect = effect
+	effect, err := toAbilityEffect(record.Effect)
+	if err != nil {
+		return domain.AbilityStep{}, err
 	}
+	step.Effect = effect
 	target, err := toTargetKind(record.Target)
 	if err != nil {
 		return domain.AbilityStep{}, err
@@ -799,7 +800,7 @@ type tagRecord struct {
 	ID                  string         `toml:"id"`
 	Name                string         `toml:"name"`
 	Description         string         `toml:"description"`
-	Effect              string         `toml:"effect"`
+	RulesText           string         `toml:"rules_text"`
 	Government          bool           `toml:"government"`
 	HomeworldGovernment bool           `toml:"homeworld_government"`
 	Effects             []effectRecord `toml:"effects"`
@@ -842,7 +843,7 @@ func loadTags(path string) (map[string]*domain.Tag, string, error) {
 			ID:                  r.ID,
 			Name:                r.Name,
 			Description:         r.Description,
-			Effect:              r.Effect,
+			RulesText:           r.RulesText,
 			Government:          r.Government,
 			HomeworldGovernment: r.HomeworldGovernment,
 			Effects:             effects,

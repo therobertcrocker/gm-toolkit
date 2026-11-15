@@ -39,8 +39,10 @@ share, and it is a passive store — it never calls a hook itself.
 | 6 | `LethalInterceptor` | when a hit would destroy an asset — may take the hit in place of the removal | `InterceptLethal` (the Attack action's `applyAssetDamage`, the `self_damage` reactor) |
 
 Category 4 is not one interface but a **typed family** — `AssetCostModifier`,
-`MaintenanceCostModifier`, `WorldTechLevelModifier`, `AttackEligibilityRule`,
-`AssetMovementGranter`, `RepairCostModifier`, `PermissionGranter`, `PermissionContester` — each with its own signature
+`WorldTechLevelModifier`, `AssetSpeedModifier`, `UpkeepCharger`,
+`AssetDriftRatingModifier`, `ArrivalTollRule`, `PopulationFloorModifier`,
+`AttackEligibilityRule`, `AssetMovementGranter`, `RepairCostModifier`,
+`PermissionGranter`, `PermissionContester` — each with its own signature
 (`ModifyAssetCost(buyer, def, world, query *AssetCostQuery)`,
 `MayFight(query AttackEligibilityQuery) bool` and so on). The asset-cost hook
 edits a shared `AssetCostQuery` in place of returning an `int`, because the chain
@@ -120,11 +122,10 @@ question is genuinely being asked**. The roll families dispatch from
   sorted by faction ID and then asset ID so the emitted mutations are
   deterministic. A defender's reactor hears what was done to it; each reactor
   filters the batch for the events it cares about.
-- **`ResolveAssetCost` / `ResolveMaintenanceCost` / `ResolveWorldTechLevel` /
-  `GrantedMovementAbilities`** are the Cat 4 value resolvers, called from
-  [`buy_asset`](actions.md) and `purchase_enabler`, [`bookkeeping`](turn-pipeline.md),
-  the TL-gate on purchase, and the movement phase respectively. The three number
-  resolvers **chain** their modifiers — every modifier sees the previous one's
+- **`ResolveAssetCost` / `ResolveWorldTechLevel` / `GrantedMovementAbilities`**
+  are the Cat 4 value resolvers, called from [`buy_asset`](actions.md) and
+  `purchase_enabler`, the TL-gate on purchase, and the movement phase
+  respectively. The two number resolvers **chain** their modifiers — every modifier sees the previous one's
   output — so two effects on the same number compose instead of clobbering;
   `GrantedMovementAbilities` collects every granter's list. `ResolveAssetCost`
   asks the buyer's own hooks, then each rival asset on the purchase world in

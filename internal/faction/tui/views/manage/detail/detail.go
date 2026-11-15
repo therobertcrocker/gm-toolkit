@@ -116,8 +116,8 @@ func (m Model) renderBody() string {
 		}
 		b.WriteString("  " + styles.Strong.Render(tag.Name) + lapsedMark + "\n")
 		b.WriteString(m.wrap(tag.Description, 4, styles.Label) + "\n")
-		if tag.Effect != "" {
-			b.WriteString(m.wrap("Effect: "+tag.Effect, 4, styles.Muted) + "\n")
+		if tag.RulesText != "" {
+			b.WriteString(m.wrap("Effect: "+tag.RulesText, 4, styles.Muted) + "\n")
 		}
 	}
 

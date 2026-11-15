@@ -44,21 +44,6 @@ func (m *MockCollector) EXPECT() *MockCollectorMockRecorder {
 	return m.recorder
 }
 
-// ConfirmAbilityApplied mocks base method.
-func (m *MockCollector) ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfirmAbilityApplied", asset, def)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ConfirmAbilityApplied indicates an expected call of ConfirmAbilityApplied.
-func (mr *MockCollectorMockRecorder) ConfirmAbilityApplied(asset, def any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmAbilityApplied", reflect.TypeOf((*MockCollector)(nil).ConfirmAbilityApplied), asset, def)
-}
-
 // ConfirmCounterstrike mocks base method.
 func (m *MockCollector) ConfirmCounterstrike(defenderFaction *domain.Faction, source, attacker *domain.Asset) (bool, error) {
 	m.ctrl.T.Helper()

@@ -21,27 +21,18 @@ func NewSelectAbilityHolders(candidates []domain.AbilityHolder, rulebook *rulebo
 	return NewMultiSelect[domain.AbilityHolder]("Activate which abilities?", "", opts, 0)
 }
 
-// NewConfirmAbilityApplied is the per-asset acknowledgment. The engine discards
-// the returned bool (ability/dispatch.go:63), so "Skip" is inert — the modal only
-// gates and paces resolution (OQ). Answer: bool. Esc cancels the action.
-func NewConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) ConfirmOverlay {
-	return NewConfirm(fmt.Sprintf("Apply %s ability?", def.Name), def.Description, "Apply", "Skip")
-}
-
-// NewSelectFactionTestTarget picks the opposed-test target for an ability (e.g.
-// Informers' reveal-stealth). The header names the effect. Answer: *domain.Faction.
-// Esc cancels.
-func NewSelectFactionTestTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Faction) SelectOverlay[*domain.Faction] {
+// NewSelectAbilityFactionTarget picks the faction an ability acts on (e.g.
+// Informers' reveal-stealth). The header names the holder and the effect. Answer:
+// *domain.Faction. Esc cancels.
+func NewSelectAbilityFactionTarget(holder domain.AbilityHolder, effect domain.AbilityEffectType, candidates []*domain.Faction, rulebook *rulebook.Rulebook) SelectOverlay[*domain.Faction] {
 	opts := make([]huh.Option[*domain.Faction], 0, len(candidates))
 	for _, faction := range candidates {
 		opts = append(opts, huh.NewOption(faction.Name, faction))
 	}
-	return NewSelect[*domain.Faction]("Target which faction?", fmt.Sprintf("Ability effect: %s", effect), opts)
+	return NewSelect[*domain.Faction]("Target which faction?", fmt.Sprintf("%s · %s", holderName(holder, rulebook), effect), opts)
 }
 
-// abilityLabel renders "<name> · <effect>" (or just the name when the definition
-// carries no ability effect — e.g. the structural-stub abilities). A tag's name
-// is marked "(tag)".
+// abilityLabel renders "<name> · <effect>". A tag's name is marked "(tag)".
 func abilityLabel(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) string {
 	if holder.Tag != nil {
 		return fmt.Sprintf("%s (tag) · %s", holder.Tag.Name, holder.Tag.Ability.Steps[0].Effect)
@@ -56,7 +47,7 @@ func abilityLabel(holder domain.AbilityHolder, rulebook *rulebook.Rulebook) stri
 
 // NewSelectAbilityAssetTarget picks the rival asset an ability acts on (Marketers,
 // Seditionists). Labels carry the owner. Answer: *domain.Asset. Esc cancels.
-func NewSelectAbilityAssetTarget(asset *domain.Asset, effect domain.AbilityEffectType, candidates []*domain.Asset, ownerNames map[string]string, rb *rulebook.Rulebook) SelectOverlay[*domain.Asset] {
+func NewSelectAbilityAssetTarget(holder domain.AbilityHolder, effect domain.AbilityEffectType, candidates []*domain.Asset, ownerNames map[string]string, rb *rulebook.Rulebook) SelectOverlay[*domain.Asset] {
 	opts := make([]huh.Option[*domain.Asset], 0, len(candidates))
 	for _, candidate := range candidates {
 		owner := ownerNames[candidate.OwnerID]
@@ -65,7 +56,7 @@ func NewSelectAbilityAssetTarget(asset *domain.Asset, effect domain.AbilityEffec
 		}
 		opts = append(opts, huh.NewOption(fmt.Sprintf("%s · %s", assetLabel(candidate, rb), owner), candidate))
 	}
-	return NewSelect[*domain.Asset]("Target which asset?", fmt.Sprintf("%s · %s", assetName(asset, rb), effect), opts)
+	return NewSelect[*domain.Asset]("Target which asset?", fmt.Sprintf("%s · %s", holderName(holder, rb), effect), opts)
 }
 
 // NewConfirmPayment asks the paying faction whether to pay. Its header names the

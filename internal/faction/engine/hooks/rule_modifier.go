@@ -44,12 +44,6 @@ type AssetCostModifier interface {
 	ModifyAssetCost(buyer *domain.Faction, def *domain.AssetDefinition, world string, query *AssetCostQuery)
 }
 
-// MaintenanceCostModifier adjusts the per-turn maintenance cost of an asset
-// (Cat 4).
-type MaintenanceCostModifier interface {
-	ModifyMaintenanceCost(owner *domain.Faction, asset *domain.Asset, baseCost int) int
-}
-
 // WorldTechLevelModifier adjusts the effective tech level of a world for a
 // specific faction, used by TL-gated asset purchase logic (Cat 4). A nil def means
 // every purchase (Teach Planetary Population's world filter).

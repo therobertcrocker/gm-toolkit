@@ -25,6 +25,9 @@ counter = ""
 description = "Test asset."
 `
 
+// abilityTestAsset is effectTestAsset with the A flag, which an [ability] needs.
+var abilityTestAsset = strings.Replace(effectTestAsset, `flags = ["S"]`, `flags = ["A"]`, 1)
+
 func loadAssetsFromTOML(t *testing.T, body string) (map[string]*domain.AssetDefinition, error) {
 	t.Helper()
 	dir := t.TempDir()
@@ -644,7 +647,7 @@ amount = "1d0"
 }
 
 func TestConvertAbilityStep_RelocateCarriesEffortFiveFields(t *testing.T) {
-	assets, err := loadAssetsFromTOML(t, effectTestAsset+`
+	assets, err := loadAssetsFromTOML(t, abilityTestAsset+`
 [assets.Machine.ability]
 effect = "relocate"
 [assets.Machine.ability.relocate]

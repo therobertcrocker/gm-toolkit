@@ -338,10 +338,21 @@ is the string written to history; the rules behind the numbers live in
   Base hit counts once. Damage carries the full roll, not capped at the HP left;
   a reader that counts HP taken off caps it itself. (A.001.8 Effort 1 Decision 1
   and Decision Record 17.)
-- **Passive and active asset specialness are split.** `S`-flag features register
-  reactive hooks through the effect engine; `A`-flag abilities are resolved by the
-  [actions](actions.md) ability dispatch. The effect engine deliberately owns only
-  the passive side.
+- **Passive and active specialness are split by harness; the mechanic picks the
+  engine.** An `[ability]` spends the faction's action and resolves through the
+  [actions](actions.md) ability dispatch; an `effects` entry registers hooks
+  through the effect engine, which deliberately owns only the passive side. The
+  SWN `A`/`S` flag is a note for a person, not a dispatch key: what a special does
+  decides its home, so Marketers' lasting restriction is an effect though the asset
+  is `A`, and Transit Web's move is a movement grant though the asset is `S`.
+  (Arc `A.001` arc-discovery, ACD-1.)
+- **One mechanic is one primitive, reached by as many harnesses as use it.** When
+  the same mechanic is action-spent on one holder and free on another, the logic
+  lives once and each harness calls it: `engine/relocate` serves the ability, the
+  free movement grant and the public grant ([world & movement](world-movement.md)),
+  and the shelter is an ability on one side and the `sheltered` condition on the
+  other. A harness never re-implements its primitive. (Arc `A.001` arc-discovery,
+  ACD-4.)
 - **Cargo location stays in sync with its transport.** The `TransportReactor`
   emits an `AssetMoved` for each cargo asset on every movement beat, so if a
   transport is destroyed mid-flight its cargo's last-known location is already

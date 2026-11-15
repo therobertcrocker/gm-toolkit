@@ -67,15 +67,6 @@ func (u *UseAssetAbility) Output() ([]domain.Mutation, error) {
 	return u.mutations, nil
 }
 
-func hasActionFlag(def *domain.AssetDefinition) bool {
-	for _, flag := range def.Flags {
-		if flag == domain.FlagAction {
-			return true
-		}
-	}
-	return false
-}
-
 // abilityCandidates returns the holders that may use their ability now: the
 // faction's A-flag assets in ID order, then its tags that carry an ability, in ID
 // order. A holder whose ability has no target now is not offered (Effort 3
@@ -85,7 +76,7 @@ func abilityCandidates(faction *domain.Faction, factionState *state.FactionState
 	for _, asset := range domain.SortedAssets(faction) {
 		def, ok := rulebook.Assets[asset.DefinitionID]
 		holder := domain.AbilityHolder{Asset: asset}
-		if ok && hasActionFlag(def) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) && ability.HasTargets(faction, holder, def.Ability, factionState, worldEngine, registry, rulebook) {
+		if ok && def.HasFlag(domain.FlagAction) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) && ability.HasTargets(faction, holder, def.Ability, factionState, worldEngine, registry, rulebook) {
 			candidates = append(candidates, holder)
 		}
 	}

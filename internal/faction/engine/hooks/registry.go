@@ -33,12 +33,6 @@ type RegisteredAssetCostModifier struct {
 	Hook   AssetCostModifier
 }
 
-type RegisteredMaintenanceCostModifier struct {
-	Scope  Scope
-	Source string
-	Hook   MaintenanceCostModifier
-}
-
 type RegisteredWorldTechLevelModifier struct {
 	Scope  Scope
 	Source string
@@ -112,7 +106,6 @@ type Registry struct {
 	rollOfferFilters         map[Scope][]RegisteredRollOfferFilter
 	mutationReactors         map[Scope][]RegisteredMutationReactor
 	assetCostModifiers       map[Scope][]RegisteredAssetCostModifier
-	maintenanceCostModifiers map[Scope][]RegisteredMaintenanceCostModifier
 	worldTechLevelModifiers  map[Scope][]RegisteredWorldTechLevelModifier
 	assetSpeedModifiers      map[Scope][]RegisteredAssetSpeedModifier
 	populationFloorModifiers map[Scope][]RegisteredPopulationFloorModifier
@@ -143,7 +136,6 @@ func (registry *Registry) Reset() {
 	registry.rollOfferFilters = make(map[Scope][]RegisteredRollOfferFilter)
 	registry.mutationReactors = make(map[Scope][]RegisteredMutationReactor)
 	registry.assetCostModifiers = make(map[Scope][]RegisteredAssetCostModifier)
-	registry.maintenanceCostModifiers = make(map[Scope][]RegisteredMaintenanceCostModifier)
 	registry.worldTechLevelModifiers = make(map[Scope][]RegisteredWorldTechLevelModifier)
 	registry.assetSpeedModifiers = make(map[Scope][]RegisteredAssetSpeedModifier)
 	registry.populationFloorModifiers = make(map[Scope][]RegisteredPopulationFloorModifier)
@@ -167,7 +159,6 @@ func (registry *Registry) ClearAsset(factionID, assetInstanceID string) {
 	delete(registry.rollOfferFilters, scope)
 	delete(registry.mutationReactors, scope)
 	delete(registry.assetCostModifiers, scope)
-	delete(registry.maintenanceCostModifiers, scope)
 	delete(registry.worldTechLevelModifiers, scope)
 	delete(registry.assetSpeedModifiers, scope)
 	delete(registry.populationFloorModifiers, scope)
@@ -206,11 +197,6 @@ func (registry *Registry) RegisterMutationReactor(scope Scope, source string, ho
 // RegisterAssetCostModifier registers a Cat 4 asset-cost hook under the given scope.
 func (registry *Registry) RegisterAssetCostModifier(scope Scope, source string, hook AssetCostModifier) {
 	registry.assetCostModifiers[scope] = append(registry.assetCostModifiers[scope], RegisteredAssetCostModifier{Scope: scope, Source: source, Hook: hook})
-}
-
-// RegisterMaintenanceCostModifier registers a Cat 4 maintenance-cost hook under the given scope.
-func (registry *Registry) RegisterMaintenanceCostModifier(scope Scope, source string, hook MaintenanceCostModifier) {
-	registry.maintenanceCostModifiers[scope] = append(registry.maintenanceCostModifiers[scope], RegisteredMaintenanceCostModifier{Scope: scope, Source: source, Hook: hook})
 }
 
 // RegisterWorldTechLevelModifier registers a Cat 4 tech-level hook under the given scope.
@@ -317,16 +303,6 @@ func (registry *Registry) AssetCostModifiersForAsset(factionID, assetInstanceID 
 	return registry.assetCostModifiers[AssetScope(factionID, assetInstanceID)]
 }
 
-// MaintenanceCostModifiersFor returns all Cat 4 maintenance-cost hooks matching the given faction and asset.
-func (registry *Registry) MaintenanceCostModifiersFor(factionID, assetInstanceID string) []RegisteredMaintenanceCostModifier {
-	var result []RegisteredMaintenanceCostModifier
-	result = append(result, registry.maintenanceCostModifiers[GlobalScope()]...)
-	result = append(result, registry.maintenanceCostModifiers[FactionScope(factionID)]...)
-	if assetInstanceID != "" {
-		result = append(result, registry.maintenanceCostModifiers[AssetScope(factionID, assetInstanceID)]...)
-	}
-	return result
-}
 
 // WorldTechLevelModifiersFor returns all Cat 4 tech-level hooks matching the given faction and asset.
 func (registry *Registry) WorldTechLevelModifiersFor(factionID, assetInstanceID string) []RegisteredWorldTechLevelModifier {

@@ -30,7 +30,6 @@ type Collector interface {
 	ConfirmRivalFreeAttack(rival *domain.Faction, rivalRoll, factionRoll int) (bool, error)
 	SelectBaseAttackers(rival *domain.Faction, eligible []*domain.Asset, rulebook *rulebook.Rulebook) ([]*domain.Asset, error)
 	SelectAbilityHolders(faction *domain.Faction, candidates []domain.AbilityHolder, rulebook *rulebook.Rulebook) ([]domain.AbilityHolder, error)
-	ConfirmAbilityApplied(asset *domain.Asset, def *domain.AssetDefinition) (bool, error)
 	SelectBribeTarget(faction *domain.Faction, factionState *state.FactionState) (*domain.Base, int, error)
 }
 

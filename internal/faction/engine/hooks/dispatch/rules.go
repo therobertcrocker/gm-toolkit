@@ -61,20 +61,6 @@ func PurchaseCharges(buyerID string, cost int, quote hooks.AssetCostQuery, cause
 	return charges
 }
 
-// ResolveMaintenanceCost runs all registered MaintenanceCostModifiers for
-// owner and asset in registration order, chaining outputs. Returns baseCost
-// when registry is nil or no modifiers match.
-func ResolveMaintenanceCost(registry *hooks.Registry, owner *domain.Faction, asset *domain.Asset, baseCost int) int {
-	if registry == nil {
-		return baseCost
-	}
-	cost := baseCost
-	for _, registered := range registry.MaintenanceCostModifiersFor(owner.ID, asset.ID) {
-		cost = registered.Hook.ModifyMaintenanceCost(owner, asset, cost)
-	}
-	return cost
-}
-
 // ResolveWorldTechLevel starts from the higher of baseTL and faction's own record
 // for world (raise_tech_level, D-11), then runs faction's own
 // WorldTechLevelModifiers, then those registered against each asset faction owns,
