@@ -16,8 +16,6 @@ bin/
 # Claude's private copy of hawk
 /campaigns/hawk-claude/
 
-# Reference materials (copyrighted)
-reference/
 
 # Go
 *.test

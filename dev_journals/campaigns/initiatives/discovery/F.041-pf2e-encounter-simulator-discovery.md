@@ -1,167 +1,218 @@
 # PF2e Encounter Simulator — Discovery
 
-> **Status:** draft for sign-off. No code is written until this doc is approved.
+> **Status:** signed off 2026-11-15.
 
 ## In Plain Words
 
-- **What:** a reusable tool inside gm-toolkit that plays a Pathfinder 2e fight thousands of times, using real character and monster data exported from Foundry, and reports how the fight tends to go: how often the party wins, how often someone dies, how many rounds it lasts, and which abilities actually get used.
-- **Why:** balancing a high-level boss fight by hand is guesswork. The party's numbers are high and unusual (skill bonuses of +19 to +24), bosses are custom, and small changes (10 HP, one resistance, one GM habit) move the odds a lot. A simulator lets the GM test a change before the session instead of discovering it at the table.
-- **How it fits:** it is the first PF2e system in gm-toolkit. It adds a new `internal/pf2e` rules engine (deterministic, with a `build` and `content` split) and a `sim` package on top of it, as one multi-effort feature. The first encounter it is built and tested against is the H.A.W.K. finale, The Fall of Luna: Abyssal Luna, then the Avatar of Lilith, with a complex hazard called the Gate to the Abyss.
+- **What:** a tool that plays a Pathfinder 2e fight thousands of times and reports how it tends to go: win and loss odds, deaths, fight length, how tense it felt, and what did the damage. It starts as a rebuild of the one-off H.A.W.K. finale simulator, `cmd/scripts/hawk_finale_sim.py`.
+- **Why:** the finale script grew piece by piece in one long session. Its numbers are typed in by hand, its bosses and players are written as code, and it cannot run any other fight. The bosses have changed since, and the script has not kept up. A structured, more accurate simulator makes the balance calls drawn from it more accurate too.
+- **How it fits:** this is the first version of a larger PF2e tool. Later work adds the full PF2e ruleset as data and an encounter designer that uses it. F.041 builds the simulator so those can grow on top of it, but does not build them. The Fall of Luna is the first scenario and the test that proves v1 works.
 
 ## Problem
 
-There is no way today to check a PF2e encounter's balance except reading the numbers and guessing. The encounter-building rules (XP budgets, creature-building tables) give a starting point, but they assume a typical party, and the H.A.W.K. party is not typical. The rules also say nothing about how a specific boss's abilities interact with a specific party's defences. Examples from the finale:
+The finale script answers one question about one fight. It was built to check whether two custom bosses were balanced, and it grew a turn at a time, so its structure follows the order things were asked, not the shape of the game:
 
-- Lilith's Protean Anatomy grants resistance 25 to acid, electricity or sonic after she takes that damage type. Several of Tavish's bombs deal those types, so his damage output against her depends on the order in which he throws them.
-- Luna's Untethered to Fate lets her ignore fortune and misfortune effects. Arabesque's True Target does nothing against her.
-- The Sin of Betrayal mechanic (acts of loyalty deal damage and grant holy Strikes) only matters if the party discovers it, and the discovery timing changes the fight's length.
+- **Stat blocks are typed in.** `PARTY` holds hand-copied HP, AC, saves and attack bonuses for Kas, Tavish and Arabesque at levels 14 and 15. The level-15 row is an estimate. Boss numbers are knobs (`luna_hp`, `avatar_hp`).
+- **Behaviour is code.** Each boss turn (`luna_turn`, `avatar_turn`) and each PC turn (`kas_turn`, `tav_turn`, `ara_turn`) is a Python function. The GM flowchart is written as if-chains inside them, and every player habit is a knob that only one function reads.
+- **Rules are partial.** Positions are probabilities, not places. Arabesque casts one spell. Warpwave's random effects, Arabesque's metamagic and defensive spells are left out. Many conditions are reduced to a simple stand-in.
+- **The data has moved on.** The script and the flowchart both use 270 HP for Luna and 300 for the Avatar of Lilith. The current Foundry sheets have 300 and 390. The flowchart's odds (43% great finales) came from the script, so they rest on the old numbers.
 
-A one-off script can answer one question about one fight, but it has to be rewritten for every new encounter. What is missing is a tool where the fight is described in data (who is in it, how each side behaves, what the hazards do, what counts as a good outcome) and the rules engine stays the same from fight to fight.
+The parts worth keeping are the ones that make it a balance tool and not only a dice roller:
+
+- tuning knobs and named presets, and running every preset side by side (`--compare`)
+- one fight replayed turn by turn from a seed (`--log --seed`)
+- outcome buckets (Cruise, Comfortable, Tense, Pyrrhic, Loss) and the drama score (Threat and Triumph)
+- per-PC death rates, what knocks PCs down, each source's share of the damage, rounds per phase
+- what-if switches such as turning off all crits for one side
 
 ## Architecture Context
 
-No architecture page covers PF2e yet. Every existing page describes the SWN faction engine. Pages read for this doc:
+No architecture page covers PF2e. Every page describes the SWN faction engine. Pages read for this doc:
 
 - `docs/architecture/architecture-overview.md`
-- `docs/architecture/engine/overview.md`
-- `docs/architecture/engine/dice.md`
 - `docs/architecture/engine/ability-catalog.md`
+- `docs/architecture/engine/dice.md`
 
-Three of their decisions carry over to this design as principles, even though no code is shared.
+No faction code is reused, but three of its standing decisions apply as principles:
 
-- **The engine is headless** (`architecture-overview.md`, `engine/overview.md`). The faction engine takes decisions from a collector and reports events to an observer, and never knows who is on the other side. The simulator follows the same split. The rules engine resolves actions, the tactics layer supplies decisions, and a report layer consumes events. A later TUI or interactive "play it out step by step" mode can then be added without touching the rules.
-- **Rules live in data** (`engine/ability-catalog.md`). The faction engine is moving away from bespoke Go handlers keyed by ability ID: abilities are described in rulebook data and run through handlers keyed by effect type, and the remaining per-ID handler map is the thing to retire. The simulator follows the same direction for creature abilities and for tactics. How to treat the few abilities that do not fit the primitives is Open Question 1.
-- **Every roll goes through one roller** (`engine/dice.md`). The dice page says each type of roll has one named route. The simulator has one `Roller` interface with a seeded implementation, so any simulated fight can be replayed exactly by its seed.
+- **Headless engine** (`architecture-overview.md`, design principles). The faction engine takes decisions through a collector and reports through an observer, and cannot tell who is on the other side. A simulator that picks moves from data and a later interactive mode or encounter designer would then drive the same engine.
+- **Rules content lives in data the GM owns** (`architecture-overview.md`, design principles; `engine/ability-catalog.md`, Key Decisions). Abilities are data run by handlers keyed on the effect, not Go handlers keyed on one ability's ID.
+- **Every roll takes a named route** (`engine/dice.md`, Key Decisions). One roller, seeded, so a run replays exactly.
 
-The faction `dice` package itself is not reused. Its rolls are SWN-specific (`1d10 + stat`, contests, ties). PF2e needs a d20 check with four degrees of success, so `pf2e` gets its own small dice layer that only takes the roller-interface pattern from the faction package.
+PF2e gets its own side of the wiki (D-22), each page written by the effort that builds its subsystem (D-23):
 
-Two architecture pages should exist when this ships: `docs/architecture/pf2e/overview.md` covering the rules engine and the build pipeline, and `docs/architecture/pf2e/sim.md` covering the runner, tactics and reports. They make `pf2e` a third side of the wiki next to engine and interface, so `architecture-overview.md` changes too. The `F.041` row in `planned-work.md` records this.
+```
+docs/architecture/pf2e/
+├── overview.md      spine: import → files → load → engine → runner; the seams
+├── data-files.md    creature layers, file formats, import, conversion, approval
+├── engine.md        rules, roller, events, the position and decision seams
+└── sim.md           tactics, range bands, scenario, scoring, CLI
+```
+
+| Page | Written by |
+|------|------------|
+| `overview.md` | E1, extended by every effort |
+| `data-files.md` | E1 (formats, layers), extended by E2 (import) and E3 (conversion) |
+| `engine.md` | E1, extended by E4 (rules) |
+| `sim.md` | E5 (tactics, position), extended by E6 (scenario, scoring, CLI) |
+
+The front door, `architecture-overview.md`, opens with "The codebase splits along one seam: a headless engine, and whatever drives it", which is true only of the faction manager. E1 restructures it around the products (`campaigns`, `faction-manager`, `codex`), with the faction engine and interface as the faction manager's two sides and PF2e under `campaigns` (D-24).
 
 ## Design Summary
 
-The simulator is four layers, each with one job.
+The shape in brief; the sections below give the detail, and the Decisions table the reasons.
 
-1. **Combatant builder (`internal/pf2e/build`).** Reads Foundry actor exports (PCs, NPCs and hazards) and produces a *combatant*: a flat stat block with every number already computed. NPC and hazard exports already contain their numbers, so the builder reads them directly. PC exports do not. Foundry saves only the choices (ancestry, class, feats, gear, runes) and computes AC, saves and attack bonuses when the sheet opens. The builder recomputes them from the PF2e rules. Anything it cannot work out is listed in a build report and covered by a small hand-written *overlay* file instead of being guessed.
+- **F.041 is version 1 of the larger PF2e tool, not a cleanup of the script.** The script's features carry over; its structure does not.
+- **The Fall of Luna is the first scenario and the acceptance test.** Its data comes from the current Foundry sheets, not the script's or the flowchart's numbers.
+- **The full ruleset as data and the encounter designer are out of scope,** but v1 is shaped so both can build on it.
+- **The simulator has its own data model, and Foundry is an import source.** The engine reads one GM-owned format. A Foundry importer converts actor exports into it. Custom abilities, hazards and, later, the designer's output use the same format.
+- **It is Go, inside gm-toolkit.** The Python script retires once the finale scenario runs in the new tool.
+- **Each creature is layers.** An import layer the importer owns, plus hand layers for logic, fixes and variants, merged on load. PCs are stored as build choices and computed at load; NPCs as numbers.
+- **Claude converts ability wording, and the GM approves it.** Structured data and inline tags convert in Go; the sim itself never calls Claude.
+- **The fight is data.** Tactics are priority rule lists, position is range bands behind a seam, and a scenario file holds phases, variants, presets and scoring.
+- **Nothing is faked.** v1 models the finale's rules as written, and the report names every remaining approximation.
 
-2. **Content (`internal/pf2e/content`).** Abilities, spells, conditions and hazard routines described as compositions of a small set of primitive effects: make a Strike, force a save, deal damage, apply a condition, heal, grant a bonus, recharge, and so on. Most of the finale's abilities fit the primitives. The few that do not (Walk the Timelines, Sin Vulnerability, Last Stand, Protean Anatomy) are Open Question 1.
+### What the Foundry exports hold
 
-3. **Rules engine (`internal/pf2e/engine`).** Runs one fight: initiative, turns of three actions plus a reaction, the multiple attack penalty, degrees of success, conditions and their durations, resistances and weaknesses, dying and wounded, recharges and frequencies, triggered reactions, hazard routines, round clocks and phase changes. It is deterministic for a given seed.
+The five actor exports (pf2e system 8.6.1, Foundry 14) hold two different kinds of data:
 
-4. **Simulator (`internal/pf2e/sim`).** Loads a *scenario* (the fight's description), runs it thousands of times, sorts each run into outcome buckets the scenario defines, and reports the results. Each combatant's behaviour comes from a *tactics file*: an ordered list of conditions and actions, where the first matching entry decides the turn. This is the same shape as the turn trees in the Luna GM flowchart.
+| Export | Holds | Missing |
+|--------|-------|---------|
+| PCs | Choices: ancestry, class, feats, attribute boosts, gear with runes; rule elements on items (`FlatModifier`, `AdjustDegreeOfSuccess`, `Resistance`, `DamageDice` and others) | Final numbers. Only current HP is stored; max HP, AC, saves and attack bonuses are computed by Foundry when the sheet opens |
+| Bosses | Final numbers (Luna 300 HP, AC 36; Lilith 390 HP, AC 39), Strikes, spells, and the full mechanics of each custom ability in its description | Rule elements for custom abilities. Their mechanics are in the description, not in machine-run rules |
 
-Position is modelled with **range bands**, not a grid. Each combatant is *engaged* with specific enemies, *near* (within one Stride), or *far*. Area effects hit a share of the party based on the bands and a per-scenario "bunching" setting. This is enough for every positional question the finale's tactics ask ("2+ PCs in a 40-ft cone", "PCs bunched in a 20-ft burst", "Arabesque exposed", "fly out of Kas's reach") without authoring a map for every fight. A grid can come later if a fight needs it.
+So the custom boss abilities need the simulator's own format whatever the import does.
 
-The finale is the first scenario, and it is the test that proves v1 works. Level 14 and level 15 are two **variants** of one scenario. A variant applies overlay files on top of the base data (the level-15 overlays add the level-up choices and gear upgrades), so the comparison is one command, not two separate builds.
+#### Custom ability descriptions
 
-## Scope
+A custom ability's description holds its mechanics in two forms:
 
-### In v1
+- **Tags** — Foundry's inline markup, exact and machine-readable: `@Damage[15d6[mental]]`, `@Check[will|dc:39]`, `@Template[cone|distance:40]`, condition links such as `@UUID[…]{Slowed 2}`, and recharge rolls such as `[[/gmr 1d4 #Recharge Destiny Spores]]`.
+- **Sentences** — stock PF2e wording that ties the tags together: which degree of success gets which condition, triggers, frequencies, "makes two slash Strikes and one stab Strike".
 
-- Importing Foundry actor exports for PCs, NPCs and hazards (pf2e system 8.x, Foundry 14 format, as in the five exports already provided).
-- Computing PC statistics for the three H.A.W.K. classes (fighter, sorcerer and legacy alchemist), with a build report listing anything not covered.
-- Overlay files for corrections, missing items (for example Tavish's clan pistol) and level-up variants.
-- The rules engine features the finale needs (listed under Rules Coverage below).
-- Range-band positioning.
-- TOML tactics files with a shared condition vocabulary and named GM dials.
-- Complex hazards with parts, disable checks, a routine and round-based escalation, enough to run the Gate to the Abyss.
-- Multi-phase scenarios with carry-over (Luna, the Transformation round, then Lilith).
-- A Monte Carlo runner with a fixed seed option, outcome buckets defined in the scenario, and a plain-text CLI report plus a JSON results file.
+An audit of Abyssal Luna's six combat abilities found nothing absent. Destiny Spores is almost all tags, with one sentence for the degrees ("slowed 1 for 1 round on a failure, slowed 2 on a critical failure"). Walk the Timelines is all sentences: the text is complete, but the mechanic is unusual. Lilith's sheet records uses only for Warp Mind (3) and marks Dispel Magic "At Will"; her other six innate spells (Translocate, Disintegrate, Cursed Metamorphosis, Confusion, Unfathomable Song, Divine Wrath) carry no frequency on the sheet, so PF2e's rule applies: each is once per day, which is once per fight (D-25).
 
-## Out of Scope
+### Import as a separate step
 
-- A grid or map-based movement.
-- Full PF2e coverage. Each rule is added when a scenario needs it, and the build report says what is missing.
-- Automatic level-up. A level-up variant is an overlay that the GM writes, because level-up choices are the player's.
-- A TUI or a rendered report. The JSON results file is shaped so that either can be added later. The existing Dice Lab Foundry module could also read it.
-- Player behaviour beyond the tactics file. The simulator plays the PCs the way their tactics files say, not the way the actual players would. This limit is permanent and the report states it.
-
-## Domain Model
-
-These are the main types. Field lists are indicative, not final.
-
-### Combatant
-
-A combatant is the fully computed stat block the engine plays with. It is the same type for PCs, NPCs and hazard parts.
-
-```go
-type Combatant struct {
-    ID, Name     string
-    Side         Side             // party or opposition
-    Level        int
-    Traits       []string
-    HP           int
-    AC           int
-    Saves        map[Save]int     // fortitude, reflex, will
-    Perception   int
-    Skills       map[string]int
-    Speeds       map[Movement]int // land, fly
-    Immunities   []string
-    Resistances  []Resistance     // value, damage type, exceptions
-    Weaknesses   []Weakness
-    Strikes      []Strike
-    Abilities    []AbilityRef     // actions, reactions, passives, spells
-    Resources    Resources        // spell slots, focus, consumables, uses per fight
-}
+```
+Foundry JSON ──import──► simulator files ──► sim
+                               ▲
+                 hand edits, homebrew, designer output (later)
 ```
 
-### Ability and Effect
+- The importer runs when a Foundry sheet changes, not on every sim run.
+- It writes the simulator's own files: PC build choices (see PC import), boss numbers as stored, and custom abilities converted from their descriptions. Tags convert exactly in Go; sentences are converted by Claude (D-9).
+- It ignores the sheet's current HP, conditions and temporary effects, so every run starts fresh at full HP (D-26).
+- Hand layers cover what the import does not: wording the importer cannot read, data that is truly absent from the sheet, homebrew, fixes and variants.
+- The import report lists what was converted, and what was skipped with the reason.
+- Each creature is made of layers. The importer owns the import layer and rewrites it freely; nobody edits it by hand. Hand work goes in a hand layer beside it: custom ability logic, fixes, homebrew and level-up variants. The sim merges the layers when it loads, and a `show` command prints the merged result.
+- A creature built from scratch has a hand layer and no import layer.
 
-An ability is metadata (action cost, traits, frequency, recharge, trigger) plus a list of effect steps. Each step is one primitive. How the exceptions are expressed is Open Question 1.
-
-| Primitive | Covers, for example |
-|-----------|---------------------|
-| `strike` | Slash, Stab, Hand of Chaos, Kas's hammer, bombs |
-| `save` | Destiny Spores, Wail, Divine Wrath, Fireball |
-| `spell_attack` | Disintegrate |
-| `damage` | Lash Out, Sin Vulnerability's damage |
-| `condition` | slowed, doomed, frightened, stunned, sickened, confused |
-| `heal` | Healing Wave, potions, the Transformation checkpoint |
-| `buff` | Haste, True Target, Faithful Strike |
-| `counteract` | Dispel Magic |
-| `multi` | Abyssal Frenzy, Demonic Frenzy (several Strikes in one activity) |
-
-### Scenario
-
-A scenario describes one fight: participants, variants, phases, hazards, dials and outcome buckets. A sketch for the finale:
-
-```toml
-[scenario]
-id    = "fall-of-luna"
-party = ["kas", "tavish", "arabesque"]
-runs  = 5000
-
-[[variant]]
-id = "level-14"
-
-[[variant]]
-id       = "level-15"
-overlays = ["party/level-15.toml"]
-
-[[phase]]
-id        = "luna"
-enemies   = ["abyssal-luna"]
-hazards   = ["gate-to-the-abyss"]
-ends_when = "defeated:abyssal-luna"
-
-[[phase]]
-id         = "transformation"
-free_round = true
-checkpoint = { when = "party_struggling", heal_all = 75 }
-
-[[phase]]
-id      = "lilith"
-enemies = ["avatar-of-lilith"]
-carry   = ["doomed", "spent_resources", "hp"]
-
-[dials]
-dispel_mercy        = true
-wail_spares_wounded = true
-luna_picks_on_comfortable = true
 ```
+abyssal-luna.import.toml   (importer rewrites freely)
++ abyssal-luna.toml        (hand layer: logic, fixes, variants)
+= Luna as the sim sees her
+```
+
+File names here show the idea; the real layout is set at Plan.
+
+### Converting description sentences
+
+Claude converts the sentences in a custom ability's description into the simulator's ability format (D-9). Two ways to run it are both kept open, to be tried hands-on before one is chosen (see Open Questions). These parts are the same in both:
+
+- **One ability schema.** Claude's output must match the schema the sim loads, and the loader validates it again. Output that does not validate is a failed draft, not a guess.
+- **Three kinds of answer.** A draft holds mechanics; or says "unsupported", with the reason, when the mechanic does not fit the schema (the ability then falls under D-8); or says "no combat effect" for a passive such as a lore or crafting feat. An approved "no combat effect" satisfies D-8.
+- **Drafts are staged, then approved.** A draft is pending until the GM approves it. A pending or rejected draft counts as "no mechanics", so D-8 stops the run. Only approved drafts enter the import layer.
+- **Approval is cached by text.** Each approved conversion is stored under a hash of the description text and the schema version, and committed. Re-import asks again only for abilities whose text changed.
+- **The sim never calls Claude.** Runs stay deterministic and free.
+
+#### Option 1 — Claude API in the importer, with a review command
+
+```
+import ──► Go: structured data + tags ──────────────────► import layer
+       └─► Claude API: sentences ──► staged drafts (pending)
+                                          │
+review ◄──────────────────────────────────┘
+  description | drafted mechanics, side by side
+  [a]pprove  [r]eject  [e]dit in $EDITOR  [n]ote + regenerate
+                                          │
+                             approved ──► import layer + cache
+```
+
+- The Go importer calls Claude through `anthropic-sdk-go`, with structured outputs set to the ability schema, once per ability whose text changed.
+- A `review` command walks the pending drafts with `huh` prompts. "Note + regenerate" sends the GM's note back with the draft and asks again.
+- Import needs an API key; review and the sim do not.
+- Strengths: one tool writes the import layer; the conversion is code, so it can be tested; repeatable.
+
+#### Option 2 — A Claude Code skill
+
+- A skill reads the pending abilities' descriptions, drafts each conversion against the same schema, discusses it with the GM in the session, and writes the approved result to the import layer and cache.
+- Strengths: free-form back-and-forth, including asking why a sentence was read a certain way; no API key in the tool.
+- Costs: import is two tools, not one; the conversion logic lives in a prompt, not in tested code; results depend on the session.
+
+### PC import
+
+The importer writes each PC's build choices into the import layer (D-10). When a scenario loads, the tool merges the PC's layers and computes the numbers from those choices, once, before any fight. The computation covers:
+
+- **Core math** — proficiency, attribute modifiers from the recorded boosts, max HP, AC, saves, Perception, attack and damage, class and spell DCs, armor and weapon runes, item bonuses.
+- **Common rule elements** — a supported subset of the `rules` arrays on items, starting with `FlatModifier`, `AdjustDegreeOfSuccess`, `Resistance` and `DamageDice`.
+- **Import report** — lists, per PC, the computed numbers and every item or rule element skipped, with the reason. Nothing drops out silently.
+- **Hand layers** — corrections, missing items and level-up variants on top of the import layer (D-7). A level-up variant is the new choices (boosts, feats, rune upgrades); the load-time computation turns them into numbers.
+
+The GM checks the computed numbers against the Foundry sheet once per character. v1 covers the three classes the finale needs: fighter, sorcerer and legacy alchemist.
+
+The rules reference is the Archives of Nethys [Player's Guide](https://2e.aonprd.com/PlayersGuide.aspx), which serves the Remaster by default and keeps the legacy Core Rulebook pages beside it. The H.A.W.K. sheets mix the two: all three classes, and Kas's and Tavish's ancestries, are Core Rulebook items; Arabesque's ancestry and some feats are Player Core; Tavish has four homebrew feats.
+
+### Rules coverage
+
+v1 models the rules the finale needs, each as written and each tested (D-18). Rules a later fight needs are named by the import report and `check`, never faked. Items marked † are skipped or approximated by the script today.
+
+| Area | Rules |
+|------|-------|
+| Turn | Initiative, three actions and a reaction, multiple attack penalty (agile), sustain †, quickened (haste) |
+| Checks | Four degrees of success, natural 20 and 1, bonus-type stacking, basic saves, fortune and misfortune † (Ill Omen, Challenge Fate, True Target, Untethered to Fate) |
+| Damage | Damage types; resistance, weakness and immunity with exceptions (holy); critical hits; persistent damage †; splash; Protean Anatomy † (the script uses a flat resist 12); fast healing; temporary HP |
+| Down | Dying, wounded, doomed, recovery checks, hero points, Inextinguishable, Too Angry to Die † |
+| Conditions | Frightened, sickened, slowed, stunned, confused, stupefied, blinded, prone, clumsy, enfeebled, off-guard † |
+| Reactions | Challenge Fate, Vengeful Spite, Lash Out, Farabellus Flip, Attack of Opportunity †, Sin Vulnerability's loyalty triggers |
+| Spells | Slots, areas, durations, counteract † (Dispel Magic), and Arabesque's real spell list † (the script casts only vampiric exsanguination) |
+| Limits | Recharge 1d4, frequency (once per hour or day becomes once per fight), uses per fight |
+| Random tables | Warpwave † (skipped today), Unfathomable Song's effects |
+
+When the party works out the Sin of Betrayal is player knowledge, not a rule. It stays as the script models it, a per-round discovery curve, as a scenario setting that tactics read (`knows:sin`).
+
+A rules reading that changes when or how often something fires is Robert's call, raised as a question at Plan or Execution, not settled as a micro-decision.
+
+#### Named approximations
+
+Some modelling choices remain approximations by design. The run report lists each one, as the script's CAVEATS block does:
+
+- Position as range bands, and party spacing as the spread dial (D-11)
+- Behaviour as tactics rules, including any chance on a rule (D-12)
+- The sin discovery curve
+- Abilities marked `ignore`
+
+### Position
+
+Position uses range bands (D-11):
+
+- **Bands** — each pair of creatures is *engaged*, *near* (within one Stride) or *far*. Reach and speed decide who can close or escape in one action; Luna's 180-ft fly speed always reaches *far*.
+- **Areas** — an area effect catches a share of the party set by the bands and a per-scenario **spread** dial: how tightly the party stands. A sweep over the dial answers "what if they spread out?".
+- **The seam** — the engine asks position questions (who is engaged with whom, how many targets an area catches, can this creature reach that one) through one interface. Range bands are its first implementation; a grid, with or without a map, can replace it later as its own initiative.
+
+The finale's position questions all map onto bands: "2+ PCs in a 40-ft cone", "PCs bunched in a 20-ft burst", "Arabesque or Tavish exposed", "Kas has her pinned down", "fly out of Kas's reach", the stinger's 20-ft reach, and the Wail lingering for a round.
 
 ### Tactics
 
-A tactics file is an ordered list of rules. On its turn a combatant takes the first rule whose conditions all hold, and performs its action list. A sketch of Luna's flowchart as data:
+Each creature's behaviour is a tactics file: an ordered list of rules (D-12).
+
+- **Rule** — conditions plus an action sequence. On its turn a creature takes the first rule whose conditions all hold.
+- **Conditions** — a shared vocabulary, so a term means the same thing in every file: `struggling` (the flowchart's "anyone is down, or the party's total HP is below half"), `ready:destiny-spores`, `in_area:cone-40 >= 2`, `exposed:arabesque`, `dial:wail_mercy`.
+- **Chance** — a rule can carry a chance to fire, for a GM who is not fully predictable.
+- **Dials and habits** — GM dials ("dispel only when they struggle") are conditions on named settings. Player habits (the script's `kas_simple`, `late_heal`, `waste_p`) are a different PC tactics file or a setting.
+- **The seam** — the engine asks one question, "what does this creature do now?", through one interface. The rule list is its first implementation; another, such as utility scoring for generic monsters, can be added later.
+
+A sketch of Luna's flowchart as rules (the format is set at Plan):
 
 ```toml
 [[rule]]
@@ -169,7 +220,7 @@ when = ["ready:destiny-spores", "in_area:cone-40 >= 2"]
 do   = ["destiny-spores", "fly:away-from:kas"]
 
 [[rule]]
-when = ["dial:luna_picks_on_comfortable", "not party_struggling", "exposed:arabesque|tavish"]
+when = ["dial:luna_picks_on_comfortable", "not struggling", "exposed:arabesque|tavish"]
 do   = ["fly:engage", "abyssal-frenzy"]
 
 [[rule]]
@@ -180,129 +231,185 @@ do   = ["walk-the-timelines", "fly:away-from:kas"]
 do   = ["ill-omen:kas", "strike:slash"]
 ```
 
-The condition vocabulary is shared, so `party_struggling` means the same thing in every file. The flowchart's definition ("anyone is down, or the party's total HP is below half") becomes its default. PC tactics files use the same format and are written once per character, then reused in every scenario.
+### Scenario
 
-### Overlay
+A scenario file describes one fight (D-13). Each piece replaces a part of the script:
 
-An overlay is a TOML patch applied to a combatant after the builder runs. It can set or adjust a number, add or remove an item, ability or resistance, and attach a tactics file. Overlays are how the build report's gaps get filled and how level-up variants are expressed.
+| Script today | Scenario piece |
+|--------------|----------------|
+| Luna, the Transformation, then the Avatar (`fight()`, `transition()`) | **Phases** — who is in each, when it ends, what carries over (HP, doomed, spent slots and items) |
+| The Transformation's free round and 75 HP checkpoint | **Between-phase steps** — a free round, a conditional heal |
+| `--level 14` / `--level 15` | **Variants** — a named stack of layers (D-7, D-10) |
+| `RECOMMENDED`, `casual`, `defensive` | **Presets** — named bundles of dials and habits |
+| `--compare` | **Compare** — a grid of presets by variants |
+| `-n 5000`, `--seed` | Run count and seed |
 
-## Per-Area Design Details
+A sketch (the format is set at Plan):
 
-### Importing PCs from Foundry
+```toml
+[scenario]
+party  = ["kas", "tavish", "arabesque"]
+spread = 0.5
 
-The five provided exports confirm that Foundry saves PC choices and not results. The builder computes:
+[[variant]]
+id = "level-14"
 
-- **Proficiency bonuses:** level plus 2, 4, 6 or 8 for trained, expert, master and legendary, and 0 for untrained. Ranks come from the class item, the skill ranks, and class features that raise them (Weapon Legend, Expert Spellcaster, Juggernaut and similar).
-- **Attribute modifiers:** from the ancestry, background, class and level boosts recorded under `build.attributes.boosts`.
-- **AC, saves, attacks and damage:** from proficiency, attributes, armor and its runes (potency, resilient), weapon runes (potency, striking, property runes), and the item bonuses invested items give.
-- **Foundry rule elements:** the builder reads a supported subset of the `rules` arrays on items: `FlatModifier`, `Resistance`, `Weakness`, `AdjustDegreeOfSuccess` (Juggernaut, Bravery, Inextinguishable) and `DamageDice`. Every unsupported rule element appears in the build report by item name, so nothing silently drops out.
+[[variant]]
+id     = "level-15"
+layers = ["level-15"]
 
-Spells come with their mechanical data inside the export (damage formula, save, area, rank), so the builder reads them from there and does not need a separate spell database for v1.
+[[phase]]
+id        = "luna"
+enemies   = ["abyssal-luna"]
+ends_when = "defeated:abyssal-luna"
 
-The build report is printed by a `build` command and lists, for each PC: computed statistics, items and abilities that were understood, and anything skipped with the reason. The GM checks the computed numbers against the Foundry sheet once, then relies on them.
+[[phase]]
+id         = "transformation"
+free_round = true
+heal       = { all = 75, when = "struggling" }
 
-### Importing NPCs and hazards
+[[phase]]
+id      = "lilith"
+enemies = ["avatar-of-lilith"]
+carry   = ["hp", "doomed", "spent"]
 
-NPC exports store final numbers (Luna's AC 36, Lilith's saves and resistances), so the builder reads them directly. Abilities whose description is text only (most custom ones, such as Challenge Fate or Sin Vulnerability) are matched to a content entry by name. An unmatched ability is listed in the build report.
+[preset.recommended]
+dials = { dispel = "struggling", wail_mercy = true }
+```
 
-### Rules coverage for v1
+Scenario dials also cover rules that depend on things v1 does not model. "Gate sealed" (default unsealed) decides Last Stand's 40 HP heal, since the Gate to the Abyss is not simulated (D-14, D-16).
 
-These are the rules the finale needs:
+### Scoring
 
-- Initiative from Perception, three actions and one reaction per turn, and the multiple attack penalty including agile.
-- Four degrees of success, including natural 20 and natural 1 adjustments and abilities that shift degrees (Juggernaut, Bravery, Inextinguishable).
-- Fortune and misfortune, including rolling twice, how the two cancel, and Untethered to Fate.
-- Conditions: doomed, dying, wounded, frightened, sickened, slowed, stunned, confused, stupefied, blinded, quickened (haste), and persistent damage.
-- Resistances, weaknesses and immunities, including exceptions (holy, cold iron) and Protean Anatomy's shifting resistance.
-- Recharges (1d4 rounds), frequency limits (once per hour, once per fight, uses per day), and spell slots.
-- Reactions and triggers: Attack of Opportunity, Challenge Fate, Vengeful Spite, Lash Out, Farabellus Flip, and Sin Vulnerability's loyalty triggers.
-- Fast healing, healing, and temporary HP.
-- Complex hazards: a routine of up to three actions, parts with their own HP or required successes, disable checks, and round-based escalation.
+Each fight is scored from the events the engine reports (D-17). A default scoring file carries the script's three layers, with every threshold editable:
 
-### Range bands
+```
+Bucket   Cruise · Comfortable · Tense · Pyrrhic · Loss    (PC HP low point, deaths)
+Drama    √(Threat × Triumph), 0–10
+           Threat:  party HP low point, knockdowns, two PCs down at once
+           Triumph: 60+ damage hits, rescues, a 35%+ round
+Verdict  Great (win, no deaths, both ≥ 4) · Flat (either < 2)
+```
 
-Each combatant has a band relative to each enemy: engaged, near or far. Moving one band takes a Stride or Fly action. Reach and speed decide who can close or escape in one action, so a flier with speed 180 can always reach far. Area effects compute how many party members they catch from the bands plus the scenario's bunching setting, which is the chance that a near ally is inside the area. The tactics condition `in_area:cone-40 >= 2` asks this model.
+A scenario uses the default, adjusts its thresholds, or adds its own events. The finale adds "the party finds the Sin of Betrayal and lands a holy hit" as a Triumph, as the script does. The flowchart's summary set (great finale, flat fight, win with a death, party wiped) is a view over the same results.
 
-### Outcome buckets
+The raw report lines stay whatever the scoring says: deaths per PC, what knocks PCs down, each source's share of the damage, rounds per phase, and stalemates (a phase that hits the round limit).
 
-The scenario defines its own buckets, so "good outcome" is a GM decision and not the tool's. The finale needs the four from the flowchart, and their exact definitions are Open Question 4. The proposed defaults are:
+## User-Facing Impact
 
-- **Party wiped:** every PC is dead, or the fight ends with no PC able to act.
-- **Win with a death:** both bosses are defeated and at least one PC died.
-- **Great finale:** both bosses are defeated, no PC died, and at least one PC was brought to dying or below a quarter of their HP at some point. The fight felt dangerous.
-- **Flat fight:** both bosses are defeated and no PC ever fell below half HP.
+A new command group in `cmd/gm-toolkit`, beside `campaign`, `spatial` and `faction` (D-15). Fights are named within the active campaign. Command names are set at Plan.
 
-A run that fits none of these is reported as "other" so that gaps in the definitions are visible.
+| Command | Does | Replaces in the script |
+|---------|------|------------------------|
+| `scenario create` | Scaffolds a fight: picks party and enemies from existing creatures, lays out phases and variants, writes the folder and a scenario file. A `huh` wizard when run bare, flags otherwise, like `campaign create` | — |
+| `import <fight>` | Converts Foundry exports into import layers (D-6) | Hand-typed `PARTY` and boss knobs |
+| `review <fight>` | Approves or rejects pending ability drafts (Option 1 under Converting description sentences) | — |
+| `show <creature>` | Prints the merged, computed stat block (D-10) | — |
+| `check <fight>` | Validates every file and lists abilities without mechanics (D-8), without running | — |
+| `run <fight>` | Runs a preset and variant: run count, seed, summary report | `python3 hawk_finale_sim.py --preset …` |
+| `compare <fight>` | Runs a grid of presets by variants side by side | `--compare` |
+| `replay <fight> --seed <n>` | Plays one fight turn by turn | `--log --seed` |
 
-### Reports
+Scenario content (tactics, phases, carry-over, dials) is written in text files; `check` catches mistakes before a run. An interactive builder that edits tactics or tunes numbers is the encounter designer's job.
 
-Each run produces an event log. The runner sums these logs into:
-
-- outcome bucket percentages per variant, side by side
-- rounds per phase (median and spread)
-- HP over time for each PC and boss, averaged
-- how often each ability and each tactics rule fired
-- how often each dial changed the outcome, compared by turning it off for a batch
-
-The CLI prints a summary table. The JSON file holds everything, so a later rendered report or the Dice Lab module can read it. Any single run can be replayed by its seed as a readable turn-by-turn log, which is how a surprising result gets checked.
-
-### The Gate to the Abyss
-
-The Gate is campaign design work, not code. It follows the existing Boss Fight + Complex Hazard build order and is designed alongside Efforts 1 to 4. Its stat block then becomes a hazard file the simulator loads. Lilith's Last Stand already references it ("none if the Gate to the Abyss was sealed"), so sealing the Gate is one of its disable outcomes. The simulator will show how often parties seal it in time.
+Output is plain CLI text with ANSI colour, as in the other Cobra commands; the faction TUI is not involved.
 
 ## Proposed Effort Slicing
 
-Each effort ships something that runs.
+Each effort ends with something that runs (D-21):
 
-1. **Engine core.** Combatant type, seeded roller, d20 checks and degrees of success, Strikes, the multiple attack penalty, HP, initiative and the turn loop. NPC import. Test: Luna against fixed dummy PCs.
-2. **PC builder.** Foundry PC import, stat computation, supported rule elements, the build report and overlays. Test: computed numbers match the three Foundry sheets.
-3. **Content and conditions.** Primitive effects, the condition set, reactions and triggers, and named handlers for both bosses. Phases and carry-over.
-4. **Tactics.** The TOML tactics format, the condition vocabulary, dials, range bands, and PC tactics files for Kas, Tavish and Arabesque.
-5. **Hazards and clocks.** The complex hazard model and round-based escalation. The Gate is loaded once it is designed.
-6. **Runner and report.** Monte Carlo runs, variants, outcome buckets, the CLI summary, the JSON output and seed replay.
+```
+E1 engine core ──► E2 Foundry import ──► E3 description conversion
+      │                                          │
+      └──────► E4 rules coverage ◄───────────────┘
+                     │
+               E5 tactics + position ──► E6 scenario, runner, scoring, CLI
+```
 
-## Known Data Decisions
+| Effort | Builds | Ends with |
+|--------|--------|-----------|
+| E1 — Engine core | Stat block, seeded roller, checks and degrees, Strikes, multiple attack penalty, damage and resistances, HP and dying, initiative, turn loop, event reporting; creature and ability file formats, layer merge, `show` | A hand-written Luna fights dummy PCs, deterministically (gate 3) |
+| E2 — Foundry import | NPC import (numbers and tags), PC import as choices (D-10), load-time PC stat computation, import report | Stat parity with the three sheets (gate 1) |
+| E3 — Description conversion | Thin versions of both conversion options for a hands-on trial, then the chosen one in full: staged drafts, approval, cache, the three kinds of answer, D-8 in `check` | Luna's and Lilith's abilities converted and approved |
+| E4 — Rules coverage | The rest of the Rules coverage table: conditions, reactions and triggers, fortune and misfortune, spells and counteract, persistent damage, Protean Anatomy, random tables | Every rule tested (gate 2) |
+| E5 — Tactics and position | Rule-list tactics, the condition vocabulary, dials, range bands and spread, PC and boss tactics files | Luna and Lilith play the flowchart |
+| E6 — Scenario and runner | Scenario file, phases and carry-over, variants, presets, scoring, `run`, `compare`, `replay`, `scenario create` | Replay review (gate 4); the script is deleted |
 
-These were settled in the session that produced this doc:
+- **E1 includes the file formats**, so even the first fight is data, not Go.
+- **E3 targets the schema E1 sets up.** E4 adds primitives, and each one extends the schema new drafts can use.
+- **E5 follows E4** because tactics conditions such as `ready:` and `in_area:` query the rules underneath.
 
-- The Foundry sheets are the source of truth for both bosses: Luna has 300 HP and Lilith 390, with every ability on their sheets. The GM flowchart's numbers (270 and 300) are out of date.
-- Lilith's innate spells without a recorded frequency (Unfathomable Song, Divine Wrath, Confusion, Cursed Metamorphosis, Disintegrate, Translocate) can each be cast once per fight. Warp Mind keeps its three uses, and Dispel Magic is at will.
-- Leftover effects on the exported sheets (Kas's slowed 1 and haste, Arabesque's frightened 1 and persistent damage) are ignored. Every run starts fresh.
-- Tavish is simulated with the legacy alchemist features his sheet uses.
-- Kas's shield is destroyed, so Shield Block is not modelled.
+## Acceptance
+
+v1 is done when four gates pass (D-20):
+
+1. **Stat parity** — the computed level-14 stats for Kas, Tavish and Arabesque (HP, AC, saves, Perception, attack bonuses, class and spell DCs) match their Foundry sheets exactly. The exports do not hold these numbers, so Robert reads them off the sheets once as a test fixture. The script's `PARTY[14]` row, marked "from the sheets", is a starting point if still current.
+2. **Every rule tested** — each row of the Rules coverage table has tests.
+3. **Deterministic** — the same seed and files give identical results.
+4. **Replay review** — Robert reads a set of `replay` logs and confirms that Luna and the Avatar of Lilith play the GM flowchart as written.
+
+When all four pass, `cmd/scripts/hawk_finale_sim.py` is deleted. Its odds are not a target: the bosses have changed and the rules are now modelled as written, so the new numbers are expected to differ.
+
+## State Storage
+
+Files reused by every fight sit at campaign level; files for one fight sit in its folder (D-19). Folder names are set at Plan.
+
+```
+campaigns/hawk/
+├── pf2e/                        reused by every fight
+│   ├── party/kas/               import layer, hand layer, level-15 layer, tactics
+│   ├── party/tavish/
+│   ├── party/arabesque/
+│   └── scoring.toml             the default scoring (D-17)
+└── encounters/fall-of-luna/     one fight
+    ├── source/                  Foundry exports and battlemap
+    ├── reference/               GM flowchart, build order, quick numbers
+    ├── scenario.toml
+    ├── abyssal-luna/            import layer, hand layer, tactics
+    └── avatar-of-lilith/
+```
+
+- **PCs at campaign level, bosses in the fight.** A boss who recurs can move up to campaign level later.
+- **The campaign owns its scoring.** The binary embeds no default. A campaign without a scoring file gets one copied from another campaign, the way `campaign add-rules` copies rulebook files.
+- **The approval cache** for converted descriptions (see Converting description sentences) is committed next to the import layers it serves.
+- No change to the faction manager's state, saves or the campaign registry.
 
 ## Decisions
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| D-1 | One multi-effort feature, `F.041`, not an arc | The `pf2e` engine has one consumer, the simulator; the efforts end in one deliverable. Reroute to an arc if a second PF2e tool appears |
-| D-2 | Encounter files live under the campaign: `campaigns/<campaign>/encounters/<fight>/` | One campaign keeps its faction layer and its PF2e fights together; a `campaigns/hawk/` faction campaign moves in beside them later |
-| D-3 | The Foundry exports and the battlemap are committed under `source/` | The players will not read the repo, and tracking the files keeps them from being lost |
-
-## User-Facing Impact
-
-- A new `pf2e` command group in `cmd/gm-toolkit`, beside `faction`. Exact command names are set at Plan.
-- **Build** — prints the build report for each combatant: computed statistics, what was understood, and what was skipped with the reason.
-- **Run** — runs a scenario's variants, prints the summary table and writes the JSON results file.
-- **Replay** — plays one run again by its seed as a readable turn-by-turn log.
-
-## State Storage
-
-- **Per fight** — `campaigns/<campaign>/encounters/<fight>/`: the Foundry exports and battlemap under `source/`, the scenario file, the boss tactics files and the fight's overlays.
-- **Per character** — PC tactics files and level-up overlays are reused in every scenario, so they sit at campaign level, not inside one fight. The exact layout is set at Plan.
-- **Results** — the JSON results file. Where it is written, and whether it is tracked, is Open Question 7.
-- No change to the faction manager's saves or the campaign registry.
-
-## Replaces / Retires
-
-- `cmd/scripts/hawk_finale_sim.py`, the one-off Python simulator of the finale, if Open Question 6 says so.
+| D-1 | Own data model; a Foundry importer feeds it | Custom boss abilities have no machine-readable rules, so an own format is needed anyway; the engine stays free of Foundry's internal schema; the designer will write creatures, not only read them. Rejected: Foundry's schema as the model (ties the engine to Foundry's rule-element language and its version changes); hand-written stat blocks only (numbers drift from the sheets, as the script's did) |
+| D-2 | Stays one feature, not an arc | The ruleset-as-data layer and the encounter designer are not scoped yet; an arc now would plan unscoped work. They get their own Backlog rows when closer |
+| D-3 | Go, in gm-toolkit | Fits the project and its conventions; the later PF2e tools live here too |
+| D-4 | PC numbers are computed from the build's choices by the core PF2e math and a supported set of rule elements; a report lists what is skipped, and hand layers fill the gaps. D-10 later placed the computation at load time, not in the importer | Level-up variants become choices the rules turn into numbers, not hand estimates; the later ruleset-as-data layer replaces pieces of this math instead of all of it. Rejected: a full rule-element engine (rebuilds much of Foundry's sheet); typed-in numbers (go stale, as the script's did) |
+| D-5 | Mixed editions follow the sheet: each item works as written in its own source | The sim plays the party as it is run at the table; Tavish stays a legacy alchemist. The shared core math (proficiency, AC, saves, bonus stacking) is written once. Rejected: Remaster everywhere (changes the characters); legacy everywhere (against AoN, Foundry and the bosses' own data) |
+| D-6 | The sim reads only its own stand-alone files; importing from Foundry is a separate step that writes them | Imported, hand-written and designer-made creatures are the same kind of file, and the sim cannot tell them apart. Custom abilities carry their own numbers and logic; the importer converts them from the Foundry description. Rejected: reading Foundry exports at run time, with ability numbers pulled from the tags on every run |
+| D-7 | A creature is an import layer the importer owns plus a hand layer, merged on load | Re-import stays one safe step after any Foundry tweak; level-up variants and homebrew sit in hand layers. Rejected: the file is yours after import and re-import only reports differences (every tweak is a hand merge); import once and overwrite on demand (forcing discards hand-written ability logic) |
+| D-8 | The sim refuses to run a scenario while any ability that can affect the fight lacks mechanics, unless a hand layer marks it `ignore`. "Can affect the fight" means every passive and reaction, and every active ability a tactics file uses. A conversion can answer "no combat effect", approved like any draft | A boss missing an ability skews the odds without any sign; the choice to skip one (Prophetic Wings, a 10-minute activity) is written down. Refined during discovery: applied to every item, the rule would need hundreds of `ignore` entries for the PCs' skill feats, lores and unused spells; actives no tactics file uses are listed as "unused" in the import report instead. Rejected: run and list the gaps in the report (easy to miss); every item, `ignore` per item (hundreds of entries); strict for NPCs only (a boss's actives are all in its tactics file anyway) |
+| D-9 | Description sentences are converted by Claude, with no Go pattern parser beside it; tags and structured data stay in Go | A Go parser cannot read PF2e wording well, and one path for all sentences avoids two converters that disagree. Rejected: tags only (hand layers repeat the description and drift); patterns first with Claude for the rest (two paths) |
+| D-10 | A PC's import layer holds the build choices; stats are computed once when a scenario loads, before any fight | A level-up layer states what changed and the numbers follow; the sim, `show` and the import report share one computation. NPCs stay as numbers, as Foundry stores them and as PF2e builds monsters. Rejected: computed numbers in the import layer (level-ups go back to typed estimates or a second import run) |
+| D-11 | Position is modelled with range bands, behind one engine seam so another model can replace it | Answers every position question the finale's flowchart asks; party spacing becomes a visible dial instead of a guess hidden in movement AI; no map files. Rejected for v1: an open grid (movement and spacing AI for every creature); a grid with a hand-written map (B's cost plus a map format); probability knobs (the script's guesses) |
+| D-12 | Behaviour is a priority rule list in data: ordered rules, each with conditions and an action sequence, first match wins | It is the GM flowchart as written, so the sim tests the flowchart; PCs use the same format; dials and habits are conditions or settings. Rejected for v1: utility scoring (unreadable, tuned by guesswork); behaviour trees (a heavier format for what is today a flat list) |
+| D-13 | A scenario file holds the whole fight: party, phases with carry-over, between-phase steps, variants, presets, run count and seed | Every structural piece of the script's `fight()` and its flags becomes data, so a new fight needs no code |
+| D-14 | Complex hazards are out of scope for v1 | The finale runs without the Gate to the Abyss as a hazard; the hazard model can come with the encounter that needs it |
+| D-15 | A CLI runs fights and scaffolds scenarios; scenario content is written in text files and checked by a `check` command | Follows `campaign create`'s pattern (a `huh` wizard when run bare, flags otherwise) and the active-campaign registry. Rejected for v1: an interactive builder that edits tactics and tunes numbers (that is the encounter designer, with its own initiative) |
+| D-16 | "Gate sealed" is a scenario dial, default unsealed; Last Stand stays available and a dial can turn it off | Last Stand's heal depends on the Gate, which v1 does not model (D-14); the dial keeps the sealed case testable, and the off switch keeps the script's `last_stand` comparison. Rejected: always heal 40 (sealed case untestable); a chance per run (a guess) |
+| D-17 | Scoring is data: a default scoring file a scenario uses, adjusts or extends with its own events | Keeps everything the script measures and gives new fights a working score; fight-specific events such as "sin found + holy hit" stay possible. Rejected: scoring fixed in Go (drops fight-specific events; thresholds need code changes); raw measures only (drops the verdicts used for real decisions) |
+| D-18 | v1 covers the rules the finale needs, each modelled as written and tested; nothing is faked, and every remaining approximation is named in the report | Accuracy is the goal, so the script's stand-ins (flat resist 12 for Protean Anatomy, one spell for Arabesque, skipped Warpwave) go; rules a later fight needs are found by `check`, not guessed now. Rejected: the finale plus the full conditions list and common basic actions (rules tested against no real fight) |
+| D-19 | PCs and the default scoring live at campaign level; bosses and the scenario live inside their fight's folder | Kas is in every fight, Luna in one; a recurring boss can move up later. The campaign owns its scoring data and the binary embeds none, as for the faction rulebook |
+| D-20 | v1 is accepted on four gates: stat parity with the Foundry sheets, every rule tested, deterministic runs, and Robert's replay review; the script retires when they pass | Each gate can fail. Rejected as a gate: matching the script's odds (the bosses changed and the rules are now real, so a gap is expected) |
+| D-21 | Six efforts, sliced so each ends with something that runs: engine core, Foundry import, description conversion, rules coverage, tactics and position, scenario and runner | Each effort is one design surface with a review at its boundary; conversion comes before rules coverage so both conversion options can be tried early; tactics come after the rules they query |
+| D-22 | A new `docs/architecture/pf2e/` side: a spine (`overview.md`) and three subsystem pages (`data-files.md`, `engine.md`, `sim.md`) | Mirrors the wiki's spine-plus-subsystem shape and its one-page-per-subsystem routing rule. Rejected: two pages, or one (each page would span several subsystems) |
+| D-23 | Each effort writes or extends its subsystem's page as its last step | Each page is checked against code written in the same session, and each effort review sees its page. Rejected: all pages at initiative close (written from memory of six efforts) |
+| D-24 | The architecture front door is restructured around the products as part of F.041, in E1 | Adding PF2e breaks the front door's "the codebase is one engine with two sides" framing; reorganising by product (campaigns, faction-manager, codex) fixes the framing for every later product. Rejected: a minimal PF2e section with the old framing reworded |
+| D-25 | Lilith's six innate spells with no recorded frequency are each once per fight | PF2e's rule makes an unmarked creature innate spell once per day, and once per day becomes once per fight (D-18). Rejected: at will (a boss buff the sheet does not state); a limit set per spell |
+| D-26 | The importer ignores the sheet's current HP, conditions and temporary effects; every run starts fresh at full HP | The exports were saved mid-play (Tavish at 90 HP; Haste, Slowed, Frightened and persistent damage on Kas and Arabesque), so imported state would tie results to when the export was saved. A starting-state scenario setting can come with the fight that needs it |
 
 ## Open Questions
 
-1. **Abilities that do not fit the primitives.** Walk the Timelines, Sin Vulnerability, Last Stand and Protean Anatomy do not compose from the primitive effects. The project direction is data over per-ID Go handlers (`engine/ability-catalog.md`). Do these grow new primitives, or effect-keyed handlers driven by data, or do some stay bespoke for v1?
-2. **Level-15 choices.** The level-15 variant needs each PC's level-up picks: attribute boosts, the general and skill picks, the class features gained at 15, and any feats or gear. Do you supply these, or do the players?
-3. **Tavish's clan pistol and clan dagger.** Their granting feats are on his sheet but the weapons are not. Is the pistol plain, or does it have runes? Does it matter in this fight?
-4. **Outcome buckets.** Are the proposed definitions of great finale, flat fight, win with a death and party wiped right, especially "great finale"? The existing script uses five other buckets (Cruise, Comfortable, Tense, Pyrrhic, Loss) plus a Threat and Triumph drama score; does any of that carry over?
-5. **How well the PCs play.** Should PC tactics be close to optimal, or match how your players actually play, for example finding the Sin of Betrayal late? Should hero points be spent, and by what rule?
-6. **The existing script.** `cmd/scripts/hawk_finale_sim.py` is in the repo. Should this tool replace it, and should the script be deleted once the finale scenario runs?
-7. **Results files.** Where does the JSON results file go, and is it committed or gitignored like the faction manager's play-time state?
+- **Where the Claude conversion runs: importer with review, or skill.** Both options are described under Converting description sentences. Robert tries both hands-on before choosing, so Plan schedules a thin version of each early, ahead of the full importer. Deferred because the choice depends on how each feels in use, which only a working version shows.
+## Out of Scope
+
+- Complex hazards, including the Gate to the Abyss (D-14).
+- The full PF2e ruleset as data (planned).
+- An encounter designer (planned), including any interactive builder that edits tactics or tunes numbers.

@@ -10,8 +10,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
-
-_None._
+| `F.041` | PF2e encounter simulator | `feature` | `In-Progress` | Grow `cmd/scripts/hawk_finale_sim.py` into a reusable, more useful PF2e fight simulator; first scenario is The Fall of Luna; see [write-up](#f041--pf2e-encounter-simulator) |
 
 
 ---
@@ -22,8 +21,8 @@ The queue of deferred items that are ready to become initiatives. These are scop
 
 | ID      | Item | Type | Trigger | Detail |
 |---------|------|------|---------|--------|
-| `F.041` | PF2e encounter simulator | `feature` | ready | Plays a PF2e fight thousands of times from Foundry exports and reports outcome odds, fight length and ability use; new `pf2e` rules engine plus a `sim` runner, six efforts; first scenario is the H.A.W.K finale (`campaigns/hawk/encounters/fall-of-luna/`); draft discovery doc on `feature/pf2e-encounter-simulator`, not yet signed off; no wiki page covers PF2e, so it adds `architecture/pf2e/overview.md` and `pf2e/sim.md` |
-
+_None._
+  
 
 ---
 <br />
@@ -48,3 +47,21 @@ _None._
 
 # Initiative Write-Ups
 This section contains detailed write-ups for each planned initiative, including problem statements, proposed approaches, tradeoffs, and triggers. This will be the source of truth when it comes time to start discovery work on any of these items.
+
+<br />
+
+## F.041 — PF2e encounter simulator
+
+**Problem** — `cmd/scripts/hawk_finale_sim.py` simulates one fight, the H.A.W.K finale. It was written for that fight alone, so it can't be reused for the next encounter, and it answers fewer questions than a GM needs when tuning a fight.
+
+**Approach** — expand the script into a tool that is reusable across encounters and more useful as a balancing aid. Discovery starts fresh; the earlier draft discovery doc is not binding and is mined only for what fits. Inputs:
+
+- `campaigns/hawk/encounters/fall-of-luna/source/` — PF2e data for the PCs and the two bosses of the first scenario (Foundry actor exports), plus the battlemap
+- `campaigns/hawk/encounters/fall-of-luna/reference/` — infographics: a flowchart for running the fight, and guides for building hazards and creature data
+- Official PF2e rules on Archives of Nethys: [Building Creatures](https://2e.aonprd.com/Rules.aspx?ID=2874), [Adjusting Creatures](https://2e.aonprd.com/Rules.aspx?ID=3262), [Encounter Design](https://2e.aonprd.com/Rules.aspx?ID=2715); the site is a full rules reference
+
+**Unlocks** — testing a PF2e encounter's balance before the session instead of at the table, starting with The Fall of Luna; later encounters reuse the tool.
+
+**Trigger** — `ready`
+
+**Status** — `In-Progress`
