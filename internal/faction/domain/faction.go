@@ -329,6 +329,25 @@ func ShelteredBy(factions map[string]*Faction, assetID string) int {
 	return count
 }
 
+// HoldsShelteredAsset reports whether asset, of definition def, is a door shelter
+// (Leased Demiplane) with an asset inside. Moving it would leave that asset on the
+// old world.
+func HoldsShelteredAsset(factions map[string]*Faction, asset *Asset, def *AssetDefinition) bool {
+	return def.Shelter() != nil && ShelteredBy(factions, asset.ID) > 0
+}
+
+// InDoorShelter reports whether a sheltered condition comes from a door shelter
+// that still stands: its source exists and has a shelter ability step. An asset
+// inside one leaves only by its owner's free release (A.001.5 Effort 5 Decision
+// 8); a Boltholes shelter, or one whose source is gone, ends at a repair to full.
+func InDoorShelter(factions map[string]*Faction, definitions map[string]*AssetDefinition, condition Condition) bool {
+	owner := AssetOwner(factions, condition.SourceAssetID)
+	if owner == nil {
+		return false
+	}
+	return definitions[owner.Assets[condition.SourceAssetID].DefinitionID].Shelter() != nil
+}
+
 // AttackBlocked reports whether a no_attack condition on asset holds now. It is
 // checked when read: the source must still exist, share the asset's world, and
 // belong to another faction. The source need not be active.

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -38,6 +39,22 @@ var coinGainRegistrar = effect.Registrar{
 	},
 	Register: registerCoinGain,
 	Fire:     fireCoinGain,
+	Validate: validateCoinGain,
+}
+
+// validateCoinGain holds the counting params to the one route that reads them. A
+// turn_start entry at scope "world" counts its asset_type on the holder's place,
+// so it needs the filter; asset_type, no_stack and max do nothing anywhere else.
+func validateCoinGain(entry domain.EffectDefinition, _ effect.HolderKind) error {
+	counts := entry.Trigger == domain.TriggerTurnStart && entry.Filters.Scope == domain.ScopeWorld
+	if counts && len(entry.Filters.AssetTypes) == 0 {
+		return fmt.Errorf("scope %q counts assets on the holder's place and needs an asset_type filter", domain.ScopeWorld)
+	}
+	countingParams := len(entry.Filters.AssetTypes) > 0 || entry.Gates.NoStack || (entry.CoinGain != nil && entry.CoinGain.Max > 0)
+	if !counts && countingParams {
+		return fmt.Errorf("asset_type, no_stack and max count assets, so they need trigger %q at scope %q", domain.TriggerTurnStart, domain.ScopeWorld)
+	}
+	return nil
 }
 
 var coinOnHitAccepts = effect.Accepts{

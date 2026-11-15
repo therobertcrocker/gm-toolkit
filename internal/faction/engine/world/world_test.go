@@ -6,6 +6,7 @@ import (
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/world"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
@@ -247,7 +248,7 @@ func TestBuildMovementMutations_CargoManifestPassthrough(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, rb, nil, slog.New(slog.DiscardHandler))
+	mutations, err := we.BuildMovementMutations(decisions, faction, rb, nil, dispatch.AssetSpeedResolver(nil, faction), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

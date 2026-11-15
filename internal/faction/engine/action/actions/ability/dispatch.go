@@ -105,7 +105,7 @@ func Dispatch(
 			return nil, nil
 		}
 		if workingAsset.HasCondition(domain.ConditionSheltered) {
-			// deliberate: fizzle, because an earlier asset in this action sheltered this one, and a sheltered asset cannot act.
+			// deliberate: fizzle, not act from real state, because an earlier asset in this action sheltered this one, and a sheltered asset cannot act.
 			return nil, nil
 		}
 	}

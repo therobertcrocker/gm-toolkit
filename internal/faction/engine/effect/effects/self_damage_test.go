@@ -221,6 +221,16 @@ func TestSelfDamage_HotMoveBurnsEachHotMover(t *testing.T) {
 		t.Errorf("burn = %+v, want %+v (the hot frigate only)", got, want)
 	}
 
+	arrivalHold := []domain.Mutation{domain.MovementOrderHeld{FactionID: "alpha", AssetID: "frigate", Reason: domain.HoldLockdownUnpaid}}
+	if got := reactors[0].Hook.OnMutations(arrivalHold, factionState, rb); len(got) != 1 {
+		t.Errorf("burn on the hold that brings it to the edge = %+v, want one", got)
+	}
+	hot.CurrentOrder.Held = true
+	if got := reactors[0].Hook.OnMutations(arrivalHold, factionState, rb); got != nil {
+		t.Errorf("burn while it waits at the edge = %+v, want none", got)
+	}
+	hot.CurrentOrder.Held = false
+
 	alpha.LapsedTags = []string{burners.ID}
 	if got := reactors[0].Hook.OnMutations([]domain.Mutation{domain.MovementOrderProgressed{FactionID: "alpha", AssetID: "frigate"}}, factionState, rb); got != nil {
 		t.Errorf("burn while the tag is lapsed = %+v, want none", got)

@@ -76,7 +76,7 @@ func TestBuildMovementMutations_RevisionCost(t *testing.T) {
 		},
 	}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, reviseRulebook(), nil, slog.New(slog.DiscardHandler))
+	mutations, err := we.BuildMovementMutations(decisions, faction, reviseRulebook(), nil, dispatch.AssetSpeedResolver(nil, faction), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestBuildMovementMutations_RevisedOrderStoresTheResolvedDriftRating(t *test
 		Destination: &domain.Location{RegionHex: spatial.RegionHex{Coord: spatial.HexCoord{Q: 3}, RegionID: "void"}},
 	}}
 
-	mutations, err := we.BuildMovementMutations(decisions, faction, rules, nil, slog.New(slog.DiscardHandler))
+	mutations, err := we.BuildMovementMutations(decisions, faction, rules, nil, dispatch.AssetSpeedResolver(nil, faction), slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestBuildMovementMutations_RunHot(t *testing.T) {
 			faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{"a1": order("a1", tc.def)}}
 			decision := world.MovementDecision{AssetID: "a1", Kind: world.MovementDecisionRevise, Destination: dest, RunHot: tc.chosen}
 
-			mutations, err := regionWorldEngine(t).BuildMovementMutations([]world.MovementDecision{decision}, faction, runHotRulebook(), tc.registry, slog.New(slog.DiscardHandler))
+			mutations, err := regionWorldEngine(t).BuildMovementMutations([]world.MovementDecision{decision}, faction, runHotRulebook(), tc.registry, dispatch.AssetSpeedResolver(tc.registry, faction), slog.New(slog.DiscardHandler))
 
 			if err != nil {
 				t.Fatalf("BuildMovementMutations: %v", err)
@@ -297,7 +297,7 @@ func TestBuildMovementMutations_IssueOverAnOpenOrderIsRefused(t *testing.T) {
 	faction := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{"s1": ship}}
 	decision := world.MovementDecision{AssetID: "s1", Kind: world.MovementDecisionIssue, Destination: &domain.Location{WorldID: "beta"}}
 
-	_, err := regionWorldEngine(t).BuildMovementMutations([]world.MovementDecision{decision}, faction, runHotRulebook(), nil, slog.New(slog.DiscardHandler))
+	_, err := regionWorldEngine(t).BuildMovementMutations([]world.MovementDecision{decision}, faction, runHotRulebook(), nil, dispatch.AssetSpeedResolver(nil, faction), slog.New(slog.DiscardHandler))
 
 	if err == nil {
 		t.Error("BuildMovementMutations = nil, want an issue over an open order refused")
@@ -324,7 +324,7 @@ func TestBuildMovementMutations_ReviseKeepsBankedPoints(t *testing.T) {
 
 			mutations, err := regionWorldEngine(t).BuildMovementMutations(
 				[]world.MovementDecision{{AssetID: "s1", Kind: world.MovementDecisionRevise, Destination: dest}},
-				faction, rb, nil, slog.New(slog.DiscardHandler))
+				faction, rb, nil, dispatch.AssetSpeedResolver(nil, faction), slog.New(slog.DiscardHandler))
 
 			if err != nil {
 				t.Fatalf("BuildMovementMutations: %v", err)

@@ -9,6 +9,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/action/actions/mocks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 	"go.uber.org/mock/gomock"
 )
 
@@ -89,20 +90,28 @@ func TestRepairAsset_Output(t *testing.T) {
 	}
 }
 
-// TestRepairAsset_ClearsShelterAtFullHP: a sheltered asset at 0 HP, Force 4, one
-// heal. The shelter clears only when the heal reaches full HP (Effort 2 Decision 12).
-func TestRepairAsset_ClearsShelterAtFullHP(t *testing.T) {
-	sheltered := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "bolt"}
+// TestRepairAsset_ShelterAtFullHP: a sheltered asset at 0 HP, Force 4, one heal.
+// A heal to full HP ends a Boltholes shelter, or one whose source is gone (Effort
+// 2 Decision 12), but never a standing door shelter's (A.001.5 Effort 5 Decision 8).
+func TestRepairAsset_ShelterAtFullHP(t *testing.T) {
+	sheltered := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "source"}
 	heal := domain.AssetHPDelta{FactionID: "f1", AssetID: "a1", Delta: 4, Cause: "repair", CausedByFactionID: "f1"}
 	unshelter := domain.AssetConditionCleared{FactionID: "f1", AssetID: "a1", Condition: sheltered, Cause: "repair", CausedByFactionID: "f1"}
 	pay := domain.CoinDelta{FactionID: "f1", Delta: -1, Cause: "repair", CausedByFactionID: "f1"}
+	boltholes := &domain.AssetDefinition{ID: "source-def"}
+	demiplane := &domain.AssetDefinition{ID: "source-def", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+		{Effect: domain.EffectShelter, Shelter: &domain.ShelterParams{AssetTypes: []domain.AssetType{"Operative"}, Capacity: 1}},
+	}}}
 	cases := []struct {
-		name string
-		hp   int
-		want []domain.Mutation
+		name   string
+		hp     int
+		source *domain.AssetDefinition
+		want   []domain.Mutation
 	}{
-		{name: "a heal to full HP clears the shelter", hp: 4, want: []domain.Mutation{heal, unshelter, pay}},
-		{name: "a heal short of full HP keeps it", hp: 8, want: []domain.Mutation{heal, pay}},
+		{name: "a heal to full HP clears a Boltholes shelter", hp: 4, source: boltholes, want: []domain.Mutation{heal, unshelter, pay}},
+		{name: "a heal short of full HP keeps it", hp: 8, source: boltholes, want: []domain.Mutation{heal, pay}},
+		{name: "a heal to full HP clears a shelter whose source is gone", hp: 4, want: []domain.Mutation{heal, unshelter, pay}},
+		{name: "a heal to full HP keeps a door shelter", hp: 4, source: demiplane, want: []domain.Mutation{heal, pay}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -112,14 +121,19 @@ func TestRepairAsset_ClearsShelterAtFullHP(t *testing.T) {
 			}}
 			asset := &domain.Asset{ID: "a1", DefinitionID: "unit", CurrentHP: 0, Conditions: []domain.Condition{sheltered}}
 			faction := &domain.Faction{ID: "f1", Force: 4, Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}
+			if tc.source != nil {
+				rulebook.Assets[tc.source.ID] = tc.source
+				faction.Assets["source"] = &domain.Asset{ID: "source", DefinitionID: tc.source.ID, CurrentHP: 1}
+			}
+			factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
 			collector := mocks.NewMockCollector(ctrl)
 			collector.EXPECT().SelectRepairOrders(gomock.Any(), gomock.Any(), gomock.Any()).Return([]action.RepairOrder{{Asset: asset, HealCount: 1}}, nil)
 
 			act := NewRepairAsset(collector, nil)
-			if err := act.Inputs(faction, nil, rulebook); err != nil {
+			if err := act.Inputs(faction, factionState, rulebook); err != nil {
 				t.Fatalf("Inputs: %v", err)
 			}
-			if err := act.Resolve(faction, nil, rulebook); err != nil {
+			if err := act.Resolve(faction, factionState, rulebook); err != nil {
 				t.Fatalf("Resolve: %v", err)
 			}
 			mutations, _ := act.Output()

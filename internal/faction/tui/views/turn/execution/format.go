@@ -177,7 +177,7 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		}
 		return fmt.Sprintf("tag %s restored (upkeep paid)", mut.TagID), true
 	case domain.TagRemoved:
-		// deliberate: surface an upkeep loss, fold the rest, because bookkeeping has no action header to explain a lost tag.
+		// deliberate: surface an upkeep loss, not fold it with the rest, because bookkeeping has no action header to explain a lost tag.
 		if mut.Cause != "upkeep" {
 			return "", false
 		}

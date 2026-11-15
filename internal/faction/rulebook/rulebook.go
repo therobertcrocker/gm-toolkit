@@ -281,7 +281,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		return nil, err
 	}
 
-	return &domain.AssetDefinition{
+	definition := &domain.AssetDefinition{
 		ID:                 r.ID,
 		Name:               r.Name,
 		Category:           category,
@@ -303,7 +303,13 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Quality:            r.Quality,
 		PurchasePermission: r.PurchasePermission,
 		RequiresTag:        r.RequiresTag,
-	}, nil
+	}
+	if definition.Shelter() != nil && !slices.ContainsFunc(effects, func(entry domain.EffectDefinition) bool {
+		return entry.Trigger == domain.TriggerAssetDestroyed && entry.Effect == domain.SpecialShelterAsset
+	}) {
+		return nil, fmt.Errorf("a shelter ability needs an asset_destroyed shelter_asset effect, or the asset inside is stranded when the shelter is lost")
+	}
+	return definition, nil
 }
 
 // checkQuality holds a quality to one on_purchase entry (D-19), and grant_stealth to

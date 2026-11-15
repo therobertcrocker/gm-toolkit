@@ -110,12 +110,12 @@ func runsHot(speedOf func(*domain.AssetDefinition, bool) int, definition *domain
 
 // BuildMovementMutations issues, revises and cancels movement orders. A crossing
 // is priced from the drift rating registry's drift-rating hooks resolve
-// (Drift-Runners).
-func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry, log *slog.Logger) ([]domain.Mutation, error) {
+// (Drift-Runners); speedOf, the phase's speed resolver, decides which orders run
+// hot.
+func (engine *WorldEngine) BuildMovementMutations(decisions []MovementDecision, faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry, speedOf func(*domain.AssetDefinition, bool) int, log *slog.Logger) ([]domain.Mutation, error) {
 	var mutations []domain.Mutation
 
 	driftRatingOf := dispatch.AssetDriftRatingResolver(registry, faction)
-	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	for _, decision := range decisions {
 		asset, ok := faction.Assets[decision.AssetID]
 		if !ok {

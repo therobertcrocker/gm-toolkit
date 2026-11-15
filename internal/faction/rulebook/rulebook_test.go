@@ -1283,9 +1283,10 @@ func TestConvertAbilityStep_Shelter(t *testing.T) {
 	const header = "\n[assets.Machine.ability]\neffect = \"shelter\"\n"
 	const target = "target = \"asset\"\n"
 	const block = "[assets.Machine.ability.shelter]\nasset_types = [\"Operative\", \"Security Personnel\"]\ncapacity = 1\n"
+	const loss = "effects = [{ trigger = \"asset_destroyed\", effect = \"shelter_asset\", filters = { owner = \"own\", scope = \"self\" } }]\n"
 
 	t.Run("loads", func(t *testing.T) {
-		assets, err := loadAssetsFromTOML(t, effectTestAsset+header+target+block)
+		assets, err := loadAssetsFromTOML(t, effectTestAsset+loss+header+target+block)
 		if err != nil {
 			t.Fatalf("load: %v", err)
 		}
@@ -1306,6 +1307,7 @@ func TestConvertAbilityStep_Shelter(t *testing.T) {
 		{"no capacity", header + target + "[assets.Machine.ability.shelter]\nasset_types = [\"Operative\"]\n", "capacity > 0"},
 		{"no types", header + target + "[assets.Machine.ability.shelter]\ncapacity = 1\n", "asset_types"},
 		{"a block on another effect", "\n[assets.Machine.ability]\neffect = \"levy_coin\"\ntarget = \"faction\"\n" + block, "needs effect = \"shelter\""},
+		{"no loss entry", header + target + block, "needs an asset_destroyed shelter_asset effect"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

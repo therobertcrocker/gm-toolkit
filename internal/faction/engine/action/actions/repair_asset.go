@@ -59,7 +59,7 @@ func (ra *RepairAsset) Inputs(faction *domain.Faction, _ *state.FactionState, ru
 	return nil
 }
 
-func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, rulebook *rulebook.Rulebook) error {
+func (ra *RepairAsset) Resolve(faction *domain.Faction, factionState *state.FactionState, rulebook *rulebook.Rulebook) error {
 	totalCost := 0
 	var mutations []domain.Mutation
 
@@ -93,7 +93,7 @@ func (ra *RepairAsset) Resolve(faction *domain.Faction, _ *state.FactionState, r
 				CausedByFactionID: ra.factionID,
 			})
 			if order.Asset.CurrentHP+totalHeal >= def.HP {
-				mutations = append(mutations, shelterCleared(ra.factionID, order.Asset)...)
+				mutations = append(mutations, shelterCleared(ra.factionID, order.Asset, factionState, rulebook)...)
 			}
 		}
 	}
@@ -113,12 +113,13 @@ func (ra *RepairAsset) Output() ([]domain.Mutation, error) {
 	return ra.mutations, nil
 }
 
-// shelterCleared clears every sheltered condition on asset: a repair to full HP
-// ends the shelter (Effort 2 Decision 12).
-func shelterCleared(factionID string, asset *domain.Asset) []domain.Mutation {
+// shelterCleared clears the sheltered conditions a repair to full HP ends
+// (Effort 2 Decision 12): every one but a standing door shelter's, which the
+// asset leaves only by its owner's release (A.001.5 Effort 5 Decision 8).
+func shelterCleared(factionID string, asset *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) []domain.Mutation {
 	var cleared []domain.Mutation
 	for _, condition := range asset.Conditions {
-		if condition.Kind == domain.ConditionSheltered {
+		if condition.Kind == domain.ConditionSheltered && !domain.InDoorShelter(factionState.Factions, rulebook.Assets, condition) {
 			cleared = append(cleared, domain.AssetConditionCleared{
 				FactionID:         factionID,
 				AssetID:           asset.ID,

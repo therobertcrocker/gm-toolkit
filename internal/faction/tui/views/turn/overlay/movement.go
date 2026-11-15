@@ -183,8 +183,8 @@ func LocationLabel(asset *domain.Asset, spatialMap *spatial.RegionMap) string {
 	if order == nil {
 		return "In " + here
 	}
-	// deliberate: banked points mean a Drift jump is under way, not a hex step, because a hex step costs 1 and the tick takes it while any point is left.
-	if order.Banked > 0 && order.StepIdx+1 < len(order.Path) {
+	// deliberate: banked points toward a lane jump mean the jump is under way, not banked points alone, because a revise keeps its points onto a path whose next step may be a hex step.
+	if order.Banked > 0 && order.StepIdx+1 < len(order.Path) && !spatial.Adjacent(order.Path[order.StepIdx].Coord, order.Path[order.StepIdx+1].Coord) {
 		return fmt.Sprintf("In the Drift between %s and %s", here, spatialMap.RegionName(order.Path[order.StepIdx+1].RegionID))
 	}
 	destination := order.Destination.WorldID

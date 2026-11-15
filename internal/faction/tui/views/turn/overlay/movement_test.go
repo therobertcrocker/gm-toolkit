@@ -188,6 +188,9 @@ func TestLocationLabel(t *testing.T) {
 		{"on a place", &domain.Asset{Location: domain.Location{WorldID: "world-a"}}, "Alpha"},
 		{"mid-jump", moving(3), "In the Drift between Concordia and The Prime Material"},
 		{"en route", moving(0), "In Concordia, en route to Beta"},
+		{"banked before a hex step", &domain.Asset{ID: "s1", Location: domain.Location{RegionHex: path[0]},
+			CurrentOrder: &domain.MovementOrder{Path: path, StepIdx: 0, Banked: 3, Destination: domain.Location{WorldID: "world-b"}}},
+			"In Concordia, en route to Beta"},
 	}
 	for _, tc := range cases {
 		if got := LocationLabel(tc.asset, spatialMap); got != tc.want {

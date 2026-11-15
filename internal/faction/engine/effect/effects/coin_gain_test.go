@@ -3,6 +3,7 @@ package effects_test
 import (
 	"log/slog"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
@@ -170,6 +171,39 @@ func countingEntry(max int, noStack bool) domain.EffectDefinition {
 		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, AssetTypes: []domain.AssetType{"Workforce"}},
 		Gates:    domain.EffectGates{NoStack: noStack},
 		CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}, Max: max},
+	}
+}
+
+func TestCoinGain_CountingParamsNeedWorldScope(t *testing.T) {
+	engine := effect.New(effects.Registrars(), slog.New(slog.DiscardHandler))
+	withScope := func(entry domain.EffectDefinition, scope domain.EffectScope) domain.EffectDefinition {
+		entry.Filters.Scope = scope
+		return entry
+	}
+	noTypes := countingEntry(3, false)
+	noTypes.Filters.AssetTypes = nil
+	selfNoStack := withScope(countingEntry(0, true), domain.ScopeSelf)
+	selfNoStack.Filters.AssetTypes = nil
+	cases := []struct {
+		name  string
+		entry domain.EffectDefinition
+		want  string
+	}{
+		{"counting at world scope", countingEntry(3, true), ""},
+		{"world scope with no asset_type", noTypes, "needs an asset_type filter"},
+		{"asset_type at self scope", withScope(countingEntry(0, false), domain.ScopeSelf), "need trigger"},
+		{"no_stack at self scope", selfNoStack, "need trigger"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := engine.RegisterEffectsList(&domain.AssetDefinition{ID: "X-1", Effects: []domain.EffectDefinition{tc.entry}})
+			if tc.want == "" && err != nil {
+				t.Fatalf("err = %v, want none", err)
+			}
+			if tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
+				t.Fatalf("err = %v, want it to contain %q", err, tc.want)
+			}
+		})
 	}
 }
 

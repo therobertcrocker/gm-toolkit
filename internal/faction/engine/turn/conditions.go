@@ -76,7 +76,7 @@ func OfferShelterReleases(faction *domain.Faction, factionState *state.FactionSt
 	var mutations []domain.Mutation
 	for _, asset := range domain.SortedAssets(faction) {
 		for _, condition := range asset.Conditions {
-			if condition.Kind != domain.ConditionSheltered || !releasable(condition, factionState, rulebook) {
+			if condition.Kind != domain.ConditionSheltered || !domain.InDoorShelter(factionState.Factions, rulebook.Assets, condition) {
 				continue
 			}
 			release, err := collector.ConfirmPayment(hooks.PaymentOffer{Payer: faction, Asset: asset, Amount: 0, Reason: hooks.PaymentReleaseShelter})
@@ -90,16 +90,4 @@ func OfferShelterReleases(faction *domain.Faction, factionState *state.FactionSt
 		}
 	}
 	return mutations, nil
-}
-
-// releasable reports whether a sheltered condition opens at its owner's turn
-// start: its source has a shelter ability (Leased Demiplane). An asset Boltholes
-// sheltered waits for a repair to full, even once the Boltholes is gone; a lost
-// Demiplane lets its asset out as it goes (Effort 5 Decision 8).
-func releasable(condition domain.Condition, factionState *state.FactionState, rulebook *rulebook.Rulebook) bool {
-	owner := domain.AssetOwner(factionState.Factions, condition.SourceAssetID)
-	if owner == nil {
-		return false
-	}
-	return rulebook.Assets[owner.Assets[condition.SourceAssetID].DefinitionID].Shelter() != nil
 }

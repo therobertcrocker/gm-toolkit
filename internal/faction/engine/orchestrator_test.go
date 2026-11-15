@@ -12,6 +12,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
@@ -174,7 +175,7 @@ func TestEligibleCargoForTransport(t *testing.T) {
 					tc.asset.ID:  tc.asset,
 				},
 			}
-			eligible := eligibleCargoForTransport(faction, transport, profile, rb)
+			eligible := eligibleCargoForTransport(faction, nil, transport, profile, rb)
 			found := false
 			for _, a := range eligible {
 				if a.ID == tc.asset.ID {
@@ -196,7 +197,7 @@ func TestEligibleMovableAssets_SkipsSheltered(t *testing.T) {
 	sheltered := &domain.Asset{ID: "t-sheltered", DefinitionID: "transport-def", OwnerID: "alpha", Conditions: shelteredByBoltholes}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{free.ID: free, sheltered.ID: sheltered}}
 
-	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
+	eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(nil, faction))
 
 	if len(eligible) != 1 || eligible[0].ID != "t-free" {
 		t.Errorf("eligible = %v, want only t-free", eligible)
@@ -210,8 +211,52 @@ func TestEligibleCargoForTransport_SkipsSheltered(t *testing.T) {
 	sheltered := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc, Conditions: shelteredByBoltholes}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, sheltered.ID: sheltered}}
 
-	if eligible := eligibleCargoForTransport(faction, transport, rb.Assets["transport-def"].Transport, rb); len(eligible) != 0 {
+	if eligible := eligibleCargoForTransport(faction, nil, transport, rb.Assets["transport-def"].Transport, rb); len(eligible) != 0 {
 		t.Errorf("eligible = %v, want none", eligible)
+	}
+}
+
+// occupiedDoorShelter is a faction holding two door shelters of a cargo type on
+// one place, one with an asset inside, for the occupied-shelter guards (A.001.5
+// effort close review).
+func occupiedDoorShelter() (*domain.Faction, *domain.Asset, *rulebook.Rulebook) {
+	loc := domain.Location{WorldID: "world-a"}
+	rb := transportRulebook()
+	rb.Assets["door-def"] = &domain.AssetDefinition{ID: "door-def", Type: domain.AssetType("Special Forces"), Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+		{Effect: domain.EffectShelter, Shelter: &domain.ShelterParams{AssetTypes: []domain.AssetType{"Special Forces"}, Capacity: 1}},
+	}}}
+	transport := &domain.Asset{ID: "transport-1", DefinitionID: "transport-def", OwnerID: "alpha", Location: loc}
+	occupied := &domain.Asset{ID: "door-1", DefinitionID: "door-def", OwnerID: "alpha", Location: loc}
+	empty := &domain.Asset{ID: "door-2", DefinitionID: "door-def", OwnerID: "alpha", Location: loc}
+	inside := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc, Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "door-1"}}}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, occupied.ID: occupied, empty.ID: empty, inside.ID: inside}}
+	return faction, transport, rb
+}
+
+func TestEligibleMovableAssets_SkipsAnOccupiedDoorShelter(t *testing.T) {
+	faction, _, rb := occupiedDoorShelter()
+	hotFloor := func(*domain.AssetDefinition, bool) int { return 5 }
+
+	eligible := eligibleMovableAssets(faction, map[string]*domain.Faction{faction.ID: faction}, rb, hotFloor)
+
+	got := make([]string, 0, len(eligible))
+	for _, asset := range eligible {
+		got = append(got, asset.ID)
+	}
+	slices.Sort(got)
+	if want := []string{"door-2", "transport-1"}; !slices.Equal(got, want) {
+		t.Errorf("eligible = %v, want %v", got, want)
+	}
+}
+
+func TestEligibleCargoForTransport_SkipsAnOccupiedDoorShelter(t *testing.T) {
+	faction, transport, rb := occupiedDoorShelter()
+	profile := &domain.TransportProfile{CargoTypes: []domain.AssetType{"Special Forces"}, MaxCargo: 2}
+
+	eligible := eligibleCargoForTransport(faction, map[string]*domain.Faction{faction.ID: faction}, transport, profile, rb)
+
+	if len(eligible) != 1 || eligible[0].ID != "door-2" {
+		t.Errorf("eligible = %v, want only door-2", eligible)
 	}
 }
 
@@ -250,7 +295,7 @@ func TestPrepareMovementDecisions_MaxCargoViolation(t *testing.T) {
 	}
 
 	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
-	_, err := prepareMovementDecisions(faction, collector, we, rb, nil, slog.New(slog.DiscardHandler))
+	_, err := prepareMovementDecisions(faction, nil, collector, we, rb, nil, slog.New(slog.DiscardHandler))
 	if err == nil {
 		t.Fatal("expected error when collector returns more cargo than MaxCargo allows, got nil")
 	}
@@ -266,13 +311,13 @@ func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefin
 func TestEligibleMovableAssets_ReadsTheResolvedSpeed(t *testing.T) {
 	special := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha"}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{special.ID: special}}
-	if eligible := eligibleMovableAssets(faction, transportRulebook(), nil); len(eligible) != 0 {
+	if eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(nil, faction)); len(eligible) != 0 {
 		t.Errorf("eligible = %v, want none: sf-def has speed 0", eligible)
 	}
 
 	registry := hooks.NewRegistry()
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
-	if eligible := eligibleMovableAssets(faction, transportRulebook(), registry); len(eligible) != 1 || eligible[0].ID != "sf-1" {
+	if eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(registry, faction)); len(eligible) != 1 || eligible[0].ID != "sf-1" {
 		t.Errorf("eligible = %v, want sf-1 under a speed floor", eligible)
 	}
 }
@@ -287,7 +332,7 @@ func TestEligibleMovableAssets_SkipsCargoInFlight(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
 
-	eligible := eligibleMovableAssets(faction, transportRulebook(), registry)
+	eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(registry, faction))
 
 	if len(eligible) != 1 || eligible[0].ID != "transport-1" {
 		t.Errorf("eligible = %v, want only transport-1: sf-1 rides it", eligible)
@@ -301,7 +346,7 @@ func TestEligibleMovableAssets_KeepsAnOpenOrderAfterTheFloorGoes(t *testing.T) {
 	}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{stranded.ID: stranded}}
 
-	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
+	eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(nil, faction))
 
 	if len(eligible) != 1 || eligible[0].ID != "sf-1" {
 		t.Errorf("eligible = %v, want sf-1: its order must stay cancellable at speed 0", eligible)
@@ -335,7 +380,7 @@ func TestPrepareMovementDecisions_AnOrderedAssetIsNotCargo(t *testing.T) {
 	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
 	// The stub map cannot path the orders, so the error is not the subject: the
 	// cargo offer is made before the orders are built.
-	_, _ = prepareMovementDecisions(faction, collector, we, rb, registry, slog.New(slog.DiscardHandler))
+	_, _ = prepareMovementDecisions(faction, nil, collector, we, rb, registry, slog.New(slog.DiscardHandler))
 
 	if len(offered) != 1 || offered[0].ID != "sf-2" {
 		t.Errorf("offered cargo = %v, want only sf-2: sf-1 has its own order", offered)

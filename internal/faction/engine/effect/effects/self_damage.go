@@ -102,8 +102,8 @@ func (reactor *hotBurnReactor) OnMutations(mutations []domain.Mutation, factionS
 }
 
 // hotMovers returns owner's assets that a movement tick in mutations moved on an
-// order run hot: a step taken, points banked toward a Drift jump, an arrival, or a
-// hold at a locked place.
+// order run hot: a step taken, points banked toward a Drift jump, an arrival, or
+// the first hold at a locked place.
 func hotMovers(mutations []domain.Mutation, owner *domain.Faction) []*domain.Asset {
 	var movers []*domain.Asset
 	for _, mutation := range mutations {
@@ -114,6 +114,10 @@ func hotMovers(mutations []domain.Mutation, owner *domain.Faction) []*domain.Ass
 		case domain.MovementOrderCompleted:
 			factionID, assetID = movement.FactionID, movement.AssetID
 		case domain.MovementOrderHeld:
+			// deliberate: an order already held does not burn, not every held tick, because a ship waiting at the edge is parked; the tick that brings it there moved (A.001.5 Effort 4 Decision Record 10).
+			if asset, ok := owner.Assets[movement.AssetID]; ok && asset.CurrentOrder != nil && asset.CurrentOrder.Held {
+				continue
+			}
 			factionID, assetID = movement.FactionID, movement.AssetID
 		}
 		if factionID != owner.ID {

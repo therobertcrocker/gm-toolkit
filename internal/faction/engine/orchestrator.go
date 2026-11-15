@@ -451,7 +451,7 @@ func (e *Engine) runMovementPhase(
 		observer.OnMovementTicked(faction, tickMutations)
 	}
 
-	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook, e.Hooks, worldLog)
+	decisionMutations, err := prepareMovementDecisions(faction, factionState.Factions, collectors.Phase, e.World, e.Rulebook, e.Hooks, worldLog)
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -800,17 +800,18 @@ func prepareStatRaise(faction *domain.Faction, collector PhaseCollector) (*domai
 
 func prepareMovementDecisions(
 	faction *domain.Faction,
+	factions map[string]*domain.Faction,
 	collector PhaseCollector,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,
 	registry *hooks.Registry,
 	worldLog *slog.Logger,
 ) ([]domain.Mutation, error) {
-	eligible := eligibleMovableAssets(faction, rulebook, registry)
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
+	eligible := eligibleMovableAssets(faction, factions, rulebook, speedOf)
 	if len(eligible) == 0 {
 		return nil, nil
 	}
-	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	hotChoices := make(map[string]bool)
 	for _, asset := range eligible {
 		if world.ChoosesHot(speedOf, rulebook.Assets[asset.DefinitionID]) {
@@ -842,7 +843,7 @@ func prepareMovementDecisions(
 			continue
 		}
 		// deliberate: an asset ordered in this batch is not offered as cargo, because a speed floor (Mercenary Group) lets an immobile asset take its own order (Effort 2 Decision 8).
-		cargoEligible := slices.DeleteFunc(eligibleCargoForTransport(faction, asset, def.Transport, rulebook), func(cargo *domain.Asset) bool {
+		cargoEligible := slices.DeleteFunc(eligibleCargoForTransport(faction, factions, asset, def.Transport, rulebook), func(cargo *domain.Asset) bool {
 			return ordered[cargo.ID]
 		})
 		cargoSelected, err := collector.SelectTransportCargo(asset, cargoEligible, def.Transport)
@@ -866,10 +867,10 @@ func prepareMovementDecisions(
 		decisions[i].CargoAssetIDs = cargoIDs
 	}
 
-	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, registry, worldLog)
+	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, registry, speedOf, worldLog)
 }
 
-func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry) []*domain.Asset {
+func eligibleMovableAssets(faction *domain.Faction, factions map[string]*domain.Faction, rulebook *rulebook.Rulebook, speedOf func(*domain.AssetDefinition, bool) int) []*domain.Asset {
 	// Cargo has no order of its own: only its transport's order lists it.
 	riding := make(map[string]bool)
 	for _, asset := range faction.Assets {
@@ -879,7 +880,6 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook,
 			}
 		}
 	}
-	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		if riding[asset.ID] {
@@ -887,7 +887,7 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook,
 		}
 		def := rulebook.Assets[asset.DefinitionID]
 		// deliberate: a sheltered asset stays put, not moves, because Boltholes make it unusable until repaired (Effort 2 Decision 11).
-		if def == nil || asset.HasCondition(domain.ConditionSheltered) {
+		if def == nil || asset.HasCondition(domain.ConditionSheltered) || domain.HoldsShelteredAsset(factions, asset, def) {
 			continue
 		}
 		// deliberate: an open order keeps the asset listed at speed 0, not drops it, because a lost speed floor would freeze the order with no way to cancel it (Effort 2 Decision Record 5).
@@ -898,7 +898,7 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook,
 	return eligible
 }
 
-func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset, profile *domain.TransportProfile, rulebook *rulebook.Rulebook) []*domain.Asset {
+func eligibleCargoForTransport(faction *domain.Faction, factions map[string]*domain.Faction, transport *domain.Asset, profile *domain.TransportProfile, rulebook *rulebook.Rulebook) []*domain.Asset {
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		if asset.ID == transport.ID {
@@ -906,7 +906,7 @@ func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset,
 		}
 		def := rulebook.Assets[asset.DefinitionID]
 		// deliberate: the definition's speed, not the resolved one, because a speed floor adds a way to move and does not take the ride away (Effort 2 Decision 8).
-		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) {
+		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) || domain.HoldsShelteredAsset(factions, asset, def) {
 			continue
 		}
 		if slices.Contains(profile.CargoTypes, def.Type) &&
