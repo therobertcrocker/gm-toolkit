@@ -258,9 +258,11 @@ func ResolveAttackEligibility(registry *hooks.Registry, query hooks.AttackEligib
 
 // GrantedMovementAbilities collects the free movement offered to faction: its
 // global and faction granters, then those registered against each asset it owns,
-// in asset ID order. A grant serves its owner only, so a rival's assets are never
-// asked. Returns nil when registry is nil or no granter offers anything.
-func GrantedMovementAbilities(registry *hooks.Registry, faction *domain.Faction) []hooks.MovementAbility {
+// in asset ID order, then those registered against every other faction's assets,
+// by faction and asset ID. A granter that does not serve faction offers nothing,
+// so a rival's asset offers only a public grant (Effort 6 Decision 10). Returns
+// nil when registry is nil or no granter offers anything.
+func GrantedMovementAbilities(registry *hooks.Registry, factions map[string]*domain.Faction, faction *domain.Faction) []hooks.MovementAbility {
 	if registry == nil {
 		return nil
 	}
@@ -271,6 +273,16 @@ func GrantedMovementAbilities(registry *hooks.Registry, faction *domain.Faction)
 	for _, asset := range domain.SortedAssets(faction) {
 		for _, registered := range registry.AssetMovementGrantersForAsset(faction.ID, asset.ID) {
 			abilities = append(abilities, registered.Hook.GrantMovementAbilities(faction)...)
+		}
+	}
+	for _, ownerID := range slices.Sorted(maps.Keys(factions)) {
+		if ownerID == faction.ID {
+			continue
+		}
+		for _, asset := range domain.SortedAssets(factions[ownerID]) {
+			for _, registered := range registry.AssetMovementGrantersForAsset(ownerID, asset.ID) {
+				abilities = append(abilities, registered.Hook.GrantMovementAbilities(faction)...)
+			}
 		}
 	}
 	return abilities

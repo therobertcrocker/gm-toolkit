@@ -549,6 +549,68 @@ func TestRun_EveryOrderRefusedChargesNothing(t *testing.T) {
 	}
 }
 
+// fareRun runs a per-asset, 1-Coin relocate on landingFixture with payee, moving
+// the mercenaries (refused at mid) and two facilities, and returns its mutations.
+func fareRun(t *testing.T, payee string) []domain.Mutation {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	faction, _, web, mercs, works, factionState := landingFixture()
+	faction.Coin = 5
+	works2 := &domain.Asset{ID: "wf-2", DefinitionID: "WF", OwnerID: "f1", Location: works.Location}
+	faction.Assets[works2.ID] = works2
+	params := transitWebParams()
+	params.CoinCostMode = domain.RelocateCostPerAsset
+	collector := mocks.NewMockCollector(ctrl)
+	collector.EXPECT().SelectRelocateOrders(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]action.RelocateOrder{{Asset: mercs, DestinationWorld: "mid"}, {Asset: works, DestinationWorld: "mid"}, {Asset: works2, DestinationWorld: "mid"}}, nil)
+	collector.EXPECT().RequestPermission(gomock.Any()).Return(false, nil)
+
+	mutations, err := Run(Request{
+		Faction: faction, Acting: web, Params: params,
+		Collector: collector, World: relocEngine(), Rulebook: relocRulebook(), FactionState: factionState,
+		Payee: payee,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	return mutations
+}
+
+// coinTo returns the CoinDeltas to factionID in mutations.
+func coinTo(mutations []domain.Mutation, factionID string) []domain.CoinDelta {
+	var deltas []domain.CoinDelta
+	for _, mutation := range mutations {
+		if coin, ok := mutation.(domain.CoinDelta); ok && coin.FactionID == factionID {
+			deltas = append(deltas, coin)
+		}
+	}
+	return deltas
+}
+
+func TestRun_PayeeIsPaidEachMovedOrdersCost(t *testing.T) {
+	mutations := fareRun(t, "owner")
+
+	charged := 0
+	for _, coin := range coinTo(mutations, "f1") {
+		charged += coin.Delta
+	}
+	if charged != -2 {
+		t.Errorf("mover charged %d, want -2 for two moved orders", charged)
+	}
+	fare := domain.CoinDelta{FactionID: "owner", Delta: 1, Cause: "fare", CausedByFactionID: "f1"}
+	if got := coinTo(mutations, "owner"); !reflect.DeepEqual(got, []domain.CoinDelta{fare, fare}) {
+		t.Errorf("payee credits = %+v, want two of %+v (none for the refused order)", got, fare)
+	}
+}
+
+func TestRun_NoPayeeCreditsNoOne(t *testing.T) {
+	for _, mutation := range fareRun(t, "") {
+		if coin, ok := mutation.(domain.CoinDelta); ok && coin.Cause == "fare" {
+			t.Errorf("mutation %+v: want no fare without a payee", coin)
+		}
+	}
+}
+
 func TestRun_StealthedPAssetIsNotAsked(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	faction, _, web, mercs, _, factionState := landingFixture()

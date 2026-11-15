@@ -43,6 +43,9 @@ type Request struct {
 	Registry     *hooks.Registry
 	FactionState *state.FactionState
 	Collector    Collector
+	// Payee is the faction each moved order's coin cost is paid to, or empty when
+	// the Coin is spent (a public grant's fare, Effort 6 Decision 11).
+	Payee string
 }
 
 // Run resolves a relocation: gather the movable candidates (the acting asset for
@@ -158,6 +161,10 @@ func Run(request Request) ([]domain.Mutation, error) {
 		}
 		mutations = append(mutations, muts...)
 		mutations = append(mutations, dispatch.TollCharges(order.Asset.OwnerID, tolls[i])...)
+		if request.Payee != "" && orderCost > 0 {
+			// deliberate: the rider's charge stays caused by the rider, not the payee, because the rider chose the fare; Liability Waivers would otherwise cancel it while the payee is still paid.
+			mutations = append(mutations, domain.CoinDelta{FactionID: request.Payee, Delta: orderCost, Cause: "fare", CausedByFactionID: request.Faction.ID})
+		}
 		moved++
 	}
 	return mutations, nil

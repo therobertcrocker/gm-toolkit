@@ -27,6 +27,17 @@ func transitWebRelocate() domain.RelocateParams {
 // registerWeb gives alpha one active web on Tartarus and registers its grant.
 func registerWeb(t *testing.T) (*hooks.Registry, *domain.Faction, *domain.Faction) {
 	t.Helper()
+	return registerWebGrant(t, domain.GrantMovementParams{Relocate: transitWebRelocate()})
+}
+
+// registerPublicWeb is registerWeb with a public grant.
+func registerPublicWeb(t *testing.T) (*hooks.Registry, *domain.Faction, *domain.Faction) {
+	t.Helper()
+	return registerWebGrant(t, domain.GrantMovementParams{Relocate: transitWebRelocate(), Public: true})
+}
+
+func registerWebGrant(t *testing.T, grant domain.GrantMovementParams) (*hooks.Registry, *domain.Faction, *domain.Faction) {
+	t.Helper()
 	web := activeAsset("web", transitWebDef.ID)
 	web.Location = tartarus
 	alpha := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{web.ID: web}}
@@ -38,7 +49,7 @@ func registerWeb(t *testing.T) (*hooks.Registry, *domain.Faction, *domain.Factio
 			Trigger:       domain.TriggerMovementOptionsQuery,
 			Effect:        domain.SpecialGrantMovement,
 			Filters:       domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction},
-			GrantMovement: &domain.GrantMovementParams{Relocate: transitWebRelocate()},
+			GrantMovement: &grant,
 		},
 		Registry: registry,
 	})
@@ -81,6 +92,42 @@ func TestGrantMovement_RivalFactionGetsNothing(t *testing.T) {
 	registry, _, beta := registerWeb(t)
 	if got := webGrants(registry, beta); got != nil {
 		t.Errorf("abilities for beta = %v, want nil", got)
+	}
+}
+
+// oneGrant fails unless abilities holds exactly one grant, and returns it.
+func oneGrant(t *testing.T, abilities []hooks.MovementAbility) hooks.MovementAbility {
+	t.Helper()
+	if len(abilities) != 1 {
+		t.Fatalf("abilities = %d, want 1", len(abilities))
+	}
+	return abilities[0]
+}
+
+func TestGrantMovement_PublicGrantServesARivalForAFare(t *testing.T) {
+	registry, alpha, beta := registerPublicWeb(t)
+	grant := oneGrant(t, webGrants(registry, beta))
+	if grant.Source != alpha.Assets["web"] {
+		t.Errorf("Source = %v, want alpha's web", grant.Source)
+	}
+	if grant.Relocate.CoinCost != 1 || grant.Payee != "alpha" {
+		t.Errorf("CoinCost %d, Payee %q; want 1 paid to alpha", grant.Relocate.CoinCost, grant.Payee)
+	}
+}
+
+func TestGrantMovement_PublicGrantIsFreeForItsOwner(t *testing.T) {
+	registry, alpha, _ := registerPublicWeb(t)
+	grant := oneGrant(t, webGrants(registry, alpha))
+	if grant.Relocate.CoinCost != 0 || grant.Payee != "" {
+		t.Errorf("CoinCost %d, Payee %q; want a free ride with no payee", grant.Relocate.CoinCost, grant.Payee)
+	}
+}
+
+func TestGrantMovement_PrivateGrantKeepsItsCost(t *testing.T) {
+	registry, alpha, _ := registerWeb(t)
+	grant := oneGrant(t, webGrants(registry, alpha))
+	if grant.Relocate.CoinCost != 1 || grant.Payee != "" {
+		t.Errorf("CoinCost %d, Payee %q; want 1 spent with no payee", grant.Relocate.CoinCost, grant.Payee)
 	}
 }
 

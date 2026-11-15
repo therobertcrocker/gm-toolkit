@@ -329,7 +329,7 @@ func TestGrantedMovementAbilities_WalksFactionThenAssets(t *testing.T) {
 	registry.RegisterAssetMovementGranter(hooks.FactionScope("f1"), "faction", &stubMovementGranter{name: "faction", asked: &asked})
 	registry.RegisterAssetMovementGranter(hooks.AssetScope("rival", "r1"), "rival", &stubMovementGranter{name: "rival", asked: &asked})
 
-	abilities := GrantedMovementAbilities(registry, faction)
+	abilities := GrantedMovementAbilities(registry, map[string]*domain.Faction{"f1": faction}, faction)
 
 	var sources []string
 	for _, ability := range abilities {
@@ -345,8 +345,31 @@ func TestGrantedMovementAbilities_WalksFactionThenAssets(t *testing.T) {
 }
 
 func TestGrantedMovementAbilities_NilRegistry(t *testing.T) {
-	if got := GrantedMovementAbilities(nil, &domain.Faction{ID: "f1"}); got != nil {
+	if got := GrantedMovementAbilities(nil, nil, &domain.Faction{ID: "f1"}); got != nil {
 		t.Errorf("GrantedMovementAbilities(nil) = %v, want nil", got)
+	}
+}
+
+func TestGrantedMovementAbilities_AsksOtherFactionsAssetsLast(t *testing.T) {
+	registry := hooks.NewRegistry()
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a": {ID: "a", OwnerID: "f1"}}}
+	factions := map[string]*domain.Faction{
+		"f1": faction,
+		"r2": {ID: "r2", Assets: map[string]*domain.Asset{"x": {ID: "x", OwnerID: "r2"}}},
+		"r1": {ID: "r1", Assets: map[string]*domain.Asset{"y": {ID: "y", OwnerID: "r1"}}},
+	}
+	var asked []string
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("r2", "x"), "x", &stubMovementGranter{name: "x", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("r1", "y"), "y", &stubMovementGranter{name: "y", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "a"), "a", &stubMovementGranter{name: "a", asked: &asked})
+
+	var sources []string
+	for _, ability := range GrantedMovementAbilities(registry, factions, faction) {
+		sources = append(sources, ability.Source.ID)
+	}
+	want := []string{"a", "y", "x"}
+	if !slices.Equal(sources, want) {
+		t.Errorf("grant sources = %v, want %v (own assets, then rivals by faction ID)", sources, want)
 	}
 }
 

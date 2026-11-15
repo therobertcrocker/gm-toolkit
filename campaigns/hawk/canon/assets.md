@@ -100,6 +100,10 @@ Aether cannon and ward-towers linked into one battery by Arcano-Tech relays, whi
 
 Forged war-frames the size of houses, built for siege work and hired out on fixed-term contracts. They are people, with names, grievances and a guild, and they negotiate their own rates. They break fortified lines.
 
+## Carrier Corps — `HAWK-F6-004`
+
+Troopships built along a long spine of berths, mess decks and drop bays, with an Aether-Core aft and a quartermaster's office forward. Each carries a whole army across the Core, with its staff, its records and its beasts. The army pays for its own berths, by department.
+
 ## Deep-Insertion Gate — `HAWK-F7-001`
 
 A long-range teleportation gate that sends one unit across half the Core in a single step, on a priority clearance that overrides local customs, wards and lockdowns. The clearance is bought from whoever holds the charter for the route. Local governments are notified after arrival.
@@ -227,3 +231,111 @@ Changelings trained to replace a rival officer overnight, with the same face, th
 ## Oracle Engine — `HAWK-C8-001`
 
 An Arcane Intelligence built around a ring of scrying-glass and fed everything that happens on one place: every room, every ledger, every conversation. It answers any question about the place within the hour. It runs hot, and its upkeep is paid in Coin and in Aetherstones.
+
+## Wage Garnishers — `HAWK-W1-001`
+
+Clerks with a ledger and a friendly manner, who set up a desk outside a rival's gates on payday-eve. Any worker short of money may take an advance against their wages, at a modest fee. The repayment is drawn from the rival's payroll office directly, by a standing order the workers signed without reading.
+
+## Temp Workers — `HAWK-W1-002`
+
+A roster of workers on contracts that promise no hours, kept on call by a dispatch office. Each morning the office sends word to the ones it needs. The rest wait by the board, in case there is work tomorrow.
+
+## Permit Office — `HAWK-W1-003`
+
+The office that approves every new building on a place, staffed by clerks who have never approved one quickly. An outside builder's application is lost, delayed, or sent back for one more form. The fee for each new form is modest, and it is not refunded.
+
+## Company Coin — `HAWK-W1-004`
+
+The company mints its own coin, stamped with its own seal, and pays every wage in it. The company's stores accept it at face value. No one else accepts it at all, so every wage comes back.
+
+## Free Traders — `HAWK-W2-001`
+
+Independent freighters, each owned by its captain and mortgaged to someone else, that go wherever a contract pays. They post their routes on the dispatch boards at every dock in the Core and leave when the hold is full. They carry anything with a manifest, and most things without one.
+
+## Contract Cabal — `HAWK-W2-002`
+
+Lawyers trained in the clauses of contract magic, where a term once agreed binds the body as well as the purse. They read a rival's agreements more closely than the rival ever has, and find the clauses that bind its own people. Soldiers are outside their jurisdiction, and they prefer to keep it that way.
+
+## Pinkertons — `HAWK-W2-003`
+
+Private agents in good coats, hired by the day to break a strike, guard a payroll or escort a foreman home. They carry clubs, ward-batons and a letter of authority from the company. The letter is not a legal document, and no one has ever checked.
+
+## Prospectors — `HAWK-W2-004`
+
+Prospectors who survey new Fragments for Aether seams. They test each seam by sending in the cheapest crew first, with a lamp and a pick. If the crew comes back, the claim is filed.
+
+## Graveyard Shift — `HAWK-W2-005`
+
+The crew that keeps the works running from dusk to dawn, at a premium rate and with half the lamps. They are short on rest and long on accidents. The company replaces the shift on the morning after an accident, and the work never stops.
+
+## Aether Refinery — `HAWK-W3-001`
+
+Stills, condensers and cutting floors that boil raw Aether down into Aetherstones, run by crews who work in heavy aprons and light shoes. The stones sell well, and the refinery pays well. Now and then it explodes, and the next crew is hired the same day.
+
+## Artificery — `HAWK-W3-002`
+
+A workshop licensed to build Arcano-Tech, with benches, a forge, a Weave-link and an artificer who holds the licence. It sets up wherever the faction sends it. Within a season, the place is making things it never could before, under licence and for a fee.
+
+## Free Company — `HAWK-W3-003`
+
+A mercenary company with a charter, a banner, a rate card and a loyalty clause. The clause runs exactly as long as the payments do. They are good at their work, and they will say so in writing.
+
+## Paid Agitators — `HAWK-W3-004`
+
+Organizers on the faction's payroll, who take jobs on a rival's floor and start talking about pay. Within a week the floor is out on strike, and the rival's machines stand still. The organizers are paid a bonus for every day the strike holds.
+
+## Merchant Convoy — `HAWK-W4-001`
+
+A line of freighters that sails on a published schedule, escorted, insured and always on time. It moves whole operations across the Core: warehouses, staff, their files and their furniture. Departure is final, and late cargo waits for the next convoy.
+
+## Company Town — `HAWK-W4-002`
+
+A town owned and run by a single company: the houses, the shops, the school and the clinic. Every part of life there is tied to working for it. Outsiders are welcome to do business, and they pay the same rents and fees as everyone else.
+
+## Mending Vats — `HAWK-W4-003`
+
+Alchemical vats in a long, warm room, where injured workers and soldiers are knitted back together overnight. They come out ready for their next shift, mostly the same as before. The treatment is taken out of their wages, in instalments.
+
+## Liability Waivers — `HAWK-W4-004`
+
+Waivers signed in every deal the faction makes, by everyone it deals with, in a hand nobody reads. When a rival costs the faction money, the fine print says the loss doesn't count. The rival's lawyers have read the fine print, and agree.
+
+## Foreclosure Notices — `HAWK-W5-001`
+
+A claim served on a rival's asset for a debt, with the amount, the interest and the penalty for late payment. Until the debt is paid, the asset is sealed and stands idle. The debt is usually real, and the amount is usually correct.
+
+## Archmagus Consultant — `HAWK-W5-002`
+
+A famous archmage on a retainer, with a tower on loan, a staff of apprentices and a standing invoice. Their presence lets a place make things it has no business making. The retainer is never cheap, and it is never late.
+
+## Back-Channel Freight — `HAWK-W5-003`
+
+Freight that moves on arrangements made off the record. Every customs officer, harbour master and patrol captain on the route has been paid through a back channel, in advance and in full. A hold full of soldiers lands without a question, and the paperwork says machine parts.
+
+## Adventure Capital — `HAWK-W6-001`
+
+A fund that backs adventuring expeditions for a share of the find. Its money comes from angels, devils and companies alike, and no one asks which is which. Some expeditions come back, and the fund's prospectus lists their names.
+
+## Franchise Kits — `HAWK-W6-002`
+
+Workshops shipped in crates, with every part numbered and a book of instructions in six languages. The faction can put up a branch on any place, whatever the local craft. The instructions are clear, and the spare screws are always missing.
+
+## Aetheric Futures — `HAWK-W6-003`
+
+Traders who buy next season's Aetherstones at this season's price, and sell them to their own faction at a quiet discount. Their desks face a wall of price boards, and none of them looks away from it. When they are wrong, it is someone else's loss.
+
+## Aether-Tech Factory — `HAWK-W7-001`
+
+A plant the size of a district, turning out Aether-tech goods around the clock. Its workers are born in the company hospital, schooled on the factory floor and buried in the company plot. The plant has never closed, and no one remembers who opened it.
+
+## Predatory Purchase — `HAWK-W7-002`
+
+A raid on a rival business, financed with the rival's own debt and timed for its worst quarter. When a blow would ruin the business, the faction buys it at the bottom instead. The staff keep their jobs, and their new contracts start in the morning.
+
+## Aether-Gate Transit Authority — `HAWK-W7-003`
+
+A public network of Aether-gates in stations across the Core, each with a ticket hall, a timetable and a fare board. Anyone may ride, and every fare goes to the faction that runs it. Delays are announced, and apologised for, and not refunded.
+
+## Debtors' Fleet — `HAWK-W8-001`
+
+An armada of salvaged warships and armed freighters, crewed by people working off their debts, one voyage at a time. Each crew member's balance is posted on the mess deck, and every blow the fleet lands pays some of it down. No one has yet reached zero, but the board shows progress.

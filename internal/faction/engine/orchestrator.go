@@ -936,7 +936,7 @@ func (e *Engine) runGrantedMovement(
 	phaseLog *slog.Logger,
 ) ([]domain.Mutation, error) {
 	var resolved []domain.Mutation
-	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, faction) {
+	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, factionState.Factions, faction) {
 		params := grant.Relocate
 		mutations, err := relocate.Run(relocate.Request{
 			Faction:      faction,
@@ -947,6 +947,7 @@ func (e *Engine) runGrantedMovement(
 			Registry:     e.Hooks,
 			FactionState: factionState,
 			Collector:    collector,
+			Payee:        grant.Payee,
 		})
 		if errors.Is(err, relocate.ErrInsufficientCoin) {
 			phaseLog.Warn("granted movement skipped", "source", grant.Source.ID, "err", err)

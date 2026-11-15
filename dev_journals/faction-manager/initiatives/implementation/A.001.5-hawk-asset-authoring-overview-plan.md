@@ -55,7 +55,7 @@ Turn the discovery's six efforts into an executable sequence: specify Effort 1 t
 | [x] | 3 | Campaign setup | The map, the starting factions as a seed state, the real `settings.toml`, the first live turn | [`A.001.5.E3-hawk-asset-authoring-plan.md`](A.001.5.E3-hawk-asset-authoring-plan.md) |
 | [x] | 4 | Force pass | `assets/force_assets.toml` replaces its stand-in; a live turn | [`A.001.5.E4-hawk-asset-authoring-plan.md`](A.001.5.E4-hawk-asset-authoring-plan.md) |
 | [x] | 5 | Cunning pass | `assets/cunning_assets.toml` replaces its stand-in; a live turn | [`A.001.5.E5-hawk-asset-authoring-plan.md`](A.001.5.E5-hawk-asset-authoring-plan.md) |
-| [ ] | 6 | Wealth pass | `assets/wealth_assets.toml` replaces the last stand-in; "H.A.W.K playable" | `A.001.5.E6-hawk-asset-authoring-plan.md` (planned) |
+| [x] | 6 | Wealth pass | `assets/wealth_assets.toml` replaces the last stand-in; "H.A.W.K playable" | [`A.001.5.E6-hawk-asset-authoring-plan.md`](A.001.5.E6-hawk-asset-authoring-plan.md) |
 
 The order is a straight line; each effort depends on the one before it:
 
@@ -729,6 +729,8 @@ docs(E1): seed the H.A.W.K places, factions and people
 **Scope:** as Effort 4, for `wealth_assets.toml`, the last stand-in. Its live turn reaches "H.A.W.K playable" (D-1).
 
 **Long-range cargo lives in Wealth** — Robert's call in the Effort 4 Plan session. Travel on the Core Sector map matters, so Wealth keeps travelling transports that move cargo two or three hexes: the heirs of SWN's Freighter Contract, Shipping Combine, Blockade Runners and Transit Web. Their cargo lists carry H.A.W.K's Force types (Security Personnel, Operative, Stratagem, Beast, Facility, and Aethership where SWN carried Starship), they move at long-range speed (19), and their ships carry drift ratings. Force's own long-range movers teleport instead (Effort 4 Decision 7), so Wealth is where long-range cargo *travels*.
+
+Amended in the Effort 6 Plan session: Force also gains a long-range carrier of its own, Carrier Corps (`HAWK-F6-004`), and Transit Web's heir became a public teleport network, not a travelling transport (Effort 6 Decisions 7 and 9).
 
 **Depends on:** Effort 5.
 

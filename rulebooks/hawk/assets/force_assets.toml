@@ -277,7 +277,7 @@ counter = ""
 description = "Paired teleportation circles inlaid in depot floors and kept by a coven under service contract. As an action, any one non-Aethership asset within eight hexes may be moved instantly to any place within eight hexes for 1 Coin."
 ability = {
   effect = "relocate",
-  relocate = { scope = "other", max_hex = 8, coin_cost = 1, exclude_types = ["Aethership", "Starship"], max_assets = 1 },
+  relocate = { scope = "other", max_hex = 8, coin_cost = 1, exclude_types = ["Aethership"], max_assets = 1 },
 }
 
 [assets.RuneboundFrigates]
@@ -449,6 +449,28 @@ counter = "1d10"
 description = "Forged war-frames the size of houses, hired out on fixed-term contracts to break fortified lines."
 attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d10+4" }
 
+[assets.CarrierCorps]
+id = "HAWK-F6-004"
+name = "Carrier Corps"
+category = "Force"
+min_rating = 6
+hp = 15
+cost = 20
+maintenance = 0
+tech_level = 4
+speed = 19
+drift_rating = 3
+type = "Aethership"
+flags = ["S"]
+counter = "1d8"
+description = "Long-range troopships for a whole army. Moves at speed 19 (long-range). When it moves, it can carry up to ten Force assets from its place with it, for 1 Coin."
+transport = {
+  coin_cost = 1,
+  cargo_types = ["Facility", "Security Personnel", "Operative", "Stratagem", "Beast"],
+  max_cargo = 10,
+  exclude_categories = ["Cunning", "Wealth"],
+}
+
 [assets.DeepInsertionGate]
 id = "HAWK-F7-001"
 name = "Deep-Insertion Gate"
@@ -468,7 +490,7 @@ ability = {
     scope = "other",
     max_hex = 14,
     coin_cost = 2,
-    exclude_types = ["Aethership", "Starship"],
+    exclude_types = ["Aethership"],
     max_assets = 1,
     ignores_permission = true,
     ignores_lockdown = true,

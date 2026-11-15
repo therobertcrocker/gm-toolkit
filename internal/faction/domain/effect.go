@@ -292,8 +292,11 @@ type EffectContest struct {
 	Roller ContestRoller
 }
 
+// CoinGainParams is a Coin payout. Max caps a counted payout (scope world); 0 is
+// no cap.
 type CoinGainParams struct {
 	Amount DiceRoll
+	Max    int
 }
 
 type CoinStealParams struct {
@@ -330,8 +333,21 @@ type RestrictAttackParams struct {
 	Allow RestrictAllow
 }
 
+// GrantMovementParams is a free move an asset offers. A public grant is offered to
+// every faction: its owner rides free, and any other faction pays the relocate's
+// coin cost to the owner (Aether-Gate Transit Authority).
 type GrantMovementParams struct {
 	Relocate RelocateParams
+	Public   bool
+}
+
+// Fare is what riderID pays per use of a grant an asset of ownerID offers: nothing
+// for the owner of a public grant, the relocate's coin cost otherwise.
+func (params GrantMovementParams) Fare(ownerID, riderID string) int {
+	if params.Public && riderID == ownerID {
+		return 0
+	}
+	return params.Relocate.CoinCost
 }
 
 type CaptureTargetParams struct {

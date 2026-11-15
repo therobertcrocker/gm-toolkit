@@ -190,9 +190,9 @@ Green Aether falls through the Drift here in slow torrents: the richest harvest 
 
 **Region** — `meridian-cascade`
 **Magic and technology** — Low
-**Population** — Settled
+**Population** — Sparse
 
-A refinery Fragment on the Cascade that bottles green Aether into elixirs.
+A fragment that's alive and dreaming, shifting with its own will and thoughts. 
 
 ## Oblivion — `oblivion`
 

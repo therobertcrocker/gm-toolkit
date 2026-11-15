@@ -8,17 +8,14 @@ drift_costs = [10, 7, 5, 3, 2]
 
 # Every asset type this rulebook's data may name: an asset's type, a transport's
 # cargo, a relocate's filter, a shelter, an effects filter and the floors below.
-# H.A.W.K's types come first; SWN's stay for the Wealth stand-in until Effort 6
-# replaces it.
 asset_types = [
-  "Security Personnel", "Operative", "Facility", "Aethership", "Stratagem", "Beast", "Front",
-  "Military Unit", "Special Forces", "Starship", "Tactic", "Logistics Facility", "Special",
+  "Security Personnel", "Operative", "Facility", "Aethership", "Stratagem", "Beast", "Front", "Workforce",
 ]
 
 # The least world population on which an asset of each type may be bought. A
-# type left out has no floor. Quote a type with a space: "Military Unit".
+# type left out has no floor. Quote a type with a space: "Security Personnel".
 # Ships need 500,000 people or more, SWN's floor: on this map, a crowded or
-# teeming place.
+# teeming place. Labor needs a settled place or bigger.
 [purchase_population]
 Aethership = 500000
-Starship = 500000
+Workforce = 100000

@@ -50,6 +50,7 @@ func NewRelocateOrders(payload adapter.SelectRelocateOrdersPayload, rb *rulebook
 		}
 		sel := huh.NewSelect[string]().
 			Title(fmt.Sprintf("%s — relocate to?", name)).
+			Description(payload.Via).
 			Options(worldOpts...).
 			Value(&data.dests[idx])
 		if payload.MaxAssets > 0 {

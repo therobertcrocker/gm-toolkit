@@ -11,7 +11,7 @@ type effectRecord struct {
 	Effect           string                  `toml:"effect"`
 	Filters          *effectFiltersRecord    `toml:"filters"`
 	Gates            *effectGatesRecord      `toml:"gates"`
-	CoinGain         *amountRecord           `toml:"coin_gain"`
+	CoinGain         *coinGainRecord         `toml:"coin_gain"`
 	CoinSteal        *amountRecord           `toml:"coin_steal"`
 	SelfDamage       *amountRecord           `toml:"self_damage"`
 	BonusDie         *bonusDieRecord         `toml:"bonus_die"`
@@ -71,6 +71,11 @@ type amountRecord struct {
 	Amount string `toml:"amount"`
 }
 
+type coinGainRecord struct {
+	Amount string `toml:"amount"`
+	Max    int    `toml:"max"`
+}
+
 type bonusDieRecord struct {
 	Sides int `toml:"sides"`
 	Count int `toml:"count"`
@@ -97,6 +102,7 @@ type restrictAttackRecord struct {
 
 type grantMovementRecord struct {
 	Relocate *relocateRecord `toml:"relocate"`
+	Public   bool            `toml:"public"`
 }
 
 type discountRepairRecord struct {
@@ -420,11 +426,17 @@ func presentParamBlocks(record effectRecord) []domain.SpecialEffectType {
 func convertEffectParams(record effectRecord, definition *domain.EffectDefinition) error {
 	switch definition.Effect {
 	case domain.SpecialCoinGain:
-		amount, err := convertAmount(definition.Effect, record.CoinGain)
+		if record.CoinGain == nil {
+			return missingParamBlock(definition.Effect)
+		}
+		amount, err := convertAmount(definition.Effect, &amountRecord{Amount: record.CoinGain.Amount})
 		if err != nil {
 			return err
 		}
-		definition.CoinGain = &domain.CoinGainParams{Amount: amount}
+		if record.CoinGain.Max < 0 {
+			return fmt.Errorf("coin_gain max must be >= 0, got %d", record.CoinGain.Max)
+		}
+		definition.CoinGain = &domain.CoinGainParams{Amount: amount, Max: record.CoinGain.Max}
 	case domain.SpecialCoinSteal:
 		amount, err := convertAmount(definition.Effect, record.CoinSteal)
 		if err != nil {
@@ -500,7 +512,7 @@ func convertEffectParams(record effectRecord, definition *domain.EffectDefinitio
 		if err != nil {
 			return fmt.Errorf("grant_movement: %w", err)
 		}
-		definition.GrantMovement = &domain.GrantMovementParams{Relocate: *relocate}
+		definition.GrantMovement = &domain.GrantMovementParams{Relocate: *relocate, Public: record.GrantMovement.Public}
 	case domain.SpecialCaptureTarget:
 		coin, err := convertAmount(definition.Effect, record.CaptureTarget)
 		if err != nil {

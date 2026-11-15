@@ -6,11 +6,13 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// MovementAbility is a free relocation a granter offers its faction this turn.
-// Source is the granting asset; range is measured from it.
+// MovementAbility is a free relocation a granter offers a faction this turn.
+// Source is the granting asset; range is measured from it. Payee is the faction
+// the relocate's coin cost is paid to, or empty when the Coin is spent.
 type MovementAbility struct {
 	Source   *domain.Asset
 	Relocate domain.RelocateParams
+	Payee    string
 }
 
 // AssetCostQuery is the state an asset-cost chain carries from hook to hook.

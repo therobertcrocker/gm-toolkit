@@ -172,13 +172,15 @@ scope = "self"
 		entry("own_roll", "reroll", "result = 1")+
 		entry("tech_level_query", "tech_level_floor", "level = 4")+
 		entry("asset_cost_query", "cost_surcharge", "amount = 1")+
-		entry("attack_eligibility_query", "restrict_attack", `side = "defense"`+"\n"+`allow = "only_listed"`))
+		entry("attack_eligibility_query", "restrict_attack", `side = "defense"`+"\n"+`allow = "only_listed"`)+
+		entry("turn_start", "coin_gain", `amount = "1"`+"\nmax = 3")+
+		entry("movement_options_query", "grant_movement", "public = true\n[assets.Machine.effects.grant_movement.relocate]\n"+`scope = "other"`+"\n"+`range = "hexes"`+"\nmax_hex = 12\ncoin_cost = 1\n"))
 	if err != nil {
 		t.Fatalf("loadAssets: %v", err)
 	}
 	effects := assets["T-001"].Effects
-	if len(effects) != 7 {
-		t.Fatalf("effects: got %d, want 7", len(effects))
+	if len(effects) != 9 {
+		t.Fatalf("effects: got %d, want 9", len(effects))
 	}
 	checks := []struct {
 		name string
@@ -192,6 +194,8 @@ scope = "self"
 		{"tech_level_floor", effects[4].TechLevelFloor, &domain.TechLevelFloorParams{Level: 4}},
 		{"cost_surcharge", effects[5].CostSurcharge, &domain.CostSurchargeParams{Amount: 1}},
 		{"restrict_attack", effects[6].RestrictAttack, &domain.RestrictAttackParams{Side: domain.RestrictDefense, Allow: domain.AllowOnlyListed}},
+		{"coin_gain max", effects[7].CoinGain, &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}, Max: 3}},
+		{"grant_movement public", effects[8].GrantMovement != nil && effects[8].GrantMovement.Public, true},
 	}
 	for _, check := range checks {
 		if !reflect.DeepEqual(check.got, check.want) {
@@ -299,6 +303,18 @@ amount = "1"
 trigger = "turn_start"
 effect  = "coin_gain"` + filters,
 			wantErr: `effect "coin_gain" requires a [coin_gain] block`,
+		},
+		{
+			name: "coin_gain max below 0",
+			body: `
+[[assets.Machine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"` + filters + `
+[assets.Machine.effects.coin_gain]
+amount = "1"
+max = -1
+`,
+			wantErr: "coin_gain max must be >= 0",
 		},
 		{
 			name: "capture_target missing its block",
