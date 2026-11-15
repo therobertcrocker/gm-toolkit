@@ -1,0 +1,41 @@
+# The Core Sector of the Astral Sea, traced hex for hex from
+# canon/images/core-sector-grid.webp (image column = layout column + 16).
+# Regions:
+#   A=Radiance's Edge, B=Helios, C=The Bastion, D=Forgetfulness Nebula
+#   E=Harmony, F=Concordia, G=The Enclave, H=The Prime Material, I=Discordia
+#   J=Pax Proxima, K=Enigma, L=Nowhere, M=The Gulf of Null
+#   N=The Gulf of Recursion, O=The Boundless Reach, P=The Meridian Cascade
+#   Q=Oblivion, R=Infernus, S=The Maelstrom
+# Places: 1=Lumos, 2=Solar Gate, 3=Canon IV, 4=Axial Gate, 5=Tranquil Gate, 6=Eventide, 7=Ouroboros, 8=Veil,
+#   9=Haven, a=Somewhere, b=Soma, c=Lethe, d=Last Light, e=Odium, f=Abaddon's Gate, g=Arcadia
+# A * marks a Drift lane end; every pair of marks in sight of each other is a lane.
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+ . . . . . . . . . . . A A A A 2 A A A* . . B B B . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . A A A A . . . A . . . B B . . C* C C 4 . . . . . . . . . . .
+ . . . . . . . . . . . . A A . . . . . . . B . . . . C . . C C . . . . . . . . . .
+. . . . . . . . . . . . A . . . . B B B* B B . . . . . . . . 3 C . . . . . . . . .
+ . . . . . . . A A A 1 A . . . . . B B B B . . . . . . . . . C C C* . . . . . . . .
+. . . . . . . . A A A* A . . . . . . . . B B* . . . . . . . . . C C . . . . . . . .
+ . . . . . . . . . . . . . . . . . . . F F F F . . . . . . . . . C . . . . . . . .
+. . . . . . . . D D E E* E . . . . . . F* F F F 7 F . . . . . . . . . . . . . . . .
+ . . . . 5 D D D D E E . . . . . G G* . . F 6 F F F . . . . . . . . N N* N . . . . .
+. . . . . . . . . . . . . . . G G G G . . F F . . . . . . . . . . . N* N . . . . .
+ . . . . . . . . . . . . . . . . G . . . . . . . . . . . . O O O O* . . . . . . . .
+. . . . . . . . . . . . . . . . . . . . . H* H H . . . . . . O O O . . . . . . P .
+ . J J . . . . . . . . K . . . . . . . . . . 8 H . . . . . . O O O . . . . . P P .
+. . . J J* . . . . . . K* K K* . . H H H H H H* H H . . . . . . . . . . . b P P P P .
+ . . . . . . . . . . . . . . . H H H . H . . . 9 . . . . . . . . . . . P . . . . .
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . P* P P . . .
+ . . . . L L* L . a L L L L . . . . . . . . . . . . . . . . . . . . . . . P P . . .
+. . . . . . L L L L L* L L* . M M M M . . . . I I* I . . . . . . . . . . . . . . . .
+ . . . . . . . . . . . . . . M* M M M . . . I I I I I . . . S S* S g S S . . . . . .
+. . . . . . . . . Q* Q . . . . M M M . . . I I* I . . . . . . S S S S S . . . . . .
+ . . . . . . . Q Q Q Q Q . . . . . . . . . . . . S S S S . . . S S S . . . . . . .
+. . . . . . . . Q Q Q Q c Q . . . . . . R R* R R . S S S S S S S S S . . . . . . .
+ . . . . . . . . . . . . . Q d . . R R R e R R R . S S S S . . . . . . . . . . . .
+. . . . . . . . . . . . . . Q R R R . . . . . R R R S S S . . . . . . . . . . . .
+ . . . . . . . . . . . . . . . R R R . . . . . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . R R R R R R R R R R . . . . . . . . . . . . . . . . .
+ . . . . . . . . . . . . . . . . . . R R R R R R R . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . . R f R R R . . . . . . . . . . . . . . . .
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .

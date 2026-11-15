@@ -155,26 +155,26 @@ func TestResolveWorldTechLevel_PassesDefinition(t *testing.T) {
 // stubAssetSpeedModifier raises speed to a fixed floor.
 type stubAssetSpeedModifier struct{ floor int }
 
-func (stub stubAssetSpeedModifier) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+func (stub stubAssetSpeedModifier) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int, _ bool) int {
 	return max(speed, stub.floor)
 }
 
 func TestAssetSpeedResolver(t *testing.T) {
 	definition := &domain.AssetDefinition{ID: "facility"}
 	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a1": {ID: "a1", OwnerID: "f1"}}}
-	if got := AssetSpeedResolver(nil, faction)(definition); got != 0 {
+	if got := AssetSpeedResolver(nil, faction)(definition, false); got != 0 {
 		t.Errorf("nil registry: speed = %d, want the definition's 0", got)
 	}
 
 	registry := hooks.NewRegistry()
 	registry.RegisterAssetSpeedModifier(hooks.AssetScope("f1", "a1"), "own asset", stubAssetSpeedModifier{floor: 1})
 	registry.RegisterAssetSpeedModifier(hooks.AssetScope("rival", "r1"), "rival", stubAssetSpeedModifier{floor: 9})
-	if got := AssetSpeedResolver(registry, faction)(definition); got != 1 {
+	if got := AssetSpeedResolver(registry, faction)(definition, false); got != 1 {
 		t.Errorf("speed = %d, want 1: the own asset's floor is asked, the rival's never", got)
 	}
 
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("f1"), "faction", stubAssetSpeedModifier{floor: 2})
-	if got := AssetSpeedResolver(registry, faction)(definition); got != 2 {
+	if got := AssetSpeedResolver(registry, faction)(definition, false); got != 2 {
 		t.Errorf("speed = %d, want 2 from the faction's floor", got)
 	}
 }
@@ -329,7 +329,7 @@ func TestGrantedMovementAbilities_WalksFactionThenAssets(t *testing.T) {
 	registry.RegisterAssetMovementGranter(hooks.FactionScope("f1"), "faction", &stubMovementGranter{name: "faction", asked: &asked})
 	registry.RegisterAssetMovementGranter(hooks.AssetScope("rival", "r1"), "rival", &stubMovementGranter{name: "rival", asked: &asked})
 
-	abilities := GrantedMovementAbilities(registry, faction)
+	abilities := GrantedMovementAbilities(registry, map[string]*domain.Faction{"f1": faction}, faction)
 
 	var sources []string
 	for _, ability := range abilities {
@@ -345,8 +345,31 @@ func TestGrantedMovementAbilities_WalksFactionThenAssets(t *testing.T) {
 }
 
 func TestGrantedMovementAbilities_NilRegistry(t *testing.T) {
-	if got := GrantedMovementAbilities(nil, &domain.Faction{ID: "f1"}); got != nil {
+	if got := GrantedMovementAbilities(nil, nil, &domain.Faction{ID: "f1"}); got != nil {
 		t.Errorf("GrantedMovementAbilities(nil) = %v, want nil", got)
+	}
+}
+
+func TestGrantedMovementAbilities_AsksOtherFactionsAssetsLast(t *testing.T) {
+	registry := hooks.NewRegistry()
+	faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{"a": {ID: "a", OwnerID: "f1"}}}
+	factions := map[string]*domain.Faction{
+		"f1": faction,
+		"r2": {ID: "r2", Assets: map[string]*domain.Asset{"x": {ID: "x", OwnerID: "r2"}}},
+		"r1": {ID: "r1", Assets: map[string]*domain.Asset{"y": {ID: "y", OwnerID: "r1"}}},
+	}
+	var asked []string
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("r2", "x"), "x", &stubMovementGranter{name: "x", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("r1", "y"), "y", &stubMovementGranter{name: "y", asked: &asked})
+	registry.RegisterAssetMovementGranter(hooks.AssetScope("f1", "a"), "a", &stubMovementGranter{name: "a", asked: &asked})
+
+	var sources []string
+	for _, ability := range GrantedMovementAbilities(registry, factions, faction) {
+		sources = append(sources, ability.Source.ID)
+	}
+	want := []string{"a", "y", "x"}
+	if !slices.Equal(sources, want) {
+		t.Errorf("grant sources = %v, want %v (own assets, then rivals by faction ID)", sources, want)
 	}
 }
 
@@ -398,9 +421,9 @@ func (stub *stubPopulationFloor) ModifyPopulationFloor(_ *domain.Faction, _ *dom
 }
 
 func TestResolvePopulationFloor(t *testing.T) {
-	floors := map[domain.AssetType]int{domain.TypeStarship: 500000}
-	starship := &domain.AssetDefinition{ID: "ship", Type: domain.TypeStarship}
-	facility := &domain.AssetDefinition{ID: "plant", Type: domain.TypeFacility}
+	floors := map[domain.AssetType]int{domain.AssetType("Starship"): 500000}
+	starship := &domain.AssetDefinition{ID: "ship", Type: domain.AssetType("Starship")}
+	facility := &domain.AssetDefinition{ID: "plant", Type: domain.AssetType("Facility")}
 	asset := &domain.Asset{ID: "a1", OwnerID: "f1"}
 
 	plain := &domain.Faction{ID: "f1"}

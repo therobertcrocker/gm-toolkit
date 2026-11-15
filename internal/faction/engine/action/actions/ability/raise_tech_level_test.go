@@ -94,7 +94,7 @@ func TestRaiseTechLevelWorlds(t *testing.T) {
 
 	tag := &domain.Tag{ID: "T-013", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{teachStep}}}
 	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction(1)}}
-	if HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Tag: tag}, tag.Ability, factionState, engine, nil) {
+	if HasTargets(factionState.Factions["f1"], domain.AbilityHolder{Tag: tag}, tag.Ability, factionState, engine, nil, nil) {
 		t.Error("HasTargets = true for a faction that cannot pay, want false")
 	}
 }

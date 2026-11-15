@@ -97,3 +97,45 @@ func TestSacrificeSelf_NoOffer(t *testing.T) {
 		})
 	}
 }
+
+func TestSacrificeSelf_AssetTypeFilter(t *testing.T) {
+	t.Run("an unfiltered sacrifice guards a Facility", func(t *testing.T) {
+		factionState := falseFrontState()
+		x := factionState.Factions["alpha"].Assets["x"]
+		if offer := falseFrontOffer(t, factionState, hooks.LethalContext{Target: x, TargetDef: facilityDef, HPAfter: -1, Damage: 4}); offer == nil {
+			t.Error("offer = nil, want one")
+		}
+	})
+
+	cases := []struct {
+		name      string
+		targetDef *domain.AssetDefinition
+		wantOffer bool
+	}{
+		{"a listed type is guarded", militaryUnitDef, true},
+		{"an unlisted type is not", facilityDef, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factionState := falseFrontState()
+			alpha := factionState.Factions["alpha"]
+			registry := hooks.NewRegistry()
+			effects.Registrars()[domain.SpecialSacrificeSelf].Register(effect.RegisterContext{
+				Holder: effect.Holder{Faction: alpha, Asset: alpha.Assets["ff"], Def: &domain.AssetDefinition{ID: "HAWK-C1-002"}}, Registry: registry,
+				Entry: domain.EffectDefinition{
+					Trigger: domain.TriggerLethalDamage,
+					Effect:  domain.SpecialSacrificeSelf,
+					Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, AssetTypes: []domain.AssetType{"Military Unit"}},
+				},
+			})
+			interceptors := registry.LethalInterceptorsForAsset("alpha", "ff")
+			if len(interceptors) != 1 {
+				t.Fatalf("interceptors = %d, want 1", len(interceptors))
+			}
+			offer := interceptors[0].Hook.OfferInterception(hooks.LethalContext{Target: alpha.Assets["x"], TargetDef: tc.targetDef, HPAfter: -1, Damage: 4, FactionState: factionState})
+			if (offer != nil) != tc.wantOffer {
+				t.Errorf("offer = %+v, want an offer: %v", offer, tc.wantOffer)
+			}
+		})
+	}
+}

@@ -207,10 +207,19 @@ because they live under `state/`, but their logic lives on those pages.
   `settings.toml`, composed like any other data file; `rulebook.Load` requires it.
   It holds the drift costs (once `drift_costs.toml`) and the least world
   population per asset type (`[purchase_population] Starship = 500000`).
-  `drift_costs` is required; any other key left out turns its rule off, and an
-  unknown key fails the load. `rulebook.toml` stays compose-only, because its include
-  paths mean nothing inside a campaign. Older campaigns re-compose. (A.001.7
-  discovery D-10; overview R-6.)
+  `drift_costs` and `asset_types` are required; any other key left out turns its
+  rule off, and an unknown key fails the load. `rulebook.toml` stays compose-only,
+  because its include paths mean nothing inside a campaign. Older campaigns
+  re-compose. (A.001.7 discovery D-10; overview R-6.)
+- **Asset type names are rulebook data, declared in `asset_types`.** `settings.toml`
+  lists every type the rulebook's data may name, and the loader checks each use
+  against the list: an asset's `type`, a transport's cargo types, a relocate's type
+  and excluded types, a shelter's types, an effects `asset_type` filter, and the
+  `purchase_population` keys. No production Go names a type, so H.A.W.K names
+  Aethership, Front and Workforce with no code, and a misspelt type fails the load.
+  Rejected: the list in `rulebook.toml` (the compose never copies the manifest);
+  SWN's seven types as Go constants, which closed the set to one setting. (A.001.5
+  Effort 2 Decision 3.)
 - **The tag and goal loaders are strict, as the asset loader is.** An unknown key
   fails the load and a duplicate ID is refused. All three loaders share
   `refuseUnknownKeys`. The TOML decoder drops unknown keys silently, so a misspelt

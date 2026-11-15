@@ -250,6 +250,12 @@ func TestRenderGoalEvent_GovernmentAndTagLoss(t *testing.T) {
 	if !strings.Contains(lost, "Bravo") || !strings.Contains(lost, "Planetary Government") {
 		t.Errorf("tag-lost line = %q, want the faction and the tag", lost)
 	}
+	for _, kind := range []digest.GoalEventKind{digest.GoalTagLapsed, digest.GoalTagRestored} {
+		line := renderGoalEvent(digest.GoalEvent{Kind: kind, TagName: "Outsourced"}, "Bravo", rng)
+		if !strings.Contains(line, "Bravo") || !strings.Contains(line, "Outsourced") {
+			t.Errorf("kind %d line = %q, want the faction and the tag", kind, line)
+		}
+	}
 }
 
 func goalFailedDigest(cause string) digest.CycleDigest {

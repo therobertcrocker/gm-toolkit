@@ -461,6 +461,41 @@ func TestMutationEngine_TagRemoved(t *testing.T) {
 	}
 }
 
+func TestMutationEngine_TagLapsed(t *testing.T) {
+	s := newMutationTestState()
+	faction := s.Factions["f1"]
+	faction.Tags = []string{"T-1", "T-2"}
+	me := New(slog.New(slog.DiscardHandler))
+	apply := func(mutation domain.Mutation) {
+		t.Helper()
+		if err := me.Apply(s, []domain.Mutation{mutation}, slog.New(slog.DiscardHandler)); err != nil {
+			t.Fatalf("Apply: %v", err)
+		}
+	}
+
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-1", Lapsed: true})
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-1", Lapsed: true})
+	if !reflect.DeepEqual(faction.LapsedTags, []string{"T-1"}) {
+		t.Errorf("after two lapses: LapsedTags = %v, want [T-1] once", faction.LapsedTags)
+	}
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-1", Lapsed: false})
+	if len(faction.LapsedTags) != 0 {
+		t.Errorf("after the lift: LapsedTags = %v, want none", faction.LapsedTags)
+	}
+	apply(domain.TagLapsed{FactionID: "f1", TagID: "T-2", Lapsed: true})
+	apply(domain.TagRemoved{FactionID: "f1", TagID: "T-2"})
+	if len(faction.LapsedTags) != 0 {
+		t.Errorf("after removing a lapsed tag: LapsedTags = %v, want none", faction.LapsedTags)
+	}
+	err := me.Apply(s, []domain.Mutation{domain.TagLapsed{FactionID: "f1", TagID: "T-404", Lapsed: true}}, slog.New(slog.DiscardHandler))
+	if err == nil || len(err.Misses) != 1 || err.Misses[0].EntityID != "T-404" {
+		t.Errorf("lapsing a tag not held = %v, want one miss naming T-404", err)
+	}
+	if len(faction.LapsedTags) != 0 {
+		t.Errorf("after lapsing a tag not held: LapsedTags = %v, want none", faction.LapsedTags)
+	}
+}
+
 func TestMutationEngine_TagAdded(t *testing.T) {
 	s := newMutationTestState()
 	me := New(slog.New(slog.DiscardHandler))
@@ -514,16 +549,27 @@ func TestApply_ActionTakenChangesNoState(t *testing.T) {
 func TestMutationEngine_MovementOrderHeld(t *testing.T) {
 	s := newMutationTestState()
 	hexes := []spatial.RegionHex{{RegionID: "r", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 1}}, {RegionID: "r", Coord: spatial.HexCoord{Q: 2}}}
-	s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes, Destination: domain.Location{WorldID: "Krylos", RegionHex: hexes[2]}}
+	s.Factions["f1"].Assets["a1"].CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: hexes, Destination: domain.Location{WorldID: "Krylos", RegionHex: hexes[2]}, Banked: 2}
 	me := New(slog.New(slog.DiscardHandler))
 
-	held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: hexes[1], Reason: domain.HoldRefused}
+	held := domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Krylos", NewStepIdx: 1, RegionHex: hexes[1], Banked: 6, Reason: domain.HoldRefused}
 	if err := me.Apply(s, []domain.Mutation{held}, slog.New(slog.DiscardHandler)); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 	asset := s.Factions["f1"].Assets["a1"]
 	if asset.CurrentOrder == nil || asset.CurrentOrder.StepIdx != 1 {
 		t.Errorf("order = %+v, want it open at step 1", asset.CurrentOrder)
+	}
+	if asset.CurrentOrder != nil && (asset.CurrentOrder.Banked != 6 || !asset.CurrentOrder.Held) {
+		t.Errorf("order = %+v, want the hold's 6 points banked and the order marked held", asset.CurrentOrder)
+	}
+
+	progressed := domain.MovementOrderProgressed{FactionID: "f1", AssetID: "a1", NewStepIdx: 1, RegionHex: hexes[1]}
+	if err := me.Apply(s, []domain.Mutation{progressed}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if asset.CurrentOrder.Held {
+		t.Error("Held = true after a step, want it cleared")
 	}
 	if asset.Location != (domain.Location{RegionHex: hexes[1]}) {
 		t.Errorf("Location = %+v, want the edge hex with no world", asset.Location)
@@ -590,5 +636,31 @@ func TestMutationEngine_WorldTechLevelRaised(t *testing.T) {
 	apply(3)
 	if got := s.Factions["f1"].WorldTechLevels["Backwater"]; got != 4 {
 		t.Errorf("WorldTechLevels[Backwater] after a lower value = %d, want 4 kept", got)
+	}
+}
+
+func TestMutationEngine_MovementBanksPointsAndAHoldClearsThem(t *testing.T) {
+	s := newMutationTestState()
+	asset := s.Factions["f1"].Assets["a1"]
+	path := []spatial.RegionHex{{RegionID: "a", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "b", Coord: spatial.HexCoord{Q: 5}}}
+	asset.CurrentOrder = &domain.MovementOrder{AssetID: "a1", Path: path}
+	me := New(slog.New(slog.DiscardHandler))
+
+	if err := me.Apply(s, []domain.Mutation{
+		domain.MovementOrderProgressed{FactionID: "f1", AssetID: "a1", NewStepIdx: 0, RegionHex: path[0], Banked: 4},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if asset.CurrentOrder.Banked != 4 {
+		t.Errorf("Banked = %d, want 4", asset.CurrentOrder.Banked)
+	}
+
+	if err := me.Apply(s, []domain.Mutation{
+		domain.MovementOrderHeld{FactionID: "f1", AssetID: "a1", WorldID: "Anchorage", NewStepIdx: 0, RegionHex: path[0], Reason: domain.HoldLockdownPaid},
+	}, slog.New(slog.DiscardHandler)); err != nil {
+		t.Fatalf("Apply() unexpected error: %v", err)
+	}
+	if asset.CurrentOrder.Banked != 0 {
+		t.Errorf("Banked after a hold = %d, want 0", asset.CurrentOrder.Banked)
 	}
 }

@@ -581,3 +581,32 @@ to_r = 9
 		})
 	}
 }
+
+func TestAdjacent(t *testing.T) {
+	origin := HexCoord{Q: 2, R: 2}
+	for _, delta := range hexNeighbors {
+		if neighbour := (HexCoord{Q: origin.Q + delta.Q, R: origin.R + delta.R}); !Adjacent(origin, neighbour) {
+			t.Errorf("Adjacent(%v, %v) = false, want true", origin, neighbour)
+		}
+	}
+	for _, other := range []HexCoord{{Q: 2, R: 2}, {Q: 4, R: 2}, {Q: 3, R: 3}} {
+		if Adjacent(origin, other) {
+			t.Errorf("Adjacent(%v, %v) = true, want false", origin, other)
+		}
+	}
+}
+
+func TestRegionName(t *testing.T) {
+	regionMap, err := newRegionMap(map[string]*Region{
+		"c": {ID: "c", Name: "Concordia", Hexes: map[HexCoord]bool{{Q: 0, R: 0}: true}},
+	}, nil)
+	if err != nil {
+		t.Fatalf("newRegionMap: %v", err)
+	}
+	if got := regionMap.RegionName("c"); got != "Concordia" {
+		t.Errorf("RegionName(c) = %q, want Concordia", got)
+	}
+	if got := regionMap.RegionName("x"); got != "x" {
+		t.Errorf("RegionName(x) = %q, want the ID for an unknown region", got)
+	}
+}

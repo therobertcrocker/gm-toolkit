@@ -246,8 +246,47 @@ runner skips the grant.
   is on Deep Strike Landers only. A paid order holds one turn
   (`MovementOrder.LockdownPaid`) and asks for permission at the real landing; an
   order that cannot pay holds and pays at a later tick. A relocate cannot land on
-  a world the faction is locked out of. (A.001.6 overview Decision 15; Effort 5
-  Decisions 14–16.)
+  a world the faction is locked out of, unless its `RelocateParams` carry the
+  same two switches: `ignores_permission` and `ignores_lockdown` (H.A.W.K's
+  Deep-Insertion Gate), named after the transport profile's fields. A relocate
+  that ignores lockdowns owes no tolls, as the transport does. (A.001.6 overview
+  Decision 15; Effort 5 Decisions 14–16; A.001.5 Effort 4 Decision 7 and Decision
+  Record 9.)
+- **A Drift jump costs its rated movement points, in every rulebook, and unspent
+  points carry.** A tick gives an order its banked points plus the asset's speed;
+  a hex step costs 1 and a lane jump costs `DriftCost(rating)`, from the resolved
+  drift rating (a missing rating counts as 1, and a rating above the table pays the
+  table's best cost). What is left is banked on the order and spent first next
+  tick, so a trip takes its total cost divided by speed, rounded up. A ship part
+  way through a jump stays on the hex at the near end of the lane, in transit:
+  on no world, so it cannot be attacked or act, and the TUI says "In the Drift
+  between …". Before this, a jump was one path entry like a step, and `drift_costs`
+  only picked the route. Rejected: a per-rulebook switch; a jump that must start
+  at the beginning of a turn. (A.001.5 Effort 4 Decisions 18 and 19; Effort 2
+  Decision 9.)
+- **A held jump keeps its cost; a revise keeps banked points unless the order is
+  held.** A hold before a final lane jump banks that jump's cost on
+  `MovementOrderHeld`, so a held ship tries to land again next tick instead of
+  banking the whole jump again, and the order carries `Held` until a step clears
+  it. A revise copies `Banked` into the new order, because banked points are turns
+  already spent waiting; a revise of a held order drops them, because they paid
+  for landing where it was held. Rejected: a fresh start after every hold; keeping
+  a held order's points through a revise. (A.001.5 Effort 4 Decision Records 3
+  and 6.)
+- **The engine decides when an order runs hot.** Running hot is per order: speed
+  effects take a `hot` filter and `speed_bonus` adds speed only hot. An order never
+  runs hot when hot adds no speed, always runs hot when the asset moves only hot,
+  and otherwise runs as the player chose; `world.ChoosesHot` names the assets with
+  a real choice, and the movement form asks only for them. A hot move fires
+  `hot_move`, which burns the mover through `self_damage`, on each tick it moves
+  and on the tick a hold brings it to an edge, not while it waits there. Rejected:
+  a faction-wide toggle read from the faction's tags. (A.001.5 Effort 4 Decision
+  24; Decision Records 7 and 10.)
+- **An occupied door shelter stays put.** A door shelter (Leased Demiplane) with
+  an asset inside is skipped by relocate, by the move-order list and by the cargo
+  list, through one check, `domain.HoldsShelteredAsset`; moving it would leave its
+  occupant on the old world. Its occupant is sheltered and skipped by all three
+  already. (A.001.5 Effort 5 Decision Records 5 and 6.)
 - **A lockdown's fee comes only from its `lock_out` entry, with no default.** The
   binary embeds no rulebook values, so a lock whose asset has lost that entry stops
   the arrival with an error. Letting the lock lapse instead would be a rules call.

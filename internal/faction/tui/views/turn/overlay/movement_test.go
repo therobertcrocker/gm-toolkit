@@ -50,7 +50,7 @@ func TestMovementDecisions(t *testing.T) {
 		{ID: "a-cancel", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}},
 	}
 
-	o := NewMovement(eligible, rb, spatialMap)
+	o := NewMovement(eligible, nil, rb, spatialMap)
 	o.data.rows[0].kind = orderNone
 	o.data.rows[1].kind, o.data.rows[1].worldID = orderIssue, "world-b"
 	o.data.rows[2].kind, o.data.rows[2].worldID = orderRevise, "world-b"
@@ -125,7 +125,7 @@ func TestMovementEscDeclines(t *testing.T) {
 		{ID: "a-1", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}},
 	}
 
-	answer := escDoneAnswer(t, NewMovement(eligible, rb, spatialMap))
+	answer := escDoneAnswer(t, NewMovement(eligible, nil, rb, spatialMap))
 	decisions, ok := answer.([]world.MovementDecision)
 	if !ok {
 		t.Fatalf("answer = %T, want []world.MovementDecision", answer)
@@ -150,5 +150,80 @@ func TestTransportCargoEscDeclines(t *testing.T) {
 	}
 	if len(cargo) != 0 {
 		t.Errorf("cargo = %+v, want empty", cargo)
+	}
+}
+
+func TestLocationLabel(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"regions.toml": "[[region]]\nid = \"c\"\nname = \"Concordia\"\nhexes = [[0,0],[1,0]]\n\n" +
+			"[[region]]\nid = \"p\"\nname = \"The Prime Material\"\nhexes = [[5,0],[6,0]]\n\n" +
+			"[[warp]]\nfrom_region = \"c\"\nfrom_q = 1\nfrom_r = 0\nto_region = \"p\"\nto_q = 5\nto_r = 0\n",
+		"worlds.toml": "[[world]]\nid = \"world-a\"\nname = \"Alpha\"\ntech_level = 4\nregion = \"c\"\nhex_q = 0\nhex_r = 0\n\n" +
+			"[[world]]\nid = \"world-b\"\nname = \"Beta\"\ntech_level = 4\nregion = \"p\"\nhex_q = 6\nhex_r = 0\n",
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	spatialMap, err := spatial.LoadRegionMap(dir)
+	if err != nil {
+		t.Fatalf("LoadRegionMap: %v", err)
+	}
+	path := []spatial.RegionHex{
+		{RegionID: "c", Coord: spatial.HexCoord{Q: 0}}, {RegionID: "c", Coord: spatial.HexCoord{Q: 1}},
+		{RegionID: "p", Coord: spatial.HexCoord{Q: 5}}, {RegionID: "p", Coord: spatial.HexCoord{Q: 6}},
+	}
+	moving := func(banked int) *domain.Asset {
+		return &domain.Asset{ID: "s1", Location: domain.Location{RegionHex: path[1]},
+			CurrentOrder: &domain.MovementOrder{Path: path, StepIdx: 1, Banked: banked, Destination: domain.Location{WorldID: "world-b"}}}
+	}
+
+	cases := []struct {
+		name  string
+		asset *domain.Asset
+		want  string
+	}{
+		{"on a place", &domain.Asset{Location: domain.Location{WorldID: "world-a"}}, "Alpha"},
+		{"mid-jump", moving(3), "In the Drift between Concordia and The Prime Material"},
+		{"en route", moving(0), "In Concordia, en route to Beta"},
+		{"banked before a hex step", &domain.Asset{ID: "s1", Location: domain.Location{RegionHex: path[0]},
+			CurrentOrder: &domain.MovementOrder{Path: path, StepIdx: 0, Banked: 3, Destination: domain.Location{WorldID: "world-b"}}},
+			"In Concordia, en route to Beta"},
+	}
+	for _, tc := range cases {
+		if got := LocationLabel(tc.asset, spatialMap); got != tc.want {
+			t.Errorf("%s: LocationLabel = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestMovementDecisionsCarryRunHot(t *testing.T) {
+	spatialMap := testRegionMap(t)
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"scout": {ID: "scout", Name: "Scout"}}}
+	eligible := []*domain.Asset{{ID: "a-1", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}}}
+
+	o := NewMovement(eligible, map[string]bool{"a-1": true}, rb, spatialMap)
+	o.data.rows[0].kind, o.data.rows[0].worldID, o.data.rows[0].hot = orderIssue, "world-b", true
+
+	got := o.decisions()
+	if len(got) != 1 || !got[0].RunHot {
+		t.Errorf("decisions() = %+v, want one decision run hot", got)
+	}
+}
+
+func TestMovementReviseStartsAtTheOrdersHeat(t *testing.T) {
+	spatialMap := testRegionMap(t)
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{"scout": {ID: "scout", Name: "Scout"}}}
+	eligible := []*domain.Asset{
+		{ID: "hot", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}, CurrentOrder: &domain.MovementOrder{RunHot: true}},
+		{ID: "cold", DefinitionID: "scout", Location: domain.Location{WorldID: "world-a"}, CurrentOrder: &domain.MovementOrder{}},
+	}
+
+	o := NewMovement(eligible, map[string]bool{"hot": true, "cold": true}, rb, spatialMap)
+
+	if !o.data.rows[0].hot || o.data.rows[1].hot {
+		t.Errorf("toggles = %v, %v, want each to start at its order's RunHot", o.data.rows[0].hot, o.data.rows[1].hot)
 	}
 }

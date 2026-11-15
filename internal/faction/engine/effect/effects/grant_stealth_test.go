@@ -19,7 +19,7 @@ func stealthQuality() *domain.AssetDefinition {
 		Filters: domain.EffectFilters{
 			Owner:      domain.OwnerOwn,
 			Scope:      domain.ScopeWorld,
-			AssetTypes: []domain.AssetType{domain.TypeSpecialForces},
+			AssetTypes: []domain.AssetType{domain.AssetType("Special Forces")},
 			Stealthy:   &stealthy,
 		},
 	}}}
@@ -27,8 +27,8 @@ func stealthQuality() *domain.AssetDefinition {
 
 func TestGrantStealth_TargetsUnstealthedSpecialForcesOnTheWorld(t *testing.T) {
 	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
-		"sf":  {ID: "sf", Type: domain.TypeSpecialForces},
-		"mil": {ID: "mil", Type: domain.TypeMilitaryUnit},
+		"sf":  {ID: "sf", Type: domain.AssetType("Special Forces")},
+		"mil": {ID: "mil", Type: domain.AssetType("Military Unit")},
 	}}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{
 		"a-2": {ID: "a-2", DefinitionID: "sf", Location: domain.Location{WorldID: "Krylos"}},

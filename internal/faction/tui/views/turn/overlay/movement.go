@@ -31,6 +31,7 @@ type assetRow struct {
 	assetID string
 	kind    orderKind
 	worldID string
+	hot     bool
 }
 
 type movementData struct{ rows []assetRow }
@@ -45,26 +46,24 @@ type Movement struct {
 	spatialMap *spatial.RegionMap
 }
 
-func NewMovement(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) Movement {
+// NewMovement builds the form. hotChoices names the assets whose "Run hot?" is
+// the player's choice; the engine rules every other asset's heat.
+func NewMovement(eligible []*domain.Asset, hotChoices map[string]bool, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) Movement {
 	data := &movementData{rows: make([]assetRow, len(eligible))}
 	worldOpts := worldOptions(spatialMap)
-	names := worldNames(spatialMap)
 
 	groups := make([]*huh.Group, 0, len(eligible)*2)
 	for i, asset := range eligible {
 		idx := i
 		data.rows[idx].assetID = asset.ID
 
-		loc := names[asset.Location.WorldID]
-		if loc == "" {
-			loc = asset.Location.WorldID
-		}
+		loc := LocationLabel(asset, spatialMap)
 
-		kindOpts := []huh.Option[orderKind]{
-			huh.NewOption("Hold position", orderNone),
-			huh.NewOption("Issue move", orderIssue),
-		}
-		if asset.CurrentOrder != nil { // Revise/Cancel only for an asset with a live order
+		kindOpts := []huh.Option[orderKind]{huh.NewOption("Hold position", orderNone)}
+		if asset.CurrentOrder == nil {
+			kindOpts = append(kindOpts, huh.NewOption("Issue move", orderIssue))
+		} else {
+			data.rows[idx].hot = asset.CurrentOrder.RunHot
 			kindOpts = append(kindOpts,
 				huh.NewOption("Revise move", orderRevise),
 				huh.NewOption("Cancel move", orderCancel),
@@ -78,12 +77,19 @@ func NewMovement(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *sp
 				Value(&data.rows[idx].kind),
 		)
 
-		destGroup := huh.NewGroup(
+		destFields := []huh.Field{
 			huh.NewSelect[string]().
 				Title(fmt.Sprintf("%s → destination", assetName(asset, rb))).
 				Options(worldOpts...).
 				Value(&data.rows[idx].worldID),
-		).WithHideFunc(func() bool {
+		}
+		if hotChoices[asset.ID] {
+			destFields = append(destFields, huh.NewConfirm().
+				Title("Run hot?").
+				Description("Faster, but the asset takes damage each turn it moves.").
+				Value(&data.rows[idx].hot))
+		}
+		destGroup := huh.NewGroup(destFields...).WithHideFunc(func() bool {
 			k := data.rows[idx].kind
 			return k != orderIssue && k != orderRevise
 		})
@@ -138,7 +144,7 @@ func (o Movement) decisions() []world.MovementDecision {
 			if r.kind == orderRevise {
 				kind = world.MovementDecisionRevise
 			}
-			out = append(out, world.MovementDecision{AssetID: r.assetID, Kind: kind, Destination: dest})
+			out = append(out, world.MovementDecision{AssetID: r.assetID, Kind: kind, Destination: dest, RunHot: r.hot})
 		}
 	}
 	return out
@@ -163,12 +169,29 @@ func worldOptions(spatialMap *spatial.RegionMap) []huh.Option[string] {
 	return opts
 }
 
-func worldNames(spatialMap *spatial.RegionMap) map[string]string {
-	out := make(map[string]string)
-	for _, w := range spatialMap.AllWorlds() {
-		out[w.ID()] = w.Name()
+// LocationLabel names where an asset is: its place or, in transit, the Drift lane
+// it is crossing or the region it is crossing toward its destination.
+func LocationLabel(asset *domain.Asset, spatialMap *spatial.RegionMap) string {
+	if asset.Location.WorldID != "" {
+		if world, ok := spatialMap.Location(asset.Location.WorldID); ok {
+			return world.Name()
+		}
+		return asset.Location.WorldID
 	}
-	return out
+	here := spatialMap.RegionName(asset.Location.RegionHex.RegionID)
+	order := asset.CurrentOrder
+	if order == nil {
+		return "In " + here
+	}
+	// deliberate: banked points toward a lane jump mean the jump is under way, not banked points alone, because a revise keeps its points onto a path whose next step may be a hex step.
+	if order.Banked > 0 && order.StepIdx+1 < len(order.Path) && !spatial.Adjacent(order.Path[order.StepIdx].Coord, order.Path[order.StepIdx+1].Coord) {
+		return fmt.Sprintf("In the Drift between %s and %s", here, spatialMap.RegionName(order.Path[order.StepIdx+1].RegionID))
+	}
+	destination := order.Destination.WorldID
+	if world, ok := spatialMap.Location(destination); ok {
+		destination = world.Name()
+	}
+	return fmt.Sprintf("In %s, en route to %s", here, destination)
 }
 
 var _ Overlay = Movement{}

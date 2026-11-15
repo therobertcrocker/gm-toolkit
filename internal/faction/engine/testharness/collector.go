@@ -261,7 +261,7 @@ func (c *ScriptedCollector) SelectGoal(faction *domain.Faction, offers []domain.
 	return nil, nil // default: decline, so a scenario runs with no goal unless it picks one
 }
 
-func (c *ScriptedCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
+func (c *ScriptedCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset, _ map[string]bool) ([]world.MovementDecision, error) {
 	if c.SelectMovementDecisionsFn != nil {
 		return c.SelectMovementDecisionsFn(faction, eligible)
 	}

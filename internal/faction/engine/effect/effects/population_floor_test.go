@@ -17,7 +17,7 @@ func registerPopulationFloor(registry *hooks.Registry, faction *domain.Faction, 
 			Trigger: domain.TriggerPopulationFloorQuery,
 			Effect:  domain.SpecialPopulationFloor,
 			Filters: domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeFaction,
-				AssetTypes: []domain.AssetType{domain.TypeStarship}},
+				AssetTypes: []domain.AssetType{domain.AssetType("Starship")}},
 			PopulationFloor: &domain.PopulationFloorParams{Percent: percent},
 		},
 		Registry: registry,
@@ -30,9 +30,9 @@ func TestPopulationFloor_TagHolderLowersItsTypesFloor(t *testing.T) {
 	beta := &domain.Faction{ID: "beta"}
 	registry := hooks.NewRegistry()
 	registerPopulationFloor(registry, alpha, colonists, 20)
-	floors := map[domain.AssetType]int{domain.TypeStarship: 500000, domain.TypeFacility: 1000}
-	starship := &domain.AssetDefinition{ID: "ship", Type: domain.TypeStarship}
-	facility := &domain.AssetDefinition{ID: "plant", Type: domain.TypeFacility}
+	floors := map[domain.AssetType]int{domain.AssetType("Starship"): 500000, domain.AssetType("Facility"): 1000}
+	starship := &domain.AssetDefinition{ID: "ship", Type: domain.AssetType("Starship")}
+	facility := &domain.AssetDefinition{ID: "plant", Type: domain.AssetType("Facility")}
 
 	cases := []struct {
 		name    string
@@ -63,8 +63,8 @@ func TestPopulationFloor_TheLowestFloorWins(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registerPopulationFloor(registry, alpha, expertise, 2)
 	registerPopulationFloor(registry, alpha, colonists, 20)
-	floors := map[domain.AssetType]int{domain.TypeStarship: 500000}
-	starship := &domain.AssetDefinition{ID: "ship", Type: domain.TypeStarship}
+	floors := map[domain.AssetType]int{domain.AssetType("Starship"): 500000}
+	starship := &domain.AssetDefinition{ID: "ship", Type: domain.AssetType("Starship")}
 
 	if got := dispatch.ResolvePopulationFloor(registry, alpha, starship, floors); got != 10000 {
 		t.Errorf("floor = %d, want 10000 (2%% beats 20%% in either order)", got)

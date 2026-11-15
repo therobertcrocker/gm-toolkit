@@ -37,6 +37,9 @@ const (
 	SpecialXPRoll             SpecialEffectType = "xp_roll"
 	SpecialPopulationFloor    SpecialEffectType = "population_floor"
 	SpecialArrivalToll        SpecialEffectType = "arrival_toll"
+	SpecialDriftRatingBonus   SpecialEffectType = "drift_rating_bonus"
+	SpecialCoinUpkeep         SpecialEffectType = "coin_upkeep"
+	SpecialSpeedBonus         SpecialEffectType = "speed_bonus"
 )
 
 type EffectTrigger string
@@ -68,6 +71,9 @@ const (
 	TriggerGoalCompleted          EffectTrigger = "goal_completed"
 	TriggerPopulationFloorQuery   EffectTrigger = "population_floor_query"
 	TriggerArrivalQuery           EffectTrigger = "arrival_query"
+	TriggerDriftRatingQuery       EffectTrigger = "drift_rating_query"
+	TriggerUpkeep                 EffectTrigger = "upkeep"
+	TriggerHotMove                EffectTrigger = "hot_move"
 )
 
 // EffectOwner names whose side of the trigger's event an entry matches. The
@@ -111,6 +117,8 @@ const (
 	FilterGoal              EffectFilterName = "goal"
 	FilterDetection         EffectFilterName = "detection"
 	FilterAssetDefinition   EffectFilterName = "asset_definition"
+	FilterOpponentTag       EffectFilterName = "opponent_tag"
+	FilterHot               EffectFilterName = "hot"
 )
 
 type EffectGateName string
@@ -199,6 +207,11 @@ type EffectFilters struct {
 	// AssetDefinition names the rolling asset's definition ID (the Eugenics Cult
 	// die on Gengineered Slaves).
 	AssetDefinition string
+	// OpponentTag names a tag the faction on the other side of the roll holds
+	// (Godslayers' die against Soul-Bonded).
+	OpponentTag string
+	// Hot limits a speed effect to move orders run hot (Aether Burners).
+	Hot bool
 }
 
 func (filters EffectFilters) Used() []EffectFilterName {
@@ -245,6 +258,12 @@ func (filters EffectFilters) Used() []EffectFilterName {
 	if filters.AssetDefinition != "" {
 		present = append(present, FilterAssetDefinition)
 	}
+	if filters.OpponentTag != "" {
+		present = append(present, FilterOpponentTag)
+	}
+	if filters.Hot {
+		present = append(present, FilterHot)
+	}
 	return present
 }
 
@@ -273,8 +292,11 @@ type EffectContest struct {
 	Roller ContestRoller
 }
 
+// CoinGainParams is a Coin payout. Max caps a counted payout (scope world); 0 is
+// no cap.
 type CoinGainParams struct {
 	Amount DiceRoll
+	Max    int
 }
 
 type CoinStealParams struct {
@@ -311,8 +333,21 @@ type RestrictAttackParams struct {
 	Allow RestrictAllow
 }
 
+// GrantMovementParams is a free move an asset offers. A public grant is offered to
+// every faction: its owner rides free, and any other faction pays the relocate's
+// coin cost to the owner (Aether-Gate Transit Authority).
 type GrantMovementParams struct {
 	Relocate RelocateParams
+	Public   bool
+}
+
+// Fare is what riderID pays per use of a grant an asset of ownerID offers: nothing
+// for the owner of a public grant, the relocate's coin cost otherwise.
+func (params GrantMovementParams) Fare(ownerID, riderID string) int {
+	if params.Public && riderID == ownerID {
+		return 0
+	}
+	return params.Relocate.CoinCost
 }
 
 type CaptureTargetParams struct {
@@ -346,29 +381,60 @@ type PopulationFloorParams struct {
 	Percent int
 }
 
+// DriftRatingBonusParams raises the drift rating the holder's assets cross with.
+type DriftRatingBonusParams struct {
+	Amount int
+}
+
+// SpeedBonusParams adds Amount to the speed of the holder's matching assets.
+type SpeedBonusParams struct {
+	Amount int
+}
+
+// UpkeepUnpaid names what an unpaid upkeep costs the tag's holder.
+type UpkeepUnpaid string
+
+const (
+	UnpaidLapse   UpkeepUnpaid = "lapse"
+	UnpaidLoseTag UpkeepUnpaid = "lose_tag"
+	UnpaidDamage  UpkeepUnpaid = "damage"
+)
+
+// CoinUpkeepParams is a tag's turn upkeep: Amount Coin, charged in bookkeeping
+// after income and before asset maintenance. OnUnpaid is what a miss costs; Damage
+// is the faction HP an UnpaidDamage miss takes, and 0 otherwise.
+type CoinUpkeepParams struct {
+	Amount   int
+	OnUnpaid UpkeepUnpaid
+	Damage   int
+}
+
 // EffectDefinition is one entry of an asset's effects list. At most one
 // parameter pointer is set: the one named by Effect, when that effect takes
 // parameters.
 type EffectDefinition struct {
-	Trigger         EffectTrigger
-	Effect          SpecialEffectType
-	Filters         EffectFilters
-	Gates           EffectGates
-	CoinGain        *CoinGainParams
-	CoinSteal       *CoinStealParams
-	SelfDamage      *SelfDamageParams
-	BonusDie        *BonusDieParams
-	Reroll          *RerollParams
-	TechLevelFloor  *TechLevelFloorParams
-	CostSurcharge   *CostSurchargeParams
-	RestrictAttack  *RestrictAttackParams
-	GrantMovement   *GrantMovementParams
-	CaptureTarget   *CaptureTargetParams
-	DiscountRepair  *DiscountRepairParams
-	CostDiscount    *CostDiscountParams
-	SpeedFloor      *SpeedFloorParams
-	XPRoll          *TargetRoll
-	PopulationFloor *PopulationFloorParams
-	ArrivalToll     *ArrivalTollParams
-	LockOut         *LockOutParams
+	Trigger          EffectTrigger
+	Effect           SpecialEffectType
+	Filters          EffectFilters
+	Gates            EffectGates
+	CoinGain         *CoinGainParams
+	CoinSteal        *CoinStealParams
+	SelfDamage       *SelfDamageParams
+	BonusDie         *BonusDieParams
+	Reroll           *RerollParams
+	TechLevelFloor   *TechLevelFloorParams
+	CostSurcharge    *CostSurchargeParams
+	RestrictAttack   *RestrictAttackParams
+	GrantMovement    *GrantMovementParams
+	CaptureTarget    *CaptureTargetParams
+	DiscountRepair   *DiscountRepairParams
+	CostDiscount     *CostDiscountParams
+	SpeedFloor       *SpeedFloorParams
+	XPRoll           *TargetRoll
+	PopulationFloor  *PopulationFloorParams
+	ArrivalToll      *ArrivalTollParams
+	LockOut          *LockOutParams
+	DriftRatingBonus *DriftRatingBonusParams
+	CoinUpkeep       *CoinUpkeepParams
+	SpeedBonus       *SpeedBonusParams
 }

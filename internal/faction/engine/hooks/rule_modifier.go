@@ -6,11 +6,13 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
 )
 
-// MovementAbility is a free relocation a granter offers its faction this turn.
-// Source is the granting asset; range is measured from it.
+// MovementAbility is a free relocation a granter offers a faction this turn.
+// Source is the granting asset; range is measured from it. Payee is the faction
+// the relocate's coin cost is paid to, or empty when the Coin is spent.
 type MovementAbility struct {
 	Source   *domain.Asset
 	Relocate domain.RelocateParams
+	Payee    string
 }
 
 // AssetCostQuery is the state an asset-cost chain carries from hook to hook.
@@ -55,10 +57,31 @@ type WorldTechLevelModifier interface {
 	ModifyWorldTechLevel(faction *domain.Faction, def *domain.AssetDefinition, world string, baseTL int) int
 }
 
-// AssetSpeedModifier adjusts the speed, in hexes a turn, of an asset faction
-// owns, read by the movement phase (Cat 4).
+// AssetSpeedModifier adjusts the speed, in movement points a turn, of an asset
+// faction owns, read by the movement phase (Cat 4). hot reports a move order run
+// hot (Aether Burners).
 type AssetSpeedModifier interface {
-	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int) int
+	ModifyAssetSpeed(faction *domain.Faction, def *domain.AssetDefinition, speed int, hot bool) int
+}
+
+// UpkeepCharger is a tag's turn upkeep, read by bookkeeping after income and
+// before asset maintenance (Cat 4). UpkeepDue reports the upkeep while faction
+// still holds the tag, lapsed or not: a lapsed tag keeps paying, so it can lift
+// its own lapse.
+type UpkeepCharger interface {
+	UpkeepDue(faction *domain.Faction) (TagUpkeep, bool)
+}
+
+// TagUpkeep is one tag's upkeep for one turn.
+type TagUpkeep struct {
+	TagID  string
+	Params domain.CoinUpkeepParams
+}
+
+// AssetDriftRatingModifier adjusts the drift rating an asset faction owns crosses
+// the Drift with, read when a movement order is priced (Cat 4).
+type AssetDriftRatingModifier interface {
+	ModifyAssetDriftRating(faction *domain.Faction, def *domain.AssetDefinition, rating int) int
 }
 
 // ArrivalToll is the Coin a landing asset owes FactionID, the faction that

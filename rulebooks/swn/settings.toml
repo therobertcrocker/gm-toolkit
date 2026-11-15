@@ -1,8 +1,12 @@
-# Setting rules for this rulebook. drift_costs is required; every other key is
-# optional, and a key left out turns its rule off.
+# Setting rules for this rulebook. drift_costs and asset_types are required; every
+# other key is optional, and a key left out turns its rule off.
 
 # drift_costs[i] = hex-equivalent crossing cost for drift rating (i+1)
 drift_costs = [5, 4, 3, 2, 1]
+
+# Every asset type this rulebook's data may name: an asset's type, a transport's
+# cargo, a relocate's filter, an effects filter and the floors below.
+asset_types = ["Military Unit", "Special Forces", "Facility", "Starship", "Tactic", "Logistics Facility", "Special"]
 
 # The least world population on which an asset of each type may be bought. A
 # type left out has no floor. Quote a type with a space: "Military Unit".

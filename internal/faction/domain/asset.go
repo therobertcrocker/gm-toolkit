@@ -8,17 +8,9 @@ import (
 	"strings"
 )
 
+// AssetType names an asset type. Each rulebook's settings.toml declares the names
+// its data uses; the engine names none (A.001.5 Effort 2 Decision 3).
 type AssetType string
-
-const (
-	TypeMilitaryUnit      AssetType = "Military Unit"
-	TypeSpecialForces     AssetType = "Special Forces"
-	TypeFacility          AssetType = "Facility"
-	TypeStarship          AssetType = "Starship"
-	TypeTactic            AssetType = "Tactic"
-	TypeLogisticsFacility AssetType = "Logistics Facility"
-	TypeSpecial           AssetType = "Special"
-)
 
 type AssetFlag string
 
@@ -67,6 +59,7 @@ const (
 	EffectBlockAttack      AbilityEffectType = "block_attack"
 	EffectLevyCoin         AbilityEffectType = "levy_coin"
 	EffectRaiseTechLevel   AbilityEffectType = "raise_tech_level"
+	EffectShelter          AbilityEffectType = "shelter"
 )
 
 type RelocateScope string
@@ -100,16 +93,20 @@ const (
 // RangeHexes (ignored for RangeRegion); CoinCost is charged per CoinCostMode; AssetType
 // filters "other" candidates (empty = any), Categories narrows them by asset category
 // (empty = any) and ExcludeTypes drops types; MaxAssets caps the count moved (0 = unbounded).
+// IgnoresPermission lands each asset without asking the government, and IgnoresLockdown
+// lands it past a Transport Lockdown, as a transport profile's fields do (Deep-Insertion Gate).
 type RelocateParams struct {
-	Scope        RelocateScope
-	Range        RelocateRange
-	MaxHex       int
-	CoinCost     int
-	CoinCostMode RelocateCostMode
-	AssetType    AssetType
-	Categories   []FactionStat
-	ExcludeTypes []AssetType
-	MaxAssets    int
+	Scope             RelocateScope
+	Range             RelocateRange
+	MaxHex            int
+	CoinCost          int
+	CoinCostMode      RelocateCostMode
+	AssetType         AssetType
+	Categories        []FactionStat
+	ExcludeTypes      []AssetType
+	MaxAssets         int
+	IgnoresPermission bool
+	IgnoresLockdown   bool
 }
 
 // PurchaseParams configures a purchase_enabler step (Pretech Logistics). Category is the
@@ -129,6 +126,13 @@ type PurchaseParams struct {
 type RaiseTechLevelParams struct {
 	CoinCost  int
 	TechLevel int
+}
+
+// ShelterParams configures a shelter step (Leased Demiplane): AssetTypes are the
+// own asset types it may take in, and Capacity is how many it holds at once.
+type ShelterParams struct {
+	AssetTypes []AssetType
+	Capacity   int
 }
 
 type TargetKind string
@@ -178,6 +182,7 @@ type AbilityStep struct {
 	Relocate       *RelocateParams
 	Purchase       *PurchaseParams
 	RaiseTechLevel *RaiseTechLevelParams
+	Shelter        *ShelterParams
 }
 
 type AbilityOutcome struct {
@@ -270,6 +275,20 @@ func (def *AssetDefinition) NeedsArrivalPermission(asset *Asset) bool {
 // use it; a sale is worth Cost / 2 with no floor.
 func (def *AssetDefinition) HalfPrice() int {
 	return max(1, def.Cost/2)
+}
+
+// Shelter returns the parameters of the definition's shelter step (Leased
+// Demiplane), or nil when it has none.
+func (def *AssetDefinition) Shelter() *ShelterParams {
+	if def == nil || def.Ability == nil {
+		return nil
+	}
+	for _, step := range def.Ability.Steps {
+		if step.Effect == EffectShelter {
+			return step.Shelter
+		}
+	}
+	return nil
 }
 
 type ConditionKind string

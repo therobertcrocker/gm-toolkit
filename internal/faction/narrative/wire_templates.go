@@ -109,6 +109,16 @@ var goalTagLostTemplates = []string{
 	"{faction} no longer holds {tag}.",
 }
 
+var goalTagLapsedTemplates = []string{
+	"{faction} could not pay the upkeep on {tag}, and it lapsed.",
+	"Unpaid upkeep: {faction}'s {tag} has gone dark.",
+}
+
+var goalTagRestoredTemplates = []string{
+	"{faction} paid the upkeep on {tag}, and it is back in force.",
+	"Upkeep settled: {faction}'s {tag} is restored.",
+}
+
 var refusalTemplates = []string{
 	"{decider} refused {faction} permission to {verb} {asset} on {world}.",
 	"Permission denied: {decider} would not let {faction} {verb} {asset} on {world}.",

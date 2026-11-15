@@ -43,6 +43,9 @@ type Request struct {
 	Registry     *hooks.Registry
 	FactionState *state.FactionState
 	Collector    Collector
+	// Payee is the faction each moved order's coin cost is paid to, or empty when
+	// the Coin is spent (a public grant's fare, Effort 6 Decision 11).
+	Payee string
 }
 
 // Run resolves a relocation: gather the movable candidates (the acting asset for
@@ -89,7 +92,10 @@ func Run(request Request) ([]domain.Mutation, error) {
 	if len(candidates) == 0 {
 		return nil, fmt.Errorf("relocate: %w", ErrNoCandidates)
 	}
-	destinations := lockedOutRemoved(request, candidateWorlds)
+	destinations := candidateWorlds
+	if !params.IgnoresLockdown {
+		destinations = lockedOutRemoved(request, candidateWorlds)
+	}
 	if len(destinations) == 0 {
 		return nil, fmt.Errorf("relocate: every destination is locked out: %w", ErrNoCandidates)
 	}
@@ -148,23 +154,28 @@ func Run(request Request) ([]domain.Mutation, error) {
 			orderCost = 0
 		}
 		dest := domain.Location{WorldID: order.DestinationWorld, RegionHex: loc.RegionHex()}
-		// DR-2: the primitive validates membership in destinations (the range-filtered set, less the locked worlds).
+		// DR-2: the primitive validates membership in destinations (the range-filtered set, less the locked worlds unless the relocate ignores lockdowns).
 		muts, err := request.World.BuildRelocateMutations(request.Faction, order.Asset, dest, destinations, orderCost)
 		if err != nil {
 			return nil, fmt.Errorf("relocate: %w", err)
 		}
 		mutations = append(mutations, muts...)
 		mutations = append(mutations, dispatch.TollCharges(order.Asset.OwnerID, tolls[i])...)
+		if request.Payee != "" && orderCost > 0 {
+			// deliberate: the rider's charge stays caused by the rider, not the payee, because the rider chose the fare; Liability Waivers would otherwise cancel it while the payee is still paid.
+			mutations = append(mutations, domain.CoinDelta{FactionID: request.Payee, Delta: orderCost, Cause: "fare", CausedByFactionID: request.Faction.ID})
+		}
 		moved++
 	}
 	return mutations, nil
 }
 
 // askLanding asks the destination's government whether order's asset may land
-// there: a relocate asks at its one step (D-24). It returns the refusal, or nil.
+// there: a relocate asks at its one step (D-24). A relocate that ignores
+// permission asks no one. It returns the refusal, or nil.
 func askLanding(request Request, order action.RelocateOrder) (*domain.PermissionRefused, error) {
 	def := request.Rulebook.Assets[order.Asset.DefinitionID]
-	if def == nil {
+	if def == nil || request.Params.IgnoresPermission {
 		return nil, nil
 	}
 	return dispatch.RequestArrivalPermission(request.Registry, request.Collector, request.FactionState, request.Rulebook, request.Faction, order.Asset, def, order.DestinationWorld, domain.PermissionCauseRelocate)
@@ -185,9 +196,9 @@ func lockedOutRemoved(request Request, candidateWorlds []string) []string {
 
 // affordableDestinations drops each world whose tolls, beside the relocate's own
 // cost for one asset, are more than the faction holds: a mover with no Coin cannot
-// order the move (D-6).
+// order the move (D-6). A relocate that ignores lockdowns owes no tolls.
 func affordableDestinations(request Request, destinations []string) []string {
-	if request.FactionState == nil {
+	if request.FactionState == nil || request.Params.IgnoresLockdown {
 		return destinations
 	}
 	return slices.DeleteFunc(slices.Clone(destinations), func(worldID string) bool {
@@ -199,9 +210,10 @@ func affordableDestinations(request Request, destinations []string) []string {
 
 // orderTolls returns the tolls order's asset owes on landing. An other-scope
 // relocate may pick the world an asset already stands on; that asset lands nowhere
-// and owes none.
+// and owes none. A relocate that ignores lockdowns owes none either, as a transport
+// that ignores them does.
 func orderTolls(request Request, order action.RelocateOrder) []hooks.ArrivalToll {
-	if request.FactionState == nil || order.Asset.Location.WorldID == order.DestinationWorld {
+	if request.FactionState == nil || request.Params.IgnoresLockdown || order.Asset.Location.WorldID == order.DestinationWorld {
 		return nil
 	}
 	return dispatch.AssetArrivalTolls(request.Registry, request.FactionState.Factions, order.Asset, order.DestinationWorld)
@@ -225,7 +237,12 @@ func eligibleAssets(request Request, candidateWorlds []string) []*domain.Asset {
 		if _, ok := inRange[asset.Location.WorldID]; !ok {
 			continue
 		}
-		if !matchesFilters(request.Rulebook.Assets[asset.DefinitionID], request.Params) {
+		def := request.Rulebook.Assets[asset.DefinitionID]
+		if !matchesFilters(def, request.Params) {
+			continue
+		}
+		// deliberate: skip a door shelter that holds an asset, not move it, because the asset is inside it and would be left on the old world.
+		if request.FactionState != nil && domain.HoldsShelteredAsset(request.FactionState.Factions, asset, def) {
 			continue
 		}
 		eligible = append(eligible, asset)

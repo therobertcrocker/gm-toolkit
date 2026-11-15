@@ -231,10 +231,29 @@ func (e *Engine) runBookkeepingPhase(
 	return nil
 }
 
-// runConditionLifts offers the faction's disabled assets their price and applies
-// the lifts it pays for. A recoverable failure is reported and lifts nothing.
+// runConditionLifts offers the faction's disabled assets their price, then its
+// sheltered assets a free release, and applies each round's accepted offers on
+// its own, so a failed release prompt keeps the lifts already paid for.
 func (e *Engine) runConditionLifts(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, collector PhaseCollector, observer TurnObserver, phaseLog *slog.Logger) ([]domain.Mutation, error) {
-	mutations, err := turn.OfferConditionLifts(faction, e.Rulebook, collector)
+	lifts, err := e.applyOffers(faction, factionState, paths, observer, phaseLog, func() ([]domain.Mutation, error) {
+		return turn.OfferConditionLifts(faction, e.Rulebook, collector)
+	})
+	if err != nil {
+		return nil, err
+	}
+	releases, err := e.applyOffers(faction, factionState, paths, observer, phaseLog, func() ([]domain.Mutation, error) {
+		return turn.OfferShelterReleases(faction, factionState, e.Rulebook, collector)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append(lifts, releases...), nil
+}
+
+// applyOffers makes one round of turn-start offers and applies what the faction
+// accepts. A recoverable failure is reported and applies nothing.
+func (e *Engine) applyOffers(faction *domain.Faction, factionState *state.FactionState, paths *campaigns.Paths, observer TurnObserver, phaseLog *slog.Logger, offer func() ([]domain.Mutation, error)) ([]domain.Mutation, error) {
+	mutations, err := offer()
 	if err == nil && len(mutations) > 0 {
 		mutations, err = e.applyAndRecord(factionState, faction, mutations, paths, phaseLog)
 	}
@@ -432,7 +451,7 @@ func (e *Engine) runMovementPhase(
 		observer.OnMovementTicked(faction, tickMutations)
 	}
 
-	decisionMutations, err := prepareMovementDecisions(faction, collectors.Phase, e.World, e.Rulebook, e.Hooks, worldLog)
+	decisionMutations, err := prepareMovementDecisions(faction, factionState.Factions, collectors.Phase, e.World, e.Rulebook, e.Hooks, worldLog)
 	if err != nil {
 		if factionErrors.IsRecoverable(err) {
 			phaseLog.Warn("recoverable failure", "err", err)
@@ -781,17 +800,25 @@ func prepareStatRaise(faction *domain.Faction, collector PhaseCollector) (*domai
 
 func prepareMovementDecisions(
 	faction *domain.Faction,
+	factions map[string]*domain.Faction,
 	collector PhaseCollector,
 	worldEngine *world.WorldEngine,
 	rulebook *rulebook.Rulebook,
 	registry *hooks.Registry,
 	worldLog *slog.Logger,
 ) ([]domain.Mutation, error) {
-	eligible := eligibleMovableAssets(faction, rulebook, registry)
+	speedOf := dispatch.AssetSpeedResolver(registry, faction)
+	eligible := eligibleMovableAssets(faction, factions, rulebook, speedOf)
 	if len(eligible) == 0 {
 		return nil, nil
 	}
-	decisions, err := collector.SelectMovementDecisions(faction, eligible)
+	hotChoices := make(map[string]bool)
+	for _, asset := range eligible {
+		if world.ChoosesHot(speedOf, rulebook.Assets[asset.DefinitionID]) {
+			hotChoices[asset.ID] = true
+		}
+	}
+	decisions, err := collector.SelectMovementDecisions(faction, eligible, hotChoices)
 	if err != nil {
 		return nil, fmt.Errorf("selecting movement decisions: %w", err)
 	}
@@ -816,7 +843,7 @@ func prepareMovementDecisions(
 			continue
 		}
 		// deliberate: an asset ordered in this batch is not offered as cargo, because a speed floor (Mercenary Group) lets an immobile asset take its own order (Effort 2 Decision 8).
-		cargoEligible := slices.DeleteFunc(eligibleCargoForTransport(faction, asset, def.Transport, rulebook), func(cargo *domain.Asset) bool {
+		cargoEligible := slices.DeleteFunc(eligibleCargoForTransport(faction, factions, asset, def.Transport, rulebook), func(cargo *domain.Asset) bool {
 			return ordered[cargo.ID]
 		})
 		cargoSelected, err := collector.SelectTransportCargo(asset, cargoEligible, def.Transport)
@@ -840,10 +867,10 @@ func prepareMovementDecisions(
 		decisions[i].CargoAssetIDs = cargoIDs
 	}
 
-	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, worldLog)
+	return worldEngine.BuildMovementMutations(decisions, faction, rulebook, registry, speedOf, worldLog)
 }
 
-func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook, registry *hooks.Registry) []*domain.Asset {
+func eligibleMovableAssets(faction *domain.Faction, factions map[string]*domain.Faction, rulebook *rulebook.Rulebook, speedOf func(*domain.AssetDefinition, bool) int) []*domain.Asset {
 	// Cargo has no order of its own: only its transport's order lists it.
 	riding := make(map[string]bool)
 	for _, asset := range faction.Assets {
@@ -853,7 +880,6 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook,
 			}
 		}
 	}
-	speedOf := dispatch.AssetSpeedResolver(registry, faction)
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		if riding[asset.ID] {
@@ -861,18 +887,18 @@ func eligibleMovableAssets(faction *domain.Faction, rulebook *rulebook.Rulebook,
 		}
 		def := rulebook.Assets[asset.DefinitionID]
 		// deliberate: a sheltered asset stays put, not moves, because Boltholes make it unusable until repaired (Effort 2 Decision 11).
-		if def == nil || asset.HasCondition(domain.ConditionSheltered) {
+		if def == nil || asset.HasCondition(domain.ConditionSheltered) || domain.HoldsShelteredAsset(factions, asset, def) {
 			continue
 		}
 		// deliberate: an open order keeps the asset listed at speed 0, not drops it, because a lost speed floor would freeze the order with no way to cancel it (Effort 2 Decision Record 5).
-		if asset.CurrentOrder != nil || speedOf(def) > 0 {
+		if asset.CurrentOrder != nil || speedOf(def, false) > 0 || speedOf(def, true) > 0 {
 			eligible = append(eligible, asset)
 		}
 	}
 	return eligible
 }
 
-func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset, profile *domain.TransportProfile, rulebook *rulebook.Rulebook) []*domain.Asset {
+func eligibleCargoForTransport(faction *domain.Faction, factions map[string]*domain.Faction, transport *domain.Asset, profile *domain.TransportProfile, rulebook *rulebook.Rulebook) []*domain.Asset {
 	var eligible []*domain.Asset
 	for _, asset := range faction.Assets {
 		if asset.ID == transport.ID {
@@ -880,7 +906,7 @@ func eligibleCargoForTransport(faction *domain.Faction, transport *domain.Asset,
 		}
 		def := rulebook.Assets[asset.DefinitionID]
 		// deliberate: the definition's speed, not the resolved one, because a speed floor adds a way to move and does not take the ride away (Effort 2 Decision 8).
-		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) {
+		if def == nil || asset.CurrentOrder != nil || def.Speed > 0 || asset.HasCondition(domain.ConditionSheltered) || domain.HoldsShelteredAsset(factions, asset, def) {
 			continue
 		}
 		if slices.Contains(profile.CargoTypes, def.Type) &&
@@ -910,7 +936,7 @@ func (e *Engine) runGrantedMovement(
 	phaseLog *slog.Logger,
 ) ([]domain.Mutation, error) {
 	var resolved []domain.Mutation
-	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, faction) {
+	for _, grant := range dispatch.GrantedMovementAbilities(e.Hooks, factionState.Factions, faction) {
 		params := grant.Relocate
 		mutations, err := relocate.Run(relocate.Request{
 			Faction:      faction,
@@ -921,10 +947,14 @@ func (e *Engine) runGrantedMovement(
 			Registry:     e.Hooks,
 			FactionState: factionState,
 			Collector:    collector,
+			Payee:        grant.Payee,
 		})
 		if errors.Is(err, relocate.ErrInsufficientCoin) {
 			phaseLog.Warn("granted movement skipped", "source", grant.Source.ID, "err", err)
-			observer.OnError(faction, err)
+			// deliberate: only the grant's owner hears it cannot pay, not a rider, because a rider is offered a rival's public grant every turn without asking for it.
+			if grant.Payee == "" {
+				observer.OnError(faction, err)
+			}
 			continue
 		}
 		// deliberate: Esc declines this grant, not the turn, because the decision batch has already applied and must still resolve.

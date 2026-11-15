@@ -12,6 +12,7 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/effect/effects"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/mutation"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/relocate"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/turn"
@@ -29,6 +30,7 @@ type minimalPhaseCollector struct {
 	selectTransportCargo func(*domain.Asset, []*domain.Asset, *domain.TransportProfile) ([]*domain.Asset, error)
 	selectRelocateOrders func(*domain.Asset, []*domain.Asset, []string, int) ([]action.RelocateOrder, error)
 	requestPermission    func(hooks.PermissionRequest) (bool, error)
+	confirmPayment       func(hooks.PaymentOffer) (bool, error)
 }
 
 func (c *minimalPhaseCollector) AwaitCheckpoint(_ string) error { return nil }
@@ -41,7 +43,7 @@ func (c *minimalPhaseCollector) SelectStatRaise(_ *domain.Faction, _ []domain.Fa
 func (c *minimalPhaseCollector) SelectGoal(_ *domain.Faction, _ []domain.GoalOffer) (*domain.GoalChoice, error) {
 	return nil, nil
 }
-func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
+func (c *minimalPhaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset, _ map[string]bool) ([]world.MovementDecision, error) {
 	if c.movementDecisionsFn != nil {
 		return c.movementDecisionsFn(faction, eligible)
 	}
@@ -59,7 +61,10 @@ func (c *minimalPhaseCollector) SelectRelocateOrders(acting *domain.Asset, candi
 	}
 	return nil, nil
 }
-func (c *minimalPhaseCollector) ConfirmPayment(_ hooks.PaymentOffer) (bool, error) {
+func (c *minimalPhaseCollector) ConfirmPayment(offer hooks.PaymentOffer) (bool, error) {
+	if c.confirmPayment != nil {
+		return c.confirmPayment(offer)
+	}
 	return false, nil
 }
 func (c *minimalPhaseCollector) RequestPermission(request hooks.PermissionRequest) (bool, error) {
@@ -94,12 +99,12 @@ func transportRulebook() *rulebook.Rulebook {
 				Transport: &domain.TransportProfile{
 					MaxHex:     4,
 					CoinCost:   1,
-					CargoTypes: []domain.AssetType{domain.TypeSpecialForces},
+					CargoTypes: []domain.AssetType{domain.AssetType("Special Forces")},
 					MaxCargo:   1,
 				},
 			},
-			"sf-def": {ID: "sf-def", Type: domain.TypeSpecialForces},
-			"mu-def": {ID: "mu-def", Type: domain.TypeMilitaryUnit},
+			"sf-def": {ID: "sf-def", Type: domain.AssetType("Special Forces")},
+			"mu-def": {ID: "mu-def", Type: domain.AssetType("Military Unit")},
 		},
 		DriftCosts: []int{5},
 	}
@@ -170,7 +175,7 @@ func TestEligibleCargoForTransport(t *testing.T) {
 					tc.asset.ID:  tc.asset,
 				},
 			}
-			eligible := eligibleCargoForTransport(faction, transport, profile, rb)
+			eligible := eligibleCargoForTransport(faction, nil, transport, profile, rb)
 			found := false
 			for _, a := range eligible {
 				if a.ID == tc.asset.ID {
@@ -192,7 +197,7 @@ func TestEligibleMovableAssets_SkipsSheltered(t *testing.T) {
 	sheltered := &domain.Asset{ID: "t-sheltered", DefinitionID: "transport-def", OwnerID: "alpha", Conditions: shelteredByBoltholes}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{free.ID: free, sheltered.ID: sheltered}}
 
-	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
+	eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(nil, faction))
 
 	if len(eligible) != 1 || eligible[0].ID != "t-free" {
 		t.Errorf("eligible = %v, want only t-free", eligible)
@@ -206,8 +211,52 @@ func TestEligibleCargoForTransport_SkipsSheltered(t *testing.T) {
 	sheltered := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc, Conditions: shelteredByBoltholes}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, sheltered.ID: sheltered}}
 
-	if eligible := eligibleCargoForTransport(faction, transport, rb.Assets["transport-def"].Transport, rb); len(eligible) != 0 {
+	if eligible := eligibleCargoForTransport(faction, nil, transport, rb.Assets["transport-def"].Transport, rb); len(eligible) != 0 {
 		t.Errorf("eligible = %v, want none", eligible)
+	}
+}
+
+// occupiedDoorShelter is a faction holding two door shelters of a cargo type on
+// one place, one with an asset inside, for the occupied-shelter guards (A.001.5
+// effort close review).
+func occupiedDoorShelter() (*domain.Faction, *domain.Asset, *rulebook.Rulebook) {
+	loc := domain.Location{WorldID: "world-a"}
+	rb := transportRulebook()
+	rb.Assets["door-def"] = &domain.AssetDefinition{ID: "door-def", Type: domain.AssetType("Special Forces"), Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+		{Effect: domain.EffectShelter, Shelter: &domain.ShelterParams{AssetTypes: []domain.AssetType{"Special Forces"}, Capacity: 1}},
+	}}}
+	transport := &domain.Asset{ID: "transport-1", DefinitionID: "transport-def", OwnerID: "alpha", Location: loc}
+	occupied := &domain.Asset{ID: "door-1", DefinitionID: "door-def", OwnerID: "alpha", Location: loc}
+	empty := &domain.Asset{ID: "door-2", DefinitionID: "door-def", OwnerID: "alpha", Location: loc}
+	inside := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha", Location: loc, Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "door-1"}}}
+	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{transport.ID: transport, occupied.ID: occupied, empty.ID: empty, inside.ID: inside}}
+	return faction, transport, rb
+}
+
+func TestEligibleMovableAssets_SkipsAnOccupiedDoorShelter(t *testing.T) {
+	faction, _, rb := occupiedDoorShelter()
+	hotFloor := func(*domain.AssetDefinition, bool) int { return 5 }
+
+	eligible := eligibleMovableAssets(faction, map[string]*domain.Faction{faction.ID: faction}, rb, hotFloor)
+
+	got := make([]string, 0, len(eligible))
+	for _, asset := range eligible {
+		got = append(got, asset.ID)
+	}
+	slices.Sort(got)
+	if want := []string{"door-2", "transport-1"}; !slices.Equal(got, want) {
+		t.Errorf("eligible = %v, want %v", got, want)
+	}
+}
+
+func TestEligibleCargoForTransport_SkipsAnOccupiedDoorShelter(t *testing.T) {
+	faction, transport, rb := occupiedDoorShelter()
+	profile := &domain.TransportProfile{CargoTypes: []domain.AssetType{"Special Forces"}, MaxCargo: 2}
+
+	eligible := eligibleCargoForTransport(faction, map[string]*domain.Faction{faction.ID: faction}, transport, profile, rb)
+
+	if len(eligible) != 1 || eligible[0].ID != "door-2" {
+		t.Errorf("eligible = %v, want only door-2", eligible)
 	}
 }
 
@@ -246,7 +295,7 @@ func TestPrepareMovementDecisions_MaxCargoViolation(t *testing.T) {
 	}
 
 	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
-	_, err := prepareMovementDecisions(faction, collector, we, rb, nil, slog.New(slog.DiscardHandler))
+	_, err := prepareMovementDecisions(faction, nil, collector, we, rb, nil, slog.New(slog.DiscardHandler))
 	if err == nil {
 		t.Fatal("expected error when collector returns more cargo than MaxCargo allows, got nil")
 	}
@@ -255,20 +304,20 @@ func TestPrepareMovementDecisions_MaxCargoViolation(t *testing.T) {
 // speedFloor stands in for Mercenary Group's speed_floor hook.
 type speedFloor struct{ floor int }
 
-func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int) int {
+func (floor speedFloor) ModifyAssetSpeed(_ *domain.Faction, _ *domain.AssetDefinition, speed int, _ bool) int {
 	return max(speed, floor.floor)
 }
 
 func TestEligibleMovableAssets_ReadsTheResolvedSpeed(t *testing.T) {
 	special := &domain.Asset{ID: "sf-1", DefinitionID: "sf-def", OwnerID: "alpha"}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{special.ID: special}}
-	if eligible := eligibleMovableAssets(faction, transportRulebook(), nil); len(eligible) != 0 {
+	if eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(nil, faction)); len(eligible) != 0 {
 		t.Errorf("eligible = %v, want none: sf-def has speed 0", eligible)
 	}
 
 	registry := hooks.NewRegistry()
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
-	if eligible := eligibleMovableAssets(faction, transportRulebook(), registry); len(eligible) != 1 || eligible[0].ID != "sf-1" {
+	if eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(registry, faction)); len(eligible) != 1 || eligible[0].ID != "sf-1" {
 		t.Errorf("eligible = %v, want sf-1 under a speed floor", eligible)
 	}
 }
@@ -283,7 +332,7 @@ func TestEligibleMovableAssets_SkipsCargoInFlight(t *testing.T) {
 	registry := hooks.NewRegistry()
 	registry.RegisterAssetSpeedModifier(hooks.FactionScope("alpha"), "floor", speedFloor{floor: 1})
 
-	eligible := eligibleMovableAssets(faction, transportRulebook(), registry)
+	eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(registry, faction))
 
 	if len(eligible) != 1 || eligible[0].ID != "transport-1" {
 		t.Errorf("eligible = %v, want only transport-1: sf-1 rides it", eligible)
@@ -297,7 +346,7 @@ func TestEligibleMovableAssets_KeepsAnOpenOrderAfterTheFloorGoes(t *testing.T) {
 	}
 	faction := &domain.Faction{ID: "alpha", Assets: map[string]*domain.Asset{stranded.ID: stranded}}
 
-	eligible := eligibleMovableAssets(faction, transportRulebook(), nil)
+	eligible := eligibleMovableAssets(faction, nil, transportRulebook(), dispatch.AssetSpeedResolver(nil, faction))
 
 	if len(eligible) != 1 || eligible[0].ID != "sf-1" {
 		t.Errorf("eligible = %v, want sf-1: its order must stay cancellable at speed 0", eligible)
@@ -331,7 +380,7 @@ func TestPrepareMovementDecisions_AnOrderedAssetIsNotCargo(t *testing.T) {
 	we := world.NewWithMap(&stubWorldMap{}, slog.New(slog.DiscardHandler))
 	// The stub map cannot path the orders, so the error is not the subject: the
 	// cargo offer is made before the orders are built.
-	_, _ = prepareMovementDecisions(faction, collector, we, rb, registry, slog.New(slog.DiscardHandler))
+	_, _ = prepareMovementDecisions(faction, nil, collector, we, rb, registry, slog.New(slog.DiscardHandler))
 
 	if len(offered) != 1 || offered[0].ID != "sf-2" {
 		t.Errorf("offered cargo = %v, want only sf-2: sf-1 has its own order", offered)
@@ -466,6 +515,53 @@ func TestRunGrantedMovement_AppliesEachGrant(t *testing.T) {
 	}
 }
 
+// TestRunConditionLifts_FailedReleaseKeepsPaidLifts: a release prompt that fails
+// is reported, and the disable lift accepted before it still applies.
+func TestRunConditionLifts_FailedReleaseKeepsPaidLifts(t *testing.T) {
+	discard := slog.New(slog.DiscardHandler)
+	disabled := domain.Condition{Kind: domain.ConditionDisabled, SourceAssetID: "m1"}
+	alpha := &domain.Faction{ID: "alpha", Coin: 5, Assets: map[string]*domain.Asset{
+		"d1": {ID: "d1", DefinitionID: "demiplane", OwnerID: "alpha"},
+		"x1": {ID: "x1", DefinitionID: "operative", OwnerID: "alpha", Conditions: []domain.Condition{disabled}},
+		"x2": {ID: "x2", DefinitionID: "operative", OwnerID: "alpha", Conditions: []domain.Condition{{Kind: domain.ConditionSheltered, SourceAssetID: "d1"}}},
+	}}
+	eng := &Engine{
+		Rulebook: &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+			"demiplane": {ID: "demiplane", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{
+				{Effect: domain.EffectShelter, Target: domain.TargetAsset, Shelter: &domain.ShelterParams{Capacity: 1}},
+			}}},
+			"operative": {ID: "operative", Cost: 4},
+		}},
+		Hooks:    hooks.NewRegistry(),
+		Mutation: mutation.New(discard),
+	}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"alpha": alpha}}
+	paths := &campaigns.Paths{HistoryPath: t.TempDir() + "/history.jsonl"}
+	collector := &minimalPhaseCollector{confirmPayment: func(offer hooks.PaymentOffer) (bool, error) {
+		if offer.Reason == hooks.PaymentReleaseShelter {
+			return false, action.ErrTurnCanceled
+		}
+		return true, nil
+	}}
+	observer := &errorObserver{}
+
+	if _, err := eng.runConditionLifts(alpha, factionState, paths, collector, observer, discard); err != nil {
+		t.Fatalf("runConditionLifts: %v", err)
+	}
+	if alpha.Assets["x1"].HasCondition(domain.ConditionDisabled) {
+		t.Error("x1 still disabled, want the paid lift applied")
+	}
+	if alpha.Coin != 3 {
+		t.Errorf("Coin = %d, want 3", alpha.Coin)
+	}
+	if !alpha.Assets["x2"].HasCondition(domain.ConditionSheltered) {
+		t.Error("x2 released, want it still sheltered after the failed prompt")
+	}
+	if len(observer.errs) != 1 || !errors.Is(observer.errs[0], action.ErrTurnCanceled) {
+		t.Errorf("observer errors = %v, want one ErrTurnCanceled", observer.errs)
+	}
+}
+
 func TestRunGrantedMovement_DeclineSkips(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -514,6 +610,32 @@ func TestRunGrantedMovement_UnaffordableSkipsWithoutPrompt(t *testing.T) {
 	}
 	if len(observer.errs) != 1 || !errors.Is(observer.errs[0], relocate.ErrInsufficientCoin) {
 		t.Errorf("observer errors = %v, want one ErrInsufficientCoin", observer.errs)
+	}
+	if len(resolved) != 0 {
+		t.Errorf("resolved = %v, want none", resolved)
+	}
+}
+
+func TestRunGrantedMovement_UnaffordableRideIsNotReported(t *testing.T) {
+	eng, factionState, alpha, paths := grantFixture(t, 0)
+	eng.Hooks = hooks.NewRegistry()
+	authority := &domain.Asset{ID: "authority", OwnerID: "beta", Location: domain.Location{WorldID: "Krylos"}}
+	eng.Hooks.RegisterAssetMovementGranter(hooks.AssetScope("beta", "authority"), "test", &stubMovementGranter{abilities: []hooks.MovementAbility{{
+		Source: authority,
+		Relocate: domain.RelocateParams{
+			Scope: domain.RelocateOther, Range: domain.RangeHexes, MaxHex: 3,
+			CoinCost: 1, CoinCostMode: domain.RelocateCostPerAsset,
+		},
+		Payee: "beta",
+	}}})
+	observer := &errorObserver{}
+
+	resolved, err := eng.runGrantedMovement(alpha, factionState, paths, &minimalPhaseCollector{}, observer, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("runGrantedMovement: %v, want a skipped ride", err)
+	}
+	if len(observer.errs) != 0 {
+		t.Errorf("observer errors = %v, want none for a ride alpha cannot pay", observer.errs)
 	}
 	if len(resolved) != 0 {
 		t.Errorf("resolved = %v, want none", resolved)

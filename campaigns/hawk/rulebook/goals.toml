@@ -1,0 +1,90 @@
+[goals.MilitaryConquest]
+id = "CORE-G-001"
+name = "Military Conquest"
+description = "Destroy a number of Force assets of rival factions equal to your faction's Force rating."
+progress = { event = "kill", amount = "one", filters = { owner = "rival", caused_by = "own", category = ["Force"] } }
+threshold = { ratings = ["Force"] }
+xp = { formula = "half_progress" }
+
+[goals.CommercialExpansion]
+id = "CORE-G-002"
+name = "Commercial Expansion"
+description = "Destroy a number of Wealth assets of rival factions equal to your faction's Wealth rating."
+progress = { event = "kill", amount = "one", filters = { owner = "rival", caused_by = "own", category = ["Wealth"] } }
+threshold = { ratings = ["Wealth"] }
+xp = { formula = "half_progress" }
+
+[goals.IntelligenceCoup]
+id = "CORE-G-003"
+name = "Intelligence Coup"
+description = "Destroy a number of Cunning assets of rival factions equal to your faction's Cunning rating."
+progress = { event = "kill", amount = "one", filters = { owner = "rival", caused_by = "own", category = ["Cunning"] } }
+threshold = { ratings = ["Cunning"] }
+xp = { formula = "half_progress" }
+
+[goals.WorldSeizure]
+id = "CORE-G-004"
+name = "World Seizure"
+description = "Take control of a world, becoming the world's legitimate government. If no opposing faction resists, counts as difficulty low."
+start = { needs_actions = ["Seize Planet"] }
+complete = { event = "government_taken", filters = { to = "own" } }
+xp = { formula = "ruler_average" }
+
+[goals.ExpandInfluence]
+id = "CORE-G-005"
+name = "Expand Influence"
+description = "Plant a Base of Influence on a new world. Difficulty increases by one if the attempt is contested by a rival faction."
+complete = { event = "base_planted", filters = { caused_by = "own", new_world = true } }
+xp = { formula = "constant", amount = 1, contested_bonus = 1 }
+
+[goals.BloodTheEnemy]
+id = "CORE-G-006"
+name = "Blood the Enemy"
+description = "Inflict a number of hit points of damage on enemy faction assets or bases equal to your faction's total Force, Cunning, and Wealth ratings."
+progress = { event = "damage", amount = "damage", filters = { owner = "rival", caused_by = "own" } }
+threshold = { ratings = ["Force", "Cunning", "Wealth"] }
+xp = { formula = "constant", amount = 2 }
+
+[goals.PeaceableKingdom]
+id = "CORE-G-007"
+name = "Peaceable Kingdom"
+description = "Do not take an Attack action for four consecutive turns."
+progress = { event = "action_taken", amount = "one", filters = { faction = "own", action_not = ["Attack"] } }
+reset = { event = "action_taken", filters = { faction = "own", action = ["Attack"] } }
+threshold = { constant = 4 }
+xp = { formula = "constant", amount = 1 }
+
+[goals.DestroyTheFoe]
+id = "CORE-G-008"
+name = "Destroy the Foe"
+description = "Destroy a rival faction entirely."
+start = { inputs = ["target_faction"] }
+complete = { event = "faction_destroyed", filters = { target = "start_input", caused_by = "own" } }
+xp = { formula = "target_average" }
+
+[goals.InsideEnemyTerritory]
+id = "CORE-G-009"
+name = "Inside Enemy Territory"
+description = "Have a number of stealthed assets on worlds with other governments equal to your Cunning score. Units already stealthed when this goal is adopted do not count."
+progress = { measure = "stealthed_assets", filters = { ground = "rival", exclude_held_at_start = true } }
+threshold = { ratings = ["Cunning"] }
+xp = { formula = "constant", amount = 2 }
+
+[goals.InvincibleValor]
+id = "CORE-G-010"
+name = "Invincible Valor"
+description = "Destroy a Force asset with a minimum purchase rating higher than your faction's Force rating."
+complete = {
+  event = "kill",
+  filters = { owner = "rival", caused_by = "own", category = ["Force"], rated_above = "Force" },
+}
+xp = { formula = "constant", amount = 2 }
+
+[goals.WealthOfWorlds]
+id = "CORE-G-011"
+name = "Wealth of Worlds"
+description = "Spend Coins equal to four times your faction's Wealth rating on bribes and influence. The faction's Wealth rating must increase before this goal can be selected again."
+start = { gate = { rating_above_last_completion = "Wealth" } }
+progress = { event = "influence_bought", amount = "delta", filters = { caused_by = "own" } }
+threshold = { ratings = ["Wealth"], multiplier = 4 }
+xp = { formula = "constant", amount = 2 }

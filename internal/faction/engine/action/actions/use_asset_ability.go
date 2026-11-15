@@ -85,17 +85,17 @@ func abilityCandidates(faction *domain.Faction, factionState *state.FactionState
 	for _, asset := range domain.SortedAssets(faction) {
 		def, ok := rulebook.Assets[asset.DefinitionID]
 		holder := domain.AbilityHolder{Asset: asset}
-		if ok && hasActionFlag(def) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) && ability.HasTargets(faction, holder, def.Ability, factionState, worldEngine, registry) {
+		if ok && hasActionFlag(def) && asset.Active() && !asset.HasCondition(domain.ConditionNoAbility) && ability.HasTargets(faction, holder, def.Ability, factionState, worldEngine, registry, rulebook) {
 			candidates = append(candidates, holder)
 		}
 	}
 	for _, tagID := range slices.Sorted(slices.Values(faction.Tags)) {
 		tag, ok := rulebook.Tags[tagID]
-		if !ok || tag.Ability == nil {
+		if !ok || tag.Ability == nil || faction.HasLapsedTag(tagID) {
 			continue
 		}
 		holder := domain.AbilityHolder{Tag: tag}
-		if ability.HasTargets(faction, holder, tag.Ability, factionState, worldEngine, registry) {
+		if ability.HasTargets(faction, holder, tag.Ability, factionState, worldEngine, registry, rulebook) {
 			candidates = append(candidates, holder)
 		}
 	}

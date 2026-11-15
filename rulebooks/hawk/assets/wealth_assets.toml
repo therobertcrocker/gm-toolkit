@@ -1,0 +1,588 @@
+# Wealth Assets — H.A.W.K (A.001.5 Effort 6)
+
+[assets.WageGarnishers]
+id = "HAWK-W1-001"
+name = "Wage Garnishers"
+category = "Wealth"
+min_rating = 1
+hp = 3
+cost = 2
+maintenance = 0
+tech_level = 2
+type = "Operative"
+flags = ["S"]
+counter = "1d4-1"
+description = "Lenders to a rival's staff, repaid from the rival's payroll. When the Garnishers hit a rival asset, that faction loses 1 Coin to this one. This happens once per turn, however many Garnishers hit."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "1d4" }
+effects = [
+  {
+    trigger = "own_attack_hit",
+    effect = "coin_steal",
+    filters = { owner = "rival", scope = "world" },
+    gates = { once_per = "target_faction" },
+    coin_steal = { amount = "1" },
+  },
+]
+
+[assets.TempWorkers]
+id = "HAWK-W1-002"
+name = "Temp Workers"
+category = "Wealth"
+min_rating = 1
+hp = 4
+cost = 2
+maintenance = 0
+tech_level = 0
+type = "Workforce"
+flags = ["A"]
+counter = "1d4"
+description = "Workers on temporary contracts, called in when there is work. As an action, roll 1d6; on a 3 or higher, gain 1 Coin."
+ability = { effect = "coin_delta", target_roll = { die = "1d6", target = 3, amount = 1 } }
+
+[assets.PermitOffice]
+id = "HAWK-W1-003"
+name = "Permit Office"
+category = "Wealth"
+min_rating = 1
+hp = 2
+cost = 1
+maintenance = 0
+tech_level = 2
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "The office that approves building on this place. Any other faction that buys an asset here pays 1 extra Coin, which is lost. Only one Permit Office on a place counts."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "1d4-1" }
+effects = [
+  {
+    trigger = "asset_cost_query",
+    effect = "cost_surcharge",
+    filters = { owner = "rival", scope = "world" },
+    gates = { no_stack = true },
+    cost_surcharge = { amount = 1 },
+  },
+]
+
+[assets.CompanyCoin]
+id = "HAWK-W1-004"
+name = "Company Coin"
+category = "Wealth"
+min_rating = 1
+hp = 2
+cost = 5
+maintenance = 0
+tech_level = 2
+type = "Stratagem"
+flags = ["S"]
+counter = ""
+description = "Wages paid in coin only the company's stores accept. At the start of each turn, gain 1 Coin for each of the faction's Workforce assets on this place, up to 3. Only one Company Coin on a place pays."
+effects = [
+  {
+    trigger = "turn_start",
+    effect = "coin_gain",
+    filters = { owner = "own", scope = "world", asset_type = ["Workforce"] },
+    gates = { no_stack = true },
+    coin_gain = { amount = "1", max = 3 },
+  },
+]
+
+[assets.FreeTraders]
+id = "HAWK-W2-001"
+name = "Free Traders"
+category = "Wealth"
+min_rating = 2
+hp = 4
+cost = 5
+maintenance = 0
+tech_level = 4
+speed = 19
+drift_rating = 2
+type = "Aethership"
+flags = ["S"]
+counter = ""
+description = "Independent long-haul freighters. Moves at speed 19 (long-range). When it moves, it can carry one non-Force asset from its place with it, for 1 Coin."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "1d4" }
+transport = {
+  coin_cost = 1,
+  cargo_types = ["Facility", "Aethership", "Security Personnel", "Operative", "Stratagem", "Front", "Workforce", "Beast"],
+  max_cargo = 1,
+  exclude_categories = ["Force"],
+}
+
+[assets.ContractCabal]
+id = "HAWK-W2-002"
+name = "Contract Cabal"
+category = "Wealth"
+min_rating = 2
+hp = 4
+cost = 6
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = ["S"]
+counter = "1d6"
+description = "Lawyers fluent in contract magic. They cannot attack or counterattack Force assets, and Force assets cannot attack them."
+attack = { attacker_stat = "Cunning", defender_stat = "Wealth", damage = "2d4" }
+effects = [
+  {
+    trigger = "attack_eligibility_query",
+    effect = "restrict_attack",
+    filters = { owner = "rival", scope = "self", category = ["Force"] },
+    restrict_attack = { side = "attack_and_counter", allow = "except_listed" },
+  },
+]
+
+[assets.Pinkertons]
+id = "HAWK-W2-003"
+name = "Pinkertons"
+category = "Wealth"
+min_rating = 2
+hp = 6
+cost = 4
+maintenance = 0
+tech_level = 0
+type = "Security Personnel"
+flags = []
+counter = "1d4"
+description = "Hired muscle sent to end a strike before the next shift."
+attack = { attacker_stat = "Wealth", defender_stat = "Force", damage = "1d4+1" }
+
+[assets.Prospectors]
+id = "HAWK-W2-004"
+name = "Prospectors"
+category = "Wealth"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 0
+speed = 10
+type = "Workforce"
+flags = ["S"]
+counter = "1d4"
+description = "Prospectors who test a seam with the cheapest crew first. Moves at speed 10 (short-range). Expand Influence on this place rolls one extra die."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "world", phase = ["faction_test"], action = "Expand Influence" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[assets.GraveyardShift]
+id = "HAWK-W2-005"
+name = "Graveyard Shift"
+category = "Wealth"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 0
+type = "Workforce"
+flags = ["A"]
+counter = "1d4"
+description = "The crew that works through the night. As an action, roll 1d6: on a 1, the asset is destroyed; on a 2–4, gain 1 Coin; on a 5–6, gain 2 Coin."
+ability = {
+  effect = "coin_delta",
+  die = "1d6",
+  outcomes = [
+    { from = 1, to = 1, destroy_self = true },
+    { from = 2, to = 4, coin = 1 },
+    { from = 5, to = 6, coin = 2 },
+  ],
+}
+
+[assets.AetherRefinery]
+id = "HAWK-W3-001"
+name = "Aether Refinery"
+category = "Wealth"
+min_rating = 3
+hp = 4
+cost = 8
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["A"]
+counter = "1d4"
+description = "A refinery that boils raw Aether down into stones. As an action, roll 1d6: on a 1, lose 1 Coin, and if it can't be paid, the asset is destroyed; on a 2–4, gain 1 Coin; on a 5–6, gain 2 Coin."
+ability = {
+  effect = "coin_delta",
+  die = "1d6",
+  outcomes = [
+    { from = 1, to = 1, coin = -1 },
+    { from = 2, to = 4, coin = 1 },
+    { from = 5, to = 6, coin = 2 },
+  ],
+}
+
+[assets.Artificery]
+id = "HAWK-W3-002"
+name = "Artificery"
+category = "Wealth"
+min_rating = 3
+hp = 4
+cost = 6
+maintenance = 0
+tech_level = 0
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "A workshop licensed to build Arcano-Tech. Assets may be bought on this place as if it were tech level 4."
+effects = [
+  {
+    trigger = "tech_level_query",
+    effect = "tech_level_floor",
+    filters = { owner = "own", scope = "world" },
+    tech_level_floor = { level = 4 },
+  },
+]
+
+[assets.FreeCompany]
+id = "HAWK-W3-003"
+name = "Free Company"
+category = "Wealth"
+min_rating = 3
+hp = 6
+cost = 8
+maintenance = 1
+tech_level = 4
+speed = 10
+type = "Security Personnel"
+flags = ["S", "P"]
+counter = "1d6"
+description = "A mercenary company with a rate card. Costs 1 Coin per turn in upkeep. Moves at speed 10 (short-range). Buying it on a place, or moving it there, needs the government's permission."
+attack = { attacker_stat = "Wealth", defender_stat = "Force", damage = "2d4+2" }
+
+[assets.PaidAgitators]
+id = "HAWK-W3-004"
+name = "Paid Agitators"
+category = "Wealth"
+min_rating = 3
+hp = 6
+cost = 7
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = ["S"]
+counter = ""
+description = "Organizers on the faction's payroll. An asset they attack cannot use its ability until the start of this faction's next turn, whether or not the attack hits."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "2d4" }
+effects = [
+  { trigger = "own_attack", effect = "block_ability", filters = { owner = "own", scope = "self" } },
+]
+
+[assets.MerchantConvoy]
+id = "HAWK-W4-001"
+name = "Merchant Convoy"
+category = "Wealth"
+min_rating = 4
+hp = 10
+cost = 10
+maintenance = 0
+tech_level = 4
+speed = 19
+drift_rating = 3
+type = "Aethership"
+flags = ["S"]
+counter = "1d6"
+description = "A scheduled convoy of freighters. Moves at speed 19 (long-range). When it moves, it can carry up to ten non-Force assets from its place with it, for 1 Coin."
+transport = {
+  coin_cost = 1,
+  cargo_types = ["Facility", "Aethership", "Security Personnel", "Operative", "Stratagem", "Front", "Workforce", "Beast"],
+  max_cargo = 10,
+  exclude_categories = ["Force"],
+}
+
+[assets.CompanyTown]
+id = "HAWK-W4-002"
+name = "Company Town"
+category = "Wealth"
+min_rating = 4
+hp = 12
+cost = 8
+maintenance = 0
+tech_level = 3
+type = "Facility"
+flags = ["A"]
+counter = "1d6"
+description = "A town owned by one company. As an action, force one other faction with unstealthed assets on this place to pay this faction 1 Coin. If it can't pay, it loses one of its assets here, of its choice."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "1d6" }
+ability = { effect = "levy_coin", target = "faction" }
+
+[assets.MendingVats]
+id = "HAWK-W4-003"
+name = "Mending Vats"
+category = "Wealth"
+min_rating = 4
+hp = 8
+cost = 12
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "Alchemical vats that knit the injured back together. Once per asset, when a Security Personnel, Operative or Workforce asset on this place is destroyed, the faction may pay half its cost to restore it at 1 HP. Repairing those assets here costs 1 less Coin."
+effects = [
+  {
+    trigger = "lethal_damage",
+    effect = "restore_asset",
+    filters = { owner = "own", scope = "world", asset_type = ["Security Personnel", "Operative", "Workforce"] },
+    gates = { once_per = "asset" },
+  },
+  {
+    trigger = "repair_cost_query",
+    effect = "discount_repair",
+    filters = { owner = "own", scope = "world", asset_type = ["Security Personnel", "Operative", "Workforce"] },
+    gates = { no_stack = true },
+    discount_repair = { amount = 1 },
+  },
+]
+
+[assets.LiabilityWaivers]
+id = "HAWK-W4-004"
+name = "Liability Waivers"
+category = "Wealth"
+min_rating = 4
+hp = 8
+cost = 12
+maintenance = 0
+tech_level = 3
+type = "Stratagem"
+flags = ["S"]
+counter = ""
+description = "Waivers signed in every deal. Once per turn, the faction can ignore one Coin cost or loss another faction imposes. Several Waivers ignore several losses."
+effects = [
+  {
+    trigger = "coin_loss",
+    effect = "ignore_coin_loss",
+    filters = { owner = "rival", scope = "faction" },
+    gates = { once_per = "asset" },
+  },
+]
+
+[assets.ForeclosureNotices]
+id = "HAWK-W5-001"
+name = "Foreclosure Notices"
+category = "Wealth"
+min_rating = 5
+hp = 8
+cost = 10
+maintenance = 0
+tech_level = 0
+type = "Stratagem"
+flags = ["A"]
+counter = ""
+description = "A claim served for a debt. As an action, test Wealth vs. Wealth against a rival faction's asset; on a success, that faction must at once pay half the asset's purchase cost (rounded down), or the asset is disabled until the price is paid."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "1d6" }
+ability = {
+  roll = "test",
+  attacker_stat = "Wealth",
+  defender_stat = "Wealth",
+  effect = "disable_asset",
+  target = "asset",
+}
+
+[assets.ArchmagusConsultant]
+id = "HAWK-W5-002"
+name = "Archmagus Consultant"
+category = "Wealth"
+min_rating = 5
+hp = 6
+cost = 12
+maintenance = 1
+tech_level = 5
+type = "Operative"
+flags = ["S"]
+counter = ""
+description = "A famous archmage on retainer. This place counts as tech level 5 for buying Cunning and Wealth assets. Costs 1 Coin per turn in upkeep."
+effects = [
+  {
+    trigger = "tech_level_query",
+    effect = "tech_level_floor",
+    filters = { owner = "own", scope = "world", category = ["Cunning", "Wealth"] },
+    tech_level_floor = { level = 5 },
+  },
+]
+
+[assets.BackChannelFreight]
+id = "HAWK-W5-003"
+name = "Back-Channel Freight"
+category = "Wealth"
+min_rating = 5
+hp = 6
+cost = 12
+maintenance = 0
+tech_level = 4
+speed = 19
+drift_rating = 3
+type = "Aethership"
+flags = ["S"]
+counter = "2d4"
+description = "Freight that moves on arrangements made off the record. Moves at speed 19 (long-range). When it moves, it can carry one Security Personnel or Operative from its place with it, for 2 Coin, even where the government refuses permission."
+transport = {
+  coin_cost = 2,
+  cargo_types = ["Security Personnel", "Operative"],
+  max_cargo = 1,
+  ignores_permission = true,
+}
+
+[assets.AdventureCapital]
+id = "HAWK-W6-001"
+name = "Adventure Capital"
+category = "Wealth"
+min_rating = 6
+hp = 10
+cost = 15
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["A"]
+counter = "1d6"
+description = "A fund that backs adventuring expeditions. As an action, roll 1d8: on a 1, the asset is destroyed; on a 2–3, gain 1 Coin; on a 4–7, gain 2 Coin; on an 8, gain 3 Coin."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "2d6" }
+ability = {
+  effect = "coin_delta",
+  die = "1d8",
+  outcomes = [
+    { from = 1, to = 1, destroy_self = true },
+    { from = 2, to = 3, coin = 1 },
+    { from = 4, to = 7, coin = 2 },
+    { from = 8, to = 8, coin = 3 },
+  ],
+}
+
+[assets.FranchiseKits]
+id = "HAWK-W6-002"
+name = "Franchise Kits"
+category = "Wealth"
+min_rating = 6
+hp = 15
+cost = 18
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "Workshops shipped as kits. The faction may treat every place as tech level 4 for buying Wealth assets."
+effects = [
+  {
+    trigger = "tech_level_query",
+    effect = "tech_level_floor",
+    filters = { owner = "own", scope = "faction", category = ["Wealth"] },
+    tech_level_floor = { level = 4 },
+  },
+]
+
+[assets.AethericFutures]
+id = "HAWK-W6-003"
+name = "Aetheric Futures"
+category = "Wealth"
+min_rating = 6
+hp = 10
+cost = 20
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = ["A"]
+counter = "1d8"
+description = "Traders who buy Aetherstones ahead at a low price. As an action, roll 1d8; that many Coin come off the cost of the faction's next asset, down to half its normal price, rounded down."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "2d8" }
+ability = { effect = "purchase_discount", die = "1d8" }
+
+[assets.AetherTechFactory]
+id = "HAWK-W7-001"
+name = "Aether-Tech Factory"
+category = "Wealth"
+min_rating = 7
+hp = 16
+cost = 25
+maintenance = 0
+tech_level = 5
+type = "Facility"
+flags = ["A"]
+counter = ""
+description = "A plant the size of a district. As an action, roll 1d8 and gain half that many Coin, rounded up."
+ability = {
+  effect = "coin_delta",
+  die = "1d8",
+  outcomes = [
+    { from = 1, to = 2, coin = 1 },
+    { from = 3, to = 4, coin = 2 },
+    { from = 5, to = 6, coin = 3 },
+    { from = 7, to = 8, coin = 4 },
+  ],
+}
+
+[assets.PredatoryPurchase]
+id = "HAWK-W7-002"
+name = "Predatory Purchase"
+category = "Wealth"
+min_rating = 7
+hp = 10
+cost = 20
+maintenance = 0
+tech_level = 4
+type = "Stratagem"
+flags = ["S"]
+counter = "2d8"
+description = "A raid on a rival business, paid for with the rival's own debt. If its attack would destroy a rival asset, the asset is instead reduced to 1 HP and becomes this faction's."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "2d10" }
+effects = [
+  { trigger = "lethal_damage", effect = "seize_target", filters = { owner = "rival", scope = "self" } },
+]
+
+[assets.AetherGateTransitAuthority]
+id = "HAWK-W7-003"
+name = "Aether-Gate Transit Authority"
+category = "Wealth"
+min_rating = 7
+hp = 5
+cost = 15
+maintenance = 0
+tech_level = 5
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "A public network of Aether-gates. Every faction may move any number of its non-Aethership Cunning and Wealth assets between places within 6 hexes of the Authority, with no action. The owner rides free; any other faction pays the owner 1 Coin per asset moved."
+attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "1d12" }
+effects = [
+  {
+    trigger = "movement_options_query",
+    effect = "grant_movement",
+    filters = { owner = "own", scope = "faction" },
+    grant_movement = {
+      public = true,
+      relocate = {
+        scope = "other",
+        range = "hexes",
+        max_hex = 6,
+        coin_cost = 1,
+        coin_cost_mode = "per_asset",
+        categories = ["Cunning", "Wealth"],
+        exclude_types = ["Aethership"],
+      },
+    },
+  },
+]
+
+[assets.DebtorsFleet]
+id = "HAWK-W8-001"
+name = "Debtors' Fleet"
+category = "Wealth"
+min_rating = 8
+hp = 20
+cost = 30
+maintenance = 1
+tech_level = 5
+speed = 19
+drift_rating = 2
+type = "Aethership"
+flags = ["S"]
+counter = "2d10"
+description = "An armada crewed by people working off their debts. Moves at speed 19 (long-range). Costs 1 Coin per turn in upkeep. Each time it deals damage, attacking or counterattacking, the faction gains 1d4 Coin."
+attack = { attacker_stat = "Wealth", defender_stat = "Wealth", damage = "2d10+4" }
+effects = [
+  { trigger = "own_attack_hit", effect = "coin_gain", filters = { owner = "own", scope = "self" }, coin_gain = { amount = "1d4" } },
+  { trigger = "own_counter_hit", effect = "coin_gain", filters = { owner = "own", scope = "self" }, coin_gain = { amount = "1d4" } },
+]

@@ -10,7 +10,8 @@ import (
 // PhaseCollector abstracts the orchestrator-owned input prompts: the phase
 // checkpoints, action choice, stat raise, goal pick, movement decisions, transport cargo and
 // the relocate orders of a free movement grant, the pay-to-lift question at turn
-// start, and an arriving asset's permission request.
+// start, and an arriving asset's permission request. A movement decision may run
+// hot only for an asset in hotChoices; any other asset runs as the engine rules.
 // The GM implementation uses interactive prompts; AI and test implementations
 // use scripted or goal-driven logic.
 type PhaseCollector interface {
@@ -20,7 +21,7 @@ type PhaseCollector interface {
 	SelectAction(faction *domain.Faction, available []action.Action) (action.Action, error)
 	SelectStatRaise(faction *domain.Faction, eligible []domain.FactionStat) (*domain.FactionStat, error)
 	SelectGoal(faction *domain.Faction, offers []domain.GoalOffer) (*domain.GoalChoice, error)
-	SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error)
+	SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset, hotChoices map[string]bool) ([]world.MovementDecision, error)
 	SelectTransportCargo(transport *domain.Asset, eligibleCargo []*domain.Asset, profile *domain.TransportProfile) ([]*domain.Asset, error)
 	SelectRelocateOrders(acting *domain.Asset, candidates []*domain.Asset, candidateWorlds []string, maxAssets int) ([]action.RelocateOrder, error)
 }

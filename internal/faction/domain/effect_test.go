@@ -27,7 +27,7 @@ func TestEffectFiltersUsed(t *testing.T) {
 				Attribute:    domain.StatCunning,
 				Phases:       []domain.RollPhase{domain.RollPhaseDefense},
 				Action:       "Expand Influence",
-				AssetTypes:   []domain.AssetType{domain.TypeStarship},
+				AssetTypes:   []domain.AssetType{domain.AssetType("Starship")},
 				Categories:   []domain.FactionStat{domain.StatForce},
 				Stealthy:     &stealthy,
 				MinTechLevel: 4,
@@ -70,6 +70,29 @@ func TestEffectGatesUsed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := tc.gates.Used(); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("Used() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGrantMovementParams_Fare(t *testing.T) {
+	relocate := domain.RelocateParams{CoinCost: 1}
+	cases := []struct {
+		name   string
+		public bool
+		rider  string
+		want   int
+	}{
+		{"public, the owner", true, "owner", 0},
+		{"public, a rider", true, "rider", 1},
+		{"private, the owner", false, "owner", 1},
+		{"private, a rider", false, "rider", 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			grant := domain.GrantMovementParams{Relocate: relocate, Public: tc.public}
+			if got := grant.Fare("owner", tc.rider); got != tc.want {
+				t.Errorf("Fare = %d, want %d", got, tc.want)
 			}
 		})
 	}

@@ -143,6 +143,38 @@ func TestCoinDeltaAbandonGoal(t *testing.T) {
 	}
 }
 
+func TestCoinDeltaToAnotherFactionCreditsThatFaction(t *testing.T) {
+	records := []domain.EventRecord{
+		eventRec("faction-a",
+			mutRec(t, "asset_added", domain.AssetAdded{
+				FactionID: "faction-a",
+				Asset:     domain.Asset{ID: "asset-1", DefinitionID: "def-1"},
+				Cause:     "buy",
+			}),
+			mutRec(t, "coin_delta", domain.CoinDelta{
+				FactionID: "faction-a", Delta: -1, Cause: "ability",
+			}),
+			mutRec(t, "coin_delta", domain.CoinDelta{
+				FactionID: "faction-b", Delta: 1, Cause: "fare", CausedByFactionID: "faction-a",
+			}),
+		),
+		eventRec("faction-b",
+			mutRec(t, "asset_added", domain.AssetAdded{
+				FactionID: "faction-b",
+				Asset:     domain.Asset{ID: "asset-2", DefinitionID: "def-1"},
+				Cause:     "buy",
+			}),
+		),
+	}
+	d := buildOne(t, records, minState(map[string]string{"faction-a": "Alpha", "faction-b": "Beta"}), nil)
+	if rider := findBeat(d, "faction-a"); rider.CoinDelta != -1 {
+		t.Errorf("rider CoinDelta: want -1, got %d", rider.CoinDelta)
+	}
+	if payee := findBeat(d, "faction-b"); payee.CoinDelta != 1 {
+		t.Errorf("payee CoinDelta: want 1, got %d", payee.CoinDelta)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // AssetAdded / AssetRemoved (buy, sell, refit)
 // ---------------------------------------------------------------------------
@@ -1258,6 +1290,36 @@ func TestGovernmentChangeAndTagLoss(t *testing.T) {
 		if beat != nil && len(beat.Notes) != 0 {
 			t.Errorf("%s Notes = %v, want none", beat.Faction.ID, beat.Notes)
 		}
+	}
+}
+
+func TestUpkeepLapseRestoreAndDamage(t *testing.T) {
+	factionState := minState(map[string]string{"f1": "Alpha"})
+	records := []domain.EventRecord{
+		eventRec("f1",
+			mutRec(t, "tag_lapsed", domain.TagLapsed{FactionID: "f1", TagID: "HAWK-T-009", Lapsed: true, Cause: "upkeep", CausedByFactionID: "f1"}),
+			mutRec(t, "tag_lapsed", domain.TagLapsed{FactionID: "f1", TagID: "HAWK-T-016", Lapsed: false, Cause: "upkeep", CausedByFactionID: "f1"}),
+			mutRec(t, "faction_hp_delta", domain.FactionHPDelta{FactionID: "f1", Delta: -2, Cause: "upkeep", CausedByFactionID: "f1"}),
+		),
+	}
+	cycleDigest := buildOne(t, records, factionState, nil)
+
+	beat := findBeat(cycleDigest, "f1")
+	if beat == nil {
+		t.Fatal("f1 is quiet, want the lapse to make it active")
+	}
+	want := []GoalEvent{
+		{Kind: GoalTagLapsed, TagName: "HAWK-T-009"},
+		{Kind: GoalTagRestored, TagName: "HAWK-T-016"},
+	}
+	if !slices.Equal(beat.GoalEvents, want) {
+		t.Errorf("GoalEvents = %+v, want %+v", beat.GoalEvents, want)
+	}
+	if beat.HPDelta != -2 {
+		t.Errorf("HPDelta = %d, want -2 from unpaid upkeep", beat.HPDelta)
+	}
+	if len(beat.Notes) != 0 {
+		t.Errorf("Notes = %v, want none", beat.Notes)
 	}
 }
 

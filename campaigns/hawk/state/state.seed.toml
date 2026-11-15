@@ -1,0 +1,622 @@
+# H.A.W.K's opening position at the start of season 3 (A.001.5 Effort 3).
+# Load: ./cmd/scripts/reset-campaign.sh hawk
+# Every starting asset is H.A.W.K's own (Efforts 4 to 6).
+# Each faction holds its scale's count: hegemon 4 primary + 4 other, major 2 + 2.
+# The Radiant Throne also holds one Glamoured Doubles, to show it in play (Effort 5).
+# The Thymian Armada also holds a Company Coin beside its two Workforce assets, and
+# Seraph Industries a Debtors' Fleet on Veil, to show them in play (Effort 6).
+# O.W.L.'s Occult Lodge sits at Eventide, where O.W.L. has no base, so its Expand
+# Influence die can fire (Effort 5 Decision Record 2).
+
+campaign_id = "hawk"
+cycle_number = 1
+
+[governments]
+  haven = "occult-workers-league"
+  arcadia = "occult-workers-league"
+  abaddons-gate = "court-of-lies"
+  odium = "court-of-lies"
+  solar-gate = "radiant-throne"
+  lumos = "radiant-throne"
+  veil = "fey-royals"
+  ouroboros = "blackwater-industries"
+  last-light = "thymian-armada"
+  canon-iv = "witherblight-collective"
+
+[factions.occult-workers-league]
+  id = "occult-workers-league"
+  name = "Occult Worker's League"
+  scale = "hegemon"
+  force = 5
+  cunning = 7
+  wealth = 8
+  current_hp = 49
+  max_hp = 49
+  coin = 7
+  xp = 0
+  homeworld = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  tags = ["HAWK-T-001", "HAWK-T-011", "HAWK-T-010"]
+  bases = [
+    { id = "occult-workers-league-homeworld", owner_id = "occult-workers-league", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } } },
+    { id = "occult-workers-league-base-arcadia-1", owner_id = "occult-workers-league", current_hp = 4, max_hp = 4, influence = 0, ready = false, is_homeworld = false, location = { world_id = "arcadia", region_hex = { RegionID = "S", Coord = { Q = 23, R = 19 } } } },
+  ]
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-W3-001-1]
+    id = "occult-workers-league-HAWK-W3-001-1"
+    definition_id = "HAWK-W3-001"
+    owner_id = "occult-workers-league"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-W4-001-1]
+    id = "occult-workers-league-HAWK-W4-001-1"
+    definition_id = "HAWK-W4-001"
+    owner_id = "occult-workers-league"
+    current_hp = 10
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-W6-002-1]
+    id = "occult-workers-league-HAWK-W6-002-1"
+    definition_id = "HAWK-W6-002"
+    owner_id = "occult-workers-league"
+    current_hp = 15
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-W7-001-1]
+    id = "occult-workers-league-HAWK-W7-001-1"
+    definition_id = "HAWK-W7-001"
+    owner_id = "occult-workers-league"
+    current_hp = 16
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-C2-005-1]
+    id = "occult-workers-league-HAWK-C2-005-1"
+    definition_id = "HAWK-C2-005"
+    owner_id = "occult-workers-league"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "eventide", region_hex = { RegionID = "F", Coord = { Q = 17, R = 9 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-C3-003-1]
+    id = "occult-workers-league-HAWK-C3-003-1"
+    definition_id = "HAWK-C3-003"
+    owner_id = "occult-workers-league"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-F1-001-1]
+    id = "occult-workers-league-HAWK-F1-001-1"
+    definition_id = "HAWK-F1-001"
+    owner_id = "occult-workers-league"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+  [factions.occult-workers-league.assets.occult-workers-league-HAWK-F3-003-1]
+    id = "occult-workers-league-HAWK-F3-003-1"
+    definition_id = "HAWK-F3-003"
+    owner_id = "occult-workers-league"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "haven", region_hex = { RegionID = "H", Coord = { Q = 16, R = 15 } } }
+
+[factions.court-of-lies]
+  id = "court-of-lies"
+  name = "The Court of Lies"
+  scale = "hegemon"
+  force = 7
+  cunning = 8
+  wealth = 5
+  current_hp = 49
+  max_hp = 49
+  coin = 5
+  xp = 0
+  homeworld = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  tags = ["HAWK-T-001", "HAWK-T-004", "HAWK-T-008"]
+  bases = [
+    { id = "court-of-lies-homeworld", owner_id = "court-of-lies", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } } },
+    { id = "court-of-lies-base-odium-1", owner_id = "court-of-lies", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = false, location = { world_id = "odium", region_hex = { RegionID = "R", Coord = { Q = 9, R = 23 } } } },
+  ]
+  [factions.court-of-lies.assets.court-of-lies-HAWK-C4-004-1]
+    id = "court-of-lies-HAWK-C4-004-1"
+    definition_id = "HAWK-C4-004"
+    owner_id = "court-of-lies"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-C5-001-1]
+    id = "court-of-lies-HAWK-C5-001-1"
+    definition_id = "HAWK-C5-001"
+    owner_id = "court-of-lies"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-C6-003-1]
+    id = "court-of-lies-HAWK-C6-003-1"
+    definition_id = "HAWK-C6-003"
+    owner_id = "court-of-lies"
+    current_hp = 10
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-C7-003-1]
+    id = "court-of-lies-HAWK-C7-003-1"
+    definition_id = "HAWK-C7-003"
+    owner_id = "court-of-lies"
+    current_hp = 5
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-F3-001-1]
+    id = "court-of-lies-HAWK-F3-001-1"
+    definition_id = "HAWK-F3-001"
+    owner_id = "court-of-lies"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-F5-003-1]
+    id = "court-of-lies-HAWK-F5-003-1"
+    definition_id = "HAWK-F5-003"
+    owner_id = "court-of-lies"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-F7-003-1]
+    id = "court-of-lies-HAWK-F7-003-1"
+    definition_id = "HAWK-F7-003"
+    owner_id = "court-of-lies"
+    current_hp = 16
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+  [factions.court-of-lies.assets.court-of-lies-HAWK-W2-002-1]
+    id = "court-of-lies-HAWK-W2-002-1"
+    definition_id = "HAWK-W2-002"
+    owner_id = "court-of-lies"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "abaddons-gate", region_hex = { RegionID = "R", Coord = { Q = 7, R = 28 } } }
+
+[factions.radiant-throne]
+  id = "radiant-throne"
+  name = "The Radiant Throne"
+  scale = "hegemon"
+  force = 8
+  cunning = 5
+  wealth = 7
+  current_hp = 49
+  max_hp = 49
+  coin = 6
+  xp = 0
+  homeworld = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  tags = ["HAWK-T-001", "HAWK-T-004", "HAWK-T-003"]
+  bases = [
+    { id = "radiant-throne-homeworld", owner_id = "radiant-throne", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } } },
+    { id = "radiant-throne-base-lumos-1", owner_id = "radiant-throne", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = false, location = { world_id = "lumos", region_hex = { RegionID = "A", Coord = { Q = 8, R = 5 } } } },
+  ]
+  [factions.radiant-throne.assets.radiant-throne-HAWK-F3-001-1]
+    id = "radiant-throne-HAWK-F3-001-1"
+    definition_id = "HAWK-F3-001"
+    owner_id = "radiant-throne"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-F4-003-1]
+    id = "radiant-throne-HAWK-F4-003-1"
+    definition_id = "HAWK-F4-003"
+    owner_id = "radiant-throne"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-F6-002-1]
+    id = "radiant-throne-HAWK-F6-002-1"
+    definition_id = "HAWK-F6-002"
+    owner_id = "radiant-throne"
+    current_hp = 20
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-F7-003-1]
+    id = "radiant-throne-HAWK-F7-003-1"
+    definition_id = "HAWK-F7-003"
+    owner_id = "radiant-throne"
+    current_hp = 16
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-C1-001-1]
+    id = "radiant-throne-HAWK-C1-001-1"
+    definition_id = "HAWK-C1-001"
+    owner_id = "radiant-throne"
+    current_hp = 3
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-C1-002-1]
+    id = "radiant-throne-HAWK-C1-002-1"
+    definition_id = "HAWK-C1-002"
+    owner_id = "radiant-throne"
+    current_hp = 2
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-C4-001-1]
+    id = "radiant-throne-HAWK-C4-001-1"
+    definition_id = "HAWK-C4-001"
+    owner_id = "radiant-throne"
+    current_hp = 10
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-W4-002-1]
+    id = "radiant-throne-HAWK-W4-002-1"
+    definition_id = "HAWK-W4-002"
+    owner_id = "radiant-throne"
+    current_hp = 12
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+  [factions.radiant-throne.assets.radiant-throne-HAWK-W4-003-1]
+    id = "radiant-throne-HAWK-W4-003-1"
+    definition_id = "HAWK-W4-003"
+    owner_id = "radiant-throne"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "solar-gate", region_hex = { RegionID = "A", Coord = { Q = 15, R = 1 } } }
+
+[factions.fey-royals]
+  id = "fey-royals"
+  name = "The Fey Royals"
+  scale = "hegemon"
+  force = 5
+  cunning = 8
+  wealth = 7
+  current_hp = 49
+  max_hp = 49
+  coin = 6
+  xp = 0
+  homeworld = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  tags = ["HAWK-T-001", "HAWK-T-015", "HAWK-T-016"]
+  bases = [
+    { id = "fey-royals-homeworld", owner_id = "fey-royals", current_hp = 49, max_hp = 49, influence = 0, ready = false, is_homeworld = true, location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } } },
+  ]
+  [factions.fey-royals.assets.fey-royals-HAWK-C2-004-1]
+    id = "fey-royals-HAWK-C2-004-1"
+    definition_id = "HAWK-C2-004"
+    owner_id = "fey-royals"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-C5-001-1]
+    id = "fey-royals-HAWK-C5-001-1"
+    definition_id = "HAWK-C5-001"
+    owner_id = "fey-royals"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-C7-001-1]
+    id = "fey-royals-HAWK-C7-001-1"
+    definition_id = "HAWK-C7-001"
+    owner_id = "fey-royals"
+    current_hp = 16
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-C7-002-1]
+    id = "fey-royals-HAWK-C7-002-1"
+    definition_id = "HAWK-C7-002"
+    owner_id = "fey-royals"
+    current_hp = 10
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-F2-003-1]
+    id = "fey-royals-HAWK-F2-003-1"
+    definition_id = "HAWK-F2-003"
+    owner_id = "fey-royals"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-F3-003-1]
+    id = "fey-royals-HAWK-F3-003-1"
+    definition_id = "HAWK-F3-003"
+    owner_id = "fey-royals"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-W2-002-1]
+    id = "fey-royals-HAWK-W2-002-1"
+    definition_id = "HAWK-W2-002"
+    owner_id = "fey-royals"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.fey-royals.assets.fey-royals-HAWK-W7-003-1]
+    id = "fey-royals-HAWK-W7-003-1"
+    definition_id = "HAWK-W7-003"
+    owner_id = "fey-royals"
+    current_hp = 5
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+
+[factions.blackwater-industries]
+  id = "blackwater-industries"
+  name = "Blackwater Industries"
+  scale = "major"
+  force = 5
+  cunning = 6
+  wealth = 3
+  current_hp = 29
+  max_hp = 29
+  coin = 3
+  xp = 0
+  homeworld = { world_id = "ouroboros", region_hex = { RegionID = "F", Coord = { Q = 19, R = 8 } } }
+  tags = ["HAWK-T-001", "HAWK-T-014"]
+  bases = [
+    { id = "blackwater-industries-homeworld", owner_id = "blackwater-industries", current_hp = 29, max_hp = 29, influence = 0, ready = false, is_homeworld = true, location = { world_id = "ouroboros", region_hex = { RegionID = "F", Coord = { Q = 19, R = 8 } } } },
+  ]
+  [factions.blackwater-industries.assets.blackwater-industries-HAWK-C5-003-1]
+    id = "blackwater-industries-HAWK-C5-003-1"
+    definition_id = "HAWK-C5-003"
+    owner_id = "blackwater-industries"
+    current_hp = 6
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ouroboros", region_hex = { RegionID = "F", Coord = { Q = 19, R = 8 } } }
+  [factions.blackwater-industries.assets.blackwater-industries-HAWK-C6-002-1]
+    id = "blackwater-industries-HAWK-C6-002-1"
+    definition_id = "HAWK-C6-002"
+    owner_id = "blackwater-industries"
+    current_hp = 15
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ouroboros", region_hex = { RegionID = "F", Coord = { Q = 19, R = 8 } } }
+  [factions.blackwater-industries.assets.blackwater-industries-HAWK-F2-003-1]
+    id = "blackwater-industries-HAWK-F2-003-1"
+    definition_id = "HAWK-F2-003"
+    owner_id = "blackwater-industries"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ouroboros", region_hex = { RegionID = "F", Coord = { Q = 19, R = 8 } } }
+  [factions.blackwater-industries.assets.blackwater-industries-HAWK-W2-001-1]
+    id = "blackwater-industries-HAWK-W2-001-1"
+    definition_id = "HAWK-W2-001"
+    owner_id = "blackwater-industries"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "ouroboros", region_hex = { RegionID = "F", Coord = { Q = 19, R = 8 } } }
+
+[factions.thymian-armada]
+  id = "thymian-armada"
+  name = "The Thymian Armada"
+  scale = "major"
+  force = 6
+  cunning = 3
+  wealth = 5
+  current_hp = 29
+  max_hp = 29
+  coin = 4
+  xp = 0
+  homeworld = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } }
+  tags = ["HAWK-T-001", "HAWK-T-013"]
+  bases = [
+    { id = "thymian-armada-homeworld", owner_id = "thymian-armada", current_hp = 29, max_hp = 29, influence = 0, ready = false, is_homeworld = true, location = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } } },
+  ]
+  [factions.thymian-armada.assets.thymian-armada-HAWK-F4-003-1]
+    id = "thymian-armada-HAWK-F4-003-1"
+    definition_id = "HAWK-F4-003"
+    owner_id = "thymian-armada"
+    current_hp = 8
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } }
+  [factions.thymian-armada.assets.thymian-armada-HAWK-F3-001-1]
+    id = "thymian-armada-HAWK-F3-001-1"
+    definition_id = "HAWK-F3-001"
+    owner_id = "thymian-armada"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } }
+  [factions.thymian-armada.assets.thymian-armada-HAWK-W1-002-1]
+    id = "thymian-armada-HAWK-W1-002-1"
+    definition_id = "HAWK-W1-002"
+    owner_id = "thymian-armada"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } }
+  [factions.thymian-armada.assets.thymian-armada-HAWK-W2-004-1]
+    id = "thymian-armada-HAWK-W2-004-1"
+    definition_id = "HAWK-W2-004"
+    owner_id = "thymian-armada"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } }
+  [factions.thymian-armada.assets.thymian-armada-HAWK-W1-004-1]
+    id = "thymian-armada-HAWK-W1-004-1"
+    definition_id = "HAWK-W1-004"
+    owner_id = "thymian-armada"
+    current_hp = 2
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "last-light", region_hex = { RegionID = "Q", Coord = { Q = 3, R = 23 } } }
+
+[factions.witherblight-collective]
+  id = "witherblight-collective"
+  name = "Witherblight Collective"
+  scale = "major"
+  force = 5
+  cunning = 6
+  wealth = 3
+  current_hp = 29
+  max_hp = 29
+  coin = 3
+  xp = 0
+  homeworld = { world_id = "canon-iv", region_hex = { RegionID = "C", Coord = { Q = 28, R = 4 } } }
+  tags = ["HAWK-T-001", "HAWK-T-012"]
+  bases = [
+    { id = "witherblight-collective-homeworld", owner_id = "witherblight-collective", current_hp = 29, max_hp = 29, influence = 0, ready = false, is_homeworld = true, location = { world_id = "canon-iv", region_hex = { RegionID = "C", Coord = { Q = 28, R = 4 } } } },
+  ]
+  [factions.witherblight-collective.assets.witherblight-collective-HAWK-C2-002-1]
+    id = "witherblight-collective-HAWK-C2-002-1"
+    definition_id = "HAWK-C2-002"
+    owner_id = "witherblight-collective"
+    current_hp = 6
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "canon-iv", region_hex = { RegionID = "C", Coord = { Q = 28, R = 4 } } }
+  [factions.witherblight-collective.assets.witherblight-collective-HAWK-C3-001-1]
+    id = "witherblight-collective-HAWK-C3-001-1"
+    definition_id = "HAWK-C3-001"
+    owner_id = "witherblight-collective"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "canon-iv", region_hex = { RegionID = "C", Coord = { Q = 28, R = 4 } } }
+  [factions.witherblight-collective.assets.witherblight-collective-HAWK-F2-004-1]
+    id = "witherblight-collective-HAWK-F2-004-1"
+    definition_id = "HAWK-F2-004"
+    owner_id = "witherblight-collective"
+    current_hp = 6
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "canon-iv", region_hex = { RegionID = "C", Coord = { Q = 28, R = 4 } } }
+  [factions.witherblight-collective.assets.witherblight-collective-HAWK-F3-003-1]
+    id = "witherblight-collective-HAWK-F3-003-1"
+    definition_id = "HAWK-F3-003"
+    owner_id = "witherblight-collective"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "canon-iv", region_hex = { RegionID = "C", Coord = { Q = 28, R = 4 } } }
+
+[factions.seraph-industries]
+  id = "seraph-industries"
+  name = "Seraph Industries"
+  scale = "major"
+  force = 5
+  cunning = 3
+  wealth = 6
+  current_hp = 29
+  max_hp = 29
+  coin = 5
+  xp = 0
+  homeworld = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  tags = ["HAWK-T-007"]
+  bases = [
+    { id = "seraph-industries-homeworld", owner_id = "seraph-industries", current_hp = 29, max_hp = 29, influence = 0, ready = false, is_homeworld = true, location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } } },
+  ]
+  [factions.seraph-industries.assets.seraph-industries-HAWK-W3-001-1]
+    id = "seraph-industries-HAWK-W3-001-1"
+    definition_id = "HAWK-W3-001"
+    owner_id = "seraph-industries"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.seraph-industries.assets.seraph-industries-HAWK-W6-001-1]
+    id = "seraph-industries-HAWK-W6-001-1"
+    definition_id = "HAWK-W6-001"
+    owner_id = "seraph-industries"
+    current_hp = 10
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.seraph-industries.assets.seraph-industries-HAWK-F2-002-1]
+    id = "seraph-industries-HAWK-F2-002-1"
+    definition_id = "HAWK-F2-002"
+    owner_id = "seraph-industries"
+    current_hp = 5
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.seraph-industries.assets.seraph-industries-HAWK-W8-001-1]
+    id = "seraph-industries-HAWK-W8-001-1"
+    definition_id = "HAWK-W8-001"
+    owner_id = "seraph-industries"
+    current_hp = 20
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }
+  [factions.seraph-industries.assets.seraph-industries-HAWK-C2-001-1]
+    id = "seraph-industries-HAWK-C2-001-1"
+    definition_id = "HAWK-C2-001"
+    owner_id = "seraph-industries"
+    current_hp = 4
+    stealthy = false
+    ready = true
+    maintained = true
+    location = { world_id = "veil", region_hex = { RegionID = "H", Coord = { Q = 16, R = 13 } } }

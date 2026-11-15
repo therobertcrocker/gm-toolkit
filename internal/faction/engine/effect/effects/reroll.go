@@ -19,7 +19,7 @@ var rerollRegistrar = effect.Registrar{
 	Triggers: map[domain.EffectTrigger]effect.Accepts{
 		domain.TriggerRivalRoll: {
 			Owners: []domain.EffectOwner{domain.OwnerRival},
-			Scopes: []domain.EffectScope{domain.ScopeFaction},
+			Scopes: []domain.EffectScope{domain.ScopeFaction, domain.ScopeBase},
 			Gates:  []domain.EffectGateName{domain.GateOncePer},
 		},
 		domain.TriggerOwnRoll: {
@@ -85,6 +85,10 @@ type rerollHook struct {
 func (hook *rerollHook) OnRollResult(ctx hooks.RollContext, result hooks.RollResult, factionState *state.FactionState, rulebook *rulebook.Rulebook) hooks.RerollDirective {
 	asset, live := hook.holder.live(factionState)
 	if !live || !rollMatches(ctx, hook.trigger, hook.holder.factionID, asset, hook.filters, rulebook) {
+		return hooks.RerollDirective{}
+	}
+	// deliberate: scope base is read here, not in rollMatches, because a rival_roll owner takes no part in the roll and only the hook holds the faction state (A.001.5 Effort 2 Decision 8).
+	if hook.filters.Scope == domain.ScopeBase && !factionState.Factions[hook.holder.factionID].HasBaseOn(ctx.World) {
 		return hooks.RerollDirective{}
 	}
 	forced := forcedTrigger(hook.trigger)

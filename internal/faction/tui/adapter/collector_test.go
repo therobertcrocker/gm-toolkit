@@ -154,7 +154,7 @@ func TestPhaseCollector_EveryReplyType(t *testing.T) {
 		{"SelectAction", func() (any, error) { return collector.SelectAction(alpha, available) }, chosenAction, chosenAction},
 		{"SelectStatRaise", func() (any, error) { return collector.SelectStatRaise(alpha, []domain.FactionStat{force}) }, &force, &force},
 		{"SelectGoal", func() (any, error) { return collector.SelectGoal(alpha, offers) }, choice, choice},
-		{"SelectMovementDecisions", func() (any, error) { return collector.SelectMovementDecisions(alpha, assets) }, decisions, decisions},
+		{"SelectMovementDecisions", func() (any, error) { return collector.SelectMovementDecisions(alpha, assets, nil) }, decisions, decisions},
 		{"SelectTransportCargo", func() (any, error) { return collector.SelectTransportCargo(asset, assets, nil) }, assets, assets},
 		{"SelectRelocateOrders", func() (any, error) { return collector.SelectRelocateOrders(asset, assets, []string{"Erebus"}, 1) }, relocateOrders, relocateOrders},
 		{"ConfirmPayment", func() (any, error) {

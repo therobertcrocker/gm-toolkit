@@ -189,11 +189,63 @@ func (a *Adapter) selectRelocateOrders(acting *domain.Asset, candidates []*domai
 		CandidateWorlds: candidateWorlds,
 		WorldNames:      a.worldNames(candidateWorlds),
 		MaxAssets:       maxAssets,
+		Via:             a.relocateVia(acting, candidates),
 	})
 	if err != nil {
 		return nil, err
 	}
 	return replyAs[[]action.RelocateOrder]("SelectRelocateOrders", raw)
+}
+
+// relocateVia names the asset a relocation runs through, its owner and what the
+// move costs the rider: "via Transit Web (Fey Royals) · 1 Coin". A self-jump runs
+// through nothing and names nothing (B.052).
+func (a *Adapter) relocateVia(acting *domain.Asset, candidates []*domain.Asset) string {
+	if len(candidates) == 0 || slices.Contains(candidates, acting) || a.engine.Rulebook == nil {
+		return ""
+	}
+	def := a.engine.Rulebook.Assets[acting.DefinitionID]
+	if def == nil {
+		return ""
+	}
+	params, fare, ok := relocateCost(def, acting.OwnerID, candidates[0].OwnerID)
+	if !ok {
+		return ""
+	}
+	owner := acting.OwnerID
+	if faction := a.factionState.Factions[acting.OwnerID]; faction != nil {
+		owner = faction.Name
+	}
+	return fmt.Sprintf("via %s (%s) · %s", def.Name, owner, fareLabel(fare, params.CoinCostMode))
+}
+
+// relocateCost finds the relocate block def offers, from a movement grant or an
+// ability step, and the fare riderID pays for it.
+func relocateCost(def *domain.AssetDefinition, ownerID, riderID string) (domain.RelocateParams, int, bool) {
+	for _, entry := range def.Effects {
+		if entry.GrantMovement != nil {
+			return entry.GrantMovement.Relocate, entry.GrantMovement.Fare(ownerID, riderID), true
+		}
+	}
+	if def.Ability != nil {
+		for _, step := range def.Ability.Steps {
+			if step.Relocate != nil {
+				return *step.Relocate, step.Relocate.CoinCost, true
+			}
+		}
+	}
+	return domain.RelocateParams{}, 0, false
+}
+
+func fareLabel(fare int, mode domain.RelocateCostMode) string {
+	switch {
+	case fare == 0:
+		return "free"
+	case mode == domain.RelocateCostFlat:
+		return fmt.Sprintf("%d Coin", fare)
+	default:
+		return fmt.Sprintf("%d Coin per asset", fare)
+	}
 }
 func (a *actionCollector) SelectRepairOrders(faction *domain.Faction, damaged []*domain.Asset, rb *rulebook.Rulebook) ([]action.RepairOrder, error) {
 	targets := make([]RepairTarget, 0, len(damaged))

@@ -126,6 +126,14 @@ history file only; it is **not** a state save (see Key Decisions).
   asset that ends at this faction's turn (`turn.ExpireConditions`), and then runs
   `FireTurnStart`. No action is spent. (A.001.6 overview Decision 4; Effort 1
   Decision 14; Effort 3 Decision 8.)
+- **Tag upkeep is charged after income and before asset maintenance.** A tag
+  holds upkeep through a `coin_upkeep` effect on the `upkeep` trigger; an asset
+  pays maintenance instead. `applyUpkeep` runs against the running Coin, so tags
+  are paid first and maintenance takes what is left. Each unpaid entry runs its own
+  consequence, `lapse`, `lose_tag` or `damage`, once per miss with no two-strike
+  counter; damage goes through the normal faction HP path, so it can destroy a
+  faction. Rejected: firing upkeep at turn start, before income. (A.001.5 Effort
+  2 Decision 10.)
 - **History append is decoupled from state save.** `RecordHistory` appends to
   `history.jsonl`; durable faction state is persisted separately, by the
   orchestrator, at phase gates. History grows per turn; on-disk state lands only

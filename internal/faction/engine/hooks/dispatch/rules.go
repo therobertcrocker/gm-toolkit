@@ -98,26 +98,49 @@ func ResolveWorldTechLevel(registry *hooks.Registry, faction *domain.Faction, de
 	return tl
 }
 
-// AssetSpeedResolver returns the speed of an asset faction owns, by definition:
+// AssetSpeedResolver returns the speed of an asset faction owns, by definition and by whether its order runs hot:
 // the definition's own, run through faction's AssetSpeedModifiers, then those
 // registered against each asset faction owns, in asset ID order. A speed floor
 // serves its owner only, so a rival's assets are never asked. The modifiers are
 // gathered once, so one resolver serves a whole pass over faction's assets. With
 // a nil registry it returns the definition's speed.
-func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(*domain.AssetDefinition) int {
+func AssetSpeedResolver(registry *hooks.Registry, faction *domain.Faction) func(definition *domain.AssetDefinition, hot bool) int {
 	if registry == nil {
-		return func(definition *domain.AssetDefinition) int { return definition.Speed }
+		return func(definition *domain.AssetDefinition, _ bool) int { return definition.Speed }
 	}
 	modifiers := registry.AssetSpeedModifiersFor(faction.ID)
 	for _, asset := range domain.SortedAssets(faction) {
 		modifiers = append(modifiers, registry.AssetSpeedModifiersForAsset(faction.ID, asset.ID)...)
 	}
-	return func(definition *domain.AssetDefinition) int {
+	return func(definition *domain.AssetDefinition, hot bool) int {
 		speed := definition.Speed
 		for _, registered := range modifiers {
-			speed = registered.Hook.ModifyAssetSpeed(faction, definition, speed)
+			speed = registered.Hook.ModifyAssetSpeed(faction, definition, speed, hot)
 		}
 		return speed
+	}
+}
+
+// AssetDriftRatingResolver returns the drift rating an asset faction owns crosses
+// the Drift with, by definition: the definition's own, a missing rating counted as
+// 1 (A.001.5 Effort 2 Decision 9), run through faction's drift-rating hooks, then
+// those registered against each asset faction owns, in asset ID order. With a nil
+// registry it returns the definition's rating, counted the same way.
+func AssetDriftRatingResolver(registry *hooks.Registry, faction *domain.Faction) func(*domain.AssetDefinition) int {
+	base := func(definition *domain.AssetDefinition) int { return max(definition.DriftRating, 1) }
+	if registry == nil {
+		return base
+	}
+	modifiers := registry.AssetDriftRatingModifiersFor(faction.ID)
+	for _, asset := range domain.SortedAssets(faction) {
+		modifiers = append(modifiers, registry.AssetDriftRatingModifiersForAsset(faction.ID, asset.ID)...)
+	}
+	return func(definition *domain.AssetDefinition) int {
+		rating := base(definition)
+		for _, registered := range modifiers {
+			rating = registered.Hook.ModifyAssetDriftRating(faction, definition, rating)
+		}
+		return rating
 	}
 }
 
@@ -235,9 +258,11 @@ func ResolveAttackEligibility(registry *hooks.Registry, query hooks.AttackEligib
 
 // GrantedMovementAbilities collects the free movement offered to faction: its
 // global and faction granters, then those registered against each asset it owns,
-// in asset ID order. A grant serves its owner only, so a rival's assets are never
-// asked. Returns nil when registry is nil or no granter offers anything.
-func GrantedMovementAbilities(registry *hooks.Registry, faction *domain.Faction) []hooks.MovementAbility {
+// in asset ID order, then those registered against every other faction's assets,
+// by faction and asset ID. A granter that does not serve faction offers nothing,
+// so a rival's asset offers only a public grant (Effort 6 Decision 10). Returns
+// nil when registry is nil or no granter offers anything.
+func GrantedMovementAbilities(registry *hooks.Registry, factions map[string]*domain.Faction, faction *domain.Faction) []hooks.MovementAbility {
 	if registry == nil {
 		return nil
 	}
@@ -248,6 +273,16 @@ func GrantedMovementAbilities(registry *hooks.Registry, faction *domain.Faction)
 	for _, asset := range domain.SortedAssets(faction) {
 		for _, registered := range registry.AssetMovementGrantersForAsset(faction.ID, asset.ID) {
 			abilities = append(abilities, registered.Hook.GrantMovementAbilities(faction)...)
+		}
+	}
+	for _, ownerID := range slices.Sorted(maps.Keys(factions)) {
+		if ownerID == faction.ID {
+			continue
+		}
+		for _, asset := range domain.SortedAssets(factions[ownerID]) {
+			for _, registered := range registry.AssetMovementGrantersForAsset(ownerID, asset.ID) {
+				abilities = append(abilities, registered.Hook.GrantMovementAbilities(faction)...)
+			}
 		}
 	}
 	return abilities

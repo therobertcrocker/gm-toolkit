@@ -288,7 +288,7 @@ func TestLockedOutBy_TwoLocksInOneFactionNameTheFirstByID(t *testing.T) {
 
 func TestCanPurchase_PopulationFloor(t *testing.T) {
 	faction := &domain.Faction{ID: "f1", Coin: 10, Wealth: 3}
-	def := &domain.AssetDefinition{ID: "ship", Category: domain.StatWealth, Cost: 5, TechLevel: 4, Type: domain.TypeStarship}
+	def := &domain.AssetDefinition{ID: "ship", Category: domain.StatWealth, Cost: 5, TechLevel: 4, Type: domain.AssetType("Starship")}
 	cases := []struct {
 		name       string
 		population int

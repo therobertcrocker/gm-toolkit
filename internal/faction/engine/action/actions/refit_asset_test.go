@@ -188,12 +188,12 @@ func TestValidRefitReplacements_ChecksTheWorldsPurchaseRules(t *testing.T) {
 	worldEngine := world.NewWithMap(&testHexRouter{worlds: map[string]spatial.RegionHex{"a": worldHex}}, slog.New(slog.DiscardHandler))
 	refitRulebook := &rulebook.Rulebook{
 		Assets: map[string]*domain.AssetDefinition{
-			"freighter": {ID: "freighter", Category: domain.StatWealth, Cost: 1, TechLevel: 1, Type: domain.TypeFacility},
-			"plant":     {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeFacility},
-			"lab":       {ID: "lab", Category: domain.StatWealth, Cost: 1, TechLevel: 6, Type: domain.TypeFacility},
-			"ship":      {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.TypeStarship},
+			"freighter": {ID: "freighter", Category: domain.StatWealth, Cost: 1, TechLevel: 1, Type: domain.AssetType("Facility")},
+			"plant":     {ID: "plant", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.AssetType("Facility")},
+			"lab":       {ID: "lab", Category: domain.StatWealth, Cost: 1, TechLevel: 6, Type: domain.AssetType("Facility")},
+			"ship":      {ID: "ship", Category: domain.StatWealth, Cost: 1, TechLevel: 4, Type: domain.AssetType("Starship")},
 		},
-		PurchasePopulation: map[domain.AssetType]int{domain.TypeStarship: 500000},
+		PurchasePopulation: map[domain.AssetType]int{domain.AssetType("Starship"): 500000},
 	}
 	asset := &domain.Asset{ID: "a1", DefinitionID: "freighter", Location: domain.Location{WorldID: "a", RegionHex: worldHex}}
 	faction := &domain.Faction{ID: "f1", Coin: 5, Assets: map[string]*domain.Asset{"a1": asset}}

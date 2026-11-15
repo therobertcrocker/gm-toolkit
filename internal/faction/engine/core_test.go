@@ -38,6 +38,20 @@ func TestNewWithRulebook_ValidatesTagEffects(t *testing.T) {
 	}
 }
 
+func TestNewWithRulebook_RefusesACountingTag(t *testing.T) {
+	tag := &domain.Tag{ID: "HAWK-T-X", Effects: []domain.EffectDefinition{{
+		Trigger:  domain.TriggerTurnStart,
+		Effect:   domain.SpecialCoinGain,
+		Filters:  domain.EffectFilters{Owner: domain.OwnerOwn, Scope: domain.ScopeWorld, AssetTypes: []domain.AssetType{"Workforce"}},
+		CoinGain: &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}},
+	}}}
+	rb := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Tags: map[string]*domain.Tag{tag.ID: tag}}
+	_, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler))
+	if err == nil || !strings.Contains(err.Error(), `scope "world" cannot apply`) {
+		t.Fatalf("got %v, want a tag counting coin_gain refused at load", err)
+	}
+}
+
 func TestNewWithRulebook_RefusesBadGoalData(t *testing.T) {
 	goal := &domain.Goal{
 		ID:        "X-1",
@@ -55,17 +69,22 @@ func TestNewWithRulebook_RefusesBadGoalData(t *testing.T) {
 
 // TestNewWithRulebook_ShippedRulebook catches an authored effects entry that
 // loads but fails registrar validation, which otherwise surfaces only at runtime.
+// It is H.A.W.K's load check too (A.001.5 Effort 2 Decision 5).
 func TestNewWithRulebook_ShippedRulebook(t *testing.T) {
-	camp := &campaigns.Campaign{Root: t.TempDir()}
-	if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/swn", false); err != nil {
-		t.Fatalf("compose shipped rulebook: %v", err)
-	}
-	rb, err := rulebook.Load(camp.Paths().FactionDataDir)
-	if err != nil {
-		t.Fatalf("load shipped rulebook: %v", err)
-	}
-	if _, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler)); err != nil {
-		t.Fatalf("construct engine from shipped rulebook: %v", err)
+	for _, name := range []string{"swn", "hawk"} {
+		t.Run(name, func(t *testing.T) {
+			camp := &campaigns.Campaign{Root: t.TempDir()}
+			if _, err := campaigns.ComposeRulebook(camp, "../../../rulebooks/"+name, false); err != nil {
+				t.Fatalf("compose shipped rulebook: %v", err)
+			}
+			rb, err := rulebook.Load(camp.Paths().FactionDataDir)
+			if err != nil {
+				t.Fatalf("load shipped rulebook: %v", err)
+			}
+			if _, err := NewWithRulebook(rb, nil, slog.New(slog.DiscardHandler)); err != nil {
+				t.Fatalf("construct engine from shipped rulebook: %v", err)
+			}
+		})
 	}
 }
 

@@ -114,7 +114,7 @@ scope = "self"
 				Attribute:  domain.StatCunning,
 				Phases:     []domain.RollPhase{domain.RollPhaseDefense},
 				Action:     "Expand Influence",
-				AssetTypes: []domain.AssetType{domain.TypeStarship},
+				AssetTypes: []domain.AssetType{domain.AssetType("Starship")},
 				Categories: []domain.FactionStat{domain.StatForce, domain.StatWealth},
 				Stealthy:   &stealthy,
 			},
@@ -139,7 +139,7 @@ scope = "self"
 				CoinCost:     1,
 				CoinCostMode: domain.RelocateCostFlat,
 				Categories:   []domain.FactionStat{domain.StatCunning, domain.StatWealth},
-				ExcludeTypes: []domain.AssetType{domain.TypeStarship},
+				ExcludeTypes: []domain.AssetType{domain.AssetType("Starship")},
 			}},
 		},
 		{
@@ -172,13 +172,15 @@ scope = "self"
 		entry("own_roll", "reroll", "result = 1")+
 		entry("tech_level_query", "tech_level_floor", "level = 4")+
 		entry("asset_cost_query", "cost_surcharge", "amount = 1")+
-		entry("attack_eligibility_query", "restrict_attack", `side = "defense"`+"\n"+`allow = "only_listed"`))
+		entry("attack_eligibility_query", "restrict_attack", `side = "defense"`+"\n"+`allow = "only_listed"`)+
+		entry("turn_start", "coin_gain", `amount = "1"`+"\nmax = 3")+
+		entry("movement_options_query", "grant_movement", "public = true\n[assets.Machine.effects.grant_movement.relocate]\n"+`scope = "other"`+"\n"+`range = "hexes"`+"\nmax_hex = 12\ncoin_cost = 1\n"))
 	if err != nil {
 		t.Fatalf("loadAssets: %v", err)
 	}
 	effects := assets["T-001"].Effects
-	if len(effects) != 7 {
-		t.Fatalf("effects: got %d, want 7", len(effects))
+	if len(effects) != 9 {
+		t.Fatalf("effects: got %d, want 9", len(effects))
 	}
 	checks := []struct {
 		name string
@@ -192,6 +194,8 @@ scope = "self"
 		{"tech_level_floor", effects[4].TechLevelFloor, &domain.TechLevelFloorParams{Level: 4}},
 		{"cost_surcharge", effects[5].CostSurcharge, &domain.CostSurchargeParams{Amount: 1}},
 		{"restrict_attack", effects[6].RestrictAttack, &domain.RestrictAttackParams{Side: domain.RestrictDefense, Allow: domain.AllowOnlyListed}},
+		{"coin_gain max", effects[7].CoinGain, &domain.CoinGainParams{Amount: domain.DiceRoll{Modifier: 1}, Max: 3}},
+		{"grant_movement public", effects[8].GrantMovement != nil && effects[8].GrantMovement.Public, true},
 	}
 	for _, check := range checks {
 		if !reflect.DeepEqual(check.got, check.want) {
@@ -299,6 +303,18 @@ amount = "1"
 trigger = "turn_start"
 effect  = "coin_gain"` + filters,
 			wantErr: `effect "coin_gain" requires a [coin_gain] block`,
+		},
+		{
+			name: "coin_gain max below 0",
+			body: `
+[[assets.Machine.effects]]
+trigger = "turn_start"
+effect  = "coin_gain"` + filters + `
+[assets.Machine.effects.coin_gain]
+amount = "1"
+max = -1
+`,
+			wantErr: "coin_gain max must be >= 0",
 		},
 		{
 			name: "capture_target missing its block",
@@ -498,6 +514,21 @@ effect  = "grant_movement"` + filters + `
 			wantErr: "grant_movement requires a [grant_movement.relocate] block",
 		},
 		{
+			name: "public grant_movement with self scope",
+			body: `
+[[assets.Machine.effects]]
+trigger = "movement_options_query"
+effect  = "grant_movement"` + filters + `
+[assets.Machine.effects.grant_movement]
+public = true
+[assets.Machine.effects.grant_movement.relocate]
+scope = "self"
+range = "hexes"
+max_hex = 6
+`,
+			wantErr: `a public grant needs relocate scope "other"`,
+		},
+		{
 			name: "bonus_die with zero sides",
 			body: `
 [[assets.Machine.effects]]
@@ -635,7 +666,7 @@ exclude_types  = ["Starship"]
 	if !reflect.DeepEqual(relocate.Categories, []domain.FactionStat{domain.StatWealth}) {
 		t.Errorf("Categories = %v, want [Wealth]", relocate.Categories)
 	}
-	if !reflect.DeepEqual(relocate.ExcludeTypes, []domain.AssetType{domain.TypeStarship}) {
+	if !reflect.DeepEqual(relocate.ExcludeTypes, []domain.AssetType{domain.AssetType("Starship")}) {
 		t.Errorf("ExcludeTypes = %v, want [Starship]", relocate.ExcludeTypes)
 	}
 	if relocate.CoinCostMode != domain.RelocateCostFlat {
@@ -780,5 +811,40 @@ func TestLoadTags_PopulationFloorPercent(t *testing.T) {
 				t.Fatalf("err = %v, want it to contain %q", err, testCase.want)
 			}
 		})
+	}
+}
+
+func TestConvertEffect_RunningHot(t *testing.T) {
+	bonus, err := convertEffect(effectRecord{
+		Trigger:    "speed_query",
+		Effect:     "speed_bonus",
+		Filters:    &effectFiltersRecord{Owner: "own", Scope: "faction", AssetType: []string{"Aethership"}, Hot: true},
+		SpeedBonus: &speedBonusRecord{Amount: 5},
+	})
+	if err != nil {
+		t.Fatalf("speed_bonus: %v", err)
+	}
+	if bonus.SpeedBonus == nil || bonus.SpeedBonus.Amount != 5 || !bonus.Filters.Hot {
+		t.Errorf("speed_bonus = %+v, want amount 5 and the hot filter", bonus)
+	}
+
+	burn, err := convertEffect(effectRecord{
+		Trigger:    "hot_move",
+		Effect:     "self_damage",
+		Filters:    &effectFiltersRecord{Owner: "own", Scope: "faction"},
+		SelfDamage: &amountRecord{Amount: "1d4"},
+	})
+	if err != nil {
+		t.Fatalf("hot_move self_damage: %v", err)
+	}
+	if burn.Trigger != domain.TriggerHotMove {
+		t.Errorf("trigger = %q, want %q", burn.Trigger, domain.TriggerHotMove)
+	}
+
+	if _, err := convertEffect(effectRecord{
+		Trigger: "speed_query", Effect: "speed_bonus",
+		Filters: &effectFiltersRecord{Owner: "own", Scope: "faction"}, SpeedBonus: &speedBonusRecord{Amount: 0},
+	}); err == nil {
+		t.Error("speed_bonus amount 0: want an error")
 	}
 }

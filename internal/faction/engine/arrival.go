@@ -7,7 +7,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/dice"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks/dispatch"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/state"
+	"github.com/therobertcrocker/gm-toolkit/internal/spatial"
 )
 
 // checkArrivals decides, for each order the tick completes, whether it may land,
@@ -64,7 +66,7 @@ func (e *Engine) resolveArrival(faction *domain.Faction, factionState *state.Fac
 			if err != nil {
 				return nil, nil, err
 			}
-			hold, cost := lockdownHold(completed, order, lockdown.OwnerID, fee, faction.Coin-spent[faction.ID])
+			hold, cost := lockdownHold(e.Rulebook, completed, order, lockdown.OwnerID, fee, faction.Coin-spent[faction.ID])
 			return hold, map[string]int{faction.ID: cost}, nil
 		}
 	}
@@ -77,7 +79,7 @@ func (e *Engine) resolveArrival(faction *domain.Faction, factionState *state.Fac
 	}
 	for payerID, amount := range owed {
 		if factionState.Factions[payerID].Coin-spent[payerID] < amount {
-			return []domain.Mutation{holdAtEdge(completed, order, domain.HoldTollUnpaid)}, nil, nil
+			return []domain.Mutation{holdAtEdge(e.Rulebook, completed, order, domain.HoldTollUnpaid)}, nil, nil
 		}
 	}
 	// deliberate: the carrier's bypass covers its cargo, because the book lets these transports land "any one … asset" past the government's objection (D-25).
@@ -93,7 +95,7 @@ func (e *Engine) resolveArrival(faction *domain.Faction, factionState *state.Fac
 				return nil, nil, err
 			}
 			if refusal != nil {
-				return []domain.Mutation{*refusal, holdAtEdge(completed, order, domain.HoldRefused)}, nil, nil
+				return []domain.Mutation{*refusal, holdAtEdge(e.Rulebook, completed, order, domain.HoldRefused)}, nil, nil
 			}
 		}
 	}
@@ -133,13 +135,13 @@ func (e *Engine) lockdownFee(lockdown *domain.Asset) (int, error) {
 // that cannot pay holds unpaid and tries again at its next tick (overview Decision
 // 15). The fee names lockerID, the Lockdown's owner, as its cause. It returns the
 // mutations and the Coin they spend.
-func lockdownHold(completed domain.MovementOrderCompleted, order *domain.MovementOrder, lockerID string, fee, coin int) ([]domain.Mutation, int) {
+func lockdownHold(rulebook *rulebook.Rulebook, completed domain.MovementOrderCompleted, order *domain.MovementOrder, lockerID string, fee, coin int) ([]domain.Mutation, int) {
 	if coin < fee {
-		return []domain.Mutation{holdAtEdge(completed, order, domain.HoldLockdownUnpaid)}, 0
+		return []domain.Mutation{holdAtEdge(rulebook, completed, order, domain.HoldLockdownUnpaid)}, 0
 	}
 	return []domain.Mutation{
 		domain.CoinDelta{FactionID: completed.FactionID, Delta: -fee, Cause: string(domain.SpecialLockOut), CausedByFactionID: lockerID},
-		holdAtEdge(completed, order, domain.HoldLockdownPaid),
+		holdAtEdge(rulebook, completed, order, domain.HoldLockdownPaid),
 	}, fee
 }
 
@@ -157,15 +159,21 @@ func aboard(factionState *state.FactionState, carrier *domain.Asset) []*domain.A
 
 // holdAtEdge replaces completed with a hold at the last hex before the destination
 // (overview Decision 16). Path[0] is the asset's own hex, so on a two-hex path the
-// hold is the in-orbit state right after issue.
-func holdAtEdge(completed domain.MovementOrderCompleted, order *domain.MovementOrder, reason domain.HoldReason) domain.MovementOrderHeld {
+// hold is the in-orbit state right after issue. A final Drift jump keeps its cost
+// banked, so a held order tries to land again next turn, as a held hex step does.
+func holdAtEdge(rulebook *rulebook.Rulebook, completed domain.MovementOrderCompleted, order *domain.MovementOrder, reason domain.HoldReason) domain.MovementOrderHeld {
 	step := max(len(order.Path)-2, 0)
+	banked := 0
+	if last := len(order.Path) - 1; last > step && !spatial.Adjacent(order.Path[step].Coord, order.Path[last].Coord) {
+		banked = rulebook.DriftCost(order.DriftRating)
+	}
 	return domain.MovementOrderHeld{
 		FactionID:         completed.FactionID,
 		AssetID:           completed.AssetID,
 		WorldID:           order.Destination.WorldID,
 		NewStepIdx:        step,
 		RegionHex:         order.Path[step],
+		Banked:            banked,
 		Reason:            reason,
 		Cause:             domain.CauseMovementTick,
 		CausedByFactionID: completed.CausedByFactionID,

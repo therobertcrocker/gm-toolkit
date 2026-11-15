@@ -24,13 +24,13 @@ func arrivalHex(q int) spatial.RegionHex {
 func arrivalRulebook() *rulebook.Rulebook {
 	return &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
 		"ship": {ID: "ship", Name: "Ship", Speed: 2, Transport: &domain.TransportProfile{
-			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.TypeMilitaryUnit},
+			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.AssetType("Military Unit")},
 		}},
-		"troops":  {ID: "troops", Name: "Troops", Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
-		"militia": {ID: "militia", Name: "Militia", Type: domain.TypeMilitaryUnit},
-		"mercs":   {ID: "mercs", Name: "Mercs", Speed: 2, Type: domain.TypeMilitaryUnit, Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"troops":  {ID: "troops", Name: "Troops", Type: domain.AssetType("Military Unit"), Flags: []domain.AssetFlag{domain.FlagPermission}},
+		"militia": {ID: "militia", Name: "Militia", Type: domain.AssetType("Military Unit")},
+		"mercs":   {ID: "mercs", Name: "Mercs", Speed: 2, Type: domain.AssetType("Military Unit"), Flags: []domain.AssetFlag{domain.FlagPermission}},
 		"landers": {ID: "landers", Name: "Landers", Speed: 3, Transport: &domain.TransportProfile{
-			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.TypeMilitaryUnit}, IgnoresLockdown: true,
+			MaxCargo: 1, CargoTypes: []domain.AssetType{domain.AssetType("Military Unit")}, IgnoresLockdown: true,
 		}},
 		"lockdown": {ID: "lockdown", Name: "Lockdown", Effects: []domain.EffectDefinition{{
 			Effect: domain.SpecialLockOut, LockOut: &domain.LockOutParams{Fee: domain.DiceRoll{NumDice: 1, Sides: 4}},
@@ -267,6 +267,40 @@ func TestCheckArrivals_Lockdown(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, want) {
 				t.Errorf("mutations = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
+func TestCheckArrivals_AHeldJumpKeepsItsCost(t *testing.T) {
+	cases := []struct {
+		name       string
+		finalHex   spatial.RegionHex
+		wantBanked int
+	}{
+		{name: "a final Drift jump banks its cost", finalHex: arrivalHex(5), wantBanked: 6},
+		{name: "a final hex step banks nothing", finalHex: arrivalHex(2), wantBanked: 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eng, factionState, alpha, completed := arrivalFixture("ship", "", 3)
+			eng.Rand = dicetest.Constant{Value: 3}
+			eng.Rulebook.DriftCosts = []int{6}
+			alpha.Assets["t1"].CurrentOrder.Path[2] = tc.finalHex
+			lockKrylos(factionState)
+			alpha.Coin = 5
+
+			got, err := eng.checkArrivals(alpha, factionState, []domain.Mutation{completed}, &minimalPhaseCollector{})
+
+			if err != nil {
+				t.Fatalf("checkArrivals: %v", err)
+			}
+			held, ok := got[len(got)-1].(domain.MovementOrderHeld)
+			if !ok {
+				t.Fatalf("last mutation = %+v, want a hold", got[len(got)-1])
+			}
+			if held.Banked != tc.wantBanked {
+				t.Errorf("Banked = %d, want %d", held.Banked, tc.wantBanked)
 			}
 		})
 	}

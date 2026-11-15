@@ -13,12 +13,15 @@
 > candidate list), and the [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
-> **Status:** signed off, and **amended three times since**. The A.001.3 Discovery split the
+> **Status:** signed off, and **amended five times since**. The A.001.3 Discovery split the
 > S side into two initiatives and reset A.001.3's boundary (AP-7). The A.001.4
 > Discovery narrowed `_core` to goals, kept tags per rulebook, and added A.001.7 and
 > A.001.8 from the `E.002` exploration (AP-8). The A.001.7 Discovery widened A.001.7
 > to all 20 SWN tags, including tags that grant actions or assets, and added a
-> dependency on A.001.2 (AP-9). Amendments are
+> dependency on A.001.2 (AP-9). The A.001.5 promotion set its session shape and moved
+> the lore canon to `campaigns/hawk/canon/` (AP-10). The A.001.5 Discovery added the
+> H.A.W.K campaign, map and starting factions to A.001.5 and moved its tag pass ahead of
+> the asset passes (AP-11). Amendments are
 > recorded in the Decision Record and folded into the body, so this doc stays the
 > current arc shape rather than a snapshot of sign-off. Each initiative is registered in
 > `planned-work.md` and runs its own lifecycle (session-modes section 9).
@@ -47,6 +50,10 @@
 > **A.001.7 was widened after promotion,** by the A.001.7 Discovery session (AP-9). It
 > covers every SWN tag, so a tag that grants an action reaches A.001.2's ability
 > registry.
+>
+> **A.001.5 was widened after promotion,** by the A.001.5 Discovery session (AP-11). It
+> ships a playable H.A.W.K campaign (map and starting factions), not only the rulebook,
+> and runs its tag pass before the asset passes.
 
 The arc is a DAG, not a line: A.001.4 and A.001.5's lore-seed effort carry no
 dependency on the registries and can run from the start; the registries themselves are
@@ -74,8 +81,9 @@ flowchart TD
   Rules["A.001.6<br>S-flag rule extensions<br>(gates nothing)"]:::muted
   Tags["A.001.7<br>data-driven tags<br>(faction holder)"]:::spine
   Goals["A.001.8<br>data-driven goals<br>(gates nothing)"]:::muted
-  Author["A.001.5 · E2+<br>H.A.W.K authoring passes"]:::content
-  TagPass["A.001.5<br>H.A.W.K tag pass"]:::content
+  TagPass["A.001.5 · E2<br>H.A.W.K tag pass"]:::content
+  Setup["A.001.5 · E3<br>campaign setup<br>(map, factions)"]:::content
+  Author["A.001.5 · E4–E6<br>H.A.W.K asset passes"]:::content
   Playable(["H.A.W.K playable"]):::milestone
 
   R018 --> A
@@ -87,11 +95,11 @@ flowchart TD
   A -- "ability registry" --> Tags
   Core -- "strict loader" --> Tags
   Core --> Goals
-  Lore --> Author
   Lore --> TagPass
   Tags --> TagPass
+  TagPass --> Setup
+  Setup --> Author
   Author --> Playable
-  TagPass --> Playable
   Core --> Playable
 
   classDef spine     fill:#89b4fa,stroke:#5a7fd6,color:#1e1e2e
@@ -232,26 +240,36 @@ renames of Go types that carry goal names (A.001.8 deletes them).
 
 ### A.001.5 — H.A.W.K asset authoring (feature) — depends A.001.2, A.001.3, lore seed
 
-Owns the living lore canon (ACD-9) and ships H.A.W.K's assets.
+Owns the living lore canon (ACD-9) and ships H.A.W.K's tags, assets and a playable
+campaign (AP-11). Six efforts, in order; the full design is in the
+[A.001.5 discovery](../../_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.5-hawk-asset-authoring/A.001.5-hawk-asset-authoring-discovery.md).
 
-- **Effort 1 — lore-seed session (precursor).** Interview Robert on H.A.W.K's setting,
-  factions, terminology, and the fiction behind its elements; seed the canon at
-  `docs/campaigns/hawk/`. **Carries no registry dependency — schedulable from the start
-  of the arc**, ahead of the registries, so authoring never invents canon cold.
-- **Effort 2+ — by-category passes.** One category file at a time, Force → Cunning →
-  Wealth. Each pass: **lore-gate** (confirm the batch against canon) → **reflavor**
-  (name/description/fiction per asset, folded back into canon) → **mechanical sort**
-  (classify each ability against the catalog — reuse a primitive / build a missing
-  primitive / parameterize a near-miss) → **review** before commit. Output per pass:
-  `rulebooks/hawk/assets/<category>_assets.toml`, any new registry primitives the sort
-  required, and canon-doc updates. IDs gain the `HAWK-` prefix, initially mirroring
-  SWN's tier suffix (`HAWK-F1-001`) and drifting as the set diverges.
-- **Tag pass (added by AP-8) — depends A.001.7.** H.A.W.K's own
-  `rulebooks/hawk/tags.toml`, authored in A.001.7's data form, with the same lore-gate
-  → reflavor → mechanical sort → review loop. The folder also gets a `rulebook.toml`
-  that includes `../_core` for goals.
+- **Effort 1 — lore-seed session (precursor).** Scaffold the H.A.W.K campaign at
+  `campaigns/hawk/`, then interview Robert on H.A.W.K's setting, factions, places,
+  terminology, and the fiction behind its elements; seed the canon at
+  `campaigns/hawk/canon/` (AP-10). **Carries no registry dependency**, so authoring
+  never invents canon cold.
+- **Effort 2 — tag pass (added by AP-8, moved up by AP-11) — depends A.001.7.**
+  H.A.W.K's own `rulebooks/hawk/tags.toml`, authored in A.001.7's data form. The folder
+  also gets a `rulebook.toml` that includes `../_core` for goals, and SWN copies of the
+  asset files and `settings.toml` as stand-ins until the later efforts replace them.
+- **Effort 3 — campaign setup (added by AP-11).** The H.A.W.K map in today's spatial
+  source shape, the starting factions as a tracked seed state, and the real
+  `settings.toml` values; the first live turn.
+- **Efforts 4–6 — asset passes.** One category file at a time, Force → Cunning →
+  Wealth. Output per pass: `rulebooks/hawk/assets/<category>_assets.toml`, any new
+  registry primitives the sort required, and canon-doc updates; each pass ends with a
+  live turn in the H.A.W.K campaign.
+- **Every pass (E2, E4–E6)** runs the loop **lore-gate** (confirm the batch against
+  canon) → **reflavor** (name/description/fiction per entry, folded back into canon) →
+  **mechanical sort** (reuse a primitive / build a missing primitive / parameterize a
+  near-miss, read against the registrar tables) → **review**. The loop lives in the
+  pass's own Plan session, as a sort table in its effort plan (AP-11). IDs gain the
+  `HAWK-` prefix, initially mirroring SWN's tier suffix (`HAWK-F1-001`) and drifting
+  as the set diverges.
 
-**Covers:** the lore seed, the canon lifecycle, and the H.A.W.K asset and tag content.
+**Covers:** the lore seed, the canon lifecycle, the H.A.W.K tag and asset content, and
+the H.A.W.K campaign with its map and starting factions.
 **Punts:** nothing within its surface — but it depends on the registries existing
 (passes can't classify against primitives that aren't built), and the tag pass on
 A.001.7.
@@ -334,8 +352,10 @@ load**, not uniform:
   precursor **lore-seed session** (an interview), and its execution loop (lore-gate →
   reflavor → mechanical sort → review) is already specified in the seed. The session
   type this needs is one of the **deferred process-level items** (custom lore /
-  ability-catalog session types); A.001.5 is the initiative that forces that gap, and
-  the shape is settled when it is promoted, not here.
+  ability-catalog session types); A.001.5 is the initiative that forces that gap. Its
+  promotion settled the shape (AP-10): a short Discovery first, then the lore interview
+  as Effort 1 in its own session. Its Discovery set six efforts and gave each pass its
+  own Plan session for the design work that needs the canon (AP-11).
 - **A.001.7 / A.001.8 — shape set at promotion.** The `E.002` exploration already holds
   their audit, options and recommendation, so their Discovery starts from it. The
   A.001.7 Discovery set four efforts (AP-9).
@@ -398,9 +418,9 @@ Prerequisites — in-arc gates and the engine seams reached outside the registri
   makes.
 - **A.001.5's tag pass ⟸ A.001.7.** H.A.W.K tags are authored in A.001.7's data form,
   so they get behavior from their own entries, not by reusing an SWN ID.
-- **"H.A.W.K playable" milestone ⟸ A.001.4 + A.001.5's tag pass.** A.001.4 doesn't
-  gate authoring, but a playable H.A.W.K needs goals composed from `_core` and its own
-  tags.
+- **"H.A.W.K playable" milestone ⟸ A.001.4 + A.001.5's last asset pass.** A.001.4
+  doesn't gate authoring, but a playable H.A.W.K needs goals composed from `_core`, its
+  own tags and assets, and its campaign (AP-11).
 - **Engine seam touched outside the registries:** A.001.3 wires the **movement phase**
   (turn engine) to consult `GrantedMovementAbilities` — the half-built seam the
   arc-discovery verified is defined but unconsumed.
@@ -417,7 +437,9 @@ Work this arc does not address (seeded by the arc-discovery Out-of-scope list):
 - **Other rulebooks (WWN).** H.A.W.K is the first non-reference rulebook; WWN is the
   next beneficiary, not touched here.
 - **`spatial/`.** Carried as-is from the SWN shape. *(AP-9 moves the drift costs from
-  `drift_costs.toml` into A.001.7's `settings.toml`; the values do not change.)*
+  `drift_costs.toml` into A.001.7's `settings.toml`; the values do not change. AP-11
+  puts a H.A.W.K map in A.001.5, as data in today's source shape; the package does not
+  change.)*
 - **Formalizing custom session types** (lore, ability-catalog) as process additions —
   process-level, deferred to the process backlog.
 
@@ -542,3 +564,37 @@ relevant arch page at pre-merge).
     leaves five tags inert and sends A.001.5's tag pass to a smaller vocabulary; a
     separate initiative for the action- and asset-granting tags, which would reopen the
     faction holder on a second surface.
+- **AP-10 — A.001.5 runs a short Discovery, then the lore interview; the canon lives at
+  `campaigns/hawk/canon/`.** From the A.001.5 promotion, Robert's calls. Settles the
+  session shape AP-5 deferred, and amends ACD-9's canon path. What this amends:
+  - **Session shape.** A short Discovery settles the efforts, the canon home's layout,
+    the `HAWK-` ID scheme, and how each pass records its sort calls. The lore interview
+    then runs as Effort 1 in its own session; its output is the seeded canon. This keeps
+    one mode per session, and the interview stays on fiction. Rejected: the interview as
+    the Discovery (one session fewer, but it mixes fiction with process calls and
+    yields two artifacts).
+  - **Canon home.** `campaigns/hawk/canon/`, not ACD-9's `docs/campaigns/hawk/`. Since
+    the arc-discovery, the repo split into products, and `F.041` keeps H.A.W.K
+    encounter data under `campaigns/hawk/`; `docs/` holds project docs, not campaign
+    content. The canon stays plain Markdown, so the Codex can take it over later.
+    ACD-9's other terms (a living doc, seeded by the interview, grown by authoring)
+    stand. Rejected: `docs/campaigns/hawk/` as written.
+- **AP-11 — A.001.5 ships a playable H.A.W.K campaign in six efforts, tags before
+  assets.** From the A.001.5 Discovery session (D-1 to D-10), Robert's calls. What this
+  amends:
+  - **Boundary.** "H.A.W.K playable" means Robert opens the H.A.W.K campaign in the TUI
+    and runs a turn on its own map. A.001.5 now also ships the campaign at
+    `campaigns/hawk/`, its map (data in today's spatial source shape; the package does
+    not change), its starting factions as a tracked seed state, and the real
+    `settings.toml` values.
+  - **Order.** Lore → tags → campaign setup → Force → Cunning → Wealth. The tag pass
+    moves ahead of the asset passes: factions get their tags at setup, and the loader
+    checks every `requires_tag` against known tags. SWN copies stand in for the asset
+    files until each pass replaces its own, so every pass ends with a live turn.
+  - **Pass design.** Each pass designs in its own Plan session (lore-gate, reflavor,
+    sort table), because it needs the canon Effort 1 writes. This departs from
+    `efforts.md`'s "the single Discovery owns the whole design surface"; AP-5 and the
+    session-shape section already note that A.001.5 does not map cleanly onto
+    Discovery and Plan.
+  - Rejected: tags last as first planned (factions and gates written twice); setting up
+    the campaign after the asset passes (a bad sort found only at the end).

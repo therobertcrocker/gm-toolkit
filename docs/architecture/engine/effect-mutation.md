@@ -237,6 +237,15 @@ is the string written to history; the rules behind the numbers live in
   so history tells a lost target apart from a GM's Abandon Goal. Its `Cause` is a
   `domain` constant (`target_lost`). (A.001.8 discovery D-21; Effort 2 Decision
   11.)
+- **A lapsed tag keeps its upkeep and loses everything else.** `TagLapsed` sets or
+  clears the tag in `Faction.LapsedTags`; on a tag the faction does not hold it
+  records a miss and changes nothing, as `TagRemoved` does. A lapsed tag's hooks
+  stop firing (the holder check), its phase entries and its action are skipped,
+  but its upkeep is still charged, and the payment that succeeds lifts the lapse.
+  The feed and the digest show a lapse, a restore and a tag lost to upkeep.
+  Rejected: removing the tag at the first miss, which a GM can still choose per
+  entry with `lose_tag`. (A.001.5 Effort 2 Decisions 10 and 11; Decision Record
+  3.)
 - **The rule layer registers hooks, it never dispatches.** The effects engine
   translates asset and tag data into [hooks](hooks.md) and stops there; the orchestrator and the
   actions own every dispatch site. This is the same consumer-owned-registration pattern as the

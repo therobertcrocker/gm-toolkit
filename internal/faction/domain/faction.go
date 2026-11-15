@@ -76,11 +76,20 @@ type Faction struct {
 	// CompletionRatings holds the faction's ratings when it last completed each
 	// goal, by goal ID; a rating_above_last_completion gate reads it (D-11).
 	CompletionRatings map[string]map[FactionStat]int `toml:"completion_ratings,omitempty"`
+	// LapsedTags holds the held tags whose effects are off until their upkeep is
+	// paid (A.001.5 Effort 2 Decision 11).
+	LapsedTags []string `toml:"lapsed_tags,omitempty"`
 }
 
 // HasTag reports whether the faction holds the tag with ID tagID.
 func (faction *Faction) HasTag(tagID string) bool {
 	return slices.Contains(faction.Tags, tagID)
+}
+
+// HasLapsedTag reports whether the faction's tag tagID is lapsed: held, with its
+// effects off until its upkeep is paid.
+func (faction *Faction) HasLapsedTag(tagID string) bool {
+	return slices.Contains(faction.LapsedTags, tagID)
 }
 
 // HasBaseOn reports whether the faction has a Base of Influence on worldID.
@@ -107,6 +116,7 @@ func (faction *Faction) Clone() *Faction {
 		}
 	}
 	clone.Tags = slices.Clone(faction.Tags)
+	clone.LapsedTags = slices.Clone(faction.LapsedTags)
 	if faction.ActiveGoal != nil {
 		goalCopy := *faction.ActiveGoal
 		goalCopy.StealthedAtStart = slices.Clone(faction.ActiveGoal.StealthedAtStart)
@@ -302,6 +312,40 @@ func AssetOwner(factions map[string]*Faction, assetID string) *Faction {
 		}
 	}
 	return nil
+}
+
+// ShelteredBy counts the assets, under any faction, that assetID shelters. A
+// captured holder may still shelter its old owner's asset.
+func ShelteredBy(factions map[string]*Faction, assetID string) int {
+	inside := Condition{Kind: ConditionSheltered, SourceAssetID: assetID}
+	count := 0
+	for _, faction := range factions {
+		for _, asset := range faction.Assets {
+			if slices.ContainsFunc(asset.Conditions, inside.Is) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+// HoldsShelteredAsset reports whether asset, of definition def, is a door shelter
+// (Leased Demiplane) with an asset inside. Moving it would leave that asset on the
+// old world.
+func HoldsShelteredAsset(factions map[string]*Faction, asset *Asset, def *AssetDefinition) bool {
+	return def.Shelter() != nil && ShelteredBy(factions, asset.ID) > 0
+}
+
+// InDoorShelter reports whether a sheltered condition comes from a door shelter
+// that still stands: its source exists and has a shelter ability step. An asset
+// inside one leaves only by its owner's free release (A.001.5 Effort 5 Decision
+// 8); a Boltholes shelter, or one whose source is gone, ends at a repair to full.
+func InDoorShelter(factions map[string]*Faction, definitions map[string]*AssetDefinition, condition Condition) bool {
+	owner := AssetOwner(factions, condition.SourceAssetID)
+	if owner == nil {
+		return false
+	}
+	return definitions[owner.Assets[condition.SourceAssetID].DefinitionID].Shelter() != nil
 }
 
 // AttackBlocked reports whether a no_attack condition on asset holds now. It is

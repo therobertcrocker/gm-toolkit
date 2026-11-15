@@ -79,6 +79,8 @@ func NewConfirmPayment(offer hooks.PaymentOffer, rb *rulebook.Rulebook) NoCancel
 		return NoCancelConfirm{NewConfirm(fmt.Sprintf("Pay %d Coin to bring %s back into use?", offer.Amount, name), header, "Pay", "Leave it disabled")}
 	case hooks.PaymentRestore:
 		return NoCancelConfirm{NewConfirm(fmt.Sprintf("Pay %d Coin to restore %s at 1 HP?", offer.Amount, name), header, "Pay", "Let it be destroyed")}
+	case hooks.PaymentReleaseShelter:
+		return NoCancelConfirm{NewConfirm(fmt.Sprintf("Bring %s out of hiding?", name), header, "Bring it out", "Stay hidden")}
 	}
 	return NoCancelConfirm{NewConfirm(fmt.Sprintf("Pay %d Coin, or %s is disabled?", offer.Amount, name), header, "Pay", "Take the disable")}
 }

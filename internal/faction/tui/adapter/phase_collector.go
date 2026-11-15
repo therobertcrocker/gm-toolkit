@@ -73,8 +73,8 @@ func (p *phaseCollector) SelectGoal(faction *domain.Faction, offers []domain.Goa
 	return replyAs[*domain.GoalChoice]("SelectGoal", raw)
 }
 
-func (p *phaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset) ([]world.MovementDecision, error) {
-	raw, err := p.adapter.ask(AskSelectMovementDecisions, faction, SelectMovementDecisionsPayload{Eligible: eligible})
+func (p *phaseCollector) SelectMovementDecisions(faction *domain.Faction, eligible []*domain.Asset, hotChoices map[string]bool) ([]world.MovementDecision, error) {
+	raw, err := p.adapter.ask(AskSelectMovementDecisions, faction, SelectMovementDecisionsPayload{Eligible: eligible, HotChoices: hotChoices})
 	if err != nil {
 		return nil, err
 	}

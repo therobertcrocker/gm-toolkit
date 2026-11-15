@@ -1,0 +1,347 @@
+[tags.Proprietor]
+id = "HAWK-T-001"
+name = "Proprietor"
+government = true
+description = "This faction holds the deed to a place in the Core, a legal fiction nobody believes and everybody enforces."
+effect = "Held while the faction governs at least one place; the campaign's government record lists each place it governs. On those places, the faction grants or refuses permission to buy or bring in assets marked as needing government permission."
+
+[tags.WeaveAnchors]
+id = "HAWK-T-002"
+name = "Weave Anchors"
+description = "This faction has pinned a strand of the Weave to its seat, the one place in the Astral Sea where its casters are at full strength."
+effect = "Roll an extra d10 on every roll made on its seat. Its seat counts as tech level 5. Upkeep: 1 Coin each turn; unpaid, the tag is lost. Also lost if the faction's seat changes."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "homeworld" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "tech_level_query",
+    effect = "tech_level_floor",
+    filters = { owner = "own", scope = "homeworld" },
+    tech_level_floor = { level = 5 },
+  },
+  {
+    trigger = "upkeep",
+    effect = "coin_upkeep",
+    filters = { owner = "own", scope = "faction" },
+    coin_upkeep = { amount = 1, on_unpaid = "lose_tag" },
+  },
+  { trigger = "homeworld_changed", effect = "remove_tag", filters = { owner = "own", scope = "faction" } },
+]
+
+[tags.AetherBurners]
+id = "HAWK-T-003"
+name = "Aether Burners"
+description = "This faction runs everything on raw, barely refined Aether: fast, loud, and liable to burn out at the worst moment."
+effect = "Once per turn, roll an extra d10 on a Force attack. A move order may run hot: the faction's Aetherships move 5 faster, every other asset can move itself at speed 5, and each asset running hot takes 1d4 damage every turn it moves. Every die that comes up 10 must be rerolled."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["attack"], attribute = "Force" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "speed_query",
+    effect = "speed_bonus",
+    filters = { owner = "own", scope = "faction", asset_type = ["Aethership"], hot = true },
+    speed_bonus = { amount = 5 },
+  },
+  {
+    trigger = "speed_query",
+    effect = "speed_floor",
+    filters = { owner = "own", scope = "faction", hot = true },
+    speed_floor = { speed = 5 },
+  },
+  {
+    trigger = "hot_move",
+    effect = "self_damage",
+    filters = { owner = "own", scope = "faction" },
+    self_damage = { amount = "1d4" },
+  },
+  {
+    trigger = "own_roll",
+    effect = "reroll",
+    filters = { owner = "own", scope = "faction" },
+    reroll = { result = 10, elective = false },
+  },
+]
+
+[tags.SoulBonded]
+id = "HAWK-T-004"
+name = "Soul-Bonded"
+description = "This faction's people are bound to an Astral God by Soul Bonds: the god's power anywhere, and the god slowly eats them for it."
+effect = "Once per turn, roll an extra d10 when attacking or defending. Upkeep: 1 Coin each turn; unpaid, the faction takes 2 damage."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["attack", "defense"] },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "upkeep",
+    effect = "coin_upkeep",
+    filters = { owner = "own", scope = "faction" },
+    coin_upkeep = { amount = 1, on_unpaid = "damage", damage = 2 },
+  },
+]
+
+[tags.ContractBound]
+id = "HAWK-T-005"
+name = "Contract-Bound"
+description = "This faction lives by bargains sealed with a patron, and always knows which clause matters."
+effect = "Once per turn, force a rival rolling on a place where this faction has a Base of Influence to reroll one die. Action: roll 1d6; that many Coin come off its next asset purchase, down to half price."
+ability = { effect = "purchase_discount", die = "1d6" }
+effects = [
+  {
+    trigger = "rival_roll",
+    effect = "reroll",
+    filters = { owner = "rival", scope = "base" },
+    gates = { once_per = "owner_faction" },
+    reroll = { dice = 1, elective = true },
+  },
+]
+
+[tags.AetherRefiners]
+id = "HAWK-T-006"
+name = "Aether Refiners"
+description = "This faction turns raw Aether into Aetherstones and Aether-Cores, the fuel of everything in the Astral Sea."
+effect = "At the start of each turn, gain 1 Coin. Every die that comes up 10 must be rerolled. Lost if the faction's seat changes."
+effects = [
+  {
+    trigger = "turn_start",
+    effect = "coin_gain",
+    filters = { owner = "own", scope = "faction" },
+    coin_gain = { amount = "1" },
+  },
+  {
+    trigger = "own_roll",
+    effect = "reroll",
+    filters = { owner = "own", scope = "faction" },
+    reroll = { result = 10, elective = false },
+  },
+  { trigger = "homeworld_changed", effect = "remove_tag", filters = { owner = "own", scope = "faction" } },
+]
+
+[tags.WarProfiteers]
+id = "HAWK-T-007"
+name = "War Profiteers"
+description = "This faction profits from everyone's war, and fights its own as little as it can."
+effect = "Once per turn, gain 1 Coin when any rival's asset is destroyed, by anyone. Once per turn, roll an extra d10 when defending against a Wealth attack. Always loses ties in an attack."
+effects = [
+  {
+    trigger = "asset_destroyed",
+    effect = "coin_gain",
+    filters = { owner = "rival", scope = "faction" },
+    gates = { once_per = "owner_faction" },
+    coin_gain = { amount = "1" },
+  },
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["defense"], opponent_attribute = "Wealth" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  { trigger = "attack_tie", effect = "lose_ties", filters = { owner = "own", scope = "faction" } },
+]
+
+[tags.ShellCompany]
+id = "HAWK-T-008"
+name = "Shell Company"
+description = "Nothing this faction owns is on paper, and everything it loses is insured."
+effect = "Every asset it buys starts Stealthed. Gain 1 Coin whenever one of its own assets is destroyed."
+effects = [
+  { trigger = "on_purchase", effect = "apply_stealth", filters = { owner = "own", scope = "faction" } },
+  {
+    trigger = "asset_destroyed",
+    effect = "coin_gain",
+    filters = { owner = "own", scope = "faction" },
+    coin_gain = { amount = "1" },
+  },
+]
+
+[tags.Outsourced]
+id = "HAWK-T-009"
+name = "Outsourced"
+description = "This faction hires its problems out to H.A.W.K through Questing as a Service, and pays a subscription for the privilege."
+effect = "Once per turn, reroll one of its own lowest dice. When it completes any goal, roll 1d6; on 5+, gain 1 bonus XP. Upkeep: 1 Coin each turn; unpaid, the tag lapses until paid."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "reroll",
+    filters = { owner = "own", scope = "faction" },
+    gates = { once_per = "owner_faction" },
+    reroll = { dice = 1, elective = true },
+  },
+  {
+    trigger = "goal_completed",
+    effect = "xp_roll",
+    filters = { owner = "own", scope = "faction" },
+    xp_roll = { die = "1d6", target = 5, amount = 1 },
+  },
+  {
+    trigger = "upkeep",
+    effect = "coin_upkeep",
+    filters = { owner = "own", scope = "faction" },
+    coin_upkeep = { amount = 1, on_unpaid = "lapse" },
+  },
+]
+
+[tags.Monopolists]
+id = "HAWK-T-010"
+name = "Monopolists"
+description = "This faction owns the docks, the fuel and the roads, and everyone else pays to use them."
+effect = "Any rival asset that moves onto a place where this faction has a Base of Influence pays it 1 Coin. Assets that need tech level 4 or more cost it 1 less."
+effects = [
+  {
+    trigger = "arrival_query",
+    effect = "arrival_toll",
+    filters = { owner = "rival", scope = "base" },
+    arrival_toll = { amount = 1 },
+  },
+  {
+    trigger = "asset_cost_query",
+    effect = "cost_discount",
+    filters = { owner = "own", scope = "faction", min_tech_level = 4 },
+    cost_discount = { amount = 1 },
+  },
+]
+
+[tags.AetherTechEvangelists]
+id = "HAWK-T-011"
+name = "Aether-Tech Evangelists"
+description = "This faction believes Aether-tech lifts every Fragment it touches, and will not stop explaining this."
+effect = "Every place with this faction's Base of Influence counts as at least tech level 4. Action: pay 2 Coin and roll 1d12; on a 12, the place's tech level becomes 4 for this faction. Only this faction may buy Arcano-Engineered Warbeasts."
+ability = {
+  effect = "raise_tech_level",
+  target = "world",
+  target_roll = { die = "1d12", target = 12 },
+  raise_tech_level = { coin_cost = 2, tech_level = 4 },
+}
+effects = [
+  {
+    trigger = "tech_level_query",
+    effect = "tech_level_floor",
+    filters = { owner = "own", scope = "base" },
+    tech_level_floor = { level = 4 },
+  },
+]
+
+[tags.DriftRunners]
+id = "HAWK-T-012"
+name = "Drift-Runners"
+description = "This faction lives in the Drift and reads its currents: smugglers, pilots, nomads."
+effect = "Its assets cross the Drift as if their drift rating were 1 higher. It can build Aetherships on any place with at least 1% of the usual population floor."
+effects = [
+  {
+    trigger = "drift_rating_query",
+    effect = "drift_rating_bonus",
+    filters = { owner = "own", scope = "faction" },
+    drift_rating_bonus = { amount = 1 },
+  },
+  {
+    trigger = "population_floor_query",
+    effect = "population_floor",
+    filters = { owner = "own", scope = "faction", asset_type = ["Aethership"] },
+    population_floor = { percent = 1 },
+  },
+]
+
+[tags.Godslayers]
+id = "HAWK-T-013"
+name = "Godslayers"
+description = "This faction is sworn to destroy the Astral Gods and everyone who feeds them."
+effect = "Always rerolls dice that come up 1. Once per turn, roll an extra d10 when attacking a faction that holds Soul-Bonded. Always loses ties in an attack."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "reroll",
+    filters = { owner = "own", scope = "faction" },
+    reroll = { result = 1, elective = false },
+  },
+  { trigger = "attack_tie", effect = "lose_ties", filters = { owner = "own", scope = "faction" } },
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["attack"], opponent_tag = "HAWK-T-004" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[tags.Insurgents]
+id = "HAWK-T-014"
+name = "Insurgents"
+description = "This faction is rebel cells that fight whoever owns the docks, the fuel and the roads."
+effect = "Once per turn, roll an extra d10 when attacking a faction that holds Monopolists. Roll an extra d10 when testing to find Stealthed assets."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["attack"], opponent_tag = "HAWK-T-010" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", detection = true },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[tags.OldFaith]
+id = "HAWK-T-015"
+name = "Old Faith"
+description = "This faction holds to the old gods of mortalkind, the Fey Royals, against the Astral Gods who replaced them."
+effect = "Roll an extra d10 on the test to Expand Influence. Once per turn, roll an extra d10 when defending against a faction that holds Soul-Bonded."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["faction_test"], action = "Expand Influence" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["defense"], opponent_tag = "HAWK-T-004" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[tags.InformantNetwork]
+id = "HAWK-T-016"
+name = "Informant Network"
+description = "This faction runs on paid informants: it hears everything, as long as it keeps paying."
+effect = "Once per turn, roll an extra d10 on a Cunning attack or when defending against one. Upkeep: 1 Coin each turn; unpaid, the tag lapses until paid."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["attack"], attribute = "Cunning" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "faction", phase = ["defense"], opponent_attribute = "Cunning" },
+    gates = { once_per = "owner_faction" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "upkeep",
+    effect = "coin_upkeep",
+    filters = { owner = "own", scope = "faction" },
+    coin_upkeep = { amount = 1, on_unpaid = "lapse" },
+  },
+]

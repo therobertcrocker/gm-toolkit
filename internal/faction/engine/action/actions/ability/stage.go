@@ -29,8 +29,9 @@ func resolveTarget(
 	collector action.Collector,
 	worldEngine *world.WorldEngine,
 	registry *hooks.Registry,
+	rulebook *rulebook.Rulebook,
 ) (domain.AbilityTarget, error) {
-	candidates, picks := stepCandidates(step, faction, holder.Asset, factionState, worldEngine, registry)
+	candidates, picks := stepCandidates(step, faction, holder.Asset, factionState, worldEngine, registry, rulebook)
 	if picks && candidates.Len() == 0 {
 		return domain.AbilityTarget{}, errNoTargets
 	}
@@ -173,24 +174,59 @@ func assetCandidates(effect domain.AbilityEffectType, actingFactionID string, ac
 	return candidates
 }
 
+// ownAssetTargetRules lists the effects whose asset step picks among the acting
+// faction's own assets, with the rule that returns them. Every other asset step
+// picks a rival's asset (assetCandidates).
+var ownAssetTargetRules = map[domain.AbilityEffectType]func(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) []*domain.Asset{
+	domain.EffectShelter: shelterCandidates,
+}
+
+// shelterCandidates returns the faction's own assets on the acting asset's world
+// that a shelter step may take in, in asset-ID order: of a listed type, not the
+// holder, not sheltered already, and with no open move order. None while the
+// holder already shelters Capacity assets, or is in transit.
+func shelterCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, rulebook *rulebook.Rulebook) []*domain.Asset {
+	params := step.Shelter
+	if params == nil || rulebook == nil || acting == nil || acting.Location.WorldID == "" {
+		return nil
+	}
+	if domain.ShelteredBy(factionState.Factions, acting.ID) >= params.Capacity {
+		return nil
+	}
+	var candidates []*domain.Asset
+	for _, candidate := range domain.SortedAssets(faction) {
+		if candidate.ID == acting.ID || candidate.Location.WorldID != acting.Location.WorldID ||
+			candidate.CurrentOrder != nil || candidate.HasCondition(domain.ConditionSheltered) {
+			continue
+		}
+		if def := rulebook.Assets[candidate.DefinitionID]; def != nil && slices.Contains(params.AssetTypes, def.Type) {
+			candidates = append(candidates, candidate)
+		}
+	}
+	return candidates
+}
+
 // HasTargets reports whether the first step of a holder's ability can pick a
 // target now. A step that picks no target always can.
-func HasTargets(faction *domain.Faction, holder domain.AbilityHolder, abilityDefinition *domain.AbilityDefinition, factionState *state.FactionState, worldEngine *world.WorldEngine, registry *hooks.Registry) bool {
+func HasTargets(faction *domain.Faction, holder domain.AbilityHolder, abilityDefinition *domain.AbilityDefinition, factionState *state.FactionState, worldEngine *world.WorldEngine, registry *hooks.Registry, rulebook *rulebook.Rulebook) bool {
 	if abilityDefinition == nil || len(abilityDefinition.Steps) == 0 {
 		return true
 	}
 	// deliberate: only the first step, not every step, because a later step's candidates depend on what earlier steps change (Seductress moves before it reveals).
-	candidates, picks := stepCandidates(abilityDefinition.Steps[0], faction, holder.Asset, factionState, worldEngine, registry)
+	candidates, picks := stepCandidates(abilityDefinition.Steps[0], faction, holder.Asset, factionState, worldEngine, registry, rulebook)
 	return !picks || candidates.Len() > 0
 }
 
 // stepCandidates returns the candidates for a step that picks a faction, an asset
 // or a world. picks is false for a step that picks none of them.
-func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, worldEngine *world.WorldEngine, registry *hooks.Registry) (candidates domain.AbilityTargetCandidates, picks bool) {
+func stepCandidates(step domain.AbilityStep, faction *domain.Faction, acting *domain.Asset, factionState *state.FactionState, worldEngine *world.WorldEngine, registry *hooks.Registry, rulebook *rulebook.Rulebook) (candidates domain.AbilityTargetCandidates, picks bool) {
 	switch step.Target {
 	case domain.TargetFaction:
 		return domain.AbilityTargetCandidates{Factions: factionCandidates(step.Effect, faction.ID, acting, factionState)}, true
 	case domain.TargetAsset:
+		if rule := ownAssetTargetRules[step.Effect]; rule != nil {
+			return domain.AbilityTargetCandidates{Assets: rule(step, faction, acting, factionState, rulebook)}, true
+		}
 		return domain.AbilityTargetCandidates{Assets: assetCandidates(step.Effect, faction.ID, acting, factionState)}, true
 	case domain.TargetWorld:
 		rule := worldTargetRules[step.Effect]

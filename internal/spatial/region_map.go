@@ -210,6 +210,26 @@ func (regionMap *RegionMap) RegionOfHex(hex HexCoord) (string, bool) {
 	return id, ok
 }
 
+// RegionName returns a region's display name, or id when the map has no such
+// region or the region has no name.
+func (regionMap *RegionMap) RegionName(id string) string {
+	if region, ok := regionMap.regions[id]; ok && region.Name != "" {
+		return region.Name
+	}
+	return id
+}
+
+// Adjacent reports whether two hexes are neighbours on the grid. The two ends of a
+// Drift lane are not.
+func Adjacent(from, to HexCoord) bool {
+	for _, delta := range hexNeighbors {
+		if from.Q+delta.Q == to.Q && from.R+delta.R == to.R {
+			return true
+		}
+	}
+	return false
+}
+
 type hexNode struct {
 	regionID string
 	coord    HexCoord

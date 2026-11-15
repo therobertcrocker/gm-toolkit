@@ -110,3 +110,65 @@ func TestOfferConditionLifts(t *testing.T) {
 		}
 	})
 }
+
+func TestOfferShelterReleases(t *testing.T) {
+	byDemiplane := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "d1"}
+	byBoltholes := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "b1"}
+	bySoldSource := domain.Condition{Kind: domain.ConditionSheltered, SourceAssetID: "sold"}
+	rulebook := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{
+		"demiplane": {ID: "demiplane", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+			Effect:  domain.EffectShelter,
+			Target:  domain.TargetAsset,
+			Shelter: &domain.ShelterParams{AssetTypes: []domain.AssetType{"Operative"}, Capacity: 1},
+		}}}},
+		"boltholes": {ID: "boltholes"},
+		"operative": {ID: "operative"},
+	}}
+	makeState := func() (*domain.Faction, *state.FactionState) {
+		faction := &domain.Faction{ID: "f1", Assets: map[string]*domain.Asset{
+			"d1": {ID: "d1", DefinitionID: "demiplane"},
+			"b1": {ID: "b1", DefinitionID: "boltholes"},
+			"x1": {ID: "x1", DefinitionID: "operative", Conditions: []domain.Condition{byDemiplane}},
+			"x2": {ID: "x2", DefinitionID: "operative", Conditions: []domain.Condition{byBoltholes}},
+			"x3": {ID: "x3", DefinitionID: "operative", Conditions: []domain.Condition{bySoldSource}},
+		}}
+		return faction, &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+	}
+
+	t.Run("offers a Demiplane's asset, free; a Boltholes asset and an orphan wait", func(t *testing.T) {
+		collector := &paymentFake{answer: true}
+		faction, factionState := makeState()
+		mutations, err := OfferShelterReleases(faction, factionState, rulebook, collector)
+		if err != nil {
+			t.Fatalf("OfferShelterReleases: %v", err)
+		}
+		want := []domain.Mutation{
+			domain.AssetConditionCleared{FactionID: "f1", AssetID: "x1", Condition: byDemiplane, Cause: "shelter_released", CausedByFactionID: "f1"},
+		}
+		if !reflect.DeepEqual(mutations, want) {
+			t.Errorf("mutations = %+v, want %+v", mutations, want)
+		}
+		for _, offer := range collector.offers {
+			if offer.Amount != 0 || offer.Reason != hooks.PaymentReleaseShelter {
+				t.Errorf("offer = %+v, want a free release_shelter offer", offer)
+			}
+		}
+	})
+
+	t.Run("declined offers emit nothing", func(t *testing.T) {
+		faction, factionState := makeState()
+		mutations, err := OfferShelterReleases(faction, factionState, rulebook, &paymentFake{answer: false})
+		if err != nil || mutations != nil {
+			t.Errorf("mutations, err = %+v, %v; want nil, nil", mutations, err)
+		}
+	})
+
+	t.Run("a collector error is returned", func(t *testing.T) {
+		promptErr := errors.New("prompt failed")
+		faction, factionState := makeState()
+		_, err := OfferShelterReleases(faction, factionState, rulebook, &paymentFake{err: promptErr})
+		if !errors.Is(err, promptErr) {
+			t.Errorf("err = %v, want it to wrap %v", err, promptErr)
+		}
+	})
+}

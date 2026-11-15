@@ -262,7 +262,7 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 
 	governmentGroup := huh.NewGroup(
 		huh.NewSelect[string]().
-			Title("Governed world (Planetary Government)").
+			Title(governmentTitle(rb)).
 			OptionsFunc(func() []huh.Option[string] {
 				return governableWorldOptions(spatialMap, factionState, data.homeworldID)
 			}, &data.homeworldID).
@@ -303,6 +303,15 @@ func buildForm(data *formData, rb *rulebook.Rulebook, spatialMap *spatial.Region
 
 func pickedGovernmentTag(tags []*domain.Tag) bool {
 	return slices.ContainsFunc(tags, func(tag *domain.Tag) bool { return tag.Government })
+}
+
+// governmentTitle names the governed-world select after the rulebook's government
+// tag, or plainly when the rulebook has none.
+func governmentTitle(rulebook *rulebook.Rulebook) string {
+	if tag := rulebook.Tags[rulebook.GovernmentTagID]; tag != nil {
+		return fmt.Sprintf("Governed world (%s)", tag.Name)
+	}
+	return "Governed world"
 }
 
 // homeworldGovernmentTag returns the picked tag that governs its homeworld from

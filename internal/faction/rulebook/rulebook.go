@@ -24,13 +24,11 @@ type Rulebook struct {
 	PurchasePopulation map[domain.AssetType]int
 }
 
-// DriftCost returns the hex-equivalent crossing cost for the given drift rating.
-// Out-of-range ratings fall back to DriftCosts[0] (worst cost).
+// DriftCost returns the hex-equivalent crossing cost for the given drift rating. A
+// rating below 1 counts as 1, the worst cost; one above the table counts as its
+// last, the best cost, so a drift rating bonus never makes a crossing dearer.
 func (rulebook *Rulebook) DriftCost(driftRating int) int {
-	if driftRating < 1 || driftRating > len(rulebook.DriftCosts) {
-		return rulebook.DriftCosts[0]
-	}
-	return rulebook.DriftCosts[driftRating-1]
+	return rulebook.DriftCosts[min(max(driftRating, 1), len(rulebook.DriftCosts))-1]
 }
 
 // Load reads all static data files from dataDir and returns a populated Rulebook.
@@ -53,9 +51,12 @@ func Load(dataDir string) (*Rulebook, error) {
 		return nil, fmt.Errorf("checking references: %w", err)
 	}
 
-	driftCosts, purchasePopulation, err := loadSettings(filepath.Join(dataDir, "settings.toml"))
+	loadedSettings, err := loadSettings(filepath.Join(dataDir, "settings.toml"))
 	if err != nil {
 		return nil, fmt.Errorf("loading settings: %w", err)
+	}
+	if err := checkAssetTypes(assets, tags, loadedSettings.assetTypes); err != nil {
+		return nil, fmt.Errorf("checking asset types: %w", err)
 	}
 
 	return &Rulebook{
@@ -63,8 +64,8 @@ func Load(dataDir string) (*Rulebook, error) {
 		Tags:               tags,
 		GovernmentTagID:    governmentTagID,
 		Goals:              goals,
-		DriftCosts:         driftCosts,
-		PurchasePopulation: purchasePopulation,
+		DriftCosts:         loadedSettings.driftCosts,
+		PurchasePopulation: loadedSettings.purchasePopulation,
 	}, nil
 }
 
@@ -133,6 +134,12 @@ type abilityStepRecord struct {
 	Relocate       *relocateRecord       `toml:"relocate"`
 	Purchase       *purchaseRecord       `toml:"purchase"`
 	RaiseTechLevel *raiseTechLevelRecord `toml:"raise_tech_level"`
+	Shelter        *shelterRecord        `toml:"shelter"`
+}
+
+type shelterRecord struct {
+	AssetTypes []string `toml:"asset_types"`
+	Capacity   int      `toml:"capacity"`
 }
 
 type raiseTechLevelRecord struct {
@@ -141,15 +148,17 @@ type raiseTechLevelRecord struct {
 }
 
 type relocateRecord struct {
-	Scope        string   `toml:"scope"`
-	Range        string   `toml:"range"`
-	MaxHex       int      `toml:"max_hex"`
-	CoinCost     int      `toml:"coin_cost"`
-	CoinCostMode string   `toml:"coin_cost_mode"`
-	AssetType    string   `toml:"asset_type"`
-	Categories   []string `toml:"categories"`
-	ExcludeTypes []string `toml:"exclude_types"`
-	MaxAssets    int      `toml:"max_assets"`
+	Scope             string   `toml:"scope"`
+	Range             string   `toml:"range"`
+	MaxHex            int      `toml:"max_hex"`
+	CoinCost          int      `toml:"coin_cost"`
+	CoinCostMode      string   `toml:"coin_cost_mode"`
+	AssetType         string   `toml:"asset_type"`
+	Categories        []string `toml:"categories"`
+	ExcludeTypes      []string `toml:"exclude_types"`
+	MaxAssets         int      `toml:"max_assets"`
+	IgnoresPermission bool     `toml:"ignores_permission"`
+	IgnoresLockdown   bool     `toml:"ignores_lockdown"`
 }
 
 type purchaseRecord struct {
@@ -217,10 +226,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
-	assetType, err := toAssetType(r.Type)
-	if err != nil {
-		return nil, err
-	}
+	assetType := domain.AssetType(r.Type)
 	flags, err := toAssetFlags(r.Flags)
 	if err != nil {
 		return nil, err
@@ -275,7 +281,7 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		return nil, err
 	}
 
-	return &domain.AssetDefinition{
+	definition := &domain.AssetDefinition{
 		ID:                 r.ID,
 		Name:               r.Name,
 		Category:           category,
@@ -297,7 +303,13 @@ func convertAsset(r assetRecord) (*domain.AssetDefinition, error) {
 		Quality:            r.Quality,
 		PurchasePermission: r.PurchasePermission,
 		RequiresTag:        r.RequiresTag,
-	}, nil
+	}
+	if definition.Shelter() != nil && !slices.ContainsFunc(effects, func(entry domain.EffectDefinition) bool {
+		return entry.Trigger == domain.TriggerAssetDestroyed && entry.Effect == domain.SpecialShelterAsset
+	}) {
+		return nil, fmt.Errorf("a shelter ability needs an asset_destroyed shelter_asset effect, or the asset inside is stranded when the shelter is lost")
+	}
+	return definition, nil
 }
 
 // checkQuality holds a quality to one on_purchase entry (D-19), and grant_stealth to
@@ -425,6 +437,16 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 		}
 		step.RaiseTechLevel = &domain.RaiseTechLevelParams{CoinCost: raise.CoinCost, TechLevel: raise.TechLevel}
 	}
+	if shelter := record.Shelter; shelter != nil {
+		if len(shelter.AssetTypes) == 0 || shelter.Capacity <= 0 {
+			return domain.AbilityStep{}, fmt.Errorf("shelter needs asset_types and capacity > 0, got %d types and capacity %d", len(shelter.AssetTypes), shelter.Capacity)
+		}
+		params := &domain.ShelterParams{Capacity: shelter.Capacity}
+		for _, name := range shelter.AssetTypes {
+			params.AssetTypes = append(params.AssetTypes, domain.AssetType(name))
+		}
+		step.Shelter = params
+	}
 	if record.Die != "" && step.TargetRoll != nil {
 		return domain.AbilityStep{}, fmt.Errorf("a step has both a die and a target_roll; use one")
 	}
@@ -467,6 +489,12 @@ func convertAbilityStep(record abilityStepRecord) (domain.AbilityStep, error) {
 	}
 	if step.Effect == domain.EffectLevyCoin && (step.Target != domain.TargetFaction || step.Contest != nil || step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
 		return domain.AbilityStep{}, fmt.Errorf("levy_coin requires target = %q and no contest or die", "faction")
+	}
+	if step.Effect == domain.EffectShelter && (step.Target != domain.TargetAsset || step.Shelter == nil || step.Contest != nil || step.Amount != nil || step.Table != nil || step.TargetRoll != nil) {
+		return domain.AbilityStep{}, fmt.Errorf("shelter requires target = %q, a [shelter] block and no contest or die", "asset")
+	}
+	if step.Shelter != nil && step.Effect != domain.EffectShelter {
+		return domain.AbilityStep{}, fmt.Errorf("a [shelter] block needs effect = %q, got %q", domain.EffectShelter, step.Effect)
 	}
 	if step.TargetRoll != nil && step.Effect != domain.EffectCoinDelta && step.Effect != domain.EffectRaiseTechLevel {
 		return domain.AbilityStep{}, fmt.Errorf("effect %q does not read a target_roll; only %q and %q do", step.Effect, domain.EffectCoinDelta, domain.EffectRaiseTechLevel)
@@ -521,19 +549,17 @@ func convertRelocate(record *relocateRecord) (*domain.RelocateParams, error) {
 		return nil, err
 	}
 	params := &domain.RelocateParams{
-		Scope:        scope,
-		Range:        rng,
-		MaxHex:       record.MaxHex,
-		CoinCost:     record.CoinCost,
-		CoinCostMode: costMode,
-		MaxAssets:    record.MaxAssets,
+		Scope:             scope,
+		Range:             rng,
+		MaxHex:            record.MaxHex,
+		CoinCost:          record.CoinCost,
+		CoinCostMode:      costMode,
+		MaxAssets:         record.MaxAssets,
+		IgnoresPermission: record.IgnoresPermission,
+		IgnoresLockdown:   record.IgnoresLockdown,
 	}
 	if record.AssetType != "" {
-		assetType, err := toAssetType(record.AssetType)
-		if err != nil {
-			return nil, fmt.Errorf("relocate asset_type: %w", err)
-		}
-		params.AssetType = assetType
+		params.AssetType = domain.AssetType(record.AssetType)
 	}
 	for i, value := range record.Categories {
 		category, err := toFactionStat(value)
@@ -542,12 +568,8 @@ func convertRelocate(record *relocateRecord) (*domain.RelocateParams, error) {
 		}
 		params.Categories = append(params.Categories, category)
 	}
-	for i, value := range record.ExcludeTypes {
-		assetType, err := toAssetType(value)
-		if err != nil {
-			return nil, fmt.Errorf("relocate exclude_types[%d]: %w", i, err)
-		}
-		params.ExcludeTypes = append(params.ExcludeTypes, assetType)
+	for _, value := range record.ExcludeTypes {
+		params.ExcludeTypes = append(params.ExcludeTypes, domain.AssetType(value))
 	}
 	return params, nil
 }
@@ -589,6 +611,8 @@ func toAbilityEffect(s string) (domain.AbilityEffectType, error) {
 		return domain.EffectLevyCoin, nil
 	case "raise_tech_level":
 		return domain.EffectRaiseTechLevel, nil
+	case "shelter":
+		return domain.EffectShelter, nil
 	default:
 		return "", fmt.Errorf("unknown ability effect: %q", s)
 	}
@@ -600,11 +624,7 @@ func convertTransport(r *transportRecord) (*domain.TransportProfile, error) {
 	}
 	cargoTypes := make([]domain.AssetType, len(r.CargoTypes))
 	for i, s := range r.CargoTypes {
-		t, err := toAssetType(s)
-		if err != nil {
-			return nil, fmt.Errorf("cargo_types[%d]: %w", i, err)
-		}
-		cargoTypes[i] = t
+		cargoTypes[i] = domain.AssetType(s)
 	}
 	excludeCategories := make([]domain.FactionStat, len(r.ExcludeCategories))
 	for i, s := range r.ExcludeCategories {
@@ -634,33 +654,137 @@ func convertTransport(r *transportRecord) (*domain.TransportProfile, error) {
 // or a map, nil when the setting leaves it out (Effort 4 Decision 1).
 type settingsRecord struct {
 	DriftCosts         []int          `toml:"drift_costs"`
+	AssetTypes         []string       `toml:"asset_types"`
 	PurchasePopulation map[string]int `toml:"purchase_population"`
 }
 
-func loadSettings(path string) ([]int, map[domain.AssetType]int, error) {
+// settings is settings.toml as Load uses it.
+type settings struct {
+	driftCosts         []int
+	assetTypes         []domain.AssetType
+	purchasePopulation map[domain.AssetType]int
+}
+
+func loadSettings(path string) (settings, error) {
 	var record settingsRecord
 	metadata, err := toml.DecodeFile(path, &record)
 	if err != nil {
-		return nil, nil, err
+		return settings{}, err
 	}
 	if err := refuseUnknownKeys(path, metadata); err != nil {
-		return nil, nil, err
+		return settings{}, err
 	}
 	if len(record.DriftCosts) == 0 {
-		return nil, nil, fmt.Errorf("%s: drift_costs is required", path)
+		return settings{}, fmt.Errorf("%s: drift_costs is required", path)
+	}
+	if len(record.AssetTypes) == 0 {
+		return settings{}, fmt.Errorf("%s: asset_types is required", path)
+	}
+	assetTypes := make([]domain.AssetType, 0, len(record.AssetTypes))
+	for _, name := range record.AssetTypes {
+		assetType := domain.AssetType(name)
+		if name == "" || slices.Contains(assetTypes, assetType) {
+			return settings{}, fmt.Errorf("%s: asset_types: %q is empty or listed twice", path, name)
+		}
+		assetTypes = append(assetTypes, assetType)
 	}
 	purchasePopulation := make(map[domain.AssetType]int, len(record.PurchasePopulation))
 	for name, floor := range record.PurchasePopulation {
-		assetType, err := toAssetType(name)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s: purchase_population: %w", path, err)
+		assetType := domain.AssetType(name)
+		if !slices.Contains(assetTypes, assetType) {
+			return settings{}, fmt.Errorf("%s: purchase_population: asset type %q is not in asset_types", path, name)
 		}
 		if floor <= 0 {
-			return nil, nil, fmt.Errorf("%s: purchase_population %q must be > 0, got %d", path, name, floor)
+			return settings{}, fmt.Errorf("%s: purchase_population %q must be > 0, got %d", path, name, floor)
 		}
 		purchasePopulation[assetType] = floor
 	}
-	return record.DriftCosts, purchasePopulation, nil
+	return settings{driftCosts: record.DriftCosts, assetTypes: assetTypes, purchasePopulation: purchasePopulation}, nil
+}
+
+// checkAssetTypes refuses an asset type settings.toml does not declare, wherever
+// the data names one: an asset's type, its transport's cargo types, a relocate's
+// asset type and excluded types, a shelter's asset types, and an effects entry's
+// asset_type filter, on an asset or a tag.
+func checkAssetTypes(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, declared []domain.AssetType) error {
+	check := func(holder string, names ...domain.AssetType) error {
+		for _, name := range names {
+			if !slices.Contains(declared, name) {
+				return fmt.Errorf("%s: asset type %q is not in settings.toml asset_types", holder, name)
+			}
+		}
+		return nil
+	}
+	checkRelocate := func(holder string, relocate *domain.RelocateParams) error {
+		if relocate == nil {
+			return nil
+		}
+		if relocate.AssetType != "" {
+			if err := check(holder, relocate.AssetType); err != nil {
+				return err
+			}
+		}
+		return check(holder, relocate.ExcludeTypes...)
+	}
+	checkEffects := func(holder string, entries []domain.EffectDefinition) error {
+		for i, entry := range entries {
+			entryHolder := fmt.Sprintf("%s effects[%d]", holder, i)
+			if err := check(entryHolder, entry.Filters.AssetTypes...); err != nil {
+				return err
+			}
+			if entry.GrantMovement != nil {
+				if err := checkRelocate(entryHolder, &entry.GrantMovement.Relocate); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	checkAbility := func(holder string, ability *domain.AbilityDefinition) error {
+		if ability == nil {
+			return nil
+		}
+		for i, step := range ability.Steps {
+			stepHolder := fmt.Sprintf("%s ability step %d", holder, i)
+			if err := checkRelocate(stepHolder, step.Relocate); err != nil {
+				return err
+			}
+			if step.Shelter != nil {
+				if err := check(stepHolder, step.Shelter.AssetTypes...); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	for _, id := range slices.Sorted(maps.Keys(assets)) {
+		def := assets[id]
+		holder := fmt.Sprintf("asset %q", id)
+		if err := check(holder, def.Type); err != nil {
+			return err
+		}
+		if def.Transport != nil {
+			if err := check(holder+" transport", def.Transport.CargoTypes...); err != nil {
+				return err
+			}
+		}
+		if err := checkAbility(holder, def.Ability); err != nil {
+			return err
+		}
+		if err := checkEffects(holder, def.Effects); err != nil {
+			return err
+		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(tags)) {
+		holder := fmt.Sprintf("tag %q", id)
+		if err := checkAbility(holder, tags[id].Ability); err != nil {
+			return err
+		}
+		if err := checkEffects(holder, tags[id].Effects); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -770,9 +894,9 @@ func checkTagAbility(ability *domain.AbilityDefinition) error {
 // ---------------------------------------------------------------------------
 
 // checkReferences refuses a data-to-data reference to a record the rulebook does
-// not have, checked once here: an effects entry's goal filter (D-5) or
-// asset_definition filter (Effort 5 Decision 9), and an asset's requires_tag
-// (D-13).
+// not have, checked once here: an effects entry's goal filter (D-5),
+// asset_definition filter (Effort 5 Decision 9) or opponent_tag filter (A.001.5
+// Effort 2 Decision 6), and an asset's requires_tag (D-13).
 func checkReferences(assets map[string]*domain.AssetDefinition, tags map[string]*domain.Tag, goals map[string]*domain.Goal) error {
 	check := func(holder string, entries []domain.EffectDefinition) error {
 		for i, entry := range entries {
@@ -781,6 +905,9 @@ func checkReferences(assets map[string]*domain.AssetDefinition, tags map[string]
 			}
 			if definition := entry.Filters.AssetDefinition; definition != "" && assets[definition] == nil {
 				return fmt.Errorf("%s effects[%d]: unknown asset %q", holder, i, definition)
+			}
+			if tag := entry.Filters.OpponentTag; tag != "" && tags[tag] == nil {
+				return fmt.Errorf("%s effects[%d]: unknown tag %q", holder, i, tag)
 			}
 		}
 		return nil
@@ -815,27 +942,6 @@ func toFactionStat(s string) (domain.FactionStat, error) {
 		return domain.StatWealth, nil
 	default:
 		return "", fmt.Errorf("unknown faction stat: %q", s)
-	}
-}
-
-func toAssetType(s string) (domain.AssetType, error) {
-	switch s {
-	case "Military Unit":
-		return domain.TypeMilitaryUnit, nil
-	case "Special Forces":
-		return domain.TypeSpecialForces, nil
-	case "Facility":
-		return domain.TypeFacility, nil
-	case "Starship":
-		return domain.TypeStarship, nil
-	case "Tactic":
-		return domain.TypeTactic, nil
-	case "Logistics Facility":
-		return domain.TypeLogisticsFacility, nil
-	case "Special":
-		return domain.TypeSpecial, nil
-	default:
-		return "", fmt.Errorf("unknown asset type: %q", s)
 	}
 }
 

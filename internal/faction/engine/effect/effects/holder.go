@@ -31,8 +31,9 @@ func refOf(holder effect.Holder) holderRef {
 }
 
 // live returns the declaring asset from current state, and whether the holder
-// still applies: its asset is active, or its faction still holds the tag. A tag
-// has no asset. A nil state (a dispatcher test) is no holder.
+// still applies: its asset is active, or its faction still holds the tag and the
+// tag is not lapsed. A tag has no asset. A nil state (a dispatcher test) is no
+// holder.
 func (ref holderRef) live(factionState *state.FactionState) (*domain.Asset, bool) {
 	if factionState == nil {
 		return nil, false
@@ -47,7 +48,7 @@ func (ref holderRef) liveIn(owner *domain.Faction) (*domain.Asset, bool) {
 		return nil, false
 	}
 	if ref.tagID != "" {
-		return nil, owner.HasTag(ref.tagID)
+		return nil, owner.HasTag(ref.tagID) && !owner.HasLapsedTag(ref.tagID)
 	}
 	asset := owner.Assets[ref.assetID]
 	return asset, active(asset)

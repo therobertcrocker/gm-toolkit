@@ -97,7 +97,10 @@ type AwaitCheckpointPayload struct{ Phase string }
 type SelectActionPayload struct{ Available []action.Action }
 type SelectStatRaisePayload struct{ Eligible []domain.FactionStat }
 type SelectGoalPayload struct{ Offers []domain.GoalOffer }
-type SelectMovementDecisionsPayload struct{ Eligible []*domain.Asset }
+type SelectMovementDecisionsPayload struct {
+	Eligible   []*domain.Asset
+	HotChoices map[string]bool
+}
 type SelectTransportCargoPayload struct {
 	Transport     *domain.Asset
 	EligibleCargo []*domain.Asset
@@ -224,6 +227,7 @@ type SelectRelocateOrdersPayload struct {
 	CandidateWorlds []string
 	WorldNames      map[string]string // worldID -> display name (adapter-built)
 	MaxAssets       int               // 0 = unbounded
+	Via             string            // the asset the move runs through, its owner and the fare; empty for a self-jump
 }
 type SelectPurchaseEnablerAssetPayload struct {
 	World      string

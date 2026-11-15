@@ -150,6 +150,11 @@ func Build(
 						ce := getOrCreateCross(crossMap, record.FactionID, m.FactionID, CrossAbilityStrike, factionState)
 						ce.CoinDrained -= m.Delta
 					}
+				} else if m.FactionID != record.FactionID {
+					// A fare or a counter-hit payout lands on another faction's purse.
+					otherBeat := getOrCreateBeat(beats, m.FactionID, factionState)
+					seenFactionIDs[m.FactionID] = struct{}{}
+					otherBeat.CoinDelta += m.Delta
 				} else {
 					beat.CoinDelta += m.Delta
 					switch m.Cause {
@@ -265,7 +270,7 @@ func Build(
 				affectedBeat := getOrCreateBeat(beats, m.FactionID, factionState)
 				seenFactionIDs[m.FactionID] = struct{}{}
 				switch m.Cause {
-				case "attack":
+				case "attack", "upkeep":
 					affectedBeat.HPDelta += m.Delta
 				case "repair":
 					repair.isFaction = true
@@ -485,6 +490,19 @@ func Build(
 				loser := getOrCreateBeat(beats, m.FactionID, factionState)
 				seenFactionIDs[m.FactionID] = struct{}{}
 				loser.GoalEvents = append(loser.GoalEvents, GoalEvent{Kind: GoalTagLost, TagName: resolveTagName(m.TagID, rulebook)})
+
+			case "tag_lapsed":
+				var m domain.TagLapsed
+				if err := json.Unmarshal(mr.Payload, &m); err != nil {
+					return CycleDigest{}, err
+				}
+				kind := GoalTagRestored
+				if m.Lapsed {
+					kind = GoalTagLapsed
+				}
+				holder := getOrCreateBeat(beats, m.FactionID, factionState)
+				seenFactionIDs[m.FactionID] = struct{}{}
+				holder.GoalEvents = append(holder.GoalEvents, GoalEvent{Kind: kind, TagName: resolveTagName(m.TagID, rulebook)})
 
 			case "world_tech_level_raised":
 				var m domain.WorldTechLevelRaised

@@ -442,3 +442,19 @@ func TestUseAssetAbility_TagHolder(t *testing.T) {
 		t.Errorf("mutations = %+v, want %+v", mutations, want)
 	}
 }
+
+func TestUseAssetAbility_LapsedTagIsNotOffered(t *testing.T) {
+	tag := &domain.Tag{ID: "T-1", Name: "Brokers", Ability: &domain.AbilityDefinition{Steps: []domain.AbilityStep{{
+		Effect: domain.EffectPurchaseDiscount,
+		Target: domain.TargetNone,
+		Amount: &domain.DiceRoll{NumDice: 1, Sides: 4},
+	}}}}
+	book := &rulebook.Rulebook{Assets: map[string]*domain.AssetDefinition{}, Tags: map[string]*domain.Tag{"T-1": tag}}
+	faction := &domain.Faction{ID: "f1", Tags: []string{"T-1"}, LapsedTags: []string{"T-1"}, Assets: map[string]*domain.Asset{}}
+	factionState := &state.FactionState{Factions: map[string]*domain.Faction{"f1": faction}}
+
+	collector := mocks.NewMockCollector(gomock.NewController(t))
+	if NewUseAssetAbility(collector, nil, nil, nil).Validate(faction, factionState, book) {
+		t.Error("Validate = true, want false: the only ability belongs to a lapsed tag")
+	}
+}

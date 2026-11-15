@@ -105,6 +105,14 @@ func heldTags(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Ta
 	return tags
 }
 
+// activeTags returns the held tags whose effects are on: every held tag but a
+// lapsed one. The phase and matchup routes read it. Hook registration reads
+// heldTags, so a lapsed tag keeps its upkeep hook, and its other hooks wait on
+// the holder's live check.
+func activeTags(faction *domain.Faction, rulebook *rulebook.Rulebook) []*domain.Tag {
+	return slices.DeleteFunc(heldTags(faction, rulebook), func(tag *domain.Tag) bool { return faction.HasLapsedTag(tag.ID) })
+}
+
 // ApplyAsset registers one asset's hooks under faction. A missing definition or
 // handler registers nothing.
 func (e *EffectsEngine) ApplyAsset(faction *domain.Faction, asset *domain.Asset, rulebook *rulebook.Rulebook, hookRegistry *hooks.Registry, roller dice.Roller) {
@@ -135,7 +143,7 @@ func (e *EffectsEngine) FireTurnStart(faction *domain.Faction, factionState *sta
 		}
 		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerTurnStart, asset, factionState, rulebook, hookRegistry, roller)...)
 	}
-	for _, tag := range heldTags(faction, rulebook) {
+	for _, tag := range activeTags(faction, rulebook) {
 		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerTurnStart, nil, factionState, rulebook, hookRegistry, roller)...)
 	}
 	return mutations
@@ -174,7 +182,7 @@ func (e *EffectsEngine) FirePurchase(faction *domain.Faction, asset *domain.Asse
 	if def := rulebook.Assets[asset.DefinitionID]; def != nil {
 		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Asset: asset, Def: def}, def.Effects, domain.TriggerOnPurchase, asset, factionState, rulebook, hookRegistry, roller)...)
 	}
-	for _, tag := range heldTags(faction, rulebook) {
+	for _, tag := range activeTags(faction, rulebook) {
 		mutations = append(mutations, e.fireEntries(Holder{Faction: faction, Tag: tag}, tag.Effects, domain.TriggerOnPurchase, asset, factionState, rulebook, hookRegistry, roller)...)
 	}
 	return mutations
@@ -229,7 +237,7 @@ func (e *EffectsEngine) FireMatchup(trigger domain.EffectTrigger, ctx MatchupCon
 	}
 	fire(ctx.Holder, ctx.Holder.Def.Effects)
 	faction := ctx.Holder.Faction
-	for _, tag := range heldTags(faction, rulebook) {
+	for _, tag := range activeTags(faction, rulebook) {
 		fire(Holder{Faction: faction, Tag: tag}, tag.Effects)
 	}
 	return outcome

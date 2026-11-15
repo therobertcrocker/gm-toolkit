@@ -171,6 +171,17 @@ func formatMutation(m domain.Mutation) (string, bool) {
 			return "", false
 		}
 		return fmt.Sprintf("bonus XP %+d", mut.Amount), true
+	case domain.TagLapsed:
+		if mut.Lapsed {
+			return fmt.Sprintf("tag %s lapsed (upkeep unpaid)", mut.TagID), true
+		}
+		return fmt.Sprintf("tag %s restored (upkeep paid)", mut.TagID), true
+	case domain.TagRemoved:
+		// deliberate: surface an upkeep loss, not fold it with the rest, because bookkeeping has no action header to explain a lost tag.
+		if mut.Cause != "upkeep" {
+			return "", false
+		}
+		return fmt.Sprintf("tag %s lost (upkeep unpaid)", mut.TagID), true
 	case domain.GoalAbandoned:
 		return "goal abandoned", true
 	case domain.HomeworldChanged:
@@ -196,8 +207,7 @@ func formatMutation(m domain.Mutation) (string, bool) {
 		// Folded as bookkeeping noise or redundant with a surfaced line:
 		// ActionTaken (the header names the action), GoalProgressed,
 		// AssetMaintainedFlag, AssetStealthApplied, AssetStealthCleared,
-		// XPSpent, MovementOrderProgressed, InfluenceDelta, TagAdded,
-		// TagRemoved.
+		// XPSpent, MovementOrderProgressed, InfluenceDelta, TagAdded.
 		return "", false
 	}
 }

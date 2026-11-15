@@ -22,6 +22,9 @@ const (
 	PaymentLiftDisable PaymentReason = "lift_disable"
 	// PaymentRestore: pay to restore an asset at 1 HP instead of losing it (Medical Center).
 	PaymentRestore PaymentReason = "restore"
+	// PaymentReleaseShelter: bring an asset out of hiding at the owner's turn start,
+	// at no cost (Leased Demiplane).
+	PaymentReleaseShelter PaymentReason = "release_shelter"
 )
 
 // PaymentOffer asks Payer whether to pay Amount Coin for Reason on Asset.

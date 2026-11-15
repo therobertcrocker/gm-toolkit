@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/domain"
+	"github.com/therobertcrocker/gm-toolkit/internal/faction/engine/hooks"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/rulebook"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/adapter"
 	"github.com/therobertcrocker/gm-toolkit/internal/faction/tui/chrome"
@@ -74,6 +75,7 @@ type Model struct {
 
 	overlay      overlay.Overlay
 	activeAsk    adapter.AskKind // which modal is mounted; read only while overlay != nil
+	activeLabel  string          // the mounted modal's banner label; read only while overlay != nil
 	pendingReply chan<- any
 
 	latestErr error
@@ -138,6 +140,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		m.pendingReply = msg.Reply
 		m.activeAsk = msg.Kind
+		m.activeLabel = askLabel(msg)
 		m.overlay = m.newOverlay(msg)
 		return m, m.overlay.Init()
 
@@ -247,7 +250,7 @@ func (m Model) bannerView(width int) string {
 	}
 	phase := "resolving…"
 	if m.overlay != nil {
-		phase = askEntryFor(m.activeAsk).label
+		phase = m.activeLabel
 	}
 	return style.Render(styles.AccentAlt.Render("▶ "+m.detail.name) + styles.Subtle.Render(" · "+phase))
 }
@@ -272,7 +275,8 @@ var askEntries = map[adapter.AskKind]askEntry{
 		return overlay.NewGoalPick(msg.Payload.(adapter.SelectGoalPayload).Offers)
 	}},
 	adapter.AskSelectMovementDecisions: {"Movement", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
-		return overlay.NewMovement(msg.Payload.(adapter.SelectMovementDecisionsPayload).Eligible, m.rulebook, m.spatialMap)
+		payload := msg.Payload.(adapter.SelectMovementDecisionsPayload)
+		return overlay.NewMovement(payload.Eligible, payload.HotChoices, m.rulebook, m.spatialMap)
 	}},
 	adapter.AskSelectTransportCargo: {"Load Cargo", func(m Model, msg adapter.CollectorAskMsg) overlay.Overlay {
 		p := msg.Payload.(adapter.SelectTransportCargoPayload)
@@ -383,6 +387,15 @@ func askEntryFor(kind adapter.AskKind) askEntry {
 	return entry
 }
 
+// askLabel is an ask's banner label: its row's label, except for a free shelter
+// release, which goes through the payment ask but costs nothing.
+func askLabel(msg adapter.CollectorAskMsg) string {
+	if payload, ok := msg.Payload.(adapter.ConfirmPaymentPayload); ok && payload.Offer.Reason == hooks.PaymentReleaseShelter {
+		return "Release?"
+	}
+	return askEntryFor(msg.Kind).label
+}
+
 // newOverlay builds the overlay for an ask. A method so the factory can read the
 // cycle number, rulebook and spatial map that the ask does not carry.
 func (m Model) newOverlay(msg adapter.CollectorAskMsg) overlay.Overlay {
@@ -486,7 +499,9 @@ func (m Model) movementDetail() string {
 	for _, line := range m.movables {
 		b.WriteString(styles.Strong.Render(line.name) + "\n")
 		b.WriteString(styles.Subtle.Render("  at "+line.location) + "\n")
-		b.WriteString(styles.Subtle.Render("  "+line.order) + "\n")
+		if line.order != "" {
+			b.WriteString(styles.Subtle.Render("  "+line.order) + "\n")
+		}
 	}
 	return b.String()
 }
@@ -502,27 +517,24 @@ func (m Model) actionDetail() string {
 // Safe to read the live asset pointers here: the engine is parked on the ask's
 // reply when this runs (phase_collector.go ask round-trip).
 func resolveMovables(eligible []*domain.Asset, rb *rulebook.Rulebook, spatialMap *spatial.RegionMap) []movableLine {
-	names := make(map[string]string)
-	for _, w := range spatialMap.AllWorlds() {
-		names[w.ID()] = w.Name()
-	}
 	lines := make([]movableLine, 0, len(eligible))
 	for _, asset := range eligible {
 		name := asset.DefinitionID
 		if def, ok := rb.Assets[asset.DefinitionID]; ok {
 			name = def.Name
 		}
-		location := names[asset.Location.WorldID]
-		if location == "" {
-			location = asset.Location.WorldID
-		}
+		location := overlay.LocationLabel(asset, spatialMap)
 		order := "no order"
 		if asset.CurrentOrder != nil {
-			dest := asset.CurrentOrder.Destination.WorldID
-			if n, ok := names[dest]; ok {
-				dest = n
+			destination := asset.CurrentOrder.Destination.WorldID
+			if world, ok := spatialMap.Location(destination); ok {
+				destination = world.Name()
 			}
-			order = "→ " + dest
+			order = "→ " + destination
+			// deliberate: an en-route label already names the destination, so the order line is left out, not repeated.
+			if strings.HasSuffix(location, destination) {
+				order = ""
+			}
 		}
 		lines = append(lines, movableLine{name: name, location: location, order: order})
 	}

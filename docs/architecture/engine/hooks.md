@@ -421,8 +421,8 @@ collector moved to [dice](dice.md#key-decisions).
 - **A rule query that serves its owner walks the owner's own asset buckets.**
   `ResolveWorldTechLevel` and `dispatch.GrantedMovementAbilities` walk global, then the
   faction, then each of the faction's own assets in ID order. This keeps the
-  asset-scope rule above without an index, and a grant never leaks to another
-  faction. The movement query is per faction (`GrantMovementAbilities(faction)`),
+  asset-scope rule above without an index, and a private grant never leaks to
+  another faction (a public one does; see below). The movement query is per faction (`GrantMovementAbilities(faction)`),
   and each `MovementAbility` names its `Source` asset, because one Transit Web
   moves many *other* assets. Asset cost differs on purpose: it also walks rival
   assets on the purchase world, because a surcharge is a rival's effect. A tag's
@@ -430,6 +430,17 @@ collector moved to [dice](dice.md#key-decisions).
   floor (Colonists, Technical Expertise) needs no new walk.
   Rejected: an asset's effect registered at faction scope. (s-flag-effect-registry plan,
   Decision Record 14; Effort 5 plan, Decision 1.)
+- **A public movement grant is the one rule query that serves rivals.** A
+  `grant_movement` with `public = true` (the Aether-Gate Transit Authority) offers
+  its move to every faction. `GrantedMovementAbilities(registry, factions,
+  faction)` walks the rider's own buckets, then every other faction's asset
+  buckets in ID order; a granter that does not serve the rider returns nothing, so
+  only a public grant reaches a rival. A rival pays the fare to the owner, the
+  owner rides free and cannot refuse a rider, and while the granting asset is
+  hidden it serves only its owner, because the prompt names the asset and its
+  owner. Permission grants still serve their owner only. Rejected: registering
+  the grant globally, which survives `ClearAsset` on a capture and is offered twice
+  after a recapture. (A.001.5 Effort 6 Decisions 9 to 11; Decision Record 6.)
 - **A budget lives on its owner's `HookBudgets`, keyed by effect, definition or tag
   ID, and (when `once_per` asks) target or asset.** A tag's key
   names the tag ID where an asset's names its definition

@@ -1,0 +1,560 @@
+# Force Assets — H.A.W.K (A.001.5 Effort 4)
+
+[assets.CorporateSecurity]
+id = "HAWK-F1-001"
+name = "Corporate Security"
+category = "Force"
+min_rating = 1
+hp = 3
+cost = 2
+maintenance = 0
+tech_level = 0
+type = "Security Personnel"
+flags = []
+counter = "1d4"
+description = "Guards in company colours with ward-batons and lanyards, posted at every company property."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "1d3+1" }
+
+[assets.UnsanctionedAdventurers]
+id = "HAWK-F1-002"
+name = "Unsanctioned Adventurers"
+category = "Force"
+min_rating = 1
+hp = 1
+cost = 2
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = []
+counter = ""
+description = "Adventurers who failed H.A.W.K's sanctioning and kept the gear, hired cheap and deniably against a rival's leadership."
+attack = { attacker_stat = "Force", defender_stat = "Cunning", damage = "1d6" }
+
+[assets.ReluctantMilitia]
+id = "HAWK-F1-003"
+name = "Reluctant Militia"
+category = "Force"
+min_rating = 1
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 3
+type = "Security Personnel"
+flags = ["P"]
+counter = "1d4+1"
+description = "The people of a company town, issued rifles by the company that owns the town; service is a clause in every lease."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "1d6" }
+
+[assets.ArcanoEngineeredWarbeasts]
+id = "HAWK-F1-004"
+name = "Arcano-Engineered Warbeasts"
+category = "Force"
+min_rating = 1
+hp = 6
+cost = 2
+maintenance = 0
+tech_level = 4
+type = "Beast"
+flags = []
+requires_tag = "HAWK-T-011"
+counter = "1d4"
+description = "Owlbears, drakes and stranger stock, bred in Arcano-Tech laboratories and leased under patent. Only a faction with the Aether-Tech Evangelists tag can buy them."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "1d6" }
+
+[assets.UnpaidInterns]
+id = "HAWK-F1-005"
+name = "Unpaid Interns"
+category = "Force"
+min_rating = 1
+hp = 2
+cost = 1
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = ["S"]
+counter = ""
+description = "Apprentice mages and junior engineers on placement, who stand nearest whatever is most expensive. If another asset on this place suffers enough damage to destroy it, the faction can sacrifice the Unpaid Interns instead to nullify the killing blow."
+effects = [
+  { trigger = "lethal_damage", effect = "sacrifice_self", filters = { owner = "own", scope = "world" } },
+]
+
+[assets.DriftHaulers]
+id = "HAWK-F2-001"
+name = "Drift Haulers"
+category = "Force"
+min_rating = 2
+hp = 6
+cost = 4
+maintenance = 0
+tech_level = 4
+speed = 10
+drift_rating = 2
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "Short-hop haulers in company livery, built on a single Aetherstone ring. Moves at speed 10 (short-range). When it moves, it can carry one non-Aethership asset from its place with it, for 1 Coin."
+transport = {
+  coin_cost = 1,
+  cargo_types = ["Facility", "Security Personnel", "Operative", "Stratagem", "Beast"],
+  max_cargo = 1,
+}
+
+[assets.AethericLanceCorps]
+id = "HAWK-F2-002"
+name = "Aetheric-Lance Corps"
+category = "Force"
+min_rating = 2
+hp = 5
+cost = 5
+maintenance = 0
+tech_level = 4
+type = "Security Personnel"
+flags = ["P"]
+counter = "1d4+1"
+description = "Light cavalry on Aetherbikes with lance-rifles, who answer alarms across a company's holdings and raid supply lines between calls."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d4" }
+
+[assets.ShieldWardens]
+id = "HAWK-F2-003"
+name = "Shield Wardens"
+category = "Force"
+min_rating = 2
+hp = 4
+cost = 4
+maintenance = 0
+tech_level = 3
+type = "Operative"
+flags = ["S"]
+counter = "1d4+1"
+description = "Site staff trained in the shield wall, carrying tower shields with ward-plates. Once per turn, when a rival attacks this asset, the owner may force the attacker to reroll their highest die."
+effects = [
+  {
+    trigger = "enemy_roll_at_me",
+    effect = "reroll",
+    filters = { owner = "rival", scope = "self" },
+    gates = { once_per = "asset" },
+    reroll = { dice = 1, elective = true },
+  },
+]
+
+[assets.UnionizedPartisans]
+id = "HAWK-F2-004"
+name = "Unionized Partisans"
+category = "Force"
+min_rating = 2
+hp = 6
+cost = 4
+maintenance = 0
+tech_level = 0
+type = "Security Personnel"
+flags = []
+counter = ""
+description = "Workers organised in a guild hall and armed from its stores, who stop the work rather than hold ground."
+attack = { attacker_stat = "Force", defender_stat = "Cunning", damage = "1d4+1" }
+
+[assets.OverclockedZealots]
+id = "HAWK-F3-001"
+name = "Overclocked Zealots"
+category = "Force"
+min_rating = 3
+hp = 4
+cost = 6
+maintenance = 0
+tech_level = 0
+type = "Operative"
+flags = ["S"]
+counter = "2d6"
+description = "True believers fitted with Aether conduits that run raw power through their bodies. Overclocked Zealots take 1d4 damage every time they launch a successful attack or perform a counterattack."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d6" }
+effects = [
+  {
+    trigger = "own_attack_hit",
+    effect = "self_damage",
+    filters = { owner = "own", scope = "self" },
+    self_damage = { amount = "1d4" },
+  },
+  {
+    trigger = "own_counter_hit",
+    effect = "self_damage",
+    filters = { owner = "own", scope = "self" },
+    self_damage = { amount = "1d4" },
+  },
+]
+
+[assets.RunicMinefield]
+id = "HAWK-F3-002"
+name = "Runic Minefield"
+category = "Force"
+min_rating = 3
+hp = 2
+cost = 5
+maintenance = 0
+tech_level = 0
+type = "Stratagem"
+flags = []
+counter = "1d6+3"
+description = "Runes laid into a landing field, a dock or a Drift approach, keyed to the company's staff badges, that trigger when a hostile unit crosses them."
+
+[assets.WizardAdvisors]
+id = "HAWK-F3-003"
+name = "Wizard Advisors"
+category = "Force"
+min_rating = 3
+hp = 4
+cost = 6
+maintenance = 0
+tech_level = 4
+type = "Operative"
+flags = ["S"]
+counter = "1d6"
+description = "Wizards retained as advisors, who scry each attack on the company's holdings before it lands. Once per turn, a Force defense by the faction on this place rolls an additional d10."
+attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "1d4+1" }
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "world", phase = ["defense"], attribute = "Force" },
+    gates = { once_per = "asset" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[assets.CorporateChaplains]
+id = "HAWK-F3-004"
+name = "Corporate Chaplains"
+category = "Force"
+min_rating = 3
+hp = 4
+cost = 6
+maintenance = 0
+tech_level = 3
+type = "Operative"
+flags = ["S"]
+counter = "1d4+1"
+description = "Soul-bound chaplains on the company payroll, with a field shrine and a claims desk. Once between turns, if a Security Personnel, Operative or Beast asset of the faction on this place is destroyed, the faction may pay half its purchase cost to restore it at 1 HP."
+effects = [
+  {
+    trigger = "lethal_damage",
+    effect = "restore_asset",
+    filters = { owner = "own", scope = "world", asset_type = ["Security Personnel", "Operative", "Beast"] },
+    gates = { once_per = "asset" },
+  },
+]
+
+[assets.WardedCarriers]
+id = "HAWK-F4-001"
+name = "Warded Carriers"
+category = "Force"
+min_rating = 4
+hp = 10
+cost = 10
+maintenance = 0
+tech_level = 4
+speed = 14
+drift_rating = 2
+type = "Facility"
+flags = ["S"]
+counter = ""
+description = "Long-hulled carriers with a ward-dome over the drop deck, built to move a whole regiment. Moves at speed 14 (mid-range). When it moves, it can carry up to ten assets from its place with it, for 1 Coin."
+transport = {
+  coin_cost = 1,
+  cargo_types = ["Facility", "Aethership", "Security Personnel", "Operative", "Stratagem", "Beast"],
+  max_cargo = 10,
+}
+
+[assets.TeleportationHubs]
+id = "HAWK-F4-002"
+name = "Teleportation Hubs"
+category = "Force"
+min_rating = 4
+hp = 10
+cost = 10
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["A"]
+counter = ""
+description = "Paired teleportation circles inlaid in depot floors and kept by a coven under service contract. As an action, any one non-Aethership asset within eight hexes may be moved instantly to any place within eight hexes for 1 Coin."
+ability = {
+  effect = "relocate",
+  relocate = { scope = "other", max_hex = 8, coin_cost = 1, exclude_types = ["Aethership"], max_assets = 1 },
+}
+
+[assets.RuneboundFrigates]
+id = "HAWK-F4-003"
+name = "Runebound Frigates"
+category = "Force"
+min_rating = 4
+hp = 8
+cost = 12
+maintenance = 0
+tech_level = 4
+speed = 14
+drift_rating = 2
+type = "Aethership"
+flags = []
+counter = "1d8"
+description = "Angular warships built around a ringed Aether-Core, their hulls etched with binding runes. Moves at speed 14 (mid-range)."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d6" }
+
+[assets.ArcaneStrikeCadre]
+id = "HAWK-F4-004"
+name = "Arcane Strike Cadre"
+category = "Force"
+min_rating = 4
+hp = 12
+cost = 8
+maintenance = 0
+tech_level = 4
+type = "Security Personnel"
+flags = ["P"]
+counter = "1d8"
+description = "The standing force of a company's security arm: drilled riflemen in ward-cloth uniforms, with a combat mage in every squad."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "1d8" }
+
+[assets.HexcannonGunships]
+id = "HAWK-F5-001"
+name = "Hexcannon Gunships"
+category = "Force"
+min_rating = 5
+hp = 8
+cost = 10
+maintenance = 0
+tech_level = 4
+speed = 14
+drift_rating = 3
+type = "Aethership"
+flags = ["S"]
+counter = ""
+description = "Collections gunships whose hexcannons curse a ship's engines rather than breach its hull. Moves at speed 14 (mid-range). When they successfully attack an enemy asset, they steal 1d4 Coin from the target faction, once per turn per faction, no matter how many Hexcannon Gunships attack."
+attack = { attacker_stat = "Force", defender_stat = "Wealth", damage = "1d6" }
+effects = [
+  {
+    trigger = "own_attack_hit",
+    effect = "coin_steal",
+    filters = { owner = "rival", scope = "world" },
+    gates = { once_per = "target_faction" },
+    coin_steal = { amount = "1d4" },
+  },
+]
+
+[assets.BondedArmory]
+id = "HAWK-F5-002"
+name = "Bonded Armory"
+category = "Force"
+min_rating = 5
+hp = 6
+cost = 14
+maintenance = 0
+tech_level = 0
+type = "Facility"
+flags = ["A"]
+counter = ""
+description = "A bonded warehouse of salvage, surplus and quietly acquired arms. As an action, the owner may buy one Force asset on this place that requires up to tech level 5, at half again as many Coin as usual, rounded up. Only one asset can be bought this way per turn."
+ability = { effect = "purchase_enabler", purchase = { category = "Force", max_tech_level = 5, cost_percent = 150 } }
+
+[assets.PactBoundAssassins]
+id = "HAWK-F5-003"
+name = "Pact-Bound Assassins"
+category = "Force"
+min_rating = 5
+hp = 4
+cost = 12
+maintenance = 0
+tech_level = 4
+type = "Operative"
+flags = ["S"]
+counter = ""
+description = "Warlocks whose patron beyond the Material granted them the power to pass unseen. Pact-Bound Assassins start Stealthed when bought."
+attack = { attacker_stat = "Cunning", defender_stat = "Cunning", damage = "2d6+2" }
+effects = [
+  { trigger = "on_purchase", effect = "apply_stealth", filters = { owner = "own", scope = "self" } },
+]
+
+[assets.BattleChoir]
+id = "HAWK-F5-004"
+name = "Battle Choir"
+category = "Force"
+min_rating = 5
+hp = 6
+cost = 12
+maintenance = 0
+tech_level = 4
+type = "Operative"
+flags = ["S"]
+counter = "1d6"
+description = "Battle-sorcerers wired into portable Aether-Cores, chanting in unison behind the line. Once per turn, a Force attack by the faction on this place rolls an additional d10."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "world", phase = ["attack"], attribute = "Force" },
+    gates = { once_per = "asset" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+]
+
+[assets.CharteredMageKnights]
+id = "HAWK-F6-001"
+name = "Chartered Mage-Knights"
+category = "Force"
+min_rating = 6
+hp = 16
+cost = 20
+maintenance = 0
+tech_level = 5
+type = "Security Personnel"
+flags = ["P", "S"]
+counter = "2d8+2"
+description = "An order of mage-knights chartered to a company, in rune-forged plate and company livery. If they successfully defend against an attack, the owner may make the attacking asset attack itself for normal damage or counterattack results."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d8" }
+effects = [
+  { trigger = "own_defense_win", effect = "counterstrike", filters = { owner = "own", scope = "self" } },
+]
+
+[assets.ArcanoLinkedBatteries]
+id = "HAWK-F6-002"
+name = "Arcano-Linked Batteries"
+category = "Force"
+min_rating = 6
+hp = 20
+cost = 18
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["S"]
+counter = "2d6+6"
+description = "Aether cannon and ward-towers linked by Arcano-Tech relays across a Fragment's sky. They can only defend against attacks by Aethership assets."
+effects = [
+  {
+    trigger = "attack_eligibility_query",
+    effect = "restrict_attack",
+    filters = { owner = "rival", scope = "self", asset_type = ["Aethership"] },
+    restrict_attack = { side = "defense", allow = "only_listed" },
+  },
+]
+
+[assets.ForgedSiegeEngines]
+id = "HAWK-F6-003"
+name = "Forged Siege Engines"
+category = "Force"
+min_rating = 6
+hp = 14
+cost = 25
+maintenance = 0
+tech_level = 4
+type = "Security Personnel"
+flags = ["P"]
+counter = "1d10"
+description = "Forged war-frames the size of houses, hired out on fixed-term contracts to break fortified lines."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d10+4" }
+
+[assets.CarrierCorps]
+id = "HAWK-F6-004"
+name = "Carrier Corps"
+category = "Force"
+min_rating = 6
+hp = 15
+cost = 20
+maintenance = 0
+tech_level = 4
+speed = 19
+drift_rating = 3
+type = "Aethership"
+flags = ["S"]
+counter = "1d8"
+description = "Long-range troopships for a whole army. Moves at speed 19 (long-range). When it moves, it can carry up to ten Force assets from its place with it, for 1 Coin."
+transport = {
+  coin_cost = 1,
+  cargo_types = ["Facility", "Security Personnel", "Operative", "Stratagem", "Beast"],
+  max_cargo = 10,
+  exclude_categories = ["Cunning", "Wealth"],
+}
+
+[assets.DeepInsertionGate]
+id = "HAWK-F7-001"
+name = "Deep-Insertion Gate"
+category = "Force"
+min_rating = 7
+hp = 10
+cost = 25
+maintenance = 0
+tech_level = 4
+type = "Facility"
+flags = ["A"]
+counter = ""
+description = "A long-range teleportation gate on a priority clearance that overrides customs, wards and lockdowns. As an action, any one non-Aethership asset within fourteen hexes may be moved instantly to any place within fourteen hexes for 2 Coin, even if the local government objects or a lockdown holds the place."
+ability = {
+  effect = "relocate",
+  relocate = {
+    scope = "other",
+    max_hex = 14,
+    coin_cost = 2,
+    exclude_types = ["Aethership"],
+    max_assets = 1,
+    ignores_permission = true,
+    ignores_lockdown = true,
+  },
+}
+
+[assets.AbjurativeFirewall]
+id = "HAWK-F7-002"
+name = "Abjurative Firewall"
+category = "Force"
+min_rating = 7
+hp = 10
+cost = 20
+maintenance = 0
+tech_level = 5
+type = "Facility"
+flags = ["S"]
+counter = "2d8+2"
+description = "A lattice of abjuration wards and scrying mirrors over a whole facility. It can defend only against attacks versus Cunning, but adds an additional die to the defender's roll."
+effects = [
+  {
+    trigger = "own_roll",
+    effect = "bonus_die",
+    filters = { owner = "own", scope = "self", phase = ["defense"], attribute = "Cunning" },
+    bonus_die = { sides = 10, count = 1 },
+  },
+  {
+    trigger = "attack_eligibility_query",
+    effect = "restrict_attack",
+    filters = { owner = "rival", scope = "self", attribute = "Cunning" },
+    restrict_attack = { side = "defense", allow = "only_listed" },
+  },
+]
+
+[assets.AetherTechMarines]
+id = "HAWK-F7-003"
+name = "Aether-Tech Marines"
+category = "Force"
+min_rating = 7
+hp = 16
+cost = 30
+maintenance = 0
+tech_level = 4
+speed = 10
+type = "Security Personnel"
+flags = []
+counter = "2d8"
+description = "Heavy boarding troops in sealed Aether-tech armour. Moves at speed 10 (short-range), and never needs the local government's permission to land."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "2d8+2" }
+
+[assets.Dreadnought]
+id = "HAWK-F8-001"
+name = "Dreadnought"
+category = "Force"
+min_rating = 8
+hp = 30
+cost = 40
+maintenance = 2
+tech_level = 4
+speed = 19
+drift_rating = 3
+type = "Aethership"
+flags = ["A", "S"]
+purchase_permission = true
+counter = "3d8"
+description = "A capital Aethership the size of a district, held aloft by a floating Aether-Core and built around a spinal Aether cannon. Moves at speed 19 (long-range). It costs an additional 2 Coin of maintenance each turn. The local government's permission is required to raise one, but not to move one in."
+attack = { attacker_stat = "Force", defender_stat = "Force", damage = "3d10+4" }

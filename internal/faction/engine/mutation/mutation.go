@@ -285,11 +285,23 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 				index := slices.Index(faction.Tags, v.TagID)
 				if index >= 0 {
 					faction.Tags = slices.Delete(faction.Tags, index, index+1)
+					faction.LapsedTags = slices.DeleteFunc(faction.LapsedTags, func(tagID string) bool { return tagID == v.TagID })
 				} else {
 					errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.TagID})
 				}
 			} else {
 				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			}
+		case domain.TagLapsed:
+			if faction, ok := factionState.Factions[v.FactionID]; !ok {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID})
+			} else if !faction.HasTag(v.TagID) {
+				errs.Misses = append(errs.Misses, MutationMiss{MutationType: mutation.Type(), FactionID: v.FactionID, EntityID: v.TagID})
+			} else {
+				faction.LapsedTags = slices.DeleteFunc(faction.LapsedTags, func(tagID string) bool { return tagID == v.TagID })
+				if v.Lapsed {
+					faction.LapsedTags = append(faction.LapsedTags, v.TagID)
+				}
 			}
 		case domain.WorldGovernmentChanged:
 			_, known := factionState.Factions[v.ToFactionID]
@@ -410,6 +422,8 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok && asset.CurrentOrder != nil {
 					asset.CurrentOrder.StepIdx = v.NewStepIdx
+					asset.CurrentOrder.Banked = v.Banked
+					asset.CurrentOrder.Held = false
 					asset.Location = domain.Location{
 						RegionHex: v.RegionHex,
 					}
@@ -423,6 +437,8 @@ func (me *MutationEngine) Apply(factionState *state.FactionState, mutations []do
 			if faction, ok := factionState.Factions[v.FactionID]; ok {
 				if asset, ok := faction.Assets[v.AssetID]; ok && asset.CurrentOrder != nil {
 					asset.CurrentOrder.StepIdx = v.NewStepIdx
+					asset.CurrentOrder.Banked = v.Banked
+					asset.CurrentOrder.Held = true
 					asset.Location = domain.Location{RegionHex: v.RegionHex}
 					if v.Reason == domain.HoldLockdownPaid {
 						asset.CurrentOrder.LockdownPaid = true
