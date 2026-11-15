@@ -10,7 +10,7 @@
 > **Inputs:** the [arc-discovery](A.001-data-driven-rulebook-arc-discovery.md) (binding —
 > its Per-initiative seed, Open Questions, and Reconciliation items are the raw
 > material here), the [arc-concept](A.001-data-driven-rulebook-arc-concept.md) (non-binding
-> candidate list), and the [ability & effect catalog](../../../../../docs/architecture/engine/ability-catalog.md)
+> candidate list), and the [ability & effect catalog](../../../../../../docs/architecture/engine/ability-catalog.md)
 > (binding mechanical decomposition, ACD-8).
 >
 > **Status:** signed off, and **amended five times since**. The A.001.3 Discovery split the
@@ -156,7 +156,7 @@ attack (S-side), rerouted to A.001.3 (AP-6).
 
 > Boundary reset by the A.001.3 Discovery (AP-7). The text below replaces the
 > sign-off version, which assumed the whole S side was one initiative. Full detail in
-> the [discovery doc](../../_completed/_archive/discovery/s-flag-effect-registry-discovery.md).
+> the [discovery doc](../../_archive/discovery/s-flag-effect-registry-discovery.md).
 
 Build the data-driven S-side model and ship every effect that is a **hook or a rule
 query**. An S-flag ability is declared as *trigger → filters → gates → effect*; the
@@ -242,7 +242,7 @@ renames of Go types that carry goal names (A.001.8 deletes them).
 
 Owns the living lore canon (ACD-9) and ships H.A.W.K's tags, assets and a playable
 campaign (AP-11). Six efforts, in order; the full design is in the
-[A.001.5 discovery](../../_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.5-hawk-asset-authoring/A.001.5-hawk-asset-authoring-discovery.md).
+[A.001.5 discovery](initiatives/A.001.5-hawk-asset-authoring/A.001.5-hawk-asset-authoring-discovery.md).
 
 - **Effort 1 — lore-seed session (precursor).** Scaffold the H.A.W.K campaign at
   `campaigns/hawk/`, then interview Robert on H.A.W.K's setting, factions, places,
@@ -278,7 +278,7 @@ A.001.7.
 
 Added by AP-8, from `E.002` option T-1, and widened by AP-9. Tags get their behavior
 from rulebook data, as assets do. Four efforts; see the
-[A.001.7 discovery](../../_completed/arcs/A.001-data-driven-rulebook/initiatives/A.001.7-data-driven-tags/A.001.7-data-driven-tags-discovery.md).
+[A.001.7 discovery](initiatives/A.001.7-data-driven-tags/A.001.7-data-driven-tags-discovery.md).
 
 - A tag record carries `[[tags.<Key>.effects]]` with the asset `EffectDefinition`. Each
   registrar learns a second holder, the faction, beside the asset. The effects engine

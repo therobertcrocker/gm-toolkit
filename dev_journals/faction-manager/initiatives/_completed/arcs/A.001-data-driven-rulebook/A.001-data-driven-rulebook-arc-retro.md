@@ -56,34 +56,75 @@ campaign-agnostic, and H.A.W.K ships as a full playable rulebook. All three hold
 
 ## 2 — Is there a better way we didn't see?
 
-The spine holds. Three things showed up later than they had to.
+No. Each part of the design holds, and the three models (goals, abilities,
+effects) are the right breakdown. The better shapes were in the approach.
 
-- **The spine.** ACD-1 to ACD-5 survived eight initiatives without a reversal. The
-  one design that beat the arc's own plan was `A.001.7`'s "effects are blind to
-  their holder" (R-1): one `effect.Holder` let tags reuse the asset registrars, and
-  goals then reused the filters. The arc-discovery could not have seen it; it came
-  from reading 22 registrars.
-- **Inventory before slicing.** The arc-plan sized the S side by generalizing
-  `[transport]`, and the `A.001.3` Discovery had to re-slice it after counting the
-  data (AP-7). The same arc-plan session could have counted the 43 `S`-flag assets.
-  It would have cost an hour and saved an amendment, not an initiative: the split
-  was right either way.
-- **Shared tags.** ACD-6 assumed shared goals and tags. `E.002` showed that data-driven
-  tags remove the reason to share them, and `A.001.4` shrank to goals. Had the
-  arc-discovery asked "what does sharing buy once tags are data?", `A.001.7` and
-  `A.001.8` would have been in the first arc-plan. The cost was one exploration and
-  one amendment; nothing was built twice.
-- **The second rulebook found the first rulebook's bugs.** SWN's drift costs never
-  cost anything, and only H.A.W.K's map showed it (`A.001.5` Effort 4). That is the
-  arc's thesis working as intended, but it argues for an earlier, smaller non-SWN
-  test: a throwaway rulebook in `A.001.4` would have found it months sooner.
-- **Architecture pages lagged every close.** `A.001.7`, `A.001.8` and `A.001.5` each
-  graduated Key Decisions and left page bodies stale, so `D.010` grew at each close.
-  Updating each page body in the effort that changed it would have kept the wiki true
-  for the next Discovery, at a doc edit per effort.
-- **Plan weight came down.** `A.001.7` wrote about 17,500 lines of plan for 3,000
-  lines of Go; `A.001.8`'s just-in-time effort plans cut that to a third. The arc
-  learned this one inside itself.
+### The shape of the approach
+
+- **Engine first, then content.** The arc built every SWN special as data
+  (`A.001.1` to `A.001.8`), then authored H.A.W.K on top (`A.001.5`). The
+  alternative is content first: author H.A.W.K and build only the primitives it
+  needs, with SWN catching up. That would have tested the arc's claim from the
+  start, and found the drift costs that never cost anything and the asset types
+  held in Go (`A.001.5` Efforts 2 and 4) months sooner. It would have left SWN,
+  the only rulebook with a rules text to check against, half-built for most of the
+  arc. Engine first still holds, because SWN was the reference that proved each
+  primitive right; the gap is that the second rulebook joined at the end. A thin
+  H.A.W.K slice (a few tags and assets on a small map) run from `A.001.3` on would
+  have kept the claim under test, for the cost of a stand-in rulebook to maintain.
+- **Sliced by holder and surface.** The initiatives split along who holds a rule
+  and how it fires: the A side, the S side, tags, goals. `A.001.7`'s R-1 showed the
+  holder is not a real seam: an effect is blind to whether an asset or a tag holds
+  it, and scope decides the holder. Slicing by vocabulary (one effect model, with
+  assets, tags and later goals as holders from the start) would have spared the
+  holder retrofit and AP-9's widening. It was not visible at Arc-Discovery; it came
+  from reading 22 registrars. The surface axis was the only one in sight, and it
+  cost one retrofit, not a rebuild.
+- **Plans that wrote the code.** `A.001.7` planned about 17,500 lines for 3,000
+  lines of Go; `A.001.8`'s just-in-time effort plans cut the ratio to a third, and
+  its Efforts 2 and 3 reported no anchor drift. A plan that fixes decisions and seams, and lets execution write
+  the code, is the better shape. The arc found it inside itself.
+
+### The shape of the design
+
+- **Two models for abilities and effects.** An ability is steps of target → gate → effect
+  (ten effects, `domain.Contest`). An effect entry is trigger → filters → gates →
+  effect (about 40 registrars, `domain.EffectContest`). Both name their effect,
+  carry a block named for it, and roll their contest through the same
+  `dice.Engine.Gate`; the shelter and `relocate` sit on both sides. The
+  alternative is one model where "the GM spends the action" is a trigger and
+  picking a target is a filter that asks. It would give one data shape, one loader
+  and one contest type, and the `A` and `S` flags would go away on their own
+  (`R.035`). It would cost an action trigger that prompts in order and halts the
+  chain on a failed gate, which the hook path does not do, and a rewrite of every
+  ability entry. The two shapes hold (Robert's call at this close): merging them
+  would either push the ability's ordered, asking, halting chain into every hook,
+  or flatten both into something too loose to check. The shared parts already
+  meet where they should, in `dice` and `relocate`; the flags are the only
+  repetition worth removing (`R.035`).
+- **Goals as a third vocabulary.** Goals have their own events, measures and XP
+  tables, split from effect triggers on purpose (`A.001.8` D-18: a goal's `kill`
+  counts any cause, an effect's `asset_destroyed` only combat). The alternative,
+  goals as effects that move progress, would blur those meanings. The split holds:
+  a goal measures across batches, an effect acts on one. The cost is a third list
+  for a rulebook author to learn.
+- **Copy at compose, not reference.** A campaign holds a full copy of its rulebook,
+  so a GM's game never changes under them (persistence Key Decisions). This close
+  paid the price: one rulebook change meant hand edits in four campaign copies,
+  and `hawk-claude` had drifted from its source unseen. The alternative, a campaign
+  that reads the source with its own overrides, would end the drift and give up the
+  self-contained campaign. The copy holds for a GM's real game; what is missing is
+  a sign that a copy is older than its source.
+- **A closed vocabulary in Go.** Each effect is a Go registrar that data names; a
+  rulebook cannot write new logic. The alternative, conditions and formulas in the
+  data, would let a rulebook add rules with no Go, at the cost of a small language
+  to design, check and test. The closed set holds: an unknown name fails at load,
+  every effect has its tests, and H.A.W.K's dozen new effects took about 1,600
+  lines. WWN is the next test of whether the set grows or settles.
+
+Timing, briefly: an asset count at Arc-Plan (AP-7), the question "what does sharing
+buy once tags are data?" (AP-8), and page bodies updated per effort (`D.010`)
+would each have landed a known turn sooner. None changed the shape.
 
 ## 3 — Does it fit the project?
 
@@ -150,11 +191,15 @@ sets the fit more than it follows it.
 |---|---|---|
 | Delivered | 4 | All three parts of the concept's vision, plus tags and goals as data; two SWN actions and Psychic Academy's entry left the game until `F.040` and `R.025` |
 | Plan held | 3 | ACD-1 to ACD-5 held across eight initiatives; the arc-plan took five amendments (AP-7 to AP-11) and grew from five initiatives to eight, each recorded before code |
-| Rework | | |
+| Rework | 3 | 30 fix commits across the eight branches (about one commit in four), a fix pass at every effort close; this close found 10 seams, all fixed, one a do-nothing prompt in play and the rest drift between initiatives |
 | Fit | 4 | The arc set the data-driven rule and every initiative follows it; the architecture front door still frames the engine as SWN-only, and `D.010` grew at each close |
 | Simplicity | 4 | One holder-blind effect model serves assets and tags, one table-driven goal engine replaced twelve handlers, one `relocate` primitive serves every instant move; the vocabulary is about 40 registrars, the problem's real size |
+| **Total** | **18 / 25** | Mean 3.6: a full delivery on a spine that never reversed, held back by an arc-plan that grew by three initiatives and docs that trailed every close |
 
-**Verdict:** [after Rework]
+**Verdict:** The engine runs any rulebook from data and H.A.W.K is playable, on
+cross-cutting decisions that held for all eight initiatives; the cost was a
+slicing that bent five times and architecture pages that lagged the code at
+every close.
 
 **What surprised me:** the second rulebook's sharpest test was of the first: SWN's
 drift costs, tags and goal flow were broken or inert in ways only H.A.W.K and the
