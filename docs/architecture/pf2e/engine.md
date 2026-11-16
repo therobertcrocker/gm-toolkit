@@ -27,7 +27,9 @@ through a roller, and `Expression.String` writes it back.
 
 `engine.Setup` holds the party, the enemies (both as loaded
 `creature.Creature` values), the roller, the observer, the decider and a round
-limit. `engine.Run(setup)` returns the `Outcome` and an error. It refuses a
+limit. `engine.Run(setup)` returns the `Outcome` and an error; beside an error
+the outcome is `NoOutcome`, the zero value, so a failed fight never counts as a
+win. It refuses a
 setup with an empty side, a round limit below 1, or no roller, observer or
 decider (`ErrBadSetup`), and two creatures with the same ID
 (`ErrDuplicateCombatant`). Each creature becomes a `Combatant` that holds its
@@ -85,8 +87,8 @@ hit doubles it. Parts of one type are added together. Then, for each type:
 3. **Resistance** — the strongest resistance that covers the type is
    subtracted, and the result is floored at 0.
 
-A resistance or weakness covers a type when its key is that type, `physical`
-(for bludgeoning, piercing and slashing) or `all`. Its `except` list names
+An immunity, resistance or weakness covers a type when its key is that type,
+`physical` (for bludgeoning, piercing and slashing) or `all`. Its `except` list names
 damage types or Strike traits that it does not cover. The target loses the sum,
 and HP stops at 0.
 

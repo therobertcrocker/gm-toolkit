@@ -147,10 +147,10 @@ func TestRunRejectsBadSetups(t *testing.T) {
 	if _, err := Run(duplicate); !errors.Is(err, ErrDuplicateCombatant) {
 		t.Errorf("duplicate ids: err = %v, want ErrDuplicateCombatant", err)
 	}
-	if _, err := Run(noRounds); !errors.Is(err, ErrBadSetup) {
-		t.Errorf("no rounds: err = %v, want ErrBadSetup", err)
+	if outcome, err := Run(noRounds); !errors.Is(err, ErrBadSetup) || outcome != NoOutcome {
+		t.Errorf("no rounds: outcome, err = %v, %v, want no outcome, ErrBadSetup", outcome, err)
 	}
-	if _, err := Run(noEnemies); !errors.Is(err, ErrBadSetup) {
-		t.Errorf("no enemies: err = %v, want ErrBadSetup", err)
+	if outcome, err := Run(noEnemies); !errors.Is(err, ErrBadSetup) || outcome != NoOutcome {
+		t.Errorf("no enemies: outcome, err = %v, %v, want no outcome, ErrBadSetup", outcome, err)
 	}
 }

@@ -29,6 +29,25 @@
 
 1. **Commit 6, Task 1: the tree lists `engine/ability-catalog.md`.** The plan's full contents left it out, as the old front door's tree did. The page exists and the front door links it under Design principles, so the tree now names it. The Task 1 contents above are fixed to match.
 2. **Commit 7, Task 3: the determinism Key Decision is reworded to match the source.** The plan's text said "nothing iterates a map without sorting first". Two loops range a map unsorted: `strongestAdjustment` (`engine/damage.go`) and `mergeInto` (`creature/layers.go`). Neither order can change a result (the first takes the largest value, the second merges key by key), so gate 3 holds, but the sentence was false. The page now says no map's order reaches a roll or an event, and names where a map is read unsorted. Sorting both loops in code would make the plan's sentence true instead; that is open for the effort close. The Task 3 text above is fixed to match.
+3. **Effort close: the review-fix commit changes the plan's code in eight places.** `/code-review high` found ten issues; the picks were made by the session with Robert away and approved by him afterwards. The code blocks above are fixed to match the source.
+   - **Lower-case keys** (`readLayer`). The typed decode matches field names without case, the merge does not, so `HP` beside `hp` made the load nondeterministic. Any key with a capital letter now fails the load; a fence-sign marks why. `readLayer` also reads each file once.
+   - **AC and adjustment values** (`prepare`). `defense.ac` and each `resist` and `weakness` value must be at least 1. A missing AC loaded as 0.
+   - **Immunity groups** (`adjustedDamage`). An `immune` entry now covers types through `adjustmentCovers`, as resistance and weakness do, so `physical` and `all` work. Validating `immune` keys is deferred: Luna's list holds conditions, which Effort 3's condition rules will need to sort out.
+   - **Variant names** (`Load`). `--variant ../../x` read outside the creature folder and `--variant hand` applied `hand.toml` twice. A variant must be a plain file name and not `import` or `hand`, or the load fails with `ErrBadVariant`. `Locate` shares the name check (`isFolderName`).
+   - **`NoOutcome`** (`Outcome`). `Run` returned `0`, which was `PartyWins`, beside an error. `NoOutcome` is now the zero value, with a fence-sign.
+   - **Escape codes in pipes** (`show`). Bold is written only when the output is a terminal file and `NO_COLOR` is unset (`isTerminal`). `go-isatty` moved from an indirect to a direct requirement.
+   - **Missing hint** (`resolveCampaign`). The `ErrCampaignRootMissing` hint the other three copies carry was added. Folding the four copies (`faction`, `spatial`, `campaign`, `pf2e`) into one shared helper is out of this effort's scope; it is a Backlog candidate for Robert.
+   - **Full words**. `camp` and `dir` are renamed in production code (`pf2e.go`, `show.go`, `layers.go`); tests keep `dir`.
+4. **Effort close: review findings deferred, each to the effort that needs it.**
+   - **Effort 2** — the same creature ID in two fight folders fails `Locate` with `ErrCreatureAmbiguous`, so `show` cannot reach either; the importer will write such folders. `dice.Parse("3d6 + 14")` fails on the spaces with a misleading message; Foundry exports may hold spaced formulas.
+   - **Effort 3** — a weakness is added to a damage part that rolled 0; fix it with the minimum-damage rule.
+   - **Effort 6** — `StrikeIDs` and `AbilityIDs` sort on every call and `StandingFoes` allocates on every call; this matters once many fights are played, and `FirstFitting` is test-only until Effort 5. Two copies of one monster cannot be fielded, because a combatant's ID is its folder name.
+   - **Entry 2's open point is closed without a change.** Sorting the two unsorted map loops was not picked up: neither order reaches a roll or an event.
+5. **Effort close forward check: nothing changes now; each note is for the effort named.**
+   - **Effort 2, import target** — `Creature` has no fields for PC build choices, class or spell DCs, attribute modifiers or skills, and layers decode strictly, so the importer cannot write a key before the struct has it. `Load` has no compute step for PC stats.
+   - **Effort 3, ability schema** — `Ability.Actions` is limited to 1 to 3 and a `Step` holds only `strike`. Reactions, passives, saves, areas and spells all need new fields. A schema bump is free until Effort 4.
+   - **Effort 5, `Choice`** — one `Target` per choice; areas and moves need more.
+   - **Effort 6, events** — `DamageDealt` names source and target, so damage share works. No event marks a rescue; "two PCs down at once" must be derived from `DyingChanged`.
 
 ---
 
@@ -434,75 +453,102 @@ const (
 )
 
 var (
-	ErrNoLayers = errors.New("creature has neither an import nor a hand layer")
-	ErrInvalid  = errors.New("invalid creature")
+	ErrNoLayers   = errors.New("creature has neither an import nor a hand layer")
+	ErrInvalid    = errors.New("invalid creature")
+	ErrBadVariant = errors.New("bad variant name")
 )
 
-func Load(dir string, variants ...string) (*Creature, error) {
+func Load(directory string, variants ...string) (*Creature, error) {
 	var names []string
 	for _, name := range []string{importLayer, handLayer} {
-		_, err := os.Stat(filepath.Join(dir, name))
+		_, err := os.Stat(filepath.Join(directory, name))
 		if err == nil {
 			names = append(names, name)
 			continue
 		}
 		if !errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("load creature %s: %w", dir, err)
+			return nil, fmt.Errorf("load creature %s: %w", directory, err)
 		}
 	}
 	if len(names) == 0 {
-		return nil, fmt.Errorf("load creature %s: %w", dir, ErrNoLayers)
+		return nil, fmt.Errorf("load creature %s: %w", directory, ErrNoLayers)
 	}
 	for _, variant := range variants {
-		names = append(names, variant+".toml")
+		name := variant + ".toml"
+		if !isFolderName(variant) || name == importLayer || name == handLayer {
+			return nil, fmt.Errorf("load creature %s: %w: %q", directory, ErrBadVariant, variant)
+		}
+		names = append(names, name)
 	}
 
 	merged := map[string]any{}
 	for _, name := range names {
-		layer, err := readLayer(filepath.Join(dir, name))
+		layer, err := readLayer(filepath.Join(directory, name))
 		if err != nil {
-			return nil, fmt.Errorf("load creature %s: %w", dir, err)
+			return nil, fmt.Errorf("load creature %s: %w", directory, err)
 		}
 		mergeInto(merged, layer)
 	}
 
 	var buffer bytes.Buffer
 	if err := toml.NewEncoder(&buffer).Encode(merged); err != nil {
-		return nil, fmt.Errorf("load creature %s: encode merged layers: %w", dir, err)
+		return nil, fmt.Errorf("load creature %s: encode merged layers: %w", directory, err)
 	}
 	var creature Creature
 	if _, err := toml.Decode(buffer.String(), &creature); err != nil {
-		return nil, fmt.Errorf("load creature %s: decode merged layers: %w", dir, err)
+		return nil, fmt.Errorf("load creature %s: decode merged layers: %w", directory, err)
 	}
-	creature.ID = filepath.Base(dir)
+	creature.ID = filepath.Base(directory)
 	creature.Layers = names
 	if err := creature.prepare(); err != nil {
-		return nil, fmt.Errorf("load creature %s: %w", dir, err)
+		return nil, fmt.Errorf("load creature %s: %w", directory, err)
 	}
 	return &creature, nil
 }
 
+func isFolderName(name string) bool {
+	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`)
+}
+
 func readLayer(path string) (map[string]any, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("layer %s: %w", path, err)
+	}
 	var typed Creature
-	metadata, err := toml.DecodeFile(path, &typed)
+	metadata, err := toml.Decode(string(content), &typed)
 	if err != nil {
 		return nil, fmt.Errorf("layer %s: %w", path, err)
 	}
 	if undecoded := metadata.Undecoded(); len(undecoded) > 0 {
-		keys := make([]string, len(undecoded))
-		for index, key := range undecoded {
-			keys[index] = key.String()
+		return nil, fmt.Errorf("layer %s: unknown keys: %s", path, joinKeys(undecoded))
+	}
+	// deliberate: a key with a capital letter is an error, not accepted, because the decoder matches fields without case but the merge does not, so `HP` and `hp` would both survive the merge and either could win.
+	var capitalised []toml.Key
+	for _, key := range metadata.Keys() {
+		if text := key.String(); text != strings.ToLower(text) {
+			capitalised = append(capitalised, key)
 		}
-		return nil, fmt.Errorf("layer %s: unknown keys: %s", path, strings.Join(keys, ", "))
+	}
+	if len(capitalised) > 0 {
+		return nil, fmt.Errorf("layer %s: keys must be lower case: %s", path, joinKeys(capitalised))
 	}
 	if typed.Schema != SchemaVersion {
 		return nil, fmt.Errorf("layer %s: schema %d, want %d", path, typed.Schema, SchemaVersion)
 	}
 	var layer map[string]any
-	if _, err := toml.DecodeFile(path, &layer); err != nil {
+	if _, err := toml.Decode(string(content), &layer); err != nil {
 		return nil, fmt.Errorf("layer %s: %w", path, err)
 	}
 	return layer, nil
+}
+
+func joinKeys(keys []toml.Key) string {
+	texts := make([]string, len(keys))
+	for index, key := range keys {
+		texts[index] = key.String()
+	}
+	return strings.Join(texts, ", ")
 }
 
 func mergeInto(base, overlay map[string]any) {
@@ -551,6 +597,9 @@ func (creature *Creature) prepare() error {
 	if creature.Defense.HP < 1 {
 		report("defense.hp must be at least 1")
 	}
+	if creature.Defense.AC < 1 {
+		report("defense.ac must be at least 1")
+	}
 	for _, table := range []struct {
 		name        string
 		adjustments map[string]Adjustment
@@ -561,6 +610,9 @@ func (creature *Creature) prepare() error {
 		for _, key := range slices.Sorted(maps.Keys(table.adjustments)) {
 			if key != "all" && key != "physical" && !IsDamageType(key) {
 				report("defense.%s.%s: not a damage type, physical or all", table.name, key)
+			}
+			if table.adjustments[key].Value < 1 {
+				report("defense.%s.%s: value must be at least 1", table.name, key)
 			}
 		}
 	}
@@ -980,8 +1032,10 @@ type Event interface {
 
 type Outcome int
 
+// deliberate: the zero value is NoOutcome, not PartyWins, because Run returns it beside an error and a tally must not count a failed fight as a win.
 const (
-	PartyWins Outcome = iota
+	NoOutcome Outcome = iota
+	PartyWins
 	EnemiesWin
 	Stalemate
 )
@@ -992,8 +1046,10 @@ func (outcome Outcome) String() string {
 		return "party wins"
 	case EnemiesWin:
 		return "enemies win"
-	default:
+	case Stalemate:
 		return "stalemate"
+	default:
+		return "no outcome"
 	}
 }
 
@@ -1254,7 +1310,8 @@ func (fight *Fight) dealDamage(attacker, target *Combatant, strike creature.Stri
 }
 
 func adjustedDamage(defense creature.Defense, damageType string, traits []string, amount int) int {
-	if slices.Contains(defense.Immune, damageType) {
+	immune := slices.ContainsFunc(defense.Immune, func(key string) bool { return adjustmentCovers(key, damageType) })
+	if immune {
 		return 0
 	}
 	if weakness, found := strongestAdjustment(defense.Weakness, damageType, traits); found {
@@ -1865,7 +1922,7 @@ type Setup struct {
 func Run(setup Setup) (Outcome, error) {
 	fight, err := newFight(setup)
 	if err != nil {
-		return 0, err
+		return NoOutcome, err
 	}
 	return fight.run()
 }
@@ -1933,7 +1990,7 @@ func (fight *Fight) run() (Outcome, error) {
 		for index := 0; index < len(fight.order); {
 			actor := fight.order[index]
 			if err := fight.takeTurn(actor); err != nil {
-				return 0, err
+				return NoOutcome, err
 			}
 			if outcome, over := fight.outcome(); over {
 				fight.observer.Observe(FightEnded{Rounds: fight.round, Outcome: outcome})
@@ -2036,7 +2093,7 @@ func (fight *Fight) outcome() (Outcome, bool) {
 	case !partyStanding:
 		return EnemiesWin, true
 	default:
-		return 0, false
+		return NoOutcome, false
 	}
 }
 ```
@@ -2454,7 +2511,7 @@ var (
 )
 
 func Locate(partyDir, encountersDir, id string) (string, error) {
-	if id == "" || id == "." || id == ".." || strings.ContainsAny(id, `/\`) {
+	if !isFolderName(id) {
 		return "", fmt.Errorf("%w: %q", ErrBadCreatureID, id)
 	}
 	candidates := []string{filepath.Join(partyDir, id)}
@@ -2585,14 +2642,16 @@ func resolveCampaign(override string) (*campaigns.Campaign, error) {
 	if err != nil {
 		return nil, err
 	}
-	camp, err := campaigns.ResolveActive(registry, override)
+	campaign, err := campaigns.ResolveActive(registry, override)
 	switch {
 	case err == nil:
-		return camp, nil
+		return campaign, nil
 	case errors.Is(err, campaigns.ErrNoActiveCampaign):
 		return nil, fmt.Errorf("no active campaign and no --campaign given\n  hint: gm-toolkit campaign set-active --campaign <id>")
 	case errors.Is(err, campaigns.ErrCampaignNotRegistered):
 		return nil, fmt.Errorf("%w\n  hint: gm-toolkit campaign register <path>", err)
+	case errors.Is(err, campaigns.ErrCampaignRootMissing):
+		return nil, fmt.Errorf("%w\n  hint: re-register at its new location or restore the directory", err)
 	default:
 		return nil, err
 	}
@@ -2630,9 +2689,11 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"slices"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
@@ -2651,20 +2712,21 @@ func newShowCmd(campaignOverride *string) *cobra.Command {
 		Long:  "Merges the creature's layers (import.toml, hand.toml, then each --variant in order) and prints the result. Looks in pf2e/party/ and then in each encounters/<fight>/ folder.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			camp, err := resolveCampaign(*campaignOverride)
+			campaign, err := resolveCampaign(*campaignOverride)
 			if err != nil {
 				return fmt.Errorf("pf2e sim show: %w", err)
 			}
-			paths := camp.Paths()
-			dir, err := creature.Locate(paths.PartyDir, paths.EncountersDir, args[0])
+			paths := campaign.Paths()
+			directory, err := creature.Locate(paths.PartyDir, paths.EncountersDir, args[0])
 			if err != nil {
 				return fmt.Errorf("pf2e sim show: %w", err)
 			}
-			loaded, err := creature.Load(dir, variants...)
+			loaded, err := creature.Load(directory, variants...)
 			if err != nil {
 				return fmt.Errorf("pf2e sim show: %w", err)
 			}
-			printCreature(cmd.OutOrStdout(), loaded)
+			out := cmd.OutOrStdout()
+			printCreature(out, loaded, isTerminal(out))
 			return nil
 		},
 	}
@@ -2672,8 +2734,17 @@ func newShowCmd(campaignOverride *string) *cobra.Command {
 	return cmd
 }
 
-func printCreature(out io.Writer, shown *creature.Creature) {
-	fmt.Fprintf(out, "%s%s%s  %s %d", ansiBold, shown.Name, ansiReset, shown.Kind, shown.Level)
+func isTerminal(out io.Writer) bool {
+	file, isFile := out.(*os.File)
+	return isFile && os.Getenv("NO_COLOR") == "" && isatty.IsTerminal(file.Fd())
+}
+
+func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
+	bold, reset := "", ""
+	if styled {
+		bold, reset = ansiBold, ansiReset
+	}
+	fmt.Fprintf(out, "%s%s%s  %s %d", bold, shown.Name, reset, shown.Kind, shown.Level)
 	if len(shown.Traits) > 0 {
 		fmt.Fprintf(out, "  [%s]", strings.Join(shown.Traits, ", "))
 	}
@@ -2690,7 +2761,7 @@ func printCreature(out io.Writer, shown *creature.Creature) {
 	fmt.Fprintf(out, "Speed %s\n", speedText(shown.Speed))
 
 	if len(shown.Strikes) > 0 {
-		fmt.Fprintf(out, "%sStrikes%s\n", ansiBold, ansiReset)
+		fmt.Fprintf(out, "%sStrikes%s\n", bold, reset)
 		for _, id := range shown.StrikeIDs() {
 			strike := shown.Strikes[id]
 			fmt.Fprintf(out, "  %s %+d", strike.Name, strike.Bonus)
@@ -2702,7 +2773,7 @@ func printCreature(out io.Writer, shown *creature.Creature) {
 	}
 
 	if len(shown.Abilities) > 0 {
-		fmt.Fprintf(out, "%sAbilities%s\n", ansiBold, ansiReset)
+		fmt.Fprintf(out, "%sAbilities%s\n", bold, reset)
 		for _, id := range shown.AbilityIDs() {
 			ability := shown.Abilities[id]
 			if ability.Ignore {
@@ -2844,9 +2915,12 @@ func TestPrintCreature(t *testing.T) {
 		Layers: []string{"import.toml", "hand.toml"},
 	}
 	var out bytes.Buffer
-	printCreature(&out, shown)
+	printCreature(&out, shown, false)
+	if strings.Contains(out.String(), "\033") {
+		t.Errorf("unstyled output holds an escape code:\n%q", out.String())
+	}
 	for _, want := range []string{
-		"Abyssal Luna",
+		"Abyssal Luna  npc 16",
 		"HP 300  AC 36  Fort +27  Ref +28  Will +29",
 		"Resist all 10 (except holy)",
 		"Speed 60 ft, fly 180 ft",

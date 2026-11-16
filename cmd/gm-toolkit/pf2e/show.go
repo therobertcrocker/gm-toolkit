@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"slices"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
@@ -25,20 +27,21 @@ func newShowCmd(campaignOverride *string) *cobra.Command {
 		Long:  "Merges the creature's layers (import.toml, hand.toml, then each --variant in order) and prints the result. Looks in pf2e/party/ and then in each encounters/<fight>/ folder.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			camp, err := resolveCampaign(*campaignOverride)
+			campaign, err := resolveCampaign(*campaignOverride)
 			if err != nil {
 				return fmt.Errorf("pf2e sim show: %w", err)
 			}
-			paths := camp.Paths()
-			dir, err := creature.Locate(paths.PartyDir, paths.EncountersDir, args[0])
+			paths := campaign.Paths()
+			directory, err := creature.Locate(paths.PartyDir, paths.EncountersDir, args[0])
 			if err != nil {
 				return fmt.Errorf("pf2e sim show: %w", err)
 			}
-			loaded, err := creature.Load(dir, variants...)
+			loaded, err := creature.Load(directory, variants...)
 			if err != nil {
 				return fmt.Errorf("pf2e sim show: %w", err)
 			}
-			printCreature(cmd.OutOrStdout(), loaded)
+			out := cmd.OutOrStdout()
+			printCreature(out, loaded, isTerminal(out))
 			return nil
 		},
 	}
@@ -46,8 +49,17 @@ func newShowCmd(campaignOverride *string) *cobra.Command {
 	return cmd
 }
 
-func printCreature(out io.Writer, shown *creature.Creature) {
-	fmt.Fprintf(out, "%s%s%s  %s %d", ansiBold, shown.Name, ansiReset, shown.Kind, shown.Level)
+func isTerminal(out io.Writer) bool {
+	file, isFile := out.(*os.File)
+	return isFile && os.Getenv("NO_COLOR") == "" && isatty.IsTerminal(file.Fd())
+}
+
+func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
+	bold, reset := "", ""
+	if styled {
+		bold, reset = ansiBold, ansiReset
+	}
+	fmt.Fprintf(out, "%s%s%s  %s %d", bold, shown.Name, reset, shown.Kind, shown.Level)
 	if len(shown.Traits) > 0 {
 		fmt.Fprintf(out, "  [%s]", strings.Join(shown.Traits, ", "))
 	}
@@ -64,7 +76,7 @@ func printCreature(out io.Writer, shown *creature.Creature) {
 	fmt.Fprintf(out, "Speed %s\n", speedText(shown.Speed))
 
 	if len(shown.Strikes) > 0 {
-		fmt.Fprintf(out, "%sStrikes%s\n", ansiBold, ansiReset)
+		fmt.Fprintf(out, "%sStrikes%s\n", bold, reset)
 		for _, id := range shown.StrikeIDs() {
 			strike := shown.Strikes[id]
 			fmt.Fprintf(out, "  %s %+d", strike.Name, strike.Bonus)
@@ -76,7 +88,7 @@ func printCreature(out io.Writer, shown *creature.Creature) {
 	}
 
 	if len(shown.Abilities) > 0 {
-		fmt.Fprintf(out, "%sAbilities%s\n", ansiBold, ansiReset)
+		fmt.Fprintf(out, "%sAbilities%s\n", bold, reset)
 		for _, id := range shown.AbilityIDs() {
 			ability := shown.Abilities[id]
 			if ability.Ignore {

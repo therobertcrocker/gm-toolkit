@@ -24,6 +24,9 @@ func (creature *Creature) prepare() error {
 	if creature.Defense.HP < 1 {
 		report("defense.hp must be at least 1")
 	}
+	if creature.Defense.AC < 1 {
+		report("defense.ac must be at least 1")
+	}
 	for _, table := range []struct {
 		name        string
 		adjustments map[string]Adjustment
@@ -34,6 +37,9 @@ func (creature *Creature) prepare() error {
 		for _, key := range slices.Sorted(maps.Keys(table.adjustments)) {
 			if key != "all" && key != "physical" && !IsDamageType(key) {
 				report("defense.%s.%s: not a damage type, physical or all", table.name, key)
+			}
+			if table.adjustments[key].Value < 1 {
+				report("defense.%s.%s: value must be at least 1", table.name, key)
 			}
 		}
 	}

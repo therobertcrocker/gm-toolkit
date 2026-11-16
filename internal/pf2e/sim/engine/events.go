@@ -10,8 +10,10 @@ type Event interface {
 
 type Outcome int
 
+// deliberate: the zero value is NoOutcome, not PartyWins, because Run returns it beside an error and a tally must not count a failed fight as a win.
 const (
-	PartyWins Outcome = iota
+	NoOutcome Outcome = iota
+	PartyWins
 	EnemiesWin
 	Stalemate
 )
@@ -22,8 +24,10 @@ func (outcome Outcome) String() string {
 		return "party wins"
 	case EnemiesWin:
 		return "enemies win"
-	default:
+	case Stalemate:
 		return "stalemate"
+	default:
+		return "no outcome"
 	}
 }
 

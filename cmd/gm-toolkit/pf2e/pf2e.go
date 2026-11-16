@@ -26,14 +26,16 @@ func resolveCampaign(override string) (*campaigns.Campaign, error) {
 	if err != nil {
 		return nil, err
 	}
-	camp, err := campaigns.ResolveActive(registry, override)
+	campaign, err := campaigns.ResolveActive(registry, override)
 	switch {
 	case err == nil:
-		return camp, nil
+		return campaign, nil
 	case errors.Is(err, campaigns.ErrNoActiveCampaign):
 		return nil, fmt.Errorf("no active campaign and no --campaign given\n  hint: gm-toolkit campaign set-active --campaign <id>")
 	case errors.Is(err, campaigns.ErrCampaignNotRegistered):
 		return nil, fmt.Errorf("%w\n  hint: gm-toolkit campaign register <path>", err)
+	case errors.Is(err, campaigns.ErrCampaignRootMissing):
+		return nil, fmt.Errorf("%w\n  hint: re-register at its new location or restore the directory", err)
 	default:
 		return nil, err
 	}

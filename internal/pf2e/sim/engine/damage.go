@@ -52,7 +52,8 @@ func (fight *Fight) dealDamage(attacker, target *Combatant, strike creature.Stri
 }
 
 func adjustedDamage(defense creature.Defense, damageType string, traits []string, amount int) int {
-	if slices.Contains(defense.Immune, damageType) {
+	immune := slices.ContainsFunc(defense.Immune, func(key string) bool { return adjustmentCovers(key, damageType) })
+	if immune {
 		return 0
 	}
 	if weakness, found := strongestAdjustment(defense.Weakness, damageType, traits); found {

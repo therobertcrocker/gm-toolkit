@@ -30,7 +30,7 @@ type Setup struct {
 func Run(setup Setup) (Outcome, error) {
 	fight, err := newFight(setup)
 	if err != nil {
-		return 0, err
+		return NoOutcome, err
 	}
 	return fight.run()
 }
@@ -98,7 +98,7 @@ func (fight *Fight) run() (Outcome, error) {
 		for index := 0; index < len(fight.order); {
 			actor := fight.order[index]
 			if err := fight.takeTurn(actor); err != nil {
-				return 0, err
+				return NoOutcome, err
 			}
 			if outcome, over := fight.outcome(); over {
 				fight.observer.Observe(FightEnded{Rounds: fight.round, Outcome: outcome})
@@ -201,6 +201,6 @@ func (fight *Fight) outcome() (Outcome, bool) {
 	case !partyStanding:
 		return EnemiesWin, true
 	default:
-		return 0, false
+		return NoOutcome, false
 	}
 }

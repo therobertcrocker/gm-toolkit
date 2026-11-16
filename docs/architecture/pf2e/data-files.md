@@ -36,8 +36,11 @@ them in this order:
    command line each is a `--variant <name>` flag, repeated to stack.
 
 At least one of `import.toml` and `hand.toml` must exist, or the load fails
-with `ErrNoLayers`. A variant that was asked for must exist. The loaded
-creature keeps the list of layers it read in `Layers`, and `show` prints it.
+with `ErrNoLayers`. A variant that was asked for must exist. A variant name is
+a plain file name: it cannot be empty, `.` or `..`, hold a slash or a
+backslash, or name `import` or `hand`; such a name fails with `ErrBadVariant`.
+The loaded creature keeps the list of layers it read in `Layers`, and `show`
+prints it.
 
 ### The merge rule
 
@@ -105,8 +108,10 @@ Level, saves and speed are loaded and shown, but no rule reads them yet.
 Every layer declares `schema = 1`. Each layer is first decoded on its own into
 the typed `Creature`: a key the type does not know fails the load and names the
 file and the key, and a schema other than `creature.SchemaVersion` fails it
-too. Only then is the layer read as a plain tree for the merge. A typo is
-caught in the file that holds it, not in the merged result.
+too. Every key must be lower case: the typed decode matches field names without
+case but the merge does not, so `HP` beside `hp` would survive the merge and
+either could win. Only then is the layer read as a plain tree for the merge. A
+typo is caught in the file that holds it, not in the merged result.
 
 ### What the load checks
 
@@ -114,8 +119,9 @@ After the merge, `prepare` checks the creature and reports every problem it
 finds at once, wrapped in `ErrInvalid`:
 
 - the name is set, and the kind is `pc` or `npc`
-- `defense.hp` is at least 1
-- each `resist` and `weakness` key is a damage type, `physical` or `all`
+- `defense.hp` and `defense.ac` are each at least 1
+- each `resist` and `weakness` key is a damage type, `physical` or `all`, and
+  its value is at least 1
 - each Strike has a name and at least one damage part; each part's dice parse,
   and its type is a known damage type
 - each ability that is not ignored has a name, an action cost of 1 to 3, at

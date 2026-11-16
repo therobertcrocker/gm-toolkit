@@ -16,7 +16,7 @@ var (
 )
 
 func Locate(partyDir, encountersDir, id string) (string, error) {
-	if id == "" || id == "." || id == ".." || strings.ContainsAny(id, `/\`) {
+	if !isFolderName(id) {
 		return "", fmt.Errorf("%w: %q", ErrBadCreatureID, id)
 	}
 	candidates := []string{filepath.Join(partyDir, id)}

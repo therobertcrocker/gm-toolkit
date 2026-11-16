@@ -127,6 +127,26 @@ func TestAdjustedDamage(t *testing.T) {
 	}
 }
 
+func TestAdjustedDamageImmunityGroups(t *testing.T) {
+	cases := []struct {
+		name       string
+		immune     []string
+		damageType string
+		want       int
+	}{
+		{"physical covers slashing", []string{"physical"}, "slashing", 0},
+		{"physical does not cover fire", []string{"physical"}, "fire", 20},
+		{"all covers fire", []string{"all"}, "fire", 0},
+		{"all covers piercing", []string{"all"}, "piercing", 0},
+	}
+	for _, testCase := range cases {
+		defense := creature.Defense{Immune: testCase.immune}
+		if got := adjustedDamage(defense, testCase.damageType, nil, 20); got != testCase.want {
+			t.Errorf("%s: adjustedDamage = %d, want %d", testCase.name, got, testCase.want)
+		}
+	}
+}
+
 func TestNPCDiesAtZero(t *testing.T) {
 	attacker := testCombatant("attacker", SideParty, creature.KindPC, 50, 20)
 	target := testCombatant("target", SideEnemies, creature.KindNPC, 5, 20)

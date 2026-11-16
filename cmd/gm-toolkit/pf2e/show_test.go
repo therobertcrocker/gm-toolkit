@@ -33,9 +33,12 @@ func TestPrintCreature(t *testing.T) {
 		Layers: []string{"import.toml", "hand.toml"},
 	}
 	var out bytes.Buffer
-	printCreature(&out, shown)
+	printCreature(&out, shown, false)
+	if strings.Contains(out.String(), "\033") {
+		t.Errorf("unstyled output holds an escape code:\n%q", out.String())
+	}
 	for _, want := range []string{
-		"Abyssal Luna",
+		"Abyssal Luna  npc 16",
 		"HP 300  AC 36  Fort +27  Ref +28  Will +29",
 		"Resist all 10 (except holy)",
 		"Speed 60 ft, fly 180 ft",
