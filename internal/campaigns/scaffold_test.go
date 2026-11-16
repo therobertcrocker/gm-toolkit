@@ -23,6 +23,8 @@ func TestScaffoldCreatesTree(t *testing.T) {
 		filepath.Join(root, "rulebook", "assets"),
 		filepath.Join(root, "spatial"),
 		filepath.Join(root, "state", "logs"),
+		filepath.Join(root, "pf2e", "party"),
+		filepath.Join(root, "encounters"),
 	} {
 		if _, err := os.Stat(dir); err != nil {
 			t.Errorf("expected dir %s: %v", dir, err)

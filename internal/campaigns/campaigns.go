@@ -52,6 +52,8 @@ type Paths struct {
 	HistoryPath    string `path:"state/history.jsonl"  kind:"file"`
 	NarrativesDir  string `path:"narratives"           kind:"dir"`
 	LogsDir        string `path:"state/logs"           kind:"dir"`
+	PartyDir       string `path:"pf2e/party"           kind:"dir"`
+	EncountersDir  string `path:"encounters"           kind:"dir"`
 }
 
 // Paths derives the runtime path bundle from the campaign root by reflecting

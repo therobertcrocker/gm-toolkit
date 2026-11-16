@@ -1,0 +1,15 @@
+schema = 1
+
+[defense.resist.fire]
+value = 5
+
+[strike.claw]
+bonus = 14
+
+[ability.rend]
+name    = "Rend"
+actions = 2
+steps   = [{ strike = "claw" }, { strike = "claw" }]
+
+[ability.howl]
+ignore = true

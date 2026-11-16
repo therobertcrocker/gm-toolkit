@@ -1,0 +1,21 @@
+schema = 1
+
+name       = "Dummy Alchemist"
+kind       = "pc"
+level      = 14
+perception = 22
+
+[speed]
+land = 25
+
+[defense]
+hp        = 164
+ac        = 36
+fortitude = 22
+reflex    = 21
+will      = 20
+
+[strike.crossbow]
+name   = "Crossbow"
+bonus  = 24
+damage = [{ dice = "3d8+2", type = "piercing" }]

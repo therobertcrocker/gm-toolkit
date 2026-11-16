@@ -1,0 +1,33 @@
+schema = 1
+
+name       = "Layered Beast"
+kind       = "npc"
+level      = 5
+traits     = ["beast"]
+perception = 12
+
+[speed]
+land = 30
+
+[defense]
+hp        = 60
+ac        = 22
+fortitude = 14
+reflex    = 12
+will      = 10
+
+[strike.claw]
+name   = "Claw"
+bonus  = 12
+traits = ["agile"]
+damage = [{ dice = "2d6+4", type = "slashing" }]
+
+[strike.bite]
+name   = "Bite"
+bonus  = 12
+damage = [{ dice = "2d8+4", type = "piercing" }]
+
+[ability.howl]
+name    = "Howl"
+actions = 1
+steps   = [{ strike = "bite" }]

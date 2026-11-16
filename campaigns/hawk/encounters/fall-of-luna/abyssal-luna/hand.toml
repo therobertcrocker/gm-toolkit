@@ -1,0 +1,42 @@
+schema = 1
+
+name       = "Abyssal Luna"
+kind       = "npc"
+level      = 16
+traits     = ["unique", "fey", "occult"]
+perception = 29
+
+[speed]
+land = 60
+fly  = 180
+
+[defense]
+hp        = 300
+ac        = 36
+fortitude = 27
+reflex    = 28
+will      = 29
+immune    = ["confused", "doomed", "paralyzed", "sleep"]
+
+[strike.slash]
+name   = "Slash"
+bonus  = 30
+traits = ["agile", "magical", "reach-10", "unarmed"]
+damage = [
+  { dice = "3d6+14", type = "slashing" },
+  { dice = "1d8", type = "mental" },
+]
+
+[strike.stab]
+name   = "Stab"
+bonus  = 28
+traits = ["magical", "reach-20"]
+damage = [
+  { dice = "3d8+14", type = "bludgeoning" },
+  { dice = "1d8", type = "mental" },
+]
+
+[ability.abyssal-frenzy]
+name    = "Abyssal Frenzy"
+actions = 2
+steps   = [{ strike = "slash" }, { strike = "slash" }, { strike = "stab" }]

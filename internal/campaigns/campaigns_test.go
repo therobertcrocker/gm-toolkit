@@ -25,6 +25,8 @@ func TestCampaignPaths(t *testing.T) {
 		{"HistoryPath", paths.HistoryPath, filepath.Join(root, "state", "history.jsonl")},
 		{"NarrativesDir", paths.NarrativesDir, filepath.Join(root, "narratives")},
 		{"LogsDir", paths.LogsDir, filepath.Join(root, "state", "logs")},
+		{"PartyDir", paths.PartyDir, filepath.Join(root, "pf2e", "party")},
+		{"EncountersDir", paths.EncountersDir, filepath.Join(root, "encounters")},
 	}
 	for _, tc := range cases {
 		if tc.got != tc.want {

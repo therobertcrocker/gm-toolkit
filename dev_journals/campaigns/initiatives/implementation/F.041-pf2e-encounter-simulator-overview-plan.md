@@ -46,7 +46,7 @@ Build the six efforts the [discovery](../discovery/F.041-pf2e-encounter-simulato
 
 | Done | # | Effort | Scope | Gate | File |
 |------|---|--------|-------|------|------|
-| [ ] | 1 | Engine core | Stat block, seeded roller, checks, Strikes, damage, dying, turn loop, events; creature and ability formats, layer merge, `show`; wiki front door and three pages | 3 — deterministic | [`F.041.E1-pf2e-encounter-simulator-plan.md`](./F.041.E1-pf2e-encounter-simulator-plan.md) |
+| [x] | 1 | Engine core | Stat block, seeded roller, checks, Strikes, damage, dying, turn loop, events; creature and ability formats, layer merge, `show`; wiki front door and three pages | 3 — deterministic | [`F.041.E1-pf2e-encounter-simulator-plan.md`](./F.041.E1-pf2e-encounter-simulator-plan.md) |
 | [ ] | 2 | Foundry import | NPC import (numbers and tags), PC import as choices, load-time PC stats, import report, `import` | 1 — stat parity | [`F.041.E2-pf2e-encounter-simulator-plan.md`](./F.041.E2-pf2e-encounter-simulator-plan.md) |
 | [ ] | 3 | Rules coverage | The rest of the discovery's Rules coverage table, each rule in the engine and the schema, each tested | 2 — every rule tested | [`F.041.E3-pf2e-encounter-simulator-plan.md`](./F.041.E3-pf2e-encounter-simulator-plan.md) |
 | [ ] | 4 | Description conversion | Thin trial of both options, then the chosen one in full: drafts, approval, cache, three kinds of answer; D-8 in `check` | — | [`F.041.E4-pf2e-encounter-simulator-plan.md`](./F.041.E4-pf2e-encounter-simulator-plan.md) |

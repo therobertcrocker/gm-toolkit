@@ -1,0 +1,21 @@
+schema = 1
+
+name       = "Dummy Fighter"
+kind       = "pc"
+level      = 14
+perception = 24
+
+[speed]
+land = 25
+
+[defense]
+hp        = 230
+ac        = 35
+fortitude = 23
+reflex    = 21
+will      = 22
+
+[strike.greatsword]
+name   = "Greatsword"
+bonus  = 29
+damage = [{ dice = "3d12+9", type = "slashing" }]

@@ -1,0 +1,21 @@
+schema = 1
+
+name       = "Dummy Sorcerer"
+kind       = "pc"
+level      = 14
+perception = 21
+
+[speed]
+land = 25
+
+[defense]
+hp        = 104
+ac        = 33
+fortitude = 20
+reflex    = 22
+will      = 21
+
+[strike.staff]
+name   = "Staff"
+bonus  = 20
+damage = [{ dice = "2d4+1", type = "bludgeoning" }]

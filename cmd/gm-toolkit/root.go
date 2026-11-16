@@ -4,17 +4,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/therobertcrocker/gm-toolkit/cmd/gm-toolkit/campaign"
+	"github.com/therobertcrocker/gm-toolkit/cmd/gm-toolkit/pf2e"
 	"github.com/therobertcrocker/gm-toolkit/cmd/gm-toolkit/spatial"
 )
 
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "gm-toolkit",
-		Short: "GM Toolkit — tools for running Stars Without Number factions and worlds",
-		Long:  "GM Toolkit bundles utilities for the GM running Stars Without Number campaigns. Run `gm-toolkit <subcommand> --help` for per-subcommand details.",
+		Short: "GM Toolkit — tools for running tabletop campaigns",
+		Long:  "GM Toolkit bundles utilities for the GM: campaign management, Stars Without Number factions and worlds, and a Pathfinder 2e encounter simulator. Run `gm-toolkit <subcommand> --help` for per-subcommand details.",
 	}
 	root.AddCommand(campaign.NewCmd())
 	root.AddCommand(spatial.NewCmd())
 	root.AddCommand(newFactionCmd())
+	root.AddCommand(pf2e.NewCmd())
 	return root
 }

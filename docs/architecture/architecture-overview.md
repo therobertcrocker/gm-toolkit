@@ -1,12 +1,35 @@
 # Architecture
 
 > The front door to `docs/architecture/`. This page orients and routes — it
-> does not re-narrate the subsystems. For the cross-subsystem story of either
-> side, follow its spine; for a single subsystem, go straight to its page.
+> does not re-narrate the subsystems. For the cross-subsystem story of a side,
+> follow its spine; for a single subsystem, go straight to its page.
 
-## The two sides
+## The products
 
-The codebase splits along one seam: a headless engine, and whatever drives it.
+gm-toolkit holds three products. Each owns its code and, where its shape is
+worth recording, its own side of this wiki.
+
+| Product | Code | Wiki |
+|---------|------|------|
+| `campaigns` — the campaign as a whole, and campaign-level tools | `internal/campaigns/`, `internal/pf2e/` | [PF2e simulator](pf2e/overview.md) |
+| `faction-manager` — the SWN faction-turn system and its TUI | `internal/faction/`, `internal/spatial/` | [Engine](engine/overview.md), [Interface](interface/overview.md) |
+| `codex` — a campaign knowledge base (planned) | — | — |
+
+<br/>
+
+## Campaigns
+
+- **[PF2e simulator](pf2e/overview.md)** — plays a Pathfinder 2e fight many
+  times and reports how it tends to go. A headless engine reads creature files
+  the GM owns, built from layers; the `gm-toolkit pf2e sim` commands drive it.
+  It is being built in `F.041`.
+
+<br/>
+
+## Faction manager
+
+The faction manager splits along one seam: a headless engine, and whatever
+drives it.
 
 - **[Engine](engine/overview.md)** — the SWN faction-turn system. A composition
   root (`engine.Engine`) owning a rulebook, a roller, a hook registry, and seven
@@ -63,16 +86,22 @@ block
 
 ## Design principles
 
-The standing commitments behind both sides. Each subsystem page's Key Decisions
-apply them; these are the reasons a change that breaks one needs a conversation
-first.
+The standing commitments behind the products. Each subsystem page's Key
+Decisions apply them; these are the reasons a change that breaks one needs a
+conversation first.
 
-- **Source-agnostic actions** — decisions reach the engine only through the
-  collector, so a human, a script or an AI planner drives a turn the same way.
-- **Extensible static data** — rules content (assets, tags, goals, settings)
-  lives in the campaign's rulebook TOML, which the GM owns; changing it needs no
-  Go. See [ability catalog](engine/ability-catalog.md) and
-  [goals](engine/goals.md).
+- **Headless engines** — an engine takes decisions in and reports events out
+  through interfaces, and cannot tell who is on the other side. The faction
+  engine uses a collector and an observer; the PF2e engine a decider and an
+  observer. So a human, a script or an AI planner drives either the same way.
+- **Extensible static data** — rules content lives in data the GM owns, and
+  changing it needs no Go. Faction rules live in the campaign's rulebook TOML
+  (see [ability catalog](engine/ability-catalog.md) and [goals](engine/goals.md));
+  PF2e creatures live in layered creature files (see
+  [data files](pf2e/data-files.md)).
+
+The faction manager adds two of its own:
+
 - **Robust history** — every state change is a mutation applied at one choke
   point and recorded in the append-only `history.jsonl`; nothing is lost. See
   [effect-mutation](engine/effect-mutation.md) and
@@ -112,10 +141,12 @@ unsure where something belongs, it belongs on a page.
 
 | If you want… | Read |
 |--------------|------|
-| The whole engine in one pass | [engine/overview.md](engine/overview.md) |
-| The whole interface in one pass | [interface/overview.md](interface/overview.md) |
+| The PF2e simulator in one pass | [pf2e/overview.md](pf2e/overview.md) |
+| How a creature file becomes a stat block | [pf2e/data-files.md](pf2e/data-files.md) |
+| The whole faction engine in one pass | [engine/overview.md](engine/overview.md) |
+| The whole faction interface in one pass | [interface/overview.md](interface/overview.md) |
 | How a faction turn resolves end to end | [engine/overview.md](engine/overview.md) → [orchestrator](engine/orchestrator.md) |
-| How the TUI drives the engine | [interface/overview.md](interface/overview.md) → [event stream](interface/event-stream.md) |
+| How the TUI drives the faction engine | [interface/overview.md](interface/overview.md) → [event stream](interface/event-stream.md) |
 | The "why" behind a subsystem before changing it | that subsystem's page, **Key Decisions** |
 
 <br/>
@@ -125,13 +156,15 @@ unsure where something belongs, it belongs on a page.
 ```
 docs/architecture/
   architecture-overview.md   ← you are here (front door)
-  engine/
+  pf2e/                      campaigns: the PF2e simulator
+    overview.md          data-files.md        engine.md
+  engine/                    faction manager: the engine side
     overview.md          orchestrator.md      turn-pipeline.md
-    actions.md           goals.md             hooks.md
-    world-movement.md    spatial.md           effect-mutation.md
-    persistence.md       narrative-digest.md  logging-errors.md
-    dice.md
-  interface/
+    actions.md           ability-catalog.md   goals.md
+    hooks.md             world-movement.md    spatial.md
+    effect-mutation.md   persistence.md       narrative-digest.md
+    logging-errors.md    dice.md
+  interface/                 faction manager: the interface side
     overview.md          regions.md           state-machine.md
     event-stream.md      overlays.md          views.md
 ```
