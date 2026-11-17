@@ -77,6 +77,35 @@ func TestImportPCBuildChoices(t *testing.T) {
 	}
 }
 
+func TestImportPCSkipsWeaponsTheLoaderRejects(t *testing.T) {
+	importer := &pcImporter{
+		report:    &Report{},
+		build:     &creature.Build{Weapons: map[string]creature.Weapon{}},
+		weaponIDs: map[string]bool{},
+	}
+	for _, test := range []struct{ name, damage string }{
+		{"No Dice", `{"dice": 0, "die": "d6", "damageType": "slashing"}`},
+		{"One-Sided", `{"dice": 1, "die": "d1", "damageType": "slashing"}`},
+		{"Untyped", `{"dice": 1, "die": "d6", "damageType": "untyped"}`},
+	} {
+		current := &item{
+			Name:   test.name,
+			Type:   "weapon",
+			Raw:    []byte(`{"category": "simple", "damage": ` + test.damage + `}`),
+			System: itemCommon{Quantity: 1},
+		}
+		if err := importer.weapon(current); err != nil {
+			t.Fatalf("%s: weapon: %v", test.name, err)
+		}
+		if !hasSkip(importer.report, test.name, ReasonUnsupported) {
+			t.Errorf("report lacks %s with reason %q", test.name, ReasonUnsupported)
+		}
+	}
+	if len(importer.build.Weapons) != 0 {
+		t.Errorf("weapons = %v, want none", slices.Sorted(maps.Keys(importer.build.Weapons)))
+	}
+}
+
 func TestImportPCWeaponsAndQuantities(t *testing.T) {
 	layer, report := importTestPC(t, "tavish")
 	build := layer.Build

@@ -55,7 +55,7 @@ func rulesActive(current *item) bool {
 }
 
 func (importer *pcImporter) actorOptions() rollOptions {
-	options := rollOptions{flags: map[string]bool{}, numbers: map[string]float64{}}
+	options := rollOptions{flags: map[string]bool{}}
 	for _, current := range importer.source.Items {
 		switch current.Type {
 		case "class":

@@ -172,7 +172,9 @@ load.
 `legendary`. A proficiency the build does not name is untrained. The
 proficiency bonus is the level plus twice the rank (trained 2, legendary 8), and
 0 when untrained. A weapon uses the highest of its category's rank, its
-`weapon-group-<group>` rank and its `weapon-base-<base>` rank.
+`weapon-group-<group>` rank and its `weapon-base-<base>` rank. An advanced
+weapon skips the group rank: Foundry gives a group's advanced weapons a lower
+rank than its simple and martial ones, and the format holds only the second.
 
 **The numbers.**
 
@@ -241,8 +243,11 @@ folder is not an error.
 `gm-toolkit pf2e sim import <fight>` runs `foundry.ImportFight` on the active
 campaign. It reads every `encounters/<fight>/source/actors/*.json` Foundry actor
 export. The export's file name, without `.json`, is the creature's folder name:
-a PC goes to `pf2e/party/<pc>/` and an NPC to `encounters/<fight>/<npc>/`. A
-fight with no actor exports fails with `ErrNoExports`. Loose item exports in
+a PC goes to `pf2e/party/<pc>/` and an NPC to `encounters/<fight>/<npc>/`. The
+file name must be a slug (lowercase letters, digits and dashes), and an NPC
+cannot be named `source`, the fight's export folder; the import stops at the
+first file that breaks this. A fight with no actor exports fails with
+`ErrNoExports`. Loose item exports in
 `source/items/*.json` are read and reported as not placed on a creature.
 
 Each written `import.toml` starts with a header comment that names its export
@@ -256,8 +261,9 @@ immunities. Resistances and weaknesses keep their `except` lists, and
 spellcasting entry gives the spell attack and DC. Left out, each with its
 reason in the report: every ability, every spell, a weakness or resistance
 whose type is a trait (Lilith's `holy`), the doubling of a resistance (the
-resistance itself is written), an immunity's exceptions, attack effects, and
-damage with a category (persistent, splash).
+resistance itself is written), an immunity's exceptions, attack effects,
+damage with a category (persistent, splash), damage whose dice or type the
+load would reject, and a Strike left with no damage.
 
 **PCs.** The importer writes the build, never the sheet's totals. Where each
 choice comes from:
@@ -274,7 +280,8 @@ choice comes from:
   `greater-weapon-specialization` feats set `weapon_specialization` by slug.
 - **Armor** — the one worn (and, if it takes investing, invested) armor, with
   its runes.
-- **Weapons** — every weapon with a quantity above 0, carried or stowed.
+- **Weapons** — every weapon with a quantity above 0, carried or stowed, whose
+  damage dice and type the load accepts.
 - **Spellcasting** — the entries that hold spells and name an attribute; the
   first sets the attribute, and the top rank is the highest slot with any uses.
 
@@ -287,7 +294,7 @@ resolves the ones the computed numbers need into build choices:
 | `FlatModifier` on an attack or damage selector, scoped by weapon traits | A modifier with `weapon_traits` |
 | `Resistance` | `defense.resist`, the highest value per damage type |
 | `ActiveEffectLike` with mode `upgrade` on a rank | `[build.proficiency]` |
-| `MartialProficiency` for a weapon group | A `weapon-group-<group>` rank |
+| `MartialProficiency` for a weapon group's martial weapons | A `weapon-group-<group>` rank; the rule for the group's advanced weapons is reported as not supported |
 | `AdjustModifier` that suppresses `armor-speed-penalty` | `speed_penalty = 0` |
 | `DexterityModifierCap` | The lowest cap becomes the armor's `dex_cap` |
 | `RollOption` that is a toggle | Nothing: reported as a toggle, imported off |
@@ -297,7 +304,8 @@ effects and spells are not read, and a physical item's rules count only when it
 is worn or held and, if it takes investing, invested. A rule's predicate sees
 only the actor's class, feats, heritage and worn armor. A rule that needs a
 target, an action, a condition or a toggle does not hold, and it is reported as
-conditional. Every toggle is imported off, even one the sheet stored on. Every
+conditional. A numeric comparison (`gte`, `lt` and the like) is reported as not
+supported. Every toggle is imported off, even one the sheet stored on. Every
 other rule element is reported with its reason, or counted when the sim never
 uses its kind (`Note`, `GrantItem` and the like).
 

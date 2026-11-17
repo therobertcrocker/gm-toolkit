@@ -68,6 +68,16 @@ func TestImportFightNeedsExports(t *testing.T) {
 	}
 }
 
+func TestImportFightRejectsFileNamesThatAreNotIDs(t *testing.T) {
+	for _, name := range []string{".json", "Abyssal Luna.json", "source.json"} {
+		fight := filepath.Join(t.TempDir(), "fall-of-luna")
+		copyFile(t, filepath.Join("testdata", "actors", "abyssal-luna.json"), filepath.Join(fight, "source", "actors", name))
+		if _, err := ImportFight(fight, t.TempDir()); !errors.Is(err, errBadFileName) {
+			t.Errorf("%q: err = %v, want errBadFileName", name, err)
+		}
+	}
+}
+
 func TestImportFightPlacesPCsInParty(t *testing.T) {
 	fight := filepath.Join(t.TempDir(), "fall-of-luna")
 	party := filepath.Join(t.TempDir(), "party")

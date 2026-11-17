@@ -14,8 +14,7 @@ var (
 )
 
 type rollOptions struct {
-	flags   map[string]bool
-	numbers map[string]float64
+	flags map[string]bool
 }
 
 func (options rollOptions) holds(predicate []any) (bool, error) {
@@ -71,38 +70,8 @@ func (options rollOptions) compound(operator string, operand any) (bool, error) 
 		default:
 			return !anyHeld, nil
 		}
-	case "gte", "gt", "lte", "lt", "eq":
-		return options.comparison(operator, operand)
 	}
 	return false, fmt.Errorf("%w: %s %v", errUnsupportedPredicate, operator, operand)
-}
-
-func (options rollOptions) comparison(operator string, operand any) (bool, error) {
-	pair, isList := operand.([]any)
-	if !isList || len(pair) != 2 {
-		return false, fmt.Errorf("%w: %s %v", errUnsupportedPredicate, operator, operand)
-	}
-	name, isName := pair[0].(string)
-	right, isNumber := pair[1].(float64)
-	if !isName || !isNumber {
-		return false, fmt.Errorf("%w: %s %v", errUnsupportedPredicate, operator, operand)
-	}
-	left, found := options.numbers[name]
-	if !found {
-		return false, nil
-	}
-	switch operator {
-	case "gte":
-		return left >= right, nil
-	case "gt":
-		return left > right, nil
-	case "lte":
-		return left <= right, nil
-	case "lt":
-		return left < right, nil
-	default:
-		return left == right, nil
-	}
 }
 
 func resolveTemplates(text string, current *item) (string, error) {

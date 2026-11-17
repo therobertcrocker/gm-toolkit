@@ -107,6 +107,33 @@ func TestImportNPCLilith(t *testing.T) {
 	}
 }
 
+func TestImportNPCSkipsDamageTheLoaderRejects(t *testing.T) {
+	layer := &creature.Creature{}
+	report := &Report{}
+	taken := map[string]bool{}
+	for _, test := range []struct{ name, rolls string }{
+		{"Mixed", `{"a": {"damage": "2d8+10", "damageType": "slashing"}, "b": {"damage": "1d6", "damageType": "untyped"}}`},
+		{"Bad Dice", `{"a": {"damage": "2d", "damageType": "slashing"}}`},
+		{"Persistent Only", `{"a": {"damage": "2d6", "damageType": "fire", "category": "persistent"}}`},
+	} {
+		current := &item{Name: test.name, Type: "melee", Raw: []byte(`{"damageRolls": ` + test.rolls + `}`)}
+		if err := importNPCStrike(current, taken, layer, report); err != nil {
+			t.Fatalf("%s: importNPCStrike: %v", test.name, err)
+		}
+	}
+	if ids := slices.Sorted(maps.Keys(layer.Strikes)); !slices.Equal(ids, []string{"mixed"}) {
+		t.Errorf("strikes = %v, want only mixed", ids)
+	}
+	if want := []creature.DamagePart{{Dice: "2d8+10", Type: "slashing"}}; !reflect.DeepEqual(layer.Strikes["mixed"].Damage, want) {
+		t.Errorf("mixed damage = %+v, want %+v", layer.Strikes["mixed"].Damage, want)
+	}
+	for _, name := range []string{"Mixed", "Bad Dice", "Persistent Only"} {
+		if !hasSkip(report, name, ReasonUnsupported) {
+			t.Errorf("report lacks %s with reason %q", name, ReasonUnsupported)
+		}
+	}
+}
+
 func TestImportedNPCLoadsUnderItsHandLayer(t *testing.T) {
 	layer, _ := importTestNPC(t, "abyssal-luna")
 	directory := filepath.Join(t.TempDir(), "abyssal-luna")

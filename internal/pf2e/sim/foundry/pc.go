@@ -352,8 +352,12 @@ func (importer *pcImporter) weapon(current *item) error {
 		return err
 	}
 	die, err := strconv.Atoi(strings.TrimPrefix(system.Damage.Die, "d"))
-	if err != nil {
-		importer.report.skip(current.Name, "damage die "+system.Damage.Die, ReasonUnsupported)
+	if err != nil || die < 2 || system.Damage.Dice < 1 {
+		importer.report.skip(current.Name, fmt.Sprintf("damage %d%s", system.Damage.Dice, system.Damage.Die), ReasonUnsupported)
+		return nil
+	}
+	if !creature.IsDamageType(system.Damage.DamageType) {
+		importer.report.skip(current.Name, "damage type "+system.Damage.DamageType, ReasonUnsupported)
 		return nil
 	}
 	weapon := creature.Weapon{

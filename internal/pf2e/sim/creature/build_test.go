@@ -252,6 +252,38 @@ func TestBuildLevelUpLayerFollowsThrough(t *testing.T) {
 	}
 }
 
+func TestBuildGroupRankSkipsAdvancedWeapons(t *testing.T) {
+	directory := writeLayers(t, map[string]string{
+		"import.toml": fighterBuild,
+		"advanced-hammer.toml": `schema = 1
+
+[build.proficiency]
+advanced = "master"
+
+[build.weapon.advanced-hammer]
+name     = "Advanced Hammer"
+category = "advanced"
+group    = "hammer"
+dice     = 1
+die      = 12
+type     = "bludgeoning"
+potency  = 2
+striking = 2
+`,
+	})
+	loaded, err := creature.Load(directory, "advanced-hammer")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	hammer := loaded.Strikes["advanced-hammer"]
+	if hammer.Bonus != 27 || hammer.Damage[0].Roll.String() != "3d12+8" {
+		t.Errorf("advanced-hammer = %+d %s, want +27 3d12+8 (master in advanced, not the legendary hammer group)", hammer.Bonus, hammer.Damage[0].Roll)
+	}
+	if fury := loaded.Strikes["protectors-fury"]; fury.Bonus != 29 {
+		t.Errorf("protectors-fury = %+d, want +29 (the martial hammer keeps the group rank)", fury.Bonus)
+	}
+}
+
 func TestBuildWeaponAttributesAndBonusStacking(t *testing.T) {
 	loaded, err := creature.Load(writeLayers(t, map[string]string{"import.toml": scoutBuild}))
 	if err != nil {

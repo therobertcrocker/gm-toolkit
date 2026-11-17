@@ -7,8 +7,7 @@ import (
 
 func TestRollOptionsHold(t *testing.T) {
 	options := rollOptions{
-		flags:   map[string]bool{"feat:toughness": true, "armor:category:heavy": true, "armor:group:plate": true},
-		numbers: map[string]float64{"item:proficiency:rank": 3},
+		flags: map[string]bool{"feat:toughness": true, "armor:category:heavy": true, "armor:group:plate": true},
 	}
 	for _, test := range []struct {
 		name      string
@@ -22,17 +21,23 @@ func TestRollOptionsHold(t *testing.T) {
 		{"or", []any{map[string]any{"or": []any{"target:hidden", "feat:toughness"}}}, true},
 		{"and", []any{map[string]any{"and": []any{"target:hidden", "feat:toughness"}}}, false},
 		{"nor", []any{map[string]any{"nor": []any{"target:hidden", "target:undetected"}}}, true},
-		{"gte held", []any{map[string]any{"gte": []any{"item:proficiency:rank", 2.0}}}, true},
-		{"lt not held", []any{map[string]any{"lt": []any{"item:proficiency:rank", 3.0}}}, false},
-		{"unknown number", []any{map[string]any{"gte": []any{"skill:intimidation:rank", 3.0}}}, false},
 	} {
 		got, err := options.holds(test.predicate)
 		if err != nil || got != test.want {
 			t.Errorf("%s: holds = %v, %v; want %v", test.name, got, err, test.want)
 		}
 	}
-	if _, err := options.holds([]any{map[string]any{"xor": []any{}}}); !errors.Is(err, errUnsupportedPredicate) {
-		t.Errorf("xor err = %v, want errUnsupportedPredicate", err)
+	for _, test := range []struct {
+		name      string
+		predicate []any
+	}{
+		{"xor", []any{map[string]any{"xor": []any{}}}},
+		{"comparison", []any{map[string]any{"gte": []any{"self:level", 10.0}}}},
+		{"not comparison", []any{map[string]any{"not": map[string]any{"gte": []any{"self:level", 10.0}}}}},
+	} {
+		if held, err := options.holds(test.predicate); held || !errors.Is(err, errUnsupportedPredicate) {
+			t.Errorf("%s: holds = %v, %v; want false, errUnsupportedPredicate", test.name, held, err)
+		}
 	}
 }
 

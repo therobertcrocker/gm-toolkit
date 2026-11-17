@@ -367,7 +367,10 @@ func (build *Build) total(level, itemBonus int, weaponTraits []string, selectors
 }
 
 func (build *Build) strike(level int, attributes map[string]int, weapon Weapon) Strike {
-	rank := max(build.rank(weapon.Category), build.rank(WeaponGroupPrefix+weapon.Group), build.rank(WeaponBasePrefix+weapon.Base))
+	rank := max(build.rank(weapon.Category), build.rank(WeaponBasePrefix+weapon.Base))
+	if weapon.Category != "advanced" {
+		rank = max(rank, build.rank(WeaponGroupPrefix+weapon.Group))
+	}
 	attack := proficiencyBonus(level, rank) + attackAttribute(attributes, weapon) + build.total(level, max(weapon.Potency, weapon.ItemBonus), weapon.Traits, "attack")
 	modifier := damageAttribute(attributes, weapon) + build.specialization(rank) + build.total(level, 0, weapon.Traits, "damage")
 	expression := dice.Expression{Count: weapon.Dice + weapon.Striking, Sides: weapon.Die, Modifier: modifier}

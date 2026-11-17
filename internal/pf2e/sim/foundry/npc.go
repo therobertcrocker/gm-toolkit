@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
+	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/dice"
 )
 
 type npcSystem struct {
@@ -192,14 +193,23 @@ func importNPCStrike(current *item, taken map[string]bool, layer *creature.Creat
 	}
 	strike := creature.Strike{Name: current.Name, Bonus: system.Bonus.Value, Traits: system.Traits.Value}
 	for _, roll := range system.DamageRolls {
+		what := fmt.Sprintf("%s %s damage", roll.Damage, roll.DamageType)
 		if roll.Category != "" {
-			report.skip(current.Name, fmt.Sprintf("%s %s %s damage", roll.Damage, roll.DamageType, roll.Category), ReasonEffort3)
+			report.skip(current.Name, what+" "+roll.Category, ReasonEffort3)
+			continue
+		}
+		if _, err := dice.Parse(roll.Damage); err != nil || !creature.IsDamageType(roll.DamageType) {
+			report.skip(current.Name, what, ReasonUnsupported)
 			continue
 		}
 		strike.Damage = append(strike.Damage, creature.DamagePart{Dice: roll.Damage, Type: roll.DamageType})
 	}
 	for _, effect := range system.AttackEffects.Value {
 		report.skip(current.Name, "attack effect "+effect, ReasonEffort3)
+	}
+	if len(strike.Damage) == 0 {
+		report.skip(current.Name, "strike with no damage the sim can roll", ReasonUnsupported)
+		return nil
 	}
 	if layer.Strikes == nil {
 		layer.Strikes = map[string]creature.Strike{}

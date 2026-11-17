@@ -13,7 +13,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
 )
 
-var ErrNoExports = errors.New("no actor exports in source/actors")
+var (
+	ErrNoExports   = errors.New("no actor exports in source/actors")
+	errBadFileName = errors.New("export file name is not a creature id")
+)
 
 const layerHeader = "# Written by gm-toolkit pf2e sim import from %s.\n# Import rewrites this file. Put changes in hand.toml.\n\n"
 
@@ -56,9 +59,14 @@ func importActorFile(path, sourceDirectory, fightDirectory, partyDirectory strin
 		return nil, err
 	}
 	id := strings.TrimSuffix(filepath.Base(path), ".json")
+	if id == "" || id != slugify(id) {
+		return nil, fmt.Errorf("%w: %s: use lowercase letters, digits and dashes", errBadFileName, path)
+	}
 	importer, directory := importNPC, filepath.Join(fightDirectory, id)
 	if source.Type == "character" {
 		importer, directory = importPC, filepath.Join(partyDirectory, id)
+	} else if id == "source" {
+		return nil, fmt.Errorf("%w: %s: an NPC folder named source would hold the fight's exports", errBadFileName, path)
 	}
 	layer, report, err := importer(source)
 	if err != nil {
