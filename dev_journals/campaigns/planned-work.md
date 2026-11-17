@@ -39,7 +39,11 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 - `when <condition>` — waits for an event in the code or the project
 - `needs triage` — the cause is not known yet; diagnose before scoping
 
-_None._
+### Refactors
+
+| ID | Item | Trigger | Detail |
+|----|------|---------|--------|
+| `R.036` | One campaign resolve-and-hint helper | -- | Four commands load the registry, call `campaigns.ResolveActive` and map its errors to hints, each in its own copy: `faction.go` (`formatActiveResolveError`), `pf2e/pf2e.go` (`resolveCampaign`), `campaign/add_rules.go` and `spatial/build.go`; the last two hint only `ErrNoActiveCampaign`, not `ErrCampaignNotRegistered` or `ErrCampaignRootMissing`. Share one helper that takes the command's prefix. Filed at the `F.041.E1` close (Decision Record 3). |
 
 ---
 <br />

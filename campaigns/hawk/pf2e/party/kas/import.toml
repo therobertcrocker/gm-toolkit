@@ -1,0 +1,75 @@
+# Written by gm-toolkit pf2e sim import from actors/kas.json.
+# Import rewrites this file. Put changes in hand.toml.
+
+schema = 1
+name = "Kas Fringebramble"
+kind = "pc"
+level = 14
+traits = ["halfling", "humanoid"]
+
+[defense]
+  [defense.resist]
+    [defense.resist.slashing]
+      value = 4
+
+[build]
+  ancestry_hp = 6
+  class_hp = 10
+  key = "str"
+  speed = 25
+  weapon_specialization = "normal"
+  [build.boosts]
+    ancestry = ["str", "cha"]
+    background = ["con", "str"]
+    class = ["str"]
+    level-1 = ["cha", "con", "str", "wis"]
+    level-10 = ["str", "con", "cha", "wis"]
+    level-5 = ["str", "con", "cha", "wis"]
+  [build.proficiency]
+    advanced = "expert"
+    class-dc = "expert"
+    fortitude = "master"
+    heavy = "expert"
+    light = "expert"
+    martial = "master"
+    medium = "expert"
+    perception = "master"
+    reflex = "expert"
+    simple = "master"
+    unarmed = "master"
+    unarmored = "expert"
+    weapon-group-hammer = "legendary"
+    will = "expert"
+  [build.armor]
+    name = "Full Plate"
+    category = "heavy"
+    ac_bonus = 6
+    dex_cap = 0
+    potency = 2
+    resilient = 2
+  [build.weapon]
+    [build.weapon.protectors-fury]
+      name = "Protector's Fury"
+      category = "martial"
+      group = "hammer"
+      base = "maul"
+      dice = 1
+      die = 12
+      type = "bludgeoning"
+      potency = 2
+      striking = 2
+      traits = ["gnome", "trip", "versatile-p"]
+  [build.modifier]
+    [build.modifier.amulet-of-kinships-strength]
+      selector = "will"
+      type = "item"
+      value = 2
+    [build.modifier.fleet]
+      selector = "land-speed"
+      value = 5
+    [build.modifier.mountains-stoutness]
+      selector = "hp"
+      per_level = 1
+    [build.modifier.toughness]
+      selector = "hp"
+      per_level = 1

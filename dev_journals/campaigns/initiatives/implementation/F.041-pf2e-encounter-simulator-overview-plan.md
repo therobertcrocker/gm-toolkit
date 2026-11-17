@@ -47,7 +47,7 @@ Build the six efforts the [discovery](../discovery/F.041-pf2e-encounter-simulato
 | Done | # | Effort | Scope | Gate | File |
 |------|---|--------|-------|------|------|
 | [x] | 1 | Engine core | Stat block, seeded roller, checks, Strikes, damage, dying, turn loop, events; creature and ability formats, layer merge, `show`; wiki front door and three pages | 3 — deterministic | [`F.041.E1-pf2e-encounter-simulator-plan.md`](./F.041.E1-pf2e-encounter-simulator-plan.md) |
-| [ ] | 2 | Foundry import | NPC import (numbers and tags), PC import as choices, load-time PC stats, import report, `import` | 1 — stat parity | [`F.041.E2-pf2e-encounter-simulator-plan.md`](./F.041.E2-pf2e-encounter-simulator-plan.md) |
+| [x] | 2 | Foundry import | NPC import (numbers and Strikes), PC import as choices, load-time PC stats, import report, `import` | 1 — stat parity | [`F.041.E2-pf2e-encounter-simulator-plan.md`](./F.041.E2-pf2e-encounter-simulator-plan.md) |
 | [ ] | 3 | Rules coverage | The rest of the discovery's Rules coverage table, each rule in the engine and the schema, each tested | 2 — every rule tested | [`F.041.E3-pf2e-encounter-simulator-plan.md`](./F.041.E3-pf2e-encounter-simulator-plan.md) |
 | [ ] | 4 | Description conversion | Thin trial of both options, then the chosen one in full: drafts, approval, cache, three kinds of answer; D-8 in `check` | — | [`F.041.E4-pf2e-encounter-simulator-plan.md`](./F.041.E4-pf2e-encounter-simulator-plan.md) |
 | [ ] | 5 | Tactics and position | Rule-list tactics, the condition vocabulary, dials, range bands and spread, PC and boss tactics files | — | [`F.041.E5-pf2e-encounter-simulator-plan.md`](./F.041.E5-pf2e-encounter-simulator-plan.md) |
@@ -64,7 +64,7 @@ Build the six efforts the [discovery](../discovery/F.041-pf2e-encounter-simulato
 
 ### Before Effort 2's Plan session
 
-- **Robert supplies the gate 1 fixture:** the level-14 numbers for Kas, Tavish and Arabesque read off their Foundry sheets (HP, AC, saves, Perception, attack bonuses, class and spell DCs). The exports do not hold them (discovery, What the Foundry exports hold). The script's `PARTY[14]` row (`hawk_finale_sim.py:46`) is a starting point if still current.
+- **The gate 1 fixture** is [`F.041.E2-pf2e-encounter-simulator-gate1-fixture.md`](./F.041.E2-pf2e-encounter-simulator-gate1-fixture.md): the level-14 numbers derived by hand from the exports, checked by Robert against the Foundry sheets (E2 plan, Decision 1).
 
 ### Findings for the effort plans
 
@@ -74,7 +74,7 @@ Verified against the source in this session (2026-11-15). Each effort plan re-re
 - **Campaign paths.** `campaigns.Paths` (`internal/campaigns/campaigns.go:47`) lists only faction and spatial paths, through `path:` and `kind:` struct tags read by `Paths()` (`:59`). No PF2e path exists yet. (Efforts 1 and 2)
 - **Dice.** The faction roller (`internal/faction/engine/dice/`) is bound to SWN hooks and the faction domain, so nothing lifts out; the PF2e roller is new (discovery, Architecture Context). (Effort 1)
 - **Exports.** All five actor exports are pf2e system 8.6.1, Foundry 14.365. PCs are level 14 (Kas 99 items, Tavish 170, Arabesque 138); Abyssal Luna is level 16 with 19 items, the Avatar of Lilith level 17 with 22. `source/items/` holds two more exports, `effect-faithful-strike.json` and `swear-fidelity.json`, which the importer must place. (Effort 2)
-- **Tags before rules.** Tags convert in Go with no approval, but a tag that names a rule the engine lacks (a `Slowed 2` condition link before Effort 3) has nowhere to go. Effort 2 reports it as skipped; Effort 3 extends the tag converter with each primitive and re-runs the import at its end. A re-import costs nothing, so this gap needs no ordering fix. (Efforts 2 and 3)
+- **Tags before rules.** Tags convert in Go with no approval, but every tag on the two bosses names a rule the engine lacks until Effort 3, so the tag converter itself moved to Effort 3 (E2 plan, Decision 4). Effort 2 lists each ability in the import report; Effort 3 builds the converter with each primitive and re-runs the import at its end. A re-import costs nothing. (Efforts 2 and 3)
 - **Reference material.** `reference/gm-flowchart.zip`, `build-order.zip` and `quick-numbers.zip` are zipped HTML pages (React bundles with images), not text. Effort 5 unzips the flowchart to write the boss tactics; gate 4 reads it again. (Efforts 5 and 6)
 - **The script.** `cmd/scripts/hawk_finale_sim.py`, 816 lines: `PARTY` at `:46`, `DEFAULTS` (every knob) at `:60`, `RECOMMENDED` and `PRESETS` at `:107`, `luna_turn` at `:453`, `avatar_turn` at `:539`, `transition` at `:658`, `score` at `:698`, `compare` at `:760`. The knobs and presets are the source for Effort 6's presets and dials, and the boss turns cross-check Effort 5's tactics against the flowchart. (Efforts 5 and 6)
 - **Default scoring.** The binary embeds no default (D-19). `rulebooks/` holds shared sources (`swn`, `_core`, `hawk`), and `campaign add-rules` (`cmd/gm-toolkit/campaign/add_rules.go`, `campaigns.ComposeRulebook`) copies them into the campaign's `rulebook/`, the faction folder. How a campaign gets its `pf2e/scoring.toml` is Effort 6's to settle; `rulebooks/pf2e/` is a likely source. (Effort 6)
@@ -128,8 +128,8 @@ Known and accepted. Each closes where named.
 ### Effort 2 — Foundry import
 
 **Scope:** discovery Import as a separate step and PC import.
-- NPC import: numbers as stored, and abilities whose mechanics are in tags, converted exactly in Go. Sentences are left for Effort 4; tags that name a rule not built yet are skipped with the reason (Findings, Tags before rules).
-- PC import as build choices (D-10), and the load-time computation: core math and the first rule elements (`FlatModifier`, `AdjustDegreeOfSuccess`, `Resistance`, `DamageDice`). Mixed editions follow the sheet (D-5).
+- NPC import: numbers and Strikes as stored. Each ability is listed in the import report, not converted: the tag converter moved to Effort 3 (E2 plan, Decision 4), and sentences are Effort 4's.
+- PC import as build choices (D-10), and the load-time computation: core math and the rule elements the gate numbers need (`FlatModifier`, `Resistance`, rank upgrades, `MartialProficiency`). `AdjustDegreeOfSuccess` and `DamageDice` moved to Effort 3 (E2 plan, Decision 5). Mixed editions follow the sheet (D-5).
 - The import ignores current HP, conditions and temporary effects (D-26).
 - The import report: per creature, what converted and what was skipped, with the reason; per PC, the computed numbers.
 - `import`; `show` prints computed PC stats. Wiki: extend `data-files.md` with import.
@@ -144,7 +144,7 @@ Known and accepted. Each closes where named.
 
 **Scope:** the rest of the discovery's Rules coverage table, each rule as written (D-18).
 - Conditions, reactions and triggers, fortune and misfortune, sustain and quickened, persistent damage, splash, fast healing and temporary HP, Protean Anatomy, spells with slots, areas, durations and counteract, recharge, frequency and uses per fight (D-25), and the random tables (Warpwave, Unfathomable Song).
-- Each rule extends the ability schema and, where a tag names it, the tag converter. The import re-runs at the end so the import layers pick up the new rules.
+- Effort 3 builds the tag converter (moved from Effort 2) and the `AdjustDegreeOfSuccess` and `DamageDice` imports. Each rule extends the ability schema and, where a tag names it, the converter. The import re-runs at the end so the import layers pick up the new rules.
 - Named approximations stay listed (discovery, Named approximations). A rules reading that changes when or how often something fires is put to Robert as a question.
 - Wiki: extend `engine.md`.
 

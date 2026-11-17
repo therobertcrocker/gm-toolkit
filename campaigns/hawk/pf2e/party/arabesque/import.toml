@@ -1,0 +1,62 @@
+# Written by gm-toolkit pf2e sim import from actors/arabesque.json.
+# Import rewrites this file. Put changes in hand.toml.
+
+schema = 1
+name = "Arabesque Opalheim"
+kind = "pc"
+level = 14
+traits = ["elf", "humanoid"]
+
+[defense]
+
+[build]
+  ancestry_hp = 6
+  class_hp = 6
+  key = "cha"
+  speed = 30
+  flaws = ["con"]
+  weapon_specialization = "normal"
+  [build.boosts]
+    ancestry = ["dex", "int", "cha"]
+    background = ["int", "cha"]
+    class = ["cha"]
+    level-1 = ["int", "cha", "dex", "con"]
+    level-10 = ["con", "dex", "int", "cha"]
+    level-5 = ["cha", "int", "dex", "wis"]
+  [build.proficiency]
+    class-dc = "trained"
+    fortitude = "expert"
+    perception = "expert"
+    reflex = "expert"
+    simple = "expert"
+    spellcasting = "expert"
+    unarmed = "expert"
+    unarmored = "expert"
+    will = "expert"
+  [build.armor]
+    category = "unarmored"
+    dex_cap = 5
+  [build.weapon]
+    [build.weapon.blink-blade]
+      name = "Blink Blade"
+      category = "simple"
+      group = "knife"
+      base = "dagger"
+      dice = 1
+      die = 4
+      type = "piercing"
+      potency = 2
+      striking = 1
+      traits = ["agile", "finesse", "magical", "teleportation", "thrown-10", "versatile-s"]
+  [build.modifier]
+    [build.modifier.bands-of-force-greater]
+      selector = "ac"
+      type = "item"
+      value = 2
+    [build.modifier.bands-of-force-greater-2]
+      selector = "saving-throw"
+      type = "item"
+      value = 2
+  [build.spellcasting]
+    attribute = "cha"
+    top_rank = 7

@@ -157,14 +157,17 @@ struct, and events name combatants by ID.
 
 ### Not modelled yet
 
-- **Effort 3 (planned)** — bonus-type stacking, basic saves, doomed, hero
+- **Effort 3 (planned)** — bonus-type stacking in the fight (a PC's build
+  already stacks its bonuses on load; see
+  [data files](data-files.md#pc-builds)), basic saves, doomed, hero
   points, Inextinguishable, Too Angry to Die, conditions, reactions and
   triggers, spells, persistent damage, and the minimum of 1 damage when a
   penalty would take a damage roll below 1.
 - **Effort 5 (planned)** — position. Every creature counts as engaged with
   every foe; reach traits are loaded but not checked.
 - Weapon traits other than agile (deadly, fatal, versatile and the rest) are
-  not read. Effort 2's import report names the ones the PCs carry.
+  not read. The import copies every trait onto the Strike, and `show` and
+  the import report print them.
 - Level, saves, speed, and Perception beyond initiative are loaded, but no rule
   reads them.
 

@@ -9,5 +9,6 @@ func newSimCmd(campaignOverride *string) *cobra.Command {
 		Long:  "Simulate Pathfinder 2e fights from the campaign's creature files.",
 	}
 	cmd.AddCommand(newShowCmd(campaignOverride))
+	cmd.AddCommand(newImportCmd(campaignOverride))
 	return cmd
 }

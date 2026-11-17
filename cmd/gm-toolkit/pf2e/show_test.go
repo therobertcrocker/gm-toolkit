@@ -52,3 +52,29 @@ func TestPrintCreature(t *testing.T) {
 		}
 	}
 }
+
+func TestPrintCreatureShowsComputedNumbers(t *testing.T) {
+	shown := &creature.Creature{
+		Name:         "Arabesque",
+		Kind:         creature.KindPC,
+		Level:        14,
+		Perception:   19,
+		Attributes:   map[string]int{"str": 0, "dex": 4, "con": 1, "int": 4, "wis": 1, "cha": 5},
+		ClassDC:      31,
+		Spellcasting: &creature.Spellcasting{Attack: 23, DC: 33, TopRank: 7},
+		Speed:        creature.Speed{Land: 30},
+		Defense:      creature.Defense{HP: 104, AC: 34, Fortitude: 21, Reflex: 24, Will: 21},
+		Layers:       []string{"import.toml"},
+	}
+	var out bytes.Buffer
+	printCreature(&out, shown, false)
+	for _, want := range []string{
+		"Str +0  Dex +4  Con +1  Int +4  Wis +1  Cha +5",
+		"Class DC 31",
+		"Spell attack +23  DC 33  top rank 7",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output lacks %q:\n%s", want, out.String())
+		}
+	}
+}

@@ -1,0 +1,186 @@
+# Written by gm-toolkit pf2e sim import from actors/tavish.json.
+# Import rewrites this file. Put changes in hand.toml.
+
+schema = 1
+name = "Tavish Tyne"
+kind = "pc"
+level = 14
+traits = ["dwarf", "humanoid"]
+
+[defense]
+  [defense.resist]
+    [defense.resist.electricity]
+      value = 5
+    [defense.resist.poison]
+      value = 7
+
+[build]
+  ancestry_hp = 10
+  class_hp = 8
+  key = "int"
+  speed = 20
+  flaws = ["cha"]
+  weapon_specialization = "normal"
+  [build.boosts]
+    ancestry = ["con", "wis", "cha"]
+    background = ["dex", "int"]
+    class = ["int"]
+    level-1 = ["int", "cha", "con", "dex"]
+    level-10 = ["dex", "cha", "int", "con"]
+    level-5 = ["dex", "int", "cha", "wis"]
+  [build.proficiency]
+    class-dc = "expert"
+    fortitude = "master"
+    light = "expert"
+    medium = "expert"
+    perception = "expert"
+    reflex = "expert"
+    simple = "expert"
+    unarmed = "expert"
+    unarmored = "expert"
+    weapon-base-alchemical-bomb = "expert"
+    weapon-base-clan-pistol = "trained"
+    will = "expert"
+  [build.armor]
+    name = "Studded Leather Armor"
+    category = "light"
+    ac_bonus = 2
+    dex_cap = 3
+    potency = 2
+    resilient = 1
+  [build.weapon]
+    [build.weapon.alchemists-fire-greater]
+      name = "Alchemist's Fire (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 8
+      type = "fire"
+      item_bonus = 2
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "fire", "infused", "splash"]
+    [build.weapon.bottled-lightning-greater]
+      name = "Bottled Lightning (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 6
+      type = "electricity"
+      item_bonus = 2
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "electricity", "splash"]
+    [build.weapon.crystal-shards-moderate]
+      name = "Crystal Shards (Moderate)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 2
+      die = 4
+      type = "piercing"
+      item_bonus = 1
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "earth", "infused", "splash"]
+    [build.weapon.dagger]
+      name = "Dagger"
+      category = "simple"
+      group = "knife"
+      base = "dagger"
+      dice = 1
+      die = 4
+      type = "piercing"
+      traits = ["agile", "finesse", "thrown-10", "versatile-s"]
+    [build.weapon.inflammation-flask-greater]
+      name = "Inflammation Flask (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 6
+      type = "acid"
+      item_bonus = 2
+      range = 20
+      traits = ["acid", "alchemical", "bomb", "consumable", "disease", "infused", "splash"]
+    [build.weapon.lodestone-bomb]
+      name = "Lodestone Bomb"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 4
+      type = "force"
+      item_bonus = 2
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "force", "infused", "splash"]
+    [build.weapon.nail-bomb-greater]
+      name = "Nail Bomb (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 6
+      die = 4
+      type = "piercing"
+      item_bonus = 2
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "splash"]
+    [build.weapon.sling]
+      name = "Sling"
+      category = "simple"
+      group = "sling"
+      base = "sling"
+      dice = 1
+      die = 6
+      type = "bludgeoning"
+      range = 50
+      traits = ["propulsive"]
+    [build.weapon.spellsap-grenade]
+      name = "Spellsap Grenade"
+      category = "simple"
+      dice = 1
+      die = 6
+      type = "slashing"
+      traits = ["alchemical", "bomb", "consumable", "infused"]
+    [build.weapon.star-grenade-greater]
+      name = "Star Grenade (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 8
+      type = "fire"
+      item_bonus = 2
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "fire", "splash"]
+    [build.weapon.sticky-algae-bomb-greater]
+      name = "Sticky Algae Bomb (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 8
+      type = "poison"
+      item_bonus = 2
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "infused", "splash", "water"]
+    [build.weapon.tenderizer-grenade-greater]
+      name = "Tenderizer Grenade (Greater)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 3
+      die = 6
+      type = "acid"
+      item_bonus = 2
+      range = 20
+      traits = ["acid", "alchemical", "bomb", "consumable", "plant", "splash"]
+  [build.modifier]
+    [build.modifier.alchemist-goggles]
+      selector = "attack"
+      type = "item"
+      value = 1
+      weapon_traits = ["alchemical", "bomb"]
+    [build.modifier.boots-of-bounding-greater]
+      selector = "land-speed"
+      type = "item"
+      value = 10

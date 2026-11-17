@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	importLayer = "import.toml"
+	ImportLayer = "import.toml"
 	handLayer   = "hand.toml"
 )
 
@@ -25,7 +25,7 @@ var (
 
 func Load(directory string, variants ...string) (*Creature, error) {
 	var names []string
-	for _, name := range []string{importLayer, handLayer} {
+	for _, name := range []string{ImportLayer, handLayer} {
 		_, err := os.Stat(filepath.Join(directory, name))
 		if err == nil {
 			names = append(names, name)
@@ -40,18 +40,25 @@ func Load(directory string, variants ...string) (*Creature, error) {
 	}
 	for _, variant := range variants {
 		name := variant + ".toml"
-		if !isFolderName(variant) || name == importLayer || name == handLayer {
+		if !IsFolderName(variant) || name == ImportLayer || name == handLayer {
 			return nil, fmt.Errorf("load creature %s: %w: %q", directory, ErrBadVariant, variant)
 		}
 		names = append(names, name)
 	}
 
-	merged := map[string]any{}
-	for _, name := range names {
+	layers := make([]map[string]any, len(names))
+	for index, name := range names {
 		layer, err := readLayer(filepath.Join(directory, name))
 		if err != nil {
 			return nil, fmt.Errorf("load creature %s: %w", directory, err)
 		}
+		layers[index] = layer
+	}
+	if err := checkComputedKeys(names, layers); err != nil {
+		return nil, fmt.Errorf("load creature %s: %w", directory, err)
+	}
+	merged := map[string]any{}
+	for _, layer := range layers {
 		mergeInto(merged, layer)
 	}
 
@@ -65,13 +72,18 @@ func Load(directory string, variants ...string) (*Creature, error) {
 	}
 	creature.ID = filepath.Base(directory)
 	creature.Layers = names
+	if creature.Build != nil {
+		if err := creature.computeBuild(); err != nil {
+			return nil, fmt.Errorf("load creature %s: %w", directory, err)
+		}
+	}
 	if err := creature.prepare(); err != nil {
 		return nil, fmt.Errorf("load creature %s: %w", directory, err)
 	}
 	return &creature, nil
 }
 
-func isFolderName(name string) bool {
+func IsFolderName(name string) bool {
 	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\`)
 }
 

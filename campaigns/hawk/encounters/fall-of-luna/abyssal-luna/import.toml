@@ -1,0 +1,51 @@
+# Written by gm-toolkit pf2e sim import from actors/abyssal-luna.json.
+# Import rewrites this file. Put changes in hand.toml.
+
+schema = 1
+name = "Abyssal Luna"
+kind = "npc"
+level = 16
+traits = ["unique", "fey", "occult"]
+perception = 29
+
+[speed]
+  land = 60
+  fly = 180
+
+[defense]
+  hp = 300
+  ac = 36
+  fortitude = 27
+  reflex = 28
+  will = 29
+  immune = ["confused", "doomed", "paralyzed", "sleep"]
+
+[spellcasting]
+  attack = 31
+  dc = 39
+
+[strike]
+  [strike.slash]
+    name = "Slash"
+    bonus = 30
+    traits = ["agile", "magical", "reach-10", "unarmed"]
+
+    [[strike.slash.damage]]
+      dice = "3d6+14"
+      type = "slashing"
+
+    [[strike.slash.damage]]
+      dice = "1d8"
+      type = "mental"
+  [strike.stab]
+    name = "Stab"
+    bonus = 28
+    traits = ["magical", "reach-20"]
+
+    [[strike.stab.damage]]
+      dice = "3d8+14"
+      type = "bludgeoning"
+
+    [[strike.stab.damage]]
+      dice = "1d8"
+      type = "mental"

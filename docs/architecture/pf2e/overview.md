@@ -4,7 +4,7 @@
 > Anything about a single subsystem lives on that subsystem's page; only
 > narrative that spans subsystems lives here.
 
-> **Code:** `internal/pf2e/sim/dice/`, `internal/pf2e/sim/creature/`, `internal/pf2e/sim/engine/`, `cmd/gm-toolkit/pf2e/`
+> **Code:** `internal/pf2e/sim/dice/`, `internal/pf2e/sim/creature/`, `internal/pf2e/sim/foundry/`, `internal/pf2e/sim/engine/`, `cmd/gm-toolkit/pf2e/`
 
 ## Purpose
 
@@ -17,17 +17,19 @@ as data and an encounter designer are later work, in their own initiatives.
 
 ## Shape
 
-A fight moves through five stages. Three exist today; the other two arrive
-with later efforts of `F.041`.
+A fight moves through five stages. Four exist today; the runner arrives with
+Effort 6 of `F.041`.
 
 ```
-import (planned) → files → load → engine → runner (planned)
+import → files → load → engine → runner (planned)
 ```
 
-- **import (planned, Effort 2)** — reads the Foundry exports and writes each
-  creature's `import.toml` layer.
+- **import** — `gm-toolkit pf2e sim import <fight>` reads the fight's Foundry
+  exports and writes each creature's `import.toml` layer, then prints a report
+  of what it left out. See [data files](data-files.md#import).
 - **files** — each creature is a folder of TOML layers in the campaign, which
-  the GM owns. Today they are hand-written. See [data files](data-files.md).
+  the GM owns. The import writes one layer, and the GM writes the rest. See
+  [data files](data-files.md).
 - **load** — `creature.Load` merges a creature's layers in order and checks
   the result into one `creature.Creature`. See [data files](data-files.md).
 - **engine** — `engine.Run` plays one fight from an `engine.Setup` and reports
@@ -35,20 +37,22 @@ import (planned) → files → load → engine → runner (planned)
 - **runner (planned, Effort 6)** — plays a scenario many times and scores the
   results.
 
-<!-- diagram: the five-stage pipeline, with the two planned stages dashed -->
+<!-- diagram: the five-stage pipeline, with the planned runner stage dashed -->
 
 **Packages.**
 
 | Package | Holds |
 |---------|-------|
 | `internal/pf2e/sim/dice` | The seeded roller and dice expressions such as `3d6+14` |
-| `internal/pf2e/sim/creature` | The creature format, the layer merge, the checks on load and the folder lookup |
+| `internal/pf2e/sim/creature` | The creature format, the layer merge, PC builds computed on load, the checks on load and the folder lookup |
+| `internal/pf2e/sim/foundry` | Reads Foundry exports and writes import layers, with a report |
 | `internal/pf2e/sim/engine` | The rules, the fight loop, the events and the decision seam |
-| `cmd/gm-toolkit/pf2e` | The `pf2e` and `sim` command groups and `show` |
+| `cmd/gm-toolkit/pf2e` | The `pf2e` and `sim` command groups, `show` and `import` |
 
-The dependencies run one way: `engine` reads `creature` and `dice`, `creature`
-reads `dice`, and the commands read `creature` and `internal/campaigns`. No
-command runs a fight yet; today only the engine's tests call `engine.Run`.
+The dependencies run one way: `engine` reads `creature` and `dice`, `foundry`
+reads `creature`, `creature` reads `dice`, and the commands read `creature`,
+`foundry` and `internal/campaigns`. No command runs a fight yet; today only the
+engine's tests call `engine.Run`.
 
 **The two seams.** The engine is headless. It talks to whatever drives it
 through two interfaces:
@@ -67,8 +71,10 @@ them yet.
 
 **Commands.** `gm-toolkit pf2e sim show <creature>` finds a creature in the
 active campaign, merges its layers (plus any `--variant` layers) and prints the
-stat block. `--campaign <id>` is a persistent flag on `pf2e`, so every command
-under it takes it.
+stat block. `gm-toolkit pf2e sim import <fight>` writes the import layers for
+every creature in a fight's Foundry exports and prints each one's stat block
+and what it left out. `--campaign <id>` is a persistent flag on `pf2e`, so
+every command under it takes it.
 
 <br/>
 
@@ -76,7 +82,7 @@ under it takes it.
 
 | Page | Scope | Status |
 |------|-------|--------|
-| [data files](data-files.md) | Creature folders, layers, the merge rule, the file format, lookup | Written |
+| [data files](data-files.md) | Creature folders, layers, the merge rule, the file format, PC builds, lookup, the import | Written |
 | [engine](engine.md) | The roller, the rules, the fight loop, the decider and the events | Written |
 | sim (planned) | Tactics, position, scenarios and the runner | Effort 5 |
 

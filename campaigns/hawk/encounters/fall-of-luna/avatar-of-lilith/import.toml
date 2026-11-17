@@ -1,0 +1,54 @@
+# Written by gm-toolkit pf2e sim import from actors/avatar-of-lilith.json.
+# Import rewrites this file. Put changes in hand.toml.
+
+schema = 1
+name = "Avatar of Lilith"
+kind = "npc"
+level = 17
+traits = ["unique", "demon", "unholy"]
+perception = 32
+
+[speed]
+  fly = 60
+
+[defense]
+  hp = 390
+  ac = 39
+  fortitude = 25
+  reflex = 29
+  will = 32
+  immune = ["bleed", "death-effects", "disease", "paralyzed", "poison", "precision", "unconscious"]
+  [defense.resist]
+    [defense.resist.all]
+      value = 12
+      except = ["holy", "cold-iron"]
+
+[spellcasting]
+  attack = 32
+  dc = 38
+
+[strike]
+  [strike.hand-of-chaos]
+    name = "Hand of Chaos"
+    bonus = 32
+    traits = ["finesse", "magical", "unholy"]
+
+    [[strike.hand-of-chaos.damage]]
+      dice = "4d10+14"
+      type = "spirit"
+  [strike.slash]
+    name = "Slash"
+    bonus = 32
+    traits = ["agile", "magical", "reach-10", "unarmed"]
+
+    [[strike.slash.damage]]
+      dice = "3d6+17"
+      type = "slashing"
+  [strike.stinger]
+    name = "Stinger"
+    bonus = 30
+    traits = ["magical", "reach-20"]
+
+    [[strike.stinger.damage]]
+      dice = "2d10+17"
+      type = "piercing"

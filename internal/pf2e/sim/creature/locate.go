@@ -16,7 +16,7 @@ var (
 )
 
 func Locate(partyDir, encountersDir, id string) (string, error) {
-	if !isFolderName(id) {
+	if !IsFolderName(id) {
 		return "", fmt.Errorf("%w: %q", ErrBadCreatureID, id)
 	}
 	candidates := []string{filepath.Join(partyDir, id)}

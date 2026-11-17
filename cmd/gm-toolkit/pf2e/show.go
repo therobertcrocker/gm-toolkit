@@ -67,6 +67,13 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 
 	defense := shown.Defense
 	fmt.Fprintf(out, "Perception %+d\n", shown.Perception)
+	if len(shown.Attributes) > 0 {
+		texts := make([]string, len(creature.AttributeNames))
+		for index, name := range creature.AttributeNames {
+			texts[index] = fmt.Sprintf("%s %+d", strings.ToUpper(name[:1])+name[1:], shown.Attributes[name])
+		}
+		fmt.Fprintln(out, strings.Join(texts, "  "))
+	}
 	fmt.Fprintf(out, "HP %d  AC %d  Fort %+d  Ref %+d  Will %+d\n", defense.HP, defense.AC, defense.Fortitude, defense.Reflex, defense.Will)
 	if len(defense.Immune) > 0 {
 		fmt.Fprintf(out, "Immune %s\n", strings.Join(defense.Immune, ", "))
@@ -74,6 +81,16 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 	printAdjustments(out, "Resist", defense.Resist)
 	printAdjustments(out, "Weakness", defense.Weakness)
 	fmt.Fprintf(out, "Speed %s\n", speedText(shown.Speed))
+	if shown.ClassDC > 0 {
+		fmt.Fprintf(out, "Class DC %d\n", shown.ClassDC)
+	}
+	if casting := shown.Spellcasting; casting != nil {
+		fmt.Fprintf(out, "Spell attack %+d  DC %d", casting.Attack, casting.DC)
+		if casting.TopRank > 0 {
+			fmt.Fprintf(out, "  top rank %d", casting.TopRank)
+		}
+		fmt.Fprintln(out)
+	}
 
 	if len(shown.Strikes) > 0 {
 		fmt.Fprintf(out, "%sStrikes%s\n", bold, reset)
