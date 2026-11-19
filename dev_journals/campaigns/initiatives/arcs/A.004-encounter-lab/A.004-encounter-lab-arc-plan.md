@@ -10,6 +10,28 @@
 - **Why** — the arc-discovery set the rules that all four must follow, and left open who builds what and in what order. Without that cut, `F.041` still plans three efforts that no longer belong to it, and the other three have no boundary to start a Discovery from.
 - **How it fits** — the third and last arc-level doc of `A.004`. After it, each initiative runs its own Discovery, Plan and Execution. `F.041` is three efforts in; it continues with the Effort 4 Plan session.
 
+## Success Criteria
+
+Added 2026-11-19, after sign-off, in the `F.041.E4` Plan session. The arc is done when Robert can do each of these. Gates 1 to 4 say whether the simulator is correct; this list says whether the tools are useful to a GM. Each later Discovery starts from the lines it carries, and the arc close checks the whole list.
+
+| # | Robert can | How we tell | Backing | Carried by |
+|---|------------|-------------|---------|------------|
+| SC-1 | Trust the numbers | Gates 1 to 4 pass, and the report prints every approximation by name | D-20, ACD-2, overview Decision 9 | `F.041`; gate 4 in `A.004.2` |
+| SC-2 | See what happened, by ability and by creature | `run` shows the facts below; `replay` shows one fight turn by turn | Raw facts (Per-Initiative Boundary); Robert, this session | `F.041` |
+| SC-3 | Change one thing and see the difference | One command shows two versions of a fight side by side | ACD-9, AP-5 | `A.004.2` |
+| SC-4 | Be told what he would feel at the table | On the Ythrel fight the tool flags all three known problems: the party never makes a save, the party struggles to hit, one ability carries the fight | Arc concept, Problem; ACD-3 | `A.004.3` |
+| SC-5 | Run the fight from the tool's page | He runs a real session from the flowchart, and the page matches the tactics the fight was tested with | ACD-7 | `A.004.2` |
+| SC-6 | Set up the next boss cheaply | A fight after The Fall of Luna is set up with no new code | Arc concept, Vision; ACD-8 | `A.004.4`; proven by first use |
+| SC-7 | Check the tools against the table | After a played fight, its log is compared with what the tools said | Arc concept, Problem ("the first real test") | `A.004.3` |
+
+- **The facts of SC-2** — for each attack and ability: uses per fight, the spread of results (the four degrees of success) with its DC or attack bonus, and its share of the damage. Save and attack results are shown for the party and for each PC. For each creature: its share of the damage dealt and of the damage taken. Also knockdowns and rounds. The purpose: Robert reads "this ability hits too hard" or "Kas is the only one doing damage" from the report by eye.
+- **SC-2 shows, SC-4 judges** — SC-2 puts the rows in front of Robert. The tool saying "over-tuned" on its own is SC-4, because that needs a yardstick, and no measure ships unchecked (ACD-3).
+- **SC-2 is the first input to the formats Discovery** (AP-4) — the fight record must group by ability, by DC, by creature and by PC. The engine's save and damage events already carry the ability, the DC, the source and the target.
+- **SC-4 makes the Ythrel fight a second fight in the tools** — it is the one fight with a known list of what the numbers missed. Which initiative builds it stays with the `A.004.3` Discovery (Open Question Routing).
+- **SC-7 is a habit, not a gate** — what counts as a match is the `A.004.3` Discovery's to define.
+
+- **No time thresholds** — Robert's call. Neither the time to set up a fight nor the time a run takes is a criterion; if either turns out wild, it is fixed then.
+
 ## Decisions Ratified in Arc-Plan
 
 All are Robert's calls, made in this session.
@@ -122,7 +144,7 @@ New in this session:
 | Question | Owner |
 |---|---|
 | How `check` and `run` treat a kept item whose last rule is position (Sudden Charge, splash on other creatures) until `A.004.2` lands: a named approximation for each, or `ignore` | `F.041`, the Effort 6 Plan session, as a question to Robert per item |
-| Whether the Ythrel fight is built in the tools as a second fight, and by which initiative | `A.004.3` Discovery, since its table logs are the first evidence |
+| Whether the Ythrel fight is built in the tools as a second fight, and by which initiative | It is built (SC-4). Which initiative builds it: `A.004.3` Discovery, since its table logs are the first evidence |
 | Where in `seeds/` the archived script sits, and how `ythrel_sim.py` finds it | `A.004.2` Plan |
 
 ## Cross-Arc Dependencies
