@@ -334,7 +334,12 @@ func (importer *pcImporter) adjustModifier(current *item, rule map[string]any, o
 	selectors := append(textList(rule["selector"]), textList(rule["selectors"])...)
 	what := "AdjustModifier " + strings.Join(selectors, ", ")
 	predicate, _ := rule["predicate"].([]any)
-	if held, err := options.holds(predicate); err == nil && !held {
+	held, err := options.holds(predicate)
+	if err != nil {
+		importer.report.skip(current.Name, what+": "+err.Error(), ReasonUnsupported)
+		return
+	}
+	if !held {
 		importer.report.skip(current.Name, what, ReasonConditional)
 		return
 	}

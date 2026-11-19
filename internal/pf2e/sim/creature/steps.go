@@ -67,7 +67,6 @@ type Step struct {
 	Outcomes
 }
 
-// For takes a degree as the engine numbers it: 0 critical failure to 3 critical success.
 func (outcomes Outcomes) For(degree int, attack bool) []Step {
 	if attack && degree == 3 && len(outcomes.CriticalSuccess) == 0 {
 		return outcomes.Success

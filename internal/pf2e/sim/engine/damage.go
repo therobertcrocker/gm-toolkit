@@ -73,6 +73,7 @@ func addRolled(parts []rolledPart, damageType string, amount int) []rolledPart {
 
 func (roll damageRoll) basic(degree Degree) damageRoll {
 	scaled := damageRoll{parts: make([]rolledPart, len(roll.parts)), persistent: roll.persistent, doubled: roll.doubled}
+	total, scaledTotal := 0, 0
 	for index, part := range roll.parts {
 		amount := part.amount
 		switch degree {
@@ -82,6 +83,11 @@ func (roll damageRoll) basic(degree Degree) damageRoll {
 			amount *= 2
 		}
 		scaled.parts[index] = rolledPart{damageType: part.damageType, amount: amount}
+		total += part.amount
+		scaledTotal += amount
+	}
+	if degree == Success && len(scaled.parts) > 0 {
+		scaled.parts[0].amount += total/2 - scaledTotal
 	}
 	return scaled
 }

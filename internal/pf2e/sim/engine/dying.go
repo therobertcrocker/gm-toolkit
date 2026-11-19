@@ -24,7 +24,10 @@ func (fight *Fight) knockDown(target, attacker *Combatant, critical bool) {
 		fight.kill(target)
 		return
 	}
-	fight.moveBefore(target, attacker)
+	// deliberate: a PC downed on its own turn keeps its place, not moved before the source, because the source has already acted this round and would act again.
+	if target != fight.current {
+		fight.moveBefore(target, attacker)
+	}
 	fight.setDying(target, dyingOnKnockDown(target, critical))
 }
 
@@ -54,14 +57,15 @@ func dyingOnKnockDown(target *Combatant, critical bool) int {
 func (fight *Fight) setDying(target *Combatant, value int) {
 	limit := target.deathValue()
 	// deliberate: hero points are spent when the PC would die, not at the first rise in dying, because the script plays it that way and Robert kept it (Decision 20b).
-	if value >= limit && target.HeroPoints > 0 {
+	dies := value > 0 && value >= limit
+	if dies && target.HeroPoints > 0 {
 		fight.heroicRecovery(target)
 		return
 	}
 	from := target.Dying
 	target.Dying = min(value, max(limit, 1))
 	fight.observer.Observe(DyingChanged{Combatant: target.ID, From: from, To: target.Dying})
-	if value >= limit {
+	if dies {
 		fight.kill(target)
 	}
 }

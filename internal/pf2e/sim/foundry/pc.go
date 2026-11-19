@@ -111,7 +111,15 @@ type weaponDamage struct {
 
 type persistentDamage struct {
 	Number int    `json:"number"`
+	Faces  *int   `json:"faces"`
 	Type   string `json:"type"`
+}
+
+func (persistent persistentDamage) dice() string {
+	if persistent.Faces == nil {
+		return strconv.Itoa(persistent.Number)
+	}
+	return fmt.Sprintf("%dd%d", persistent.Number, *persistent.Faces)
 }
 
 type weaponRunes struct {
@@ -389,9 +397,9 @@ func (importer *pcImporter) weapon(current *item) error {
 	}
 	if persistent := system.Damage.Persistent; persistent != nil {
 		if creature.IsDamageType(persistent.Type) && persistent.Number > 0 {
-			weapon.Persistent = &creature.DamagePart{Dice: strconv.Itoa(persistent.Number), Type: persistent.Type}
+			weapon.Persistent = &creature.DamagePart{Dice: persistent.dice(), Type: persistent.Type}
 		} else {
-			importer.report.skip(current.Name, fmt.Sprintf("persistent %d %s", persistent.Number, persistent.Type), ReasonUnsupported)
+			importer.report.skip(current.Name, fmt.Sprintf("persistent %s %s", persistent.dice(), persistent.Type), ReasonUnsupported)
 		}
 	}
 	weapon.Splash = max(system.SplashDamage.Value, 0)

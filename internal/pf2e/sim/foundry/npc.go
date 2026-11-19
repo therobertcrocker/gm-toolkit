@@ -3,6 +3,7 @@ package foundry
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
@@ -187,12 +188,25 @@ func npcAdjustments(entries []npcAdjustment, label, owner string, report *Report
 	return adjustments
 }
 
+func strikeRange(traits []string) int {
+	for _, trait := range traits {
+		for _, prefix := range []string{"range-increment-", "range-"} {
+			if feet, found := strings.CutPrefix(trait, prefix); found {
+				if value, err := strconv.Atoi(feet); err == nil {
+					return value
+				}
+			}
+		}
+	}
+	return 0
+}
+
 func importNPCStrike(current *item, taken map[string]bool, layer *creature.Creature, report *Report) error {
 	var system meleeSystem
 	if err := current.decode(&system); err != nil {
 		return err
 	}
-	strike := creature.Strike{Name: current.Name, Bonus: system.Bonus.Value, Traits: system.Traits.Value}
+	strike := creature.Strike{Name: current.Name, Bonus: system.Bonus.Value, Traits: system.Traits.Value, Range: strikeRange(system.Traits.Value)}
 	for _, roll := range system.DamageRolls {
 		what := fmt.Sprintf("%s %s damage", roll.Damage, roll.DamageType)
 		if roll.Category != "" && roll.Category != "persistent" && roll.Category != "splash" {

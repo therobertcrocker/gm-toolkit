@@ -150,7 +150,9 @@ Strike.
   opening save.
 - **Immunity to an effect** — an ability step skips a target immune to one of
   the ability's traits, with `death-effects` matching the `death` trait.
-  Strike steps and Strike riders are not checked: a Strike's damage types
+  Only `-effects` keys and the trait-style immunities (such as `poison`,
+  `disease`, `mental`, `sleep`) count; an immunity to a damage type like
+  `fire` only zeroes that damage. Strike steps and Strike riders are not checked: a Strike's damage types
   already meet immunities.
 - **`unless`** skips a target that has the named condition.
 - **`lethal`** damage kills outright at 0 HP instead of knocking a PC down.
@@ -261,7 +263,7 @@ When a standing creature drops to 0 HP:
 - **an NPC dies**
 - **a PC goes dying** — dying 1 plus its wounded value, plus 1 more on a
   critical hit. The PC also moves in the initiative order to directly before
-  the creature that knocked it down.
+  the creature that knocked it down, unless it dropped on its own turn.
 
 Damage that gets through to a dying PC raises its dying value by 1, or by 2 on
 a critical hit. A stable PC at 0 HP that takes damage goes dying again with the

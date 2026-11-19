@@ -63,6 +63,9 @@ func (fight *Fight) takePersistentDamage(actor *Combatant) {
 		source := instance.source
 		source.ability, source.strike, source.lethal = "persistent", "", false
 		fight.applyDamage(source, actor, damageRoll{parts: []rolledPart{{damageType: instance.part.Type, amount: amount}}}, false)
+		if actor.Dead {
+			break
+		}
 		die := fight.roller.Die(20)
 		fight.observer.Observe(FlatChecked{Combatant: actor.ID, Reason: "persistent " + instance.part.Type, Die: die, DC: persistentRecoveryDC})
 		if die >= persistentRecoveryDC {

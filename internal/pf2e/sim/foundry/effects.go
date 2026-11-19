@@ -1,6 +1,7 @@
 package foundry
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"regexp"
@@ -10,7 +11,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
 )
 
-const baseRecoveryDC = 10
+const (
+	baseRecoveryDC  = 10
+	foundryDyingMax = 4
+)
 
 var (
 	degreeKeys       = map[string]string{"criticalFailure": "critical-failure", "failure": "failure", "success": "success", "criticalSuccess": "critical-success"}
@@ -121,8 +125,11 @@ func (importer *pcImporter) adjustStrike(current *item, rule map[string]any) {
 		importer.report.skip(current.Name, what, ReasonLaterRule)
 		return
 	}
+	mode, _ := rule["mode"].(string)
+	definition := textList(rule["definition"])
+	namesItself := len(definition) == 0 || slices.Equal(definition, []string{"item:id:{item|id}"})
 	id, found := importer.weaponByItem[current.ID]
-	if !found || !creature.IsDefenseTrait(value) {
+	if !found || mode != "add" || !namesItself || !creature.IsDefenseTrait(value) {
 		importer.report.skip(current.Name, what+" "+value, ReasonUnsupported)
 		return
 	}
@@ -185,7 +192,7 @@ func (importer *pcImporter) dyingRule(current *item, rule map[string]any, option
 	mode, _ := rule["mode"].(string)
 	switch {
 	case path == "system.attributes.dying.max" && mode == "upgrade":
-		importer.dyingMax = max(importer.dyingMax, value)
+		importer.dyingMax = max(cmp.Or(importer.dyingMax, foundryDyingMax), value)
 	case path == "system.attributes.dying.recoveryDC" && mode == "subtract":
 		importer.recoverySubtract += value
 	case path == "system.attributes.dying.recoveryDC" && mode == "downgrade":

@@ -7,7 +7,9 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
 )
 
-var allChecksAndDCs = []string{"ac", "fortitude", "reflex", "will", "saving-throw", "perception", "initiative", "attack", "spell-attack", "spell-dc", "class-dc"}
+var effectImmunityTraits = []string{"auditory", "curse", "disease", "emotion", "fear", "mental", "olfactory", "poison", "polymorph", "possession", "sleep", "visual"}
+
+var allChecksAndDCs =[]string{"ac", "fortitude", "reflex", "will", "saving-throw", "perception", "initiative", "attack", "spell-attack", "spell-dc", "class-dc"}
 
 type conditionRule struct {
 	selectors []string
@@ -52,7 +54,7 @@ func (fight *Fight) newTiming(source, bearer *Combatant, duration *creature.Dura
 		return timing{source: source}
 	}
 	clock := timing{source: source, rounds: duration.Rounds, until: duration.Until}
-	// deliberate: an end-of-turn boundary applied during the owner's own turn skips that turn's end, because "until the end of your next turn" means the next one (Decision 9).
+	// deliberate: an end-of-turn boundary applied during the owner's own turn ends at the next turn's end, not this one's, because "until the end of your next turn" means the next one (Decision 9).
 	clock.armed = fight.current != clock.owner(bearer)
 	return clock
 }
@@ -129,6 +131,9 @@ func (fight *Fight) applyCondition(source, target *Combatant, step creature.Step
 	fight.changeConditions(target, func() { target.conditions = append(target.conditions, instance) })
 	if step.Condition == "drained" {
 		fight.drain(source, target, drainedBefore)
+	}
+	if step.Condition == "doomed" && target.Dying > 0 && target.Dying >= target.deathValue() {
+		fight.setDying(target, target.Dying)
 	}
 }
 
@@ -227,7 +232,11 @@ func (fight *Fight) decayConditions(actor *Combatant) {
 
 func immuneToEffect(target *Combatant, traits []string) bool {
 	return slices.ContainsFunc(target.Creature.Defense.Immune, func(key string) bool {
-		return slices.Contains(traits, strings.TrimSuffix(key, "-effects"))
+		trait, isEffectKey := strings.CutSuffix(key, "-effects")
+		if !isEffectKey && !slices.Contains(effectImmunityTraits, key) {
+			return false
+		}
+		return slices.Contains(traits, trait)
 	})
 }
 
