@@ -10,6 +10,7 @@ Full write-ups below. Each item has been scoped enough to warrant a dedicated di
 
 | ID      | Item | Type | Status | Detail |
 |---------|------|------|--------|--------|
+| `A.004` | Encounter lab | `arc` | `In-Progress` | Tools that show the balance of a planned PF2e encounter and help build the flowchart to run it: sim core (`F.041`, narrowed), measurement, tactics and flowcharts, description conversion. Boss builder is out; see [write-up](#a004--encounter-lab) |
 | `F.041` | PF2e encounter simulator | `feature` | `In-Progress` | Grow `cmd/scripts/hawk_finale_sim.py` into a reusable, more useful PF2e fight simulator; first scenario is The Fall of Luna; see [write-up](#f041--pf2e-encounter-simulator) |
 
 
@@ -51,6 +52,16 @@ Unscoped items waiting for their trigger. Move to Up Next when the trigger is cl
 
 # Initiative Write-Ups
 This section contains detailed write-ups for each planned initiative, including problem statements, proposed approaches, tradeoffs, and triggers. This will be the source of truth when it comes time to start discovery work on any of these items.
+
+<br />
+
+## A.004 — Encounter lab
+
+Arc. The concept lives in [`A.004-encounter-lab-arc-concept.md`](initiatives/arcs/A.004-encounter-lab/A.004-encounter-lab-arc-concept.md).
+
+**Trigger** — `ready`
+
+**Status** — `In-Progress`
 
 <br />
 
