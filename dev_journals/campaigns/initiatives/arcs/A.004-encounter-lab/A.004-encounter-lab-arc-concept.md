@@ -27,9 +27,9 @@ The arc is worth its cost only if Robert uses the tools for fights after The Fal
 ## Why an Arc
 
 - **The parts are different kinds of work** — rules and engine have a spec (PF2e). Description conversion is a tooling experiment. Tactics and flowcharts are design. Measurement has no spec and needs evidence. Each needs its own Discovery, and one Discovery could not hold all four.
-- **Each part ends with something usable** — a tool that plays a fight and prints raw facts is useful before any measure exists. Measures, flowcharts and conversion each add to it and can ship on their own.
+- **Each part merges as a working tool** — sim core plays a fight and prints raw facts; measures, flowcharts and conversion each add to it and can ship on their own. The raw facts alone are not enough to prepare a fight; that takes the whole arc.
 - **Some decisions bind every part** — the `F.041` discovery doc records decisions D-1 to D-26. Many of them cross the parts (data formats, the layer model, the event stream, where campaign data lives). Arc-Discovery ratifies the ones that bind the whole arc.
-- **The order is a design question** — sim core comes first, and Robert wants it done before the Ythrel table session on 2026-11-23, so that session tests the tool. The session's logs then become evidence for measurement. Whether tactics or conversion comes next is open.
+- **The order is a design question** — sim core comes first. Robert hopes to have the whole arc done before the Ythrel table session on 2026-11-23, so that session tests the tools; the date is a hope, not a deadline that changes the process. The session's logs are evidence for measurement, whenever they arrive. Whether tactics or conversion comes next is open.
 
 ## Candidate Initiatives
 
