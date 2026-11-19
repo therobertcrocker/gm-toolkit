@@ -3,7 +3,7 @@
 ## In Plain Words
 
 - **What** — a set of tools for a GM who is planning a PF2e encounter. The tools play the fight many times, show how balanced it is, and help build the flowchart the GM uses to run it at the table.
-- **Why** — the first fight simulator was one script written for one fight. The second fight was built by copying that script; it took a few hours and most of a 5-hour usage block, and it still missed problems a GM would feel at the table. The tools have to be cheaper and more honest than that.
+- **Why** — the first fight simulator was one script written for one fight. The second fight needed a second script built on top of the first; it took a few hours and most of a 5-hour usage block, and it still missed problems a GM would feel at the table. The tools have to be cheaper and more honest than that.
 - **How it fits** — the arc lives in the `campaigns` product. It starts from `F.041` (the PF2e encounter simulator), which was planned as one feature and turned out to be several different kinds of work. `F.041` stays, narrowed, as the arc's first initiative.
 
 ## Vision
@@ -18,8 +18,8 @@ The arc is worth its cost only if Robert uses the tools for fights after The Fal
 
 ## Problem
 
-- **One script per fight** — `cmd/scripts/hawk_finale_sim.py` simulates one fight. The second fight (`seeds/second_fight/ythrel_sim.py`) is a 750-line copy of it.
-- **The scoring was invented, then retired** — the `F.041` discovery doc gives scoring about 15 lines that copy the script's threat and triumph scheme. Robert has since replaced that scheme in his patches to the script (`seeds/second_fight/`) with plain measures and a win-chance curve, and with scripts that check each measure against win chance.
+- **One script per fight** — `cmd/scripts/hawk_finale_sim.py` simulates one fight. The second fight (`seeds/second_fight/ythrel_sim.py`) is a second script of about 750 lines. It imports the first and adds its own boss, six hard-coded strategies and its own report.
+- **The scoring was invented, then retired** — the `F.041` discovery doc gives scoring about 15 lines that copy the script's threat and triumph scheme. Robert's later patches to the script (`seeds/second_fight/`) stop printing that verdict and add plain measures and a win-chance curve. Two scripts beside them compare the measures with win chance. They print rates and record no verdict, and both have fallen behind the patches, so the approach exists but no measure has passed a check yet.
 - **The second fight shows what measures must catch** — Robert's critique of it: the sim likely ignores that the party never makes a save and that the party struggles to hit, and it leaned too long on one ability to carry the fight. That is not fun at the table, and the scoring did not say so.
 - **One Discovery did not own the whole design** — rules coverage grew until the `F.041.E3` Plan session split it into three efforts and wrote a rules-scope doc. Description conversion still carries an open question. Scoring has no evidence behind it.
 - **No simulated fight has been played yet** — the Ythrel table session on 2026-11-23 will be the first real test of what the tools say against what happens at the table.
