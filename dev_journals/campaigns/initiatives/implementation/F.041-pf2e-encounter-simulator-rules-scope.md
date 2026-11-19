@@ -10,7 +10,7 @@ This file binds Efforts 3 to 5 (what each rule must cover) and Effort 6 (which a
 ## 1 — How to read it
 
 - **Model** — `as written` follows the rules text (D-18). `stand-in` is the simpler effect in section 2 (overview Decision 9). `approximation` is as written except for the named part.
-- **Last rule in** — the effort whose building block completes the item. The item's own mechanics are converted in Effort 6, or written by hand where section 4 says so.
+- **Last rule in** — the effort whose building block completes the item. The item's own mechanics are written by hand in Effort 6 (overview Decision 13; conversion moved to `A.004.4`), or earlier where section 4 says so. `E7 (position)` now means `A.004.2`.
 - **Script** — `yes` when the script models it today, in any form.
 
 ## 2 — Stand-ins
