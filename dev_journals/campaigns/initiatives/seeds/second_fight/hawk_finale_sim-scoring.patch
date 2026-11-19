@@ -1,0 +1,137 @@
+diff --git a/cmd/scripts/hawk_finale_sim.py b/cmd/scripts/hawk_finale_sim.py
+index 71fc3c7..9c4616e 100644
+--- a/cmd/scripts/hawk_finale_sim.py
++++ b/cmd/scripts/hawk_finale_sim.py
+@@ -27,7 +27,8 @@ READING THE OUTPUT
+                 Loss         every PC down at once
+   Drama       sqrt(Threat x Triumph), 0-10, losses score 0
+                 Threat   party HP low point, knockdowns, two PCs down at once
+-                Triumph  60+ damage hits, rescues, the sin turning point, a 35%+ round
++                Triumph  60+ damage hits, the sin turning point, a 35%+ round
++                         (revives don't count: the knockdown is already threat)
+   Great       win, nobody dies, Threat >= 4 and Triumph >= 4
+   Flat        win where Threat or Triumph stayed under 2
+ 
+@@ -155,6 +156,8 @@ def adj(kind, g):
+         if np and g == 0: g = 1
+         if nb and g == 3: g = 2
+     STATS["rolls"][(kind, g)] += 1
++    if (kind == "pc_att" and g == 3) or (kind == "boss_save" and g == 0):
++        TRACK["pending_crit"] = True   # the party's next damage event is a crit moment
+     return g
+ 
+ def new_stats():
+@@ -162,7 +165,8 @@ def new_stats():
+             "song": Counter(), "heroic": 0, "stun4": 0, "sin_triggers": 0}
+ 
+ def new_track():
+-    return {"low": 1.0, "pc_low": {}, "brink": False, "rescues": 0, "big": 0,
++    return {"pending_crit": False, "moments": 0, "lead_changes": 0, "lead_sign": 0,
++            "behind_late": False, "diffs": [], "low": 1.0, "pc_low": {}, "brink": False, "rescues": 0, "big": 0,
+             "holy_hit": False, "comeback": False, "party": None}
+ 
+ # ----------------------------------------------------------------------- PCs
+@@ -261,6 +265,10 @@ class Boss:
+         if raw <= 0: return 0
+         dmg = raw + s.weak if holy else max(0, raw - s.resist)
+         s.hp -= dmg; STATS["boss_dmg"][src] += dmg
++        if dmg > 0 and not src.startswith("Vuln self"):          # the boss's own mistakes aren't party moments
++            if TRACK["pending_crit"] or dmg >= BIG_FRAC * s.maxhp:
++                TRACK["moments"] += 1
++            TRACK["pending_crit"] = False
+         if dmg >= 60 and not src.startswith("Sin"): TRACK["big"] += 1
+         if "holy" in src and dmg > 0: TRACK["holy_hit"] = True
+         return dmg
+@@ -641,6 +649,9 @@ def run_phase(boss, party, phase, ctx, max_rounds=15):
+                 elif c.name == "Tavish": tav_turn(c, party, boss, ctx)
+                 else: ara_turn(c, party, boss, ctx)
+                 end_of_turn(c)
++        total = CFG["luna_hp"] + CFG["avatar_hp"]
++        left = (max(boss.hp, 0) + CFG["avatar_hp"]) if phase == 1 else max(boss.hp, 0)
++        round_end(party, left / total)
+         if boss.hp <= 0: return rnd
+         if not any(p.up for p in party): return -rnd
+         if phase == 2 and not ctx["discovered"]:     # does the party work out the sin?
+@@ -695,13 +706,65 @@ def fight():
+     return res
+ 
+ # --------------------------------------------------------------------- scoring
++# ------------------------------------------------------------ plain measures
++BIG_FRAC = 0.15        # a single party hit worth 15%+ of the boss's max HP is a big moment
++CLOSE_LOW = 0.25       # close call: party total HP falls to 25% or less...
++CLOSE_DOWNS = 2        # ...or this many knockdowns
++MOMENTS_PER_ROUND = 0.5   # great needs at least one big moment per two rounds
++
++def round_end(party, boss_frac):
++    """Call at the end of every round. boss_frac = boss HP left / boss HP total (both phases)."""
++    pf = sum(max(p.hp, 0) for p in party if not p.dead) / sum(p.maxhp for p in party)
++    diff = pf - boss_frac
++    TRACK["diffs"].append(diff)
++    sign = 1 if diff > 0.02 else -1 if diff < -0.02 else 0
++    if sign and TRACK["lead_sign"] and sign != TRACK["lead_sign"]:
++        TRACK["lead_changes"] += 1
++    if sign: TRACK["lead_sign"] = sign
++
++def measures(res):
++    """Plain per-fight measures, plus the rebuilt great/flat call."""
++    import math
++    win = res["result"] == "win"
++    downs = sum(STATS["downs"].values())
++    close = TRACK["low"] <= CLOSE_LOW or downs >= CLOSE_DOWNS
++    d = TRACK["diffs"]
++    late = d[len(d) // 2:] if d else []
++    lead = win and any(x < -0.02 for x in late)          # losing the HP race in the second half, and won
++    need = max(1, math.ceil(MOMENTS_PER_ROUND * len(d)))
++    big = TRACK["moments"] >= need
++    k = close + lead + big
++    clean = win and not res["deaths"]
++    return dict(win=win, death=bool(res["deaths"]), low=TRACK["low"], close=close, downs=downs,
++                lead=lead, moments=TRACK["moments"], big=big, k=k,
++                dramatic=clean and k == 3,          # confidently dramatic: all three
++                leans=clean and k == 2,             # leans dramatic: two of three
++                one=clean and k == 1, flat=win and k == 0)
++
++def dashboard(ms):
++    n = len(ms); f = lambda k: sum(m[k] for m in ms) / n
++    return dict(win=f("win"), wipe=1 - f("win"), death=f("death"), low=f("low"), close=f("close"),
++                downs=f("downs"), lead=f("lead"), moments=f("moments"), big=f("big"),
++                dramatic=f("dramatic"), leans=f("leans"), one=f("one"), flat=f("flat"))
++
++def show_dashboard(db, rounds=None, label=""):
++    print(f"{label}")
++    print(f"  Outcome      win {db['win']:.0%}  wipe {db['wipe']:.1%}  a PC dies {db['death']:.1%}" + (f"  rounds {rounds:.1f}" if rounds else ""))
++    print(f"  Close call   {db['close']:.0%} of fights (party HP to 25% or 2+ knockdowns; low point {db['low']:.0%} on average, {db['downs']:.1f} knockdowns)")
++    print(f"  Lead change  {db['lead']:.0%} of fights (behind in the second half, and won)")
++    print(f"  Big moments  {db['moments']:.1f} per fight; at least 1 per 2 rounds in {db['big']:.0%}")
++    print(f"  Dramatic {db['dramatic']:.0%} (all 3)   Leans dramatic {db['leans']:.0%} (2 of 3)   One {db['one']:.0%}   Flat {db['flat']:.0%} (none)"
++          "   [clean wins only: no PC death]")
++
+ def score(res):
+     """Returns (category, threat, triumph, drama)."""
+     downs = sum(STATS["downs"].values())
+     low = TRACK["low"]
+     threat = min(10, (4 if low < 0.3 else 2 if low < 0.5 else 0) + 1.5 * min(3, downs)
+                  + (1.5 if TRACK["brink"] else 0))
+-    triumph = min(10, min(3, TRACK["big"]) + 1.5 * min(2, TRACK["rescues"])
++    # Revives are not scored as triumph: the knockdown already counts as threat,
++    # and scoring the rescue too would count one event on both sides.
++    triumph = min(10, min(3, TRACK["big"])
+                   + (2 if res.get("discovered_round") and TRACK["holy_hit"] else 0)
+                   + (2 if TRACK["comeback"] else 0))
+     if res["result"] != "win":
+@@ -721,6 +784,7 @@ def run_many(n):
+         STATS = new_stats(); TRACK = new_track()
+         res = fight()
+         cat, th, tr, dr = score(res)
++        res["m"] = measures(res)
+         res.update(cat=cat, threat=th, triumph=tr, drama=dr,
+                    dropped=bool(sum(STATS["downs"].values())))
+         rows.append(res)
+@@ -750,6 +814,7 @@ def report(rows, agg, title):
+     print(f"  Drama {s['drama']:.1f} (threat {s['threat']:.1f}, triumph {s['triumph']:.1f})   "
+           f"Great finale {s['great']:.0%}   Flat {s['flat']:.0%}")
+     print(f"  Rounds: Luna {s['p1']:.1f}, Avatar {s['p2']:.1f}")
++    show_dashboard(dashboard([r["m"] for r in rows]), label="  -- New plain measures --")
+     print("  PC deaths per fight: " + ", ".join(f"{k} {agg['pc_deaths'][k] / n:.1%}" for k in ("Kas", "Tavish", "Arabesque")))
+     print("  What knocks PCs down (per fight): " + ", ".join(f"{k} {v / n:.2f}" for k, v in agg["downs"].most_common(5)))
+     tot = sum(agg["boss_dmg"].values()) or 1

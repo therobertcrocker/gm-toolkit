@@ -1,0 +1,449 @@
+diff --git a/cmd/scripts/hawk_finale_sim.py b/cmd/scripts/hawk_finale_sim.py
+index 71fc3c7..40db72c 100644
+--- a/cmd/scripts/hawk_finale_sim.py
++++ b/cmd/scripts/hawk_finale_sim.py
+@@ -27,7 +27,8 @@ READING THE OUTPUT
+                 Loss         every PC down at once
+   Drama       sqrt(Threat x Triumph), 0-10, losses score 0
+                 Threat   party HP low point, knockdowns, two PCs down at once
+-                Triumph  60+ damage hits, rescues, the sin turning point, a 35%+ round
++                Triumph  60+ damage hits, the sin turning point, a 35%+ round
++                         (revives don't count: the knockdown is already threat)
+   Great       win, nobody dies, Threat >= 4 and Triumph >= 4
+   Flat        win where Threat or Triumph stayed under 2
+ 
+@@ -155,6 +156,8 @@ def adj(kind, g):
+         if np and g == 0: g = 1
+         if nb and g == 3: g = 2
+     STATS["rolls"][(kind, g)] += 1
++    if (kind == "pc_att" and g == 3) or (kind == "boss_save" and g == 0):
++        TRACK["pending_crit"] = True   # the party's next damage event is a crit moment
+     return g
+ 
+ def new_stats():
+@@ -162,7 +165,8 @@ def new_stats():
+             "song": Counter(), "heroic": 0, "stun4": 0, "sin_triggers": 0}
+ 
+ def new_track():
+-    return {"low": 1.0, "pc_low": {}, "brink": False, "rescues": 0, "big": 0,
++    return {"wc": [], "pending_crit": False, "moments": 0, "lead_changes": 0, "lead_sign": 0,
++            "behind_late": False, "diffs": [], "low": 1.0, "pc_low": {}, "brink": False, "rescues": 0, "big": 0,
+             "holy_hit": False, "comeback": False, "party": None}
+ 
+ # ----------------------------------------------------------------------- PCs
+@@ -261,6 +265,10 @@ class Boss:
+         if raw <= 0: return 0
+         dmg = raw + s.weak if holy else max(0, raw - s.resist)
+         s.hp -= dmg; STATS["boss_dmg"][src] += dmg
++        if dmg > 0 and not src.startswith("Vuln self"):          # the boss's own mistakes aren't party moments
++            if TRACK["pending_crit"] or dmg >= BIG_FRAC * s.maxhp:
++                TRACK["moments"] += 1
++            TRACK["pending_crit"] = False
+         if dmg >= 60 and not src.startswith("Sin"): TRACK["big"] += 1
+         if "holy" in src and dmg > 0: TRACK["holy_hit"] = True
+         return dmg
+@@ -617,10 +625,12 @@ def dying_check(p):
+     else:
+         p.check_death("bled out (recovery checks)")
+ 
+-def run_phase(boss, party, phase, ctx, max_rounds=15):
+-    order = party + [boss]; R.shuffle(order)
++def run_phase(boss, party, phase, ctx, max_rounds=15, start=1, order=None):
++    if order is None:
++        order = party + [boss]; R.shuffle(order)
++    ctx["order"] = order; ctx["boss"] = boss
+     prev_hp = None
+-    for rnd in range(1, max_rounds + 1):
++    for rnd in range(start, max_rounds + 1):
+         if prev_hp is not None and prev_hp - max(boss.hp, 0) >= 0.35 * boss.maxhp: TRACK["comeback"] = True
+         prev_hp = max(boss.hp, 0)
+         ctx["round"] = rnd; ctx["sin_used"] = set(); ctx["triggered_this_round"] = False
+@@ -641,6 +651,9 @@ def run_phase(boss, party, phase, ctx, max_rounds=15):
+                 elif c.name == "Tavish": tav_turn(c, party, boss, ctx)
+                 else: ara_turn(c, party, boss, ctx)
+                 end_of_turn(c)
++        total = CFG["luna_hp"] + CFG["avatar_hp"]
++        left = (max(boss.hp, 0) + CFG["avatar_hp"]) if phase == 1 else max(boss.hp, 0)
++        round_end(party, left / total)
+         if boss.hp <= 0: return rnd
+         if not any(p.up for p in party): return -rnd
+         if phase == 2 and not ctx["discovered"]:     # does the party work out the sin?
+@@ -653,6 +666,8 @@ def run_phase(boss, party, phase, ctx, max_rounds=15):
+             if R.random() < p:
+                 ctx["discovered"] = True; ctx["discovered_round"] = rnd
+                 log(f"  ** The party works out the sin (end of round {rnd})")
++        if WINCHANCE_N and not IN_ROLLOUT:
++            TRACK["wc"].append(win_chance(party, ctx))
+     return 99
+ 
+ def transition(party):
+@@ -673,6 +688,38 @@ def transition(party):
+         p.frightened = p.slowed = p.stunned = p.sickened = p.lost_turn = p.blinded = 0
+         p.stupefied = (0, 0)
+ 
++def new_avatar():
++    return Boss("Avatar", CFG["avatar_hp"], 39, 25, 29, 32, resist=12, weak=15, fh=10)
++
++# --------------------------------------------------------------- win chance
++# At the end of every round, copy the whole fight and play it out WINCHANCE_N times.
++WINCHANCE_N = 0       # 0 = off (fast). Set with --winchance N.
++IN_ROLLOUT = False
++
++def resume(party, ctx):
++    """Play a copied fight to the end from the round after ctx['round']. True on a win."""
++    phase, boss = ctx["phase"], ctx["boss"]
++    r = run_phase(boss, party, phase, ctx, start=ctx["round"] + 1, order=ctx["order"])
++    if r < 0 or r == 99: return False
++    if phase == 2: return True
++    transition(party)
++    ctx["phase"] = 2; ctx["kas_move"] = 0.2
++    r2 = run_phase(new_avatar(), party, 2, ctx)
++    return 0 < r2 < 99
++
++def win_chance(party, ctx):
++    global STATS, TRACK, IN_ROLLOUT, LOGGING
++    import copy
++    saved = (STATS, TRACK, LOGGING); IN_ROLLOUT = True; LOGGING = False
++    wins = 0
++    try:
++        for _ in range(WINCHANCE_N):
++            p2, c2, STATS, TRACK = copy.deepcopy((party, ctx, saved[0], saved[1]))
++            wins += resume(p2, c2)
++    finally:
++        STATS, TRACK, LOGGING = saved; IN_ROLLOUT = False
++    return wins / WINCHANCE_N
++
+ def fight():
+     """One full fight. Uses the global STATS and TRACK, which the caller resets."""
+     party = make_party()
+@@ -687,7 +734,7 @@ def fight():
+     transition(party)
+     res["doomed_in"] = {p.name: p.doomed for p in party}
+     ctx["phase"] = 2; ctx["kas_move"] = 0.2
+-    av = Boss("Avatar", CFG["avatar_hp"], 39, 25, 29, 32, resist=12, weak=15, fh=10)
++    av = new_avatar()
+     r2 = run_phase(av, party, 2, ctx)
+     res["p2"] = r2; res["deaths"] = [p.name for p in party if p.dead]
+     res["discovered_round"] = ctx["discovered_round"]
+@@ -695,13 +742,82 @@ def fight():
+     return res
+ 
+ # --------------------------------------------------------------------- scoring
++# ------------------------------------------------------------ plain measures
++BIG_FRAC = 0.15        # a single party hit worth 15%+ of the boss's max HP is a big moment
++CLOSE_LOW = 0.25       # close call: party total HP falls to 25% or less...
++CLOSE_DOWNS = 2        # ...or this many knockdowns
++MOMENTS_PER_ROUND = 0.5   # great needs at least one big moment per two rounds
++
++def round_end(party, boss_frac):
++    """Call at the end of every round. boss_frac = boss HP left / boss HP total (both phases)."""
++    pf = sum(max(p.hp, 0) for p in party if not p.dead) / sum(p.maxhp for p in party)
++    diff = pf - boss_frac
++    TRACK["diffs"].append(diff)
++    sign = 1 if diff > 0.02 else -1 if diff < -0.02 else 0
++    if sign and TRACK["lead_sign"] and sign != TRACK["lead_sign"]:
++        TRACK["lead_changes"] += 1
++    if sign: TRACK["lead_sign"] = sign
++
++SWING = 0.15          # a swing: the party's win chance jumps this much in one round
++
++def measures(res):
++    """Raw per-fight measures. Tiers need the whole run (for the starting win chance): see dashboard()."""
++    import math
++    win = res["result"] == "win"
++    downs = sum(STATS["downs"].values())
++    d, wc = TRACK["diffs"], TRACK["wc"]
++    need = max(1, math.ceil(MOMENTS_PER_ROUND * len(d)))
++    return dict(win=win, death=bool(res["deaths"]), low=TRACK["low"], downs=downs,
++                tense=TRACK["low"] <= CLOSE_LOW or downs >= CLOSE_DOWNS,
++                lead_hp=win and any(x < -0.02 for x in d[len(d) // 2:]),
++                wc=list(wc), moments=TRACK["moments"], satisfying=TRACK["moments"] >= need)
++
++def dashboard(ms):
++    """Rates over a run. With win chance measured, adds in doubt late, swings, real danger,
++    the excitement index and the Dramatic / Leans / Flat tiers."""
++    n = len(ms); f = lambda k: sum(m[k] for m in ms) / n
++    p0 = f("win")                                     # win chance before round 1
++    measured = any(m["wc"] for m in ms)   # fights won before the first round end have no curve
++    db = dict(win=p0, wipe=1 - p0, death=f("death"), low=f("low"), downs=f("downs"), tense=f("tense"),
++              moments=f("moments"), satisfying=f("satisfying"), lead_hp=f("lead_hp"), measured=measured)
++    if not measured: return db
++    for m in ms:
++        curve = [p0] + m["wc"] + [1.0 if m["win"] else 0.0]
++        steps = [b - a for a, b in zip(curve, curve[1:])]
++        late = m["wc"][len(m["wc"]) // 2:]
++        m["doubt"] = m["win"] and any(0.25 <= c <= 0.75 for c in late)
++        m["swing"] = m["win"] and max(steps[:-1] or [0]) >= SWING
++        m["danger"] = m["win"] and min(m["wc"] or [1]) <= 0.5
++        m["excite"] = sum(abs(x) for x in steps)
++        m["k"] = m["tense"] + m["doubt"] + m["swing"]
++        clean = m["win"] and not m["death"]
++        m["dramatic"] = clean and m["k"] == 3; m["leans"] = clean and m["k"] == 2
++        m["one"] = clean and m["k"] == 1; m["flat"] = m["win"] and m["k"] == 0
++    for k in ("doubt", "swing", "danger", "excite", "dramatic", "leans", "one", "flat"): db[k] = f(k)
++    return db
++
++def show_dashboard(db, rounds=None, label=""):
++    print(f"{label}")
++    print(f"  Outcome       win {db['win']:.0%}  wipe {db['wipe']:.1%}  a PC dies {db['death']:.1%}" + (f"  rounds {rounds:.1f}" if rounds else ""))
++    print(f"  Tense         {db['tense']:.0%} of fights (party HP to 25% or 2+ knockdowns; low point {db['low']:.0%} on average, {db['downs']:.1f} knockdowns)")
++    print(f"  Satisfaction  {db['moments']:.1f} big hits per fight (crits, or 15%+ of the boss's HP); 1 per 2 rounds in {db['satisfying']:.0%}")
++    if not db["measured"]:
++        print(f"  Drama         needs win chance (--winchance N). Quick HP-race proxy for doubt late: {db['lead_hp']:.0%} (overstates it)")
++        return
++    print(f"  In doubt late {db['doubt']:.0%} (win chance 25-75% in the second half, and won)   Real danger {db['danger']:.0%} (win chance fell to 50% or less, and won)")
++    print(f"  Swing         {db['swing']:.0%} (win chance jumped {SWING:.0%}+ in one round, and won)   Excitement index {db['excite']:.2f} (total movement in win chance)")
++    print(f"  Dramatic {db['dramatic']:.0%} (tense + doubt + swing)   Leans {db['leans']:.0%} (2 of 3)   One {db['one']:.0%}   Flat {db['flat']:.0%} (none)"
++          "   [clean wins only: no PC death]")
++
+ def score(res):
+     """Returns (category, threat, triumph, drama)."""
+     downs = sum(STATS["downs"].values())
+     low = TRACK["low"]
+     threat = min(10, (4 if low < 0.3 else 2 if low < 0.5 else 0) + 1.5 * min(3, downs)
+                  + (1.5 if TRACK["brink"] else 0))
+-    triumph = min(10, min(3, TRACK["big"]) + 1.5 * min(2, TRACK["rescues"])
++    # Revives are not scored as triumph: the knockdown already counts as threat,
++    # and scoring the rescue too would count one event on both sides.
++    triumph = min(10, min(3, TRACK["big"])
+                   + (2 if res.get("discovered_round") and TRACK["holy_hit"] else 0)
+                   + (2 if TRACK["comeback"] else 0))
+     if res["result"] != "win":
+@@ -721,6 +837,7 @@ def run_many(n):
+         STATS = new_stats(); TRACK = new_track()
+         res = fight()
+         cat, th, tr, dr = score(res)
++        res["m"] = measures(res)
+         res.update(cat=cat, threat=th, triumph=tr, drama=dr,
+                    dropped=bool(sum(STATS["downs"].values())))
+         rows.append(res)
+@@ -746,10 +863,10 @@ def report(rows, agg, title):
+     print(f"\n{title}  ({n:,} fights)")
+     print(f"  Win {s['win']:.1%}   Loss {c['Loss'] / n:.1%}   Someone drops {s['dropped']:.0%}")
+     print(f"  Outcomes: Cruise {c['Cruise'] / n:.0%} | Comfortable {c['Comfortable'] / n:.0%} | "
+-          f"Tense {c['Tense'] / n:.0%} | Pyrrhic {c['Pyrrhic'] / n:.0%} | Loss {c['Loss'] / n:.0%}")
+-    print(f"  Drama {s['drama']:.1f} (threat {s['threat']:.1f}, triumph {s['triumph']:.1f})   "
+-          f"Great finale {s['great']:.0%}   Flat {s['flat']:.0%}")
++          f"Close shave {c['Tense'] / n:.0%} | Pyrrhic {c['Pyrrhic'] / n:.0%} | Loss {c['Loss'] / n:.0%}")
++    # (the old threat/triumph "great finale" score is retired: see dashboard)
+     print(f"  Rounds: Luna {s['p1']:.1f}, Avatar {s['p2']:.1f}")
++    show_dashboard(dashboard([r["m"] for r in rows]), label="  -- Measures --")
+     print("  PC deaths per fight: " + ", ".join(f"{k} {agg['pc_deaths'][k] / n:.1%}" for k in ("Kas", "Tavish", "Arabesque")))
+     print("  What knocks PCs down (per fight): " + ", ".join(f"{k} {v / n:.2f}" for k, v in agg["downs"].most_common(5)))
+     tot = sum(agg["boss_dmg"].values()) or 1
+@@ -758,12 +875,16 @@ def report(rows, agg, title):
+     print("  Damage to bosses: " + ", ".join(f"{k} {v / tot:.0%}" for k, v in share.most_common()))
+ 
+ def compare(n):
+-    print(f"\n{'preset':16s} {'win':>5s} {'loss':>5s} {'cruise':>7s} {'tense':>6s} {'drama':>6s} {'great':>6s} {'flat':>5s} {'rounds':>9s}")
++    head = f"\n{'preset':16s} {'win':>5s} {'wipe':>5s} {'death':>6s} {'tense':>6s} {'satisf':>7s}"
++    if WINCHANCE_N: head += f" {'doubt':>6s} {'swing':>6s} {'excite':>7s} {'dram':>5s} {'leans':>6s} {'flat':>5s}"
++    print(head + f" {'rounds':>9s}")
+     for name in PRESETS:
+         configure(name, {})
+-        rows, _ = run_many(n); s = summarize(rows); c = s["cats"]
+-        print(f"{name:16s} {s['win']:5.0%} {c['Loss'] / n:5.0%} {c['Cruise'] / n:7.0%} {c['Tense'] / n:6.0%} "
+-              f"{s['drama']:6.1f} {s['great']:6.0%} {s['flat']:5.0%} {s['p1']:4.1f}+{s['p2']:.1f}")
++        rows, _ = run_many(n); s = summarize(rows); db = dashboard([r["m"] for r in rows])
++        line = f"{name:16s} {db['win']:5.0%} {db['wipe']:5.0%} {db['death']:6.0%} {db['tense']:6.0%} {db['satisfying']:7.0%}"
++        if db["measured"]:
++            line += f" {db['doubt']:6.0%} {db['swing']:6.0%} {db['excite']:7.2f} {db['dramatic']:5.0%} {db['leans']:6.0%} {db['flat']:5.0%}"
++        print(line + f" {s['p1']:4.1f}+{s['p2']:.1f}")
+ 
+ def configure(preset, overrides):
+     CFG.clear(); CFG.update(DEFAULTS); CFG.update(PRESETS[preset]); CFG.update(overrides)
+@@ -779,6 +900,29 @@ def parse_sets(items):
+         except (ValueError, SyntaxError): out[key] = raw      # bare strings like adaptive
+     return out
+ 
++def boss_specs():
++    """The two bosses as the sim plays them, for the GM Core benchmark check."""
++    luna = dict(name="Abyssal Luna", level=16, hp=CFG["luna_hp"], ac=CFG["luna_ac"], fort=27, ref=28, will=29,
++                strikes=[("Stab", 28, "3d8+1d8+14"), ("Slash", 30, "3d6+1d8+14")],
++                dcs=[("Destiny Spores / Ill Omen", 39)],
++                areas=[("Destiny Spores", f"{CFG['spores_dice']}d6", "limited")])
++    avatar = dict(name="Avatar of Lilith", level=17, hp=CFG["avatar_hp"], ac=39, fort=25, ref=29, will=32,
++                  resist=12, weakness=15,
++                  strikes=[("Slash", 32, "3d6+17"), ("Stinger", 30, "2d10+17")],
++                  dcs=[("Wail / Wrath / Song / Spite / Touch", 38)],
++                  areas=[("Wail", f"{CFG['wail_dice']}d10", "limited"), ("Divine Wrath", "9d10", "limited")],
++                  extra=[("Hand of Chaos", "4d10+14", "attack bonus not modelled; damage vs Strike table: see above"),
++                         ("Sin of Betrayal", f"4d6+{CFG['sin_offset']}", "custom; no table (published sin vulnerabilities 4d6-6d6)")])
++    return luna, avatar
++
++def guardrails():
++    from pf2e_benchmarks import print_checks, encounter_readout
++    luna, avatar = boss_specs()
++    print_checks(luna); print_checks(avatar)
++    encounter_readout(CFG["level"], 3, [16], "phase 1, Luna")
++    encounter_readout(CFG["level"], 3, [17], "phase 2, Avatar")
++    encounter_readout(CFG["level"], 3, [16, 17], "both phases as one encounter (no rest between)")
++
+ def main():
+     global STATS, TRACK, LOGGING
+     ap = argparse.ArgumentParser(description="Simulate the H.A.W.K. finale.")
+@@ -790,12 +934,15 @@ def main():
+     ap.add_argument("--log", action="store_true", help="print one fight turn by turn")
+     ap.add_argument("--compare", action="store_true", help="run every preset side by side")
+     ap.add_argument("--list", action="store_true", help="list presets and knobs")
++    ap.add_argument("--winchance", type=int, default=0, metavar="N",
++                    help="measure 'in doubt late' with N playouts per round end (slow: try -n 1000 --winchance 30)")
+     a = ap.parse_args()
+     if a.list:
+         print("Presets:"); [print(f"  {k:16s} {v}") for k, v in PRESETS.items()]
+         print("\nKnobs (defaults):"); [print(f"  {k:16s} {v!r}") for k, v in DEFAULTS.items()]
+         return
+     if a.seed is not None: R.seed(a.seed)
++    global WINCHANCE_N; WINCHANCE_N = a.winchance
+     overrides = parse_sets(a.set)
+     if a.level: overrides["level"] = a.level
+     if a.compare:
+@@ -808,6 +955,7 @@ def main():
+         print(f"\nResult: {res['result']} ({cat}) | rounds {res['p1']}+{res['p2']} | deaths {res['deaths'] or 'none'} | "
+               f"threat {th:.1f}, triumph {tr:.1f}, drama {dr:.1f}")
+         return
++    guardrails()
+     rows, agg = run_many(a.n)
+     shown = {k: v for k, v in overrides.items() if k != "level"}
+     extra = f", {', '.join(f'{k}={v}' for k, v in shown.items())}" if shown else ""
+diff --git a/cmd/scripts/pf2e_benchmarks.py b/cmd/scripts/pf2e_benchmarks.py
+new file mode 100644
+index 0000000..0cc8720
+--- /dev/null
++++ b/cmd/scripts/pf2e_benchmarks.py
+@@ -0,0 +1,135 @@
++"""PF2e guardrails for the encounter sims: GM Core creature benchmarks and the encounter budget.
++
++Source: GM Core, Building Creatures (Tables 2-2, 2-5 to 2-12) and Encounter Budget (Tables 10-1, 10-2).
++Only levels 14-20 are entered; add rows as campaigns need them.
++
++    from pf2e_benchmarks import check_creature, print_checks, encounter_readout
++"""
++
++# ---------------------------------------------------------------- tables
++# Extreme / High / Moderate / Low / Terrible
++PERCEPTION = {14: (30, 28, 25, 22, 19), 15: (32, 29, 26, 23, 20), 16: (33, 30, 28, 25, 22),
++              17: (35, 32, 29, 26, 23), 18: (36, 33, 30, 27, 24), 19: (38, 35, 32, 29, 26),
++              20: (39, 36, 33, 30, 27)}
++SAVES = PERCEPTION   # Table 2-6 has the same values as Table 2-2 at these levels
++# Extreme / High / Moderate / Low
++AC = {14: (39, 36, 35, 33), 15: (40, 37, 36, 34), 16: (42, 39, 38, 36), 17: (43, 40, 39, 37),
++      18: (45, 42, 41, 39), 19: (46, 43, 42, 40), 20: (48, 45, 44, 42)}
++# (High range), (Moderate range), (Low range) as (min, max)
++HP = {14: ((315, 323), (251, 259), (187, 195)), 15: ((340, 348), (271, 279), (202, 210)),
++      16: ((365, 373), (291, 299), (217, 225)), 17: ((390, 398), (311, 319), (232, 240)),
++      18: ((415, 423), (331, 339), (247, 255)), 19: ((440, 448), (351, 359), (262, 270)),
++      20: ((465, 473), (371, 379), (277, 285))}
++# Maximum / Minimum
++RESIST = {14: (17, 9), 15: (18, 9), 16: (19, 9), 17: (19, 10), 18: (20, 10), 19: (21, 11), 20: (22, 11)}
++# Extreme / High / Moderate / Low
++ATTACK = {14: (31, 29, 27, 23), 15: (32, 30, 28, 24), 16: (34, 32, 30, 25), 17: (35, 33, 31, 27),
++          18: (37, 35, 33, 28), 19: (38, 36, 34, 29), 20: (40, 38, 36, 31)}
++# Average damage: Extreme / High / Moderate / Low
++DAMAGE = {14: (43, 34, 28, 23), 15: (45, 36, 30, 24), 16: (48, 37, 31, 25), 17: (50, 38, 32, 26),
++          18: (53, 40, 33, 27), 19: (55, 42, 35, 28), 20: (58, 44, 37, 29)}
++# Spell DC: Extreme / High / Moderate
++SPELL_DC = {14: (39, 34, 31), 15: (40, 36, 33), 16: (41, 37, 34), 17: (43, 38, 35),
++            18: (44, 40, 37), 19: (46, 41, 38), 20: (47, 42, 39)}
++# Area damage average: Unlimited use / Limited use
++AREA = {14: (26, 53), 15: (27, 56), 16: (28, 60), 17: (29, 63), 18: (30, 67), 19: (32, 70), 20: (33, 74)}
++
++# Encounter budget (4 PCs): threat -> (XP budget, character adjustment)
++BUDGET = {"Trivial": (40, 10), "Low": (60, 15), "Moderate": (80, 20), "Severe": (120, 30), "Extreme": (160, 40)}
++CREATURE_XP = {-4: 10, -3: 15, -2: 20, -1: 30, 0: 40, 1: 60, 2: 80, 3: 120, 4: 160}
++
++OK, WARN = "ok", "OFF"
++
++def _row(table, level):
++    if level not in table:
++        raise KeyError(f"No benchmark row for level {level}; add it to pf2e_benchmarks.py")
++    return table[level]
++
++def _tier(value, row, names):
++    """Name the highest tier the value reaches. Above the top tier or below the bottom is OFF."""
++    if value > row[0]: return WARN, f"above {names[0]} ({row[0]})"
++    for v, n in zip(row, names):
++        if value == v: return OK, n
++        if value > v: return OK, f"between {n} and {names[names.index(n) - 1]}"
++    return WARN, f"below {names[-1]} ({row[-1]})"
++
++def avg(dice):
++    """'3d10+18' -> 34.5. Also accepts a plain number."""
++    if isinstance(dice, (int, float)): return float(dice)
++    total, s = 0.0, dice.replace(" ", "").replace("-", "+-")
++    for part in s.split("+"):
++        if not part: continue
++        if "d" in part:
++            n, d = part.split("d"); total += int(n or 1) * (int(d) + 1) / 2
++        else:
++            total += int(part)
++    return total
++
++def check_creature(spec):
++    """spec: dict with name, level and any of: hp, ac, perception, fort, ref, will, resist, weakness,
++    strikes [(name, attack, dice)], dcs [(name, dc)], areas [(name, dice, 'limited'|'unlimited')],
++    extra [(name, dice)] for damage that has no table (checked against published examples by hand).
++    Returns a list of (status, stat, value, verdict)."""
++    L = spec["level"]; out = []
++    if "hp" in spec:
++        (hmin, hmax), (mmin, mmax), (lmin, lmax) = _row(HP, L); hp = spec["hp"]
++        if hp > hmax: out.append((WARN, "HP", hp, f"above High ({hmin}-{hmax})"))
++        elif hp < lmin: out.append((WARN, "HP", hp, f"below Low ({lmin}-{lmax})"))
++        else:
++            t = "High" if hp >= hmin else "between Moderate and High" if hp > mmax else "Moderate" if hp >= mmin \
++                else "between Low and Moderate" if hp > lmax else "Low"
++            out.append((OK, "HP", hp, t))
++    if "ac" in spec: out.append((*_tier(spec["ac"], _row(AC, L), ("Extreme", "High", "Moderate", "Low"))[:1], "AC", spec["ac"],
++                                 _tier(spec["ac"], _row(AC, L), ("Extreme", "High", "Moderate", "Low"))[1]))
++    names5 = ("Extreme", "High", "Moderate", "Low", "Terrible")
++    for k, label in (("perception", "Perception"), ("fort", "Fortitude"), ("ref", "Reflex"), ("will", "Will")):
++        if k in spec:
++            st, v = _tier(spec[k], _row(SAVES, L), names5); out.append((st, label, f"+{spec[k]}", v))
++    mx, mn = _row(RESIST, L)
++    for k in ("resist", "weakness"):
++        if k in spec:
++            v = spec[k]; ok = mn <= v <= mx
++            out.append((OK if ok else WARN, k.capitalize(), v, f"range {mn}-{mx}"))
++    for name, atk, dice in spec.get("strikes", []):
++        st, v = _tier(atk, _row(ATTACK, L), ("Extreme", "High", "Moderate", "Low"))
++        out.append((st, f"{name} attack", f"+{atk}", v))
++        a = avg(dice); st, v = _tier(a, _row(DAMAGE, L), ("Extreme", "High", "Moderate", "Low"))
++        out.append((st, f"{name} damage", f"{dice} ({a:g})", v))
++    for name, dc in spec.get("dcs", []):
++        st, v = _tier(dc, _row(SPELL_DC, L), ("Extreme", "High", "Moderate"))
++        out.append((st, f"{name} DC", dc, v))
++    unl, lim = _row(AREA, L)
++    for name, dice, use in spec.get("areas", []):
++        a = avg(dice); cap = lim if use == "limited" else unl
++        out.append((OK if a <= cap * 1.05 else WARN, f"{name} ({use})", f"{dice} ({a:g})", f"benchmark {cap}"))
++    for name, dice, note in spec.get("extra", []):
++        out.append(("note", name, f"{dice} ({avg(dice):g})", note))
++    return out
++
++def print_checks(spec):
++    rows = check_creature(spec)
++    bad = [r for r in rows if r[0] == WARN]
++    print(f"\nBenchmarks: {spec['name']} (level {spec['level']}) - "
++          + ("all inside GM Core" if not bad else f"{len(bad)} OFF-CHART"))
++    for st, stat, val, verdict in rows:
++        mark = {"ok": "  ", "OFF": "!!", "note": " ?"}[st]
++        print(f"  {mark} {stat:24s} {str(val):20s} {verdict}")
++    return bad
++
++def encounter_readout(party_level, party_size, creature_levels, label=""):
++    """XP for the creatures, and the threat tier for this party size."""
++    xp = 0
++    for lvl in creature_levels:
++        diff = lvl - party_level
++        if diff > 4: raise ValueError(f"A level-{lvl} creature is more than 4 levels above the party")
++        xp += CREATURE_XP.get(diff, 0)
++    budgets = {t: b - a * (4 - party_size) for t, (b, a) in BUDGET.items()}
++    tier = "Trivial"
++    for t in ("Low", "Moderate", "Severe", "Extreme"):
++        if xp >= budgets[t]: tier = t
++    over = xp > budgets["Extreme"]
++    print(f"\nEncounter budget{(' - ' + label) if label else ''}: {party_size} PCs at level {party_level} vs "
++          f"creature level{'s' if len(creature_levels) > 1 else ''} {', '.join(map(str, creature_levels))}")
++    print(f"  {xp} XP -> {tier}" + ("  !! above Extreme" if over else "")
++          + "   (budgets for this party: " + ", ".join(f"{t} {b}" for t, b in budgets.items() if t != "Trivial") + ")")
++    return xp, tier
