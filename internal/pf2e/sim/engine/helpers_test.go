@@ -67,10 +67,27 @@ func testFight(roller dice.Roller, combatants ...*Combatant) (*Fight, *recorder)
 	fight := &Fight{
 		roller:     roller,
 		observer:   events,
+		decider:    FirstFitting{},
 		combatants: combatants,
 		order:      slices.Clone(combatants),
 	}
 	return fight, events
+}
+
+func damagePart(t *testing.T, text, damageType string) creature.DamagePart {
+	t.Helper()
+	expression, err := dice.Parse(text)
+	if err != nil {
+		t.Fatalf("damagePart(%q): %v", text, err)
+	}
+	return creature.DamagePart{Dice: text, Type: damageType, Roll: expression}
+}
+
+func giveAbility(combatant *Combatant, ability creature.Ability) {
+	if combatant.Creature.Abilities == nil {
+		combatant.Creature.Abilities = map[string]creature.Ability{}
+	}
+	combatant.Creature.Abilities[ability.ID] = ability
 }
 
 func orderIDs(fight *Fight) []string {

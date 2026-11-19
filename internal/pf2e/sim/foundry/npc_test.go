@@ -70,8 +70,8 @@ func TestImportNPCLuna(t *testing.T) {
 	for _, want := range []struct{ item, reason string }{
 		{"Destiny Spores", ReasonAbility},
 		{"Challenge Fate", ReasonAbility},
-		{"Slash", ReasonEffort3},
-		{"Ill Omen (At Will)", ReasonEffort3},
+		{"Slash", ReasonLaterRule},
+		{"Ill Omen (At Will)", ReasonLaterRule},
 		{"Abyssal Luna", ReasonConditional},
 		{"Fortune-Telling Lore", ReasonNotCombat},
 	} {
@@ -90,11 +90,11 @@ func TestImportNPCLilith(t *testing.T) {
 	if !reflect.DeepEqual(layer.Defense.Resist, wantResist) {
 		t.Errorf("Resist = %+v, want %+v", layer.Defense.Resist, wantResist)
 	}
-	if layer.Defense.Weakness != nil {
-		t.Errorf("Weakness = %+v, want none: holy is a trait (Decision 15)", layer.Defense.Weakness)
+	if weakness := layer.Defense.Weakness; len(weakness) != 1 || weakness["holy"].Value != 15 {
+		t.Errorf("Weakness = %+v, want holy 15: a trait-keyed weakness", weakness)
 	}
-	if !hasSkip(report, "Avatar of Lilith", ReasonEffort3) {
-		t.Error("report lacks the holy weakness as needing Effort 3")
+	if hasSkip(report, "Avatar of Lilith", ReasonLaterRule) {
+		t.Error("report skips an Avatar of Lilith defense, want the holy weakness imported")
 	}
 	if ids := slices.Sorted(maps.Keys(layer.Strikes)); !slices.Equal(ids, []string{"hand-of-chaos", "slash", "stinger"}) {
 		t.Errorf("strikes = %v, want hand-of-chaos, slash, stinger", ids)
@@ -112,7 +112,7 @@ func TestImportNPCSkipsDamageTheLoaderRejects(t *testing.T) {
 	report := &Report{}
 	taken := map[string]bool{}
 	for _, test := range []struct{ name, rolls string }{
-		{"Mixed", `{"a": {"damage": "2d8+10", "damageType": "slashing"}, "b": {"damage": "1d6", "damageType": "untyped"}}`},
+		{"Mixed", `{"a": {"damage": "2d8+10", "damageType": "slashing"}, "b": {"damage": "1d6", "damageType": "chaotic"}}`},
 		{"Bad Dice", `{"a": {"damage": "2d", "damageType": "slashing"}}`},
 		{"Persistent Only", `{"a": {"damage": "2d6", "damageType": "fire", "category": "persistent"}}`},
 	} {

@@ -86,7 +86,7 @@ func TestImportPCSkipsWeaponsTheLoaderRejects(t *testing.T) {
 	for _, test := range []struct{ name, damage string }{
 		{"No Dice", `{"dice": 0, "die": "d6", "damageType": "slashing"}`},
 		{"One-Sided", `{"dice": 1, "die": "d1", "damageType": "slashing"}`},
-		{"Untyped", `{"dice": 1, "die": "d6", "damageType": "untyped"}`},
+		{"Legacy Type", `{"dice": 1, "die": "d6", "damageType": "chaotic"}`},
 	} {
 		current := &item{
 			Name:   test.name,
@@ -121,7 +121,9 @@ func TestImportPCWeaponsAndQuantities(t *testing.T) {
 	wantFire := creature.Weapon{
 		Name: "Alchemist's Fire (Greater)", Category: "martial", Group: "bomb", Base: "alchemical-bomb",
 		Dice: 3, Die: 8, Type: "fire", ItemBonus: 2, Range: 20,
-		Traits: []string{"alchemical", "bomb", "consumable", "fire", "infused", "splash"},
+		Traits:     []string{"alchemical", "bomb", "consumable", "fire", "infused", "splash"},
+		Persistent: &creature.DamagePart{Dice: "3", Type: "fire"},
+		Splash:     3,
 	}
 	if got := build.Weapons["alchemists-fire-greater"]; !reflect.DeepEqual(got, wantFire) {
 		t.Errorf("alchemists-fire-greater = %+v, want %+v", got, wantFire)
@@ -138,7 +140,7 @@ func TestImportPCWeaponsAndQuantities(t *testing.T) {
 	}
 	for _, want := range []struct{ item, reason string }{
 		{"Frost Vial (Moderate)", ReasonQuantity},
-		{"Alchemist's Fire (Greater)", ReasonEffort3},
+		{"Alchemist's Fire (Greater)", ReasonLaterRule},
 		{"Arcane Innate Spells", ReasonEmpty},
 	} {
 		if !hasSkip(report, want.item, want.reason) {
@@ -176,7 +178,7 @@ func TestImportPCIgnoresSheetState(t *testing.T) {
 	}{
 		{kasReport, "Slowed", ReasonState},
 		{kasReport, "Spell Effect: Haste", ReasonState},
-		{kasReport, "Bramblecrest (Destroyed)", ReasonEffort3},
+		{kasReport, "Bramblecrest (Destroyed)", ReasonUnsupported},
 		{kasReport, "Arcane Charges Spells", ReasonEmpty},
 		{arabesqueReport, "Frightened", ReasonState},
 		{arabesqueReport, "Persistent Damage", ReasonState},

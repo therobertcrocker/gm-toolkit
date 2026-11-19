@@ -3,8 +3,9 @@ package foundry
 import "github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
 
 const (
-	ReasonAbility     = "ability not converted yet (rules in Effort 3, descriptions in Effort 4)"
-	ReasonEffort3     = "needs a rule from Effort 3"
+	ReasonAbility     = "ability not converted yet (Effort 6)"
+	ReasonLaterRule   = "needs a rule from a later effort"
+	ReasonHandLayer   = "typed into the hand layer (overview Decision 11)"
 	ReasonConditional = "conditional: does not hold at baseline"
 	ReasonNotCombat   = "not a combat statistic"
 	ReasonState       = "sheet state, ignored (D-26)"

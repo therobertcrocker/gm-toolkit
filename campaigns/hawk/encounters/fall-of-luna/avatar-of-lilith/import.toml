@@ -22,6 +22,9 @@ perception = 32
     [defense.resist.all]
       value = 12
       except = ["holy", "cold-iron"]
+  [defense.weakness]
+    [defense.weakness.holy]
+      value = 15
 
 [spellcasting]
   attack = 32

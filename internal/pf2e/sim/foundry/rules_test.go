@@ -29,14 +29,17 @@ func TestImportPCRuleElementsKas(t *testing.T) {
 	}
 	for _, want := range []struct{ item, reason string }{
 		{"Keen Eyes", ReasonConditional},
-		{"Bravery", ReasonEffort3},
-		{"Toughness", ReasonEffort3},
 		{"Vicious Swing", ReasonToggle},
 		{"Demon Mask", ReasonNotCombat},
 		{"Weapon Legend (Hammer)", ReasonUnsupported},
 	} {
 		if !hasSkip(report, want.item, want.reason) {
 			t.Errorf("report lacks %s with reason %q", want.item, want.reason)
+		}
+	}
+	for _, imported := range []string{"Bravery", "Toughness"} {
+		if slices.ContainsFunc(report.Skipped, func(skip Skip) bool { return skip.Item == imported }) {
+			t.Errorf("report skips %s, want its rules imported", imported)
 		}
 	}
 	if report.Unused["Note"] == 0 {
@@ -51,6 +54,7 @@ func TestImportPCRuleElementsTavish(t *testing.T) {
 	wantModifiers := map[string]creature.Modifier{
 		"alchemist-goggles":         {Selector: "attack", Type: "item", Value: 1, WeaponTraits: []string{"alchemical", "bomb"}},
 		"boots-of-bounding-greater": {Selector: "land-speed", Type: "item", Value: 10},
+		"expanded-splash":           {Selector: "splash", Attribute: "int", WeaponTraits: []string{"splash"}},
 	}
 	if !reflect.DeepEqual(build.Modifiers, wantModifiers) {
 		t.Errorf("Modifiers = %+v, want %+v", build.Modifiers, wantModifiers)

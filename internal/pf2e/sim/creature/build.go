@@ -25,8 +25,8 @@ var (
 	fixedProficiencies   = []string{"perception", "fortitude", "reflex", "will", "class-dc", "spellcasting", "unarmored", "light", "medium", "heavy", "simple", "martial", "advanced", "unarmed"}
 	armorCategories      = []string{"unarmored", "light", "medium", "heavy"}
 	weaponCategories     = []string{"simple", "martial", "advanced", "unarmed"}
-	modifierSelectors    = []string{"hp", "ac", "fortitude", "reflex", "will", "saving-throw", "perception", "land-speed", "attack", "damage"}
-	weaponSelectors      = []string{"attack", "damage"}
+	modifierSelectors    = []string{"hp", "ac", "fortitude", "reflex", "will", "saving-throw", "perception", "land-speed", "attack", "damage", "splash"}
+	weaponSelectors      = []string{"attack", "damage", "splash"}
 	modifierTypes        = []string{"", "item", "status", "circumstance"}
 	fixedBoostSources    = []string{"ancestry", "background", "class"}
 	saveAttributes       = map[string]string{"fortitude": "con", "reflex": "dex", "will": "wis"}
@@ -38,18 +38,19 @@ var (
 )
 
 type Build struct {
-	AncestryHP           int                 `toml:"ancestry_hp,omitzero"`
-	ClassHP              int                 `toml:"class_hp,omitzero"`
-	Key                  string              `toml:"key,omitempty"`
-	Speed                int                 `toml:"speed,omitzero"`
-	Flaws                []string            `toml:"flaws,omitempty"`
-	WeaponSpecialization string              `toml:"weapon_specialization,omitempty"`
-	Boosts               map[string][]string `toml:"boosts,omitempty"`
-	Proficiency          map[string]string   `toml:"proficiency,omitempty"`
-	Armor                *Armor              `toml:"armor,omitempty"`
-	Weapons              map[string]Weapon   `toml:"weapon,omitempty"`
-	Modifiers            map[string]Modifier `toml:"modifier,omitempty"`
-	Spellcasting         *Casting            `toml:"spellcasting,omitempty"`
+	AncestryHP             int                 `toml:"ancestry_hp,omitzero"`
+	ClassHP                int                 `toml:"class_hp,omitzero"`
+	Key                    string              `toml:"key,omitempty"`
+	Speed                  int                 `toml:"speed,omitzero"`
+	Flaws                  []string            `toml:"flaws,omitempty"`
+	WeaponSpecialization   string              `toml:"weapon_specialization,omitempty"`
+	CriticalSpecialization string              `toml:"critical_specialization,omitempty"`
+	Boosts                 map[string][]string `toml:"boosts,omitempty"`
+	Proficiency            map[string]string   `toml:"proficiency,omitempty"`
+	Armor                  *Armor              `toml:"armor,omitempty"`
+	Weapons                map[string]Weapon   `toml:"weapon,omitempty"`
+	Modifiers              map[string]Modifier `toml:"modifier,omitempty"`
+	Spellcasting           *Casting            `toml:"spellcasting,omitempty"`
 }
 
 type Armor struct {
@@ -63,18 +64,29 @@ type Armor struct {
 }
 
 type Weapon struct {
-	Name      string   `toml:"name"`
-	Category  string   `toml:"category"`
-	Group     string   `toml:"group,omitempty"`
-	Base      string   `toml:"base,omitempty"`
-	Dice      int      `toml:"dice"`
-	Die       int      `toml:"die"`
-	Type      string   `toml:"type"`
-	Potency   int      `toml:"potency,omitzero"`
-	Striking  int      `toml:"striking,omitzero"`
-	ItemBonus int      `toml:"item_bonus,omitzero"`
-	Range     int      `toml:"range,omitzero"`
-	Traits    []string `toml:"traits,omitempty"`
+	Name       string      `toml:"name"`
+	Category   string      `toml:"category"`
+	Group      string      `toml:"group,omitempty"`
+	Base       string      `toml:"base,omitempty"`
+	Dice       int         `toml:"dice"`
+	Die        int         `toml:"die"`
+	Type       string      `toml:"type"`
+	Potency    int         `toml:"potency,omitzero"`
+	Striking   int         `toml:"striking,omitzero"`
+	ItemBonus  int         `toml:"item_bonus,omitzero"`
+	Range      int         `toml:"range,omitzero"`
+	Traits     []string    `toml:"traits,omitempty"`
+	Persistent *DamagePart `toml:"persistent,omitempty"`
+	Splash     int         `toml:"splash,omitzero"`
+	Outcomes
+}
+
+// deliberate: a group's critical specialization is a rider step in a table, not code per group, because the effect is data; one row exists because only Kas's hammer earns it in the scope.
+var criticalSpecializations = map[string]Step{
+	"hammer": {Save: "fortitude", DCFrom: "class", Outcomes: Outcomes{
+		Failure:         []Step{{Condition: "prone"}},
+		CriticalFailure: []Step{{Condition: "prone"}},
+	}},
 }
 
 type Modifier struct {
@@ -82,6 +94,7 @@ type Modifier struct {
 	Type         string   `toml:"type,omitempty"`
 	Value        int      `toml:"value,omitzero"`
 	PerLevel     int      `toml:"per_level,omitzero"`
+	Attribute    string   `toml:"attribute,omitempty"`
 	WeaponTraits []string `toml:"weapon_traits,omitempty"`
 }
 
@@ -235,6 +248,9 @@ func (creature *Creature) checkBuild() []string {
 	if _, known := specializationDamage[build.WeaponSpecialization]; build.WeaponSpecialization != "" && !known {
 		report("build.weapon_specialization %q: want normal or greater", build.WeaponSpecialization)
 	}
+	if build.CriticalSpecialization != "" && slices.Index(RankWords, build.CriticalSpecialization) < 1 {
+		report("build.critical_specialization %q: want a rank from trained to legendary", build.CriticalSpecialization)
+	}
 	for _, key := range slices.Sorted(maps.Keys(build.Proficiency)) {
 		if !IsProficiencyKey(key) {
 			report("build.proficiency.%s: unknown proficiency", key)
@@ -268,8 +284,13 @@ func (creature *Creature) checkBuild() []string {
 		if !IsDamageType(weapon.Type) {
 			report("build.weapon.%s: unknown damage type %q", id, weapon.Type)
 		}
-		if weapon.Potency < 0 || weapon.Striking < 0 || weapon.ItemBonus < 0 || weapon.Range < 0 {
-			report("build.weapon.%s: potency, striking, item_bonus and range must not be negative", id)
+		if weapon.Potency < 0 || weapon.Striking < 0 || weapon.ItemBonus < 0 || weapon.Range < 0 || weapon.Splash < 0 {
+			report("build.weapon.%s: potency, striking, item_bonus, range and splash must not be negative", id)
+		}
+		if persistent := weapon.Persistent; persistent != nil {
+			if _, err := dice.Parse(persistent.Dice); err != nil || !IsDamageType(persistent.Type) {
+				report("build.weapon.%s.persistent: want parsable dice and a damage type", id)
+			}
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(build.Modifiers)) {
@@ -281,7 +302,10 @@ func (creature *Creature) checkBuild() []string {
 			report("build.modifier.%s: type %q: want item, status, circumstance or none", id, modifier.Type)
 		}
 		if len(modifier.WeaponTraits) > 0 && !slices.Contains(weaponSelectors, modifier.Selector) {
-			report("build.modifier.%s: weapon_traits needs selector attack or damage", id)
+			report("build.modifier.%s: weapon_traits needs selector attack, damage or splash", id)
+		}
+		if modifier.Attribute != "" && (modifier.Selector != "splash" || !slices.Contains(AttributeNames, modifier.Attribute)) {
+			report("build.modifier.%s: attribute needs selector splash and an attribute name", id)
 		}
 	}
 	if casting := build.Spellcasting; casting != nil {
@@ -354,16 +378,16 @@ func proficiencyBonus(level, rank int) int {
 }
 
 func (build *Build) total(level, itemBonus int, weaponTraits []string, selectors ...string) int {
-	pool := newBonusPool()
-	pool.add("item", itemBonus)
+	pool := NewBonusPool()
+	pool.Add("item", itemBonus)
 	for _, id := range slices.Sorted(maps.Keys(build.Modifiers)) {
 		modifier := build.Modifiers[id]
 		if !slices.Contains(selectors, modifier.Selector) || !containsAll(weaponTraits, modifier.WeaponTraits) {
 			continue
 		}
-		pool.add(modifier.Type, modifier.Value+modifier.PerLevel*level)
+		pool.Add(modifier.Type, modifier.Value+modifier.PerLevel*level)
 	}
-	return pool.total()
+	return pool.Total()
 }
 
 func (build *Build) strike(level int, attributes map[string]int, weapon Weapon) Strike {
@@ -375,11 +399,44 @@ func (build *Build) strike(level int, attributes map[string]int, weapon Weapon) 
 	modifier := damageAttribute(attributes, weapon) + build.specialization(rank) + build.total(level, 0, weapon.Traits, "damage")
 	expression := dice.Expression{Count: weapon.Dice + weapon.Striking, Sides: weapon.Die, Modifier: modifier}
 	return Strike{
-		Name:   weapon.Name,
-		Bonus:  attack,
-		Traits: slices.Clone(weapon.Traits),
-		Damage: []DamagePart{{Dice: expression.String(), Type: weapon.Type}},
+		Name:     weapon.Name,
+		Bonus:    attack,
+		Range:    weapon.Range,
+		Traits:   slices.Clone(weapon.Traits),
+		Damage:   build.weaponDamage(level, attributes, weapon, expression),
+		Outcomes: build.riders(weapon, rank),
 	}
+}
+
+func (build *Build) riders(weapon Weapon, rank int) Outcomes {
+	outcomes := weapon.Outcomes
+	minimum := slices.Index(RankWords, build.CriticalSpecialization)
+	if specialization, found := criticalSpecializations[weapon.Group]; found && minimum > 0 && rank >= minimum {
+		outcomes.CriticalSuccess = append(slices.Clone(outcomes.For(3, true)), specialization)
+	}
+	return outcomes
+}
+
+func (build *Build) weaponDamage(level int, attributes map[string]int, weapon Weapon, expression dice.Expression) []DamagePart {
+	damage := []DamagePart{{Dice: expression.String(), Type: weapon.Type}}
+	if persistent := weapon.Persistent; persistent != nil {
+		damage = append(damage, DamagePart{Dice: persistent.Dice, Type: persistent.Type, Category: "persistent"})
+	}
+	if weapon.Splash > 0 {
+		splash := weapon.Splash + build.total(level, 0, weapon.Traits, "splash") + build.attributeBonus(attributes, weapon.Traits, "splash")
+		damage = append(damage, DamagePart{Dice: strconv.Itoa(splash), Type: weapon.Type, Category: "splash"})
+	}
+	return damage
+}
+
+func (build *Build) attributeBonus(attributes map[string]int, weaponTraits []string, selector string) int {
+	bonus := 0
+	for _, modifier := range build.Modifiers {
+		if modifier.Selector == selector && modifier.Attribute != "" && containsAll(weaponTraits, modifier.WeaponTraits) {
+			bonus += attributes[modifier.Attribute]
+		}
+	}
+	return bonus
 }
 
 func (build *Build) specialization(rank int) int {
@@ -430,17 +487,17 @@ func containsAll(have, want []string) bool {
 	return true
 }
 
-type bonusPool struct {
+type BonusPool struct {
 	untyped   int
 	bonuses   map[string]int
 	penalties map[string]int
 }
 
-func newBonusPool() *bonusPool {
-	return &bonusPool{bonuses: map[string]int{}, penalties: map[string]int{}}
+func NewBonusPool() *BonusPool {
+	return &BonusPool{bonuses: map[string]int{}, penalties: map[string]int{}}
 }
 
-func (pool *bonusPool) add(kind string, value int) {
+func (pool *BonusPool) Add(kind string, value int) {
 	switch {
 	case kind == "":
 		pool.untyped += value
@@ -451,7 +508,7 @@ func (pool *bonusPool) add(kind string, value int) {
 	}
 }
 
-func (pool *bonusPool) total() int {
+func (pool *BonusPool) Total() int {
 	total := pool.untyped
 	for _, value := range pool.bonuses {
 		total += value

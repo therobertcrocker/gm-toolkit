@@ -73,7 +73,7 @@ func newFight(setup Setup) (*Fight, error) {
 func (fight *Fight) rollInitiative() {
 	for _, combatant := range fight.combatants {
 		die := fight.roller.Die(20)
-		combatant.Initiative = die + combatant.Creature.Perception
+		combatant.Initiative = die + combatant.Creature.Perception + fight.modifierTotal(combatant, []string{"perception", "initiative"}, nil)
 		fight.observer.Observe(InitiativeRolled{Combatant: combatant.ID, Die: die, Total: combatant.Initiative})
 	}
 	fight.order = slices.Clone(fight.combatants)
@@ -113,6 +113,17 @@ func (fight *Fight) run() (Outcome, error) {
 }
 
 func (fight *Fight) takeTurn(actor *Combatant) error {
+	fight.current = actor
+	fight.startTurn(actor)
+	err := fight.act(actor)
+	if err == nil {
+		fight.endTurn(actor)
+	}
+	fight.current = nil
+	return err
+}
+
+func (fight *Fight) act(actor *Combatant) error {
 	if actor.Dead {
 		return nil
 	}
@@ -154,7 +165,7 @@ func (fight *Fight) perform(actor *Combatant, choice Choice) error {
 		}
 		actor.ActionsLeft--
 		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: choice.ID, Actions: 1, Target: choice.Target.ID})
-		fight.strike(actor, choice.Target, strike)
+		fight.strike(actor, choice.Target, strike, "")
 		return nil
 	case ChooseAbility:
 		ability, found := actor.Creature.Abilities[choice.ID]
@@ -166,17 +177,7 @@ func (fight *Fight) perform(actor *Combatant, choice Choice) error {
 		}
 		actor.ActionsLeft -= ability.Actions
 		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: choice.ID, Actions: ability.Actions, Target: choice.Target.ID})
-		target := choice.Target
-		for _, step := range ability.Steps {
-			if !target.Standing() {
-				next, found := fight.decider.NextTarget(fight, actor)
-				if !found {
-					return nil
-				}
-				target = next
-			}
-			fight.strike(actor, target, actor.Creature.Strikes[step.Strike])
-		}
+		fight.useAbility(actor, ability, choice.Target)
 		return nil
 	default:
 		return fmt.Errorf("%w: %s made a choice of unknown kind %d", ErrBadChoice, actor.ID, choice.Kind)

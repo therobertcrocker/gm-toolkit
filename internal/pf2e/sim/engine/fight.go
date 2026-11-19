@@ -14,6 +14,7 @@ type Fight struct {
 	combatants []*Combatant
 	order      []*Combatant
 	round      int
+	current    *Combatant
 }
 
 func (fight *Fight) StandingFoes(actor *Combatant) []*Combatant {

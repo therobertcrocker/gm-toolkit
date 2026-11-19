@@ -60,6 +60,10 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["alchemical", "bomb", "consumable", "fire", "infused", "splash"]
+      splash = 3
+      [build.weapon.alchemists-fire-greater.persistent]
+        dice = "3"
+        type = "fire"
     [build.weapon.bottled-lightning-greater]
       name = "Bottled Lightning (Greater)"
       category = "martial"
@@ -71,6 +75,7 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["alchemical", "bomb", "consumable", "electricity", "splash"]
+      splash = 3
     [build.weapon.crystal-shards-moderate]
       name = "Crystal Shards (Moderate)"
       category = "martial"
@@ -82,6 +87,10 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 1
       range = 20
       traits = ["alchemical", "bomb", "consumable", "earth", "infused", "splash"]
+      splash = 4
+      [build.weapon.crystal-shards-moderate.persistent]
+        dice = "1"
+        type = "bleed"
     [build.weapon.dagger]
       name = "Dagger"
       category = "simple"
@@ -102,6 +111,7 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["acid", "alchemical", "bomb", "consumable", "disease", "infused", "splash"]
+      splash = 3
     [build.weapon.lodestone-bomb]
       name = "Lodestone Bomb"
       category = "martial"
@@ -113,6 +123,7 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["alchemical", "bomb", "consumable", "force", "infused", "splash"]
+      splash = 2
     [build.weapon.nail-bomb-greater]
       name = "Nail Bomb (Greater)"
       category = "martial"
@@ -123,7 +134,8 @@ traits = ["dwarf", "humanoid"]
       type = "piercing"
       item_bonus = 2
       range = 20
-      traits = ["alchemical", "bomb", "consumable", "splash"]
+      traits = ["alchemical", "bomb", "consumable", "splash", "cold-iron"]
+      splash = 3
     [build.weapon.sling]
       name = "Sling"
       category = "simple"
@@ -152,6 +164,7 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["alchemical", "bomb", "consumable", "fire", "splash"]
+      splash = 3
     [build.weapon.sticky-algae-bomb-greater]
       name = "Sticky Algae Bomb (Greater)"
       category = "martial"
@@ -163,6 +176,7 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["alchemical", "bomb", "consumable", "infused", "splash", "water"]
+      splash = 3
     [build.weapon.tenderizer-grenade-greater]
       name = "Tenderizer Grenade (Greater)"
       category = "martial"
@@ -174,6 +188,7 @@ traits = ["dwarf", "humanoid"]
       item_bonus = 2
       range = 20
       traits = ["acid", "alchemical", "bomb", "consumable", "plant", "splash"]
+      splash = 3
   [build.modifier]
     [build.modifier.alchemist-goggles]
       selector = "attack"
@@ -184,3 +199,13 @@ traits = ["dwarf", "humanoid"]
       selector = "land-speed"
       type = "item"
       value = 10
+    [build.modifier.expanded-splash]
+      selector = "splash"
+      attribute = "int"
+      weapon_traits = ["splash"]
+
+[degree_shift]
+  [degree_shift.juggernaut]
+    selector = "fortitude"
+    from = "success"
+    to = "critical-success"

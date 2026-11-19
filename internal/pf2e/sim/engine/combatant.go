@@ -28,10 +28,16 @@ type Combatant struct {
 	ActionsLeft     int
 	AttacksThisTurn int
 	ReactionUsed    bool
+	HeroPoints      int
+	TempHP          int
+	conditions      []*conditionInstance
+	persistent      []*persistentInstance
+	defenseChanges  []*defenseChange
+	adaptiveType    string
 }
 
 func NewCombatant(side Side, source *creature.Creature) *Combatant {
-	return &Combatant{ID: source.ID, Side: side, Creature: source, HP: source.Defense.HP}
+	return &Combatant{ID: source.ID, Side: side, Creature: source, HP: source.Defense.HP, HeroPoints: source.HeroPoints}
 }
 
 func (combatant *Combatant) Standing() bool {

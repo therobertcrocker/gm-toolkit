@@ -18,7 +18,7 @@ func TestPrintReport(t *testing.T) {
 		Folder:   "party/kas",
 		Skipped: []foundry.Skip{
 			{Item: "Keen Eyes", What: "FlatModifier perception", Reason: foundry.ReasonConditional},
-			{Item: "Bravery", What: "AdjustDegreeOfSuccess", Reason: foundry.ReasonEffort3},
+			{Item: "Bravery", What: "AdjustDegreeOfSuccess", Reason: foundry.ReasonLaterRule},
 		},
 		Unused: map[string]int{"Note": 6, "GrantItem": 4},
 	}
@@ -35,7 +35,7 @@ func TestPrintReport(t *testing.T) {
 		"actors/kas.json  wrote party/kas/import.toml",
 		"Kas Fringebramble  pc 14",
 		"Skipped, " + foundry.ReasonConditional + ":\n  Keen Eyes: FlatModifier perception",
-		"Skipped, " + foundry.ReasonEffort3 + ":\n  Bravery: AdjustDegreeOfSuccess",
+		"Skipped, " + foundry.ReasonLaterRule + ":\n  Bravery: AdjustDegreeOfSuccess",
 		"Not used by the sim: GrantItem ×4, Note ×6",
 	} {
 		if !strings.Contains(out.String(), want) {

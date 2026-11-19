@@ -53,6 +53,34 @@ func TestPrintCreature(t *testing.T) {
 	}
 }
 
+func TestShowPrintsFightRules(t *testing.T) {
+	shown := &creature.Creature{
+		Name:    "Abyssal Luna",
+		Kind:    creature.KindNPC,
+		Level:   16,
+		Defense: creature.Defense{HP: 300, AC: 36},
+		Modifiers: map[string]creature.CheckModifier{
+			"occult-saves": {Selector: "saving-throw", Type: "status", Value: 2, Against: []string{"occult"}},
+		},
+		DegreeShifts: map[string]creature.DegreeShift{
+			"juggernaut": {Selector: "fortitude", From: "success", To: "critical-success"},
+		},
+		Layers: []string{"hand.toml"},
+	}
+	var out bytes.Buffer
+	printCreature(&out, shown, false)
+	text := out.String()
+	modifiersAt := strings.Index(text, "Modifiers\n  occult-saves  +2 status saving-throw against occult\n")
+	shiftsAt := strings.Index(text, "Degree shifts\n  juggernaut  fortitude success -> critical-success\n")
+	layersAt := strings.Index(text, "Layers hand.toml")
+	if modifiersAt < 0 || shiftsAt < 0 || layersAt < 0 {
+		t.Fatalf("output lacks the modifier, the degree shift or the layers line:\n%s", text)
+	}
+	if modifiersAt > layersAt || shiftsAt > layersAt {
+		t.Errorf("fight rules print after the layers line:\n%s", text)
+	}
+}
+
 func TestPrintCreatureShowsComputedNumbers(t *testing.T) {
 	shown := &creature.Creature{
 		Name:         "Arabesque",

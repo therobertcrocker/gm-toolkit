@@ -139,6 +139,13 @@ type pcImporter struct {
 	speedPenaltySuppressed bool
 	weaponIDs              map[string]bool
 	modifierIDs            map[string]bool
+	fightIDs               map[string]bool
+	weaponByItem           map[string]string
+	fightModifiers         map[string]creature.CheckModifier
+	degreeShifts           map[string]creature.DegreeShift
+	dyingMax               int
+	recoverySubtract       int
+	recoveryFloor          int
 	entries                []*item
 	spellsByEntry          map[string]int
 }
@@ -158,11 +165,15 @@ func importPC(source *actor) (*creature.Creature, *Report, error) {
 			Weapons:     map[string]creature.Weapon{},
 			Modifiers:   map[string]creature.Modifier{},
 		},
-		ranks:         map[string]int{"class-dc": 1},
-		resist:        map[string]creature.Adjustment{},
-		weaponIDs:     map[string]bool{},
-		modifierIDs:   map[string]bool{},
-		spellsByEntry: map[string]int{},
+		ranks:          map[string]int{"class-dc": 1},
+		resist:         map[string]creature.Adjustment{},
+		weaponIDs:      map[string]bool{},
+		modifierIDs:    map[string]bool{},
+		fightIDs:       map[string]bool{},
+		weaponByItem:   map[string]string{},
+		fightModifiers: map[string]creature.CheckModifier{},
+		degreeShifts:   map[string]creature.DegreeShift{},
+		spellsByEntry:  map[string]int{},
 	}
 	for level, boosts := range system.Build.Attributes.Boosts {
 		importer.build.Boosts["level-"+level] = boosts
@@ -211,7 +222,7 @@ func (importer *pcImporter) item(current *item) error {
 	case "condition", "effect":
 		importer.report.skip(current.Name, current.Type, ReasonState)
 	case "shield":
-		importer.report.skip(current.Name, "shield", ReasonEffort3)
+		importer.report.skip(current.Name, "shield", ReasonUnsupported)
 	}
 	return nil
 }
@@ -337,7 +348,7 @@ func (importer *pcImporter) armorItem(current *item) error {
 	importer.armor = &system
 	importer.armorName = current.Name
 	if len(system.Runes.Property) > 0 {
-		importer.report.skip(current.Name, "property runes "+strings.Join(system.Runes.Property, ", "), ReasonEffort3)
+		importer.report.skip(current.Name, "property runes "+strings.Join(system.Runes.Property, ", "), ReasonHandLayer)
 	}
 	return nil
 }
@@ -377,18 +388,22 @@ func (importer *pcImporter) weapon(current *item) error {
 		weapon.Range = *system.Range
 	}
 	if persistent := system.Damage.Persistent; persistent != nil {
-		importer.report.skip(current.Name, fmt.Sprintf("persistent %d %s", persistent.Number, persistent.Type), ReasonEffort3)
+		if creature.IsDamageType(persistent.Type) && persistent.Number > 0 {
+			weapon.Persistent = &creature.DamagePart{Dice: strconv.Itoa(persistent.Number), Type: persistent.Type}
+		} else {
+			importer.report.skip(current.Name, fmt.Sprintf("persistent %d %s", persistent.Number, persistent.Type), ReasonUnsupported)
+		}
 	}
-	if system.SplashDamage.Value > 0 {
-		importer.report.skip(current.Name, fmt.Sprintf("splash %d", system.SplashDamage.Value), ReasonEffort3)
-	}
+	weapon.Splash = max(system.SplashDamage.Value, 0)
 	if len(system.Runes.Property) > 0 {
-		importer.report.skip(current.Name, "property runes "+strings.Join(system.Runes.Property, ", "), ReasonEffort3)
+		importer.report.skip(current.Name, "property runes "+strings.Join(system.Runes.Property, ", "), ReasonHandLayer)
 	}
 	if slices.Contains(weapon.Traits, "consumable") {
-		importer.report.skip(current.Name, fmt.Sprintf("quantity %d, not tracked", current.System.Quantity), ReasonEffort3)
+		importer.report.skip(current.Name, fmt.Sprintf("quantity %d, not tracked", current.System.Quantity), ReasonLaterRule)
 	}
-	importer.build.Weapons[uniqueID(current.Name, importer.weaponIDs)] = weapon
+	id := uniqueID(current.Name, importer.weaponIDs)
+	importer.build.Weapons[id] = weapon
+	importer.weaponByItem[current.ID] = id
 	return nil
 }
 
@@ -422,7 +437,7 @@ func (importer *pcImporter) spellcasting() error {
 		spells += count
 	}
 	if spells > 0 {
-		importer.report.skip(importer.source.Name, fmt.Sprintf("%d spells", spells), ReasonEffort3)
+		importer.report.skip(importer.source.Name, fmt.Sprintf("%d spells", spells), ReasonLaterRule)
 	}
 	return nil
 }
@@ -456,6 +471,16 @@ func (importer *pcImporter) finish() *creature.Creature {
 	}
 	if len(importer.resist) > 0 {
 		layer.Defense.Resist = importer.resist
+	}
+	layer.DyingMax = importer.dyingMax
+	if dc := importer.recoveryDC(); dc != baseRecoveryDC {
+		layer.RecoveryDC = dc
+	}
+	if len(importer.fightModifiers) > 0 {
+		layer.Modifiers = importer.fightModifiers
+	}
+	if len(importer.degreeShifts) > 0 {
+		layer.DegreeShifts = importer.degreeShifts
 	}
 	return layer
 }

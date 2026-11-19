@@ -2,6 +2,7 @@ package foundry
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
@@ -112,7 +113,7 @@ func importNPC(source *actor) (*creature.Creature, *Report, error) {
 	for _, immunity := range attributes.Immunities {
 		layer.Defense.Immune = append(layer.Defense.Immune, immunity.Type)
 		if len(immunity.Exceptions) > 0 {
-			report.skip(source.Name, fmt.Sprintf("immunity %s except %s", immunity.Type, strings.Join(immunity.Exceptions, ", ")), ReasonEffort3)
+			report.skip(source.Name, fmt.Sprintf("immunity %s except %s", immunity.Type, strings.Join(immunity.Exceptions, ", ")), ReasonLaterRule)
 		}
 	}
 	layer.Defense.Resist = npcAdjustments(attributes.Resistances, "resistance", source.Name, report)
@@ -128,7 +129,7 @@ func importNPC(source *actor) (*creature.Creature, *Report, error) {
 		case "spellcastingEntry":
 			err = importNPCSpellcasting(current, layer, report)
 		case "spell":
-			report.skip(current.Name, "spell", ReasonEffort3)
+			report.skip(current.Name, "spell", ReasonLaterRule)
 		case "action":
 			report.skip(current.Name, current.System.ActionType.Value, ReasonAbility)
 		case "lore":
@@ -171,12 +172,12 @@ func npcAdjustments(entries []npcAdjustment, label, owner string, report *Report
 		if key == "all-damage" {
 			key = "all"
 		}
-		if key != "all" && key != "physical" && !creature.IsDamageType(key) {
-			report.skip(owner, fmt.Sprintf("%s %s %d", label, entry.Type, entry.Value), ReasonEffort3)
+		if key != "all" && key != "physical" && !creature.IsDamageType(key) && !creature.IsDefenseTrait(key) {
+			report.skip(owner, fmt.Sprintf("%s %s %d", label, entry.Type, entry.Value), ReasonLaterRule)
 			continue
 		}
 		if len(entry.DoubleVs) > 0 {
-			report.skip(owner, fmt.Sprintf("%s %s doubled against %s", label, key, strings.Join(entry.DoubleVs, ", ")), ReasonEffort3)
+			report.skip(owner, fmt.Sprintf("%s %s doubled against %s", label, key, strings.Join(entry.DoubleVs, ", ")), ReasonLaterRule)
 		}
 		adjustments[key] = creature.Adjustment{Value: entry.Value, Except: entry.Exceptions}
 	}
@@ -194,20 +195,20 @@ func importNPCStrike(current *item, taken map[string]bool, layer *creature.Creat
 	strike := creature.Strike{Name: current.Name, Bonus: system.Bonus.Value, Traits: system.Traits.Value}
 	for _, roll := range system.DamageRolls {
 		what := fmt.Sprintf("%s %s damage", roll.Damage, roll.DamageType)
-		if roll.Category != "" {
-			report.skip(current.Name, what+" "+roll.Category, ReasonEffort3)
+		if roll.Category != "" && roll.Category != "persistent" && roll.Category != "splash" {
+			report.skip(current.Name, what+" "+roll.Category, ReasonLaterRule)
 			continue
 		}
 		if _, err := dice.Parse(roll.Damage); err != nil || !creature.IsDamageType(roll.DamageType) {
 			report.skip(current.Name, what, ReasonUnsupported)
 			continue
 		}
-		strike.Damage = append(strike.Damage, creature.DamagePart{Dice: roll.Damage, Type: roll.DamageType})
+		strike.Damage = append(strike.Damage, creature.DamagePart{Dice: roll.Damage, Type: roll.DamageType, Category: roll.Category})
 	}
 	for _, effect := range system.AttackEffects.Value {
-		report.skip(current.Name, "attack effect "+effect, ReasonEffort3)
+		report.skip(current.Name, "attack effect "+effect, ReasonLaterRule)
 	}
-	if len(strike.Damage) == 0 {
+	if !slices.ContainsFunc(strike.Damage, func(part creature.DamagePart) bool { return part.Category == "" }) {
 		report.skip(current.Name, "strike with no damage the sim can roll", ReasonUnsupported)
 		return nil
 	}

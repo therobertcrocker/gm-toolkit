@@ -51,7 +51,7 @@ func TestStrikeMissDealsNoDamage(t *testing.T) {
 	target := testCombatant("target", SideParty, creature.KindPC, 30, 22)
 	fight, events := testFight(script(t, 5), attacker, target)
 
-	fight.strike(attacker, target, fist())
+	fight.strike(attacker, target, fist(), "")
 
 	want := []Event{StrikeRolled{Attacker: "attacker", Target: "target", Strike: "fist", Die: 5, Bonus: 10, Total: 15, AC: 22, Degree: Failure}}
 	if !reflect.DeepEqual(events.events, want) {
@@ -67,7 +67,7 @@ func TestStrikeCriticalDoublesDamage(t *testing.T) {
 	target := testCombatant("target", SideParty, creature.KindPC, 30, 15)
 	fight, events := testFight(script(t, 15, 4), attacker, target)
 
-	fight.strike(attacker, target, fist())
+	fight.strike(attacker, target, fist(), "")
 
 	want := []Event{
 		StrikeRolled{Attacker: "attacker", Target: "target", Strike: "fist", Die: 15, Bonus: 10, Total: 25, AC: 15, Degree: CriticalSuccess},
@@ -83,8 +83,8 @@ func TestSecondAttackTakesPenalty(t *testing.T) {
 	target := testCombatant("target", SideParty, creature.KindPC, 30, 40)
 	fight, events := testFight(script(t, 10, 10), attacker, target)
 
-	fight.strike(attacker, target, fist())
-	fight.strike(attacker, target, fist())
+	fight.strike(attacker, target, fist(), "")
+	fight.strike(attacker, target, fist(), "")
 
 	second := events.events[1].(StrikeRolled)
 	if second.Penalty != -5 || second.Total != 15 {
@@ -120,8 +120,9 @@ func TestAdjustedDamage(t *testing.T) {
 		{"exception by strike trait", "mental", []string{"holy"}, 20, 20},
 		{"resistance stops at zero", "mental", nil, 1, 0},
 	}
+	target := NewCombatant(SideEnemies, &creature.Creature{Defense: defense})
 	for _, testCase := range cases {
-		if got := adjustedDamage(defense, testCase.damageType, testCase.traits, testCase.amount); got != testCase.want {
+		if got := target.adjustedDamage(testCase.damageType, testCase.traits, testCase.amount); got != testCase.want {
 			t.Errorf("%s: adjustedDamage = %d, want %d", testCase.name, got, testCase.want)
 		}
 	}
@@ -140,8 +141,8 @@ func TestAdjustedDamageImmunityGroups(t *testing.T) {
 		{"all covers piercing", []string{"all"}, "piercing", 0},
 	}
 	for _, testCase := range cases {
-		defense := creature.Defense{Immune: testCase.immune}
-		if got := adjustedDamage(defense, testCase.damageType, nil, 20); got != testCase.want {
+		target := NewCombatant(SideEnemies, &creature.Creature{Defense: creature.Defense{Immune: testCase.immune}})
+		if got := target.adjustedDamage(testCase.damageType, nil, 20); got != testCase.want {
 			t.Errorf("%s: adjustedDamage = %d, want %d", testCase.name, got, testCase.want)
 		}
 	}
@@ -152,7 +153,7 @@ func TestNPCDiesAtZero(t *testing.T) {
 	target := testCombatant("target", SideEnemies, creature.KindNPC, 5, 20)
 	fight, events := testFight(script(t, 15, 6), attacker, target)
 
-	fight.strike(attacker, target, fist())
+	fight.strike(attacker, target, fist(), "")
 
 	if !target.Dead || target.Dying != 0 {
 		t.Errorf("Dead, Dying = %v, %d, want true, 0", target.Dead, target.Dying)
@@ -181,7 +182,7 @@ func TestPCKnockedDownGoesDying(t *testing.T) {
 			attacker := testCombatant("attacker", SideEnemies, creature.KindNPC, 50, 20)
 			fight, events := testFight(script(t, testCase.die, 6), target, other, attacker)
 
-			fight.strike(attacker, target, fist())
+			fight.strike(attacker, target, fist(), "")
 
 			if target.Dying != testCase.wantDying || target.Dead {
 				t.Errorf("Dying, Dead = %d, %v, want %d, false", target.Dying, target.Dead, testCase.wantDying)

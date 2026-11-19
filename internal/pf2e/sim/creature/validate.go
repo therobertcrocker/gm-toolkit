@@ -5,8 +5,6 @@ import (
 	"maps"
 	"slices"
 	"strings"
-
-	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/dice"
 )
 
 func (creature *Creature) prepare() error {
@@ -27,6 +25,12 @@ func (creature *Creature) prepare() error {
 	if creature.Defense.AC < 1 {
 		report("defense.ac must be at least 1")
 	}
+	if creature.HeroPoints < 0 || creature.RecoveryDC < 0 {
+		report("hero_points and recovery_dc must not be negative")
+	}
+	if creature.DyingMax != 0 && creature.DyingMax < 2 {
+		report("dying_max %d: want at least 2, or leave it unset for 4", creature.DyingMax)
+	}
 	for _, table := range []struct {
 		name        string
 		adjustments map[string]Adjustment
@@ -35,8 +39,8 @@ func (creature *Creature) prepare() error {
 		{"weakness", creature.Defense.Weakness},
 	} {
 		for _, key := range slices.Sorted(maps.Keys(table.adjustments)) {
-			if key != "all" && key != "physical" && !IsDamageType(key) {
-				report("defense.%s.%s: not a damage type, physical or all", table.name, key)
+			if key != "all" && key != "physical" && !IsDamageType(key) && !IsDefenseTrait(key) {
+				report("defense.%s.%s: not a damage type, physical, all or one of %s", table.name, key, strings.Join(DefenseTraits, ", "))
 			}
 			if table.adjustments[key].Value < 1 {
 				report("defense.%s.%s: value must be at least 1", table.name, key)
@@ -44,25 +48,34 @@ func (creature *Creature) prepare() error {
 		}
 	}
 
+	if adaptive := creature.Defense.Adaptive; adaptive != nil {
+		if adaptive.Value < 1 || len(adaptive.Types) == 0 || !slices.ContainsFunc(adaptive.Types, IsDamageType) {
+			report("defense.adaptive: want a value of at least 1 and damage types")
+		}
+		for _, damageType := range adaptive.Types {
+			if !IsDamageType(damageType) {
+				report("defense.adaptive: %q is not a damage type", damageType)
+			}
+		}
+	}
+	creature.checkFightRules(report)
+
 	for _, id := range creature.StrikeIDs() {
 		strike := creature.Strikes[id]
 		strike.ID = id
 		if strike.Name == "" {
 			report("strike.%s: name is empty", id)
 		}
+		if strike.Range < 0 {
+			report("strike.%s: range must not be negative", id)
+		}
+		creature.checkOutcomes("strike."+id, strike.Outcomes, true, report)
 		if len(strike.Damage) == 0 {
 			report("strike.%s: no damage", id)
 		}
-		for index := range strike.Damage {
-			part := &strike.Damage[index]
-			expression, err := dice.Parse(part.Dice)
-			if err != nil {
-				report("strike.%s.damage[%d]: %v", id, index, err)
-			}
-			part.Roll = expression
-			if !IsDamageType(part.Type) {
-				report("strike.%s.damage[%d]: unknown damage type %q", id, index, part.Type)
-			}
+		prepareDamage("strike."+id, strike.Damage, report)
+		if len(strike.Damage) > 0 && !slices.ContainsFunc(strike.Damage, func(part DamagePart) bool { return part.Category == "" }) {
+			report("strike.%s: needs a damage part with no category", id)
 		}
 		creature.Strikes[id] = strike
 	}
@@ -83,10 +96,9 @@ func (creature *Creature) prepare() error {
 		if len(ability.Steps) == 0 {
 			report("ability.%s: no steps", id)
 		}
-		for index, step := range ability.Steps {
-			if _, found := creature.Strikes[step.Strike]; !found {
-				report("ability.%s.steps[%d]: unknown strike %q", id, index, step.Strike)
-			}
+		checkArea("ability."+id, ability.Area, report)
+		for index := range ability.Steps {
+			creature.checkStep(fmt.Sprintf("ability.%s.steps[%d]", id, index), &ability.Steps[index], report)
 		}
 	}
 

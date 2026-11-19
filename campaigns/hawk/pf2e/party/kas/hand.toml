@@ -1,0 +1,12 @@
+schema = 1
+
+hero_points = 1
+
+# Greater Crushing: clumsy 2 and enfeebled 2 until the end of Kas's next turn.
+# Greater Fearsome: frightened 2. Both on a critical hit.
+[build.weapon.protectors-fury]
+critical_success = [
+  { condition = "clumsy", value = 2, duration = { until = "source-turn-end" } },
+  { condition = "enfeebled", value = 2, duration = { until = "source-turn-end" } },
+  { condition = "frightened", value = 2 },
+]

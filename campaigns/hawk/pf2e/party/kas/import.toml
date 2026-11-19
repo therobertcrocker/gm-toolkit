@@ -6,6 +6,8 @@ name = "Kas Fringebramble"
 kind = "pc"
 level = 14
 traits = ["halfling", "humanoid"]
+dying_max = 6
+recovery_dc = 6
 
 [defense]
   [defense.resist]
@@ -18,6 +20,7 @@ traits = ["halfling", "humanoid"]
   key = "str"
   speed = 25
   weapon_specialization = "normal"
+  critical_specialization = "master"
   [build.boosts]
     ancestry = ["str", "cha"]
     background = ["con", "str"]
@@ -73,3 +76,35 @@ traits = ["halfling", "humanoid"]
     [build.modifier.toughness]
       selector = "hp"
       per_level = 1
+
+[modifier]
+  [modifier.battlefield-surveyor]
+    selector = "initiative"
+    type = "circumstance"
+    value = 2
+
+[degree_shift]
+  [degree_shift.bravery]
+    selector = "will"
+    against = ["fear"]
+    from = "success"
+    to = "critical-success"
+  [degree_shift.gutsy-halfling]
+    selector = "saving-throw"
+    against = ["emotion"]
+    from = "success"
+    to = "critical-success"
+  [degree_shift.irrepressible-halfling]
+    selector = "saving-throw"
+    against = ["emotion"]
+    from = "success"
+    to = "critical-success"
+  [degree_shift.irrepressible-halfling-2]
+    selector = "saving-throw"
+    against = ["emotion"]
+    from = "critical-failure"
+    to = "failure"
+  [degree_shift.juggernaut]
+    selector = "fortitude"
+    from = "success"
+    to = "critical-success"

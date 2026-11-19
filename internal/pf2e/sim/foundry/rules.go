@@ -17,9 +17,9 @@ var (
 	weaponStatSelectors = map[string]string{
 		"attack": "attack", "strike-attack-roll": "attack", "weapon-damage": "damage", "strike-damage": "damage",
 	}
-	laterSelectors = []string{"initiative", "unarmed-attack", "unarmed-damage", "alchemical-bomb-damage", "melee-strike-damage"}
+	laterSelectors = []string{"unarmed-attack", "unarmed-damage", "alchemical-bomb-damage", "melee-strike-damage"}
 	bonusTypes     = map[string]string{"": "", "untyped": "", "item": "item", "status": "status", "circumstance": "circumstance"}
-	laterRuleKeys  = []string{"AdjustDegreeOfSuccess", "DamageDice", "CriticalSpecialization", "AdjustStrike", "Strike", "Weakness", "Immunity"}
+	laterRuleKeys  = []string{"DamageDice", "Strike", "Weakness", "Immunity"}
 	unusedRuleKeys = []string{"Note", "GrantItem", "ChoiceSet", "Sense", "TokenLight", "TokenEffectIcon", "ItemAlteration", "CraftingAbility"}
 	physicalTypes  = []string{"weapon", "armor", "equipment", "consumable", "shield", "backpack", "treasure", "ammo", "book"}
 	unreadTypes    = []string{"condition", "effect", "spell"}
@@ -85,13 +85,19 @@ func (importer *pcImporter) applyRule(current *item, rule map[string]any, option
 	case key == "MartialProficiency":
 		importer.martialProficiency(current, rule)
 	case key == "AdjustModifier":
-		importer.adjustModifier(current, rule)
+		importer.adjustModifier(current, rule, options)
+	case key == "AdjustDegreeOfSuccess":
+		importer.degreeShift(current, rule, options)
+	case key == "CriticalSpecialization":
+		importer.criticalSpecialization(current, rule, options)
+	case key == "AdjustStrike":
+		importer.adjustStrike(current, rule)
 	case key == "DexterityModifierCap":
 		importer.dexterityCap(current, rule)
 	case key == "RollOption":
 		importer.rollOption(current, rule)
 	case slices.Contains(laterRuleKeys, key):
-		importer.report.skip(current.Name, key, ReasonEffort3)
+		importer.report.skip(current.Name, key, ReasonLaterRule)
 	case slices.Contains(unusedRuleKeys, key):
 		importer.report.unused(key)
 	default:
@@ -100,9 +106,13 @@ func (importer *pcImporter) applyRule(current *item, rule map[string]any, option
 }
 
 func (importer *pcImporter) flatModifier(current *item, rule map[string]any, options rollOptions) {
+	if category, _ := rule["damageCategory"].(string); category == "splash" {
+		importer.splashModifier(current, rule)
+		return
+	}
 	for _, field := range []string{"damageCategory", "damageType", "critical"} {
 		if _, found := rule[field]; found {
-			importer.report.skip(current.Name, "FlatModifier with "+field, ReasonEffort3)
+			importer.report.skip(current.Name, "FlatModifier with "+field, ReasonLaterRule)
 			return
 		}
 	}
@@ -117,12 +127,16 @@ func (importer *pcImporter) flatModifier(current *item, rule map[string]any, opt
 }
 
 func (importer *pcImporter) flatModifierFor(current *item, rule map[string]any, selector string, options rollOptions) {
+	if selector == "initiative" {
+		importer.initiativeModifier(current, rule)
+		return
+	}
 	what := "FlatModifier " + selector
 	stat, isStat := statSelectors[selector]
 	weaponStat, isWeaponStat := weaponStatSelectors[selector]
 	switch {
 	case slices.Contains(laterSelectors, selector):
-		importer.report.skip(current.Name, what, ReasonEffort3)
+		importer.report.skip(current.Name, what, ReasonLaterRule)
 		return
 	case !isStat && !isWeaponStat:
 		importer.report.skip(current.Name, what, ReasonNotCombat)
@@ -206,7 +220,7 @@ func (importer *pcImporter) resistance(current *item, rule map[string]any, optio
 		importer.report.skip(current.Name, what, ReasonConditional)
 		return
 	case !creature.IsDamageType(kind):
-		importer.report.skip(current.Name, what, ReasonEffort3)
+		importer.report.skip(current.Name, what, ReasonLaterRule)
 		return
 	}
 	value, err := importer.number(rule["value"])
@@ -225,7 +239,7 @@ func (importer *pcImporter) activeEffectLike(current *item, rule map[string]any,
 	key, isRank := rankKey(path)
 	switch {
 	case strings.HasPrefix(path, "system.attributes.dying."):
-		importer.report.skip(current.Name, what, ReasonEffort3)
+		importer.dyingRule(current, rule, options, path)
 		return
 	case !isRank:
 		importer.report.skip(current.Name, what, ReasonNotCombat)
@@ -315,14 +329,20 @@ func (importer *pcImporter) martialProficiency(current *item, rule map[string]an
 	importer.raise(creature.WeaponGroupPrefix+group, rank)
 }
 
-func (importer *pcImporter) adjustModifier(current *item, rule map[string]any) {
+func (importer *pcImporter) adjustModifier(current *item, rule map[string]any, options rollOptions) {
 	slug, _ := rule["slug"].(string)
+	selectors := append(textList(rule["selector"]), textList(rule["selectors"])...)
+	what := "AdjustModifier " + strings.Join(selectors, ", ")
+	predicate, _ := rule["predicate"].([]any)
+	if held, err := options.holds(predicate); err == nil && !held {
+		importer.report.skip(current.Name, what, ReasonConditional)
+		return
+	}
 	if suppress, _ := rule["suppress"].(bool); suppress && slug == "armor-speed-penalty" {
 		importer.speedPenaltySuppressed = true
 		return
 	}
-	selectors := append(textList(rule["selector"]), textList(rule["selectors"])...)
-	importer.report.skip(current.Name, "AdjustModifier "+strings.Join(selectors, ", "), ReasonUnsupported)
+	importer.report.skip(current.Name, what, ReasonUnsupported)
 }
 
 func (importer *pcImporter) dexterityCap(current *item, rule map[string]any) {

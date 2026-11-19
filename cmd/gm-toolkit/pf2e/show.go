@@ -1,6 +1,7 @@
 package pf2e
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"maps"
@@ -80,9 +81,15 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 	}
 	printAdjustments(out, "Resist", defense.Resist)
 	printAdjustments(out, "Weakness", defense.Weakness)
+	if adaptive := defense.Adaptive; adaptive != nil {
+		fmt.Fprintf(out, "Adaptive resistance %d (%s)\n", adaptive.Value, strings.Join(adaptive.Types, ", "))
+	}
 	fmt.Fprintf(out, "Speed %s\n", speedText(shown.Speed))
 	if shown.ClassDC > 0 {
 		fmt.Fprintf(out, "Class DC %d\n", shown.ClassDC)
+	}
+	if shown.HeroPoints > 0 || shown.DyingMax > 0 || shown.RecoveryDC > 0 {
+		fmt.Fprintf(out, "Hero points %d  dying max %d  recovery DC %d\n", shown.HeroPoints, cmp.Or(shown.DyingMax, 4), cmp.Or(shown.RecoveryDC, 10))
 	}
 	if casting := shown.Spellcasting; casting != nil {
 		fmt.Fprintf(out, "Spell attack %+d  DC %d", casting.Attack, casting.DC)
@@ -99,6 +106,9 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 			fmt.Fprintf(out, "  %s %+d", strike.Name, strike.Bonus)
 			if len(strike.Traits) > 0 {
 				fmt.Fprintf(out, " (%s)", strings.Join(strike.Traits, ", "))
+			}
+			if strike.Range > 0 {
+				fmt.Fprintf(out, " range %d ft", strike.Range)
 			}
 			fmt.Fprintf(out, "  %s\n", damageText(strike.Damage))
 		}
@@ -120,7 +130,47 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 		}
 	}
 
+	printFightRules(out, shown, bold, reset)
 	fmt.Fprintf(out, "Layers %s\n", strings.Join(shown.Layers, " + "))
+}
+
+func printFightRules(out io.Writer, shown *creature.Creature, bold, reset string) {
+	if len(shown.Modifiers) > 0 {
+		fmt.Fprintf(out, "%sModifiers%s\n", bold, reset)
+		for _, id := range slices.Sorted(maps.Keys(shown.Modifiers)) {
+			modifier := shown.Modifiers[id]
+			line := fmt.Sprintf("  %s  %+d", id, modifier.Value)
+			if modifier.Type != "" {
+				line += " " + modifier.Type
+			}
+			line += " " + modifier.Selector
+			if len(modifier.Against) > 0 {
+				line += " against " + strings.Join(modifier.Against, ", ")
+			}
+			if modifier.PerCondition != "" {
+				line += " per " + modifier.PerCondition
+			}
+			fmt.Fprintln(out, line)
+		}
+	}
+	if len(shown.DegreeShifts) > 0 {
+		fmt.Fprintf(out, "%sDegree shifts%s\n", bold, reset)
+		for _, id := range shown.DegreeShiftIDs() {
+			shift := shown.DegreeShifts[id]
+			line := fmt.Sprintf("  %s  %s %s -> %s", id, shift.Selector, shift.From, shift.To)
+			if len(shift.Against) > 0 {
+				line += " against " + strings.Join(shift.Against, ", ")
+			}
+			fmt.Fprintln(out, line)
+		}
+	}
+	if len(shown.ConditionAdjustments) > 0 {
+		fmt.Fprintf(out, "%sCondition adjustments%s\n", bold, reset)
+		for _, name := range slices.Sorted(maps.Keys(shown.ConditionAdjustments)) {
+			adjustment := shown.ConditionAdjustments[name]
+			fmt.Fprintf(out, "  %s  gain %+d  decay %d\n", name, adjustment.Gain, adjustment.Decay)
+		}
+	}
 }
 
 func printAdjustments(out io.Writer, label string, adjustments map[string]creature.Adjustment) {
@@ -151,6 +201,9 @@ func damageText(parts []creature.DamagePart) string {
 	texts := make([]string, len(parts))
 	for index, part := range parts {
 		texts[index] = part.Roll.String() + " " + part.Type
+		if part.Category != "" {
+			texts[index] += " " + part.Category
+		}
 	}
 	return strings.Join(texts, " plus ")
 }

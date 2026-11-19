@@ -18,7 +18,7 @@ as data and an encounter designer are later work, in their own initiatives.
 ## Shape
 
 A fight moves through five stages. Four exist today; the runner arrives with
-Effort 6 of `F.041`.
+Effort 8 of `F.041`.
 
 ```
 import → files → load → engine → runner (planned)
@@ -33,8 +33,9 @@ import → files → load → engine → runner (planned)
 - **load** — `creature.Load` merges a creature's layers in order and checks
   the result into one `creature.Creature`. See [data files](data-files.md).
 - **engine** — `engine.Run` plays one fight from an `engine.Setup` and reports
-  every step as an event. See [engine](engine.md).
-- **runner (planned, Effort 6)** — plays a scenario many times and scores the
+  every step as an event. It holds the core rules and the effect core: saves,
+  conditions, damage kinds and the Down row. See [engine](engine.md).
+- **runner (planned, Effort 8)** — plays a scenario many times and scores the
   results.
 
 <!-- diagram: the five-stage pipeline, with the planned runner stage dashed -->
@@ -59,15 +60,16 @@ through two interfaces:
 
 - **`Decider` (decisions in)** — each step of a turn, the engine asks the
   decider what the creature does and at whom. Today the one decider is
-  `FirstFitting`, a fixed behaviour for tests. Effort 5's tactics replace it
+  `FirstFitting`, a fixed behaviour for tests. Effort 7's tactics replace it
   behind the same seam.
 - **`Observer` (events out)** — the engine reports every step through one
   `Observe(Event)` method. Events are plain values, so a test, a scorer or a
   replay can keep them in a list.
 
-**Position (planned, Effort 5).** Every creature counts as engaged with every
-foe. Reach traits such as `reach-10` are loaded and shown, but nothing checks
-them yet.
+**Position (planned, Effort 7).** Every creature counts as engaged with every
+foe, so an area catches every standing foe and splash lands on the primary
+target only. Reach traits such as `reach-10` are loaded and shown, but nothing
+checks them yet.
 
 **Commands.** `gm-toolkit pf2e sim show <creature>` finds a creature in the
 active campaign, merges its layers (plus any `--variant` layers) and prints the
@@ -83,8 +85,8 @@ every command under it takes it.
 | Page | Scope | Status |
 |------|-------|--------|
 | [data files](data-files.md) | Creature folders, layers, the merge rule, the file format, PC builds, lookup, the import | Written |
-| [engine](engine.md) | The roller, the rules, the fight loop, the decider and the events | Written |
-| sim (planned) | Tactics, position, scenarios and the runner | Effort 5 |
+| [engine](engine.md) | The roller, checks and modifiers, saves, ability steps, conditions, damage and dying, the fight loop, the decider and the events | Written |
+| sim (planned) | Tactics, position, scenarios and the runner | Efforts 7 and 8 |
 
 <br/>
 
