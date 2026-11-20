@@ -61,6 +61,22 @@ func TestImportFightWritesNPCLayers(t *testing.T) {
 	}
 }
 
+func TestImportFightReadsPathsWithPatternCharacters(t *testing.T) {
+	fight := filepath.Join(t.TempDir(), "campaigns [old]", "fall-of-luna*?")
+	copyFile(t, filepath.Join("testdata", "actors", "abyssal-luna.json"), filepath.Join(fight, "source", "actors", "abyssal-luna.json"))
+	if err := os.WriteFile(filepath.Join(fight, "source", "actors", "notes.txt"), []byte("not an export"), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	reports, err := ImportFight(fight, t.TempDir())
+	if err != nil {
+		t.Fatalf("ImportFight: %v", err)
+	}
+	if len(reports) != 1 || reports[0].Creature != "abyssal-luna" {
+		t.Errorf("reports = %+v, want one for abyssal-luna", reports)
+	}
+}
+
 func TestImportFightNeedsExports(t *testing.T) {
 	_, err := ImportFight(t.TempDir(), t.TempDir())
 	if !errors.Is(err, ErrNoExports) {

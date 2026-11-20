@@ -807,7 +807,7 @@ func TestFastHealing(t *testing.T) {
 		wantEnd int
 	}{
 		{name: "below maximum", kind: creature.KindNPC, hp: 50, want: []Healed{{Source: "owner", Target: "owner", Ability: "fast-healing", Amount: 10, HPAfter: 60}}, wantEnd: 60},
-		{name: "near maximum", kind: creature.KindNPC, hp: 95, want: []Healed{{Source: "owner", Target: "owner", Ability: "fast-healing", Amount: 10, HPAfter: 100}}, wantEnd: 100},
+		{name: "near maximum", kind: creature.KindNPC, hp: 95, want: []Healed{{Source: "owner", Target: "owner", Ability: "fast-healing", Amount: 5, HPAfter: 100}}, wantEnd: 100},
 		{name: "at maximum", kind: creature.KindNPC, hp: 100, wantEnd: 100},
 		{name: "stable at 0 HP", kind: creature.KindPC, hp: 0, want: []Healed{{Source: "owner", Target: "owner", Ability: "fast-healing", Amount: 10, HPAfter: 10}}, wantEnd: 10},
 		{name: "dying at 0 HP", kind: creature.KindPC, hp: 0, dying: 1, want: []Healed{{Source: "owner", Target: "owner", Ability: "fast-healing", Amount: 10, HPAfter: 10}}, wantEnd: 10},

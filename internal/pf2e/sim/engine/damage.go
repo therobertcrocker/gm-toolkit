@@ -14,11 +14,14 @@ type rolledPart struct {
 type damageRoll struct {
 	parts      []rolledPart
 	persistent []creature.DamagePart
-	doubled    bool
+	scale      persistentScale
 }
 
 func (fight *Fight) rollDamage(parts []creature.DamagePart, critical bool, bonus int) damageRoll {
-	roll := damageRoll{doubled: critical}
+	roll := damageRoll{}
+	if critical {
+		roll.scale = persistentDoubled
+	}
 	bonusAdded := false
 	for _, part := range parts {
 		if part.Category == "persistent" {
@@ -72,7 +75,13 @@ func addRolled(parts []rolledPart, damageType string, amount int) []rolledPart {
 }
 
 func (roll damageRoll) basic(degree Degree) damageRoll {
-	scaled := damageRoll{parts: make([]rolledPart, len(roll.parts)), persistent: roll.persistent, doubled: roll.doubled}
+	scaled := damageRoll{parts: make([]rolledPart, len(roll.parts)), persistent: roll.persistent, scale: roll.scale}
+	switch degree {
+	case Success:
+		scaled.scale = persistentHalved
+	case CriticalFailure:
+		scaled.scale = persistentDoubled
+	}
 	total, scaledTotal := 0, 0
 	for index, part := range roll.parts {
 		amount := part.amount
@@ -139,7 +148,7 @@ func (fight *Fight) applyDamage(source effectSource, target *Combatant, roll dam
 	}
 	if !target.Dead {
 		for _, part := range roll.persistent {
-			fight.addPersistent(source, target, part, roll.doubled)
+			fight.addPersistent(source, target, part, roll.scale)
 		}
 	}
 	if total > 0 && source.actor.Side != target.Side && source.ability != persistentAbility {

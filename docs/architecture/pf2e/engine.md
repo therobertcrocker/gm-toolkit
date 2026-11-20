@@ -459,7 +459,8 @@ An immunity, resistance or weakness covers a type when its key is that type,
 names damage types or effect traits that it does not cover. A weakness or
 resistance keyed on a trait (`holy`, `cold-iron`, `silver`, `adamantine`,
 `unholy`) applies once per hit when the effect carries the trait: the weakness
-when any damage got through, the resistance up to the damage left.
+when any damage got through, the resistance up to the damage left. A Strike
+that an ability makes carries the ability's traits as well as its own.
 
 Temporary HP absorb the total first, and the rest comes off HP, which stops at
 0. `DamageDealt` and `Healed` carry `TriggeredBy`, the creature whose action
@@ -469,7 +470,9 @@ Vulnerability is credited to the PC who caused it.
 ### Persistent damage
 
 A creature keeps one persistent damage per type; a new one of the same type
-replaces it only when its average is higher. A critical hit doubles it. At the
+replaces it only when its average is higher. A critical hit, or a critical
+failure on a basic save, doubles it; a success on a basic save halves it,
+rounded down. At the
 end of the bearer's turn each one deals its damage through the same steps as
 any damage, then the bearer rolls a DC 15 flat check, and a success ends it. A
 creature immune to the type never gains it.
@@ -570,7 +573,7 @@ new rule has its own event that names who, which ability and what set it off.
 | `ImmuneToEffect` | An ability step skips a target immune to its traits |
 | `DamageDealt` | Damage lands: each type rolled and taken, the trait adjustment, the total, the temporary HP absorbed, the HP left and `TriggeredBy` |
 | `HPLost` | HP are lost without damage (drained) |
-| `Healed` | A creature is healed, with the HP after and `TriggeredBy` |
+| `Healed` | A creature is healed, with the HP restored (not the amount rolled), the HP after and `TriggeredBy` |
 | `Revived` | Healing lifts a dying PC: the dying value it had and its new wounded value |
 | `TempHPGained` | A creature gains temporary HP |
 | `ConditionChanged` | A condition's value changes on a creature, from and to |

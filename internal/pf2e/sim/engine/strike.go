@@ -23,6 +23,7 @@ func attackPenalty(attacksMade int, agile bool) int {
 
 type strikeOptions struct {
 	ability     string
+	traits      []string
 	extraDice   int
 	extraDamage []creature.DamagePart
 	counts      int
@@ -46,6 +47,16 @@ func (fight *Fight) strikePenalty(attacker *Combatant, strike creature.Strike, o
 	return penalty
 }
 
+func withTraits(traits, added []string) []string {
+	combined := traits
+	for _, trait := range added {
+		if !slices.Contains(combined, trait) {
+			combined = append(slices.Clone(combined), trait)
+		}
+	}
+	return combined
+}
+
 func strikeDamage(parts []creature.DamagePart, options strikeOptions) []creature.DamagePart {
 	if options.extraDice == 0 && len(options.extraDamage) == 0 {
 		return parts
@@ -62,6 +73,7 @@ func strikeDamage(parts []creature.DamagePart, options strikeOptions) []creature
 }
 
 func (fight *Fight) strike(attacker, target *Combatant, strike creature.Strike, options strikeOptions) (Degree, bool) {
+	strike.Traits = withTraits(strike.Traits, options.traits)
 	if !strike.Melee() && !fight.provoke(attacker, strike.ID, TriggerEvent{Ability: options.ability, Strike: strike.ID, Traits: strike.Traits, Ranged: true}) {
 		return Failure, false
 	}

@@ -71,9 +71,9 @@ func TestPersistentKeepsTheLarger(t *testing.T) {
 	fight, events := testFight(script(t), attacker, target)
 	source := effectSource{actor: attacker}
 
-	fight.addPersistent(source, target, categorizedPart(t, "1d6", "fire", "persistent"), false)
-	fight.addPersistent(source, target, categorizedPart(t, "2d6", "fire", "persistent"), false)
-	fight.addPersistent(source, target, categorizedPart(t, "1", "fire", "persistent"), false)
+	fight.addPersistent(source, target, categorizedPart(t, "1d6", "fire", "persistent"), persistentWhole)
+	fight.addPersistent(source, target, categorizedPart(t, "2d6", "fire", "persistent"), persistentWhole)
+	fight.addPersistent(source, target, categorizedPart(t, "1", "fire", "persistent"), persistentWhole)
 
 	if len(target.persistent) != 1 || target.persistent[0].part.Roll.String() != "2d6" {
 		t.Errorf("persistent = %+v, want one 2d6 fire", target.persistent)
@@ -91,7 +91,7 @@ func TestPersistentDoublesOnACriticalHit(t *testing.T) {
 	fight, events := testFight(script(t, 20, 4, 3, 1), attacker, target)
 
 	fight.strike(attacker, target, strike, strikeOptions{})
-	if len(target.persistent) != 1 || !target.persistent[0].doubled {
+	if len(target.persistent) != 1 || target.persistent[0].scale != persistentDoubled {
 		t.Fatalf("persistent = %+v, want one doubled instance", target.persistent)
 	}
 
@@ -107,7 +107,7 @@ func TestPersistentImmunity(t *testing.T) {
 	target.Creature.Defense.Immune = []string{"bleed"}
 	fight, _ := testFight(script(t), attacker, target)
 
-	fight.addPersistent(effectSource{actor: attacker}, target, categorizedPart(t, "1d6", "bleed", "persistent"), false)
+	fight.addPersistent(effectSource{actor: attacker}, target, categorizedPart(t, "1d6", "bleed", "persistent"), persistentWhole)
 
 	if len(target.persistent) != 0 {
 		t.Errorf("persistent = %+v, want none", target.persistent)

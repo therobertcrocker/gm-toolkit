@@ -16,6 +16,9 @@ bin/
 # Claude's private copy of hawk
 /campaigns/hawk-claude/
 
+# Reference materials (copyrighted)
+reference/
+!/campaigns/hawk/encounters/fall-of-luna/reference/
 
 # Go
 *.test

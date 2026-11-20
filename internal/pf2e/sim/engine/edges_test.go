@@ -101,6 +101,36 @@ func TestStabilizingAtDeathValueZeroDoesNotKill(t *testing.T) {
 	}
 }
 
+func TestBasicSaveScalesPersistentDamage(t *testing.T) {
+	roll := damageRoll{
+		parts:      []rolledPart{{damageType: "fire", amount: 5}},
+		persistent: []creature.DamagePart{categorizedPart(t, "2d6", "fire", "persistent")},
+	}
+
+	want := map[Degree]persistentScale{CriticalSuccess: persistentWhole, Success: persistentHalved, Failure: persistentWhole, CriticalFailure: persistentDoubled}
+	for degree, wantScale := range want {
+		if got := roll.basic(degree).scale; got != wantScale {
+			t.Errorf("degree %v: scale = %v, want %v", degree, got, wantScale)
+		}
+	}
+}
+
+func TestHalvedPersistentDamageRoundsDown(t *testing.T) {
+	attacker := testCombatant("attacker", SideEnemies, creature.KindNPC, 50, 20)
+	target := testCombatant("target", SideParty, creature.KindPC, 50, 20)
+	fight, events := testFight(script(t, 5, 1), attacker, target)
+	fight.addPersistent(effectSource{actor: attacker}, target, categorizedPart(t, "1d6", "fire", "persistent"), persistentHalved)
+
+	fight.takePersistentDamage(target)
+
+	if changed := eventsOf[PersistentChanged](events.events); len(changed) != 1 || changed[0].Dice != "1d6 /2" {
+		t.Errorf("PersistentChanged = %+v, want one 1d6 /2", changed)
+	}
+	if dealt := lastDamage(t, events); dealt.Total != 2 {
+		t.Errorf("persistent damage = %d, want 2 (rolled 5, halved)", dealt.Total)
+	}
+}
+
 func TestBasicSuccessHalvesTheTotal(t *testing.T) {
 	roll := damageRoll{parts: []rolledPart{{damageType: "fire", amount: 5}, {damageType: "cold", amount: 5}}}
 

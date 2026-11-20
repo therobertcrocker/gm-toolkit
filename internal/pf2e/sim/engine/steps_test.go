@@ -275,6 +275,21 @@ func TestAbilityRetargetsWhenTargetFalls(t *testing.T) {
 	}
 }
 
+func TestAbilityStrikeCarriesTheAbilityTraits(t *testing.T) {
+	attacker := testCombatant("attacker", SideParty, creature.KindPC, 50, 20)
+	target := testCombatant("target", SideEnemies, creature.KindNPC, 50, 20)
+	target.Creature.Defense.Weakness = map[string]creature.Adjustment{"unholy": {Value: 5}}
+	smite := creature.Ability{ID: "smite", Name: "Smite", Actions: 1, Traits: []string{"unholy"}, Steps: []creature.Step{{Strike: "fist"}}}
+	fight, events := testFight(script(t, 15, 4), attacker, target)
+	fight.current = attacker
+
+	fight.useAbility(abilityUse{actor: attacker, ability: smite, target: target})
+
+	if dealt := lastDamage(t, events); dealt.Trait != 5 || dealt.Total != 11 {
+		t.Errorf("damage = %+v, want trait 5 and total 11: the ability's unholy trait meets the weakness", dealt)
+	}
+}
+
 const sporeCaster = `schema = 1
 name = "Spore Caster"
 kind = "npc"

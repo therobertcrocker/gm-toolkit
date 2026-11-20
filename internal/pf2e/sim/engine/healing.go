@@ -4,9 +4,10 @@ func (fight *Fight) heal(source effectSource, target *Combatant, amount int) {
 	if target.Dead {
 		return
 	}
-	wasDown := target.HP == 0
+	hpBefore := target.HP
+	wasDown := hpBefore == 0
 	target.HP = min(target.HP+max(amount, 0), target.MaxHP())
-	fight.observer.Observe(Healed{Source: source.actor.ID, Target: target.ID, Ability: source.ability, Amount: amount, HPAfter: target.HP, TriggeredBy: source.triggeredBy})
+	fight.observer.Observe(Healed{Source: source.actor.ID, Target: target.ID, Ability: source.ability, Amount: target.HP - hpBefore, HPAfter: target.HP, TriggeredBy: source.triggeredBy})
 	if !wasDown || target.HP == 0 {
 		return
 	}

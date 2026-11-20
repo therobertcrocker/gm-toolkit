@@ -140,6 +140,7 @@ func (fight *Fight) runStep(source effectSource, step creature.Step, targets []*
 			if target.Standing() {
 				fight.strike(source.actor, target, strike, strikeOptions{
 					ability:     source.ability,
+					traits:      source.traits,
 					extraDice:   step.ExtraDice,
 					extraDamage: step.ExtraDamage,
 					counts:      step.Counts,

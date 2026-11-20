@@ -22,7 +22,7 @@ const layerHeader = "# Written by gm-toolkit pf2e sim import from %s.\n# Import 
 
 func ImportFight(fightDirectory, partyDirectory string) ([]*Report, error) {
 	sourceDirectory := filepath.Join(fightDirectory, "source")
-	actorPaths, err := filepath.Glob(filepath.Join(sourceDirectory, "actors", "*.json"))
+	actorPaths, err := jsonFiles(filepath.Join(sourceDirectory, "actors"))
 	if err != nil {
 		return nil, fmt.Errorf("import %s: %w", fightDirectory, err)
 	}
@@ -37,7 +37,7 @@ func ImportFight(fightDirectory, partyDirectory string) ([]*Report, error) {
 		}
 		reports = append(reports, report)
 	}
-	itemPaths, err := filepath.Glob(filepath.Join(sourceDirectory, "items", "*.json"))
+	itemPaths, err := jsonFiles(filepath.Join(sourceDirectory, "items"))
 	if err != nil {
 		return reports, fmt.Errorf("import %s: %w", fightDirectory, err)
 	}
@@ -51,6 +51,24 @@ func ImportFight(fightDirectory, partyDirectory string) ([]*Report, error) {
 		reports = append(reports, report)
 	}
 	return reports, nil
+}
+
+// deliberate: a directory listing, not filepath.Glob, because a campaign path holding [, * or ? would be read as a pattern.
+func jsonFiles(directory string) ([]string, error) {
+	entries, err := os.ReadDir(directory)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
+			paths = append(paths, filepath.Join(directory, entry.Name()))
+		}
+	}
+	return paths, nil
 }
 
 func importActorFile(path, sourceDirectory, fightDirectory, partyDirectory string) (*Report, error) {
