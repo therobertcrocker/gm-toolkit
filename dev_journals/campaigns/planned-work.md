@@ -60,6 +60,7 @@ Initiatives of an arc that wait for their turn. Each boundary is in the [`A.004`
 | ID | Item | Trigger | Detail |
 |----|------|---------|--------|
 | `R.036` | One campaign resolve-and-hint helper | -- | Four commands load the registry, call `campaigns.ResolveActive` and map its errors to hints, each in its own copy: `faction.go` (`formatActiveResolveError`), `pf2e/pf2e.go` (`resolveCampaign`), `campaign/add_rules.go` and `spatial/build.go`; the last two hint only `ErrNoActiveCampaign`, not `ErrCampaignNotRegistered` or `ErrCampaignRootMissing`. Share one helper that takes the command's prefix. Filed at the `F.041.E1` close (Decision Record 3). |
+| `R.037` | Repo layout by tool | `after F.041.E4` | Folders mirror packages, tool by default: each campaign gets `faction/`, `pf2e/` and a `shared/` wrapper (first tenant `spatial`), `rulebooks/` becomes `library/faction/`, `internal/spatial` moves to `internal/shared/spatial`, and `docs/` is regrouped by tool. Eight agreed rules and three efforts (campaign data, Go packages, docs); Discovery first. Seed: [`repo-layout-seed.md`](./initiatives/seeds/repo-layout-seed.md) |
 
 ---
 <br />
