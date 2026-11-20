@@ -2,7 +2,7 @@
 
 > **What this is:** Claude's own view of one experiment, written by the session that ran it, as raw material for a possible gestalt skill
 > **Run:** 2026-11-19 to 2026-11-20, gm-toolkit, branch `feature/pf2e-encounter-simulator`, effort `F.041.E4` (six phases, 13 planned commits)
-> **Not yet known:** the result of `/gestalt:effort-close F.041.E4`. It is the real score for this experiment; see section 5
+> **Scored:** after `/gestalt:effort-close F.041.E4` on 2026-11-20, the real test of this experiment; see section 5
 
 ## In Plain Words
 
@@ -56,7 +56,7 @@ Where it diverges or strains:
 - **The coordinator session is very long.** It ran out of context once and was compacted. After that it worked from a summary, and its own notes were less exact.
 - **Two writers on one plan doc.** The coordinator added Decision Record entries while agents also edited the plan. The fix was a rule: the coordinator does not touch the plan while an agent runs.
 - **Ad-hoc work in the same session.** While agents ran, Robert and the coordinator held a design discussion on the repo's folder layout. It worked, but anything the coordinator writes to disk would ride into the agent's `git add -A`, so writing waited for sign-off.
-- **An unscoped commit inside the effort's range.** The coordinator's own commit for that discussion sits after the `E4` commits and before the close.
+- **An unscoped commit inside the effort's range.** The coordinator's own commit for that discussion sits after the `E4` commits and before the close. This retro's commit sits there too. The close's unbroken-run check stopped on both, which added a stop: Robert had to decide where they belonged before the review could start.
 
 ## 4 — What does it change?
 
@@ -98,7 +98,21 @@ The common cause of the first, second and fifth: the coordinator stated a conclu
 
 ## 5 — Rating
 
-The Rework row cannot be scored until the effort close runs. That close is the test of the experiment's aim.
+### What the effort close found
+
+The close ran `/code-review high` over the whole effort and a stress run of about 3,000 seeded fights. The fights hit no panics, faults, negative HP or HP above max. The review made five findings, all nits, and no blocking bugs. Robert took all five into one fix commit.
+
+| # | Finding | Code from | Could a phase review have caught it? |
+|---|---|---|---|
+| 1 | The `reference/` ignore was deleted, not narrowed | The F.041 discovery commit | No: older than E4 and outside its diff |
+| 2 | Import paths go into `filepath.Glob` unescaped | Effort 2 | No: older than E4, and no E4 phase touched it |
+| 3 | A basic save does not scale persistent damage | Effort 3 | No: older than E4. It became a rules call for Robert at the close |
+| 4 | A Strike made by an ability drops the ability's traits | Effort 3 shape, made live in E4 | Yes: Phase 2 added the relic Strikes that carry those traits, and Phase 6 wrote them into the hand layers |
+| 5 | `Healed` logs the amount rolled, not the HP restored | Effort 3 shape, pinned in E4 | Yes: Phase 3 wrote a fast healing test that asserts the overstated amount at full HP |
+
+So two findings trace to E4 phases, both nits. Both were in a phase's diff, and the coordinator's diff reads passed them. That fits section 4: diff reads confirm, they do not discover. Neither finding was a rules-from-memory error, the kind the rules text check was built to catch.
+
+The reviewer also flagged a gap that the Decision Record had already logged (entry 15, sent to Effort 6). It had found and skipped three other logged gaps, so with 72 entries, one slipped past.
 
 | Metric | Score | Evidence |
 |---|---|---|
@@ -106,10 +120,10 @@ The Rework row cannot be scored until the effort close runs. That close is the t
 | Each agent better set up | 4 | Every brief addition traces to a real problem; but the same kind of finding (a rule from memory) came back in every phase, because the cause was in the plan |
 | Findings caught early | 4 | One fix commit per phase, each small; the last agent's own list found a latent bug |
 | Robert's load | 3 | He made every call quickly from a question block, but he also corrected the coordinator about six times |
-| Rework at the close | not scored | Fill in after `/gestalt:effort-close F.041.E4` |
-| **Total** | **16 / 20 (mean 4.0)** | Four metrics scored |
+| Rework at the close | 4 | Five nits, no blockers, one small fix commit; only two trace to E4 phases, and a phase review could have caught both |
+| **Total** | **20 / 25 (mean 4.0)** | All five metrics scored |
 
-**Verdict:** the loop works and is worth a skill, but its biggest finding is that the checking it did belongs one stage earlier, in the Plan session.
+**Verdict:** the loop works and is worth a skill. The close confirms the aim: the effort reached it with nothing structural left to fix. Its biggest finding still stands: the checking it did belongs one stage earlier, in the Plan session.
 
 **What surprised me:** the coordinator never caught a coding error. The agents copied the plan faithfully, so the quality of the run was the quality of the plan plus the quality of the questions put to Robert.
 
@@ -119,14 +133,16 @@ Proposals for gestalt. Robert makes any change to the plugin.
 
 | # | Proposal | Detail |
 |---|---|---|
-| 1 | A source check in the Plan session | For every outside rule a plan builds (game rules, a file format, an API), the plan carries a quote and a link fetched in that session. Add it as plan trap 8 |
+| 1 | A source check in the Plan session | For every outside rule a plan builds (game rules, a file format, an API), the plan carries a quote and a link fetched in that session. Added to this project's plan traps catalogue as trap 8 on 2026-11-20; the Plan session template does not have it yet |
 | 2 | A coordinator skill | One command that runs an effort's phases as sub-agents with the loop in this doc. The brief template in the appendix is its core |
 | 3 | A fixed execution report | The numbered report format, with "needs a call", "doubts and things for the next phase" and "shapes later Find blocks will not match", is useful in a normal Execution session too |
 | 4 | "Look here first" at the end of an effort | The last phase's agent writes its own list of the weakest spots; the effort close reads it |
 | 5 | Mechanical checks as a script | Model count from the transcript, a fresh-cache gate, a clean tree and the commit list do not need a model |
 | 6 | Rules for the coordinator | It does not edit a doc an agent is editing; it writes nothing to disk while an agent with `git add -A` runs; it quotes a source before it states a conclusion from it |
 | 7 | A two-stage phase | A phase that needs the user to act in the middle: the agent stops without committing and is resumed after |
-| 8 | Score the experiment | After the effort close, add the Rework score here: how many findings the close made, and how many of them a phase review could have caught |
+| 8 | Score the experiment | Done 2026-11-20: Rework scored 4 in section 5. Five findings, two of them catchable by a phase review |
+| 9 | Give the effort-close reviewer the known gaps | The review prompt lists the Decision Record's known-gap entries by number, so a long record does not hide one. A coordinator run makes the record long |
+| 10 | Keep the coordinator's own commits out of the effort range | Commit ad-hoc work and retros after the effort close, or before the effort's first commit, so the close's unbroken-run check does not stop |
 
 ## Appendix A — The loop
 
