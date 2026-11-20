@@ -6,7 +6,10 @@ import (
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
 )
 
-const persistentRecoveryDC = 15
+const (
+	persistentRecoveryDC = 15
+	persistentAbility    = "persistent"
+)
 
 type persistentInstance struct {
 	source  effectSource
@@ -61,7 +64,7 @@ func (fight *Fight) takePersistentDamage(actor *Combatant) {
 			amount *= 2
 		}
 		source := instance.source
-		source.ability, source.strike, source.lethal = "persistent", "", false
+		source.ability, source.strike, source.lethal, source.melee = persistentAbility, "", false, false
 		fight.applyDamage(source, actor, damageRoll{parts: []rolledPart{{damageType: instance.part.Type, amount: amount}}}, false)
 		if actor.Dead {
 			break

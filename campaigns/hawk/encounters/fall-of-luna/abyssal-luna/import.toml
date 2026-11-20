@@ -24,6 +24,13 @@ perception = 29
   attack = 31
   dc = 39
 
+[skill]
+  acrobatics = 28
+  athletics = 30
+  diplomacy = 29
+  occultism = 33
+  society = 31
+
 [strike]
   [strike.slash]
     name = "Slash"

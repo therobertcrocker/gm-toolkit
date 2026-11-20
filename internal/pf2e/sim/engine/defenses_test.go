@@ -23,7 +23,7 @@ func TestTraitWeaknessAppliesOnce(t *testing.T) {
 	strike := flatStrike([]string{"holy"}, damagePart(t, "1d6", "slashing"), damagePart(t, "1d6", "spirit"))
 	fight, events := testFight(script(t, 15, 3, 4), attacker, target)
 
-	fight.strike(attacker, target, strike, "")
+	fight.strike(attacker, target, strike, strikeOptions{})
 
 	dealt := lastDamage(t, events)
 	if dealt.Trait != 15 || dealt.Total != 22 {
@@ -48,7 +48,7 @@ func TestResistAllExceptTraits(t *testing.T) {
 			strike := flatStrike(testCase.traits, damagePart(t, "20", "slashing"), damagePart(t, "20", "fire"))
 			fight, events := testFight(script(t, 15), attacker, target)
 
-			fight.strike(attacker, target, strike, "")
+			fight.strike(attacker, target, strike, strikeOptions{})
 
 			if dealt := lastDamage(t, events); dealt.Total != testCase.wantTotal {
 				t.Errorf("Total = %d, want %d", dealt.Total, testCase.wantTotal)
@@ -170,7 +170,7 @@ func TestStrikeRiders(t *testing.T) {
 			}
 			fight, _ := testFight(script(t, testCase.rolls...), attacker, target)
 
-			fight.strike(attacker, target, strike, "")
+			fight.strike(attacker, target, strike, strikeOptions{})
 
 			if got := target.Condition("frightened") > 0; got != testCase.wantFrightened {
 				t.Errorf("frightened = %v, want %v", got, testCase.wantFrightened)
@@ -195,7 +195,7 @@ func TestRiderUnlessFrightened(t *testing.T) {
 	}}
 	fight, events := testFight(script(t, 15, 3), attacker, target)
 
-	fight.strike(attacker, target, strike, "")
+	fight.strike(attacker, target, strike, strikeOptions{})
 
 	if saves := eventsOf[SaveRolled](events.events); len(saves) != 0 {
 		t.Errorf("SaveRolled = %+v, want none against a frightened target", saves)
@@ -223,7 +223,7 @@ func TestPerConditionDamage(t *testing.T) {
 			}
 			fight, events := testFight(script(t, 15, 3), attacker, target)
 
-			fight.strike(attacker, target, fist(), "")
+			fight.strike(attacker, target, fist(), strikeOptions{})
 
 			if dealt := lastDamage(t, events); dealt.Total != testCase.wantTotal {
 				t.Errorf("Total = %d, want %d (1d6+2 rolled 3, plus 3 per frightened)", dealt.Total, testCase.wantTotal)
@@ -283,7 +283,7 @@ func TestRunesFromALoadedLayer(t *testing.T) {
 	target := testCombatant("target", SideEnemies, creature.KindNPC, 500, 20)
 	fight, events := testFight(script(t, 20, 6, 1), kas, target)
 
-	fight.strike(kas, target, loaded.Strikes["protectors-fury"], "")
+	fight.strike(kas, target, loaded.Strikes["protectors-fury"], strikeOptions{})
 
 	gained := map[string]int{}
 	for _, changed := range eventsOf[ConditionChanged](events.events) {

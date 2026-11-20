@@ -7,6 +7,7 @@ kind = "npc"
 level = 17
 traits = ["unique", "demon", "unholy"]
 perception = 32
+fast_healing = 10
 
 [speed]
   fly = 60
@@ -29,6 +30,11 @@ perception = 32
 [spellcasting]
   attack = 32
   dc = 38
+
+[skill]
+  acrobatics = 31
+  intimidation = 32
+  occultism = 25
 
 [strike]
   [strike.hand-of-chaos]

@@ -112,7 +112,7 @@ func TestLethalDamageKills(t *testing.T) {
 	}}
 	fight, events := testFight(script(t, 1), caster, target)
 
-	fight.useAbility(caster, ability, target)
+	fight.useAbility(abilityUse{actor: caster, ability: ability, target: target})
 
 	if died := eventsOf[Died](events.events); len(died) != 1 || !target.Dead {
 		t.Errorf("died = %+v, Dead = %v, want one Died and dead", died, target.Dead)

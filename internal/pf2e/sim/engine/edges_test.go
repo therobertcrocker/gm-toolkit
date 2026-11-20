@@ -16,7 +16,7 @@ func TestDownedOnOwnTurnKeepsInitiative(t *testing.T) {
 	fight, _ := testFight(script(t, 15, 4, 14), attacker, target, other)
 	before := orderIDs(fight)
 
-	fight.strike(attacker, target, strike, "")
+	fight.strike(attacker, target, strike, strikeOptions{})
 	fight.current = target
 	fight.endTurn(target)
 
@@ -66,7 +66,7 @@ func TestDamageImmunityIsNotEffectImmunity(t *testing.T) {
 			}
 			fight, events := testFight(script(t, rolls...), caster, target)
 
-			fight.useAbility(caster, saveAbility("reflex", 20, testCase.trait), target)
+			fight.useAbility(abilityUse{actor: caster, ability: saveAbility("reflex", 20, testCase.trait), target: target})
 
 			immune := len(eventsOf[ImmuneToEffect](events.events)) == 1
 			saved := len(eventsOf[SaveRolled](events.events)) == 1

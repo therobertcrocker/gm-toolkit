@@ -7662,7 +7662,7 @@
         "frequency": {
           "max": 1,
           "per": "PT1H",
-          "value": 1
+          "value": 0
         },
         "selfEffect": {
           "uuid": "Compendium.pf2e.spell-effects.Item.MuRBCiZn5IKeaoxi",
@@ -7687,8 +7687,8 @@
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
         "createdTime": 1761622454354,
-        "modifiedTime": 1793208901848,
-        "lastModifiedBy": "S0ab7dtePdUblyra"
+        "modifiedTime": 1794895596676,
+        "lastModifiedBy": "O0VfmYddXFyzM9ci"
       },
       "sort": 0,
       "_id": "od2tDbP8Ztr5zJyE"
@@ -8003,8 +8003,8 @@
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
         "createdTime": 1781580447050,
-        "modifiedTime": 1794289174095,
-        "lastModifiedBy": "O0VfmYddXFyzM9ci"
+        "modifiedTime": 1794938111096,
+        "lastModifiedBy": "S0ab7dtePdUblyra"
       },
       "effects": [],
       "sort": 0,
@@ -8485,7 +8485,7 @@
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
         "createdTime": 1781581905517,
-        "modifiedTime": 1794289226559,
+        "modifiedTime": 1794896297752,
         "lastModifiedBy": "O0VfmYddXFyzM9ci"
       },
       "effects": [],
@@ -9149,6 +9149,422 @@
       }
     },
     {
+      "img": "icons/magic/perception/eye-ringed-green.webp",
+      "name": "Spell Effect: Strength of Mind",
+      "system": {
+        "description": {
+          "value": "<p>Granted by @UUID[Compendium.pf2e.spells-srd.Item.aMvjaIuPIWN7pbc3]{Strength of Mind}</p>\n<p>You gain a +1 status bonus to saving throws against mental effects and against effects that hinder movement (including those that reduce Speed or apply the @UUID[Compendium.pf2e.conditionitems.Item.kWc1fhmv9LBiTuei]{Grabbed}, @UUID[Compendium.pf2e.conditionitems.Item.eIcWbB5o3pP6OIMe]{Immobilized}, or @UUID[Compendium.pf2e.conditionitems.Item.VcDeM8A5oI6VqhbM]{Restrained} conditions). This bonus increases to +2 if the source of the effect has the fear trait.</p>",
+          "gm": ""
+        },
+        "duration": {
+          "expiry": "turn-end",
+          "sustained": false,
+          "unit": "minutes",
+          "value": 10
+        },
+        "level": {
+          "value": 1
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "Pathfinder #209: Destroyer's Doom",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "key": "FlatModifier",
+            "predicate": [
+              {
+                "or": [
+                  "itemtrait:mental",
+                  "inflicts:grabbed",
+                  "inflicts:immobilized",
+                  "inflicts:restrained"
+                ]
+              }
+            ],
+            "selector": "saving-throw",
+            "type": "status",
+            "value": 1
+          },
+          {
+            "key": "AdjustModifier",
+            "mode": "add",
+            "predicate": [
+              "item:trait:fear"
+            ],
+            "selector": "saving-throw",
+            "slug": "spell-effect-strength-of-mind",
+            "value": 1
+          }
+        ],
+        "start": {
+          "value": -39023571808,
+          "initiative": null
+        },
+        "tokenIcon": {
+          "show": true
+        },
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "slug": "spell-effect-strength-of-mind",
+        "_migration": {
+          "version": 0.959,
+          "previous": null
+        },
+        "unidentified": false,
+        "badge": null,
+        "fromSpell": false,
+        "context": null
+      },
+      "type": "effect",
+      "_stats": {
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "compendiumSource": "Compendium.pf2e.spell-effects.Item.pW1jauNjZ1owaciQ",
+        "createdTime": 1794892035478,
+        "modifiedTime": 1794892035478,
+        "lastModifiedBy": "O0VfmYddXFyzM9ci",
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 0,
+      "ownership": {
+        "default": 0,
+        "O0VfmYddXFyzM9ci": 3
+      },
+      "flags": {},
+      "_id": "Vp656A708psJepOf"
+    },
+    {
+      "img": "systems/pf2e/icons/equipment/alchemical-items/alchemical-elixirs/antidote.webp",
+      "name": "Effect: Antidote",
+      "system": {
+        "description": {
+          "value": "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.ktjFOp3U0wQD9t0Z]{Antidote (Lesser)}, @UUID[Compendium.pf2e.equipment-srd.Item.XWkeL34yJK6t5qUE]{Antidote (Greater)}, @UUID[Compendium.pf2e.equipment-srd.Item.AJ1dC7EtTIfBey0M]{Antidote (Moderate)}, @UUID[Compendium.pf2e.equipment-srd.Item.ANzB9WzlGQXDn76G]{Antidote (Major)}</p>\n<p>You gain an item bonus to Fortitude saves against poisons.</p>",
+          "gm": ""
+        },
+        "duration": {
+          "expiry": "turn-start",
+          "sustained": false,
+          "unit": "hours",
+          "value": 6
+        },
+        "level": {
+          "value": 1
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "Pathfinder GM Core",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "adjustName": false,
+            "choices": [
+              {
+                "predicate": [
+                  {
+                    "or": [
+                      "parent:origin:item:slug:antidote-lesser",
+                      {
+                        "not": "parent:origin:item"
+                      }
+                    ]
+                  }
+                ],
+                "value": "Compendium.pf2e.equipment-srd.Item.ktjFOp3U0wQD9t0Z"
+              },
+              {
+                "predicate": [
+                  {
+                    "or": [
+                      "parent:origin:item:slug:antidote-moderate",
+                      {
+                        "not": "parent:origin:item"
+                      }
+                    ]
+                  }
+                ],
+                "value": "Compendium.pf2e.equipment-srd.Item.AJ1dC7EtTIfBey0M"
+              },
+              {
+                "predicate": [
+                  {
+                    "or": [
+                      "parent:origin:item:slug:antidote-greater",
+                      {
+                        "not": "parent:origin:item"
+                      }
+                    ]
+                  }
+                ],
+                "value": "Compendium.pf2e.equipment-srd.Item.XWkeL34yJK6t5qUE"
+              },
+              {
+                "predicate": [
+                  {
+                    "or": [
+                      "parent:origin:item:slug:antidote-major",
+                      {
+                        "not": "parent:origin:item"
+                      }
+                    ]
+                  }
+                ],
+                "value": "Compendium.pf2e.equipment-srd.Item.ANzB9WzlGQXDn76G"
+              }
+            ],
+            "key": "ChoiceSet",
+            "prompt": "PF2E.SpecificRule.Prompt.EquipmentVariety",
+            "rollOption": "antidote:antidote-moderate",
+            "flag": "effectAntidote",
+            "selection": "Compendium.pf2e.equipment-srd.Item.AJ1dC7EtTIfBey0M"
+          },
+          {
+            "key": "FlatModifier",
+            "predicate": [
+              "item:trait:poison"
+            ],
+            "selector": "fortitude",
+            "slug": "antidote-bonus",
+            "type": "item",
+            "value": 2
+          },
+          {
+            "key": "AdjustModifier",
+            "mode": "upgrade",
+            "predicate": [
+              "antidote:antidote-moderate"
+            ],
+            "selector": "fortitude",
+            "slug": "antidote-bonus",
+            "value": 3
+          },
+          {
+            "key": "AdjustModifier",
+            "mode": "upgrade",
+            "predicate": [
+              {
+                "or": [
+                  "antidote:antidote-greater",
+                  "antidote:antidote-major"
+                ]
+              }
+            ],
+            "selector": "fortitude",
+            "slug": "antidote-bonus",
+            "value": 4
+          }
+        ],
+        "start": {
+          "value": -39023571808,
+          "initiative": null
+        },
+        "tokenIcon": {
+          "show": true
+        },
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "slug": "effect-antidote",
+        "_migration": {
+          "version": 0.959,
+          "previous": null
+        },
+        "unidentified": false,
+        "badge": null,
+        "fromSpell": false,
+        "context": {
+          "origin": {
+            "actor": "Actor.5JC1wg6wzRR47Of3",
+            "token": "Scene.MHCfEiCmpFR8dK7J.Token.LCx8EwVtYh0BfqeA",
+            "item": null,
+            "spellcasting": null,
+            "rollOptions": [
+              "origin:type:character",
+              "origin:signature:33a050a6-b065-5a00-a3d3-cbdf24a5cf6e",
+              "origin:creature",
+              "origin:level:14",
+              "origin:ancestry:dwarf",
+              "origin:trait:dwarf",
+              "origin:trait:humanoid",
+              "origin:heritage:strong-blooded-dwarf",
+              "origin:mode:living",
+              "origin:armored",
+              "origin:size:2",
+              "origin:size:medium",
+              "origin:item:type:consumable",
+              "origin:item:id:AJ1dC7EtTIfBey0M",
+              "origin:item:antidote-moderate",
+              "origin:item:slug:antidote-moderate",
+              "origin:item:trait:alchemical",
+              "origin:item:trait:consumable",
+              "origin:item:trait:elixir",
+              "origin:item:trait:healing",
+              "origin:item:rarity:common",
+              "origin:item:level:6",
+              "origin:item:category:elixir"
+            ]
+          },
+          "target": null,
+          "roll": null
+        }
+      },
+      "type": "effect",
+      "_stats": {
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "compendiumSource": "Compendium.pf2e.equipment-effects.Item.TjBxxlTvb6tJP1jS",
+        "createdTime": 1794892393339,
+        "modifiedTime": 1794892393339,
+        "lastModifiedBy": "O0VfmYddXFyzM9ci",
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 0,
+      "ownership": {
+        "default": 0,
+        "O0VfmYddXFyzM9ci": 3
+      },
+      "flags": {},
+      "_id": "uWqHllyFEkmly69M"
+    },
+    {
+      "img": "systems/pf2e/icons/equipment/alchemical-items/drugs/succubus-kiss.webp",
+      "name": "Effect: Succubus Kiss (Stage 1)",
+      "system": {
+        "description": {
+          "value": "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.qwCefJjr7AJSqYay]{Succubus Kiss}</p>\n<p>The creature gains a +2 item bonus to initiative checks and to all saving throws against emotion and mental effects.</p>",
+          "gm": ""
+        },
+        "duration": {
+          "expiry": "turn-start",
+          "sustained": false,
+          "unit": "minutes",
+          "value": 10
+        },
+        "level": {
+          "value": 7
+        },
+        "publication": {
+          "license": "OGL",
+          "remaster": false,
+          "title": "Pathfinder Lost Omens Absalom, City of Lost Omens",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "key": "FlatModifier",
+            "selector": "initiative",
+            "type": "item",
+            "value": 2
+          },
+          {
+            "key": "FlatModifier",
+            "predicate": [
+              {
+                "or": [
+                  "emotion",
+                  "mental"
+                ]
+              }
+            ],
+            "selector": "saving-throw",
+            "type": "item",
+            "value": 2
+          }
+        ],
+        "start": {
+          "value": -39023571808,
+          "initiative": null
+        },
+        "tokenIcon": {
+          "show": true
+        },
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "slug": "effect-succubus-kiss-stage-1",
+        "_migration": {
+          "version": 0.959,
+          "previous": null
+        },
+        "unidentified": false,
+        "badge": null,
+        "fromSpell": false,
+        "context": {
+          "origin": {
+            "actor": "Actor.5JC1wg6wzRR47Of3",
+            "token": "Scene.MHCfEiCmpFR8dK7J.Token.LCx8EwVtYh0BfqeA",
+            "item": null,
+            "spellcasting": null,
+            "rollOptions": [
+              "origin:type:character",
+              "origin:signature:33a050a6-b065-5a00-a3d3-cbdf24a5cf6e",
+              "origin:creature",
+              "origin:level:14",
+              "origin:ancestry:dwarf",
+              "origin:trait:dwarf",
+              "origin:trait:humanoid",
+              "origin:heritage:strong-blooded-dwarf",
+              "origin:mode:living",
+              "origin:armored",
+              "origin:size:2",
+              "origin:size:medium",
+              "origin:item:type:consumable",
+              "origin:item:id:qwCefJjr7AJSqYay",
+              "origin:item:succubus-kiss",
+              "origin:item:slug:succubus-kiss",
+              "origin:item:trait:alchemical",
+              "origin:item:trait:consumable",
+              "origin:item:trait:drug",
+              "origin:item:trait:ingested",
+              "origin:item:trait:poison",
+              "origin:item:rarity:rare",
+              "origin:item:level:7",
+              "origin:item:category:drug"
+            ]
+          },
+          "target": null,
+          "roll": null
+        }
+      },
+      "type": "effect",
+      "_stats": {
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "compendiumSource": "Compendium.pf2e.equipment-effects.Item.Pkk8m79MoT1RgtfW",
+        "createdTime": 1794892540632,
+        "modifiedTime": 1794892540633,
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 0,
+      "ownership": {
+        "default": 0,
+        "S0ab7dtePdUblyra": 3
+      },
+      "flags": {},
+      "_id": "8xP7BriZ66S43PPz"
+    },
+    {
       "img": "systems/pf2e/icons/spells/haste.webp",
       "name": "Spell Effect: Haste",
       "system": {
@@ -9163,7 +9579,7 @@
           "value": 1
         },
         "level": {
-          "value": 7
+          "value": 3
         },
         "publication": {
           "license": "ORC",
@@ -9179,8 +9595,8 @@
           }
         ],
         "start": {
-          "value": -39023571856,
-          "initiative": 40
+          "value": -39023571808,
+          "initiative": null
         },
         "tokenIcon": {
           "show": false
@@ -9200,8 +9616,8 @@
         "context": {
           "origin": {
             "actor": "Actor.3Xu9yHY96xD1sExI",
-            "token": "Scene.4BDCawPcjUlwal0a.Token.KUJF9EJJyvJQRLzX",
-            "item": "Actor.3Xu9yHY96xD1sExI.Item.6Et6yzy1CDNxbGNd",
+            "token": "Scene.MHCfEiCmpFR8dK7J.Token.OCAxMDj2XtvkgsmN",
+            "item": "Actor.3Xu9yHY96xD1sExI.Item.zhnogVHLn7U983EZ",
             "spellcasting": {
               "attribute": {
                 "type": "cha",
@@ -9221,20 +9637,22 @@
               "origin:caster",
               "origin:caster:tradition:primal",
               "origin:caster:tradition:arcane",
+              "origin:effect:strength-of-mind",
+              "origin:effect:succubus-kiss-stage-1",
               "origin:mode:living",
               "origin:size:2",
               "origin:size:medium",
               "origin:item:type:spell",
-              "origin:item:id:6Et6yzy1CDNxbGNd",
+              "origin:item:id:zhnogVHLn7U983EZ",
               "origin:item:haste",
               "origin:item:slug:haste",
               "origin:item:trait:concentrate",
               "origin:item:trait:manipulate",
               "origin:item:rarity:common",
               "origin:item:magical",
-              "origin:item:level:7",
+              "origin:item:level:3",
               "magical",
-              "origin:item:rank:7",
+              "origin:item:rank:3",
               "concentrate",
               "manipulate",
               "origin:item:trait:arcane",
@@ -9261,8 +9679,8 @@
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
         "compendiumSource": "Compendium.pf2e.spell-effects.Item.ElkXovNrHB0Doi6O",
-        "createdTime": 1793683922963,
-        "modifiedTime": 1793683922964,
+        "createdTime": 1794893770241,
+        "modifiedTime": 1794893770242,
         "lastModifiedBy": "S0ab7dtePdUblyra",
         "duplicateSource": null,
         "exportSource": null
@@ -9275,56 +9693,112 @@
         "S0ab7dtePdUblyra": 3
       },
       "flags": {},
-      "_id": "HTCrQW19dPM0xgqJ"
+      "_id": "IJUfXDj4qn15j7ot"
     },
     {
-      "img": "systems/pf2e/icons/conditions/slowed.webp",
-      "name": "Slowed",
+      "img": "systems/pf2e/icons/equipment/worn-items/other-worn-items/winged-boots.webp",
+      "name": "Effect: Winged Sandals",
       "system": {
         "description": {
-          "value": "<p>You have fewer actions. Slowed always includes a value. When you regain your actions, reduce the number of actions regained by your slowed value. Because you regain actions at the start of your turn, you don't immediately lose actions if you become slowed during your turn.</p>",
+          "value": "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.aKoMqPDmVzPI7Q20]{Winged Sandals}</p>\n<p>You gain a fly Speed of 30 feet.</p>",
           "gm": ""
         },
-        "group": null,
-        "overrides": [],
+        "duration": {
+          "expiry": "turn-start",
+          "sustained": false,
+          "unit": "minutes",
+          "value": 10
+        },
+        "level": {
+          "value": 10
+        },
         "publication": {
           "license": "ORC",
           "remaster": true,
-          "title": "Pathfinder Player Core",
+          "title": "Pathfinder GM Core",
           "authors": ""
         },
-        "references": {
-          "children": [],
-          "overriddenBy": [],
-          "overrides": [],
-          "parent": null
+        "rules": [
+          {
+            "key": "BaseSpeed",
+            "selector": "fly",
+            "value": 30
+          }
+        ],
+        "start": {
+          "value": -39023571808,
+          "initiative": 28
         },
-        "rules": [],
+        "tokenIcon": {
+          "show": true
+        },
         "traits": {
           "value": [],
           "otherTags": []
         },
-        "value": {
-          "isValued": true,
-          "value": 1
-        },
-        "slug": "slowed",
+        "slug": "effect-winged-sandals",
         "_migration": {
           "version": 0.959,
           "previous": null
         },
+        "unidentified": false,
+        "badge": null,
         "fromSpell": false,
-        "persistent": null
+        "context": {
+          "origin": {
+            "actor": "Actor.kU6BcmXUJtxvOY67",
+            "token": null,
+            "item": "Actor.kU6BcmXUJtxvOY67.Item.PJuRdZLQA9C85xwq",
+            "spellcasting": null,
+            "rollOptions": [
+              "origin:type:character",
+              "origin:signature:a0ceac40-9a24-5c03-b8da-ce900ec21f8e",
+              "origin:participant:own-turn",
+              "origin:participant:initiative:roll:28",
+              "origin:participant:initiative:rank:4",
+              "origin:participant:initiative:stat:perception",
+              "origin:creature",
+              "origin:level:14",
+              "origin:ancestry:halfling",
+              "origin:trait:halfling",
+              "origin:trait:humanoid",
+              "origin:heritage:gutsy-halfling",
+              "origin:deity:slug:bes",
+              "origin:effect:strength-of-mind",
+              "origin:effect:antidote",
+              "origin:effect:succubus-kiss-stage-1",
+              "origin:effect:haste",
+              "origin:condition:quickened",
+              "origin:mode:living",
+              "origin:armored",
+              "origin:size:1",
+              "origin:size:small",
+              "origin:item:type:equipment",
+              "origin:item:id:PJuRdZLQA9C85xwq",
+              "origin:item:winged-sandals",
+              "origin:item:slug:winged-sandals",
+              "origin:item:trait:air",
+              "origin:item:trait:invested",
+              "origin:item:trait:magical",
+              "origin:item:rarity:common",
+              "origin:item:magical",
+              "origin:item:level:10",
+              "origin:item:equipped"
+            ]
+          },
+          "target": null,
+          "roll": null
+        }
       },
-      "type": "condition",
+      "type": "effect",
       "_stats": {
         "coreVersion": "14.365",
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
-        "compendiumSource": "Compendium.pf2e.conditionitems.Item.xYTAsEpcJE1Ccni3",
-        "createdTime": 1794287277200,
-        "modifiedTime": 1794287277201,
-        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "compendiumSource": "Compendium.pf2e.equipment-effects.Item.1S51uIRb9bnZtpFU",
+        "createdTime": 1794895653838,
+        "modifiedTime": 1794895653839,
+        "lastModifiedBy": "O0VfmYddXFyzM9ci",
         "duplicateSource": null,
         "exportSource": null
       },
@@ -9333,10 +9807,10 @@
       "sort": 0,
       "ownership": {
         "default": 0,
-        "S0ab7dtePdUblyra": 3
+        "O0VfmYddXFyzM9ci": 3
       },
       "flags": {},
-      "_id": "PNQ8RkTUKomWHlvm"
+      "_id": "xs1v0cJoD6UM8ayt"
     }
   ],
   "effects": [],
@@ -9539,7 +10013,7 @@
     },
     "resources": {
       "heroPoints": {
-        "value": 1,
+        "value": 0,
         "max": 3
       },
       "focus": {
@@ -9863,7 +10337,7 @@
     "systemVersion": "8.6.1",
     "coreVersion": "14.365",
     "createdTime": 1694482711497,
-    "modifiedTime": 1794290587282,
+    "modifiedTime": 1794896229660,
     "lastModifiedBy": "O0VfmYddXFyzM9ci",
     "compendiumSource": null,
     "duplicateSource": null,

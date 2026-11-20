@@ -1,0 +1,52 @@
+schema = 1
+
+# approximation: the burst only; the 3-action version and the lingering round are dropped.
+[ability.wail]
+name    = "Wail"
+actions = 2
+traits  = ["auditory", "concentrate", "occult", "unholy"]
+area    = { shape = "emanation", size = 40 }
+limit   = { recharge = "1d4" }
+steps   = [
+  { save = "fortitude", dc = 38, basic = true, success_damage = "full", damage = [{ dice = "8d10", type = "spirit" }],
+    failure = [{ condition = "drained", value_dice = "1d4" }],
+    critical_failure = [{ condition = "drained", value = 4 }] },
+]
+
+# Vengeful Spite has two triggers, so it is two abilities with the same steps.
+[ability.vengeful-spite]
+name    = "Vengeful Spite"
+traits  = ["occult"]
+trigger = { on = "attacked", cost = "reaction", degrees = ["critical-success"] }
+steps   = [
+  { save = "will", dc = 38, basic = true, damage = [{ dice = "4d10+14", type = "mental" }],
+    failure = [{ condition = "frightened", value = 2 }],
+    critical_failure = [{ condition = "frightened", value = 2 }, { condition = "stunned", value = 4 }] },
+]
+
+[ability.vengeful-spite-save]
+name    = "Vengeful Spite (failed save)"
+traits  = ["occult"]
+trigger = { on = "saved", cost = "reaction", degrees = ["critical-failure"], damaging = true }
+steps   = [
+  { save = "will", dc = 38, basic = true, damage = [{ dice = "4d10+14", type = "mental" }],
+    failure = [{ condition = "frightened", value = 2 }],
+    critical_failure = [{ condition = "frightened", value = 2 }, { condition = "stunned", value = 4 }] },
+]
+
+# approximation: the heal, the Wail recharge and the extra action; the move to The Realm Between is dropped.
+[ability.last-stand]
+name    = "Last Stand"
+trigger = { on = "turn-start", cost = "free", hp_at_most = 75 }
+limit   = { per_fight = 1 }
+steps   = [{ heal = "40", target = "self" }, { recharge = "wail" }, { gain_actions = 1 }]
+
+# stand-in: tagged abilities, revives and passed saves fire it; the acting PC gets Faithful Strike.
+# The +12 in the roll offsets her resistance 12, so the damage goes through her defenses as usual.
+[ability.sin-vulnerability]
+name    = "Sin Vulnerability (Betrayal)"
+trigger = { on = "loyalty" }
+steps   = [
+  { damage = [{ dice = "4d6+12", type = "mental" }], target = "self" },
+  { grant = "holy", uses = 1, duration = { until = "target-turn-end" } },
+]

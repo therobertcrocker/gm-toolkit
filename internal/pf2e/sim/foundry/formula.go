@@ -10,7 +10,17 @@ import (
 	"unicode"
 )
 
-var errUnsupportedFormula = errors.New("unsupported formula")
+var (
+	errUnsupportedFormula = errors.New("unsupported formula")
+	errConditionFailed    = errors.New("when: the condition does not hold")
+)
+
+func truth(holds bool) float64 {
+	if holds {
+		return 1
+	}
+	return 0
+}
 
 func evaluateFormula(text string, variables map[string]float64) (int, error) {
 	tokens, err := tokenize(text)
@@ -150,10 +160,13 @@ func (parser *formulaParser) call(name string) (float64, error) {
 	var arguments []float64
 	for {
 		value, err := parser.expression()
-		if err != nil {
+		switch {
+		case name == "match" && errors.Is(err, errConditionFailed):
+		case err != nil:
 			return 0, err
+		default:
+			arguments = append(arguments, value)
 		}
-		arguments = append(arguments, value)
 		separator := parser.next()
 		if separator == ")" {
 			break
@@ -163,6 +176,18 @@ func (parser *formulaParser) call(name string) (float64, error) {
 		}
 	}
 	switch {
+	case name == "match" && len(arguments) == 0:
+		return 0, errors.New("match: no when holds")
+	case name == "match":
+		return arguments[0], nil
+	case name == "when" && len(arguments) == 2 && arguments[0] == 0:
+		return 0, errConditionFailed
+	case name == "when" && len(arguments) == 2:
+		return arguments[1], nil
+	case name == "lte" && len(arguments) == 2:
+		return truth(arguments[0] <= arguments[1]), nil
+	case name == "gte" && len(arguments) == 2:
+		return truth(arguments[0] >= arguments[1]), nil
 	case name == "max":
 		return slices.Max(arguments), nil
 	case name == "min":

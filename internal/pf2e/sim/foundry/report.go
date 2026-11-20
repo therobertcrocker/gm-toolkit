@@ -3,7 +3,8 @@ package foundry
 import "github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
 
 const (
-	ReasonAbility     = "ability not converted yet (Effort 6)"
+	ReasonAbility     = "ability written by hand (Effort 6)"
+	ReasonAbilityPart = "part of an ability written by hand (Effort 6)"
 	ReasonLaterRule   = "needs a rule from a later effort"
 	ReasonHandLayer   = "typed into the hand layer (overview Decision 11)"
 	ReasonConditional = "conditional: does not hold at baseline"
@@ -12,6 +13,7 @@ const (
 	ReasonInactive    = "item not worn, held or invested"
 	ReasonToggle      = "toggle, imported off"
 	ReasonQuantity    = "quantity 0"
+	ReasonNoFormula   = "quantity 0 and no known formula to brew it"
 	ReasonNotPlaced   = "loose item, not placed on a creature"
 	ReasonEmpty       = "holds nothing the sim uses"
 	ReasonUnsupported = "not supported by the importer"

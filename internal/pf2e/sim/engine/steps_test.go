@@ -53,7 +53,7 @@ func TestBasicSaveScalesDamage(t *testing.T) {
 			}}
 			fight, events := testFight(script(t, 3, 4, testCase.die), caster, target)
 
-			fight.useAbility(caster, ability, target)
+			fight.useAbility(abilityUse{actor: caster, ability: ability, target: target})
 
 			dealt := eventsOf[DamageDealt](events.events)
 			if !testCase.wantDamage {
@@ -81,7 +81,7 @@ func TestAreaCatchesEveryStandingFoe(t *testing.T) {
 	roller := script(t, 4, 10, 10)
 	fight, events := testFight(roller, caster, first, downed, third)
 
-	fight.useAbility(caster, ability, first)
+	fight.useAbility(abilityUse{actor: caster, ability: ability, target: first})
 
 	saves := eventsOf[SaveRolled](events.events)
 	var savers []string
@@ -120,7 +120,7 @@ func TestSaveDCFromClassAndSpell(t *testing.T) {
 			}}
 			fight, events := testFight(script(t, 10, 10), caster, target)
 
-			fight.useAbility(caster, ability, target)
+			fight.useAbility(abilityUse{actor: caster, ability: ability, target: target})
 
 			saves := eventsOf[SaveRolled](events.events)
 			if len(saves) != 2 || saves[0].DC != testCase.wantClassDC || saves[1].DC != 30 {
@@ -149,7 +149,7 @@ func TestSaveModifierAgainstTraits(t *testing.T) {
 			}
 			fight, events := testFight(script(t, 10), caster, target)
 
-			fight.useAbility(caster, saveAbility("will", 20, testCase.traits...), target)
+			fight.useAbility(abilityUse{actor: caster, ability: saveAbility("will", 20, testCase.traits...), target: target})
 
 			saves := eventsOf[SaveRolled](events.events)
 			if len(saves) != 1 || saves[0].Bonus != testCase.wantBonus {
@@ -178,7 +178,7 @@ func TestDegreeShiftUpgradesSave(t *testing.T) {
 			}
 			fight, events := testFight(script(t, testCase.die), caster, target)
 
-			fight.useAbility(caster, saveAbility("fortitude", 20), target)
+			fight.useAbility(abilityUse{actor: caster, ability: saveAbility("fortitude", 20), target: target})
 
 			saves := eventsOf[SaveRolled](events.events)
 			if len(saves) != 1 || saves[0].Degree != testCase.want {
@@ -199,7 +199,7 @@ func TestStepShiftWorsensSave(t *testing.T) {
 	ability.Steps[0].Shift = -1
 	fight, events := testFight(script(t, 12), caster, target)
 
-	fight.useAbility(caster, ability, target)
+	fight.useAbility(abilityUse{actor: caster, ability: ability, target: target})
 
 	saves := eventsOf[SaveRolled](events.events)
 	if len(saves) != 1 || saves[0].Degree != Failure {
@@ -231,8 +231,9 @@ func TestSpellAttackUsesPenaltyAndOutcomes(t *testing.T) {
 				Outcomes:    creature.Outcomes{Success: []creature.Step{{Damage: []creature.DamagePart{damagePart(t, "1d4", "fire")}}}},
 			}}}
 			fight, events := testFight(script(t, testCase.dice...), caster, target)
+			fight.current = caster
 
-			fight.useAbility(caster, ability, target)
+			fight.useAbility(abilityUse{actor: caster, ability: ability, target: target})
 
 			attacks := eventsOf[SpellAttackRolled](events.events)
 			if len(attacks) != 1 || attacks[0].Penalty != -5 || attacks[0].Total != testCase.wantTotal || attacks[0].Degree != testCase.wantDegree {
@@ -258,8 +259,9 @@ func TestAbilityRetargetsWhenTargetFalls(t *testing.T) {
 	strong := testCombatant("strong", SideEnemies, creature.KindNPC, 50, 20)
 	flurry := creature.Ability{ID: "flurry", Name: "Flurry", Actions: 3, Steps: []creature.Step{{Strike: "fist"}, {Strike: "fist"}, {Strike: "fist"}}}
 	fight, events := testFight(script(t, 15, 6, 15, 1, 15), caster, weak, strong)
+	fight.current = caster
 
-	fight.useAbility(caster, flurry, weak)
+	fight.useAbility(abilityUse{actor: caster, ability: flurry, target: weak})
 
 	var targets []string
 	for _, rolled := range eventsOf[StrikeRolled](events.events) {

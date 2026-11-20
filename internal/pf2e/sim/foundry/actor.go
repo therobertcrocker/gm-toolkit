@@ -27,6 +27,20 @@ type item struct {
 	Type   string          `json:"type"`
 	Raw    json.RawMessage `json:"system"`
 	System itemCommon      `json:"-"`
+	Stats  itemStats       `json:"_stats"`
+	Flags  itemFlags       `json:"flags"`
+}
+
+type itemStats struct {
+	CompendiumSource string `json:"compendiumSource"`
+}
+
+type itemFlags struct {
+	Core coreFlags `json:"core"`
+}
+
+type coreFlags struct {
+	SourceID string `json:"sourceId"`
 }
 
 type itemCommon struct {

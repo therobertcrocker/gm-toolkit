@@ -1,3 +1,117 @@
 schema = 1
 
 hero_points = 1
+
+# Quick Alchemy stand-in: a count of quick bombs, a dial for A.004.2.
+[pool]
+quick-bombs = 6
+elixir-of-life-moderate = 1
+healing-potion-moderate = 1
+
+[ability.relic-flare-bolt]
+name    = "Relic: Flare Bolt"
+actions = 2
+traits  = ["fire"]
+steps   = [
+  { strike = "alchemists-fire-greater", extra_damage = [{ dice = "7d6", type = "fire" }],
+    critical_success = [{ damage = [{ dice = "14", type = "fire", category = "persistent" }] }] },
+]
+
+[ability.relic-tidal-crash]
+name    = "Relic: Tidal Crash"
+actions = 2
+traits  = ["water"]
+limit   = { per_fight = 1 }
+steps   = [
+  { strike = "alchemists-fire-greater",
+    extra_damage = [{ dice = "8d10", type = "bludgeoning" }, { dice = "8", type = "bludgeoning", category = "splash" }] },
+]
+
+# approximation: the cone is a save by the struck foe; each phase has one boss.
+[ability.relic-searing-wave]
+name    = "Relic: Searing Wave"
+actions = 2
+traits  = ["fire"]
+limit   = { recharge = "1d4" }
+steps   = [
+  { strike = "alchemists-fire-greater",
+    success = [{ save = "reflex", dc_from = "class", basic = true, damage = [{ dice = "7d10", type = "fire" }] }],
+    failure = [{ save = "reflex", dc_from = "class", basic = true, damage = [{ dice = "7d10", type = "fire" }] }] },
+]
+
+[ability.quick-bomb]
+name    = "Quick Alchemy: bomb"
+actions = 2
+traits  = ["alchemist", "manipulate"]
+limit   = { pool = "quick-bombs" }
+steps   = [{ strike = "alchemists-fire-greater" }]
+
+[ability.quick-bomb-sticky]
+name    = "Quick Alchemy: Sticky Bomb"
+actions = 2
+traits  = ["additive", "alchemist", "manipulate"]
+limit   = { pool = "quick-bombs", per_round = 1 }
+steps   = [
+  { strike = "alchemists-fire-greater", extra_damage = [{ dice = "8", type = "fire", category = "persistent" }] },
+]
+
+[ability.quick-bomb-debilitating]
+name    = "Quick Alchemy: Debilitating Bomb"
+actions = 2
+traits  = ["additive", "alchemist", "manipulate"]
+limit   = { pool = "quick-bombs", per_round = 1 }
+steps   = [
+  { strike = "alchemists-fire-greater",
+    success = [{ save = "fortitude", dc_from = "class",
+      failure = [{ condition = "dazzled", duration = { until = "source-turn-start" } }],
+      critical_failure = [{ condition = "dazzled", duration = { until = "source-turn-start" } }] }] },
+]
+
+[ability.drink-elixir-of-life]
+name    = "Elixir of Life (Moderate)"
+actions = 1
+traits  = ["manipulate"]
+targets = "self"
+limit   = { pool = "elixir-of-life-moderate" }
+steps   = [{ heal = "5d6+12" }]
+
+[ability.feed-elixir-of-life]
+name    = "Elixir of Life (Moderate), to an ally"
+actions = 1
+traits  = ["manipulate"]
+tags    = ["loyalty"]
+targets = "ally"
+limit   = { pool = "elixir-of-life-moderate" }
+steps   = [{ heal = "5d6+12" }]
+
+[ability.drink-healing-potion-moderate]
+name    = "Healing Potion (Moderate)"
+actions = 1
+traits  = ["manipulate"]
+targets = "self"
+limit   = { pool = "healing-potion-moderate" }
+steps   = [{ heal = "3d8+10" }]
+
+[ability.feed-healing-potion-moderate]
+name    = "Healing Potion (Moderate), to an ally"
+actions = 1
+traits  = ["manipulate"]
+tags    = ["loyalty"]
+targets = "ally"
+limit   = { pool = "healing-potion-moderate" }
+steps   = [{ heal = "3d8+10" }]
+
+[ability.bewitching-bloom-cherry-blossom]
+name    = "Bewitching Bloom (Cherry Blossom)"
+actions = 2
+traits  = ["concentrate"]
+targets = "ally"
+limit   = { per_fight = 1 }
+steps   = [{ recovery_dc = 10, duration = { rounds = 10 } }]
+
+[ability.swear-fidelity]
+name    = "Swear Fidelity"
+actions = 1
+traits  = ["auditory", "concentrate"]
+tags    = ["loyalty"]
+targets = "self"

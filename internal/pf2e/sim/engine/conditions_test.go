@@ -261,7 +261,7 @@ func TestEffectTraitImmunity(t *testing.T) {
 	avatar.Creature.Defense.Immune = []string{"death-effects"}
 	fight, events := testFight(script(t), caster, avatar)
 
-	fight.useAbility(caster, saveAbility("fortitude", 20, "death", "void"), avatar)
+	fight.useAbility(abilityUse{actor: caster, ability: saveAbility("fortitude", 20, "death", "void"), target: avatar})
 
 	want := []ImmuneToEffect{{Combatant: "avatar", Source: "caster", Ability: "test-save"}}
 	if got := eventsOf[ImmuneToEffect](events.events); !slices.Equal(got, want) {
@@ -282,7 +282,7 @@ func TestUnlessSkipsTarget(t *testing.T) {
 	}}
 	fight, events := testFight(script(t, 10), caster, scared, calm)
 
-	fight.useAbility(caster, ability, scared)
+	fight.useAbility(abilityUse{actor: caster, ability: ability, target: scared})
 
 	saves := eventsOf[SaveRolled](events.events)
 	if len(saves) != 1 || saves[0].Combatant != "calm" {
@@ -316,8 +316,9 @@ func TestConcealmentFlatCheck(t *testing.T) {
 				giveCondition(target, testCase.targetCondition, 0)
 			}
 			fight, events := testFight(script(t, testCase.dice...), attacker, target)
+			fight.current = attacker
 
-			fight.strike(attacker, target, fist(), "")
+			fight.strike(attacker, target, fist(), strikeOptions{})
 
 			checks := eventsOf[FlatChecked](events.events)
 			if len(checks) != 1 || checks[0].DC != testCase.wantDC || checks[0].Reason != "concealment" {

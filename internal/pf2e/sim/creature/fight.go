@@ -8,7 +8,7 @@ import (
 
 var (
 	DegreeWords      = []string{"critical-failure", "failure", "success", "critical-success"}
-	CheckSelectors   = []string{"ac", "fortitude", "reflex", "will", "saving-throw", "perception", "initiative", "attack", "melee-attack", "ranged-attack", "damage", "melee-damage", "spell-attack", "spell-dc", "class-dc"}
+	CheckSelectors   = append([]string{"ac", "fortitude", "reflex", "will", "saving-throw", "perception", "initiative", "attack", "melee-attack", "ranged-attack", "damage", "melee-damage", "spell-attack", "spell-dc", "class-dc", SkillCheckSelector}, SkillNames...)
 	saveSelectors    = []string{"fortitude", "reflex", "will", "saving-throw"}
 	againstSelectors = []string{"ac", "fortitude", "reflex", "will", "saving-throw"}
 )

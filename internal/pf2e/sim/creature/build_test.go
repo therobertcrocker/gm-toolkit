@@ -284,6 +284,46 @@ striking = 2
 	}
 }
 
+func TestCriticalSpecializationRowIsCopied(t *testing.T) {
+	layers := map[string]string{
+		"import.toml": fighterBuild,
+		"second-hammer.toml": `schema = 1
+
+[build]
+critical_specialization = "expert"
+
+[build.weapon.warhammer]
+name     = "Warhammer"
+category = "martial"
+group    = "hammer"
+dice     = 1
+die      = 8
+type     = "bludgeoning"
+`,
+	}
+	loaded, err := creature.Load(writeLayers(t, layers), "second-hammer")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	fury, warhammer := loaded.Strikes["protectors-fury"], loaded.Strikes["warhammer"]
+	if len(fury.CriticalSuccess) != 1 || len(warhammer.CriticalSuccess) != 1 {
+		t.Fatalf("riders = %+v, %+v, want one each", fury.CriticalSuccess, warhammer.CriticalSuccess)
+	}
+
+	fury.CriticalSuccess[0].Failure[0].Condition = "stunned"
+
+	if got := warhammer.CriticalSuccess[0].Failure[0].Condition; got != "prone" {
+		t.Errorf("warhammer rider failure = %q, want prone", got)
+	}
+	reloaded, err := creature.Load(writeLayers(t, layers), "second-hammer")
+	if err != nil {
+		t.Fatalf("second Load: %v", err)
+	}
+	if got := reloaded.Strikes["protectors-fury"].CriticalSuccess[0].Failure[0].Condition; got != "prone" {
+		t.Errorf("reloaded rider failure = %q, want prone", got)
+	}
+}
+
 func TestBuildWeaponAttributesAndBonusStacking(t *testing.T) {
 	loaded, err := creature.Load(writeLayers(t, map[string]string{"import.toml": scoutBuild}))
 	if err != nil {

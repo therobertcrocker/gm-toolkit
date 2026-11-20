@@ -25,8 +25,8 @@ func (creature *Creature) prepare() error {
 	if creature.Defense.AC < 1 {
 		report("defense.ac must be at least 1")
 	}
-	if creature.HeroPoints < 0 || creature.RecoveryDC < 0 {
-		report("hero_points and recovery_dc must not be negative")
+	if creature.HeroPoints < 0 || creature.RecoveryDC < 0 || creature.FastHealing < 0 {
+		report("hero_points, recovery_dc and fast_healing must not be negative")
 	}
 	if creature.DyingMax != 0 && creature.DyingMax < 2 {
 		report("dying_max %d: want at least 2, or leave it unset for 4", creature.DyingMax)
@@ -59,6 +59,9 @@ func (creature *Creature) prepare() error {
 		}
 	}
 	creature.checkFightRules(report)
+	creature.checkPools(report)
+	creature.checkSkills(report)
+	creature.checkExtraReactions(report)
 
 	for _, id := range creature.StrikeIDs() {
 		strike := creature.Strikes[id]
@@ -90,15 +93,38 @@ func (creature *Creature) prepare() error {
 		if ability.Name == "" {
 			report("ability.%s: name is empty", id)
 		}
-		if ability.Actions < 1 || ability.Actions > 3 {
-			report("ability.%s: actions %d: want 1 to 3", id, ability.Actions)
+		if ability.Trigger != nil {
+			checkTrigger("ability."+id, ability, report)
+		} else {
+			checkCost("ability."+id, ability, report)
 		}
-		if len(ability.Steps) == 0 {
+		creature.checkLimit("ability."+id, ability.Limit, report)
+		if len(ability.Steps) == 0 && len(ability.Tags) == 0 {
 			report("ability.%s: no steps", id)
+		}
+		for _, tag := range ability.Tags {
+			if !slices.Contains(abilityTags, tag) {
+				report("ability.%s: tag %q: want %s", id, tag, strings.Join(abilityTags, ", "))
+			}
 		}
 		checkArea("ability."+id, ability.Area, report)
 		for index := range ability.Steps {
 			creature.checkStep(fmt.Sprintf("ability.%s.steps[%d]", id, index), &ability.Steps[index], report)
+		}
+		if !slices.Contains(abilityTargets, ability.Targets) {
+			report("ability.%s: targets %q: want self, ally, others, or leave it unset", id, ability.Targets)
+		}
+		if ability.Targets == TargetsOthers && ability.Area == nil {
+			report("ability.%s: targets others needs an area", id)
+		}
+		if ability.Targets == TargetsSelf && ability.Area != nil {
+			report("ability.%s: targets self takes no area", id)
+		}
+		if len(ability.Sustain) > 0 && ability.Trigger != nil {
+			report("ability.%s: a triggered ability cannot be sustained", id)
+		}
+		for index := range ability.Sustain {
+			creature.checkStep(fmt.Sprintf("ability.%s.sustain[%d]", id, index), &ability.Sustain[index], report)
 		}
 	}
 

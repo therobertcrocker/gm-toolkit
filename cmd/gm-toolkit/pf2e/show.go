@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-isatty"
@@ -84,9 +85,19 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 	if adaptive := defense.Adaptive; adaptive != nil {
 		fmt.Fprintf(out, "Adaptive resistance %d (%s)\n", adaptive.Value, strings.Join(adaptive.Types, ", "))
 	}
+	if shown.FastHealing > 0 {
+		fmt.Fprintf(out, "Fast healing %d\n", shown.FastHealing)
+	}
 	fmt.Fprintf(out, "Speed %s\n", speedText(shown.Speed))
 	if shown.ClassDC > 0 {
 		fmt.Fprintf(out, "Class DC %d\n", shown.ClassDC)
+	}
+	if len(shown.Skills) > 0 {
+		entries := make([]string, 0, len(shown.Skills))
+		for _, name := range slices.Sorted(maps.Keys(shown.Skills)) {
+			entries = append(entries, fmt.Sprintf("%s %+d", name, shown.Skills[name]))
+		}
+		fmt.Fprintf(out, "Skills %s\n", strings.Join(entries, ", "))
 	}
 	if shown.HeroPoints > 0 || shown.DyingMax > 0 || shown.RecoveryDC > 0 {
 		fmt.Fprintf(out, "Hero points %d  dying max %d  recovery DC %d\n", shown.HeroPoints, cmp.Or(shown.DyingMax, 4), cmp.Or(shown.RecoveryDC, 10))
@@ -124,12 +135,19 @@ func printCreature(out io.Writer, shown *creature.Creature, styled bool) {
 			}
 			steps := make([]string, len(ability.Steps))
 			for index, step := range ability.Steps {
-				steps[index] = "strike " + step.Strike
+				steps[index] = stepText(step)
 			}
-			fmt.Fprintf(out, "  %s [%d]  %s\n", ability.Name, ability.Actions, strings.Join(steps, ", "))
+			fmt.Fprintf(out, "  %s [%s]%s  %s\n", ability.Name, costText(ability), limitText(ability.Limit), strings.Join(steps, ", "))
 		}
 	}
 
+	if len(shown.Pools) > 0 {
+		entries := make([]string, 0, len(shown.Pools))
+		for _, name := range slices.Sorted(maps.Keys(shown.Pools)) {
+			entries = append(entries, fmt.Sprintf("%s %d", name, shown.Pools[name]))
+		}
+		fmt.Fprintf(out, "Pools %s\n", strings.Join(entries, ", "))
+	}
 	printFightRules(out, shown, bold, reset)
 	fmt.Fprintf(out, "Layers %s\n", strings.Join(shown.Layers, " + "))
 }
@@ -206,4 +224,53 @@ func damageText(parts []creature.DamagePart) string {
 		}
 	}
 	return strings.Join(texts, " plus ")
+}
+
+func stepText(step creature.Step) string {
+	if step.Kind() == creature.StepStrike {
+		return "strike " + step.Strike
+	}
+	return step.Kind()
+}
+
+func costText(ability creature.Ability) string {
+	low, high := ability.CostRange()
+	switch {
+	case ability.Trigger != nil:
+		return triggerText(*ability.Trigger)
+	case ability.Free:
+		return "free"
+	case high > low:
+		return fmt.Sprintf("%d-%d", low, high)
+	default:
+		return strconv.Itoa(low)
+	}
+}
+
+func triggerText(trigger creature.Trigger) string {
+	cost := trigger.Cost
+	if cost == "" {
+		cost = "passive"
+	}
+	return cost + " on " + trigger.On
+}
+
+func limitText(limit *creature.Limit) string {
+	if limit == nil {
+		return ""
+	}
+	var parts []string
+	if limit.PerFight > 0 {
+		parts = append(parts, fmt.Sprintf("%d per fight", limit.PerFight))
+	}
+	if limit.PerRound > 0 {
+		parts = append(parts, fmt.Sprintf("%d per round", limit.PerRound))
+	}
+	if limit.Recharge != "" {
+		parts = append(parts, "recharge "+limit.Recharge)
+	}
+	if limit.Pool != "" {
+		parts = append(parts, "pool "+limit.Pool)
+	}
+	return " (" + strings.Join(parts, ", ") + ")"
 }

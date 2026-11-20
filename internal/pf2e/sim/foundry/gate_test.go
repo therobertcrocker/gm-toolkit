@@ -3,6 +3,7 @@ package foundry
 import (
 	"maps"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
@@ -56,13 +57,53 @@ var gateOne = []gateCase{
 		resist: map[string]int{"poison": 7, "electricity": 5},
 	},
 	{
-		pc:           "arabesque",
-		attributes:   map[string]int{"str": 0, "dex": 4, "con": 1, "int": 4, "wis": 1, "cha": 5},
-		hp:           104, ac: 34, saves: [3]int{21, 24, 21}, perception: 19, speed: 30,
+		pc:         "arabesque",
+		attributes: map[string]int{"str": 0, "dex": 4, "con": 1, "int": 4, "wis": 1, "cha": 5},
+		hp:         104, ac: 34, saves: [3]int{21, 24, 21}, perception: 19, speed: 30,
 		spellcasting: &creature.Spellcasting{Attack: 23, DC: 33, TopRank: 7},
 		strikes:      []gateStrike{{"blink-blade", 24, "2d4+2", "piercing"}},
 		resist:       map[string]int{},
 	},
+}
+
+var gateSkills = map[string]map[string]int{
+	"kas": {
+		"acrobatics": 20, "arcana": 0, "athletics": 25, "crafting": 0, "deception": 20, "diplomacy": 20, "intimidation": 26, "medicine": 3,
+		"nature": 3, "occultism": 0, "performance": 4, "religion": 3, "society": 0, "stealth": 0, "survival": 19, "thievery": 0,
+	},
+	"tavish": {
+		"acrobatics": 19, "arcana": 20, "athletics": 13, "crafting": 26, "deception": 23, "diplomacy": 17, "intimidation": 17, "medicine": 18,
+		"nature": 18, "occultism": 18, "performance": 17, "religion": 16, "society": 20, "stealth": 24, "survival": 16, "thievery": 19,
+	},
+	"arabesque": {
+		"acrobatics": 22, "arcana": 22, "athletics": 0, "crafting": 4, "deception": 25, "diplomacy": 5, "intimidation": 21, "medicine": 1,
+		"nature": 1, "occultism": 24, "performance": 23, "religion": 1, "society": 20, "stealth": 20, "survival": 1, "thievery": 20,
+	},
+}
+
+func TestGateSkills(t *testing.T) {
+	for _, pc := range slices.Sorted(maps.Keys(gateSkills)) {
+		t.Run(pc, func(t *testing.T) {
+			layer, _ := importTestPC(t, pc)
+			directory := filepath.Join(t.TempDir(), pc)
+			if err := writeLayer(directory, "actors/"+pc+".json", layer); err != nil {
+				t.Fatalf("writeLayer: %v", err)
+			}
+			loaded, err := creature.Load(directory)
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			want := gateSkills[pc]
+			if len(loaded.Skills) != len(creature.SkillNames) {
+				t.Errorf("skills = %v, want all %d", loaded.Skills, len(creature.SkillNames))
+			}
+			for _, name := range creature.SkillNames {
+				if got, found := loaded.Skills[name]; !found || got != want[name] {
+					t.Errorf("%s = %+d, want %+d", name, got, want[name])
+				}
+			}
+		})
+	}
 }
 
 func TestGateOneStatParity(t *testing.T) {

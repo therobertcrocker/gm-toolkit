@@ -19,20 +19,25 @@ Each is built only from shared building blocks, lives in the creature's hand lay
 
 | Item | Stand-in | What is lost |
 |---|---|---|
-| Walk the Timelines (Luna) | Two Strikes at one multiple attack penalty that count as one attack, at two targets, then Luna moves out of reach | The choice of timeline |
-| Sin Vulnerability (Avatar) | Abilities carry a `loyalty` tag; using a tagged ability fires the trigger. Stepping between an ally and the avatar is a 1-action tagged move | The position test for stepping between |
+| Walk the Timelines (Luna) | Two Strikes at one multiple attack penalty that count as one attack; the second goes at another standing foe, or the same one when it stands alone. No move | The choice of timeline; the move out of reach (`A.004.2`) |
+| Sin Vulnerability (Avatar) | An act of loyalty fires it: using an ability tagged `loyalty`, reviving an ally, or passing a save against a boss effect tagged `tests-loyalty`; once per creature per round. The acting PC gets Faithful Strike. No step-between ability | Stepping between an ally and the avatar (`A.004.2`) |
 | Cursed Metamorphosis (Avatar) | Failure or critical failure: "transformed", the PC can't act and saves at the end of each turn to end it. Success: sickened 1 | The animal's own stat block |
-| Too Angry to Die (Kas) | When Kas stops dying and gets up, he Demoralizes as a free action | Prone and the Stand action |
-| Quick Alchemy group (Tavish) | A per-fight counter of quick bombs. Debilitating Bomb and Sticky Bomb are bomb options that spend it | Crafting choices, Double Brew |
+| Quick Alchemy group (Tavish) | A pool of 6 quick bombs, a dial for `A.004.2`. Each additive (Debilitating Bomb, Sticky Bomb) is its own 2-action ability that spends it | Crafting choices, Double Brew |
 | Devouring Void (Arabesque) | Basic Fortitude damage on cast and on each Sustain to the creatures caught; it ends for a target that moves far | The check to leave the area |
 | Temporal Twin (Arabesque) | The ally spends its reaction for one extra Strike with no multiple attack penalty | Repeating actions other than a Strike |
-| Comforting Presence (Arabesque) | When any ally gains frightened or stupefied, its value drops by 1 and Arabesque's rises by 1 | The adjacency test |
+| Comforting Presence (Arabesque) | A reaction: when an ally gains frightened or stupefied, that ally's value drops by 1 and Arabesque's rises by 1. One ability per condition | The adjacency test |
 
 Named approximations that are not stand-ins:
 
-- **Wail** — the burst only; the 1-round lingering area is dropped
+- **Wail** — the burst only; the 3-action version and the 1-round lingering area are dropped
 - **Last Stand** — the heal, the Wail recharge and the extra action; the move to The Realm Between is dropped
 - **Chain Lightning** — one target; each phase has one boss, so the chain never jumps
+- **Attack of Opportunity** — every foe counts as in reach; a manipulate action, a ranged Strike or a Stand provokes it, and Stand is the only move action until `A.004.2`
+- **Searing Wave** — the cone is a basic Reflex save by the struck foe on a hit or a miss, so it catches foes only; each phase has one boss
+- **Healing Wave** — the cone catches Kas and every ally, dying ones included
+- **Ring of the Ram** — the damage; the push is dropped
+- **Farabellus Flip** — the +2 AC; the Step waits for `A.004.2`
+- **Lash Out** — the 2d6 void; the shove waits for `A.004.2`
 
 ## 3 — Kept
 
@@ -60,7 +65,7 @@ Named approximations that are not stand-ins:
 | Warpwave Strike, with the Warpwave table (section 4) | as written | E5 | no |
 | Demonic Frenzy | as written | E1 | yes |
 | Vengeful Spite | as written | E4 | yes |
-| Wail | approximation | E4 | yes |
+| Wail (Wails of the Damned's degrees, not basic: nothing, full, full and drained 1d4, double and drained 4) | approximation | E4 | yes |
 | Fast Healing 10 | as written | E4 | no |
 | Protean Anatomy 25 | as written | E3 | flat resist 12 |
 | Sin Vulnerability | stand-in | E4 | yes |
@@ -73,7 +78,7 @@ Named approximations that are not stand-ins:
 | Confusion | as written | E5 | partly |
 | Unfathomable Song | as written | E5 | yes |
 | Divine Wrath | as written | E5 | yes |
-| Translocate | as written | E7 (position) | no |
+| Translocate | as written | `A.004.2` | no |
 
 ### Kas
 
@@ -82,19 +87,19 @@ Named approximations that are not stand-ins:
 | Protector's Fury Strike | as written | E1 | yes |
 | Vicious Swing, with Furious Focus | as written | E4 | yes |
 | Brutal Finish | as written | E4 | yes |
-| Sudden Charge | as written | E7 (position) | yes |
-| Healing Wave | as written | E4 | yes |
+| Sudden Charge | as written | `A.004.2` | yes |
+| Healing Wave | approximation | E4 | yes |
 | Healing potions | as written | E4 | yes |
 | Intimidating Strike | as written | E3 | no |
-| Demoralize, with Intimidating Glare and Intimidating Prowess | as written | E3 | no |
+| Demoralize, with Intimidating Glare and Intimidating Prowess | as written | E4 | no |
 | Battle Cry (Demoralize when rolling initiative) | as written | E4 | no |
-| Propelling Winds, Umbral Wings, Winged Boots (fly) | as written | E7 (position) | no |
-| Ring of the Ram | as written | E4 | no |
+| Propelling Winds, Umbral Wings, Winged Boots (fly) | as written | `A.004.2` | no |
+| Ring of the Ram | approximation | E4 | no |
 | Amulet of Kinship's Strength (Strength of Mind on 3 allies; +2 Will, +3 against fear) | as written | E5 | no |
-| Attack of Opportunity, with its disrupt on a critical hit | as written; the move trigger comes with E7 | E4 | no |
+| Attack of Opportunity, with its disrupt on a critical hit | approximation; the move trigger comes with `A.004.2` | E4 | no |
 | Tactical Reflexes | as written | E4 | no |
-| Farabellus Flip | as written; the Step comes with E7 | E4 | no |
-| Too Angry to Die | stand-in | E4 | no |
+| Farabellus Flip | approximation; the Step comes with `A.004.2` | E4 | no |
+| Too Angry to Die | as written | E4 | no |
 | Inextinguishable, Diehard (dying max) | as written | E3 | yes |
 | Toughness, Mountain's Stoutness (recovery DC) | as written | E3 | no |
 | Bravery, Juggernaut, Gutsy Halfling, Irrepressible | as written | E3 | Bravery |
@@ -109,20 +114,21 @@ Named approximations that are not stand-ins:
 | Item | Model | Last rule in | Script |
 |---|---|---|---|
 | Bomb Strikes, with splash and persistent damage | as written | E3 | yes |
-| Calculated Splash, Expanded Splash, Greater Field Discovery, Bomber | as written; splash on other creatures comes with E7 | E3 | splash only |
+| Calculated Splash, Expanded Splash, Greater Field Discovery, Bomber | as written; splash on other creatures comes with `A.004.2` | E3 | splash only |
 | Relic: Flare Bolt, Relic: Tidal Crash | as written | E4 | yes |
-| Relic: Searing Wave (cone 30, recharge 1d4) | as written | E4 | no |
+| Relic: Searing Wave (cone 30, recharge 1d4) | approximation | E4 | no |
 | Quick Alchemy group, Debilitating Bomb, Sticky Bomb | stand-in | E4 | Sticky Bomb |
 | Quick Bomber | as written | E4 | no |
-| Wrist Mounted Bomb Launcher (range 60) | as written | E7 (position) | no |
+| Wrist Mounted Bomb Launcher (range 60) | as written | `A.004.2` | no |
 | Tenderizer Grenade | as written; a rules call on the amount | E3 | no |
 | Inflammation Flask (weakness 3 to acid, fire and slashing) | as written | E3 | no |
-| Star Grenade (splash in two lines) | as written; the line shape comes with E7 | E3 | no |
+| Star Grenade (splash in two lines) | as written; the line shape comes with `A.004.2` | E3 | no |
 | Elixir of Life, Healing Potion | as written | E4 | yes |
 | Mistform Elixir (concealed) | as written | E3 | no |
 | Reaper's Spellgun | as written | E3 | no |
-| Bewitching Bloom (Cherry Blossom, Bellflower) | as written | E4 | no |
-| Jet Propulsion, Wyrm on the Wing (fly) | as written | E7 (position) | no |
+| Bewitching Bloom (Cherry Blossom) | as written | E4 | no |
+| Bewitching Bloom (Bellflower) | as written | E5 | no |
+| Jet Propulsion, Wyrm on the Wing (fly) | as written | `A.004.2` | no |
 | Juggernaut | as written | E3 | no |
 | Hero points | as written | E3 | yes |
 
@@ -139,13 +145,13 @@ Named approximations that are not stand-ins:
 | Cantrips: Electric Arc, Needle Darts, Telekinetic Projectile, Ignition | as written | E5 | no |
 | True Target | as written | E5 | no |
 | Dispel Magic | as written | E5 | no |
-| Fly | as written | E7 (position) | no |
+| Fly | as written | `A.004.2` | no |
 | Fire Shield | as written | E5 | no |
 | Blood Vendetta, Overselling Flourish (reaction spells) | as written | E5 | no |
 | Quickened Casting | as written | E5 | no |
 | Temporal Twin | stand-in | E5 | no |
-| Lash Out (2d6 void and a shove); the shove comes with E7 | as written | E4 | no |
-| Return Force (Bands of Force shove) | as written; the shove comes with E7 | E4 | no |
+| Lash Out (2d6 void and a shove); the shove comes with `A.004.2` | approximation | E4 | no |
+| Return Force (Bands of Force shove) | as written | `A.004.2` | no |
 | Comforting Presence | stand-in | E4 | no |
 | Calm and Centered, Ancestral Suspicion, Desolation Locket armor (+3 against emotion) | as written | E3 | no |
 | Therapeutic Snap Peas | as written | E4 | no |
@@ -184,7 +190,7 @@ Every dropped ability is marked `ignore` in a hand layer by Effort 6, so D-8 hol
 | Hard on its own (step 2) | Grapple (the PCs don't grapple enemies) |
 | Own code, not in the script (step 3) | Untethered to Fate, Guidance, Shatter Defenses, Spellwatch rune, Dread rune, Infectious Enthusiasm, Aid, Wand of Contagious Frailty, Reach Spell, Widen Spell, Safeguarded Spell |
 
-Basic actions (Stride, Step, Interact, Seek, Sense Motive, Balance, Take Cover, Ready) are not sheet items; movement comes with Effort 7's position seam.
+Basic actions (Stride, Step, Interact, Seek, Sense Motive, Balance, Take Cover, Ready) are not sheet items; movement comes with `A.004.2`'s position seam.
 
 ## 6 — Rules calls
 
@@ -197,5 +203,34 @@ Each is put to Robert in the session that builds its rule.
 | Diehard with Inextinguishable | Kas dies at dying 6, as the export's Diehard rule element sets | E3 |
 | Destiny Spores' save | Basic | E3 |
 | Ancestral Suspicion | Only the controlled condition counts, as written, so it never fires in this fight | E3 |
-| Wail's save | Open: whether it is basic | E4 |
-| Faithful Strike | Open: the next Strike or damaging spell against the avatar only, as the text says, or every attack while it lasts, as its rule elements do | E4 |
+| Wail's save | Not basic: Wails of the Damned as written (Player Core p. 367) with the Avatar's own numbers, Fortitude DC 38, 8d10 spirit. Nothing on a critical success, full damage on a success, full damage and drained 1d4 on a failure, double damage and drained 4 on a critical failure. The 3-action version and the lingering round stay dropped | E4 |
+| Faithful Strike | The text, not the rule elements: spent by the next Strike or damaging spell against the avatar, hit or miss; it ends unused at the end of the holder's next turn. Until Effort 5 defines spells, Strikes only | E4 |
+| Recharge | Counts down at the start of the user's turn; a roll of 1 means ready next turn. Destiny Spores, Wail and Searing Wave share it | E4 |
+| The Avatar's turn start | Last Stand is checked first, then Fast Healing | E4 |
+| Impending Fate and Fey Momentum | Fire on critical Strikes only, not on other attack rolls | E4 |
+| Vengeful Spite's conditions | Frightened and stunned follow the save result alone; Terrifying Touch's "not already frightened" limit does not carry over | E4 |
+| Sin Vulnerability's acts | Once per creature per initiative round; a `loyalty` ability, a revive of an ally, and a passed save against a boss effect marked for it. Faithful Strike goes to the acting PC. No step-between ability until `A.004.2` | E4 |
+| Hands | Not run, a table rule that beats rules as written: drinking or feeding a potion or elixir is 1 action; no draw, re-grip or dropped weapon | E4 |
+| A knocked-out PC | Is prone, and Stand costs 1 action. Too Angry to Die is a reaction on that Stand, as written | E4 |
+| Starting counts | From the sheets: Kas 3 Moderate and 1 Greater healing potion; Tavish 1 Elixir of Life and 1 potion; Arabesque 5 Therapeutic Snap Peas; Tavish 6 quick bombs. Each a dial for `A.004.2`. Sheet stock does not set a pool: Tavish's later sheet shows 3 infused reagents, mid-adventure state, and the pool stays 6 | E4 |
+| Relic gifts and Searing Wave | One gift per bomb. Searing Wave's cone fires on a hit or a miss, not a critical failure, and catches foes only | E4 |
+| Attack of Opportunity | Fires on every manipulate action, ranged Strike and Stand by a foe; every creature counts as engaged with every foe. A critical hit disrupts a manipulate action: the actions and the use are both lost | E4 |
+| Position stand-ins | Walk the Timelines is two Strikes and no move; Farabellus Flip is the +2 AC without the Step; Lash Out is the damage without the shove; Return Force waits for `A.004.2`; Healing Wave catches Kas and every ally, dying ones included; Ring of the Ram's push is dropped | E4 |
+| Challenge Fate | Answers Strikes and spell attacks | E4 |
+| Comforting Presence | A reaction that helps the triggering ally only | E4 |
+| Skill modifiers | Computed from the build: the importer reads skill ranks, the load computes each modifier | E4 |
+| Bewitching Bloom (Cherry Blossom) | A PC rolls recovery against 10 or its own DC, whichever is lower | E4 |
+| "Once per day, hour or minute" | Once per fight. Slowed "for 1 round" is a 1-round duration | E4 |
+| Quickened with lost actions | A quickened creature that loses actions loses the quickened one first | E4 |
+| Actions while down | A downed PC still regains actions (Player Core pg. 415, 435, 411), so stunned and slowed count down while it is down | E4 |
+| Stunned on the bearer's own turn | Takes its remaining actions at once, as written (Player Core pg. 442); the ability in progress completes | E4 |
+| Stunned for a duration | Loses every action for the duration and overrides slowed, as written (Player Core pg. 446). Inference, not rules text: a valueless stunned beside a valued one loses every action, and the valued one counts down by what it would have taken | E4 |
+| Flourish and once per round | One clock: back at the start of the user's next turn, as a 1-round duration is. The strict top-of-initiative round is not built | E4 |
+| Reactions before the first turn | Allowed: a table rule, as Player Core pg. 436 leaves it to the GM. Tactical Reflexes' extra reaction arrives at the first turn, as its text says | E4 |
+| Fast healing on a downed creature | Works, as written (Player Core pg. 410: no exception for 0 HP or dying). Two inferences, not rules text: the heal comes before the recovery check, since the start-of-turn steps run in any order and healing first is never worse; a creature healed above 0 acts that turn, still prone | E4 |
+| Sustain | An effect lasts to the end of the user's next turn even if the user drops, as written. Two readings wait for Effort 5: a second Sustain in a turn, and a disrupted Sustain ending the effect | E4 |
+| Haste | Reaches the caster: "Target 1 creature", heightened to 6, nothing keeps the caster out | E4 |
+| Demoralize | Visual, through Intimidating Glare (Player Core pg. 257) | E4 |
+| Untrained Improvisation | The importer reads the sheet's formula, the legacy text; at level 14 the legacy and Remaster numbers agree (+14) | E4 |
+| A bomb with no stock | Imported when it is a bomb, the PC has Quick Alchemy and its formula is in the formula book, as the legacy Quick Alchemy requires (Core Rulebook pg. 72). Any other quantity-0 weapon is skipped | E4 |
+| A bare bomb Strike | Spends nothing today; a design question for Effort 6 | E6 |

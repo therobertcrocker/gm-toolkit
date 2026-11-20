@@ -19,7 +19,7 @@ var (
 	}
 	laterSelectors = []string{"unarmed-attack", "unarmed-damage", "alchemical-bomb-damage", "melee-strike-damage"}
 	bonusTypes     = map[string]string{"": "", "untyped": "", "item": "item", "status": "status", "circumstance": "circumstance"}
-	laterRuleKeys  = []string{"DamageDice", "Strike", "Weakness", "Immunity"}
+	laterRuleKeys  = []string{"Strike", "Weakness", "Immunity"}
 	unusedRuleKeys = []string{"Note", "GrantItem", "ChoiceSet", "Sense", "TokenLight", "TokenEffectIcon", "ItemAlteration", "CraftingAbility"}
 	physicalTypes  = []string{"weapon", "armor", "equipment", "consumable", "shield", "backpack", "treasure", "ammo", "book"}
 	unreadTypes    = []string{"condition", "effect", "spell"}
@@ -96,6 +96,8 @@ func (importer *pcImporter) applyRule(current *item, rule map[string]any, option
 		importer.dexterityCap(current, rule)
 	case key == "RollOption":
 		importer.rollOption(current, rule)
+	case key == "DamageDice":
+		importer.report.skip(current.Name, key, ReasonAbilityPart)
 	case slices.Contains(laterRuleKeys, key):
 		importer.report.skip(current.Name, key, ReasonLaterRule)
 	case slices.Contains(unusedRuleKeys, key):
@@ -133,6 +135,9 @@ func (importer *pcImporter) flatModifierFor(current *item, rule map[string]any, 
 	}
 	what := "FlatModifier " + selector
 	stat, isStat := statSelectors[selector]
+	if creature.IsSkillSelector(selector) {
+		stat, isStat = selector, true
+	}
 	weaponStat, isWeaponStat := weaponStatSelectors[selector]
 	switch {
 	case slices.Contains(laterSelectors, selector):
@@ -144,6 +149,9 @@ func (importer *pcImporter) flatModifierFor(current *item, rule map[string]any, 
 	}
 	kind, _ := rule["type"].(string)
 	bonusType, isBonusType := bonusTypes[kind]
+	if kind == creature.ProficiencyModifier && creature.IsSkillSelector(selector) {
+		bonusType, isBonusType = kind, true
+	}
 	if !isBonusType {
 		importer.report.skip(current.Name, what+" ("+kind+")", ReasonNotCombat)
 		return
@@ -278,6 +286,9 @@ func rankKey(path string) (string, bool) {
 		return "perception", true
 	case inner == "proficiencies.spellcasting":
 		return "spellcasting", true
+	case strings.HasPrefix(inner, "skills."):
+		name := strings.TrimPrefix(inner, "skills.")
+		return skillRankPrefix + name, creature.IsSkill(name)
 	case strings.HasPrefix(inner, "saves."):
 		key := strings.TrimPrefix(inner, "saves.")
 		return key, creature.IsProficiencyKey(key)

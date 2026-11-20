@@ -20,6 +20,7 @@ func TestImportPCRuleElementsKas(t *testing.T) {
 		"mountains-stoutness":         {Selector: "hp", PerLevel: 1},
 		"fleet":                       {Selector: "land-speed", Value: 5},
 		"amulet-of-kinships-strength": {Selector: "will", Type: "item", Value: 2},
+		"demon-mask":                  {Selector: "intimidation", Type: "item", Value: 2},
 	}
 	if !reflect.DeepEqual(build.Modifiers, wantModifiers) {
 		t.Errorf("Modifiers = %+v, want %+v", build.Modifiers, wantModifiers)
@@ -30,7 +31,7 @@ func TestImportPCRuleElementsKas(t *testing.T) {
 	for _, want := range []struct{ item, reason string }{
 		{"Keen Eyes", ReasonConditional},
 		{"Vicious Swing", ReasonToggle},
-		{"Demon Mask", ReasonNotCombat},
+		{"Aethership Navigation", ReasonNotCombat},
 		{"Weapon Legend (Hammer)", ReasonUnsupported},
 	} {
 		if !hasSkip(report, want.item, want.reason) {
@@ -45,6 +46,19 @@ func TestImportPCRuleElementsKas(t *testing.T) {
 	if report.Unused["Note"] == 0 {
 		t.Errorf("Unused = %v, want Note counted", report.Unused)
 	}
+	checkDamageDice(t, report, "Vicious Swing", "Brutal Finish")
+}
+
+func checkDamageDice(t *testing.T, report *Report, items ...string) {
+	t.Helper()
+	for _, name := range items {
+		if !slices.Contains(report.Skipped, Skip{Item: name, What: "DamageDice", Reason: ReasonAbilityPart}) {
+			t.Errorf("report lacks %s DamageDice as part of an ability", name)
+		}
+	}
+	if slices.ContainsFunc(report.Skipped, func(skip Skip) bool { return skip.What == "DamageDice" && skip.Reason != ReasonAbilityPart }) {
+		t.Errorf("report has a DamageDice skip with another reason: %+v", report.Skipped)
+	}
 }
 
 func TestImportPCRuleElementsTavish(t *testing.T) {
@@ -55,6 +69,9 @@ func TestImportPCRuleElementsTavish(t *testing.T) {
 		"alchemist-goggles":         {Selector: "attack", Type: "item", Value: 1, WeaponTraits: []string{"alchemical", "bomb"}},
 		"boots-of-bounding-greater": {Selector: "land-speed", Type: "item", Value: 10},
 		"expanded-splash":           {Selector: "splash", Attribute: "int", WeaponTraits: []string{"splash"}},
+		"artisans-mark":             {Selector: "crafting", Type: "item", Value: 2},
+		"untrained-improvisation":   {Selector: "skill-check", Type: "proficiency", Value: 14},
+		"shadow-property":           {Selector: "stealth", Type: "item", Value: 1},
 	}
 	if !reflect.DeepEqual(build.Modifiers, wantModifiers) {
 		t.Errorf("Modifiers = %+v, want %+v", build.Modifiers, wantModifiers)
@@ -69,6 +86,7 @@ func TestImportPCRuleElementsTavish(t *testing.T) {
 	if !hasSkip(report, "Torch", ReasonInactive) {
 		t.Error("report lacks the stowed Torch as inactive")
 	}
+	checkDamageDice(t, report, "Tidal Crash Round", "Magnetic Shot (Moderate)", "Relic: Tidal Crash", "Relic: Flare Bolt")
 }
 
 func TestImportPCRuleElementsArabesque(t *testing.T) {
@@ -77,6 +95,7 @@ func TestImportPCRuleElementsArabesque(t *testing.T) {
 	wantModifiers := map[string]creature.Modifier{
 		"bands-of-force-greater":   {Selector: "ac", Type: "item", Value: 2},
 		"bands-of-force-greater-2": {Selector: "saving-throw", Type: "item", Value: 2},
+		"ring-of-wizardry-type-iv": {Selector: "arcana", Type: "item", Value: 2},
 	}
 	if !reflect.DeepEqual(build.Modifiers, wantModifiers) {
 		t.Errorf("Modifiers = %+v, want %+v", build.Modifiers, wantModifiers)

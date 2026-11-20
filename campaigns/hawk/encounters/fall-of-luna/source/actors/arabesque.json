@@ -268,7 +268,7 @@
     },
     "resources": {
       "heroPoints": {
-        "value": 0,
+        "value": 1,
         "max": 3
       },
       "focus": {
@@ -3488,7 +3488,7 @@
                 "id": "DDI6VShFCyBlZkeQ"
               }
             },
-            "value": 3,
+            "value": 4,
             "max": 4
           },
           "slot2": {
@@ -3506,7 +3506,7 @@
                 "id": "cknXGenNCk5ZDaQj"
               }
             },
-            "value": 1,
+            "value": 4,
             "max": 4
           },
           "slot3": {
@@ -3521,12 +3521,12 @@
                 "id": "zhnogVHLn7U983EZ"
               }
             },
-            "value": 0,
+            "value": 1,
             "max": 5
           },
           "slot4": {
             "prepared": {},
-            "value": 1,
+            "value": 2,
             "max": 6
           },
           "slot5": {
@@ -3536,12 +3536,12 @@
           },
           "slot6": {
             "prepared": {},
-            "value": 0,
+            "value": 1,
             "max": 4
           },
           "slot7": {
             "prepared": {},
-            "value": 0,
+            "value": 2,
             "max": 4
           },
           "slot8": {
@@ -3586,7 +3586,7 @@
         "systemVersion": "8.6.1",
         "coreVersion": "14.365",
         "createdTime": 1711417050610,
-        "modifiedTime": 1794289803084,
+        "modifiedTime": 1794896051677,
         "lastModifiedBy": "qEb61ws8clbBXold",
         "compendiumSource": null,
         "duplicateSource": null,
@@ -10636,7 +10636,8 @@
           "value": "QJfBLVxifknyvTJD",
           "heightenedLevel": 2,
           "uses": {
-            "value": 1
+            "value": 2,
+            "max": 2
           }
         },
         "counteraction": false,
@@ -10656,7 +10657,7 @@
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
         "createdTime": 1739245136205,
-        "modifiedTime": 1793208905825,
+        "modifiedTime": 1794892800540,
         "lastModifiedBy": "S0ab7dtePdUblyra",
         "exportSource": null
       },
@@ -14543,47 +14544,156 @@
       "_id": "ZW1m3qZYTF2e14h9"
     },
     {
-      "img": "systems/pf2e/icons/spells/haste.webp",
-      "name": "Spell Effect: Haste",
+      "img": "icons/magic/perception/eye-ringed-green.webp",
+      "name": "Spell Effect: Strength of Mind",
       "system": {
         "description": {
-          "value": "<p>Granted by @UUID[Compendium.pf2e.spells-srd.Item.o6YCGx4lycsYpww4]{Haste}</p>\n<p>You gain the quickened condition and can use the extra action each round only for Strike and Stride actions.</p>",
+          "value": "<p>Granted by @UUID[Compendium.pf2e.spells-srd.Item.aMvjaIuPIWN7pbc3]{Strength of Mind}</p>\n<p>You gain a +1 status bonus to saving throws against mental effects and against effects that hinder movement (including those that reduce Speed or apply the @UUID[Compendium.pf2e.conditionitems.Item.kWc1fhmv9LBiTuei]{Grabbed}, @UUID[Compendium.pf2e.conditionitems.Item.eIcWbB5o3pP6OIMe]{Immobilized}, or @UUID[Compendium.pf2e.conditionitems.Item.VcDeM8A5oI6VqhbM]{Restrained} conditions). This bonus increases to +2 if the source of the effect has the fear trait.</p>",
+          "gm": ""
+        },
+        "duration": {
+          "expiry": "turn-end",
+          "sustained": false,
+          "unit": "minutes",
+          "value": 10
+        },
+        "level": {
+          "value": 1
+        },
+        "publication": {
+          "license": "ORC",
+          "remaster": true,
+          "title": "Pathfinder #209: Destroyer's Doom",
+          "authors": ""
+        },
+        "rules": [
+          {
+            "key": "FlatModifier",
+            "predicate": [
+              {
+                "or": [
+                  "itemtrait:mental",
+                  "inflicts:grabbed",
+                  "inflicts:immobilized",
+                  "inflicts:restrained"
+                ]
+              }
+            ],
+            "selector": "saving-throw",
+            "type": "status",
+            "value": 1
+          },
+          {
+            "key": "AdjustModifier",
+            "mode": "add",
+            "predicate": [
+              "item:trait:fear"
+            ],
+            "selector": "saving-throw",
+            "slug": "spell-effect-strength-of-mind",
+            "value": 1
+          }
+        ],
+        "start": {
+          "value": -39023571808,
+          "initiative": null
+        },
+        "tokenIcon": {
+          "show": true
+        },
+        "traits": {
+          "value": [],
+          "otherTags": []
+        },
+        "slug": "spell-effect-strength-of-mind",
+        "_migration": {
+          "version": 0.959,
+          "previous": null
+        },
+        "unidentified": false,
+        "badge": null,
+        "fromSpell": false,
+        "context": null
+      },
+      "type": "effect",
+      "_stats": {
+        "coreVersion": "14.365",
+        "systemId": "pf2e",
+        "systemVersion": "8.6.1",
+        "compendiumSource": "Compendium.pf2e.spell-effects.Item.pW1jauNjZ1owaciQ",
+        "createdTime": 1794892514352,
+        "modifiedTime": 1794892514352,
+        "lastModifiedBy": "S0ab7dtePdUblyra",
+        "duplicateSource": null,
+        "exportSource": null
+      },
+      "effects": [],
+      "folder": null,
+      "sort": 0,
+      "ownership": {
+        "default": 0,
+        "S0ab7dtePdUblyra": 3
+      },
+      "flags": {},
+      "_id": "KDtNRO46iqRsKz9o"
+    },
+    {
+      "img": "systems/pf2e/icons/equipment/alchemical-items/drugs/succubus-kiss.webp",
+      "name": "Effect: Succubus Kiss (Stage 1)",
+      "system": {
+        "description": {
+          "value": "<p>Granted by @UUID[Compendium.pf2e.equipment-srd.Item.qwCefJjr7AJSqYay]{Succubus Kiss}</p>\n<p>The creature gains a +2 item bonus to initiative checks and to all saving throws against emotion and mental effects.</p>",
           "gm": ""
         },
         "duration": {
           "expiry": "turn-start",
           "sustained": false,
           "unit": "minutes",
-          "value": 1
+          "value": 10
         },
         "level": {
           "value": 7
         },
         "publication": {
-          "license": "ORC",
-          "remaster": true,
-          "title": "Pathfinder Player Core",
+          "license": "OGL",
+          "remaster": false,
+          "title": "Pathfinder Lost Omens Absalom, City of Lost Omens",
           "authors": ""
         },
         "rules": [
           {
-            "inMemoryOnly": true,
-            "key": "GrantItem",
-            "uuid": "Compendium.pf2e.conditionitems.Item.nlCjDvLMf2EkV2dl"
+            "key": "FlatModifier",
+            "selector": "initiative",
+            "type": "item",
+            "value": 2
+          },
+          {
+            "key": "FlatModifier",
+            "predicate": [
+              {
+                "or": [
+                  "emotion",
+                  "mental"
+                ]
+              }
+            ],
+            "selector": "saving-throw",
+            "type": "item",
+            "value": 2
           }
         ],
         "start": {
-          "value": -39023571826,
-          "initiative": 40
+          "value": -39023571808,
+          "initiative": null
         },
         "tokenIcon": {
-          "show": false
+          "show": true
         },
         "traits": {
           "value": [],
           "otherTags": []
         },
-        "slug": "spell-effect-haste",
+        "slug": "effect-succubus-kiss-stage-1",
         "_migration": {
           "version": 0.959,
           "previous": null
@@ -14593,56 +14703,35 @@
         "fromSpell": false,
         "context": {
           "origin": {
-            "actor": "Actor.3Xu9yHY96xD1sExI",
-            "token": "Scene.4BDCawPcjUlwal0a.Token.KUJF9EJJyvJQRLzX",
-            "item": "Actor.3Xu9yHY96xD1sExI.Item.6Et6yzy1CDNxbGNd",
-            "spellcasting": {
-              "attribute": {
-                "type": "cha",
-                "mod": 5
-              },
-              "tradition": "arcane"
-            },
+            "actor": "Actor.5JC1wg6wzRR47Of3",
+            "token": "Scene.MHCfEiCmpFR8dK7J.Token.LCx8EwVtYh0BfqeA",
+            "item": null,
+            "spellcasting": null,
             "rollOptions": [
               "origin:type:character",
-              "origin:signature:9d7a4db8-4d77-568e-bbcd-f87714ab5e8d",
+              "origin:signature:33a050a6-b065-5a00-a3d3-cbdf24a5cf6e",
               "origin:creature",
               "origin:level:14",
-              "origin:ancestry:elf",
-              "origin:trait:elf",
+              "origin:ancestry:dwarf",
+              "origin:trait:dwarf",
               "origin:trait:humanoid",
-              "origin:heritage:seer-elf",
-              "origin:caster",
-              "origin:caster:tradition:primal",
-              "origin:caster:tradition:arcane",
+              "origin:heritage:strong-blooded-dwarf",
               "origin:mode:living",
+              "origin:armored",
               "origin:size:2",
               "origin:size:medium",
-              "origin:item:type:spell",
-              "origin:item:id:6Et6yzy1CDNxbGNd",
-              "origin:item:haste",
-              "origin:item:slug:haste",
-              "origin:item:trait:concentrate",
-              "origin:item:trait:manipulate",
-              "origin:item:rarity:common",
-              "origin:item:magical",
+              "origin:item:type:consumable",
+              "origin:item:id:qwCefJjr7AJSqYay",
+              "origin:item:succubus-kiss",
+              "origin:item:slug:succubus-kiss",
+              "origin:item:trait:alchemical",
+              "origin:item:trait:consumable",
+              "origin:item:trait:drug",
+              "origin:item:trait:ingested",
+              "origin:item:trait:poison",
+              "origin:item:rarity:rare",
               "origin:item:level:7",
-              "magical",
-              "origin:item:rank:7",
-              "concentrate",
-              "manipulate",
-              "origin:item:trait:arcane",
-              "origin:item:spell-slot",
-              "origin:item:ranged",
-              "origin:item:frequency:limited",
-              "spellcasting:cha",
-              "spellcasting:attribute:cha",
-              "spellcasting:spontaneous",
-              "spellcasting:category:spontaneous",
-              "spellcasting:arcane",
-              "spellcasting:tradition:arcane",
-              "origin:item:cast:actions:2",
-              "origin:action:slug:cast-a-spell"
+              "origin:item:category:drug"
             ]
           },
           "target": null,
@@ -14654,9 +14743,9 @@
         "coreVersion": "14.365",
         "systemId": "pf2e",
         "systemVersion": "8.6.1",
-        "compendiumSource": "Compendium.pf2e.spell-effects.Item.ElkXovNrHB0Doi6O",
-        "createdTime": 1794284082784,
-        "modifiedTime": 1794284082784,
+        "compendiumSource": "Compendium.pf2e.equipment-effects.Item.Pkk8m79MoT1RgtfW",
+        "createdTime": 1794892538718,
+        "modifiedTime": 1794892538719,
         "lastModifiedBy": "S0ab7dtePdUblyra",
         "duplicateSource": null,
         "exportSource": null
@@ -14669,142 +14758,7 @@
         "S0ab7dtePdUblyra": 3
       },
       "flags": {},
-      "_id": "sZ68P9o2pqpckac3"
-    },
-    {
-      "img": "systems/pf2e/icons/conditions/persistent-damage.webp",
-      "name": "Persistent Damage",
-      "system": {
-        "description": {
-          "value": "<p>You are taking damage from an ongoing effect, such as from being lit on fire. This appears as \"X persistent [type] damage,\" where \"X\" is the amount of damage dealt and \"[type]\" is the damage type. Like normal damage, it can be doubled or halved based on the results of an attack roll or saving throw. Instead of taking persistent damage immediately, you take it at the end of each of your turns as long as you have the condition, rolling any damage dice anew each time. After you take persistent damage, roll a @Check[flat|showDC:all|dc:15] to see if you recover from the persistent damage. If you succeed, the condition ends.</p>",
-          "gm": ""
-        },
-        "group": null,
-        "overrides": [],
-        "publication": {
-          "license": "ORC",
-          "remaster": true,
-          "title": "Pathfinder Player Core",
-          "authors": ""
-        },
-        "references": {
-          "children": [],
-          "overriddenBy": [],
-          "overrides": [],
-          "parent": null
-        },
-        "rules": [],
-        "traits": {
-          "value": [],
-          "otherTags": []
-        },
-        "value": {
-          "isValued": false,
-          "value": null
-        },
-        "slug": "persistent-damage",
-        "_migration": {
-          "version": 0.959,
-          "previous": null
-        },
-        "fromSpell": false,
-        "persistent": {
-          "formula": "(4d8 + 12)",
-          "damageType": "piercing",
-          "dc": 15,
-          "criticalHit": false
-        }
-      },
-      "type": "condition",
-      "_stats": {
-        "coreVersion": "14.365",
-        "systemId": "pf2e",
-        "systemVersion": "8.6.1",
-        "compendiumSource": "Compendium.pf2e.conditionitems.Item.lDVqvLKA6eF3Df60",
-        "createdTime": 1794288754826,
-        "modifiedTime": 1794288754826,
-        "lastModifiedBy": "S0ab7dtePdUblyra",
-        "duplicateSource": null,
-        "exportSource": null
-      },
-      "effects": [],
-      "folder": null,
-      "sort": 0,
-      "ownership": {
-        "default": 0,
-        "S0ab7dtePdUblyra": 3
-      },
-      "flags": {},
-      "_id": "IImJz75FFqZX311D"
-    },
-    {
-      "img": "systems/pf2e/icons/conditions/frightened.webp",
-      "name": "Frightened",
-      "system": {
-        "description": {
-          "value": "<p>You're gripped by fear and struggle to control your nerves. The frightened condition always includes a value. You take a status penalty equal to this value to all your checks and DCs. Unless specified otherwise, at the end of each of your turns, the value of your frightened condition decreases by 1.</p>",
-          "gm": ""
-        },
-        "group": null,
-        "overrides": [],
-        "publication": {
-          "license": "ORC",
-          "remaster": true,
-          "title": "Pathfinder Player Core",
-          "authors": ""
-        },
-        "references": {
-          "children": [],
-          "overriddenBy": [],
-          "overrides": [],
-          "parent": null
-        },
-        "rules": [
-          {
-            "key": "FlatModifier",
-            "selector": "all",
-            "slug": "frightened",
-            "type": "status",
-            "value": "-@item.badge.value"
-          }
-        ],
-        "traits": {
-          "value": [],
-          "otherTags": []
-        },
-        "value": {
-          "isValued": true,
-          "value": 1
-        },
-        "slug": "frightened",
-        "_migration": {
-          "version": 0.959,
-          "previous": null
-        },
-        "fromSpell": false,
-        "persistent": null
-      },
-      "type": "condition",
-      "_stats": {
-        "coreVersion": "14.365",
-        "systemId": "pf2e",
-        "systemVersion": "8.6.1",
-        "compendiumSource": "Compendium.pf2e.conditionitems.Item.TBSHQspnbcqxsmjL",
-        "createdTime": 1794290030775,
-        "modifiedTime": 1794290030776,
-        "lastModifiedBy": "S0ab7dtePdUblyra",
-        "duplicateSource": null,
-        "exportSource": null
-      },
-      "effects": [],
-      "folder": null,
-      "sort": 0,
-      "ownership": {
-        "default": 0,
-        "S0ab7dtePdUblyra": 3
-      },
-      "flags": {},
-      "_id": "e2Ly85b8mpPfA9GH"
+      "_id": "IBcmQIREuwR7XO4u"
     }
   ],
   "folder": null,
@@ -14863,7 +14817,7 @@
     "systemVersion": "8.6.1",
     "coreVersion": "14.365",
     "createdTime": 1707457787591,
-    "modifiedTime": 1794290594330,
+    "modifiedTime": 1794894593037,
     "lastModifiedBy": "qEb61ws8clbBXold",
     "compendiumSource": null,
     "duplicateSource": null,

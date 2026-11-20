@@ -7,14 +7,17 @@ import (
 )
 
 type Fight struct {
-	roller     dice.Roller
-	observer   Observer
-	decider    Decider
-	maxRounds  int
-	combatants []*Combatant
-	order      []*Combatant
-	round      int
-	current    *Combatant
+	roller       dice.Roller
+	observer     Observer
+	decider      Decider
+	maxRounds    int
+	combatants   []*Combatant
+	order        []*Combatant
+	round        int
+	current      *Combatant
+	fault        error
+	pending      *pendingAction
+	triggerDepth int
 }
 
 func (fight *Fight) StandingFoes(actor *Combatant) []*Combatant {

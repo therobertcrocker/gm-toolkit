@@ -9,8 +9,8 @@ import (
 const StepCondition = "condition"
 
 var (
-	ConditionNames     = []string{"blinded", "clumsy", "concealed", "dazzled", "doomed", "drained", "encumbered", "enfeebled", "frightened", "off-guard", "prone", "sickened", "stupefied"}
-	valuedConditions   = []string{"clumsy", "doomed", "drained", "enfeebled", "frightened", "sickened", "stupefied"}
+	ConditionNames     = []string{"blinded", "clumsy", "concealed", "dazzled", "deafened", "doomed", "drained", "encumbered", "enfeebled", "frightened", "off-guard", "prone", "quickened", "sickened", "slowed", "stunned", "stupefied"}
+	valuedConditions   = []string{"clumsy", "doomed", "drained", "enfeebled", "frightened", "sickened", "slowed", "stunned", "stupefied"}
 	DurationBoundaries = []string{"source-turn-start", "source-turn-end", "target-turn-start", "target-turn-end"}
 )
 
@@ -33,13 +33,27 @@ func IsValuedCondition(name string) bool {
 }
 
 func checkCondition(path string, step *Step, report func(string, ...any)) {
+	valued := IsValuedCondition(step.Condition)
+	stunnedWithNoValue := step.Condition == "stunned" && step.Value == 0 && step.ValueDice == "" && step.Reduce == 0
 	switch {
 	case !IsCondition(step.Condition):
 		report("%s: unknown condition %q", path, step.Condition)
-	case IsValuedCondition(step.Condition) && step.Value < 1:
+	case valued && step.Value != 0 && step.ValueDice != "":
+		report("%s: set value or value_dice, not both", path)
+	case stunnedWithNoValue && step.Duration == nil:
+		report("%s: stunned needs a value or a duration", path)
+	case stunnedWithNoValue && step.Stack:
+		report("%s: stack needs a value", path)
+	case stunnedWithNoValue:
+	case step.Reduce != 0 && (!valued || step.Value != 0 || step.ValueDice != "" || step.Stack || step.Duration != nil):
+		report("%s: reduce needs a valued condition and no value, stack or duration", path)
+	case valued && step.Reduce == 0 && step.Value < 1 && step.ValueDice == "":
 		report("%s: %s needs a value of at least 1", path, step.Condition)
-	case !IsValuedCondition(step.Condition) && step.Value != 0:
+	case !valued && (step.Value != 0 || step.ValueDice != "" || step.Stack):
 		report("%s: %s takes no value", path, step.Condition)
+	}
+	if step.ValueDice != "" {
+		step.ValueRoll = parseAmount(path+".value_dice", step.ValueDice, report)
 	}
 }
 

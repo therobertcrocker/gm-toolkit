@@ -46,11 +46,95 @@ type TurnStarted struct {
 	Combatant string
 }
 
+type ActionsRegained struct {
+	Combatant string
+	Actions   int
+	Quickened bool
+	Lost      int
+}
+
+type ActionsLost struct {
+	Combatant string
+	Condition string
+	Lost      int
+	Left      int
+}
+
+type StoodUp struct {
+	Combatant string
+}
+
 type ActionUsed struct {
 	Combatant string
 	Action    string
 	Actions   int
 	Target    string
+}
+
+type UseSpent struct {
+	Combatant string
+	Ability   string
+	Left      int
+}
+
+type PoolSpent struct {
+	Combatant string
+	Pool      string
+	Ability   string
+	Left      int
+}
+
+type RechargeRolled struct {
+	Combatant string
+	Ability   string
+	Rounds    int
+}
+
+type Recharged struct {
+	Combatant string
+	Ability   string
+	By        string
+}
+
+type ActionsGained struct {
+	Combatant string
+	Ability   string
+	Amount    int
+}
+
+type Triggered struct {
+	Combatant string
+	Ability   string
+	On        string
+	Cost      string
+	By        string
+	ByAbility string
+	ByStrike  string
+}
+
+type LoyaltyAct struct {
+	Combatant string
+	Reason    string
+}
+
+type TraitGranted struct {
+	Combatant string
+	Trait     string
+	Against   string
+	Ability   string
+}
+
+type TraitSpent struct {
+	Combatant string
+	Trait     string
+	Against   string
+}
+
+type ActionDisrupted struct {
+	Combatant string
+	Action    string
+	By        string
+	Ability   string
 }
 
 type StrikeRolled struct {
@@ -83,6 +167,48 @@ type SaveRolled struct {
 	Degree    Degree
 }
 
+type SkillChecked struct {
+	Combatant string
+	Target    string
+	Ability   string
+	Skill     string
+	Die       int
+	Bonus     int
+	Total     int
+	DC        int
+	Degree    Degree
+}
+
+type RerollGained struct {
+	Combatant string
+	Source    string
+	Ability   string
+	Keep      string
+}
+
+type Rerolled struct {
+	Combatant string
+	Roll      string
+	Keep      string
+	First     int
+	Second    int
+	Kept      int
+	Ability   string
+}
+
+type RerollsCancelled struct {
+	Combatant string
+	Roll      string
+}
+
+type BonusGained struct {
+	Combatant string
+	Source    string
+	Ability   string
+	Selector  string
+	Value     int
+}
+
 type SpellAttackRolled struct {
 	Attacker string
 	Target   string
@@ -96,16 +222,17 @@ type SpellAttackRolled struct {
 }
 
 type DamageDealt struct {
-	Source   string
-	Target   string
-	Strike   string
-	Ability  string
-	Critical bool
-	Parts    []DamageAmount
-	Total    int
-	Absorbed int
-	HPAfter  int
-	Trait    int
+	Source      string
+	Target      string
+	Strike      string
+	Ability     string
+	Critical    bool
+	Parts       []DamageAmount
+	Total       int
+	Absorbed    int
+	HPAfter     int
+	Trait       int
+	TriggeredBy string
 }
 
 type ResistanceAdapted struct {
@@ -128,11 +255,12 @@ type DefenseRestored struct {
 }
 
 type Healed struct {
-	Source  string
-	Target  string
-	Ability string
-	Amount  int
-	HPAfter int
+	Source      string
+	Target      string
+	Ability     string
+	Amount      int
+	HPAfter     int
+	TriggeredBy string
 }
 
 type Revived struct {
@@ -173,6 +301,22 @@ type RecoveryChecked struct {
 	Die       int
 	DC        int
 	Degree    Degree
+}
+
+type RecoveryEased struct {
+	Combatant string
+	Ability   string
+	DC        int
+}
+
+type Sustained struct {
+	Combatant string
+	Ability   string
+}
+
+type SustainEnded struct {
+	Combatant string
+	Ability   string
 }
 
 type Stabilized struct {
@@ -223,9 +367,20 @@ type FightEnded struct {
 func (InitiativeRolled) isEvent()  {}
 func (RoundStarted) isEvent()      {}
 func (TurnStarted) isEvent()       {}
+func (ActionsRegained) isEvent()   {}
+func (ActionsLost) isEvent()       {}
+func (StoodUp) isEvent()           {}
 func (ActionUsed) isEvent()        {}
+func (UseSpent) isEvent()          {}
+func (PoolSpent) isEvent()         {}
+func (RechargeRolled) isEvent()    {}
+func (Recharged) isEvent()         {}
+func (ActionsGained) isEvent()     {}
+func (Triggered) isEvent()         {}
+func (ActionDisrupted) isEvent()   {}
 func (StrikeRolled) isEvent()      {}
 func (SaveRolled) isEvent()        {}
+func (SkillChecked) isEvent()      {}
 func (SpellAttackRolled) isEvent() {}
 func (DamageDealt) isEvent()       {}
 func (InitiativeMoved) isEvent()   {}
@@ -247,3 +402,13 @@ func (DefenseRestored) isEvent()   {}
 func (ImmuneToEffect) isEvent()    {}
 func (FlatChecked) isEvent()       {}
 func (FightEnded) isEvent()        {}
+func (RerollGained) isEvent()      {}
+func (Rerolled) isEvent()          {}
+func (RerollsCancelled) isEvent()  {}
+func (BonusGained) isEvent()       {}
+func (RecoveryEased) isEvent()     {}
+func (Sustained) isEvent()         {}
+func (SustainEnded) isEvent()      {}
+func (LoyaltyAct) isEvent()        {}
+func (TraitGranted) isEvent()      {}
+func (TraitSpent) isEvent()        {}

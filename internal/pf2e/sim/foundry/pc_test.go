@@ -1,10 +1,12 @@
 package foundry
 
 import (
+	"encoding/json"
 	"maps"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/therobertcrocker/gm-toolkit/internal/pf2e/sim/creature"
@@ -115,8 +117,8 @@ func TestImportPCWeaponsAndQuantities(t *testing.T) {
 	if want := []string{"con", "wis", "cha"}; !slices.Equal(build.Boosts["ancestry"], want) {
 		t.Errorf("ancestry boosts = %v, want %v", build.Boosts["ancestry"], want)
 	}
-	if len(build.Weapons) != 12 {
-		t.Errorf("weapons = %v, want 12 (two bombs have quantity 0)", slices.Sorted(maps.Keys(build.Weapons)))
+	if len(build.Weapons) != 14 {
+		t.Errorf("weapons = %v, want 14 (the two quantity-0 bombs are brewed)", slices.Sorted(maps.Keys(build.Weapons)))
 	}
 	wantFire := creature.Weapon{
 		Name: "Alchemist's Fire (Greater)", Category: "martial", Group: "bomb", Base: "alchemical-bomb",
@@ -128,8 +130,10 @@ func TestImportPCWeaponsAndQuantities(t *testing.T) {
 	if got := build.Weapons["alchemists-fire-greater"]; !reflect.DeepEqual(got, wantFire) {
 		t.Errorf("alchemists-fire-greater = %+v, want %+v", got, wantFire)
 	}
-	if _, found := build.Weapons["frost-vial-moderate"]; found {
-		t.Error("frost-vial-moderate imported, want it skipped at quantity 0")
+	for _, id := range []string{"frost-vial-moderate", "bottled-lightning-moderate"} {
+		if _, found := build.Weapons[id]; !found {
+			t.Errorf("%s not imported, want it brewed with Quick Alchemy", id)
+		}
 	}
 	armor := build.Armor
 	if armor == nil || armor.Category != "light" || armor.ACBonus != 2 || *armor.DexCap != 3 || armor.Potency != 2 || armor.Resilient != 1 {
@@ -138,14 +142,122 @@ func TestImportPCWeaponsAndQuantities(t *testing.T) {
 	if build.Spellcasting != nil {
 		t.Errorf("Spellcasting = %+v, want none: the innate entry's spells sit nowhere", build.Spellcasting)
 	}
-	for _, want := range []struct{ item, reason string }{
-		{"Frost Vial (Moderate)", ReasonQuantity},
-		{"Alchemist's Fire (Greater)", ReasonLaterRule},
-		{"Arcane Innate Spells", ReasonEmpty},
+	for _, want := range []Skip{
+		{Item: "Frost Vial (Moderate)", What: "quantity 0, no stock: brewed with Quick Alchemy from the quick bombs pool", Reason: ReasonHandLayer},
+		{Item: "Alchemist's Fire (Greater)", What: "quantity 6, typed as a pool", Reason: ReasonHandLayer},
 	} {
-		if !hasSkip(report, want.item, want.reason) {
-			t.Errorf("report lacks %s with reason %q", want.item, want.reason)
+		if !slices.Contains(report.Skipped, want) {
+			t.Errorf("report lacks %+v", want)
 		}
+	}
+	if !hasSkip(report, "Arcane Innate Spells", ReasonEmpty) {
+		t.Errorf("report lacks Arcane Innate Spells with reason %q", ReasonEmpty)
+	}
+	if slices.ContainsFunc(report.Skipped, func(skip Skip) bool { return skip.Reason == ReasonQuantity || skip.Reason == ReasonNoFormula }) {
+		t.Errorf("report skips a weapon for its quantity, want every quantity-0 bomb brewed: %+v", report.Skipped)
+	}
+}
+
+func tavishItem(t *testing.T, source *actor, name string) *item {
+	t.Helper()
+	index := slices.IndexFunc(source.Items, func(current item) bool { return current.Name == name })
+	if index < 0 {
+		t.Fatalf("tavish has no item %q", name)
+	}
+	return &source.Items[index]
+}
+
+func removeFormula(t *testing.T, source *actor, uuid string) {
+	t.Helper()
+	var system map[string]any
+	if err := json.Unmarshal(source.Raw, &system); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	crafting := system["crafting"].(map[string]any)
+	formulas := crafting["formulas"].([]any)
+	crafting["formulas"] = slices.DeleteFunc(formulas, func(entry any) bool { return entry.(map[string]any)["uuid"] == uuid })
+	if len(crafting["formulas"].([]any)) != len(formulas)-1 {
+		t.Fatalf("setup: formula %s not removed once", uuid)
+	}
+	raw, err := json.Marshal(system)
+	if err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	source.Raw = raw
+}
+
+func TestImportBrewedBombs(t *testing.T) {
+	brewed := Skip{Item: "Nail Bomb (Greater)", What: "quantity 0, no stock: brewed with Quick Alchemy from the quick bombs pool", Reason: ReasonHandLayer}
+	cases := []struct {
+		name     string
+		change   func(t *testing.T, source *actor, nailBomb *item)
+		imported bool
+		skip     Skip
+	}{
+		{"known formula", func(*testing.T, *actor, *item) {}, true, brewed},
+		{"origin in flags.core.sourceId", func(_ *testing.T, _ *actor, nailBomb *item) {
+			nailBomb.Flags.Core.SourceID = nailBomb.Stats.CompendiumSource
+			nailBomb.Stats.CompendiumSource = ""
+		}, true, brewed},
+		{"formula removed", func(t *testing.T, source *actor, nailBomb *item) {
+			removeFormula(t, source, nailBomb.Stats.CompendiumSource)
+		}, false, Skip{Item: "Nail Bomb (Greater)", What: "bomb whose formula is not in the formula book", Reason: ReasonNoFormula}},
+		{"no origin recorded", func(_ *testing.T, _ *actor, nailBomb *item) {
+			nailBomb.Stats.CompendiumSource = ""
+		}, false, Skip{Item: "Nail Bomb (Greater)", What: "bomb with no compendium origin to match a formula", Reason: ReasonNoFormula}},
+		{"no Quick Alchemy", func(_ *testing.T, source *actor, _ *item) {
+			source.Items = slices.DeleteFunc(source.Items, func(current item) bool { return current.System.Slug == quickAlchemySlug })
+		}, false, Skip{Item: "Nail Bomb (Greater)", What: "weapon", Reason: ReasonQuantity}},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			source, err := readActor(filepath.Join("testdata", "actors", "tavish.json"))
+			if err != nil {
+				t.Fatalf("readActor: %v", err)
+			}
+			nailBomb := tavishItem(t, source, "Nail Bomb (Greater)")
+			nailBomb.System.Quantity = 0
+			testCase.change(t, source, nailBomb)
+			layer, report, err := importPC(source)
+			if err != nil {
+				t.Fatalf("importPC: %v", err)
+			}
+			var nailSkips []Skip
+			for _, skip := range report.Skipped {
+				if skip.Item == "Nail Bomb (Greater)" && !strings.HasPrefix(skip.What, "AdjustStrike") {
+					nailSkips = append(nailSkips, skip)
+				}
+			}
+			if want := []Skip{testCase.skip}; !slices.Equal(nailSkips, want) {
+				t.Errorf("Nail Bomb skips = %+v, want %+v", nailSkips, want)
+			}
+			weapon, found := layer.Build.Weapons["nail-bomb-greater"]
+			switch {
+			case found != testCase.imported:
+				t.Errorf("nail-bomb-greater imported = %t, want %t", found, testCase.imported)
+			case found && !slices.Equal(weapon.Traits, []string{"alchemical", "bomb", "consumable", "splash", "cold-iron"}):
+				t.Errorf("nail-bomb-greater traits = %v, want cold-iron added", weapon.Traits)
+			}
+		})
+	}
+}
+
+func TestImportQuantityZeroNonBomb(t *testing.T) {
+	source, err := readActor(filepath.Join("testdata", "actors", "tavish.json"))
+	if err != nil {
+		t.Fatalf("readActor: %v", err)
+	}
+	dagger := tavishItem(t, source, "Dagger")
+	dagger.System.Quantity = 0
+	layer, report, err := importPC(source)
+	if err != nil {
+		t.Fatalf("importPC: %v", err)
+	}
+	if _, found := layer.Build.Weapons["dagger"]; found {
+		t.Error("dagger imported at quantity 0, want it skipped")
+	}
+	if !slices.Contains(report.Skipped, Skip{Item: "Dagger", What: "weapon", Reason: ReasonQuantity}) {
+		t.Errorf("report lacks the Dagger skipped for quantity 0")
 	}
 }
 

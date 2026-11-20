@@ -40,7 +40,7 @@ func TestPersistentDamageOnAHit(t *testing.T) {
 	strike.Damage = append(strike.Damage, categorizedPart(t, "3", "fire", "persistent"))
 	fight, events := testFight(script(t, 15, 4, 14, 15), attacker, target)
 
-	fight.strike(attacker, target, strike, "")
+	fight.strike(attacker, target, strike, strikeOptions{})
 	if changed := eventsOf[PersistentChanged](events.events); len(changed) != 1 || changed[0].Type != "fire" || changed[0].Dice != "3" {
 		t.Fatalf("PersistentChanged = %+v, want one 3 fire", changed)
 	}
@@ -90,7 +90,7 @@ func TestPersistentDoublesOnACriticalHit(t *testing.T) {
 	strike.Damage = append(strike.Damage, categorizedPart(t, "1d4", "fire", "persistent"))
 	fight, events := testFight(script(t, 20, 4, 3, 1), attacker, target)
 
-	fight.strike(attacker, target, strike, "")
+	fight.strike(attacker, target, strike, strikeOptions{})
 	if len(target.persistent) != 1 || !target.persistent[0].doubled {
 		t.Fatalf("persistent = %+v, want one doubled instance", target.persistent)
 	}
@@ -132,7 +132,7 @@ func TestSplash(t *testing.T) {
 			target := testCombatant("target", SideEnemies, creature.KindNPC, 100, 20)
 			fight, events := testFight(script(t, testCase.rolls...), attacker, target)
 
-			fight.strike(attacker, target, bombStrike(t), "")
+			fight.strike(attacker, target, bombStrike(t), strikeOptions{})
 
 			dealt := eventsOf[DamageDealt](events.events)
 			if !testCase.wantDealt {
@@ -155,7 +155,7 @@ func TestDamageMinimumOfOne(t *testing.T) {
 	strike.Damage = []creature.DamagePart{damagePart(t, "1d4-5", "bludgeoning")}
 	fight, events := testFight(script(t, 15, 1), attacker, target)
 
-	fight.strike(attacker, target, strike, "")
+	fight.strike(attacker, target, strike, strikeOptions{})
 
 	if dealt := lastDamage(t, events); dealt.Total != 1 {
 		t.Errorf("Total = %d, want 1", dealt.Total)
@@ -195,7 +195,7 @@ func TestWeaknessSkipsAZeroPart(t *testing.T) {
 			strike.Damage = testCase.damage(t)
 			fight, events := testFight(script(t, testCase.rolls...), attacker, target)
 
-			fight.strike(attacker, target, strike, "")
+			fight.strike(attacker, target, strike, strikeOptions{})
 
 			dealt := lastDamage(t, events)
 			if len(dealt.Parts) != len(testCase.wantTaken) {

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -88,6 +89,42 @@ func giveAbility(combatant *Combatant, ability creature.Ability) {
 		combatant.Creature.Abilities = map[string]creature.Ability{}
 	}
 	combatant.Creature.Abilities[ability.ID] = ability
+}
+
+type scriptedDecider struct {
+	choices   []Choice
+	reactions []string
+}
+
+func (decider *scriptedDecider) Decide(fight *Fight, actor *Combatant) (Choice, bool) {
+	if len(decider.choices) == 0 {
+		return Choice{}, false
+	}
+	choice := decider.choices[0]
+	decider.choices = decider.choices[1:]
+	return choice, true
+}
+
+func (decider *scriptedDecider) NextTarget(fight *Fight, actor *Combatant) (*Combatant, bool) {
+	return FirstFitting{}.NextTarget(fight, actor)
+}
+
+func (decider *scriptedDecider) React(fight *Fight, actor *Combatant, event TriggerEvent, offered []string) (string, bool) {
+	if len(decider.reactions) == 0 {
+		return "", false
+	}
+	picked := decider.reactions[0]
+	decider.reactions = decider.reactions[1:]
+	return picked, picked != ""
+}
+
+func scopeCombatant(t *testing.T, id string, side Side) *Combatant {
+	t.Helper()
+	loaded, err := creature.Load(filepath.Join("testdata", "scope", id))
+	if err != nil {
+		t.Fatalf("load scope creature %s: %v", id, err)
+	}
+	return NewCombatant(side, loaded)
 }
 
 func orderIDs(fight *Fight) []string {

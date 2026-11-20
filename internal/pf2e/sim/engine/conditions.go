@@ -9,7 +9,7 @@ import (
 
 var effectImmunityTraits = []string{"auditory", "curse", "disease", "emotion", "fear", "mental", "olfactory", "poison", "polymorph", "possession", "sleep", "visual"}
 
-var allChecksAndDCs =[]string{"ac", "fortitude", "reflex", "will", "saving-throw", "perception", "initiative", "attack", "spell-attack", "spell-dc", "class-dc"}
+var allChecksAndDCs = []string{"ac", "fortitude", "reflex", "will", "saving-throw", "perception", "initiative", "attack", "spell-attack", "spell-dc", "class-dc", "skill-check"}
 
 type conditionRule struct {
 	selectors []string
@@ -22,18 +22,22 @@ type conditionRule struct {
 // deliberate: each condition is a row of shared parts, not a handler, because the ruleset as data (D-2) will lift this table into files (Decision 2).
 var conditionRules = map[string]conditionRule{
 	"blinded":    {implies: map[string]int{"off-guard": 0}},
-	"clumsy":     {selectors: []string{"ac", "reflex", "ranged-attack"}, kind: "status"},
+	"clumsy":     {selectors: []string{"ac", "reflex", "ranged-attack", "dex-skill"}, kind: "status"},
 	"concealed":  {},
 	"dazzled":    {},
+	"deafened":   {},
 	"doomed":     {},
 	"drained":    {selectors: []string{"fortitude"}, kind: "status"},
 	"encumbered": {implies: map[string]int{"clumsy": 1}},
-	"enfeebled":  {selectors: []string{"melee-attack", "melee-damage"}, kind: "status"},
+	"enfeebled":  {selectors: []string{"melee-attack", "melee-damage", "str-skill"}, kind: "status"},
 	"frightened": {selectors: allChecksAndDCs, kind: "status", decays: true},
 	"off-guard":  {selectors: []string{"ac"}, kind: "circumstance", fixed: 2},
 	"prone":      {selectors: []string{"attack", "spell-attack"}, kind: "circumstance", fixed: 2, implies: map[string]int{"off-guard": 0}},
+	"quickened":  {},
 	"sickened":   {selectors: allChecksAndDCs, kind: "status"},
-	"stupefied":  {selectors: []string{"will", "perception", "spell-attack", "spell-dc"}, kind: "status"},
+	"slowed":     {},
+	"stunned":    {},
+	"stupefied":  {selectors: []string{"will", "perception", "spell-attack", "spell-dc", "int-skill", "wis-skill", "cha-skill"}, kind: "status"},
 }
 
 type timing struct {
@@ -120,20 +124,34 @@ func (fight *Fight) applyCondition(source, target *Combatant, step creature.Step
 		return
 	}
 	value := step.Value
-	if creature.IsValuedCondition(step.Condition) {
+	if step.ValueDice != "" {
+		value = step.ValueRoll.Roll(fight.roller)
+	}
+	// deliberate: a stunned step with no value lands as a value-0 instance, not dropped as a value under 1, because stunned can have a duration instead of a value (Player Core pg. 446).
+	durationOnly := step.Condition == "stunned" && step.Value == 0 && step.ValueDice == ""
+	if creature.IsValuedCondition(step.Condition) && !durationOnly {
 		value += target.Creature.ConditionAdjustments[step.Condition].Gain
 		if value < 1 {
 			return
 		}
+		if step.Stack {
+			value += target.Condition(step.Condition)
+		}
 	}
 	instance := &conditionInstance{name: step.Condition, value: value, clock: fight.newTiming(source, target, step.Duration)}
-	drainedBefore := target.Condition("drained")
+	drainedBefore, before := target.Condition("drained"), target.Condition(step.Condition)
 	fight.changeConditions(target, func() { target.conditions = append(target.conditions, instance) })
+	if target.Condition(step.Condition) > before {
+		fight.gained(target, step.Condition)
+	}
 	if step.Condition == "drained" {
 		fight.drain(source, target, drainedBefore)
 	}
 	if step.Condition == "doomed" && target.Dying > 0 && target.Dying >= target.deathValue() {
 		fight.setDying(target, target.Dying)
+	}
+	if step.Condition == "stunned" && target == fight.current && target.Standing() {
+		fight.loseActionsToStunned(target)
 	}
 }
 
@@ -154,15 +172,18 @@ func (fight *Fight) startTurn(actor *Combatant) {
 	for _, bearer := range fight.combatants {
 		fight.expire(bearer, actor, "start")
 		fight.expireDefenseChanges(bearer, actor, "start")
+		fight.expireEffects(bearer, actor, "start")
 	}
 }
 
 func (fight *Fight) endTurn(actor *Combatant) {
 	fight.takePersistentDamage(actor)
 	fight.decayConditions(actor)
+	fight.endSustains(actor)
 	for _, bearer := range fight.combatants {
 		fight.expire(bearer, actor, "end")
 		fight.expireDefenseChanges(bearer, actor, "end")
+		fight.expireEffects(bearer, actor, "end")
 	}
 }
 
@@ -227,6 +248,23 @@ func (fight *Fight) decayConditions(actor *Combatant) {
 			kept = append(kept, instance)
 		}
 		actor.conditions = kept
+	})
+}
+
+func (fight *Fight) reduceCondition(bearer *Combatant, name string, amount int) {
+	fight.changeConditions(bearer, func() {
+		var kept []*conditionInstance
+		for _, instance := range bearer.conditions {
+			// deliberate: a value-0 instance is left alone, not dropped, because a stunned with a duration ends only by its clock.
+			if instance.name == name && instance.value > 0 {
+				instance.value -= amount
+				if instance.value < 1 {
+					continue
+				}
+			}
+			kept = append(kept, instance)
+		}
+		bearer.conditions = kept
 	})
 }
 

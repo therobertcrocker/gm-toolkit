@@ -100,8 +100,9 @@ steps   = [{ strike = "slash" }, { strike = "slash" }, { strike = "stab" }]
 ```
 
 The top level holds `name`, `kind` (`pc` or `npc`), `level`, `traits`,
-`perception`, `class_dc`, `hero_points`, `dying_max` (4 when unset) and
-`recovery_dc` (10 when unset). `[speed]` holds `land` and `fly`. `[defense]`
+`perception`, `class_dc`, `hero_points`, `dying_max` (4 when unset),
+`recovery_dc` (10 when unset) and `fast_healing` (HP regained at the start of
+each turn). `[speed]` holds `land` and `fly`. `[defense]`
 holds `hp`, `ac`, the three saves, `immune`, the `resist` and `weakness`
 tables, each entry a `value` with an optional `except` list, and `adaptive`, a
 resistance `value` that moves to the last of its `types` the creature took
@@ -126,26 +127,58 @@ alike:
 | `[degree_shift.<id>]` | A save result that moves: `selector` (a save or `saving-throw`), optional `against` traits, `from` and `to` degrees |
 | `[condition_adjust.<condition>]` | How a condition lands on this creature: `gain` added to each value, `decay` per turn |
 
-An ability has a name, an action cost, `traits`, an optional `area` (`shape`
-of `burst`, `cone`, `emanation` or `line`, and a `size` in feet) and a list of
-steps. Each step names one kind by its key:
+Three more tables hold counts and numbers:
+
+| Table | Holds |
+|-------|-------|
+| `[skill]` | A skill modifier per skill name, for an NPC; a PC's are computed from its build (see [PC builds](#pc-builds)) |
+| `[pool]` | A named count that abilities spend through `limit.pool`, such as `healing-potion-moderate = 3` |
+| `[extra_reaction]` | Extra reactions each turn for one ability, by ability ID (Tactical Reflexes: `attack-of-opportunity = 1`) |
+
+An ability has a name and these keys:
+
+| Key | Holds |
+|-----|-------|
+| `actions` | The action cost, 1 to 3 |
+| `max_actions` | The top of a cost range, above `actions` and at most 3 |
+| `free` | A free action: no cost, and it needs a `limit` |
+| `turn_ends` | The user's turn ends after it |
+| `traits` | The ability's traits; `flourish` and `press` limit it |
+| `tags` | `loyalty` (using it is an act of loyalty) or `tests-loyalty` (a foe that passes its save does one) |
+| `area` | `shape` (`burst`, `cone`, `emanation` or `line`) and `size` in feet |
+| `targets` | `self`, `ally` or `others` (with an area); unset aims at a foe |
+| `limit` | `per_fight`, `per_round`, `recharge` (a dice expression) and `pool` (a pool name) |
+| `trigger` | `on` (one of ten kinds), `cost` (`reaction`, `free` or unset for passive) and the kind's qualifiers |
+| `sustain` | Steps that run each time the user Sustains it |
+| `steps` | The steps |
+
+A damage part may also set `per_action`: it is multiplied by the actions spent
+on a cost-range ability. Each step names one kind by its key:
 
 | Kind | Key | Other keys |
 |------|-----|------------|
-| Strike | `strike = "<id>"` | Degree lists |
-| Save | `save = "fortitude"` | `dc` or `dc_from` (`class`, `spell`), `basic` with `damage`, `shift`, degree lists |
+| Strike | `strike = "<id>"` | `extra_dice`, `extra_damage`, `counts`, `penalty = "shared"`, `disrupts`, degree lists |
+| Save | `save = "fortitude"` | `dc` or `dc_from` (`class`, `spell`), `basic` with `damage`, `success_damage = "full"`, `shift`, degree lists |
 | Spell attack | `spell_attack = true` | `damage`, degree lists |
+| Check | `check = "<skill>"` | `dc` or `against` (`fortitude`, `reflex`, `will`, `perception`), degree lists |
 | Damage | `damage = [...]` | `lethal` |
 | Heal | `heal = "<dice>"` | — |
 | Temporary HP | `temp_hp = "<dice>"` | — |
-| Condition | `condition = "<name>"` | `value` for a valued condition, `duration` |
+| Condition | `condition = "<name>"` | `value` or `value_dice` for a valued condition, `stack`, `reduce`, `duration` |
 | Weaken | `weaken = { weakness, resistance, types }` | `duration` |
+| Gain actions | `gain_actions = <n>` | — |
+| Recharge | `recharge = "<ability>"` | — |
+| Reroll | `reroll = "worse"` or `"better"` | `rolls` (`attack`, `save`, `skill`), `uses`, `duration` |
+| Bonus | `bonus = { selector, type, value }` | `uses` (on `ac` only), `duration` |
+| Recovery DC | `recovery_dc = <n>` | `duration` |
+| Grant | `grant = "<trait>"` | `uses`, `duration` |
 
-Every step may also take `target = "self"` and `unless = "<condition>"`. A
-`duration` is `{ rounds = <n> }` or `{ until = "<boundary>" }`, where the
-boundary is `source-turn-start`, `source-turn-end`, `target-turn-start` or
-`target-turn-end`. See [the engine](engine.md#abilities-and-steps) for what
-each kind does.
+Every step may also take `target` (`self`, or `other` for the first other
+standing foe) and `unless = "<condition>"`. A `duration` is
+`{ rounds = <n> }` or `{ until = "<boundary>" }`, where the boundary is
+`source-turn-start`, `source-turn-end`, `target-turn-start` or
+`target-turn-end`. A stunned condition may take a `duration` and no value. See
+[the engine](engine.md#abilities-and-steps) for what each kind does.
 
 An ability with an area, a basic save and a `failure` list (an example, not a
 real creature's ability):
@@ -160,6 +193,23 @@ steps   = [
   { save = "will", dc_from = "spell", basic = true, damage = [{ dice = "6d6", type = "mental" }],
     failure = [{ condition = "frightened", value = 1 }] },
 ]
+```
+
+A triggered ability with a limit, beside the recharging ability it refreshes
+(cut from the Avatar of Lilith's hand layer):
+
+```toml
+[ability.wail]
+name    = "Wail"
+actions = 2
+limit   = { recharge = "1d4" }
+steps   = [{ save = "fortitude", dc = 38 }]
+
+[ability.last-stand]
+name    = "Last Stand"
+trigger = { on = "turn-start", cost = "free", hp_at_most = 75 }
+limit   = { per_fight = 1 }
+steps   = [{ heal = "40", target = "self" }, { recharge = "wail" }, { gain_actions = 1 }]
 ```
 
 Speed is loaded and shown, but no rule reads it yet.
@@ -182,8 +232,11 @@ every problem it finds at once, wrapped in `ErrInvalid`:
 
 - the name is set, and the kind is `pc` or `npc`
 - `defense.hp` and `defense.ac` are each at least 1
-- `hero_points` and `recovery_dc` are not negative, and `dying_max` is unset or
-  at least 2
+- `hero_points`, `recovery_dc` and `fast_healing` are not negative, and
+  `dying_max` is unset or at least 2
+- each `[skill]` key is one of the 16 skills, each `[pool]` count is not
+  negative, and each `[extra_reaction]` names an ability whose trigger costs a
+  reaction, with a count of at least 1
 - each `resist` and `weakness` key is a damage type, `physical`, `all` or a
   defense trait, and its value is at least 1
 - `defense.adaptive` has a value of at least 1 and only damage types
@@ -196,23 +249,53 @@ every problem it finds at once, wrapped in `ErrInvalid`:
 - each Strike has a name, a range that is not negative, and at least one damage
   part with no category; each part's dice parse, its type is a known damage
   type, and its category is `persistent`, `splash` or none
-- each ability that is not ignored has a name, an action cost of 1 to 3, at
-  least one step, and a known area shape of at least 5 feet
-- each step, in an ability or a degree list, names exactly one kind; a Strike
-  step names a Strike the creature has; a save names a save and one DC source,
-  and `dc_from` finds a class DC or `[spellcasting]`; a spell attack needs
-  `[spellcasting]`; `basic` and damage on a save come together; `dc`,
-  `dc_from`, `basic` and `shift` sit only on a save, and `shift` is −3 to 3
-- degree lists sit only on a Strike, a save or a spell attack
-- a condition is known, with a value of at least 1 when valued and none
-  otherwise; a duration sits only on a condition or a weaken step and sets
-  `rounds` or a known `until`, not both; `unless` names a condition; `lethal`
-  needs damage; `target` is `self` or unset; a weaken step names damage types
-  and a weakness or resistance above 0
+- each ability that is not ignored has a name, at least one step (an ability
+  with tags may have none: Swear Fidelity), and a known area shape of at least
+  5 feet
+- its cost: an action cost of 1 to 3, a `max_actions` above it and at most 3,
+  or `free` with no actions and a `limit`; a triggered ability sets none of
+  `actions`, `max_actions`, `free` or `turn_ends`
+- its `limit` sets at least one limit, none negative, a `recharge` that parses
+  as dice and a `pool` the creature has
+- its `trigger`: `on` is one of the ten kinds and `cost` is `reaction`, `free`
+  or unset; `attack` sits on `targeted` or `attacked`, `degrees` on `attacked`
+  or `saved`, `damaging` on `saved`, `melee` on `damaged`, `hp_at_most` (above
+  0) on `turn-start`; `foe-acts` needs `traits` or `ranged` and `ally-gains`
+  needs known `conditions`, and no other kind takes them
+- its `tags` are `loyalty` or `tests-loyalty`; `targets` is `self`, `ally`,
+  `others` or unset; `others` needs an area and `self` takes none; a triggered
+  ability has no `sustain`
+- each step, in an ability, a `sustain` list or a degree list, names exactly
+  one kind; a Strike step names a Strike the creature has; a save names a save
+  and one DC source, and `dc_from` finds a class DC or `[spellcasting]`; a
+  spell attack needs `[spellcasting]`; `basic` and damage on a save come
+  together, and `success_damage = "full"` needs `basic`; `dc_from`, `basic`
+  and `shift` sit only on a save, `dc` on a save or a check, and `shift` is −3
+  to 3
+- a check names a skill the creature has a number for, and one of `dc` and
+  `against`
+- `gain_actions` is 1 to 3; `recharge` names an ability with `limit.recharge`;
+  a reroll keeps `worse` or `better` and names its `rolls`; a bonus has a known
+  selector and type, a value other than 0 and no `per_condition`, and `uses`
+  only on `ac`; `recovery_dc` is at least 1 with a duration; a grant names a
+  defense trait with `uses` of at least 1
+- `uses` sits on a reroll, a bonus or a grant, and each of those needs `uses`
+  or a duration
+- `extra_dice` (not negative), `extra_damage`, `counts` (0 to 3), `penalty`
+  (`shared`) and `disrupts` sit only on a Strike step
+- degree lists sit only on a Strike, a save, a spell attack or a check
+- a condition is known, with a value of at least 1 (or `value_dice`) when
+  valued and none otherwise; a stunned may take a duration instead of a value,
+  and `stack` needs a value; `reduce` is positive and sits on a valued
+  condition with no value, stack or duration
+- a duration sits only on a condition, weaken, reroll, bonus, recovery DC or
+  grant step and sets `rounds` or a known `until`, not both; `unless` names a
+  condition; `lethal` needs damage; `target` is `self`, `other` or unset; a
+  weaken step names damage types and a weakness or resistance above 0
 
-`prepare` also parses each damage part's dice and each heal and temporary HP
-amount into a `dice.Expression`, and stamps each Strike and ability with its
-ID.
+`prepare` also parses each damage part's dice, each heal and temporary HP
+amount, each `value_dice` and each `limit.recharge` into a `dice.Expression`,
+and stamps each Strike and ability with its ID.
 
 ### PC builds
 
@@ -232,7 +315,8 @@ new choices (`level = 15`, a `level-15` boost list), and every number follows.
 | `critical_specialization` | The lowest weapon rank that grants critical specialization (`trained` to `legendary`), or unset for none |
 | `[build.boosts]` | One attribute list per source: `ancestry`, `background`, `class`, `level-<n>` |
 | `[build.proficiency]` | A rank word per proficiency: `perception`, the saves, `class-dc`, `spellcasting`, armor and weapon categories, `weapon-group-<group>`, `weapon-base-<base>` |
-| `[build.armor]` | The worn armor: `name`, `category`, `ac_bonus`, `dex_cap`, `potency`, `resilient`, `speed_penalty` |
+| `[build.skill]` | A rank word per skill; a skill the build does not name is untrained |
+| `[build.armor]` | The worn armor: `name`, `category`, `ac_bonus`, `dex_cap`, `potency`, `resilient`, `speed_penalty`, `check_penalty` |
 | `[build.weapon.<id>]` | One weapon per Strike: name, category, group, base, dice, die, damage type, potency, striking, `item_bonus`, range, traits, `persistent` (a dice and a type), `splash`, and riders in the four degree lists |
 | `[build.modifier.<id>]` | One bonus or penalty: `selector`, `type`, `value`, `per_level`, `weapon_traits`, and `attribute` on a `splash` modifier |
 | `[build.spellcasting]` | The casting `attribute` and the `top_rank` |
@@ -279,6 +363,11 @@ rank than its simple and martial ones, and the format holds only the second.
   becomes a persistent part. Its `splash`, plus `splash` modifiers and the
   attribute each one names (Expanded Splash adds Intelligence), becomes a
   splash part of the weapon's damage type.
+- **Skills** — all 16, each the higher of its rank's proficiency bonus and
+  the best `proficiency` modifier on the skill or `skill-check` (never both),
+  plus the skill's attribute, plus the typed modifiers on the skill and
+  `skill-check`, plus the armor's `check_penalty` on a Strength or Dexterity
+  skill. `skill` is a computed key.
 - **A Strike's riders** — the weapon's degree lists. At or above
   `critical_specialization`, the weapon's group adds its critical
   specialization step from a Go table to the critical success list; the one
@@ -286,21 +375,25 @@ rank than its simple and martial ones, and the format holds only the second.
   failure or a critical failure).
 
 **Bonus stacking.** A modifier's `type` is `item`, `status`, `circumstance`, or
-unset for untyped. Per type, only the highest bonus and the lowest penalty
-count; untyped values all add. A modifier with `weapon_traits` applies only to
+unset for untyped; on a skill or `skill-check` selector it may also be
+`proficiency`, which competes with the rank's bonus instead of adding (Untrained
+Improvisation). Per type, only the highest bonus and the lowest penalty count;
+untyped values all add. A modifier with `weapon_traits` applies only to
 weapons that carry every trait it names. `per_level` is multiplied by the level
 and added to `value`.
 
 **Choices only.** If any layer has `[build]`, no layer may set a computed key:
-`perception`, `class_dc`, `spellcasting`, any `[strike.*]`, `speed.land`, or
+`perception`, `class_dc`, `spellcasting`, any `[strike.*]`, `[skill]`, `speed.land`, or
 `defense.hp`, `ac`, `fortitude`, `reflex` or `will`. Each layer is checked as
 written, before the merge, and the load fails with `ErrComputedKey`, naming each
 file and key. A fix goes in as a build choice or a `[build.modifier.*]`.
-Resistances, weaknesses, immunities, fly speed and abilities stay hand-settable.
+Resistances, weaknesses, immunities, fly speed, fight-time modifiers, pools,
+extra reactions and abilities stay hand-settable.
 
 Bad choices fail the load with `ErrInvalid`, every problem at once: a build on
 an `npc`, a level below 1, an unknown attribute, rank word, proficiency, armor
-or weapon category, damage type, selector or bonus type, `weapon_traits` on a
+or weapon category, skill, damage type, selector or bonus type, a
+`proficiency` type off a skill or `skill-check` selector, `weapon_traits` on a
 selector other than `attack`, `damage` or `splash`, an `attribute` on a
 selector other than `splash`, a `persistent` whose dice or type the load
 rejects, a `critical_specialization` that is not a rank above untrained, and
@@ -345,8 +438,14 @@ immunities. Resistances and weaknesses keep their `except` lists, and
 `all-damage` becomes `all`; one keyed on a defense trait (the Avatar's `holy`)
 comes across as it is. Strikes keep the export's damage order, and a part
 with a `persistent` or `splash` category keeps it. The first spellcasting
-entry gives the spell attack and DC. Left out, each with its reason in the
-report: every ability, every spell, a weakness or resistance keyed on anything
+entry gives the spell attack and DC. Each skill comes across as its stored
+`base` number into `[skill]`; a key that is not one of the 16 skills is
+reported as not supported, and lore items as not a combat statistic. An action
+item whose `FastHealing` rule element has a plain number above 0 gives
+`fast_healing` (the highest, if several); a rule with a `type` other than
+`fast-healing` (regeneration) or a non-empty predicate is not read, and its
+item stays in the report as an ability. Left out, each with its reason in the
+report: every other ability, every spell, a weakness or resistance keyed on anything
 else, the doubling of a resistance (the resistance itself is written), an
 immunity's exceptions, attack effects, damage with any other category, damage
 whose dice or type the load would reject, and a Strike left with no
@@ -355,12 +454,23 @@ uncategorized damage.
 **PCs.** The importer writes the build, never the sheet's totals. Where each
 choice comes from:
 
-- **Class** — `class_hp`, the key attribute and its `class` boost, and the
-  starting ranks. The class DC starts at trained, as pf2e system 8.6.1 gives
-  every class.
+- **Class** — `class_hp`, the key attribute and its `class` boost, the
+  starting ranks, and the skills it trains. The class DC starts at trained, as
+  pf2e system 8.6.1 gives every class.
 - **Ancestry** — `ancestry_hp`, `speed`, traits, boosts and flaws. Alternate
   ancestry boosts replace both the boosts and the flaws.
-- **Background** — its boosts.
+- **Background** — its boosts, and the skills it trains
+  (`system.trainedSkills.value`, raised to at least trained, since the actor's
+  stored rank stays 0 for them). A trained lore is reported as not a combat
+  statistic.
+- **Skills** — each rank stored on the actor (`system.skills.<skill>.rank`)
+  into `[build.skill]`, raised by the class, the background and rank rules.
+  A hand-entered modifier on the actor (`system.customModifiers`) on a skill or
+  `skill-check` becomes a `[build.modifier.*]`; one on anything else is
+  reported as not supported, a disabled or ignored one as a toggle imported
+  off, one with a predicate as conditional, and one with `force`, traits,
+  adjustments, `ability`, `damageType`, `damageCategory` or `critical` as not
+  supported.
 - **Level boosts** — the sheet's per-level lists, as `level-<n>`.
 - **Feats** — rank raises from their proficiency subfeatures; a raise that names
   the class raises `class-dc`. The `weapon-specialization` and
@@ -370,7 +480,16 @@ choice comes from:
 - **Weapons** — every weapon with a quantity above 0, carried or stowed, whose
   damage dice and type the load accepts, with its persistent damage and
   splash. Property runes are reported, to be typed into the hand layer as
-  riders (Kas's Greater Crushing and Greater Fearsome).
+  riders (Kas's Greater Crushing and Greater Fearsome). A consumable weapon's
+  quantity is reported as a pool to type in the hand layer.
+- **Brewed bombs** — a weapon at quantity 0 is still imported when it has the
+  `bomb` trait, the actor has an item with the slug `quick-alchemy`, and the
+  bomb's compendium origin (`_stats.compendiumSource`, or
+  `flags.core.sourceId` on older data) is the `uuid` of an entry in the formula
+  book (`system.crafting.formulas`). It is reported as brewed with Quick
+  Alchemy. A quantity-0 bomb with Quick Alchemy but no known formula, or no
+  origin, is reported with its own reason; any other quantity-0 weapon is
+  reported as quantity 0.
 - **Spellcasting** — the entries that hold spells and name an attribute; the
   first sets the attribute, and the top rank is the highest slot with any uses.
 
@@ -379,10 +498,10 @@ resolves the ones the computed numbers need into build choices:
 
 | Rule element | Feeds |
 |--------------|-------|
-| `FlatModifier` on `hp`, `ac`, a save, `saving-throw`, `perception` or `land-speed` | A `[build.modifier.*]`; a value of exactly `@actor.level` becomes `per_level = 1`, any other formula is worked out at the export's level |
+| `FlatModifier` on `hp`, `ac`, a save, `saving-throw`, `perception`, `land-speed`, a skill or `skill-check` | A `[build.modifier.*]`; a value of exactly `@actor.level` becomes `per_level = 1`, any other formula is worked out at the export's level; type `proficiency` is kept on a skill or `skill-check` |
 | `FlatModifier` on an attack or damage selector, scoped by weapon traits | A modifier with `weapon_traits` |
 | `Resistance` | `defense.resist`, the highest value per damage type |
-| `ActiveEffectLike` with mode `upgrade` on a rank | `[build.proficiency]` |
+| `ActiveEffectLike` with mode `upgrade` on a rank | `[build.proficiency]`, or `[build.skill]` for a skill rank |
 | `MartialProficiency` for a weapon group's martial weapons | A `weapon-group-<group>` rank; the rule for the group's advanced weapons is reported as not supported |
 | `AdjustModifier` that suppresses `armor-speed-penalty` | `speed_penalty = 0` |
 | `AdjustDegreeOfSuccess` on a save or `saving-throw` | A `[degree_shift.*]` per adjusted degree; a bare trait in the predicate (`fear`, `item:trait:emotion`) becomes `against` |
@@ -394,6 +513,12 @@ resolves the ones the computed numbers need into build choices:
 | `AdjustStrike` on `materials` | The material trait added to that weapon (the Nail Bomb's `cold-iron`) |
 | `DexterityModifierCap` | The lowest cap becomes the armor's `dex_cap` |
 | `RollOption` that is a toggle | Nothing: reported as a toggle, imported off |
+| `DamageDice` | Nothing: reported as part of an ability written by hand (Vicious Swing, the relics) |
+
+A formula is worked out at the export's level. The formula reader knows the
+arithmetic, `max`, `min`, `floor`, `ceil`, and `match`, `when`, `lte` and
+`gte` (Untrained Improvisation's level steps); anything else is reported as not
+supported.
 
 Rules count only on items whose effect is always on: rules on conditions,
 effects and spells are not read, and a physical item's rules count only when it
@@ -442,6 +567,8 @@ stat block would be, and the command fails after every creature has printed.
   lists each thing left out. (`F.041` D-26; `F.041.E2` Decisions 5 and 6.)
 - **Fight-time modifiers and degree shifts are creature tables for PCs and NPCs alike.** They depend on the incoming effect, so a build cannot compute them, and a monster needs them too. (`F.041.E3` Decision 3.)
 - **Critical specialization is a rider from a table by weapon group.** The build holds the rank that grants it, and the load adds the group's rider to each weapon at or above it. (`F.041.E3` Decision 15.)
+- **An ability's limits are one `limit` table, and a pool is a named count abilities share.** `per_fight`, `per_round`, `recharge` and `pool` sit together, so drinking and feeding a potion spend one number; once per round and "needs an earlier attack" are the `flourish` and `press` traits, as PF2e writes them. (`F.041.E4` Decision 19.)
+- **A PC's skill modifiers are computed from the build.** The importer reads skill ranks and skill bonuses, and the load computes each modifier; a typed number in the hand layer was rejected. An NPC's skills are the stored numbers. (`F.041.E4` Decision 16.)
 
 ## Dependencies
 

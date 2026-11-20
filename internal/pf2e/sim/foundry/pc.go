@@ -1,6 +1,7 @@
 package foundry
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -15,9 +16,22 @@ var (
 	abilityActionTypes  = []string{"action", "reaction", "free"}
 )
 
+const quickAlchemySlug = "quick-alchemy"
+
 type characterSystem struct {
-	Details levelDetails   `json:"details"`
-	Build   characterBuild `json:"build"`
+	Details         levelDetails                `json:"details"`
+	Build           characterBuild              `json:"build"`
+	Skills          map[string]skillRank        `json:"skills"`
+	CustomModifiers map[string][]customModifier `json:"customModifiers"`
+	Crafting        crafting                    `json:"crafting"`
+}
+
+type crafting struct {
+	Formulas []formula `json:"formulas"`
+}
+
+type formula struct {
+	UUID string `json:"uuid"`
 }
 
 type characterBuild struct {
@@ -34,13 +48,14 @@ type boostChoice struct {
 }
 
 type classSystem struct {
-	HP           int            `json:"hp"`
-	KeyAbility   boostChoice    `json:"keyAbility"`
-	Perception   int            `json:"perception"`
-	SavingThrows map[string]int `json:"savingThrows"`
-	Attacks      classAttacks   `json:"attacks"`
-	Defenses     map[string]int `json:"defenses"`
-	Spellcasting int            `json:"spellcasting"`
+	HP            int            `json:"hp"`
+	KeyAbility    boostChoice    `json:"keyAbility"`
+	Perception    int            `json:"perception"`
+	SavingThrows  map[string]int `json:"savingThrows"`
+	Attacks       classAttacks   `json:"attacks"`
+	Defenses      map[string]int `json:"defenses"`
+	Spellcasting  int            `json:"spellcasting"`
+	TrainedSkills trainedSkills  `json:"trainedSkills"`
 }
 
 type classAttacks struct {
@@ -60,7 +75,8 @@ type ancestrySystem struct {
 }
 
 type backgroundSystem struct {
-	Boosts map[string]boostChoice `json:"boosts"`
+	Boosts        map[string]boostChoice `json:"boosts"`
+	TrainedSkills trainedSkills          `json:"trainedSkills"`
 }
 
 type featSystem struct {
@@ -82,6 +98,7 @@ type armorSystem struct {
 	DexCap       int        `json:"dexCap"`
 	Strength     int        `json:"strength"`
 	SpeedPenalty int        `json:"speedPenalty"`
+	CheckPenalty int        `json:"checkPenalty"`
 	Runes        armorRunes `json:"runes"`
 }
 
@@ -156,6 +173,8 @@ type pcImporter struct {
 	recoveryFloor          int
 	entries                []*item
 	spellsByEntry          map[string]int
+	quickAlchemy           bool
+	formulas               map[string]bool
 }
 
 func importPC(source *actor) (*creature.Creature, *Report, error) {
@@ -170,6 +189,7 @@ func importPC(source *actor) (*creature.Creature, *Report, error) {
 		build: &creature.Build{
 			Boosts:      map[string][]string{},
 			Proficiency: map[string]string{},
+			Skills:      map[string]string{},
 			Weapons:     map[string]creature.Weapon{},
 			Modifiers:   map[string]creature.Modifier{},
 		},
@@ -182,10 +202,19 @@ func importPC(source *actor) (*creature.Creature, *Report, error) {
 		fightModifiers: map[string]creature.CheckModifier{},
 		degreeShifts:   map[string]creature.DegreeShift{},
 		spellsByEntry:  map[string]int{},
+		formulas:       map[string]bool{},
 	}
+	for _, known := range system.Crafting.Formulas {
+		importer.formulas[known.UUID] = true
+	}
+	importer.quickAlchemy = slices.ContainsFunc(source.Items, func(current item) bool {
+		return current.System.Slug == quickAlchemySlug
+	})
 	for level, boosts := range system.Build.Attributes.Boosts {
 		importer.build.Boosts["level-"+level] = boosts
 	}
+	importer.skills(system.Skills)
+	importer.customModifiers(system.CustomModifiers)
 	for index := range source.Items {
 		if current := &source.Items[index]; current.Type == "class" {
 			if err := importer.class(current); err != nil {
@@ -269,6 +298,7 @@ func (importer *pcImporter) class(current *item) error {
 		importer.raise(category, system.Defenses[category])
 	}
 	importer.raise("spellcasting", system.Spellcasting)
+	importer.trainedSkills(current.Name, system.TrainedSkills)
 	return nil
 }
 
@@ -295,6 +325,7 @@ func (importer *pcImporter) background(current *item) error {
 		return err
 	}
 	importer.build.Boosts["background"] = importer.choices(current.Name, "boost", system.Boosts)
+	importer.trainedSkills(current.Name, system.TrainedSkills)
 	return nil
 }
 
@@ -362,9 +393,11 @@ func (importer *pcImporter) armorItem(current *item) error {
 }
 
 func (importer *pcImporter) weapon(current *item) error {
+	brewed := false
 	if current.System.Quantity < 1 {
-		importer.report.skip(current.Name, "weapon", ReasonQuantity)
-		return nil
+		if brewed = importer.brewable(current); !brewed {
+			return nil
+		}
 	}
 	var system weaponSystem
 	if err := current.decode(&system); err != nil {
@@ -406,13 +439,33 @@ func (importer *pcImporter) weapon(current *item) error {
 	if len(system.Runes.Property) > 0 {
 		importer.report.skip(current.Name, "property runes "+strings.Join(system.Runes.Property, ", "), ReasonHandLayer)
 	}
-	if slices.Contains(weapon.Traits, "consumable") {
-		importer.report.skip(current.Name, fmt.Sprintf("quantity %d, not tracked", current.System.Quantity), ReasonLaterRule)
+	switch {
+	case brewed:
+		importer.report.skip(current.Name, fmt.Sprintf("quantity %d, no stock: brewed with Quick Alchemy from the quick bombs pool", current.System.Quantity), ReasonHandLayer)
+	case slices.Contains(weapon.Traits, "consumable"):
+		importer.report.skip(current.Name, fmt.Sprintf("quantity %d, typed as a pool", current.System.Quantity), ReasonHandLayer)
 	}
 	id := uniqueID(current.Name, importer.weaponIDs)
 	importer.build.Weapons[id] = weapon
 	importer.weaponByItem[current.ID] = id
 	return nil
+}
+
+func (importer *pcImporter) brewable(current *item) bool {
+	if !slices.Contains(current.System.Traits.Value, "bomb") || !importer.quickAlchemy {
+		importer.report.skip(current.Name, "weapon", ReasonQuantity)
+		return false
+	}
+	origin := cmp.Or(current.Stats.CompendiumSource, current.Flags.Core.SourceID)
+	switch {
+	case origin == "":
+		importer.report.skip(current.Name, "bomb with no compendium origin to match a formula", ReasonNoFormula)
+		return false
+	case !importer.formulas[origin]:
+		importer.report.skip(current.Name, "bomb whose formula is not in the formula book", ReasonNoFormula)
+		return false
+	}
+	return true
 }
 
 func (importer *pcImporter) spellcasting() error {
@@ -464,9 +517,15 @@ func topSlotRank(slots map[string]slotEntry) int {
 func (importer *pcImporter) finish() *creature.Creature {
 	build := importer.build
 	for _, key := range slices.Sorted(maps.Keys(importer.ranks)) {
-		if rank := importer.ranks[key]; rank > 0 {
-			build.Proficiency[key] = creature.RankWords[rank]
+		rank := importer.ranks[key]
+		if rank == 0 {
+			continue
 		}
+		if name, isSkill := strings.CutPrefix(key, skillRankPrefix); isSkill {
+			build.Skills[name] = creature.RankWords[rank]
+			continue
+		}
+		build.Proficiency[key] = creature.RankWords[rank]
 	}
 	build.Armor = importer.finishArmor()
 	layer := &creature.Creature{
@@ -518,6 +577,7 @@ func (importer *pcImporter) finishArmor() *creature.Armor {
 		Potency:      system.Runes.Potency,
 		Resilient:    system.Runes.Resilient,
 		SpeedPenalty: importer.speedPenalty(),
+		CheckPenalty: importer.checkPenalty(),
 	}
 }
 

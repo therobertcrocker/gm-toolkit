@@ -41,6 +41,16 @@ traits = ["dwarf", "humanoid"]
     weapon-base-alchemical-bomb = "expert"
     weapon-base-clan-pistol = "trained"
     will = "expert"
+  [build.skill]
+    acrobatics = "trained"
+    arcana = "trained"
+    crafting = "master"
+    deception = "master"
+    medicine = "trained"
+    nature = "trained"
+    society = "trained"
+    stealth = "master"
+    thievery = "trained"
   [build.armor]
     name = "Studded Leather Armor"
     category = "light"
@@ -48,6 +58,7 @@ traits = ["dwarf", "humanoid"]
     dex_cap = 3
     potency = 2
     resilient = 1
+    check_penalty = -1
   [build.weapon]
     [build.weapon.alchemists-fire-greater]
       name = "Alchemist's Fire (Greater)"
@@ -76,6 +87,18 @@ traits = ["dwarf", "humanoid"]
       range = 20
       traits = ["alchemical", "bomb", "consumable", "electricity", "splash"]
       splash = 3
+    [build.weapon.bottled-lightning-moderate]
+      name = "Bottled Lightning (Moderate)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 2
+      die = 6
+      type = "electricity"
+      item_bonus = 1
+      range = 20
+      traits = ["alchemical", "bomb", "consumable", "electricity", "splash"]
+      splash = 2
     [build.weapon.crystal-shards-moderate]
       name = "Crystal Shards (Moderate)"
       category = "martial"
@@ -100,6 +123,18 @@ traits = ["dwarf", "humanoid"]
       die = 4
       type = "piercing"
       traits = ["agile", "finesse", "thrown-10", "versatile-s"]
+    [build.weapon.frost-vial-moderate]
+      name = "Frost Vial (Moderate)"
+      category = "martial"
+      group = "bomb"
+      base = "alchemical-bomb"
+      dice = 2
+      die = 6
+      type = "cold"
+      item_bonus = 1
+      range = 20
+      traits = ["alchemical", "bomb", "cold", "consumable", "splash"]
+      splash = 2
     [build.weapon.inflammation-flask-greater]
       name = "Inflammation Flask (Greater)"
       category = "martial"
@@ -195,6 +230,10 @@ traits = ["dwarf", "humanoid"]
       type = "item"
       value = 1
       weapon_traits = ["alchemical", "bomb"]
+    [build.modifier.artisans-mark]
+      selector = "crafting"
+      type = "item"
+      value = 2
     [build.modifier.boots-of-bounding-greater]
       selector = "land-speed"
       type = "item"
@@ -203,6 +242,14 @@ traits = ["dwarf", "humanoid"]
       selector = "splash"
       attribute = "int"
       weapon_traits = ["splash"]
+    [build.modifier.shadow-property]
+      selector = "stealth"
+      type = "item"
+      value = 1
+    [build.modifier.untrained-improvisation]
+      selector = "skill-check"
+      type = "proficiency"
+      value = 14
 
 [degree_shift]
   [degree_shift.juggernaut]

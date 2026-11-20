@@ -1,3 +1,59 @@
 schema = 1
 
 hero_points = 1
+
+# Starting count from the sheet; a dial for A.004.2.
+[pool]
+therapeutic-snap-peas = 5
+
+# approximation: the 2d6 void; the shove waits for A.004.2.
+[ability.lash-out]
+name    = "Lash Out"
+traits  = ["occult", "void"]
+trigger = { on = "damaged", cost = "reaction", melee = true }
+steps   = [{ damage = [{ dice = "2d6", type = "void" }] }]
+
+# stand-in: the triggering ally only; one ability per condition. Adjacency is A.004.2's.
+[ability.comforting-presence-frightened]
+name    = "Comforting Presence (frightened)"
+traits  = ["concentrate", "emotion", "mental"]
+trigger = { on = "ally-gains", cost = "reaction", conditions = ["frightened"] }
+steps   = [
+  { condition = "frightened", reduce = 1 },
+  { condition = "frightened", value = 1, stack = true, target = "self" },
+]
+
+[ability.comforting-presence-stupefied]
+name    = "Comforting Presence (stupefied)"
+traits  = ["concentrate", "emotion", "mental"]
+trigger = { on = "ally-gains", cost = "reaction", conditions = ["stupefied"] }
+steps   = [
+  { condition = "stupefied", reduce = 1 },
+  { condition = "stupefied", value = 1, stack = true, target = "self" },
+]
+
+[ability.therapeutic-snap-peas]
+name    = "Therapeutic Snap Peas"
+actions = 1
+traits  = ["concentrate", "manipulate"]
+area    = { shape = "emanation", size = 30 }
+targets = "ally"
+limit   = { pool = "therapeutic-snap-peas" }
+steps   = [{ heal = "4d8+10" }]
+
+# Rank 7: up to six creatures. Effort 5 adds the slot.
+[ability.haste]
+name    = "Haste"
+actions = 2
+traits  = ["concentrate", "manipulate"]
+tags    = ["loyalty"]
+area    = { shape = "emanation", size = 30 }
+targets = "ally"
+steps   = [{ condition = "quickened", duration = { rounds = 10 } }]
+
+[ability.swear-fidelity]
+name    = "Swear Fidelity"
+actions = 1
+traits  = ["auditory", "concentrate"]
+tags    = ["loyalty"]
+targets = "self"

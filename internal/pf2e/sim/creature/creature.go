@@ -30,6 +30,7 @@ type Creature struct {
 	HeroPoints           int                            `toml:"hero_points,omitzero"`
 	DyingMax             int                            `toml:"dying_max,omitzero"`
 	RecoveryDC           int                            `toml:"recovery_dc,omitzero"`
+	FastHealing          int                            `toml:"fast_healing,omitzero"`
 	Speed                Speed                          `toml:"speed,omitempty"`
 	Defense              Defense                        `toml:"defense,omitempty"`
 	Spellcasting         *Spellcasting                  `toml:"spellcasting,omitempty"`
@@ -37,6 +38,9 @@ type Creature struct {
 	Modifiers            map[string]CheckModifier       `toml:"modifier,omitempty"`
 	DegreeShifts         map[string]DegreeShift         `toml:"degree_shift,omitempty"`
 	ConditionAdjustments map[string]ConditionAdjustment `toml:"condition_adjust,omitempty"`
+	Skills               map[string]int                 `toml:"skill,omitempty"`
+	Pools                map[string]int                 `toml:"pool,omitempty"`
+	ExtraReactions       map[string]int                 `toml:"extra_reaction,omitempty"`
 	Strikes              map[string]Strike              `toml:"strike,omitempty"`
 	Abilities            map[string]Ability             `toml:"ability,omitempty"`
 }
@@ -89,22 +93,31 @@ func (strike Strike) Melee() bool {
 }
 
 type DamagePart struct {
-	Dice     string          `toml:"dice"`
-	Type     string          `toml:"type"`
-	Category string          `toml:"category,omitempty"`
-	Roll     dice.Expression `toml:"-"`
+	Dice      string          `toml:"dice"`
+	Type      string          `toml:"type"`
+	Category  string          `toml:"category,omitempty"`
+	PerAction bool            `toml:"per_action,omitempty"`
+	Roll      dice.Expression `toml:"-"`
 }
 
 var damageCategories = []string{"", "persistent", "splash"}
 
 type Ability struct {
-	ID      string   `toml:"-"`
-	Name    string   `toml:"name,omitempty"`
-	Actions int      `toml:"actions,omitzero"`
-	Ignore  bool     `toml:"ignore,omitempty"`
-	Traits  []string `toml:"traits,omitempty"`
-	Area    *Area    `toml:"area,omitempty"`
-	Steps   []Step   `toml:"steps,omitempty"`
+	ID         string   `toml:"-"`
+	Name       string   `toml:"name,omitempty"`
+	Actions    int      `toml:"actions,omitzero"`
+	MaxActions int      `toml:"max_actions,omitzero"`
+	Free       bool     `toml:"free,omitempty"`
+	TurnEnds   bool     `toml:"turn_ends,omitempty"`
+	Ignore     bool     `toml:"ignore,omitempty"`
+	Traits     []string `toml:"traits,omitempty"`
+	Tags       []string `toml:"tags,omitempty"`
+	Area       *Area    `toml:"area,omitempty"`
+	Limit      *Limit   `toml:"limit,omitempty"`
+	Trigger    *Trigger `toml:"trigger,omitempty"`
+	Targets    string   `toml:"targets,omitempty"`
+	Sustain    []Step   `toml:"sustain,omitempty"`
+	Steps      []Step   `toml:"steps,omitempty"`
 }
 
 func (strike Strike) Agile() bool {

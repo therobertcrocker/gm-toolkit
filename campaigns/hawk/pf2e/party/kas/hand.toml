@@ -10,3 +10,140 @@ critical_success = [
   { condition = "enfeebled", value = 2, duration = { until = "source-turn-end" } },
   { condition = "frightened", value = 2 },
 ]
+
+# Starting counts from the sheet; dials for A.004.2.
+[pool]
+healing-potion-moderate = 3
+healing-potion-greater  = 1
+
+# Intimidating Prowess: +2 circumstance to Demoralize at Strength +5 and master Intimidation.
+[modifier.intimidating-prowess]
+selector = "intimidation"
+type     = "circumstance"
+value    = 2
+
+# Furious Focus: with a two-handed weapon the swing counts as one attack, so no `counts = 2`.
+[ability.vicious-swing]
+name    = "Vicious Swing"
+actions = 2
+traits  = ["fighter", "flourish"]
+steps   = [{ strike = "protectors-fury", extra_dice = 2 }]
+
+[ability.brutal-finish]
+name      = "Brutal Finish"
+actions   = 1
+traits    = ["fighter", "press"]
+turn_ends = true
+steps     = [
+  { strike = "protectors-fury", extra_dice = 1,
+    failure = [{ damage = [{ dice = "1d12", type = "bludgeoning" }] }] },
+]
+
+# approximation: the push is dropped; position is A.004.2's.
+[ability.ring-of-the-ram]
+name        = "Ring of the Ram (Greater)"
+actions     = 1
+max_actions = 3
+traits      = ["force", "magical", "manipulate"]
+limit       = { per_fight = 1 }
+steps       = [
+  { save = "fortitude", dc = 32, basic = true, damage = [{ dice = "3d6", type = "force", per_action = true }] },
+]
+
+# Tactical Reflexes: one more reaction each turn, for Attack of Opportunity only.
+[extra_reaction]
+attack-of-opportunity = 1
+
+# approximation: every foe counts as in reach; only Stand carries `move` until A.004.2.
+[ability.attack-of-opportunity]
+name    = "Attack of Opportunity"
+trigger = { on = "foe-acts", cost = "reaction", traits = ["manipulate", "move"], ranged = true }
+steps   = [{ strike = "protectors-fury", disrupts = ["manipulate"] }]
+
+# approximation: the +2 AC; the Step waits for A.004.2.
+[ability.farabellus-flip]
+name    = "Farabellus Flip"
+trigger = { on = "targeted", cost = "reaction", attack = "melee-strike" }
+steps   = [{ bonus = { selector = "ac", type = "circumstance", value = 2 }, uses = 1, target = "self" }]
+
+# approximation: the cone catches Kas and every ally; spread is A.004.2's.
+[ability.healing-wave]
+name    = "Healing Wave"
+actions = 2
+traits  = ["concentrate", "healing", "vitality"]
+area    = { shape = "cone", size = 15 }
+targets = "ally"
+limit   = { per_fight = 1 }
+steps   = [{ heal = "14d4" }]
+
+[ability.drink-healing-potion-moderate]
+name    = "Healing Potion (Moderate)"
+actions = 1
+traits  = ["manipulate"]
+targets = "self"
+limit   = { pool = "healing-potion-moderate" }
+steps   = [{ heal = "3d8+10" }]
+
+[ability.feed-healing-potion-moderate]
+name    = "Healing Potion (Moderate), to an ally"
+actions = 1
+traits  = ["manipulate"]
+tags    = ["loyalty"]
+targets = "ally"
+limit   = { pool = "healing-potion-moderate" }
+steps   = [{ heal = "3d8+10" }]
+
+[ability.drink-healing-potion-greater]
+name    = "Healing Potion (Greater)"
+actions = 1
+traits  = ["manipulate"]
+targets = "self"
+limit   = { pool = "healing-potion-greater" }
+steps   = [{ heal = "6d8+20" }]
+
+[ability.feed-healing-potion-greater]
+name    = "Healing Potion (Greater), to an ally"
+actions = 1
+traits  = ["manipulate"]
+tags    = ["loyalty"]
+targets = "ally"
+limit   = { pool = "healing-potion-greater" }
+steps   = [{ heal = "6d8+20" }]
+
+[ability.swear-fidelity]
+name    = "Swear Fidelity"
+actions = 1
+traits  = ["auditory", "concentrate"]
+tags    = ["loyalty"]
+targets = "self"
+
+# Temporary immunity to a repeat Demoralize comes with Effort 5.
+[ability.demoralize]
+name    = "Demoralize"
+actions = 1
+traits  = ["concentrate", "emotion", "fear", "mental", "visual"]
+steps   = [
+  { check = "intimidation", against = "will",
+    success = [{ condition = "frightened", value = 1 }],
+    critical_success = [{ condition = "frightened", value = 2 }] },
+]
+
+[ability.battle-cry]
+name    = "Battle Cry"
+traits  = ["concentrate", "emotion", "fear", "mental", "visual"]
+trigger = { on = "initiative", cost = "free" }
+steps   = [
+  { check = "intimidation", against = "will",
+    success = [{ condition = "frightened", value = 1 }],
+    critical_success = [{ condition = "frightened", value = 2 }] },
+]
+
+[ability.too-angry-to-die]
+name    = "Too Angry to Die"
+traits  = ["concentrate", "emotion", "fear", "mental", "visual"]
+trigger = { on = "stood-up", cost = "reaction" }
+steps   = [
+  { check = "intimidation", against = "will",
+    success = [{ condition = "frightened", value = 1 }],
+    critical_success = [{ condition = "frightened", value = 2 }] },
+]

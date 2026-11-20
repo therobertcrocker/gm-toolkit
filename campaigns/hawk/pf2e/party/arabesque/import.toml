@@ -33,6 +33,16 @@ traits = ["elf", "humanoid"]
     unarmed = "expert"
     unarmored = "expert"
     will = "expert"
+  [build.skill]
+    acrobatics = "expert"
+    arcana = "trained"
+    deception = "master"
+    intimidation = "trained"
+    occultism = "master"
+    performance = "expert"
+    society = "trained"
+    stealth = "trained"
+    thievery = "trained"
   [build.armor]
     category = "unarmored"
     dex_cap = 5
@@ -55,6 +65,10 @@ traits = ["elf", "humanoid"]
       value = 2
     [build.modifier.bands-of-force-greater-2]
       selector = "saving-throw"
+      type = "item"
+      value = 2
+    [build.modifier.ring-of-wizardry-type-iv]
+      selector = "arcana"
       type = "item"
       value = 2
   [build.spellcasting]

@@ -25,14 +25,14 @@ var (
 	fixedProficiencies   = []string{"perception", "fortitude", "reflex", "will", "class-dc", "spellcasting", "unarmored", "light", "medium", "heavy", "simple", "martial", "advanced", "unarmed"}
 	armorCategories      = []string{"unarmored", "light", "medium", "heavy"}
 	weaponCategories     = []string{"simple", "martial", "advanced", "unarmed"}
-	modifierSelectors    = []string{"hp", "ac", "fortitude", "reflex", "will", "saving-throw", "perception", "land-speed", "attack", "damage", "splash"}
+	modifierSelectors    = append([]string{"hp", "ac", "fortitude", "reflex", "will", "saving-throw", "perception", "land-speed", "attack", "damage", "splash", SkillCheckSelector}, SkillNames...)
 	weaponSelectors      = []string{"attack", "damage", "splash"}
 	modifierTypes        = []string{"", "item", "status", "circumstance"}
 	fixedBoostSources    = []string{"ancestry", "background", "class"}
 	saveAttributes       = map[string]string{"fortitude": "con", "reflex": "dex", "will": "wis"}
 	specializationDamage = map[string][]int{"normal": {0, 0, 2, 3, 4}, "greater": {0, 0, 4, 6, 8}}
 	computedKeys         = [][]string{
-		{"perception"}, {"class_dc"}, {"spellcasting"}, {"strike"}, {"speed", "land"},
+		{"perception"}, {"class_dc"}, {"spellcasting"}, {"strike"}, {"skill"}, {"speed", "land"},
 		{"defense", "hp"}, {"defense", "ac"}, {"defense", "fortitude"}, {"defense", "reflex"}, {"defense", "will"},
 	}
 )
@@ -47,6 +47,7 @@ type Build struct {
 	CriticalSpecialization string              `toml:"critical_specialization,omitempty"`
 	Boosts                 map[string][]string `toml:"boosts,omitempty"`
 	Proficiency            map[string]string   `toml:"proficiency,omitempty"`
+	Skills                 map[string]string   `toml:"skill,omitempty"`
 	Armor                  *Armor              `toml:"armor,omitempty"`
 	Weapons                map[string]Weapon   `toml:"weapon,omitempty"`
 	Modifiers              map[string]Modifier `toml:"modifier,omitempty"`
@@ -61,6 +62,7 @@ type Armor struct {
 	Potency      int    `toml:"potency,omitzero"`
 	Resilient    int    `toml:"resilient,omitzero"`
 	SpeedPenalty int    `toml:"speed_penalty,omitzero"`
+	CheckPenalty int    `toml:"check_penalty,omitzero"`
 }
 
 type Weapon struct {
@@ -259,6 +261,14 @@ func (creature *Creature) checkBuild() []string {
 			report("build.proficiency.%s: rank %q: want %s", key, rank, strings.Join(RankWords, ", "))
 		}
 	}
+	for _, name := range slices.Sorted(maps.Keys(build.Skills)) {
+		if !IsSkill(name) {
+			report("build.skill.%s: not a skill", name)
+		}
+		if rank := build.Skills[name]; !slices.Contains(RankWords, rank) {
+			report("build.skill.%s: rank %q: want %s", name, rank, strings.Join(RankWords, ", "))
+		}
+	}
 	if armor := build.Armor; armor != nil {
 		if !slices.Contains(armorCategories, armor.Category) {
 			report("build.armor.category %q: want %s", armor.Category, strings.Join(armorCategories, ", "))
@@ -266,8 +276,8 @@ func (creature *Creature) checkBuild() []string {
 		if armor.ACBonus < 0 || armor.Potency < 0 || armor.Resilient < 0 || (armor.DexCap != nil && *armor.DexCap < 0) {
 			report("build.armor: ac_bonus, dex_cap, potency and resilient must not be negative")
 		}
-		if armor.SpeedPenalty > 0 {
-			report("build.armor.speed_penalty must not be positive")
+		if armor.SpeedPenalty > 0 || armor.CheckPenalty > 0 {
+			report("build.armor: speed_penalty and check_penalty must not be positive")
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(build.Weapons)) {
@@ -298,8 +308,11 @@ func (creature *Creature) checkBuild() []string {
 		if !slices.Contains(modifierSelectors, modifier.Selector) {
 			report("build.modifier.%s: selector %q: want %s", id, modifier.Selector, strings.Join(modifierSelectors, ", "))
 		}
-		if !slices.Contains(modifierTypes, modifier.Type) {
-			report("build.modifier.%s: type %q: want item, status, circumstance or none", id, modifier.Type)
+		switch {
+		case modifier.Type == ProficiencyModifier && !IsSkillSelector(modifier.Selector):
+			report("build.modifier.%s: type proficiency needs a skill or skill-check selector", id)
+		case modifier.Type != ProficiencyModifier && !slices.Contains(modifierTypes, modifier.Type):
+			report("build.modifier.%s: type %q: want item, status, circumstance, proficiency or none", id, modifier.Type)
 		}
 		if len(modifier.WeaponTraits) > 0 && !slices.Contains(weaponSelectors, modifier.Selector) {
 			report("build.modifier.%s: weapon_traits needs selector attack, damage or splash", id)
@@ -355,6 +368,7 @@ func (creature *Creature) computeBuild() error {
 		attack := build.proficiency(level, "spellcasting") + attributes[casting.Attribute]
 		creature.Spellcasting = &Spellcasting{Attack: attack, DC: 10 + attack, TopRank: casting.TopRank}
 	}
+	creature.Skills = build.skills(level, attributes, armor)
 	creature.Strikes = map[string]Strike{}
 	for id, weapon := range build.Weapons {
 		creature.Strikes[id] = build.strike(level, attributes, weapon)
@@ -382,7 +396,7 @@ func (build *Build) total(level, itemBonus int, weaponTraits []string, selectors
 	pool.Add("item", itemBonus)
 	for _, id := range slices.Sorted(maps.Keys(build.Modifiers)) {
 		modifier := build.Modifiers[id]
-		if !slices.Contains(selectors, modifier.Selector) || !containsAll(weaponTraits, modifier.WeaponTraits) {
+		if modifier.Type == ProficiencyModifier || !slices.Contains(selectors, modifier.Selector) || !containsAll(weaponTraits, modifier.WeaponTraits) {
 			continue
 		}
 		pool.Add(modifier.Type, modifier.Value+modifier.PerLevel*level)
@@ -412,7 +426,7 @@ func (build *Build) riders(weapon Weapon, rank int) Outcomes {
 	outcomes := weapon.Outcomes
 	minimum := slices.Index(RankWords, build.CriticalSpecialization)
 	if specialization, found := criticalSpecializations[weapon.Group]; found && minimum > 0 && rank >= minimum {
-		outcomes.CriticalSuccess = append(slices.Clone(outcomes.For(3, true)), specialization)
+		outcomes.CriticalSuccess = append(slices.Clone(outcomes.For(3, true)), specialization.clone())
 	}
 	return outcomes
 }

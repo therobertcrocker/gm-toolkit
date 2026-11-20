@@ -2,6 +2,7 @@ package foundry
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -11,11 +12,16 @@ import (
 )
 
 type npcSystem struct {
-	Details    levelDetails  `json:"details"`
-	Attributes npcAttributes `json:"attributes"`
-	Perception npcPerception `json:"perception"`
-	Saves      npcSaves      `json:"saves"`
-	Traits     itemTraits    `json:"traits"`
+	Details    levelDetails        `json:"details"`
+	Attributes npcAttributes       `json:"attributes"`
+	Perception npcPerception       `json:"perception"`
+	Saves      npcSaves            `json:"saves"`
+	Traits     itemTraits          `json:"traits"`
+	Skills     map[string]npcSkill `json:"skills"`
+}
+
+type npcSkill struct {
+	Base int `json:"base"`
 }
 
 type levelDetails struct {
@@ -117,6 +123,16 @@ func importNPC(source *actor) (*creature.Creature, *Report, error) {
 			report.skip(source.Name, fmt.Sprintf("immunity %s except %s", immunity.Type, strings.Join(immunity.Exceptions, ", ")), ReasonLaterRule)
 		}
 	}
+	for _, name := range slices.Sorted(maps.Keys(system.Skills)) {
+		if !creature.IsSkill(name) {
+			report.skip(source.Name, "skill "+name, ReasonUnsupported)
+			continue
+		}
+		if layer.Skills == nil {
+			layer.Skills = map[string]int{}
+		}
+		layer.Skills[name] = system.Skills[name].Base
+	}
 	layer.Defense.Resist = npcAdjustments(attributes.Resistances, "resistance", source.Name, report)
 	layer.Defense.Weakness = npcAdjustments(attributes.Weaknesses, "weakness", source.Name, report)
 
@@ -132,6 +148,10 @@ func importNPC(source *actor) (*creature.Creature, *Report, error) {
 		case "spell":
 			report.skip(current.Name, "spell", ReasonLaterRule)
 		case "action":
+			if amount, found := fastHealing(current); found {
+				layer.FastHealing = max(layer.FastHealing, amount)
+				break
+			}
 			report.skip(current.Name, current.System.ActionType.Value, ReasonAbility)
 		case "lore":
 			report.skip(current.Name, "lore", ReasonNotCombat)
@@ -244,4 +264,23 @@ func importNPCSpellcasting(current *item, layer *creature.Creature, report *Repo
 	}
 	layer.Spellcasting = &creature.Spellcasting{Attack: system.SpellDC.Value, DC: system.SpellDC.DC}
 	return nil
+}
+
+// deliberate: only a plain number is read, not a formula, because an NPC's fast healing is a fixed value; anything else stays in the report as an ability to write by hand.
+func fastHealing(current *item) (int, bool) {
+	for _, rule := range current.System.Rules {
+		if rule["key"] != "FastHealing" {
+			continue
+		}
+		if kind, isText := rule["type"].(string); isText && kind != "fast-healing" {
+			continue
+		}
+		if predicate, isList := rule["predicate"].([]any); isList && len(predicate) > 0 {
+			continue
+		}
+		if value, isNumber := rule["value"].(float64); isNumber && value > 0 {
+			return int(value), true
+		}
+	}
+	return 0, false
 }

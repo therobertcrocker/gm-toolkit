@@ -114,16 +114,17 @@ func (fight *Fight) applyDamage(source effectSource, target *Combatant, roll dam
 	wasStanding := target.Standing()
 	target.HP = max(target.HP-(total-absorbed), 0)
 	fight.observer.Observe(DamageDealt{
-		Source:   source.actor.ID,
-		Target:   target.ID,
-		Strike:   source.strike,
-		Ability:  source.ability,
-		Critical: critical,
-		Parts:    parts,
-		Total:    total,
-		Absorbed: absorbed,
-		HPAfter:  target.HP,
-		Trait:    traitChange,
+		Source:      source.actor.ID,
+		Target:      target.ID,
+		Strike:      source.strike,
+		Ability:     source.ability,
+		Critical:    critical,
+		Parts:       parts,
+		Total:       total,
+		Absorbed:    absorbed,
+		HPAfter:     target.HP,
+		Trait:       traitChange,
+		TriggeredBy: source.triggeredBy,
 	})
 	fight.adapt(target, parts)
 	if total > absorbed {
@@ -140,6 +141,16 @@ func (fight *Fight) applyDamage(source effectSource, target *Combatant, roll dam
 		for _, part := range roll.persistent {
 			fight.addPersistent(source, target, part, roll.doubled)
 		}
+	}
+	if total > 0 && source.actor.Side != target.Side && source.ability != persistentAbility {
+		fight.fire(target, TriggerEvent{
+			Kind:    creature.TriggerDamaged,
+			By:      source.actor,
+			Ability: source.ability,
+			Strike:  source.strike,
+			Traits:  source.traits,
+			Melee:   source.melee,
+		})
 	}
 }
 

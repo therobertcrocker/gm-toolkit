@@ -43,6 +43,13 @@ recovery_dc = 6
     unarmored = "expert"
     weapon-group-hammer = "legendary"
     will = "expert"
+  [build.skill]
+    acrobatics = "master"
+    athletics = "master"
+    deception = "trained"
+    diplomacy = "trained"
+    intimidation = "master"
+    survival = "trained"
   [build.armor]
     name = "Full Plate"
     category = "heavy"
@@ -65,6 +72,10 @@ recovery_dc = 6
   [build.modifier]
     [build.modifier.amulet-of-kinships-strength]
       selector = "will"
+      type = "item"
+      value = 2
+    [build.modifier.demon-mask]
+      selector = "intimidation"
       type = "item"
       value = 2
     [build.modifier.fleet]

@@ -158,3 +158,82 @@ func TestImportedNPCLoadsUnderItsHandLayer(t *testing.T) {
 		t.Errorf("Layers = %v, want %v", loaded.Layers, want)
 	}
 }
+
+func TestImportNPCSkills(t *testing.T) {
+	layer, report := importTestNPC(t, "abyssal-luna")
+	want := map[string]int{"acrobatics": 28, "athletics": 30, "diplomacy": 29, "occultism": 33, "society": 31}
+	if !maps.Equal(layer.Skills, want) {
+		t.Errorf("Skills = %v, want %v", layer.Skills, want)
+	}
+	for _, lore := range []string{"Fortune-Telling Lore", "Lore (any one subcategory)"} {
+		if !slices.Contains(report.Skipped, Skip{Item: lore, What: "lore", Reason: ReasonNotCombat}) {
+			t.Errorf("report lacks %s as not a combat statistic", lore)
+		}
+	}
+	lilith, _ := importTestNPC(t, "avatar-of-lilith")
+	if want := map[string]int{"acrobatics": 31, "intimidation": 32, "occultism": 25}; !maps.Equal(lilith.Skills, want) {
+		t.Errorf("avatar-of-lilith Skills = %v, want %v", lilith.Skills, want)
+	}
+	source, err := readActor(filepath.Join("testdata", "actors", "abyssal-luna.json"))
+	if err != nil {
+		t.Fatalf("readActor: %v", err)
+	}
+	source.Raw = []byte(`{"skills": {"athletics": {"base": 30}, "sailing-lore": {"base": 12}}}`)
+	layer, report, err = importNPC(source)
+	if err != nil {
+		t.Fatalf("importNPC: %v", err)
+	}
+	if want := map[string]int{"athletics": 30}; !maps.Equal(layer.Skills, want) {
+		t.Errorf("Skills = %v, want %v", layer.Skills, want)
+	}
+	if !slices.Contains(report.Skipped, Skip{Item: "Abyssal Luna", What: "skill sailing-lore", Reason: ReasonUnsupported}) {
+		t.Errorf("report lacks the sailing-lore skill as unsupported: %+v", report.Skipped)
+	}
+}
+
+func TestImportNPCFastHealing(t *testing.T) {
+	layer, report := importTestNPC(t, "avatar-of-lilith")
+	if layer.FastHealing != 10 {
+		t.Errorf("FastHealing = %d, want 10", layer.FastHealing)
+	}
+	if slices.ContainsFunc(report.Skipped, func(skip Skip) bool { return skip.Item == "Fast Healing 10" }) {
+		t.Errorf("report skips Fast Healing 10, want it imported")
+	}
+	if !hasSkip(report, "Last Stand", ReasonAbility) {
+		t.Error("report lacks Last Stand as an ability")
+	}
+	for _, test := range []struct {
+		name string
+		rule map[string]any
+		want int
+	}{
+		{"typed fast healing", map[string]any{"key": "FastHealing", "value": 10.0, "type": "fast-healing"}, 10},
+		{"regeneration", map[string]any{"key": "FastHealing", "value": 10.0, "type": "regeneration", "deactivatedBy": []any{"good"}}, 0},
+		{"predicate", map[string]any{"key": "FastHealing", "value": 10.0, "predicate": []any{"self:condition:wounded"}}, 0},
+		{"empty predicate", map[string]any{"key": "FastHealing", "value": 10.0, "predicate": []any{}}, 10},
+		{"formula", map[string]any{"key": "FastHealing", "value": "@actor.level"}, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source, err := readActor(filepath.Join("testdata", "actors", "avatar-of-lilith.json"))
+			if err != nil {
+				t.Fatalf("readActor: %v", err)
+			}
+			index := slices.IndexFunc(source.Items, func(current item) bool { return current.Name == "Fast Healing 10" })
+			if index < 0 {
+				t.Fatal("setup: no Fast Healing 10 item")
+			}
+			source.Items[index].System.Rules = []map[string]any{test.rule}
+			layer, report, err := importNPC(source)
+			if err != nil {
+				t.Fatalf("importNPC: %v", err)
+			}
+			if layer.FastHealing != test.want {
+				t.Errorf("FastHealing = %d, want %d", layer.FastHealing, test.want)
+			}
+			reported := slices.Contains(report.Skipped, Skip{Item: "Fast Healing 10", What: "passive", Reason: ReasonAbility})
+			if reported != (test.want == 0) {
+				t.Errorf("Fast Healing 10 reported as an ability = %t, want %t", reported, test.want == 0)
+			}
+		})
+	}
+}

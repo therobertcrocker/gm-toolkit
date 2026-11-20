@@ -4,3 +4,55 @@ schema = 1
 name    = "Abyssal Frenzy"
 actions = 2
 steps   = [{ strike = "slash" }, { strike = "slash" }, { strike = "stab" }]
+
+# Impending Fate and Fey Momentum: a critical Strike gives doomed and recharges Destiny Spores.
+[strike.slash]
+critical_success = [
+  { condition = "doomed", value = 1, stack = true },
+  { recharge = "destiny-spores" },
+]
+
+[strike.stab]
+critical_success = [
+  { condition = "doomed", value = 1, stack = true },
+  { recharge = "destiny-spores" },
+]
+
+[ability.destiny-spores]
+name    = "Destiny Spores"
+actions = 2
+traits  = ["mental", "occult"]
+area    = { shape = "cone", size = 40 }
+limit   = { recharge = "1d4" }
+steps   = [
+  { save = "will", dc = 39, basic = true, damage = [{ dice = "15d6", type = "mental" }],
+    failure = [{ condition = "slowed", value = 1, duration = { rounds = 1 } }],
+    critical_failure = [
+      { condition = "slowed", value = 2, duration = { rounds = 1 } },
+      { condition = "doomed", value = 1, stack = true },
+    ] },
+]
+
+# approximation: two Strikes at one penalty; the move out of reach waits for A.004.2.
+[ability.walk-the-timelines]
+name    = "Walk the Timelines"
+actions = 2
+traits  = ["occult"]
+limit   = { per_fight = 1 }
+steps   = [{ strike = "slash" }, { strike = "slash", penalty = "shared", target = "other" }]
+
+[ability.challenge-fate]
+name    = "Challenge Fate"
+traits  = ["misfortune", "occult"]
+trigger = { on = "targeted", cost = "reaction" }
+steps   = [{ reroll = "worse", rolls = ["attack"], uses = 1 }]
+
+[ability.ill-omen]
+name    = "Ill Omen"
+actions = 2
+traits  = ["concentrate", "curse", "manipulate", "misfortune"]
+steps   = [
+  { save = "will", dc_from = "spell",
+    failure = [{ reroll = "worse", rolls = ["attack", "skill"], uses = 1, duration = { rounds = 1 } }],
+    critical_failure = [{ reroll = "worse", rolls = ["attack", "skill"], duration = { rounds = 1 } }] },
+]

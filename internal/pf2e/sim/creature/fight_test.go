@@ -107,7 +107,8 @@ func TestLoadReadsDownFields(t *testing.T) {
 		wantText string
 	}{
 		{"dying max 1", strings.Replace(minimalHand, "perception = 3", "perception = 3\ndying_max = 1", 1), "dying_max 1"},
-		{"negative hero points", strings.Replace(minimalHand, "perception = 3", "perception = 3\nhero_points = -1", 1), "hero_points and recovery_dc must not be negative"},
+		{"negative hero points", strings.Replace(minimalHand, "perception = 3", "perception = 3\nhero_points = -1", 1), "hero_points, recovery_dc and fast_healing must not be negative"},
+		{"negative fast healing", strings.Replace(minimalHand, "perception = 3", "perception = 3\nfast_healing = -1", 1), "hero_points, recovery_dc and fast_healing must not be negative"},
 		{"lethal on a condition", minimalHand + "\n[ability.bad]\nname = \"Bad\"\nactions = 1\nsteps = [{ condition = \"off-guard\", lethal = true }]\n", "lethal needs damage"},
 	}
 	for _, testCase := range cases {

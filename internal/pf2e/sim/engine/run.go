@@ -16,6 +16,7 @@ var (
 	ErrDuplicateCombatant = errors.New("duplicate combatant id")
 	ErrBadSetup           = errors.New("bad fight setup")
 	ErrBadChoice          = errors.New("bad choice")
+	ErrTriggerLoop        = errors.New("trigger loop")
 )
 
 type Setup struct {
@@ -93,12 +94,21 @@ func tieRank(combatant *Combatant) int {
 }
 
 func (fight *Fight) run() (Outcome, error) {
+	for _, combatant := range slices.Clone(fight.order) {
+		fight.fire(combatant, TriggerEvent{Kind: creature.TriggerInitiative})
+	}
+	if fight.fault != nil {
+		return NoOutcome, fight.fault
+	}
 	for fight.round = 1; fight.round <= fight.maxRounds; fight.round++ {
 		fight.observer.Observe(RoundStarted{Round: fight.round})
 		for index := 0; index < len(fight.order); {
 			actor := fight.order[index]
 			if err := fight.takeTurn(actor); err != nil {
 				return NoOutcome, err
+			}
+			if fight.fault != nil {
+				return NoOutcome, fight.fault
 			}
 			if outcome, over := fight.outcome(); over {
 				fight.observer.Observe(FightEnded{Rounds: fight.round, Outcome: outcome})
@@ -128,17 +138,33 @@ func (fight *Fight) act(actor *Combatant) error {
 		return nil
 	}
 	fight.observer.Observe(TurnStarted{Round: fight.round, Combatant: actor.ID})
+	actor.ReactionUsed = false
+	fight.tickLimits(actor)
+	healedWhileDown := !actor.Standing()
+	// deliberate: a downed creature's fast healing comes before its recovery check, not after, because the start-of-turn steps run in any order and healing first is never worse (Decision Record — Execution 22).
+	if healedWhileDown {
+		fight.fastHeal(actor)
+	}
 	if actor.Dying > 0 {
 		fight.recoveryCheck(actor)
+		if !actor.Dead {
+			fight.regainActions(actor)
+		}
 		return nil
 	}
 	if !actor.Standing() {
+		fight.regainActions(actor)
 		return nil
 	}
-	actor.ActionsLeft = actionsPerTurn
 	actor.AttacksThisTurn = 0
-	actor.ReactionUsed = false
-	for actor.ActionsLeft > 0 {
+	actor.lastPenalty = 0
+	fight.regainActions(actor)
+	// deliberate: turn-start triggers see the HP the turn starts with, not the HP after fast healing, because Robert ruled Last Stand first (Decision 4).
+	fight.fire(actor, TriggerEvent{Kind: creature.TriggerTurnStart})
+	if !healedWhileDown {
+		fight.fastHeal(actor)
+	}
+	for actor.ActionsLeft > 0 && actor.Standing() {
 		choice, acting := fight.decider.Decide(fight, actor)
 		if !acting {
 			return nil
@@ -154,8 +180,30 @@ func (fight *Fight) act(actor *Combatant) error {
 }
 
 func (fight *Fight) perform(actor *Combatant, choice Choice) error {
-	if choice.Target == nil || !choice.Target.Standing() {
-		return fmt.Errorf("%w: %s chose %q with no standing target", ErrBadChoice, actor.ID, choice.ID)
+	if choice.Kind == ChooseStand {
+		if actor.Condition("prone") == 0 || actor.OpenActions() < 1 {
+			return fmt.Errorf("%w: %s cannot Stand", ErrBadChoice, actor.ID)
+		}
+		actor.ActionsLeft--
+		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: "stand", Actions: 1})
+		if fight.provoke(actor, "stand", TriggerEvent{Traits: []string{"move"}}) {
+			fight.stand(actor)
+		}
+		return nil
+	}
+	if choice.Kind == ChooseSustain {
+		effect, found := actor.sustained[choice.ID]
+		if !found || effect.done || actor.OpenActions() < 1 {
+			return fmt.Errorf("%w: %s cannot Sustain %q", ErrBadChoice, actor.ID, choice.ID)
+		}
+		ability := actor.Creature.Abilities[choice.ID]
+		actor.ActionsLeft--
+		effect.done = true
+		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: choice.ID, Actions: 1, Target: targetID(effect.target)})
+		fight.observer.Observe(Sustained{Combatant: actor.ID, Ability: choice.ID})
+		ability.Steps = ability.Sustain
+		fight.useAbility(abilityUse{actor: actor, ability: ability, target: effect.target, actions: 1, fixed: true})
+		return nil
 	}
 	switch choice.Kind {
 	case ChooseStrike:
@@ -163,21 +211,52 @@ func (fight *Fight) perform(actor *Combatant, choice Choice) error {
 		if !found {
 			return fmt.Errorf("%w: %s has no strike %q", ErrBadChoice, actor.ID, choice.ID)
 		}
+		if choice.Target == nil || !choice.Target.Standing() {
+			return fmt.Errorf("%w: %s chose %q with no standing target", ErrBadChoice, actor.ID, choice.ID)
+		}
 		actor.ActionsLeft--
+		actor.StrikeOnlyActions = max(actor.StrikeOnlyActions-1, 0)
 		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: choice.ID, Actions: 1, Target: choice.Target.ID})
-		fight.strike(actor, choice.Target, strike, "")
+		fight.strike(actor, choice.Target, strike, strikeOptions{})
 		return nil
 	case ChooseAbility:
 		ability, found := actor.Creature.Abilities[choice.ID]
-		if !found || ability.Ignore {
+		if !found || ability.Ignore || ability.Trigger != nil {
 			return fmt.Errorf("%w: %s has no usable ability %q", ErrBadChoice, actor.ID, choice.ID)
 		}
-		if ability.Actions > actor.ActionsLeft {
-			return fmt.Errorf("%w: %s chose %s (%d actions) with %d left", ErrBadChoice, actor.ID, choice.ID, ability.Actions, actor.ActionsLeft)
+		if !fight.checkTarget(actor, ability, choice.Target) {
+			return fmt.Errorf("%w: %s chose %q with no fitting target", ErrBadChoice, actor.ID, choice.ID)
 		}
-		actor.ActionsLeft -= ability.Actions
-		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: choice.ID, Actions: ability.Actions, Target: choice.Target.ID})
-		fight.useAbility(actor, ability, choice.Target)
+		cost := ability.Actions
+		if choice.Actions != 0 {
+			cost = choice.Actions
+		}
+		low, high := ability.CostRange()
+		if cost < low || cost > high {
+			return fmt.Errorf("%w: %s chose %s for %d actions; it takes %d to %d", ErrBadChoice, actor.ID, choice.ID, cost, low, high)
+		}
+		if cost > actor.OpenActions() {
+			return fmt.Errorf("%w: %s chose %s (%d actions) with %d open", ErrBadChoice, actor.ID, choice.ID, cost, actor.OpenActions())
+		}
+		if reason := actor.Blocked(ability); reason != "" {
+			return fmt.Errorf("%w: %s chose %s: %s", ErrBadChoice, actor.ID, choice.ID, reason)
+		}
+		actor.ActionsLeft -= cost
+		fight.observer.Observe(ActionUsed{Combatant: actor.ID, Action: choice.ID, Actions: cost, Target: targetID(choice.Target)})
+		fight.spend(actor, ability)
+		if fight.provoke(actor, ability.ID, TriggerEvent{Ability: ability.ID, Traits: ability.Traits}) {
+			fight.useAbility(abilityUse{actor: actor, ability: ability, target: choice.Target, actions: cost})
+			if len(ability.Sustain) > 0 && actor.Standing() {
+				actor.sustained[ability.ID] = &sustainedEffect{target: choice.Target, done: true}
+			}
+			if slices.Contains(ability.Tags, creature.TagLoyalty) {
+				fight.loyalty(actor, ability.ID)
+			}
+		}
+		if ability.TurnEnds {
+			actor.ActionsLeft = 0
+			actor.StrikeOnlyActions = 0
+		}
 		return nil
 	default:
 		return fmt.Errorf("%w: %s made a choice of unknown kind %d", ErrBadChoice, actor.ID, choice.Kind)

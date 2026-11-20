@@ -347,3 +347,26 @@ The two condition items (Frightened: FlatModifier selector `all`) and the Haste 
 15. **Spellcasting entries are many and messy.** Arabesque has eight (two innate elf entries are stored as "prepared"); Kas and Tavish each have a non-caster entry ("charges", empty innate). Two entries use `ability: ""` with `proficiency.slug` naming a class. Entry `proficiency.value` stays at 1; the real rank comes from the actor's spellcasting proficiency. Tavish has two blank placeholder spells with `location: null`. Sorcerer slot `max` values already include the Ring of Wizardry.
 16. **Legacy leftovers on the actor**: Arabesque's `system.savingThrows` and `system.martial`; Tavish's `system.customModifiers.stealth` (a hand-entered +1 item bonus) and `system.proficiencies.attacks`; `system.saves: {}`.
 17. **Homebrew campaign content with rule elements**: "Gift"/"Relic" bonus feats in `location: campaign`, actions carrying rules (Feather Steps, Inextinguishable, Linguistics Nexus), a consumable carrying damage rules, and a module trait `xdy-pf2e-housepatched` on Kas's armor.
+
+## 6 — Skills
+
+Read by Robert from the Foundry sheets at level 14, for `F.041.E4` Commit 10 (`TestGateSkills`). Each cell is the total modifier the sheet shows. Sheet state as in the header: no conditions, no effect items, toggles off, gear as equipped.
+
+| Skill | Kas | Tavish | Arabesque |
+|---|---|---|---|
+| Acrobatics |20|19|22|
+| Arcana |0|20|22|
+| Athletics |25|13|0|
+| Crafting |0|26|4|
+| Deception |20|23|25|
+| Diplomacy |20|17|5|
+| Intimidation |26|17|21|
+| Medicine |3|18|1|
+| Nature |3|18|1|
+| Occultism |0|18|24|
+| Performance |4|17|23|
+| Religion |3|16|1|
+| Society |0|20|20|
+| Stealth |0|24|20|
+| Survival |19|16|1|
+| Thievery |0|19|20|

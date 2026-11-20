@@ -51,7 +51,7 @@ func TestStrikeMissDealsNoDamage(t *testing.T) {
 	target := testCombatant("target", SideParty, creature.KindPC, 30, 22)
 	fight, events := testFight(script(t, 5), attacker, target)
 
-	fight.strike(attacker, target, fist(), "")
+	fight.strike(attacker, target, fist(), strikeOptions{})
 
 	want := []Event{StrikeRolled{Attacker: "attacker", Target: "target", Strike: "fist", Die: 5, Bonus: 10, Total: 15, AC: 22, Degree: Failure}}
 	if !reflect.DeepEqual(events.events, want) {
@@ -67,7 +67,7 @@ func TestStrikeCriticalDoublesDamage(t *testing.T) {
 	target := testCombatant("target", SideParty, creature.KindPC, 30, 15)
 	fight, events := testFight(script(t, 15, 4), attacker, target)
 
-	fight.strike(attacker, target, fist(), "")
+	fight.strike(attacker, target, fist(), strikeOptions{})
 
 	want := []Event{
 		StrikeRolled{Attacker: "attacker", Target: "target", Strike: "fist", Die: 15, Bonus: 10, Total: 25, AC: 15, Degree: CriticalSuccess},
@@ -82,9 +82,10 @@ func TestSecondAttackTakesPenalty(t *testing.T) {
 	attacker := testCombatant("attacker", SideEnemies, creature.KindNPC, 50, 20)
 	target := testCombatant("target", SideParty, creature.KindPC, 30, 40)
 	fight, events := testFight(script(t, 10, 10), attacker, target)
+	fight.current = attacker
 
-	fight.strike(attacker, target, fist(), "")
-	fight.strike(attacker, target, fist(), "")
+	fight.strike(attacker, target, fist(), strikeOptions{})
+	fight.strike(attacker, target, fist(), strikeOptions{})
 
 	second := events.events[1].(StrikeRolled)
 	if second.Penalty != -5 || second.Total != 15 {
@@ -153,7 +154,7 @@ func TestNPCDiesAtZero(t *testing.T) {
 	target := testCombatant("target", SideEnemies, creature.KindNPC, 5, 20)
 	fight, events := testFight(script(t, 15, 6), attacker, target)
 
-	fight.strike(attacker, target, fist(), "")
+	fight.strike(attacker, target, fist(), strikeOptions{})
 
 	if !target.Dead || target.Dying != 0 {
 		t.Errorf("Dead, Dying = %v, %d, want true, 0", target.Dead, target.Dying)
@@ -182,7 +183,7 @@ func TestPCKnockedDownGoesDying(t *testing.T) {
 			attacker := testCombatant("attacker", SideEnemies, creature.KindNPC, 50, 20)
 			fight, events := testFight(script(t, testCase.die, 6), target, other, attacker)
 
-			fight.strike(attacker, target, fist(), "")
+			fight.strike(attacker, target, fist(), strikeOptions{})
 
 			if target.Dying != testCase.wantDying || target.Dead {
 				t.Errorf("Dying, Dead = %d, %v, want %d, false", target.Dying, target.Dead, testCase.wantDying)

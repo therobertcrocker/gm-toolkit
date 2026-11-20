@@ -29,7 +29,14 @@ func TestPrintCreature(t *testing.T) {
 		Abilities: map[string]creature.Ability{
 			"abyssal-frenzy":  {Name: "Abyssal Frenzy", Actions: 2, Steps: []creature.Step{{Strike: "slash"}, {Strike: "slash"}}},
 			"prophetic-wings": {Ignore: true},
+			"tonic": {
+				Name: "Tonic", Actions: 1, MaxActions: 3,
+				Limit: &creature.Limit{PerFight: 1, Pool: "potions"},
+				Steps: []creature.Step{{Save: "fortitude", DC: 30}},
+			},
 		},
+		Pools:  map[string]int{"potions": 3},
+		Skills: map[string]int{"stealth": 20, "athletics": 25},
 		Layers: []string{"import.toml", "hand.toml"},
 	}
 	var out bytes.Buffer
@@ -42,9 +49,12 @@ func TestPrintCreature(t *testing.T) {
 		"HP 300  AC 36  Fort +27  Ref +28  Will +29",
 		"Resist all 10 (except holy)",
 		"Speed 60 ft, fly 180 ft",
+		"Skills athletics +25, stealth +20\n",
 		"Slash +30 (agile)  3d6+14 slashing plus 1d8 mental",
 		"Abyssal Frenzy [2]  strike slash, strike slash",
 		"prophetic-wings (ignored)",
+		"Tonic [1-3] (1 per fight, pool potions)  save",
+		"Pools potions 3",
 		"Layers import.toml + hand.toml",
 	} {
 		if !strings.Contains(out.String(), want) {
@@ -104,5 +114,14 @@ func TestPrintCreatureShowsComputedNumbers(t *testing.T) {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output lacks %q:\n%s", want, out.String())
 		}
+	}
+	if strings.Contains(out.String(), "Fast healing") {
+		t.Errorf("output has a fast healing line with none set:\n%s", out.String())
+	}
+	out.Reset()
+	shown.FastHealing = 10
+	printCreature(&out, shown, false)
+	if !strings.Contains(out.String(), "Fast healing 10\n") {
+		t.Errorf("output lacks the fast healing line:\n%s", out.String())
 	}
 }

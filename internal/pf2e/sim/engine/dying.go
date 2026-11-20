@@ -28,6 +28,8 @@ func (fight *Fight) knockDown(target, attacker *Combatant, critical bool) {
 	if target != fight.current {
 		fight.moveBefore(target, attacker)
 	}
+	fight.applyCondition(attacker, target, creature.Step{Condition: "prone"})
+	target.downed = true
 	fight.setDying(target, dyingOnKnockDown(target, critical))
 }
 
@@ -103,6 +105,9 @@ func (fight *Fight) recoveryCheck(target *Combatant) {
 		base = defaultRecoveryDC
 	}
 	dc := base + target.Dying
+	for _, eased := range target.recoveryCaps {
+		dc = min(dc, eased.dc)
+	}
 	die := fight.roller.Die(20)
 	degree := DegreeOf(die, die, dc)
 	fight.observer.Observe(RecoveryChecked{Combatant: target.ID, Die: die, DC: dc, Degree: degree})
